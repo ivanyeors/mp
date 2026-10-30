@@ -3,6 +3,8 @@ import { sanitizeSearchTerm } from "@/lib/supabase/like-pattern";
 import type { Product, ProductVariant, ProductImage, ProductOption } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 
+export { shopCardPrice } from "./shop-card-price";
+
 /**
  * Attach live `stock_available` (from the variant_stock view) onto each variant
  * of the given products. This is the single availability truth the storefront
@@ -53,6 +55,19 @@ export const CUSTOM_COMPOSED_PRODUCT_TYPES = ["pillow", "bolster"] as const;
 
 export function isShopCatalogProduct(product: { product_type: string }): boolean {
   return !(CUSTOM_COMPOSED_PRODUCT_TYPES as readonly string[]).includes(product.product_type);
+}
+
+/**
+ * Pure — the product is **Listed** in the shop catalog (CONTEXT.md): active,
+ * with at least one active Variant, and bought from the shop rather than
+ * through the configurator.
+ */
+export function isListedShopProduct(product: {
+  status: string;
+  product_type: string;
+  product_variants?: { is_active: boolean }[] | null;
+}): boolean {
+  return product.status === "active" && isShopCatalogProduct(product) && (product.product_variants ?? []).some((v) => v.is_active);
 }
 
 export interface GetProductsOpts {

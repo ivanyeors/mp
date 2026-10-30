@@ -241,6 +241,25 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
     primary_media_asset_id: someId(),
   }));
 
+  // Email campaigns place images by asset id in their blocks; a URL or an id in
+  // their words is not a use, and a legacy campaign has no content at all.
+  const emailCampaigns: FakeRow[] = Array.from({ length: Math.ceil(perTable / 2) }, (_, i) => ({
+    id: `campaign-${seed}-${i}`,
+    name: `Campaign ${i}`,
+    content: rng.bool(0.15)
+      ? null
+      : {
+          v: 1,
+          blocks: [
+            { id: "a", type: "image", image: { asset: someId() ?? "", alt: "" }, width: "full" },
+            { id: "b", type: "hero", image: { asset: someId() ?? "", alt: "" } },
+            { id: "c", type: "text", paragraphs: [{ kind: "p", runs: [{ text: `${someUrl() ?? ""} ${someId() ?? ""}` }] }] },
+          ],
+          fallbacks: {},
+        },
+    body: null,
+  }));
+
   const tables: FakeTables = {
     blog_posts: blogPosts,
     site_settings: siteSettings,
@@ -252,6 +271,7 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
     partners_page: partnersPage,
     item_overlay_mappings: itemOverlays,
     items,
+    email_campaigns: emailCampaigns,
   };
 
   const rows: UsageConsumerRows = {
@@ -273,6 +293,7 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
     items: items.filter(
       (i) => i.primary_media_asset_id != null,
     ) as UsageConsumerRows["items"],
+    emailCampaigns: emailCampaigns.filter((c) => c.content != null) as UsageConsumerRows["emailCampaigns"],
     // Never scanned; present so the exclusion stays covered.
     orderItems: [{ id: "oi1", image_url: knownUrls[0] ?? null }],
   };

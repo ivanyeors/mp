@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { oidcFederationProvider } from "@anthropic-ai/sdk/lib/credentials/oidc-federation";
-import { getVercelOidcToken } from "@vercel/oidc";
+import { CLAUDE_NOT_CONFIGURED, SERVER_SIDE_FALLBACK_BETA, claudeClient, claudeConfigured } from "@/lib/ai/claude";
+import type { AiModelId } from "@/lib/ai/models";
+import { MPILLOW_ABOUT, MPILLOW_FACT_LINES } from "@/lib/ai/mpillow-facts";
 import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { checkReplyText } from "@/lib/reviews/reply-rules";
@@ -22,25 +23,18 @@ import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
  * always sends the customer to the staffed WhatsApp line (lib/contact.ts — the
  * sales number, never the automated appointment sender).
  *
- * Credentials: an ANTHROPIC_API_KEY (local scripts), or on Vercel the OIDC
- * federation rule (ANTHROPIC_FEDERATION_RULE_ID + ORGANIZATION/SERVICE_ACCOUNT/
- * WORKSPACE ids) that swaps the function's x-vercel-oidc-token for a short-lived
- * Anthropic token — no long-lived secret in prod. The SDK prefers the key when
- * both are set.
+ * The client and its credentials are the shared one (lib/ai/claude.ts), and
+ * the facts about Mpillow the shared list (lib/ai/mpillow-facts.ts), which
+ * campaign drafts state too (PRD-campaign-email-editor slice 09).
  */
 
-export const REVIEW_REPLY_MODEL = "claude-opus-5-5";
+/** Kept in code, not on General → AI writing (PRD-campaign-email-editor decision 10); typed by the model list. */
+export const REVIEW_REPLY_MODEL: AiModelId = "claude-opus-5-5";
 
-export const REVIEW_REPLY_SYSTEM_PROMPT = `You write public replies, as the Mpillow team, to Google Maps reviews of Mpillow, a Singapore company that makes custom-fit cervical pillows and bolsters. A staff member reads every reply before it is posted.
+export const REVIEW_REPLY_SYSTEM_PROMPT = `You write public replies, as the Mpillow team, to Google Maps reviews of ${MPILLOW_ABOUT}. A staff member reads every reply before it is posted.
 
 About Mpillow — use only these facts and never invent others:
-- Pillows are custom-fitted: we measure things like shoulder width and sleep position, and tailor the pillow's height and width to the person.
-- The height is adjustable, and one pillow supports both back and side sleeping.
-- Covers and components are washable, and layers can be replaced without replacing the whole pillow.
-- Customers can book a re-adjustment visit to have their pillow's fit retuned, and the stuffing is covered by a 10-year warranty.
-- Mpillow won the Singapore Good Design award in 2022, and the modular design is patented.
-- On our website people can customise a pillow or book an appointment for a fitting.
-- Customers reach our support team on WhatsApp at ${SUPPORT_WHATSAPP_DISPLAY}, or through the Support page on our website.
+${MPILLOW_FACT_LINES}
 
 Every reply:
 - Write for two audiences: the reviewer, and the future customers reading the reviews. The reply should help those readers trust Mpillow.
@@ -128,50 +122,22 @@ export function buildReviewPrompt(review: ReviewForDraft): string {
 
 export type DraftResult = { ok: true; reply: string; model: string } | { ok: false; error: string };
 
-let cachedClient: Anthropic | null = null;
-
-/** True when Claude can be called: an API key, or a Vercel OIDC federation rule. */
-export function claudeConfigured(): boolean {
-  return !!(process.env.ANTHROPIC_API_KEY?.trim() || process.env.ANTHROPIC_FEDERATION_RULE_ID?.trim());
-}
-
-export const CLAUDE_NOT_CONFIGURED = "Claude is not configured (ANTHROPIC_API_KEY or ANTHROPIC_FEDERATION_RULE_ID)";
-
-function defaultClient(): Anthropic | null {
-  if (!claudeConfigured()) return null;
-  const federationRuleId = process.env.ANTHROPIC_FEDERATION_RULE_ID?.trim();
-  // Bounded wall clock for a serverless function: 45s × (2 retries + 1).
-  cachedClient ??= new Anthropic({
-    timeout: 45_000,
-    maxRetries: 2,
-    credentials: federationRuleId
-      ? oidcFederationProvider({
-          // Per exchange, inside a request: Vercel re-mints its per-invocation token with Anthropic as the audience.
-          identityTokenProvider: () => getVercelOidcToken({ audience: "https://api.anthropic.com" }),
-          federationRuleId,
-          organizationId: process.env.ANTHROPIC_ORGANIZATION_ID ?? "",
-          serviceAccountId: process.env.ANTHROPIC_SERVICE_ACCOUNT_ID,
-          workspaceId: process.env.ANTHROPIC_WORKSPACE_ID,
-          baseURL: "https://api.anthropic.com",
-          fetch,
-        })
-      : undefined,
-  });
-  return cachedClient;
-}
+// Shared with AI writing since PRD-campaign-email-editor slice 16; re-exported
+// so every caller here keeps its import.
+export { CLAUDE_NOT_CONFIGURED, claudeConfigured };
 
 export async function draftReviewReply(
   review: ReviewForDraft,
   opts?: { client?: Anthropic },
 ): Promise<DraftResult> {
-  const client = opts?.client ?? defaultClient();
+  const client = opts?.client ?? claudeClient();
   if (!client) return { ok: false, error: CLAUDE_NOT_CONFIGURED };
 
   try {
     const response = await client.beta.messages.create({
       model: REVIEW_REPLY_MODEL,
       max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
+      betas: [SERVER_SIDE_FALLBACK_BETA],
       fallbacks: "default",
       output_config: { effort: "medium" },
       system: REVIEW_REPLY_SYSTEM_PROMPT,

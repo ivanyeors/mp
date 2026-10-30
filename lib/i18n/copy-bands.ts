@@ -9,6 +9,13 @@
 
 export const BANNED_CLINICAL = /\b(prescribe|treat|cure|rehab)\b/i;
 
+/**
+ * The same claims in Chinese (PRD-campaign-email-editor slice 17): a
+ * campaign's 中文 version is checked against these as its English is against
+ * BANNED_CLINICAL. Chinese has no word breaks, so each is matched anywhere.
+ */
+export const BANNED_CLINICAL_ZH = /治疗|治愈|疗效|缓解|康复|处方|临床|医生推荐/;
+
 /** Hero H1: ≤2 lines at max-w-xl + md:text-6xl ≈ ≤8 words / ≤55 chars (taglines may be 4–5). */
 export const HERO_H1_WORD_MIN = 4;
 export const HERO_H1_WORD_MAX = 8;
@@ -76,5 +83,11 @@ export function checkBand(label: string, text: string, band: CopyBand): string |
 /** Check one string for banned clinical claims. */
 export function checkBannedClinical(label: string, text: string): string | null {
   const match = text.match(BANNED_CLINICAL);
+  return match ? `${label} contains "${match[0]}", which we cannot claim.` : null;
+}
+
+/** Check one string of Chinese for banned clinical claims. */
+export function checkBannedClinicalZh(label: string, text: string): string | null {
+  const match = text.match(BANNED_CLINICAL_ZH);
   return match ? `${label} contains "${match[0]}", which we cannot claim.` : null;
 }

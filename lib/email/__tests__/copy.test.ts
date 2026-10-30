@@ -7,6 +7,7 @@ import {
   defineEmailCopy,
   editedFields,
   fillCopy,
+  placeholderLabel,
   placeholdersIn,
   resolveEmailCopy,
   validateEmailCopy,
@@ -46,10 +47,18 @@ describe("the copy rules", () => {
     expect(bad.ok).toBe(false);
     if (!bad.ok) {
       expect(bad.errors.subject).toMatch(/empty/);
-      expect(bad.errors.intro).toMatch(/\{first_name\} is not a placeholder/);
+      expect(bad.errors.intro).toBe("{first_name} is not a variable this email has.");
       expect(bad.errors.closing).toMatch(/At most 20/);
     }
     expect(validateEmailCopy(SPEC, { subject: "x" }).ok).toBe(false);
+    const two = validateEmailCopy(SPEC, { subject: "{a} {b}", intro: "Hi", closing: "" });
+    expect(!two.ok && two.errors.subject).toBe("{a}, {b} are not variables this email has.");
+  });
+
+  it("names each placeholder as Staff see its Variable", () => {
+    expect(placeholderLabel("order_number")).toBe("Order number");
+    expect(placeholderLabel("minutes")).toBe("Minutes");
+    expect(placeholderLabel("whatsapp_number")).toBe("WhatsApp number");
   });
 
   it("resolves a saved edit field by field, falling back alone", () => {

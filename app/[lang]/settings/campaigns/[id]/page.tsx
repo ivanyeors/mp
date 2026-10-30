@@ -4,7 +4,9 @@ import { listSegments } from "@/lib/crm/segments";
 import { getCampaign, getCampaignStats, readWaveStats } from "@/lib/email-campaigns/store";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { campaignAiWriting } from "../ai-writing";
 import { CampaignEditor } from "../campaign-editor";
+import { campaignPointsLive } from "../points-live";
 import { segmentOptions } from "../segment-options";
 
 export const runtime = "nodejs";
@@ -21,10 +23,12 @@ export default async function EmailCampaignPage({ params }: { params: Promise<{ 
     const admin = supabaseAdmin();
     const campaign = await getCampaign(admin, id);
     if (!campaign || campaign.archivedAt) notFound();
-    const [stats, segments, waves] = await Promise.all([
+    const [stats, segments, waves, points, ai] = await Promise.all([
         getCampaignStats(admin, id),
         listSegments().catch(() => []),
         readWaveStats(admin, id).then((w) => w.own).catch(() => []),
+        campaignPointsLive(),
+        campaignAiWriting(),
     ]);
     const options = segmentOptions(segments, ctx, locale);
     // The Segment it was saved with stays choosable even if it was archived since.
@@ -32,6 +36,6 @@ export default async function EmailCampaignPage({ params }: { params: Promise<{ 
         options.push({ id: campaign.segmentId, name: "(archived Segment)" });
     }
     return (
-        <CampaignEditor campaign={campaign} draft={campaign} stats={stats} waves={waves} segments={options} staffEmail={ctx.email} />
+        <CampaignEditor campaign={campaign} draft={campaign} stats={stats} waves={waves} segments={options} staffEmail={ctx.email} pointsLive={points} ai={ai} />
     );
 }

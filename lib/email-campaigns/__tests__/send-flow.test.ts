@@ -96,10 +96,11 @@ describe("sendSteps", () => {
     expect(steps.map((s) => [s.key, s.done, s.advisory])).toEqual([
       ["saved", true, false],
       ["test", false, true],
+      ["email", true, false],
       ["checks", true, false],
       ["room", true, false],
     ]);
-    expect(steps[3]).toMatchObject({ label: "62 emails can go today", detail: "38 of 100 sent in the last 24 hours, tests included." });
+    expect(steps[4]).toMatchObject({ label: "62 emails can go today", detail: "38 of 100 sent in the last 24 hours, tests included." });
     expect(steps[1].detail).toBe("Recommended: send yourself a test and read it on your phone first.");
   });
 
@@ -115,6 +116,38 @@ describe("sendSteps", () => {
     const resumed = sendSteps({ ...base, checks: checks.slice(1), allowance: used, resume: true });
     expect(resumed.find((s) => s.key === "checks")!.done).toBe(true);
     expect(resumed.find((s) => s.key === "room")).toMatchObject({ done: false, label: "Room to send today" });
+  });
+
+  it("lists the email's own checks as one step, each failure with its block, then its advice, which holds nothing", () => {
+    const issue = (blockId: string | null, text: string) => ({ blockId, text, what: text });
+    const alt = { key: "alt", ok: false, advisory: false, detail: "Block 1, Image: no alt text", issues: [issue("img", "Block 1, Image: no alt text")] };
+    const links = { key: "links", ok: false, advisory: false, detail: "x", issues: [issue("cta", "Block 3, Buttons: the button goes to http://x.test")] };
+    const size = { key: "size", ok: true, advisory: false, detail: "40.0 KB as sent", issues: [] };
+    const preview = { key: "preview_line", ok: false, advisory: true, detail: "y", issues: [issue(null, "Recommended: write a preview line")] };
+    const checks = [{ key: "transport", ok: true, detail: "Resend" }, alt, links, size, { key: "send_limit", ok: true, detail: "room" }];
+
+    const steps = sendSteps({ ...base, checks, advice: [preview] });
+    const email = steps.find((s) => s.key === "email")!;
+    expect(email).toMatchObject({ label: "The email", done: false, advisory: false, detail: "2 things to fix before it can go:" });
+    expect(email.items).toEqual([
+      { text: "Block 1, Image: no alt text", blockId: "img", advisory: false },
+      { text: "Block 3, Buttons: the button goes to http://x.test", blockId: "cta", advisory: false },
+      { text: "Recommended: write a preview line", blockId: null, advisory: true },
+    ]);
+    // The sending setup's step is the setup's alone.
+    expect(steps.find((s) => s.key === "checks")).toMatchObject({ done: true });
+
+    const fixed = sendSteps({ ...base, checks: [size], advice: [preview] }).find((s) => s.key === "email")!;
+    expect(fixed).toMatchObject({ done: true, detail: "Nothing in it holds the wave." });
+    expect(fixed.items).toEqual([{ text: "Recommended: write a preview line", blockId: null, advisory: true }]);
+    expect(sendSteps({ ...base, checks: [size] }).find((s) => s.key === "email")).toEqual({
+      key: "email",
+      label: "The email",
+      done: true,
+      advisory: false,
+      detail: "Its links, images, size and words are all fine.",
+    });
+    expect(sendSteps({ ...base, checks: null }).find((s) => s.key === "email")).toMatchObject({ done: false, detail: "Checking…" });
   });
 
   it("asks to save first, and records the test", () => {

@@ -59,6 +59,9 @@ const PAGES: [string[], Permission[]][] = [
   [[`${S}/appointments`, "app/api/settings/appointments"], ["appointments"]],
   [[`${S}/rma`], ["returns"]],
   [[`${S}/docs`], ["docs"]],
+  [[`${S}/general`, "app/api/settings/api-configs", "app/api/settings/ai-writing"], ["api-configs"]],
+  // ✨ Generate's stream sits outside the page's folder (PRD-campaign-email-editor slice 09).
+  [[`${S}/campaigns`, "app/api/campaigns"], ["campaigns"]],
   [[`${S}/users`, "app/api/admin/users", "app/api/admin/roles", "app/api/staff/telegram-operators", "app/api/staff/[id]"], ["users"]],
   // Shared by Inventory and Shopify Link; each action names the pages that call it.
   [[`${S}/inventory/actions.ts`], ["inventory", "shopify-link"]],

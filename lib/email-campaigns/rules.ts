@@ -14,7 +14,23 @@
  * holds the two equal.
  */
 import { z } from "zod";
+import { placeholdersIn } from "@/lib/email/copy";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
+import {
+  CampaignContentPreviewSchema,
+  CampaignContentSchema,
+  CHINESE,
+  CONTENT_LIMITS,
+  contentWords,
+  EMPTY_CAMPAIGN_CONTENT,
+  isHttpsUrl,
+  unknownVariableMessage,
+  variablesUsed,
+} from "./content";
+import { chineseVersionOf, chineseWords } from "./chinese-version";
+import { campaignVariable, fallbackWords, isVariableKey, type VariableKey } from "./variables";
+
+export { isHttpsUrl };
 
 export const CAMPAIGN_AUDIENCES = ["imported_not_signed_in", "subscribed", "segment"] as const;
 export type CampaignAudience = (typeof CAMPAIGN_AUDIENCES)[number];
@@ -41,72 +57,123 @@ export const MAX_TEST_RECIPIENTS = 3;
 
 export const CAMPAIGN_LIMITS = {
   name: 80,
-  subject: 150,
-  preheader: 200,
+  // The 中文 version's subject and preview line take the same (slice 17).
+  subject: CONTENT_LIMITS.subject,
+  preheader: CONTENT_LIMITS.preheader,
   body: 10000,
   buttonLabel: 40,
   buttonUrl: 500,
+} as const;
+
+/**
+ * What an empty field shows, in its own `placeholder` (PRD-campaign-email-editor
+ * decision 7). Hint text, never a value: it is not saved, tested or sent. The
+ * editor's preview draws the subject, message and button label placeholders
+ * dashed and muted where their words would go, so an empty email's layout
+ * still reads.
+ */
+export const CAMPAIGN_PLACEHOLDERS = {
+  name: "e.g. December cooling launch",
+  subject: "e.g. Sleep cooler this December",
+  preheader: "e.g. Our FibreCool covers are back, in every size",
+  body: "Write your message. Leave a blank line between paragraphs; start a line with - for a bullet.",
+  buttonLabel: "e.g. Shop the covers",
 } as const;
 
 const text = (max: number, empty: string) =>
   z.string().trim().min(1, empty).max(max, `At most ${max} characters.`);
 
 /**
+ * The draft's checks. Saving needs every word (`required`); the preview takes
+ * them empty, so an empty email still shows its layout with its placeholders.
+ *
+ * An email is either its typed blocks (`content`, PRD-campaign-email-editor
+ * slice 03), which every new campaign is, or the plain-text `body` and one
+ * button of a campaign written before the editor: never both.
+ */
+function draftSchema({ required }: { required: boolean }) {
+  const words = (max: number, empty: string) =>
+    required ? text(max, empty) : z.string().trim().max(max, `At most ${max} characters.`);
+  return z
+    .object({
+      name: words(CAMPAIGN_LIMITS.name, "Give the campaign a name."),
+      subject: words(CAMPAIGN_LIMITS.subject, "Write a subject."),
+      preheader: z
+        .string()
+        .trim()
+        .max(CAMPAIGN_LIMITS.preheader, `At most ${CAMPAIGN_LIMITS.preheader} characters.`)
+        .transform((v) => v || null)
+        .nullable()
+        .default(null),
+      body: z.string().max(CAMPAIGN_LIMITS.body, `At most ${CAMPAIGN_LIMITS.body} characters.`).default(""),
+      content: (required ? CampaignContentSchema : CampaignContentPreviewSchema).nullable().default(null),
+      greeting: z.boolean().default(true),
+      button: z
+        .object({
+          target: z.enum(CAMPAIGN_BUTTON_TARGETS),
+          label: words(CAMPAIGN_LIMITS.buttonLabel, "Give the button a label."),
+          url: z.string().trim().max(CAMPAIGN_LIMITS.buttonUrl).nullable().default(null),
+        })
+        .nullable()
+        .default(null)
+        .superRefine((b, ctx) => {
+          if (b?.target !== "url") return;
+          if (!b.url || !isHttpsUrl(b.url)) {
+            ctx.addIssue({ code: "custom", path: ["url"], message: "The button's link must be a full https:// address." });
+          }
+        }),
+      audience: z.enum(CAMPAIGN_AUDIENCES),
+      segmentId: z.string().uuid().nullable().default(null),
+    })
+    .superRefine((d, ctx) => {
+      if (d.audience === "segment" && !d.segmentId) {
+        ctx.addIssue({ code: "custom", path: ["segmentId"], message: "Choose the Segment to send to." });
+      }
+      if (!d.content) {
+        if (required && !d.body.trim()) ctx.addIssue({ code: "custom", path: ["body"], message: "Write the email." });
+        return;
+      }
+      if (d.body.trim() || d.button) {
+        ctx.addIssue({ code: "custom", path: ["content"], message: "An email is its blocks or its message, not both." });
+      }
+      // A block campaign fills its Variables in the subject and preview line too.
+      for (const field of ["subject", "preheader"] as const) {
+        const unknown = unknownVariableMessage(d[field] ?? "");
+        if (unknown) ctx.addIssue({ code: "custom", path: [field], message: unknown });
+      }
+      // Every Variable the email uses has words for a customer who has none (slice 13),
+      // in English and, when it has one, in its 中文 version (slice 17).
+      if (!required) return;
+      const chinese = chineseVersionOf(d.content);
+      for (const key of variablesInEmail(d)) {
+        const missing = `Write what to say to a customer with no ${campaignVariable(key).label.toLowerCase()}`;
+        if (!fallbackWords(key, d.content.fallbacks)) ctx.addIssue({ code: "custom", path: ["content", "fallbacks", key], message: `${missing}.` });
+        if (chinese && !fallbackWords(key, chinese.fallbacks, { chinese: true })) {
+          ctx.addIssue({ code: "custom", path: ["content", "translations", CHINESE, "fallbacks", key], message: `${missing}, in Chinese.` });
+        }
+      }
+    })
+    .transform((d) => ({
+      ...d,
+      segmentId: d.audience === "segment" ? d.segmentId : null,
+      button: d.button ? { ...d.button, url: d.button.target === "url" ? d.button.url : null } : null,
+    }));
+}
+
+/**
  * What the editor saves. `button` is null for none; `segmentId` only with the
  * Segment audience. Mirrors the table's checks, so a draft that parses saves.
  */
-export const CampaignDraftSchema = z
-  .object({
-    name: text(CAMPAIGN_LIMITS.name, "Give the campaign a name."),
-    subject: text(CAMPAIGN_LIMITS.subject, "Write a subject."),
-    preheader: z
-      .string()
-      .trim()
-      .max(CAMPAIGN_LIMITS.preheader, `At most ${CAMPAIGN_LIMITS.preheader} characters.`)
-      .transform((v) => v || null)
-      .nullable()
-      .default(null),
-    body: z.string().max(CAMPAIGN_LIMITS.body, `At most ${CAMPAIGN_LIMITS.body} characters.`).refine((v) => v.trim().length > 0, "Write the email."),
-    greeting: z.boolean().default(true),
-    button: z
-      .object({
-        target: z.enum(CAMPAIGN_BUTTON_TARGETS),
-        label: text(CAMPAIGN_LIMITS.buttonLabel, "Give the button a label."),
-        url: z.string().trim().max(CAMPAIGN_LIMITS.buttonUrl).nullable().default(null),
-      })
-      .nullable()
-      .default(null)
-      .superRefine((b, ctx) => {
-        if (b?.target !== "url") return;
-        if (!b.url || !isHttpsUrl(b.url)) {
-          ctx.addIssue({ code: "custom", path: ["url"], message: "The button's link must be a full https:// address." });
-        }
-      }),
-    audience: z.enum(CAMPAIGN_AUDIENCES),
-    segmentId: z.string().uuid().nullable().default(null),
-  })
-  .superRefine((d, ctx) => {
-    if (d.audience === "segment" && !d.segmentId) {
-      ctx.addIssue({ code: "custom", path: ["segmentId"], message: "Choose the Segment to send to." });
-    }
-  })
-  .transform((d) => ({
-    ...d,
-    segmentId: d.audience === "segment" ? d.segmentId : null,
-    button: d.button ? { ...d.button, url: d.button.target === "url" ? d.button.url : null } : null,
-  }));
+export const CampaignDraftSchema = draftSchema({ required: true });
+
+/**
+ * What the editor previews: the same checks with the words allowed empty. It
+ * never saves or sends: a placeholder is never a value.
+ */
+export const CampaignPreviewSchema = draftSchema({ required: false });
 
 export type CampaignDraft = z.output<typeof CampaignDraftSchema>;
 export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
-
-export function isHttpsUrl(value: string): boolean {
-  try {
-    const u = new URL(value);
-    return u.protocol === "https:" && Boolean(u.hostname) && !/\s/.test(value);
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Pure — whether the Campaign promises points anywhere a customer reads it.
@@ -114,8 +181,33 @@ export function isHttpsUrl(value: string): boolean {
  * (`claimBonusOffer`, lib/points/offer.ts): an email never promises points a
  * sign-in would not grant (PRD-loyalty-points slice 05).
  */
-export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button">): boolean {
-  return /\bpoints?\b/i.test([c.subject, c.preheader ?? "", c.body, c.button?.label ?? ""].join("\n"));
+export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button" | "content">): boolean {
+  // The 中文 version's words count too (slice 17).
+  return wordsMentionPoints([c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : []), ...chineseWords(c.content)].join("\n"));
+}
+
+/**
+ * Pure — some words promise points: they say "points" (积分 in the 中文
+ * version, slice 17), or hold *Points balance* (PRD-campaign-email-editor
+ * slice 13). What `mentionsPoints` asks of the whole email, and the checks
+ * before a wave of each block (slice 11).
+ */
+export function wordsMentionPoints(words: string): boolean {
+  return /\bpoints?\b|积分/i.test(words) || placeholdersIn(words).some((v) => isVariableKey(v) && Boolean(campaignVariable(v).needsPoints));
+}
+
+/**
+ * Pure — the Variables a block campaign's email uses, once each, in order:
+ * the greeting's *First name* when it is on (slice 13: one fallback for a first
+ * name, wherever it appears), then the subject's, the preview line's and the
+ * blocks'. None for a campaign written before blocks.
+ */
+export function variablesInEmail(c: Pick<CampaignDraft, "subject" | "preheader" | "content" | "greeting">): VariableKey[] {
+  if (!c.content) return [];
+  const greeting: VariableKey[] = c.greeting ? ["first_name"] : [];
+  // The 中文 version's too (slice 17): a translation keeps the English's, but Staff may write one more in it.
+  const chinese = chineseWords(c.content).flatMap((w) => placeholdersIn(w).filter(isVariableKey));
+  return [...new Set([...greeting, ...variablesUsed(c.content, [c.subject, c.preheader ?? ""]), ...chinese])];
 }
 
 /** A Campaign as stored. */
@@ -131,16 +223,22 @@ export interface Campaign extends CampaignDraft {
 
 /** The one table row's columns, in its order. */
 export const CAMPAIGN_COLUMNS =
-  "id, name, subject, preheader, body, greeting, button_label, button_target, button_url, audience, segment_id, " +
+  "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, " +
   "created_at, updated_at, locked_at, archived_at, creator:mp_staff!created_by_profile_id(name)";
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
-/** Pure — one `email_campaigns` row, or null for a malformed one. */
+/**
+ * Pure — one `email_campaigns` row, or null for a malformed one. A block
+ * campaign's `content` is read with the preview's checks, the shape and the
+ * safety rules, so a row saved under an older limit still opens.
+ */
 export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
   const id = str(row.id);
   const audience = str(row.audience);
   if (!id || !audience || !(CAMPAIGN_AUDIENCES as readonly string[]).includes(audience)) return null;
+  const content = row.content == null ? null : CampaignContentPreviewSchema.safeParse(row.content);
+  if (content && !content.success) return null;
   const target = str(row.button_target);
   const creator = Array.isArray(row.creator) ? row.creator[0] : row.creator;
   return {
@@ -149,6 +247,7 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
     subject: str(row.subject) ?? "",
     preheader: str(row.preheader),
     body: str(row.body) ?? "",
+    content: content ? content.data : null,
     greeting: row.greeting !== false,
     button:
       target === "sign_in" || target === "url"
@@ -164,13 +263,14 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
   };
 }
 
-/** Pure — the table's columns for a draft. */
+/** Pure — the table's columns for a draft. A block campaign has no body and no button columns. */
 export function campaignRowFromDraft(d: CampaignDraft) {
   return {
     name: d.name,
     subject: d.subject,
     preheader: d.preheader,
-    body: d.body,
+    body: d.content ? null : d.body,
+    content: d.content,
     greeting: d.greeting,
     button_label: d.button?.label ?? null,
     button_target: d.button?.target ?? null,
@@ -212,6 +312,8 @@ export interface CampaignCandidate {
   suppressed: boolean;
   /** This Campaign's send to them, if any. */
   own: OwnSend | null;
+  /** The language they use the site in (`customers.locale`): `zh-CN` gets a campaign's 中文 version (slice 17). */
+  locale: string;
 }
 
 /** Why a Customer may not receive a Campaign now, in the order the rule checks. */
@@ -297,6 +399,9 @@ export interface CampaignPlan {
   alreadySent: number;
   /** This Campaign's failed sends, which a retry would send again. */
   failed: number;
+  /** Of `eligible`, and of the wave, those who read the site in Chinese (PRD-campaign-email-editor slice 17). */
+  eligibleChinese: number;
+  selectedChinese: number;
 }
 
 /** Pure — a wave of `size` from every candidate. A retry selects this Campaign's failed sends only. */
@@ -322,14 +427,18 @@ export function planCampaignWave(
   }
   eligible.sort(compareSendOrder);
   const n = Math.max(0, Math.min(MAX_WAVE_SIZE, Math.floor(size)));
+  const selection = eligible.slice(0, n);
+  const readsChinese = (c: CampaignCandidate) => c.locale === CHINESE;
   return {
     considered: candidates.length,
     eligible: eligible.length,
     eligibleBuyers: eligible.filter(isBuyer).length,
-    selection: eligible.slice(0, n),
+    selection,
     excluded,
     alreadySent,
     failed,
+    eligibleChinese: eligible.filter(readsChinese).length,
+    selectedChinese: selection.filter(readsChinese).length,
   };
 }
 
@@ -346,7 +455,7 @@ const isSendStatus = (v: unknown): v is CampaignSendStatus =>
 
 /** The view's columns, in its order. */
 export const CANDIDATE_COLUMNS =
-  "customer_id, email, first_name, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends";
+  "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends";
 
 /** Pure — one `marketing_campaign_candidates` row for `campaignId`, or null for a malformed one. */
 export function candidateFromRow(row: Record<string, unknown>, campaignId: string): CampaignCandidate | null {
@@ -373,15 +482,18 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
     since: typeof row.since === "string" ? row.since : "",
     suppressed: row.suppressed === true,
     own,
+    locale: typeof row.locale === "string" ? row.locale : "en-US",
   };
 }
 
 /**
- * The draft a new campaign starts from: the imported customers' invitation to
- * the new website, with the Claim bonus (PRD-loyalty-points: 1,000 points,
- * S$10 off a shop order, for signing in within 3 months of this email). It
- * names no old platform (owner, 2026-10-21). Staff change any of it before
- * sending.
+ * The sign-in invitation: the imported customers' invitation to the new
+ * website, with the Claim bonus (PRD-loyalty-points: 1,000 points, S$10 off a
+ * shop order, for signing in within 3 months of this email). It names no old
+ * platform (owner, 2026-10-21). No longer where a new campaign starts
+ * (PRD-campaign-email-editor decision 7): it is the Starter *New website:
+ * sign in for points* (`INVITATION_STARTER`, slice 08), as blocks, the one
+ * with finished words. Staff change any of it before sending.
  */
 export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   name: "New website: sign in for points",
@@ -401,6 +513,7 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
     "",
     "Questions? Just reply to this email.",
   ].join("\n"),
+  content: null,
   greeting: true,
   button: { target: "sign_in", label: "Sign in and collect your points", url: null },
   audience: "imported_not_signed_in",
@@ -408,10 +521,28 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
 };
 
 /**
- * The draft a new campaign starts from (PRD-crm-retention-loop slice 02).
- * `?segment=<id>` from *Email this Segment* on Customers starts a blank one
- * sent to that Segment and named after it, when the id is a live Segment that
- * does not need review; anything else starts {@link FIRST_CAMPAIGN_DRAFT}.
+ * An empty email (PRD-campaign-email-editor decision 7): every word empty and
+ * on its placeholder, no blocks yet, the greeting on, and today's default
+ * audience. A new campaign is written in blocks (slice 03). It does not save
+ * until Staff write the email.
+ */
+export const EMPTY_CAMPAIGN_DRAFT: CampaignDraft = {
+  name: "",
+  subject: "",
+  preheader: null,
+  body: "",
+  content: EMPTY_CAMPAIGN_CONTENT,
+  greeting: true,
+  button: null,
+  audience: "imported_not_signed_in",
+  segmentId: null,
+};
+
+/**
+ * The draft a new campaign starts from: {@link EMPTY_CAMPAIGN_DRAFT}, whatever
+ * the start. `?segment=<id>` from *Email this Segment* on Customers
+ * (PRD-crm-retention-loop slice 02) sends it to that Segment and names it
+ * after it, when the id is a live Segment that does not need review.
  */
 export function newCampaignDraft(
   segmentParam: string | string[] | undefined,
@@ -419,14 +550,10 @@ export function newCampaignDraft(
 ): CampaignDraft {
   const id = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
   const segment = id ? segments.find((s) => s.id === id && !s.needsReview) : undefined;
-  if (!segment) return FIRST_CAMPAIGN_DRAFT;
+  if (!segment) return EMPTY_CAMPAIGN_DRAFT;
   return {
+    ...EMPTY_CAMPAIGN_DRAFT,
     name: segment.name.slice(0, CAMPAIGN_LIMITS.name),
-    subject: "",
-    preheader: null,
-    body: "",
-    greeting: true,
-    button: null,
     audience: "segment",
     segmentId: segment.id,
   };

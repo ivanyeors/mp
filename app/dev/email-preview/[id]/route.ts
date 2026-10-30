@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { forceDarkMode } from "@/lib/email/base";
 import { isEmailPreviewAllowed } from "@/lib/email/preview-guard";
 import { getEmailCase, type EmailFixture } from "@/lib/email/registry";
 
 // Renders one registered template as a real document, so the preview iframe
-// shows the actual email rather than React-normalised markup.
+// shows the actual email rather than React-normalised markup. `dark=1` shows it
+// as a reader in dark mode sees it: the shell's own dark rules, forced on
+// (PRD-campaign-email-editor slice 15). The text and JSON are as sent.
 export const dynamic = "force-dynamic";
 
 function parseFixture(value: string | null): EmailFixture {
@@ -40,7 +43,8 @@ export async function GET(
     return NextResponse.json(rendered);
   }
 
-  return new NextResponse(rendered.html, {
+  const dark = url.searchParams.get("dark") === "1";
+  return new NextResponse(dark ? forceDarkMode(rendered.html) : rendered.html, {
     headers: {
       "content-type": "text/html; charset=utf-8",
       // Sample data only, but keep it out of any shared cache regardless.

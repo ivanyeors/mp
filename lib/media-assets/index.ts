@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
   listAssetUsages,
+  usageBlocksDeletion,
   type ImageUsageEntry,
 } from "@/lib/media/image-usages";
 import { storagePathFromHostedUrl } from "@/lib/media-assets/ingest";
@@ -61,7 +62,11 @@ export {
 export type { ImportDriveResult } from "./import-drive";
 
 export class MediaAssetInUseError extends Error {
-  constructor(public readonly usages: ImageUsageEntry[]) {
+  constructor(
+    public readonly usages: ImageUsageEntry[],
+    /** False when a use is past "Delete anyway": an email campaign's (`usageBlocksDeletion`). */
+    public readonly deletable = true,
+  ) {
     super("Asset is in use");
     this.name = "MediaAssetInUseError";
   }
@@ -247,8 +252,17 @@ export async function patchMediaAssetHosted(
 }
 
 /**
- * Delete Asset (+ hosted storage object). Blocks with usages unless force.
- * Video/PDF preview thumbs in the bucket are removed when hosted_url is set.
+ * Delete Asset (+ hosted storage object). Blocks with usages unless force;
+ * an email campaign's use blocks even then (PRD-campaign-email-editor slice
+ * 05), since a sent email shows the image for good. Video/PDF preview thumbs
+ * in the bucket are removed when hosted_url is set.
+ *
+ * Its email rendition's file stays in the bucket (its row goes with the
+ * Asset's): a sent email points at it for good, and a product's photo is sent
+ * with no campaign naming the Asset, so nothing here knows it went out.
+ *
+ * The row goes before the file: the database refuses the row of an image a
+ * campaign uses, and then the file must still be there.
  */
 export async function deleteMediaAssetGuarded(
   id: string,
@@ -257,22 +271,19 @@ export async function deleteMediaAssetGuarded(
   const asset = await getMediaAsset(id);
   if (!asset) throw new Error("Not found");
 
-  if (!opts?.force) {
-    const usages = await listAssetUsages({
-      id: asset.id,
-      hosted_url: asset.hosted_url,
-    });
-    if (usages.length > 0) throw new MediaAssetInUseError(usages);
-  }
+  const usages = await listAssetUsages({
+    id: asset.id,
+    hosted_url: asset.hosted_url,
+  });
+  if (usages.some(usageBlocksDeletion)) throw new MediaAssetInUseError(usages, false);
+  if (!opts?.force && usages.length > 0) throw new MediaAssetInUseError(usages);
 
-  if (asset.hosted_url) {
-    const path = storagePathFromHostedUrl(asset.hosted_url);
-    if (path) {
-      await admin().storage.from("media").remove([path]);
-    }
-  }
+  const master = asset.hosted_url ? storagePathFromHostedUrl(asset.hosted_url) : null;
 
   await deleteMediaAsset(id);
+  if (master) {
+    await admin().storage.from("media").remove([master]);
+  }
 }
 
 /** Mark Assets as last-used when a consumer attaches/saves them. */

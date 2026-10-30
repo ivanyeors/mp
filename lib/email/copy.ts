@@ -11,7 +11,9 @@
 // A field may name the email's placeholders, e.g. "Order {order_number}
 // confirmed". The renderer fills them from its own data, so a placeholder's
 // value is escaped by the components like any other text: nothing Staff type
-// becomes markup.
+// becomes markup. Staff see each placeholder as a Variable, a chip they drag
+// into the words (PRD-campaign-email-editor slice 14); the code keeps the name
+// `placeholders`, and a field is stored with `{order_number}` in it, as ever.
 //
 // Renderers stay pure. Each takes its copy as its last argument, defaulting
 // to the spec's defaults, so a test or preview renders exactly as before. The
@@ -74,6 +76,19 @@ export function defaultEmailCopy<K extends string>(spec: EmailCopySpec<K>): Emai
 
 const PLACEHOLDER = /\{([a-z][a-z0-9_]*)\}/g;
 
+/** Proper names inside a placeholder's key, written as they are. */
+const PROPER_WORDS: Record<string, string> = { whatsapp: "WhatsApp" };
+
+/** Pure — a placeholder as Staff see it, the label on its Variable's chip: `order_number` is *Order number*. */
+export function placeholderLabel(key: string): string {
+  const label = key
+    .split("_")
+    .filter(Boolean)
+    .map((w) => PROPER_WORDS[w] ?? w)
+    .join(" ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 /** Pure — the placeholders a text names, in order, once each. */
 export function placeholdersIn(text: string): string[] {
   return [...new Set([...text.matchAll(PLACEHOLDER)].map((m) => m[1]))];
@@ -127,7 +142,7 @@ export function validateEmailCopy<K extends string>(spec: EmailCopySpec<K>, inpu
     if (!text && !field.optional) errors[k] = "This can't be empty.";
     else if (text.length > max) errors[k] = `At most ${max} characters.`;
     else if (unknown.length) {
-      errors[k] = `${unknown.map((p) => `{${p}}`).join(", ")} ${unknown.length === 1 ? "is not a placeholder" : "are not placeholders"} this email has.`;
+      errors[k] = `${unknown.map((p) => `{${p}}`).join(", ")} ${unknown.length === 1 ? "is not a variable" : "are not variables"} this email has.`;
     } else values[k] = text;
   }
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };

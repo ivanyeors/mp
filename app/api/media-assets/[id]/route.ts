@@ -64,7 +64,7 @@ export async function DELETE(
   } catch (err) {
     if (err instanceof MediaAssetInUseError) {
       return NextResponse.json(
-        { error: "Asset is in use", usages: err.usages },
+        { error: "Asset is in use", usages: err.usages, deletable: err.deletable },
         { status: 409 },
       );
     }

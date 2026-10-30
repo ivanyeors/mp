@@ -18,6 +18,7 @@
 import { escapeHtml, safeUrl } from "./html";
 import {
   BRAND,
+  FOOTER_WORDS_ZH,
   LIGHT,
   PILL,
   SPACE,
@@ -31,10 +32,10 @@ import {
   type PillTone,
 } from "./theme";
 
-/** Wrap content in a full-width layout table row. */
-function block(innerHtml: string, style?: string): string {
+/** Wrap content in a full-width layout table row; `cellAttrs` go on its cell. */
+function block(innerHtml: string, style?: string, cellAttrs?: string): string {
   return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
-  <tr><td${style ? ` style="${style}"` : ""}>${innerHtml}</td></tr>
+  <tr><td${cellAttrs ? ` ${cellAttrs}` : ""}${style ? ` style="${style}"` : ""}>${innerHtml}</td></tr>
 </table>`;
 }
 
@@ -75,6 +76,8 @@ export interface HeadingOptions {
   top?: number;
   /** Space below, in px. Default `LAYOUT.gutter`. */
   bottom?: number;
+  /** Default left. */
+  align?: "left" | "center";
 }
 
 /**
@@ -92,6 +95,7 @@ export function heading(
   return `<h${level} class="mp-fg" style="${typeStyle(variant, {
     color: LIGHT.fg,
     margin: `${opts.top ?? 0}px 0 ${opts.bottom ?? LAYOUT.gutter}px`,
+    "text-align": opts.align === "center" ? "center" : null,
   })}">${escapeHtml(text)}</h${level}>`;
 }
 
@@ -138,14 +142,18 @@ export function preformatted(text: string): string {
 
 /** Inline text link — achromatic and underlined, matching the site's link treatment. */
 export function link(opts: { href: string; label: string }): string {
+  return linkHtml({ href: opts.href, labelHtml: escapeHtml(opts.label) });
+}
+
+/** Inline link whose words are already HTML (bold or italic inside it). A rejected URL leaves the words. */
+export function linkHtml(opts: { href: string; labelHtml: string }): string {
   const href = safeUrl(opts.href);
-  const label = escapeHtml(opts.label);
-  if (!href) return label;
+  if (!href) return opts.labelHtml;
   return `<a class="mp-fg" href="${href}" style="${css({
     color: LIGHT.fg,
     "text-decoration": "underline",
     "text-underline-offset": "2px",
-  })}">${label}</a>`;
+  })}">${opts.labelHtml}</a>`;
 }
 
 export interface ButtonOptions {
@@ -153,6 +161,8 @@ export interface ButtonOptions {
   label: string;
   variant?: "primary" | "secondary";
   align?: "left" | "center";
+  /** The widest Outlook's VML button may draw, in px: a column's width. Default 360. */
+  maxWidth?: number;
 }
 
 /**
@@ -180,7 +190,7 @@ export function button(opts: ButtonOptions): string {
   // would make "Sign in" a 260px slab in Outlook and snug everywhere else.
   // Measure the RAW label — `label` is escaped, so "&" would count as 5 chars.
   const vmlWidth = Math.min(
-    360,
+    opts.maxWidth ?? 360,
     Math.max(160, Math.round(opts.label.length * 7.6) + 48),
   );
 
@@ -229,6 +239,148 @@ export function button(opts: ButtonOptions): string {
     "text-align": align,
     padding: `${LAYOUT.gutter}px 0`,
   }));
+}
+
+/**
+ * The narrowest row, in px, that keeps columns side by side: on anything
+ * narrower (a phone) they stack. Two buttons, an image beside its words and
+ * the products grid all break here, so every row of an email stacks at once.
+ */
+export const STACK_BELOW = 480;
+
+export interface ColumnsOptions {
+  /**
+   * The narrowest row, in px, that holds the columns side by side: each is
+   * `stackBelow / n` wide there, and on anything narrower they stack.
+   */
+  stackBelow: number;
+  /**
+   * Side by side, the columns read right to left; stacked, still in order,
+   * the first on top. The row is `dir="rtl"`, each column `dir="ltr"` again.
+   */
+  reverse?: boolean;
+  /** Where columns of different heights line up. Default top. */
+  valign?: "top" | "middle";
+  /** Room between columns side by side, in px: half each side of every column, so stacked ones still line up. */
+  gap?: number;
+  /** How each column's words align. Default the row's: centred. */
+  textAlign?: "left" | "center";
+}
+
+/**
+ * Columns side by side that stack on a phone (PRD-campaign-email-editor
+ * slice 06), built the hybrid way: each is an inline-block `div` that is
+ * `stackBelow / n` wide while the row is `stackBelow` or wider and the whole
+ * row below it, so the row falls to one column by width alone, with no media
+ * query (Gmail's apps ignore them for many accounts), inside an MSO ghost
+ * table that keeps the columns side by side in classic Outlook, which ignores
+ * `max-width`. Stacked, they read in order: whatever has to come first on a
+ * phone goes first, and `reverse` moves it to the right.
+ *
+ * Two columns need only `max-width: stackBelow / 2`: once both don't fit,
+ * neither shares a line. Three at `stackBelow / 3` would go two, then one, on
+ * a row between two and three of them wide (most phones), so from three on
+ * each column also takes the row's width below `stackBelow` through calc(),
+ * the "Fab Four": `min-width` holds it at its share above, `max-width:100%`
+ * at the whole row below. Where calc() is dropped (Gmail's apps for a
+ * non-Google account, all phones) `width:100%` stands, and they stack.
+ *
+ * The wrapper's `font-size:0` removes the gap the markup's whitespace would
+ * leave between the columns; every component sets its own size. A column
+ * carries no class: it paints nothing, so it needs no dark rule (slice 15).
+ */
+export function columns(cellsHtml: readonly string[], opts: ColumnsOptions): string {
+  const valign = opts.valign ?? "top";
+  const ltr = opts.reverse ? ' dir="ltr"' : "";
+  const inner = opts.gap || opts.textAlign;
+  const share = `${Math.floor(opts.stackBelow / cellsHtml.length)}px`;
+  const style =
+    cellsHtml.length > 2
+      ? css({ display: "inline-block", width: "100%", "min-width": share, "max-width": "100%", "vertical-align": valign }) +
+        `;width:calc((${opts.stackBelow}px - 100%) * ${opts.stackBelow})`
+      : css({ display: "inline-block", width: "100%", "max-width": share, "vertical-align": valign });
+  const column = (cellHtml: string) =>
+    `<div${ltr} style="${style}">${
+      inner ? `<div style="${css({ padding: opts.gap ? `0 ${opts.gap / 2}px` : null, "text-align": opts.textAlign })}">${cellHtml}</div>` : cellHtml
+    }</div>`;
+  const cell = `<td width="${Math.floor(100 / cellsHtml.length)}%" valign="${valign}"${ltr}>`;
+  return block(
+    `<!--[if mso]><table ${TABLE_RESET}${opts.reverse ? ' dir="rtl"' : ""} width="100%" style="${TABLE_RESET_STYLE};width:100%;"><tr>${cell}<![endif]-->${cellsHtml
+      .map(column)
+      .join(`<!--[if mso]></td>${cell}<![endif]-->`)}<!--[if mso]></td></tr></table><![endif]-->`,
+    css({ "text-align": "center", "font-size": 0 }),
+    opts.reverse ? 'dir="rtl"' : undefined,
+  );
+}
+
+/**
+ * Two buttons side by side that stack on a phone (slice 03), in two columns:
+ * each button at most a column wide, in Outlook's VML too.
+ */
+export function buttonPair(buttons: [ButtonOptions, ButtonOptions]): string {
+  const width = STACK_BELOW / 2;
+  return columns(
+    buttons.map((b) => button({ ...b, maxWidth: width })),
+    { stackBelow: STACK_BELOW },
+  );
+}
+
+export interface EmailImageOptions {
+  /** The image's absolute URL: an email rendition, JPEG or PNG, never a WebP master. */
+  src: string;
+  /** The width it is shown at, in px, and the height that keeps its shape. */
+  width: number;
+  height: number;
+  /** Plain text: what a screen reader says, and what shows with images off. */
+  alt: string;
+  /** Says nothing a reader would miss: empty alt and role="presentation". */
+  decorative?: boolean;
+  /** Where a tap goes: the image is the link, its alt the link's words. */
+  href?: string | null;
+  /**
+   * It has transparency (a logo, a product cut-out): it sits on the light
+   * plate, a padded panel in the card's light colour that keeps that colour in
+   * dark mode, so dark ink never lands on a dark card.
+   */
+  plate?: boolean;
+}
+
+/** The light plate's padding, in px. */
+const PLATE_PADDING = LAYOUT.gutter;
+
+/**
+ * An image, centred in its row (PRD-campaign-email-editor slice 05). The
+ * `width` and `height` attributes size it in classic Outlook, which reads
+ * them and ignores CSS; everywhere else `max-width:100%;height:auto` lets it
+ * shrink to a phone. The row's `align` attribute centres it for Outlook, its
+ * `text-align` for the rest. A rejected URL draws nothing: a broken image is
+ * worse than none.
+ */
+export function emailImage(opts: EmailImageOptions): string {
+  const src = safeUrl(opts.src);
+  if (!src) return "";
+  const pad = opts.plate ? PLATE_PADDING : 0;
+  const width = Math.max(1, Math.round(opts.width - 2 * pad));
+  const height = Math.max(1, Math.round((opts.height * width) / opts.width));
+  const img = `<img src="${src}" width="${width}" height="${height}" alt="${opts.decorative ? "" : escapeHtml(opts.alt)}"${
+    opts.decorative ? ' role="presentation"' : ""
+  } style="${css({ display: "block", "max-width": "100%", height: "auto", border: 0, outline: "none", "text-decoration": "none", margin: "0 auto" })}" />`;
+  const href = opts.href ? safeUrl(opts.href) : "";
+  const linked = href ? `<a href="${href}" style="text-decoration:none;">${img}</a>` : img;
+  const inner = opts.plate
+    ? `<table ${TABLE_RESET} width="${Math.round(opts.width)}" align="center" class="mp-plate" bgcolor="${LIGHT.card}" style="${TABLE_RESET_STYLE};${css({
+        width: "100%",
+        "max-width": `${Math.round(opts.width)}px`,
+        background: LIGHT.card,
+        "background-color": LIGHT.card,
+        "border-radius": `${RADIUS.xl}px`,
+      })}">
+  <tr><td align="center" style="${css({ padding: pad, "text-align": "center" })}">${linked}</td></tr>
+</table>`
+    : linked;
+  return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
+  <tr><td align="center" style="${css({ "text-align": "center", "padding-bottom": LAYOUT.gutter })}">${inner}</td></tr>
+</table>`;
 }
 
 /** The landing "surface": rounded, 1px border, subtle fill. */
@@ -394,7 +546,7 @@ export function dataTable(opts: {
     .join("\n");
 
   return withGutter(`<table cellpadding="0" cellspacing="0" border="0" width="100%" style="${TABLE_RESET_STYLE};width:100%;">
-${opts.caption ? `<caption style="${typeStyle("small", { color: LIGHT.mutedFg, "text-align": "left", padding: "0 0 8px" })}">${escapeHtml(opts.caption)}</caption>` : ""}
+${opts.caption ? `<caption class="mp-muted" style="${typeStyle("small", { color: LIGHT.mutedFg, "text-align": "left", padding: "0 0 8px" })}">${escapeHtml(opts.caption)}</caption>` : ""}
 <thead><tr>${head}</tr></thead>
 <tbody>
 ${body}
@@ -493,19 +645,55 @@ export function addressBlock(title: string, lines: string[]): string {
 }
 
 export function bulletList(items: string[]): string {
-  if (items.length === 0) return "";
-  const rows = items
+  return bulletListHtml(items.map(escapeHtml));
+}
+
+/** Bullets whose items are already HTML (links, <strong>, …). */
+export function bulletListHtml(itemsHtml: string[]): string {
+  if (itemsHtml.length === 0) return "";
+  const rows = itemsHtml
     .map(
-      (item) =>
+      (itemHtml) =>
         `<tr><td class="mp-fg" style="${typeStyle("body", {
           color: LIGHT.fg,
           padding: "4px 0",
-        })}">&bull;&nbsp;&nbsp;${escapeHtml(item)}</td></tr>`,
+        })}">&bull;&nbsp;&nbsp;${itemHtml}</td></tr>`,
     )
     .join("\n");
   return withGutter(`<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
 ${rows}
 </table>`);
+}
+
+/**
+ * An empty field's placeholder, for an editor's preview only
+ * (PRD-campaign-email-editor decision 7): muted, in a dashed outline, at the
+ * place and type size its words would take, so an empty email's layout reads.
+ * Never in a sent email: only the preview passes placeholders to a renderer.
+ *
+ * The outline is the muted ink, not `LIGHT.border`, so it reads on the light
+ * card and the dark one alike; the text takes the `mp-muted` dark rule.
+ */
+export function placeholderHint(text: string, as: "h1" | "h2" | "body" | "button" = "body"): string {
+  const outline = { border: `1px dashed ${LIGHT.mutedFg}`, "border-radius": `${as === "button" ? RADIUS.button : RADIUS.md}px` };
+  if (as === "button") {
+    return block(
+      `<span class="mp-muted" style="${typeStyle("button", {
+        ...outline,
+        color: LIGHT.mutedFg,
+        display: "inline-block",
+        padding: `0 ${SPACE["3xl"]}px`,
+      })}">${escapeHtml(text)}</span>`,
+      css({ "text-align": "center", padding: `${LAYOUT.gutter}px 0` }),
+    );
+  }
+  const tag = as === "body" ? "p" : as;
+  return `<${tag} class="mp-muted" style="${typeStyle(as, {
+    ...outline,
+    color: LIGHT.mutedFg,
+    margin: `0 0 ${LAYOUT.gutter}px`,
+    padding: `${SPACE.md}px ${SPACE.xl}px`,
+  })}">${escapeHtml(text)}</${tag}>`;
 }
 
 export interface FooterLink {
@@ -516,6 +704,11 @@ export interface FooterLink {
 /**
  * Footer chrome. `links` hrefs may be site-relative — they are resolved against
  * `origin` here, because email has no page origin to resolve them against.
+ *
+ * Every link is underlined, as in the body: in the muted footer its colour is
+ * the separators', and a client that inverts colours by itself (Gmail on iOS,
+ * which no dark rule reaches) leaves the underline as the one sign of a link
+ * (PRD-campaign-email-editor slice 15).
  */
 export function footer(opts: {
   origin: string;
@@ -524,9 +717,13 @@ export function footer(opts: {
   socials?: ReadonlyArray<FooterLink> | false;
   /** Campaign mail only: the Customer's unsubscribe page (migration slice 07). */
   unsubscribeUrl?: string;
+  /** The email's language: `zh-CN` writes the footer's own words in Chinese (a campaign's 中文 version, PRD-campaign-email-editor slice 17). */
+  lang?: string;
 }): string {
   const year = new Date().getFullYear();
   const parts: string[] = [];
+  const zh = opts.lang === "zh-CN";
+  const linkLabel = (l: FooterLink) => (zh ? ((FOOTER_WORDS_ZH.links as Record<string, string>)[l.href] ?? l.label) : l.label);
 
   if (opts.note) {
     parts.push(
@@ -549,9 +746,9 @@ export function footer(opts: {
         if (!href) return "";
         return `<a class="mp-muted" href="${href}" style="${css({
           color: LIGHT.mutedFg,
-          "text-decoration": "none",
+          "text-decoration": "underline",
           "white-space": "nowrap",
-        })}">${escapeHtml(l.label)}</a>`;
+        })}">${escapeHtml(linkLabel(l))}</a>`;
       })
       .filter(Boolean)
       .join(`<span class="mp-muted" style="color:${LIGHT.mutedFg};"> &nbsp;·&nbsp; </span>`);
@@ -571,7 +768,7 @@ export function footer(opts: {
         if (!href) return "";
         return `<a class="mp-muted" href="${href}" style="${css({
           color: LIGHT.mutedFg,
-          "text-decoration": "none",
+          "text-decoration": "underline",
         })}">${escapeHtml(s.label)}</a>`;
       })
       .filter(Boolean)
@@ -595,10 +792,10 @@ export function footer(opts: {
         color: LIGHT.mutedFg,
         margin: "0 0 12px",
         "text-align": "center",
-      })}">Don&rsquo;t want these emails? <a class="mp-muted" href="${unsubscribe}" style="${css({
+      })}">${zh ? escapeHtml(FOOTER_WORDS_ZH.unsubscribeAsk) : "Don&rsquo;t want these emails?"} <a class="mp-muted" href="${unsubscribe}" style="${css({
         color: LIGHT.mutedFg,
         "text-decoration": "underline",
-      })}">Unsubscribe</a></p>`,
+      })}">${zh ? escapeHtml(FOOTER_WORDS_ZH.unsubscribe) : "Unsubscribe"}</a></p>`,
     );
   }
 
@@ -607,7 +804,7 @@ export function footer(opts: {
       color: LIGHT.mutedFg,
       margin: 0,
       "text-align": "center",
-    })}">&copy; ${year} ${escapeHtml(BRAND.legalName)}. All rights reserved.</p>`,
+    })}">&copy; ${year} ${escapeHtml(BRAND.legalName)}. ${zh ? escapeHtml(FOOTER_WORDS_ZH.rights) : "All rights reserved."}</p>`,
   );
 
   return parts.join("\n");

@@ -2,8 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  CAMPAIGN_PLACEHOLDERS,
   CAMPAIGN_RULE_BLOCKERS,
   CampaignDraftSchema,
+  CampaignPreviewSchema,
+  EMPTY_CAMPAIGN_DRAFT,
   FIRST_CAMPAIGN_DRAFT,
   campaignFromRow,
   campaignLedgerKey,
@@ -11,12 +14,15 @@ import {
   candidateFromRow,
   composedCampaignBlocker,
   mentionsPoints,
+  newCampaignDraft,
   nextWaveLabel,
   planCampaignWave,
+  variablesInEmail,
   type CampaignAudience,
   type CampaignCandidate,
   type CampaignSendStatus,
 } from "../rules";
+import type { EmailBlock } from "../content";
 
 type Case = {
   name: string;
@@ -124,6 +130,81 @@ describe("CampaignDraftSchema", () => {
   });
 });
 
+describe("placeholders, not prefilled words (PRD-campaign-email-editor slice 01)", () => {
+  const SEGMENTS = [
+    { id: SEGMENT, name: "Premium, lapsed", needsReview: false },
+    { id: "5e000000-0000-4000-8000-000000000002", name: "Old region", needsReview: true },
+  ];
+
+  it("opens every new campaign empty, with no button and the greeting on, in today's default audience", () => {
+    for (const param of [undefined, "", "not-a-uuid", "5e000000-0000-4000-8000-000000000099", SEGMENTS[1].id, [""]]) {
+      expect(newCampaignDraft(param, SEGMENTS), String(param)).toEqual({
+        name: "",
+        subject: "",
+        preheader: null,
+        body: "",
+        // Written in blocks, none yet (slice 03).
+        content: { v: 1, blocks: [], fallbacks: {} },
+        greeting: true,
+        button: null,
+        audience: "imported_not_signed_in",
+        segmentId: null,
+      });
+    }
+    expect(EMPTY_CAMPAIGN_DRAFT.audience).toBe(FIRST_CAMPAIGN_DRAFT.audience);
+  });
+
+  it("keeps the Segment start: empty, sent to the Segment, named after it", () => {
+    expect(newCampaignDraft(SEGMENT, SEGMENTS)).toEqual({ ...EMPTY_CAMPAIGN_DRAFT, name: "Premium, lapsed", audience: "segment", segmentId: SEGMENT });
+  });
+
+  it("never saves an empty field: each is today's field error, not its placeholder", () => {
+    const errorsOf = (input: unknown) => {
+      const r = CampaignDraftSchema.safeParse(input);
+      expect(r.success).toBe(false);
+      return Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]));
+    };
+    expect(errorsOf(EMPTY_CAMPAIGN_DRAFT)).toEqual({
+      name: "Give the campaign a name.",
+      subject: "Write a subject.",
+      "content.blocks": "Add a block to the email.",
+    });
+    expect(errorsOf({ ...EMPTY_CAMPAIGN_DRAFT, content: null })).toEqual({
+      name: "Give the campaign a name.",
+      subject: "Write a subject.",
+      body: "Write the email.",
+    });
+    const noLabel = CampaignDraftSchema.safeParse({ ...FIRST_CAMPAIGN_DRAFT, button: { target: "sign_in", label: "", url: null } });
+    expect(noLabel.error?.issues.map((i) => i.message)).toEqual(["Give the button a label."]);
+  });
+
+  it("saves only what was typed: an empty preview line is none, and no placeholder reaches the row", () => {
+    const typed = CampaignDraftSchema.parse({ ...EMPTY_CAMPAIGN_DRAFT, content: null, name: "December", subject: "Hello", preheader: "", body: "Hi" });
+    const row = JSON.stringify(campaignRowFromDraft(typed));
+    expect(campaignRowFromDraft(typed)).toMatchObject({ name: "December", subject: "Hello", preheader: null, body: "Hi", button_label: null });
+    for (const hint of Object.values(CAMPAIGN_PLACEHOLDERS)) expect(row).not.toContain(hint);
+  });
+
+  it("previews an empty email, with the same checks on everything else", () => {
+    expect(CampaignPreviewSchema.parse(EMPTY_CAMPAIGN_DRAFT)).toEqual(EMPTY_CAMPAIGN_DRAFT);
+    expect(CampaignPreviewSchema.parse({ ...EMPTY_CAMPAIGN_DRAFT, content: null, button: { target: "sign_in", label: "", url: null } }).button).toEqual({
+      target: "sign_in",
+      label: "",
+      url: null,
+    });
+    expect(CampaignPreviewSchema.safeParse({ ...EMPTY_CAMPAIGN_DRAFT, subject: "x".repeat(151) }).success).toBe(false);
+    expect(CampaignPreviewSchema.safeParse({ ...EMPTY_CAMPAIGN_DRAFT, content: null, button: { target: "url", label: "", url: "http://x.test" } }).success).toBe(false);
+    expect(CampaignPreviewSchema.safeParse({ ...EMPTY_CAMPAIGN_DRAFT, audience: "segment" }).success).toBe(false);
+  });
+
+  it("keeps a placeholder a hint: none could pass for finished words", () => {
+    expect(CAMPAIGN_PLACEHOLDERS.subject).toMatch(/^e\.g\. /);
+    expect(CAMPAIGN_PLACEHOLDERS.preheader).toMatch(/^e\.g\. /);
+    expect(CAMPAIGN_PLACEHOLDERS.name).toMatch(/^e\.g\. /);
+    expect(CAMPAIGN_PLACEHOLDERS.buttonLabel).toMatch(/^e\.g\. /);
+  });
+});
+
 const cand = (over: Partial<CampaignCandidate> & { customerId: string }): CampaignCandidate => ({
   email: `${over.customerId}@x.test`,
   firstName: null,
@@ -134,6 +215,7 @@ const cand = (over: Partial<CampaignCandidate> & { customerId: string }): Campai
   since: "2026-10-10T00:00:00Z",
   suppressed: false,
   own: null,
+  locale: "en-US",
   ...over,
 });
 
@@ -186,6 +268,20 @@ describe("nextWaveLabel", () => {
   });
 });
 
+describe("planCampaignWave counts who reads the site in Chinese (PRD-campaign-email-editor slice 17)", () => {
+  it("of everyone who can get it, and of the wave", () => {
+    const list = [
+      cand({ customerId: "a", locale: "zh-CN", ordersCount: 1 }),
+      cand({ customerId: "b" }),
+      cand({ customerId: "c", locale: "zh-CN" }),
+      cand({ customerId: "d", locale: "zh-CN", marketingEmail: "unsubscribed" }),
+    ];
+    const plan = planCampaignWave("subscribed", list, { size: 2 });
+    expect(plan.selection.map((c) => c.customerId)).toEqual(["a", "b"]);
+    expect({ eligible: plan.eligible, eligibleChinese: plan.eligibleChinese, selectedChinese: plan.selectedChinese }).toEqual({ eligible: 3, eligibleChinese: 2, selectedChinese: 1 });
+  });
+});
+
 describe("candidateFromRow", () => {
   it("reads this campaign's send out of the row's sends", () => {
     const row = {
@@ -200,7 +296,8 @@ describe("candidateFromRow", () => {
       suppressed: false,
       campaign_sends: { c1: { status: "failed", wave: "w2", sent_at: "t" }, c2: { status: "sent", wave: "w1", sent_at: "t" } },
     };
-    expect(candidateFromRow(row, "c1")).toMatchObject({ firstName: "Ann", ordersCount: 3, own: { status: "failed", wave: "w2" } });
+    expect(candidateFromRow(row, "c1")).toMatchObject({ firstName: "Ann", ordersCount: 3, own: { status: "failed", wave: "w2" }, locale: "en-US" });
+    expect(candidateFromRow({ ...row, locale: "zh-CN" }, "c1")?.locale).toBe("zh-CN");
     expect(candidateFromRow(row, "c3")?.own).toBeNull();
     expect(candidateFromRow({ ...row, marketing_email: "weird" }, "c1")?.marketingEmail).toBe("not_subscribed");
     expect(candidateFromRow({ email: "x" }, "c1")).toBeNull();
@@ -208,7 +305,7 @@ describe("candidateFromRow", () => {
 });
 
 describe("mentionsPoints", () => {
-  const base = { subject: "Hello", preheader: null, body: "News.", button: null };
+  const base = { subject: "Hello", preheader: null, body: "News.", button: null, content: null };
   it("finds points in any part a customer reads", () => {
     expect(mentionsPoints(base)).toBe(false);
     expect(mentionsPoints({ ...base, subject: "1,000 points for you" })).toBe(true);
@@ -220,5 +317,121 @@ describe("mentionsPoints", () => {
 
   it("does not read other words as points", () => {
     expect(mentionsPoints({ ...base, body: "Appointments are open, and the pointed tip is new." })).toBe(false);
+  });
+
+  it("reads every block's words (slice 03)", () => {
+    const blocks = (b: EmailBlock) => ({ ...base, body: "", content: { v: 1 as const, blocks: [b], fallbacks: {} } });
+    expect(mentionsPoints(blocks({ id: "a", type: "heading", level: 1, text: "Points are here" }))).toBe(true);
+    expect(mentionsPoints(blocks({ id: "a", type: "text", paragraphs: [{ kind: "bullets", items: [[{ text: "1,000 " }, { text: "points", bold: true }]] }] }))).toBe(true);
+    expect(mentionsPoints(blocks({ id: "a", type: "buttons", buttons: [{ label: "Collect points", target: "sign_in", style: "primary" }] }))).toBe(true);
+    expect(mentionsPoints(blocks({ id: "a", type: "heading", level: 1, text: "Sleep cooler" }))).toBe(false);
+  });
+});
+
+describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
+  const content = {
+    v: 1 as const,
+    blocks: [
+      { id: "h", type: "heading" as const, level: 1 as const, text: "Sleep cooler" },
+      { id: "t", type: "text" as const, paragraphs: [{ kind: "p" as const, runs: [{ text: "Hi " }, { var: "first_name" as const }] }] },
+    ],
+    fallbacks: { first_name: "there" },
+  };
+  const draft = { ...EMPTY_CAMPAIGN_DRAFT, name: "December", subject: "{first_name}, sleep cooler", content };
+
+  it("saves its blocks, with no body and no button columns, and reads them back", () => {
+    const parsed = CampaignDraftSchema.parse(draft);
+    expect(parsed).toMatchObject({ body: "", button: null, content });
+    const row = campaignRowFromDraft(parsed);
+    expect(row).toMatchObject({ body: null, content, button_label: null, button_target: null, button_url: null });
+    const back = campaignFromRow({ id: "c1", ...row, created_at: "t", updated_at: "t", locked_at: null, archived_at: null });
+    expect(back).toMatchObject({ body: "", content, button: null });
+  });
+
+  it("is its blocks or its message, never both", () => {
+    const both = CampaignDraftSchema.safeParse({ ...draft, body: "Hello" });
+    expect(both.error?.issues.map((i) => [i.path.join("."), i.message])).toEqual([["content", "An email is its blocks or its message, not both."]]);
+    expect(CampaignDraftSchema.safeParse({ ...draft, button: { target: "sign_in", label: "Go", url: null } }).success).toBe(false);
+  });
+
+  it("fills only known Variables in its subject and preview line", () => {
+    const r = CampaignDraftSchema.safeParse({ ...draft, subject: "{nickname}, hello", preheader: "{points}" });
+    expect(Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]))).toEqual({
+      subject: "{nickname} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+      preheader: "{points} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+    });
+    // A legacy campaign's subject is its words, braces and all.
+    expect(CampaignDraftSchema.safeParse({ ...FIRST_CAMPAIGN_DRAFT, subject: "{nickname}" }).success).toBe(true);
+  });
+
+  it("refuses a {name} in the blocks' words that the sender never fills, under the field that holds it", () => {
+    const blocks = [
+      { id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler {soon}" },
+      { id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Hi {frist_name}, our covers are back" }] }] },
+      { id: "b", type: "buttons", buttons: [{ label: "For {first_name}", target: "shop", style: "primary" }] },
+    ];
+    const r = CampaignDraftSchema.safeParse({ ...draft, content: { ...content, blocks } });
+    expect(Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]))).toEqual({
+      "content.blocks.0.text": "{soon} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+      "content.blocks.1.paragraphs": "{frist_name} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+      "content.blocks.2.buttons.0.label": "{first_name} can go in a heading, a text block, the subject or the preview line, not here.",
+    });
+  });
+
+  describe("its Variables' fallback words (slice 13)", () => {
+    const text = (...runs: unknown[]) => ({ id: "t", type: "text", paragraphs: [{ kind: "p", runs }] });
+    const issues = (d: unknown) => Object.fromEntries((CampaignDraftSchema.safeParse(d).error?.issues ?? []).map((i) => [i.path.join("."), i.message]));
+
+    it("refuses to save a used Variable with no fallback words, wherever it is used", () => {
+      const withLast = { ...draft, content: { ...content, blocks: [text({ text: "Dear " }, { var: "last_name" })], fallbacks: {} } };
+      expect(issues(withLast)).toEqual({ "content.fallbacks.last_name": "Write what to say to a customer with no last name." });
+      expect(issues({ ...withLast, content: { ...withLast.content, fallbacks: { last_name: "   " } } })).toEqual({
+        "content.fallbacks.last_name": "Write what to say to a customer with no last name.",
+      });
+      expect(CampaignDraftSchema.safeParse({ ...withLast, content: { ...withLast.content, fallbacks: { last_name: "friend" } } }).success).toBe(true);
+      // In the subject, the preview line or a heading alike.
+      const plain = { ...content, blocks: [text({ text: "Hello" })], fallbacks: {} };
+      expect(issues({ ...draft, subject: "Points: {points_balance}", content: plain })).toEqual({
+        "content.fallbacks.points_balance": "Write what to say to a customer with no points balance.",
+      });
+      expect(Object.keys(issues({ ...draft, subject: "Hello", preheader: "For {last_name}", content: plain }))).toEqual(["content.fallbacks.last_name"]);
+      const heading = { ...plain, blocks: [{ id: "h", type: "heading", level: 1, text: "{last_name}" }] };
+      expect(Object.keys(issues({ ...draft, subject: "Hello", content: heading }))).toEqual(["content.fallbacks.last_name"]);
+    });
+
+    it("uses the catalogue's default for the first name until Staff empty it, and counts the greeting as a use", () => {
+      const greet = { ...draft, subject: "Hello", greeting: true, content: { ...content, blocks: [text({ text: "Hello" })], fallbacks: {} } };
+      expect(CampaignDraftSchema.safeParse(greet).success).toBe(true);
+      expect(issues({ ...greet, content: { ...greet.content, fallbacks: { first_name: "" } } })).toEqual({
+        "content.fallbacks.first_name": "Write what to say to a customer with no first name.",
+      });
+      // Without the greeting, and nowhere else, the first name is unused: an empty fallback is no matter.
+      expect(CampaignDraftSchema.safeParse({ ...greet, greeting: false, content: { ...greet.content, fallbacks: { first_name: "" } } }).success).toBe(true);
+      expect(variablesInEmail({ ...greet, preheader: "{points_balance}" } as never)).toEqual(["first_name", "points_balance"]);
+      expect(variablesInEmail({ ...FIRST_CAMPAIGN_DRAFT, subject: "{last_name}" })).toEqual([]);
+    });
+
+    it("previews a used Variable with no fallback words", () => {
+      expect(CampaignPreviewSchema.safeParse({ ...draft, content: { ...content, blocks: [text({ var: "last_name" })], fallbacks: {} } }).success).toBe(true);
+    });
+
+    it("counts Points balance as a mention of points", () => {
+      expect(mentionsPoints({ ...draft, subject: "Hello", content: { ...content, blocks: [text({ text: "You have " }, { var: "points_balance" })] } } as never)).toBe(true);
+      expect(mentionsPoints({ ...draft, subject: "{points_balance} waiting", content: { ...content, blocks: [] } } as never)).toBe(true);
+      expect(mentionsPoints({ ...draft, subject: "Hello", content: { ...content, blocks: [text({ var: "last_name" })] } } as never)).toBe(false);
+    });
+  });
+
+  it("names each empty block field on save, and previews it empty", () => {
+    const empty = { ...draft, content: { ...content, blocks: [{ id: "h", type: "heading", level: 2, text: "" }] } };
+    const r = CampaignDraftSchema.safeParse(empty);
+    expect(r.error?.issues.map((i) => [i.path.join("."), i.message])).toEqual([["content.blocks.0.text", "Write the heading."]]);
+    expect(CampaignPreviewSchema.safeParse(empty).success).toBe(true);
+  });
+
+  it("does not open a row whose blocks fail the schema", () => {
+    const row = { id: "c1", ...campaignRowFromDraft(CampaignDraftSchema.parse(draft)), audience: "subscribed" };
+    expect(campaignFromRow({ ...row, content: { v: 1, blocks: [{ id: "x", type: "html", html: "<script>" }], fallbacks: {} } })).toBeNull();
+    expect(campaignFromRow({ ...row, content: { v: 2, blocks: [], fallbacks: {} } })).toBeNull();
   });
 });

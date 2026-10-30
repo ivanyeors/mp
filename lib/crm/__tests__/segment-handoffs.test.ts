@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { segmentCampaignHref, segmentHref } from "@/lib/crm/segment-rules";
-import { FIRST_CAMPAIGN_DRAFT, CampaignDraftSchema, newCampaignDraft } from "@/lib/email-campaigns/rules";
+import { CampaignDraftSchema, EMPTY_CAMPAIGN_DRAFT, newCampaignDraft } from "@/lib/email-campaigns/rules";
 
 /**
  * PRD-crm-retention-loop slice 02: a Segment hands off to a new campaign, and
@@ -40,6 +40,8 @@ describe("newCampaignDraft", () => {
       subject: "",
       preheader: null,
       body: "",
+      // Written in blocks, none yet (PRD-campaign-email-editor slice 03).
+      content: { v: 1, blocks: [], fallbacks: {} },
       greeting: true,
       button: null,
       audience: "segment",
@@ -47,12 +49,13 @@ describe("newCampaignDraft", () => {
     });
     // Blank on purpose: it does not save until Staff write the email.
     expect(CampaignDraftSchema.safeParse(draft).success).toBe(false);
-    expect(CampaignDraftSchema.safeParse({ ...draft, subject: "Hello", body: "Hi" }).success).toBe(true);
+    const written = { ...draft, subject: "Hello", content: { ...draft.content!, blocks: [{ id: "h", type: "heading" as const, level: 1 as const, text: "Hi" }] } };
+    expect(CampaignDraftSchema.safeParse(written).success).toBe(true);
   });
 
-  it("starts the default draft for anything else", () => {
+  it("starts the empty draft for anything else (PRD-campaign-email-editor slice 01)", () => {
     for (const param of [undefined, "", "not-a-uuid", "5e000000-0000-4000-8000-000000000099", REVIEW.id]) {
-      expect(newCampaignDraft(param, [LIVE, REVIEW]), String(param)).toBe(FIRST_CAMPAIGN_DRAFT);
+      expect(newCampaignDraft(param, [LIVE, REVIEW]), String(param)).toBe(EMPTY_CAMPAIGN_DRAFT);
     }
   });
 

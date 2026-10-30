@@ -8,6 +8,9 @@
 // "hostile" fills every free-text field with HOSTILE, which is how
 // escaping.test.ts proves no template interpolates raw user input.
 
+import type { CampaignBlockImages, CampaignBlockProducts, CampaignBlocksEmailData } from "../campaign-blocks";
+import { keepChineseAiDrafted, linesFingerprint, withChineseTranslation, wordsFingerprint, type BlockWords } from "@/lib/email-campaigns/chinese-version";
+import type { CampaignContent, ChineseBlockWords, EmailBlock, EmailBlockType } from "@/lib/email-campaigns/content";
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
 import type { ChatTranscript } from "../support-chat";
@@ -455,3 +458,374 @@ export function sampleComposedCampaign(fixture: EmailFixture = "happy") {
     unsubscribeUrl: sampleUnsubscribeUrl,
   };
 }
+
+/**
+ * Words with every character escaping must handle, and no tag: the content
+ * schema refuses a tag in a block's words, so HOSTILE itself cannot get there.
+ */
+export const WORDS_PROBE = `"Quotes" & <3 'apostrophes'`;
+
+/**
+ * A campaign built from blocks (PRD-campaign-email-editor slice 03): a title,
+ * a text block with bold, a link and the first name, bullets, two buttons side
+ * by side, a divider and a spacer. Each button's link is what the sender
+ * resolves for one Customer.
+ */
+export function sampleCampaignBlocksContent(fixture: EmailFixture = "happy"): CampaignContent {
+  return {
+    v: 1,
+    blocks: [
+      { id: "title", type: "heading", level: 1, text: "Sleep cooler this December" },
+      {
+        id: "intro",
+        type: "text",
+        paragraphs: [
+          {
+            kind: "p",
+            runs: [
+              { text: "Our " },
+              { text: "FibreCool", bold: true },
+              { text: " covers are back, " },
+              { var: "first_name" },
+              { text: ", in every size. Read " },
+              { text: "the care guide", href: `${ORIGIN}/en-US/faq` },
+              { text: fixture === "hostile" ? ` ${WORDS_PROBE}.` : " before you wash yours." },
+            ],
+          },
+          { kind: "bullets", items: [[{ text: "Cool to the touch" }], [{ text: "Machine ", italic: true }, { text: "washable" }]] },
+        ],
+      },
+      {
+        id: "buttons",
+        type: "buttons",
+        buttons: [
+          { label: "Shop the covers", target: "shop", style: "primary" },
+          { label: "Book a fitting", target: "book_fitting", style: "secondary" },
+        ],
+      },
+      { id: "line", type: "divider" },
+      { id: "room", type: "spacer", size: "s" },
+      { id: "closing", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Questions? Just reply to this email." }] }] },
+    ],
+    fallbacks: { first_name: "there" },
+  };
+}
+
+export function sampleCampaignBlocks(fixture: EmailFixture = "happy"): CampaignBlocksEmailData {
+  const firstName = pick(fixture, "Wei Ling");
+  const utm = "utm_source=email_campaign&utm_medium=email&utm_campaign=december-cooling-launch";
+  const pages: Record<string, string> = { shop: "/en-US/shop", book_fitting: "/en-US/appointments" };
+  return {
+    subject: pick(fixture, "{first_name}, sleep cooler this December"),
+    preheader: pick(fixture, "Our FibreCool covers are back, in every size."),
+    content: sampleCampaignBlocksContent(fixture),
+    greeting: true,
+    values: { first_name: firstName, last_name: pick(fixture, "Tan"), points_balance: "1,250" },
+    buttonHref: (b) => `${ORIGIN}${pages[b.target] ?? "/en-US"}?${utm}`,
+    unsubscribeUrl: sampleUnsubscribeUrl,
+  };
+}
+
+const blockEmail = (...blocks: EmailBlock[]): CampaignContent => ({ v: 1, blocks, fallbacks: { first_name: "there" } });
+
+/** The Media Assets EMAIL_BLOCK_SAMPLES place: a photo, and a cut-out with transparency. */
+export const SAMPLE_PHOTO_ASSET = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
+export const SAMPLE_CUTOUT_ASSET = "8a2d3c4b-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+
+/**
+ * Their email renditions, as the sender reads them (slice 05): a 1,200px
+ * JPEG of the photo, and a PNG of the cut-out, which sits on the light plate.
+ */
+export const EMAIL_BLOCK_SAMPLE_IMAGES: CampaignBlockImages = {
+  [SAMPLE_PHOTO_ASSET]: {
+    url: `https://mpillow.supabase.co/storage/v1/object/public/media/email/${SAMPLE_PHOTO_ASSET}.jpg`,
+    width: 1200,
+    height: 800,
+    hasAlpha: false,
+  },
+  [SAMPLE_CUTOUT_ASSET]: {
+    url: `https://mpillow.supabase.co/storage/v1/object/public/media/email/${SAMPLE_CUTOUT_ASSET}.png`,
+    width: 900,
+    height: 600,
+    hasAlpha: true,
+  },
+};
+
+/** The Storefront products EMAIL_BLOCK_SAMPLES shows (slice 07). */
+export const SAMPLE_COVER_PRODUCT = "3b7e1f2a-9c4d-4a6b-8e1f-5d2c3b4a6e7f";
+export const SAMPLE_NECK_PRODUCT = "7c2a4e6b-1d3f-4b8a-9e2c-6f4d5a3b2c1e";
+export const SAMPLE_CASE_PRODUCT = "9e4b6d8a-2f1c-4e3a-8b7d-1c2e3f4a5b6d";
+
+/**
+ * Those products as the sender reads them from the shop at render: a cover
+ * whose sizes differ in price (a *from* price, a photo), a neck support on
+ * sale (its compare-at struck through, a cut-out on the light plate), and a
+ * bolster case with one Variant and no photo.
+ */
+export const EMAIL_BLOCK_SAMPLE_PRODUCTS: CampaignBlockProducts = {
+  [SAMPLE_COVER_PRODUCT]: {
+    title: "FibreCool Cover",
+    slug: "fibrecool-cover",
+    image: { asset: SAMPLE_PHOTO_ASSET },
+    price: 39,
+    compareAt: null,
+    from: true,
+    currency: "SGD",
+  },
+  [SAMPLE_NECK_PRODUCT]: {
+    title: "Cervical Neck Support",
+    slug: "cervical-neck-support",
+    image: { asset: SAMPLE_CUTOUT_ASSET },
+    price: 45,
+    compareAt: 59,
+    from: false,
+    currency: "SGD",
+  },
+  [SAMPLE_CASE_PRODUCT]: {
+    title: "Camel Bolster Case",
+    slug: "camel-bolster-case",
+    image: null,
+    price: 29.5,
+    compareAt: null,
+    from: false,
+    currency: "SGD",
+  },
+};
+
+const words = (id: string, text: string): EmailBlock => ({ id, type: "text", paragraphs: [{ kind: "p", runs: [{ text }] }] });
+
+/**
+ * One email per Email block type, showing every option the block has
+ * (PRD-campaign-email-editor slice 15): what the dark-mode coverage test and
+ * the per-block light and dark snapshots render. Keyed by every block type,
+ * so a new type does not compile until it has its email here.
+ */
+export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
+  heading: blockEmail(
+    { id: "title", type: "heading", level: 1, text: "Sleep cooler this December" },
+    words("intro", "Our FibreCool covers are back."),
+    { id: "part", type: "heading", level: 2, text: "Why FibreCool" },
+    words("why", "Cool to the touch, all night."),
+  ),
+  text: blockEmail({
+    id: "text",
+    type: "text",
+    paragraphs: [
+      {
+        kind: "p",
+        runs: [
+          { text: "Hi " },
+          { var: "first_name" },
+          { text: ", our " },
+          { text: "FibreCool", bold: true },
+          { text: " covers are " },
+          { text: "back", italic: true },
+          { text: ".\nRead " },
+          { text: "the ", href: `${ORIGIN}/en-US/faq` },
+          { text: "care guide", href: `${ORIGIN}/en-US/faq`, bold: true },
+          { text: " before you wash yours." },
+        ],
+      },
+      {
+        kind: "bullets",
+        items: [[{ text: "Cool to the touch" }], [{ text: "Machine washable: " }, { text: "how", href: `${ORIGIN}/en-US/faq` }]],
+      },
+    ],
+  }),
+  buttons: blockEmail(
+    { id: "primary", type: "buttons", buttons: [{ label: "Shop the covers", target: "shop", style: "primary" }] },
+    { id: "secondary", type: "buttons", buttons: [{ label: "Book a fitting", target: "book_fitting", style: "secondary" }] },
+    {
+      id: "pair",
+      type: "buttons",
+      buttons: [
+        { label: "Shop the covers", target: "shop", style: "primary" },
+        { label: "Read the care guide", target: "url", url: `${ORIGIN}/en-US/faq`, style: "secondary" },
+      ],
+    },
+  ),
+  image: blockEmail(
+    {
+      id: "photo",
+      type: "image",
+      image: { asset: SAMPLE_PHOTO_ASSET, alt: "A FibreCool cover on a made bed, in white" },
+      link: { target: "shop" },
+      width: "full",
+    },
+    words("intro", "Our FibreCool covers are back."),
+    { id: "cutout", type: "image", image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" }, width: "inset" },
+    { id: "flourish", type: "image", image: { asset: SAMPLE_PHOTO_ASSET, alt: "", decorative: true }, width: "inset" },
+    words("outro", "Cool to the touch, all night."),
+  ),
+  hero: blockEmail(
+    {
+      id: "hero",
+      type: "hero",
+      image: { asset: SAMPLE_PHOTO_ASSET, alt: "A FibreCool cover on a made bed, in white" },
+      heading: "Sleep cooler this December",
+      line: "Our FibreCool covers are back, in every size.",
+      button: { label: "Shop the covers", target: "shop", style: "primary" },
+    },
+    words("intro", "Cool to the touch, all night."),
+    { id: "second", type: "hero", image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" }, heading: "Made to your measure" },
+  ),
+  // The image on the left with a button, then on the right (a cut-out, on its plate) with none.
+  split: blockEmail(
+    {
+      id: "left",
+      type: "split",
+      image: { asset: SAMPLE_PHOTO_ASSET, alt: "A FibreCool cover on a made bed, in white" },
+      side: "left",
+      heading: "Why FibreCool",
+      paragraphs: [
+        {
+          kind: "p",
+          runs: [{ text: "Cool to the touch, " }, { text: "all night", bold: true }, { text: ". Read the " }, { text: "care guide", href: `${ORIGIN}/en-US/faq` }, { text: "." }],
+        },
+      ],
+      button: { label: "Shop the covers", target: "shop", style: "primary" },
+    },
+    {
+      id: "right",
+      type: "split",
+      image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" },
+      side: "right",
+      heading: "Made to your measure",
+      paragraphs: [
+        { kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: ", your fitting sets its height." }] },
+        { kind: "bullets", items: [[{ text: "Three heights" }], [{ text: "Two firmnesses" }]] },
+      ],
+    },
+  ),
+  // Three side by side, two one per row with their own label, and a button to one product's page.
+  products: blockEmail(
+    {
+      id: "grid",
+      type: "products",
+      products: [SAMPLE_COVER_PRODUCT, SAMPLE_NECK_PRODUCT, SAMPLE_CASE_PRODUCT],
+      layout: "side_by_side",
+      buttonLabel: "Shop now",
+    },
+    { id: "rows", type: "products", products: [SAMPLE_COVER_PRODUCT, SAMPLE_NECK_PRODUCT], layout: "rows", buttonLabel: "See it in the shop" },
+    {
+      id: "one",
+      type: "buttons",
+      buttons: [{ label: "Shop the FibreCool cover", target: "product", product: SAMPLE_COVER_PRODUCT, style: "secondary" }],
+    },
+  ),
+  divider: blockEmail(words("above", "Above the line."), { id: "line", type: "divider" }, words("below", "Below the line.")),
+  spacer: blockEmail(
+    words("a", "Before a small space."),
+    { id: "s", type: "spacer", size: "s" },
+    words("b", "Before a medium space."),
+    { id: "m", type: "spacer", size: "m" },
+    words("c", "Before a large space."),
+    { id: "l", type: "spacer", size: "l" },
+    words("d", "The end."),
+  ),
+};
+
+/**
+ * A campaign with a 中文 version (PRD-campaign-email-editor slice 17): every
+ * block type with words, in English, and each block's words in Chinese made
+ * from them, a link and a Variable kept in place. The renderer's 中文
+ * snapshots, the sender's mixed-language test and the editor's 中文 tests
+ * all read it.
+ */
+export const CHINESE_SAMPLE_LINES = {
+  subject: "{first_name}, sleep cooler this December",
+  preheader: "Our FibreCool covers are back, in every size.",
+  chineseSubject: "{first_name}，这个十二月睡得更清凉",
+  chinesePreheader: "FibreCool 枕套回来了，各种尺寸都有。",
+} as const;
+
+const CHINESE_SAMPLE_ENGLISH: CampaignContent = blockEmail(
+  {
+    id: "hero",
+    type: "hero",
+    image: { asset: SAMPLE_PHOTO_ASSET, alt: "A FibreCool cover on a made bed, in white" },
+    heading: "Sleep cooler this December",
+    line: "Our coolest covers, back in every size.",
+    button: { label: "Shop the covers", target: "shop", style: "primary" },
+  },
+  {
+    id: "intro",
+    type: "text",
+    paragraphs: [
+      {
+        kind: "p",
+        runs: [
+          { var: "first_name" },
+          { text: ", warm nights are back. Read the " },
+          { text: "care guide", href: `${ORIGIN}/en-US/faq` },
+          { text: ", or " },
+          { text: "book a fitting", href: `${ORIGIN}/en-US/appointments`, bold: true },
+          { text: "." },
+        ],
+      },
+      { kind: "bullets", items: [[{ text: "Cool to the touch" }], [{ text: "Machine washable" }]] },
+    ],
+  },
+  { id: "why", type: "heading", level: 2, text: "Why FibreCool" },
+  {
+    id: "split",
+    type: "split",
+    image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" },
+    side: "right",
+    heading: "Made to your measure",
+    paragraphs: [{ kind: "p", runs: [{ text: "Your fitting sets its height." }] }],
+    button: { label: "Book a fitting", target: "book_fitting", style: "secondary" },
+  },
+  { id: "products", type: "products", products: [SAMPLE_COVER_PRODUCT], layout: "rows", buttonLabel: "Shop now" },
+  { id: "photo", type: "image", image: { asset: SAMPLE_PHOTO_ASSET, alt: "Two pillows on a bed" }, width: "inset" },
+  { id: "line", type: "divider" },
+  {
+    id: "pair",
+    type: "buttons",
+    buttons: [
+      { label: "Customise yours", target: "customise_mpillow", style: "primary" },
+      { label: "Read the care guide", target: "url", url: `${ORIGIN}/en-US/faq`, style: "secondary" },
+    ],
+  },
+);
+
+/** Each block's 中文 words, without their fingerprints: what a translation of CHINESE_SAMPLE_ENGLISH holds. */
+export const CHINESE_SAMPLE_WORDS: Record<string, BlockWords> = {
+  hero: { type: "hero", alt: "铺好的床上的白色 FibreCool 枕套", heading: "这个十二月，睡得更清凉", line: "我们最清凉的枕套回来了，各种尺寸都有。", buttonLabel: "选购枕套" },
+  intro: {
+    type: "text",
+    paragraphs: [
+      {
+        kind: "p",
+        runs: [{ var: "first_name" }, { text: "，炎热的夜晚又来了。请阅读" }, { text: "保养指南", link: 0 }, { text: "，或" }, { text: "预约量身", link: 1, bold: true }, { text: "。" }],
+      },
+      { kind: "bullets", items: [[{ text: "触感清凉" }], [{ text: "可机洗" }]] },
+    ],
+  },
+  why: { type: "heading", text: "为什么选择 FibreCool" },
+  split: { type: "split", alt: "Mpillow Premium 侧面", heading: "按您的尺寸定制", paragraphs: [{ kind: "p", runs: [{ text: "量身时会为您调好枕头的高度。" }] }], buttonLabel: "预约量身" },
+  products: { type: "products", buttonLabel: "立即选购" },
+  photo: { type: "image", alt: "床上的两个枕头" },
+  pair: { type: "buttons", labels: ["定制您的 Mpillow", "阅读保养指南"] },
+};
+
+/** CHINESE_SAMPLE_ENGLISH with its 中文 version, every block current, read and kept by a person. */
+export const CHINESE_SAMPLE_CONTENT: CampaignContent = keepChineseAiDrafted(
+  withChineseTranslation(CHINESE_SAMPLE_ENGLISH, {
+    subject: CHINESE_SAMPLE_LINES.chineseSubject,
+    preheader: CHINESE_SAMPLE_LINES.chinesePreheader,
+    from: linesFingerprint(CHINESE_SAMPLE_LINES.subject, CHINESE_SAMPLE_LINES.preheader),
+    fallbacks: { first_name: "您" },
+    blocks: Object.fromEntries(
+      CHINESE_SAMPLE_ENGLISH.blocks.flatMap((b) => {
+        const w = CHINESE_SAMPLE_WORDS[b.id];
+        return w ? [[b.id, { ...w, from: wordsFingerprint(b) } as ChineseBlockWords]] : [];
+      }),
+    ),
+  }),
+);
+
+/** The cover as the 中文 shop names it: what a reader of Chinese sees in CHINESE_SAMPLE_CONTENT's products block. */
+export const CHINESE_SAMPLE_PRODUCTS: CampaignBlockProducts = {
+  [SAMPLE_COVER_PRODUCT]: { ...EMAIL_BLOCK_SAMPLE_PRODUCTS[SAMPLE_COVER_PRODUCT], title: "FibreCool 凉感枕套" },
+};

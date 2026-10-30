@@ -73,6 +73,8 @@ const WEEKDAY_TIME = new Intl.DateTimeFormat("en-SG", {
   minute: "2-digit",
 });
 
+const TIME = new Intl.DateTimeFormat("en-SG", { timeZone: TIME_ZONE, hour: "numeric", minute: "2-digit" });
+
 /**
  * `Intl.format` throws a RangeError on an invalid Date, where the
  * `toLocale*` methods it replaces returned "Invalid Date". Parse defensively so
@@ -112,6 +114,11 @@ export function formatAdminDateMY(iso: string | null | undefined): string {
 /** Weekday, date and time: `Tue, 27 Oct, 3:40 pm` (Asia/Singapore). For a moment soon, such as when sending opens again. */
 export function formatAdminWeekdayTime(iso: string | null | undefined): string {
   return apply(WEEKDAY_TIME, iso);
+}
+
+/** The time alone: `4:10 pm` (Asia/Singapore). For a moment later today, such as when a limit lets up. */
+export function formatAdminTime(iso: string | null | undefined): string {
+  return apply(TIME, iso);
 }
 
 /**

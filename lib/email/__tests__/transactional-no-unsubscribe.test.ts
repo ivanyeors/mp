@@ -85,6 +85,8 @@ describe("transactional mail carries no unsubscribe", () => {
       // sender, which sets the headers.
       "lib/email/campaigns.ts",
       "lib/email-campaigns/sender.ts",
+      // PRD-campaign-email-editor slice 03: the same campaigns, built from blocks.
+      "lib/email/campaign-blocks.ts",
     ]);
     const files = (dir: string): string[] =>
       readdirSync(dir).flatMap((name) => {

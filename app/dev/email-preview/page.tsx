@@ -4,6 +4,7 @@ import {
   EMAIL_GROUP_LABELS,
   EMAIL_REGISTRY,
   getEmailCase,
+  type EmailFixture,
   type EmailGroup,
 } from "@/lib/email/registry";
 
@@ -27,18 +28,36 @@ const GROUP_ORDER: EmailGroup[] = [
   "ops",
 ];
 
+/** This page for a template, a fixture and Light or Dark. */
+const pageHref = (id: string, fixture: EmailFixture, dark: boolean) =>
+  `/dev/email-preview?id=${id}&fixture=${fixture}${dark ? "&dark=1" : ""}`;
+
+const pillStyle = (on: boolean) => ({
+  fontSize: 12,
+  padding: "4px 10px",
+  borderRadius: 999,
+  textDecoration: "none",
+  border: "1px solid #e5e5e5",
+  background: on ? "#171717" : "transparent",
+  color: on ? "#fafafa" : "#171717",
+});
+
 export default async function EmailPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string; fixture?: string }>;
+  searchParams: Promise<{ id?: string; fixture?: string; dark?: string }>;
 }) {
   if (!isEmailPreviewAllowed()) notFound();
 
-  const { id, fixture } = await searchParams;
+  const { id, fixture, dark } = await searchParams;
   const selectedId = (id && getEmailCase(id)?.id) || EMAIL_REGISTRY[0].id;
   const selectedFixture = fixture === "hostile" ? "hostile" : "happy";
+  // Dark: the shell's own dark rules forced on, as a reader in dark mode sees
+  // the email (PRD-campaign-email-editor slice 15).
+  const selectedDark = dark === "1";
   const selected = getEmailCase(selectedId)!;
-  const src = `/dev/email-preview/${selectedId}?fixture=${selectedFixture}`;
+  const asSent = `/dev/email-preview/${selectedId}?fixture=${selectedFixture}`;
+  const src = selectedDark ? `${asSent}&dark=1` : asSent;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -56,22 +75,27 @@ export default async function EmailPreviewPage({
           {EMAIL_REGISTRY.length} templates
         </p>
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           {(["happy", "hostile"] as const).map((f) => (
             <a
               key={f}
-              href={`/dev/email-preview?id=${selectedId}&fixture=${f}`}
-              style={{
-                fontSize: 12,
-                padding: "4px 10px",
-                borderRadius: 999,
-                textDecoration: "none",
-                border: "1px solid #e5e5e5",
-                background: selectedFixture === f ? "#171717" : "transparent",
-                color: selectedFixture === f ? "#fafafa" : "#171717",
-              }}
+              href={pageHref(selectedId, f, selectedDark)}
+              aria-current={selectedFixture === f ? "true" : undefined}
+              style={pillStyle(selectedFixture === f)}
             >
               {f}
+            </a>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          {([false, true] as const).map((d) => (
+            <a
+              key={String(d)}
+              href={pageHref(selectedId, selectedFixture, d)}
+              aria-current={selectedDark === d ? "true" : undefined}
+              style={pillStyle(selectedDark === d)}
+            >
+              {d ? "Dark" : "Light"}
             </a>
           ))}
         </div>
@@ -95,7 +119,7 @@ export default async function EmailPreviewPage({
               {entries.map((entry) => (
                 <a
                   key={entry.id}
-                  href={`/dev/email-preview?id=${entry.id}&fixture=${selectedFixture}`}
+                  href={pageHref(entry.id, selectedFixture, selectedDark)}
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -127,10 +151,10 @@ export default async function EmailPreviewPage({
           <strong style={{ fontSize: 14 }}>{selected.label}</strong>
           <code style={{ fontSize: 12, color: "#737373" }}>{selected.id}</code>
           <span style={{ fontSize: 12, color: "#737373" }}>{selected.audience}</span>
-          <a href={`${src}&format=text`} style={{ fontSize: 12, marginLeft: "auto" }}>
+          <a href={`${asSent}&format=text`} style={{ fontSize: 12, marginLeft: "auto" }}>
             plain text
           </a>
-          <a href={`${src}&format=json`} style={{ fontSize: 12 }}>
+          <a href={`${asSent}&format=json`} style={{ fontSize: 12 }}>
             json
           </a>
         </header>

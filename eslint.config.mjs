@@ -36,6 +36,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Agent sessions check out git worktrees here (gitignored, and skipped by
+    // vitest.config.ts); each is a full copy of the repo, not code of its own.
+    ".claude/worktrees/**",
   ]),
 ]);
 

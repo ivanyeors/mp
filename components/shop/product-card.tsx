@@ -10,6 +10,7 @@ import { PriceDisplay } from "@/components/shop/price-display";
 import { ProductRatingBadge } from "@/components/shop/review-stars";
 import { useCart } from "@/lib/shop/cart-context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { shopCardPrice } from "@/lib/ecommerce/shop-card-price";
 import { cn } from "@/lib/utils";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
@@ -48,10 +49,8 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
 
   const sortedByPrice = [...activeVariants].sort((a, b) => a.price - b.price);
   const cheapestVariant = sortedByPrice[0] ?? null;
-
-  const currency = cheapestVariant?.currency ?? "SGD";
-  const minPrice = cheapestVariant?.price ?? 0;
-  const minCompareAtPrice = cheapestVariant?.compare_at_price ?? null;
+  // The price an email's products block shows for this product too (one rule).
+  const shown = shopCardPrice(product.variants ?? []);
 
   const primaryImage = product.images?.[0] ?? null;
   const imageUrl = primaryImage?.url ?? null;
@@ -170,15 +169,15 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
             <ProductRatingBadge aggregate={reviewAggregate} size={12} />
           ) : null}
 
-          {cheapestVariant ? (
+          {shown ? (
             <div className="text-sm">
-              {activeVariants.length > 1 ? (
+              {shown.from ? (
                 <span className="text-muted-foreground text-xs mr-1">From</span>
               ) : null}
               <PriceDisplay
-                price={minPrice}
-                compareAtPrice={minCompareAtPrice}
-                currency={currency}
+                price={shown.price}
+                compareAtPrice={shown.compareAt}
+                currency={shown.currency}
                 className="text-sm"
               />
             </div>

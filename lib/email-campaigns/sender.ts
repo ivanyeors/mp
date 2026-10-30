@@ -14,7 +14,10 @@
  * complaints over 0.1%), unless Staff resume after looking into it. A
  * Campaign that mentions points goes to customers only while points are live
  * (`claimBonusOffer`): on, launched, with a Claim bonus. A test send is not
- * held back by it.
+ * held back by it. The email itself is checked too (PRD-campaign-email-editor
+ * slice 11, `campaignEmailChecks`): its blocks written, its links answering,
+ * its images described and Outlook-safe, its size under Gmail's clip as
+ * sent, and its words, each failure naming the block it is in.
  *
  * **The send limit** (PRD-campaign-send-flow). Resend's free plan sends 100
  * a day and 3,000 a month, tests included (`campaignSendLimits` raises them on
@@ -28,8 +31,13 @@
  * moment), then rendered with the recipient's own unsubscribe link and
  * `List-Unsubscribe` (RFC 8058), Reply-To the support inbox. A Migrated
  * customer who has not Claimed gets their own Claim link as the sign-in
- * button. About two a second (Resend's default limit); a batch stops after
- * five failures in a row.
+ * button. A block campaign's Variables are filled for each recipient
+ * (PRD-campaign-email-editor slice 13): their names as the claim returns
+ * them, and their points balance, read only for an email that says it. A
+ * recipient whose `locale` is `zh-CN` gets the campaign's 中文 version when it
+ * has one (slice 17); everyone else, and everyone when it has none, gets
+ * English, one ledger row each as ever. About two a second (Resend's default
+ * limit); a batch stops after five failures in a row.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mintClaimLink } from "@/lib/customer-migration/claim-link";
@@ -49,7 +57,14 @@ import {
   type DeliverySetup,
   type PreflightCheck,
 } from "@/lib/customer-migration/wave-sender";
-import { renderComposedCampaignEmail } from "@/lib/email/campaigns";
+import { forceDarkMode } from "@/lib/email/base";
+import {
+  renderCampaignBlocksEmail,
+  type CampaignBlockImages,
+  type CampaignBlockProducts,
+  type CampaignBlocksPlaceholders,
+} from "@/lib/email/campaign-blocks";
+import { renderComposedCampaignEmail, type ComposedCampaignPlaceholders } from "@/lib/email/campaigns";
 import {
   checkCampaignFrom,
   emailAddressOf,
@@ -61,21 +76,30 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { withLocale } from "@/lib/i18n/routing";
 import { listUnsubscribeHeaders, PROBE_CUSTOMER_ID, unsubscribeLinks } from "@/lib/marketing-consent/unsubscribe";
 import { claimBonusOffer } from "@/lib/points/offer";
-import { readPointsSettings } from "@/lib/points/server";
+import { readPointsBalance, readPointsSettings } from "@/lib/points/server";
 import {
   campaignLedgerKey,
   CAMPAIGN_BLOCKER_TEXT,
+  CAMPAIGN_PLACEHOLDERS,
   mentionsPoints,
   MAX_TEST_RECIPIENTS,
   MAX_WAVE_SIZE,
   nextWaveLabel,
   planCampaignWave,
+  variablesInEmail,
   WAVE_LABEL,
   type Campaign,
   type CampaignPlan,
 } from "./rules";
+import { CHINESE, CHINESE_STATUS_TEXT, chineseAiDrafted, chineseContent, chineseGaps, chineseVersionOf, chineseVersionProblems } from "./chinese-version";
+import { aiDraftedBlocks, contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
+import { addressesToAsk, campaignContentChecks, joinVersionChecks, type ContentCheck, type ContentIssue, type EmailFacts } from "./content-checks";
+import { campaignImagesProblem, readCampaignImages, type CampaignImageFailure } from "./images";
+import { checkLinks, type LinkRequest } from "./link-check";
+import { campaignProductPhotos, campaignProductsProblem, readCampaignProducts, unlistedProductText, type UnlistedProduct } from "./products";
 import { roomAgainText } from "./send-flow";
 import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
+import { campaignVariable, SAMPLE_RECIPIENT, variableValues, type VariableRecipient } from "./variables";
 
 export { MAX_CONSECUTIVE_FAILURES };
 
@@ -90,6 +114,13 @@ export interface CampaignSenderSetup extends DeliverySetup {
   reportsConfigured?: boolean;
   sleep?: (ms: number) => Promise<void>;
   now?: () => Date;
+  /**
+   * How the checks before a wave ask whether the email's links answer
+   * (PRD-campaign-email-editor slice 11): `publicLinkRequest` in production
+   * (`campaignSenderSetup`), a fake in tests. Without one nothing is fetched,
+   * and the checks say which links were not checked.
+   */
+  linkRequest?: LinkRequest;
 }
 
 /** `utm_source` on the site links a composed campaign carries. */
@@ -137,11 +168,94 @@ export function campaignButton(
   return b.url ? { label: b.label, href: withEmailCampaignUtm(b.url, campaign.name, origin) } : null;
 }
 
-/** Pure — the Campaign as one recipient gets it. */
+/**
+ * Pure — where a block's button goes for one recipient (PRD-campaign-email-editor
+ * slice 03): a page on the live site in their language, with the campaign's
+ * UTMs; for `sign_in` their own Claim link when they have one, as the single
+ * button; for `url` the link Staff typed; for `product` its shop page (slice
+ * 07), when it is in `products`, the Listed products the sender read.
+ */
+export function blockButtonHref(
+  b: Pick<BlockButton, "target" | "url" | "product">,
+  campaignName: string,
+  { origin, locale, claimUrl, products }: { origin: string; locale: Locale; claimUrl: string | null; products?: CampaignBlockProducts },
+): string | null {
+  if (b.target === "url") return b.url ? withEmailCampaignUtm(b.url, campaignName, origin) : null;
+  if (b.target === "sign_in" && claimUrl) return claimUrl;
+  if (b.target === "product") {
+    const product = b.product ? products?.[b.product] : undefined;
+    if (!product) return null;
+    return withEmailCampaignUtm(`${origin}${withLocale(`/shop/${encodeURIComponent(product.slug)}`, locale)}`, campaignName, origin);
+  }
+  const path = b.target === "sign_in" ? "/account" : SITE_BUTTON_PATHS[b.target];
+  return withEmailCampaignUtm(`${origin}${withLocale(path, locale)}`, campaignName, origin);
+}
+
+/** Pure — a button of the Campaign goes to the recipient's sign-in, so each send mints their Claim link. */
+export const campaignSignsIn = (campaign: Pick<Campaign, "button" | "content">) =>
+  campaign.content ? contentSignsIn(campaign.content) : campaign.button?.target === "sign_in";
+
+/** Pure — the Campaign says each recipient's *Points balance* (slice 13), so each send reads it. */
+export const usesPointsBalance = (campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">) =>
+  variablesInEmail(campaign).some((key) => campaignVariable(key).needsPoints);
+
+/**
+ * Pure — the language a reader in `locale` gets the Campaign in (slice 17):
+ * its 中文 version for a reader of Chinese, when it has one; else English.
+ */
+export const campaignLanguage = (campaign: Pick<Campaign, "content">, locale: Locale): Locale =>
+  locale === CHINESE && chineseVersionOf(campaign.content) ? CHINESE : DEFAULT_LOCALE;
+
+/** What an empty field shows in the editor's preview, legacy or blocks. */
+export type CampaignPreviewPlaceholders = ComposedCampaignPlaceholders & CampaignBlocksPlaceholders;
+
+/** The Campaign's parts an email is rendered from. */
+type CampaignEmailParts = Pick<Campaign, "name" | "subject" | "preheader" | "body" | "content" | "greeting" | "button">;
+
+/**
+ * Pure — the Campaign as one recipient gets it: its blocks, or the plain-text
+ * body of a campaign written before them, which keeps its own renderer
+ * (PRD-campaign-email-editor decision 5). `placeholders` is the editor's
+ * preview's alone (`renderCampaignPreview`): no send passes it. `images` is
+ * each placed image's email rendition (slice 05) and `products` each Listed
+ * product as the shop sells it now (slice 07), both read by
+ * `readCampaignRenderData` before the first recipient: the renderer throws on
+ * an image or a product without one. A recipient whose `locale` is `zh-CN`
+ * gets its 中文 version, when it has one (`campaignLanguage`, slice 17), with
+ * its 中文 fallbacks; `products` are then their 中文 names (`productsFor`).
+ */
 export function renderCampaignFor(
-  campaign: Pick<Campaign, "name" | "subject" | "preheader" | "body" | "greeting" | "button">,
-  p: { firstName: string | null; origin: string; locale: Locale; claimUrl: string | null; unsubscribeUrl: string },
+  campaign: CampaignEmailParts,
+  p: {
+    firstName: string | null;
+    /** The recipient's other details, for the Variables a block campaign uses (slice 13). */
+    lastName?: string | null;
+    pointsBalance?: number | null;
+    origin: string;
+    locale: Locale;
+    claimUrl: string | null;
+    unsubscribeUrl: string;
+    images?: CampaignBlockImages;
+    products?: CampaignBlockProducts;
+    placeholders?: CampaignPreviewPlaceholders;
+  },
 ): RenderedEmail {
+  if (campaign.content) {
+    const chinese = campaignLanguage(campaign, p.locale) === CHINESE ? chineseVersionOf(campaign.content) : null;
+    return renderCampaignBlocksEmail({
+      subject: campaign.subject,
+      preheader: campaign.preheader,
+      content: campaign.content,
+      greeting: campaign.greeting,
+      values: chinese ? variableValues(p, chinese.fallbacks, { chinese: true }) : variableValues(p, campaign.content.fallbacks),
+      buttonHref: (b) => blockButtonHref(b, campaign.name, p),
+      unsubscribeUrl: p.unsubscribeUrl,
+      ...(p.images ? { images: p.images } : {}),
+      ...(p.products ? { products: p.products } : {}),
+      ...(p.placeholders ? { placeholders: p.placeholders } : {}),
+      ...(chinese ? { language: CHINESE } : {}),
+    });
+  }
   return renderComposedCampaignEmail({
     subject: campaign.subject,
     preheader: campaign.preheader,
@@ -150,24 +264,180 @@ export function renderCampaignFor(
     firstName: p.firstName,
     button: campaignButton(campaign, { origin: p.origin, locale: p.locale, claimUrl: p.claimUrl }),
     unsubscribeUrl: p.unsubscribeUrl,
+    ...(p.placeholders ? { placeholders: p.placeholders } : {}),
   });
 }
 
 /**
  * Pure — the editor's preview: the Campaign for a sample customer, with an
- * unsubscribe link that unsubscribes nobody.
+ * unsubscribe link that unsubscribes nobody. An empty subject, message,
+ * block field or button label shows its placeholder, dashed and muted
+ * (PRD-campaign-email-editor decision 7), so an empty email's layout reads.
+ *
+ * `forceDark` is the preview's *Dark* (slice 15): the same email with the
+ * shell's own dark rules applied whatever the viewer's setting. The campaign
+ * editor's Light / Dark toggle (slice 04) passes it through previewCampaign.
+ * Only the preview takes it; nothing a send calls can (sender.test.ts, at the
+ * type level). `images` and `products` are what the test send reads too
+ * (`readCampaignRenderData`), so the preview shows the email it delivers; an
+ * image or a product missing from them is drawn as a hint.
+ *
+ * The sample customer is the caller's: *Preview as* (slice 13) passes
+ * `SAMPLE_RECIPIENT` for *A customer*, or `NO_DETAILS` to show every fallback.
+ * `locale` is the editor's Language (slice 17): `zh-CN` shows the 中文 email,
+ * as a reader of Chinese gets it, links included.
  */
 export function renderCampaignPreview(
-  campaign: Pick<Campaign, "name" | "subject" | "preheader" | "body" | "greeting" | "button">,
-  { origin, firstName }: { origin: string; firstName: string | null },
+  campaign: CampaignEmailParts,
+  {
+    origin,
+    firstName,
+    lastName = null,
+    pointsBalance = null,
+    forceDark = false,
+    images,
+    products,
+    locale = DEFAULT_LOCALE,
+  }: {
+    origin: string;
+    firstName: string | null;
+    lastName?: string | null;
+    pointsBalance?: number | null;
+    forceDark?: boolean;
+    images?: CampaignBlockImages;
+    products?: CampaignBlockProducts;
+    locale?: Locale;
+  },
+): RenderedEmail {
+  const base = origin.replace(/\/$/, "");
+  const rendered = renderCampaignFor(campaign, {
+    firstName,
+    lastName,
+    pointsBalance,
+    origin: base,
+    locale,
+    claimUrl: null,
+    unsubscribeUrl: `${base}${withLocale("/unsubscribe", locale)}`,
+    ...(images ? { images } : {}),
+    ...(products ? { products } : {}),
+    placeholders: { ...CAMPAIGN_PLACEHOLDERS, ...CONTENT_PLACEHOLDERS },
+  });
+  return forceDark ? { ...rendered, html: forceDarkMode(rendered.html) } : rendered;
+}
+
+/** What an email shows from the platform at render, beyond its own words. */
+export interface CampaignRenderData {
+  images: CampaignBlockImages;
+  products: CampaignBlockProducts;
+  /** The same products with their names as the 中文 shop shows them, for a campaign with a 中文 version (slice 17); else null. */
+  chineseProducts: CampaignBlockProducts | null;
+  /** What stops a send: a product not in the shop, by name, or an image with no email copy; null when none. */
+  problem: string | null;
+  /** The reads behind `problem`, which the checks before a wave name block by block (slice 11). */
+  imageFailures: CampaignImageFailure[];
+  unlisted: UnlistedProduct[];
+  productsError: string | null;
+}
+
+/** Pure — the products as a reader in `language` sees them: the 中文 shop's names in the 中文 version. */
+export const productsFor = (shown: Pick<CampaignRenderData, "products" | "chineseProducts">, language: Locale): CampaignBlockProducts =>
+  (language === CHINESE && shown.chineseProducts) || shown.products;
+
+/**
+ * Everything the email shows from the platform, read once for a preview, a
+ * test or a batch: each product as the shop sells it now (slice 07), in
+ * Chinese too for a campaign with a 中文 version (slice 17), then each
+ * image's email rendition, the products' photos included (slice 05). Never
+ * throws; a preview draws a hint for what is missing, a send stops on
+ * `problem`.
+ */
+export async function readCampaignRenderData(admin: SupabaseClient, content: Campaign["content"]): Promise<CampaignRenderData> {
+  const [shop, chineseShop] = await Promise.all([
+    readCampaignProducts(admin, content),
+    chineseVersionOf(content) ? readCampaignProducts(admin, content, { locale: CHINESE }) : null,
+  ]);
+  const photos = campaignProductPhotos(shop);
+  const pictures = await readCampaignImages(admin, content, photos);
+  // A product's photo is the shop's, not a block's: name the product it shows.
+  const placed = new Set(content ? imageAssetsIn(content) : []);
+  const ofBlocks = pictures.failed.filter((f) => placed.has(f.assetId));
+  const ofProducts = pictures.failed.filter((f) => !placed.has(f.assetId));
+  const product = ofProducts.length ? Object.values(shop.products).find((p) => p.image?.asset === ofProducts[0].assetId) : undefined;
+  const problem =
+    campaignProductsProblem(shop) ??
+    (ofBlocks.length
+      ? campaignImagesProblem({ ...pictures, failed: ofBlocks })
+      : product
+        ? `the photo of ${product.title} has no copy an inbox can show: ${ofProducts[0].reason}`
+        : campaignImagesProblem(pictures));
+  // A failed 中文 read leaves the English names: a reader of Chinese still gets each product.
+  return {
+    images: pictures.images,
+    products: shop.products,
+    chineseProducts: chineseShop && !chineseShop.error ? chineseShop.products : null,
+    problem,
+    imageFailures: pictures.failed,
+    unlisted: shop.unlisted,
+    productsError: shop.error,
+  };
+}
+
+/**
+ * The 中文 version as a check (slice 17), for a Campaign that has one; null
+ * for one that does not. It fails while a block, the subject or a Variable's
+ * fallback is not translated, or out of date and not kept, naming each; a
+ * block's issue carries its id, so the Send card goes to it in 中文. One of
+ * the email's own checks before a wave (slice 11, `campaignEmailChecks`).
+ */
+export function chineseCheck(campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">): ContentCheck | null {
+  const { content } = campaign;
+  if (!content || !chineseVersionOf(content)) return null;
+  const problems = chineseVersionProblems(content, { subject: campaign.subject, preheader: campaign.preheader, used: variablesInEmail(campaign) });
+  // A block's problem names it as its gap does (*Block 3, Heading: …*).
+  const gaps = chineseGaps(content);
+  const issues = problems.map((text): ContentIssue => {
+    const gap = gaps.find((g) => text.startsWith(`Block ${g.n}, `));
+    return { blockId: gap?.id ?? null, text: `中文, ${text}`, what: gap ? CHINESE_STATUS_TEXT[gap.status] : text, language: CHINESE };
+  });
+  return {
+    key: "chinese",
+    ok: problems.length === 0,
+    advisory: false,
+    issues,
+    detail: problems.length
+      ? `the 中文 version isn't finished: ${problems.join("; ")}. Translate them, or keep the 中文 words as they are, before sending`
+      : "every block, the subject and the preview line are in Chinese",
+  };
+}
+
+/**
+ * Pure — the Campaign as a wave sends it, for the checks before a wave
+ * (slice 11): rendered for a send, never as the preview (no placeholders, the
+ * light HTML), for the sample customer, with a signed unsubscribe link as
+ * long as every recipient's. What Gmail's clip is measured on. Throws, as a
+ * send does, on an image or a product the reads found nothing for. `locale`
+ * `zh-CN` renders the 中文 version, as a reader of Chinese gets it (slice
+ * 17), with `products` named as the 中文 shop names them (`productsFor`).
+ */
+export function renderCampaignAsSent(
+  campaign: CampaignEmailParts,
+  {
+    origin,
+    unsubscribeSecret,
+    images,
+    products,
+    locale = DEFAULT_LOCALE,
+  }: { origin: string; unsubscribeSecret?: string; images: CampaignBlockImages; products: CampaignBlockProducts; locale?: Locale },
 ): RenderedEmail {
   const base = origin.replace(/\/$/, "");
   return renderCampaignFor(campaign, {
-    firstName,
+    ...SAMPLE_RECIPIENT,
     origin: base,
-    locale: DEFAULT_LOCALE,
+    locale,
     claimUrl: null,
-    unsubscribeUrl: `${base}${withLocale("/unsubscribe", DEFAULT_LOCALE)}`,
+    unsubscribeUrl: unsubscribeLinks(PROBE_CUSTOMER_ID, { origin: base, locale, secret: unsubscribeSecret })?.pageUrl ?? `${base}${withLocale("/unsubscribe", locale)}`,
+    images,
+    products,
   });
 }
 
@@ -185,13 +455,14 @@ export function pauseCheck(stats: readonly CampaignWaveStats[], resume: boolean)
 
 const originOf = (setup: DeliverySetup) => setup.origin.replace(/\/$/, "");
 
-type CampaignContent = Pick<Campaign, "subject" | "preheader" | "body" | "button">;
+/** What the points rule and the 中文 check read. */
+type CampaignWordsRead = Pick<Campaign, "subject" | "preheader" | "body" | "button" | "content" | "greeting">;
 
 /**
  * Points as a check, for a Campaign that mentions them; null for one that
  * does not. It fails until points are on, launched, and grant a Claim bonus.
  */
-export async function pointsCheck(admin: SupabaseClient, campaign: CampaignContent, now: Date = new Date()): Promise<PreflightCheck | null> {
+export async function pointsCheck(admin: SupabaseClient, campaign: CampaignWordsRead, now: Date = new Date()): Promise<PreflightCheck | null> {
   if (!mentionsPoints(campaign)) return null;
   try {
     const offer = claimBonusOffer(await readPointsSettings(admin), now);
@@ -302,7 +573,10 @@ export async function readSendingStatus(setup: CampaignSenderSetup): Promise<Sen
 // ---------------------------------------------------------------------------
 
 export interface CampaignReadiness {
-  checks: PreflightCheck[];
+  /** Every check that holds a wave; the email's own (slice 11) carry their issues, block by block. */
+  checks: (PreflightCheck | ContentCheck)[];
+  /** The email's advice (*Recommended:*), listed only when there is some: it never holds a wave. */
+  advice: ContentCheck[];
   /** Every check passed. */
   ready: boolean;
   /** The send limit's room now; null when it could not be counted (its check then fails). */
@@ -310,10 +584,90 @@ export interface CampaignReadiness {
   sender: CampaignSender;
 }
 
-/** Every check, for the page's status panel. Changes nothing. */
+/**
+ * The email's own checks before a wave (PRD-campaign-email-editor slice 11):
+ * every block written, links that answer, images with alt text that are email
+ * copies, under Gmail's clip as sent, fallback words, no health claim, the
+ * products in the shop and points only while live, then the advice. Reads
+ * what they need first (the images and products a send reads, today's points
+ * rule, and what each link answers, kept ten minutes unless `fresh`), then
+ * runs the pure `campaignContentChecks` on the English and, for a campaign
+ * with one, on its 中文 version (slice 17) as a reader of Chinese gets it,
+ * with `chineseCheck` (every block of it translated and current) beside them.
+ * A campaign written before blocks keeps today's points rule alone.
+ * `aiDrafted` is the blocks still marked *Drafted with AI* (slice 09): the
+ * saved content's marks (`content.aiDrafted`) unless the caller passes the
+ * editor's. The 中文 version's are its own (`chineseAiDrafted`). Changes
+ * nothing.
+ */
+export async function campaignEmailChecks(
+  setup: CampaignSenderSetup,
+  campaign: CampaignEmailParts,
+  { fresh = false, aiDrafted }: { fresh?: boolean; aiDrafted?: readonly string[] } = {},
+): Promise<ContentCheck[]> {
+  const points = await pointsCheck(setup.admin, campaign);
+  const { content } = campaign;
+  if (!content) {
+    return points ? [{ ...points, advisory: false, issues: points.ok ? [] : [{ blockId: null, text: points.detail, what: points.detail }] }] : [];
+  }
+  const origin = originOf(setup);
+  const shown = await readCampaignRenderData(setup.admin, content);
+  const answers = setup.linkRequest ? await checkLinks(addressesToAsk(content, { origin, images: shown.images }), { request: setup.linkRequest, fresh }) : {};
+  const asSent = (locale: Locale): { html: string } | { error: string } => {
+    try {
+      const products = productsFor(shown, locale);
+      return { html: renderCampaignAsSent(campaign, { origin, unsubscribeSecret: setup.unsubscribeSecret, images: shown.images, products, locale }).html };
+    } catch (err) {
+      return { error: shown.problem ?? (err instanceof Error ? err.message : String(err)) };
+    }
+  };
+  const facts: EmailFacts = {
+    origin,
+    images: shown.images,
+    imageFailures: shown.imageFailures,
+    products: shown.products,
+    unlisted: shown.unlisted.map((u) => ({ productId: u.productId, problem: unlistedProductText(u) })),
+    productsError: shown.productsError,
+    // `pointsCheck` reads the 中文 words too: one rule for both versions.
+    points,
+    answers,
+  };
+  const english = campaignContentChecks(
+    { language: DEFAULT_LOCALE, subject: campaign.subject, preheader: campaign.preheader, greeting: campaign.greeting, content, rendered: asSent(DEFAULT_LOCALE) },
+    { ...facts, aiDrafted: aiDrafted ?? aiDraftedBlocks(content).map((b) => b.id) },
+  );
+  const version = chineseVersionOf(content);
+  const chinese = chineseCheck(campaign);
+  if (!version || !chinese) return english;
+  // The 中文 version (slice 17): the English layout with its 中文 words, checked as a reader of Chinese gets it,
+  // with its own *Drafted with AI* marks: the 中文 words Claude wrote that nobody has read since.
+  const zh = campaignContentChecks(
+    { language: CHINESE, subject: version.subject, preheader: version.preheader, greeting: campaign.greeting, content: chineseContent(content), rendered: asSent(CHINESE) },
+    { ...facts, products: productsFor(shown, CHINESE), aiDrafted: chineseAiDrafted(content) },
+  );
+  const joined = joinVersionChecks(english, zh);
+  // Its own row, every block translated and current, with the checks that hold the wave, before the advice.
+  const held = joined.filter((c) => !c.advisory);
+  return [...held, chinese, ...joined.filter((c) => c.advisory)];
+}
+
+/**
+ * Every check, for the page's status panel. Changes nothing. With a
+ * campaign its email's checks join them (slice 11), again before each wave:
+ * a link can die, or a product be un-listed, between waves days apart. Those
+ * that hold a wave are in `checks`; the advice is in `advice`. `freshLinks`
+ * asks every link again rather than reuse an answer from the last ten
+ * minutes, as the wave's own check does; `aiDrafted`, when passed, stands
+ * for the saved content's *Drafted with AI* marks (`campaignEmailChecks`).
+ */
 export async function campaignReadiness(
   setup: CampaignSenderSetup,
-  { campaign, resume = false }: { campaign?: Pick<Campaign, "id"> & CampaignContent; resume?: boolean } = {},
+  {
+    campaign,
+    resume = false,
+    freshLinks = false,
+    aiDrafted,
+  }: { campaign?: Pick<Campaign, "id"> & CampaignEmailParts; resume?: boolean; freshLinks?: boolean; aiDrafted?: readonly string[] } = {},
 ): Promise<CampaignReadiness> {
   const [checks, room] = await Promise.all([campaignDeliveryChecks(setup), tryAllowance(setup)]);
   try {
@@ -322,10 +676,9 @@ export async function campaignReadiness(
   } catch (err) {
     checks.push({ key: "pause", ok: false, detail: err instanceof Error ? err.message : String(err) });
   }
-  const points = campaign ? await pointsCheck(setup.admin, campaign) : null;
-  if (points) checks.push(points);
-  checks.push(allowanceCheck(room.allowance, room.error));
-  return { checks, ready: checks.every((c) => c.ok), allowance: room.allowance, sender: senderOf(setup) };
+  const email = campaign ? await campaignEmailChecks(setup, campaign, { fresh: freshLinks, aiDrafted }) : [];
+  const held: (PreflightCheck | ContentCheck)[] = [...checks, ...email.filter((c) => !c.advisory), allowanceCheck(room.allowance, room.error)];
+  return { checks: held, advice: email.filter((c) => c.advisory), ready: held.every((c) => c.ok), allowance: room.allowance, sender: senderOf(setup) };
 }
 
 export interface WavePlanResult {
@@ -349,7 +702,12 @@ export interface WavePlanResult {
  */
 export async function planWave(
   campaign: Campaign,
-  { size, retryFailed = false, resume = false }: { size: number; retryFailed?: boolean; resume?: boolean },
+  {
+    size,
+    retryFailed = false,
+    resume = false,
+    freshLinks = false,
+  }: { size: number; retryFailed?: boolean; resume?: boolean; freshLinks?: boolean },
   setup: CampaignSenderSetup,
   segmentIds?: () => AsyncIterable<string[]>,
 ): Promise<WavePlanResult> {
@@ -359,7 +717,7 @@ export async function planWave(
     throw new Error(`A wave is 1 to ${MAX_WAVE_SIZE} people.`);
   }
   const [readiness, waves, candidates] = await Promise.all([
-    campaignReadiness(setup, { campaign, resume }),
+    campaignReadiness(setup, { campaign, resume, freshLinks }),
     readWaveStats(setup.admin, campaign.id),
     readCampaignCandidates(setup.admin, campaign, segmentIds),
   ]);
@@ -454,6 +812,14 @@ export async function sendCampaignBatch(
     return result;
   }
   const ids = customerIds.slice(0, room.allowance.remaining);
+  // Once for the batch: each product as the shop sells it now, so a price
+  // changed in Costings reaches the next batch, and a product un-listed
+  // mid-wave stops it (slice 07); each image's email rendition (slice 05).
+  const shown = await readCampaignRenderData(setup.admin, campaign.content);
+  if (shown.problem) {
+    result.stopped = shown.problem;
+    return result;
+  }
 
   const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const transport = setup.transport!;
@@ -461,6 +827,8 @@ export async function sendCampaignBatch(
   const replyTo = emailAddressOf(setup.replyTo)!;
   const origin = originOf(setup);
   const key = campaignLedgerKey(campaign.id);
+  // Each balance is a read of its own: only for an email that says it.
+  const readsPoints = usesPointsBalance(campaign);
 
   for (const customerId of ids) {
     if (result.failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
@@ -482,19 +850,25 @@ export async function sendCampaignBatch(
     }
 
     const locale: Locale = isSupportedLocale(claim.locale) ? claim.locale : DEFAULT_LOCALE;
+    // Their language: the 中文 version for a reader of Chinese, when there is one (slice 17).
+    const language = campaignLanguage(campaign, locale);
     try {
       const unsubscribe = unsubscribeLinks(customerId, { origin, locale, secret: setup.unsubscribeSecret });
       if (!unsubscribe) throw new Error("no unsubscribe link could be signed");
       const claimUrl =
-        campaign.button?.target === "sign_in" && claim.unclaimedMigrated
+        campaignSignsIn(campaign) && claim.unclaimedMigrated
           ? (await mintClaimLink(setup.admin, { customerId, template: key, locale, origin })).url
           : null;
       const rendered = renderCampaignFor(campaign, {
         firstName: claim.firstName,
+        lastName: claim.lastName,
+        pointsBalance: readsPoints ? (await readPointsBalance(setup.admin, customerId)).available : null,
         origin,
         locale,
         claimUrl,
         unsubscribeUrl: unsubscribe.pageUrl,
+        images: shown.images,
+        products: productsFor(shown, language),
       });
       const sent = await transport.send({
         ...rendered,
@@ -529,20 +903,40 @@ export async function sendCampaignBatch(
 const TEST_PREFIX = "[Test] ";
 
 /**
+ * Pure — why a 中文 test can't go yet (slice 17), or null: there is no 中文
+ * version, or some of it has no words yet. Words out of date still go: a
+ * test is how Staff read them.
+ */
+export function chineseTestBlocker(campaign: Pick<Campaign, "subject" | "preheader" | "content">): string | null {
+  const version = chineseVersionOf(campaign.content);
+  if (!campaign.content || !version) return "This campaign has no 中文 version: translate it first.";
+  const unwritten = chineseVersionProblems(campaign.content, { subject: campaign.subject, preheader: campaign.preheader, used: [] }).filter((p) => /not translated yet/.test(p));
+  return unwritten.length ? `The 中文 version isn't finished: ${unwritten.join("; ")}.` : null;
+}
+
+/**
  * Sends the Campaign as it is now to up to {@link MAX_TEST_RECIPIENTS}
  * addresses, through the same transport and headers as a real send, with
  * "[Test]" before the subject. It writes nothing to the ledger, its
  * unsubscribe link belongs to no Customer, and its sign-in button goes to
- * the account page.
+ * the account page. Its Variables are filled from `recipient`: the action
+ * passes the sample customer for a block campaign (slice 13), so the test
+ * reads like the real thing. `locale` is the language Staff ask for (slice
+ * 17): `zh-CN` sends the 中文 version, as a reader of Chinese gets it, once
+ * every block of it has words.
  */
 export async function sendCampaignTest(
-  campaign: Pick<Campaign, "name" | "subject" | "preheader" | "body" | "greeting" | "button">,
-  { to, firstName }: { to: readonly string[]; firstName: string | null },
+  campaign: CampaignEmailParts,
+  { to, locale = DEFAULT_LOCALE, ...recipient }: { to: readonly string[]; locale?: Locale } & VariableRecipient,
   setup: CampaignSenderSetup,
 ): Promise<{ sent: string[]; failed: { to: string; error: string }[] } | { refused: string }> {
   const addresses = [...new Set(to.map((t) => emailAddressOf(t)).filter((t): t is string => Boolean(t)))];
   if (addresses.length === 0) return { refused: "Enter an email address to send the test to." };
   if (addresses.length > MAX_TEST_RECIPIENTS) return { refused: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
+  if (locale === CHINESE) {
+    const unwritten = chineseTestBlocker(campaign);
+    if (unwritten) return { refused: unwritten };
+  }
   const notReady = quickChecks(setup);
   if (notReady) return { refused: notReady };
   // Resend counts a test like any send.
@@ -561,12 +955,16 @@ export async function sendCampaignTest(
   const replyTo = emailAddressOf(setup.replyTo)!;
   const unsubscribe = unsubscribeLinks(PROBE_CUSTOMER_ID, { origin, secret: setup.unsubscribeSecret });
   if (!unsubscribe) return { refused: "UNSUBSCRIBE_SECRET is not set, so no unsubscribe link can be signed." };
+  const shown = await readCampaignRenderData(setup.admin, campaign.content);
+  if (shown.problem) return { refused: shown.problem };
   const rendered = renderCampaignFor(campaign, {
-    firstName,
+    ...recipient,
     origin,
-    locale: DEFAULT_LOCALE,
+    locale,
     claimUrl: null,
     unsubscribeUrl: unsubscribe.pageUrl,
+    images: shown.images,
+    products: productsFor(shown, campaignLanguage(campaign, locale)),
   });
 
   const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));

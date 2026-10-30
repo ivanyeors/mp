@@ -1,28 +1,45 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
 import { resolveSegment } from "@/lib/crm/segments";
 import {
   CampaignDraftSchema,
+  CampaignPreviewSchema,
+  EMPTY_CAMPAIGN_DRAFT,
   MAX_TEST_RECIPIENTS,
   type Campaign,
+  type CampaignDraft,
   type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
 import {
   BATCH_SIZE,
+  campaignLanguage,
   campaignReadiness,
   planWave,
+  productsFor,
+  readCampaignRenderData,
   renderCampaignPreview,
   sendCampaignBatch,
   sendCampaignTest,
+  usesPointsBalance,
   type BatchResult,
   type CampaignReadiness,
   type WavePlanResult,
 } from "@/lib/email-campaigns/sender";
+import { campaignImageFieldErrors, readCampaignImages } from "@/lib/email-campaigns/images";
+import { readCampaignProductCards, shopProductCard, type CampaignProductCard, type ShopProductRow } from "@/lib/email-campaigns/products";
+import { getProducts } from "@/lib/ecommerce/products";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
-import { archiveCampaign, createCampaign, getCampaign, lockCampaign, updateCampaign } from "@/lib/email-campaigns/store";
+import { archiveCampaign, createCampaign, getCampaign, listPastCampaigns, lockCampaign, updateCampaign, type PastCampaign } from "@/lib/email-campaigns/store";
+import { BLANK_PREVIEW, STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
+import { imageAssetsIn } from "@/lib/email-campaigns/content";
+import { NO_DETAILS, POINTS_NOT_LIVE, SAMPLE_RECIPIENT, type PreviewAs } from "@/lib/email-campaigns/variables";
+import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { readPointsSettings } from "@/lib/points/server";
+import { pointsLive } from "@/lib/points/settings";
 import { getWorkingAs } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -43,8 +60,8 @@ type Failure = { ok: false; error: string; fieldErrors?: Record<string, string> 
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-function parseDraft(input: CampaignDraftInput) {
-  const parsed = CampaignDraftSchema.safeParse(input);
+function parseDraft(input: CampaignDraftInput, schema = CampaignDraftSchema) {
+  const parsed = schema.safeParse(input);
   if (parsed.success) return { ok: true as const, draft: parsed.data };
   const fieldErrors: Record<string, string> = {};
   for (const issue of parsed.error.issues) {
@@ -59,14 +76,52 @@ async function loadCampaign(id: string): Promise<Campaign | null> {
   return getCampaign(supabaseAdmin(), id);
 }
 
-/** The audit's snapshot: what was sent and to whom, never a customer. */
-const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "button">) => ({
+/** Who a campaign written before blocks greets in a preview or a test: the Staff member working, by first name. */
+const staffFirstName = async (memberId: string) => (await getWorkingAs(memberId))?.name.split(/\s+/)[0] ?? null;
+
+/** The audit's snapshot: what was sent and to whom, never a customer. A block campaign's blocks by type. */
+const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "button" | "content">) => ({
   name: c.name,
   subject: c.subject,
   audience: c.audience,
   segment_id: c.segmentId,
   button: c.button?.target ?? null,
+  blocks: c.content ? c.content.blocks.map((b) => b.type) : null,
 });
+
+/**
+ * Every image the email places has its email rendition (slice 05), made now
+ * if it has none: an image that cannot have one is a field error, so a saved
+ * campaign always has the copies a send shows. Null when all is well.
+ */
+async function imageProblems(admin: ReturnType<typeof supabaseAdmin>, draft: CampaignDraft): Promise<Failure | null> {
+  const fieldErrors = campaignImageFieldErrors(draft.content, await readCampaignImages(admin, draft.content));
+  return Object.keys(fieldErrors).length ? { ok: false, error: "Check the highlighted fields.", fieldErrors } : null;
+}
+
+/** The Media Library's *Last used* for the images a save attaches; a failure there never fails the save. */
+async function touchImages(draft: CampaignDraft): Promise<void> {
+  const assetIds = draft.content ? imageAssetsIn(draft.content) : [];
+  if (!assetIds.length) return;
+  const { touchLastUsed } = await import("@/lib/media-assets");
+  await touchLastUsed({ assetIds }).catch(() => undefined);
+}
+
+/**
+ * *Points balance* goes into an email only while points are live
+ * (PRD-campaign-email-editor slice 13): the editor greys it, and Save refuses
+ * it typed in by hand. A campaign that already says it keeps it, and the
+ * points rule holds its waves until points are live again (`pointsCheck`).
+ */
+async function pointsBalanceRefusal(admin: SupabaseClient, draft: CampaignDraft, before: Campaign | null): Promise<Failure | null> {
+  if (!usesPointsBalance(draft) || (before && usesPointsBalance(before))) return null;
+  try {
+    if (pointsLive(await readPointsSettings(admin))) return null;
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+  return { ok: false, error: `${POINTS_NOT_LIVE}, so Points balance can't go in the email. Take it out to save.` };
+}
 
 /** Saves a new campaign (no id) or a draft's changes. A campaign that has started sending only takes a new name. */
 export async function saveCampaign(
@@ -81,13 +136,25 @@ export async function saveCampaign(
 
   try {
     if (!id) {
+      const refused = await pointsBalanceRefusal(admin, parsed.draft, null);
+      if (refused) return refused;
+      const unpictured = await imageProblems(admin, parsed.draft);
+      if (unpictured) return unpictured;
       const workingAs = await getWorkingAs(ctx.memberId);
       const newId = await createCampaign(admin, parsed.draft, workingAs?.id ?? null);
       await recordAdminAction({ actor, action: "email_campaign.create", entityType: "email_campaign", entityId: newId, after: auditSnapshot(parsed.draft) });
+      await touchImages(parsed.draft);
       return { ok: true, id: newId };
     }
     const before = await loadCampaign(id);
     if (!before || before.archivedAt) return NOT_FOUND;
+    const refused = await pointsBalanceRefusal(admin, parsed.draft, before);
+    if (refused) return refused;
+    // A started campaign takes only a new name: its images are as they were sent.
+    if (!before.lockedAt) {
+      const unpictured = await imageProblems(admin, parsed.draft);
+      if (unpictured) return unpictured;
+    }
     await updateCampaign(admin, id, parsed.draft, Boolean(before.lockedAt));
     await recordAdminAction({
       actor,
@@ -97,6 +164,7 @@ export async function saveCampaign(
       before: auditSnapshot(before),
       after: auditSnapshot(before.lockedAt ? { ...before, name: parsed.draft.name } : parsed.draft),
     });
+    if (!before.lockedAt) await touchImages(parsed.draft);
     return { ok: true, id };
   } catch (err) {
     return { ok: false, error: message(err) };
@@ -123,6 +191,38 @@ export async function duplicateCampaign(id: string): Promise<{ ok: true; id: str
   });
 }
 
+/**
+ * *A past campaign*, in the Start panel of an empty email
+ * (PRD-campaign-email-editor slice 08): every campaign, archived ones too,
+ * newest first, by name and subject. Picking one is Duplicate, which copies
+ * the email and who it goes to and nothing of its sends. Changes nothing.
+ */
+export async function listPastCampaignsAction(): Promise<{ ok: true; campaigns: PastCampaign[] } | Failure> {
+  await assertAdmin("campaigns");
+  try {
+    return { ok: true, campaigns: await listPastCampaigns(supabaseAdmin()) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/**
+ * The thumbnails of the Start panel and the palette's Starters tab (slice
+ * 08): each Starter, and a blank email (`BLANK_PREVIEW`), as the real
+ * renderer draws it on its placeholders for the sample customer, by id. The
+ * editor asks once, when the first thumbnail shows. Changes nothing.
+ */
+export async function previewStarters(): Promise<{ ok: true; previews: Record<string, string> } | Failure> {
+  await assertAdmin("campaigns");
+  const { origin } = campaignSenderSetup();
+  const drafts: [string, CampaignDraft][] = [[BLANK_PREVIEW, EMPTY_CAMPAIGN_DRAFT], ...STARTERS.map((s): [string, CampaignDraft] => [s.id, starterDraft(s)])];
+  try {
+    return { ok: true, previews: Object.fromEntries(drafts.map(([id, draft]) => [id, renderCampaignPreview(draft, { origin, ...SAMPLE_RECIPIENT }).html])) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
 export async function archiveCampaignAction(id: string): Promise<{ ok: true } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const campaign = await loadCampaign(id);
@@ -142,32 +242,132 @@ export async function archiveCampaignAction(id: string): Promise<{ ok: true } | 
   return { ok: true };
 }
 
-/** The editor's live preview of the draft as typed. Saves nothing. */
+/**
+ * The editor's live preview of the draft as typed. Saves nothing. An empty
+ * field shows its placeholder rather than an error (PRD-campaign-email-editor
+ * decision 7); Save still asks for every word. `forceDark` is the preview's
+ * Dark toggle (slice 04), and `from` the sending setup's From, read-only in
+ * the editor and named in its inbox row. Its products are the shop's now
+ * (slice 07), as a send reads them. `previewAs` is *Preview as* (slice 13): a
+ * block campaign's Variables as a sample customer's, or every fallback for a
+ * customer with no details. A campaign written before blocks greets the Staff
+ * member, as it did. `language` is the editor's Language (slice 17): `zh-CN`
+ * shows the 中文 email, as a reader of Chinese gets it.
+ */
 export async function previewCampaign(
   input: CampaignDraftInput,
-): Promise<{ ok: true; subject: string; html: string; text: string } | Failure> {
+  { forceDark = false, previewAs = "customer", language = DEFAULT_LOCALE }: { forceDark?: boolean; previewAs?: PreviewAs; language?: Locale } = {},
+): Promise<{ ok: true; subject: string; html: string; text: string; from: string | null } | Failure> {
   const ctx = await assertAdmin("campaigns");
-  const parsed = parseDraft(input);
+  const parsed = parseDraft(input, CampaignPreviewSchema);
   if (!parsed.ok) return parsed;
-  const workingAs = await getWorkingAs(ctx.memberId);
+  const setup = campaignSenderSetup();
+  const recipient = parsed.draft.content
+    ? previewAs === "no_details"
+      ? NO_DETAILS
+      : SAMPLE_RECIPIENT
+    : { firstName: await staffFirstName(ctx.memberId) };
+  // The images and products the test send shows: one missing is drawn as a hint.
+  const shown = await readCampaignRenderData(supabaseAdmin(), parsed.draft.content);
+  const locale = isSupportedLocale(language) ? language : DEFAULT_LOCALE;
   const rendered = renderCampaignPreview(parsed.draft, {
-    origin: campaignSenderSetup().origin,
-    firstName: workingAs?.name.split(/\s+/)[0] ?? null,
+    origin: setup.origin,
+    ...recipient,
+    forceDark: forceDark === true,
+    images: shown.images,
+    products: productsFor(shown, campaignLanguage(parsed.draft, locale)),
+    locale,
   });
-  return { ok: true, ...rendered };
+  return { ok: true, ...rendered, from: setup.campaignFrom?.trim() || null };
 }
 
-/** Every check a send must pass, for the page's status panel. Changes nothing. */
-export async function checkCampaignReadiness(id?: string): Promise<CampaignReadiness> {
+/** A chosen image's email rendition, as the editor's image card shows it. */
+export type PlacedCampaignImage = { assetId: string; url: string; width: number; height: number; hasAlpha: boolean };
+
+/**
+ * An image chosen in the editor (PRD-campaign-email-editor slice 05): its
+ * email rendition, made now if it has none, so the block places an image an
+ * inbox can show. The editor's card shows the rendition too. Changes no
+ * campaign: the block is saved, and audited, by Save.
+ */
+export async function placeCampaignImage(assetId: string): Promise<{ ok: true; image: PlacedCampaignImage } | Failure> {
+  await assertAdmin("campaigns");
+  if (typeof assetId !== "string" || !UUID.test(assetId)) return { ok: false, error: "That is not an image from the Media Library." };
+  const { ensureEmailRenditions } = await import("@/lib/media-assets/email-renditions");
+  try {
+    const { renditions, failed } = await ensureEmailRenditions(supabaseAdmin(), [assetId]);
+    const r = renditions.get(assetId);
+    if (!r) return { ok: false, error: failed.get(assetId) ?? "That image couldn't be made ready for email." };
+    return { ok: true, image: { assetId, url: r.url, width: r.width, height: r.height, hasAlpha: r.hasAlpha } };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/** The most products the picker lists for one search. */
+const PRODUCT_RESULTS = 24;
+
+/**
+ * The products block's picker (PRD-campaign-email-editor slice 07): Listed
+ * shop products matching `search`, through the shop's own query
+ * (`getProducts`' catalog, so nothing bought through the configurator), each
+ * as the email will show it. Changes nothing.
+ */
+export async function findCampaignProducts(search: string): Promise<{ ok: true; products: CampaignProductCard[] } | Failure> {
+  await assertAdmin("campaigns");
+  try {
+    const { products } = await getProducts({
+      status: "active",
+      search: typeof search === "string" && search.trim() ? search.trim().slice(0, 80) : undefined,
+      limit: PRODUCT_RESULTS,
+    });
+    return { ok: true, products: (products as ShopProductRow[]).map((p) => shopProductCard(p)).filter((p) => p.listed) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/** The products a campaign names, as its cards show them: still Listed or not, by name. Changes nothing. */
+export async function describeCampaignProducts(ids: string[]): Promise<{ ok: true; products: CampaignProductCard[] } | Failure> {
+  await assertAdmin("campaigns");
+  if (!Array.isArray(ids) || ids.length > 40 || !ids.every((id) => typeof id === "string" && UUID.test(id))) {
+    return { ok: false, error: "Those are not products from the shop." };
+  }
+  try {
+    return { ok: true, products: await readCampaignProductCards(supabaseAdmin(), ids) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/**
+ * Every check a send must pass, for the page's status panel, the saved
+ * email's own among them (PRD-campaign-email-editor slice 11): the editor
+ * asks after each save, and shows what they find beside each block.
+ * `fresh` is *Check again*: every link is asked again, not read from the last
+ * ten minutes' answers. The blocks still marked *Drafted with AI* (slice
+ * 09) are counted as advice: the saved content's marks, or `aiDrafted` when
+ * passed. Changes nothing.
+ */
+export async function checkCampaignReadiness(
+  id?: string,
+  { fresh = false, aiDrafted }: { fresh?: boolean; aiDrafted?: string[] } = {},
+): Promise<CampaignReadiness> {
   await assertAdmin("campaigns");
   const campaign = id && UUID.test(id) ? await loadCampaign(id) : null;
-  return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined });
+  const marked = Array.isArray(aiDrafted) ? aiDrafted.filter((b) => typeof b === "string").slice(0, 40) : undefined;
+  return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined, freshLinks: fresh === true, aiDrafted: marked });
 }
 
-/** Sends the saved campaign to up to three addresses, with "[Test]" in the subject. Writes nothing to the ledger. */
+/**
+ * Sends the saved campaign to up to three addresses, with "[Test]" in the
+ * subject. Writes nothing to the ledger. `language` is the one Staff chose
+ * (slice 17): `zh-CN` sends the 中文 version.
+ */
 export async function sendCampaignTestAction(
   id: string,
   to: string[],
+  { language = DEFAULT_LOCALE }: { language?: Locale } = {},
 ): Promise<{ ok: true; sent: number; failed: { to: string; error: string }[] } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const campaign = await loadCampaign(id);
@@ -175,12 +375,10 @@ export async function sendCampaignTestAction(
   if (!Array.isArray(to) || to.length > MAX_TEST_RECIPIENTS) {
     return { ok: false, error: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
   }
-  const workingAs = await getWorkingAs(ctx.memberId);
-  const result = await sendCampaignTest(
-    campaign,
-    { to: to.filter((t) => typeof t === "string"), firstName: workingAs?.name.split(/\s+/)[0] ?? null },
-    campaignSenderSetup(),
-  );
+  // A block campaign's test reads as the sample customer gets it (slice 13); one written before blocks greets the Staff member.
+  const recipient = campaign.content ? SAMPLE_RECIPIENT : { firstName: await staffFirstName(ctx.memberId) };
+  const locale = isSupportedLocale(language) ? language : DEFAULT_LOCALE;
+  const result = await sendCampaignTest(campaign, { to: to.filter((t) => typeof t === "string"), ...recipient, ...(locale === DEFAULT_LOCALE ? {} : { locale }) }, campaignSenderSetup());
   if ("refused" in result) return { ok: false, error: result.refused };
   await recordAdminAction({
     actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
@@ -188,7 +386,7 @@ export async function sendCampaignTestAction(
     action: CAMPAIGN_TEST_AUDIT_ACTION,
     entityType: "email_campaign",
     entityId: id,
-    after: { sent: result.sent.length, failed: result.failed.length },
+    after: { sent: result.sent.length, failed: result.failed.length, ...(locale === DEFAULT_LOCALE ? {} : { language: locale }) },
   });
   return { ok: true, sent: result.sent.length, failed: result.failed };
 }
@@ -203,6 +401,8 @@ export type WaveAnswer =
  * Who a wave of `size` would go to now, with every check. With `start`, and
  * when every check passes, it also fixes the campaign's content (the first
  * wave locks it) and returns the ids the browser then sends a batch at a time.
+ * The start asks every link again (slice 11), so one that died since the last
+ * check holds the wave.
  */
 export async function planCampaignWave(id: string, req: WaveRequest, start = false): Promise<WaveAnswer> {
   const ctx = await assertAdmin("campaigns");
@@ -213,7 +413,7 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
   try {
     result = await planWave(
       campaign,
-      { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume) },
+      { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume), freshLinks: start === true },
       setup,
       campaign.segmentId ? () => resolveSegment(campaign.segmentId!) : undefined,
     );

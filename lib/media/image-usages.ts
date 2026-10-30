@@ -1,6 +1,11 @@
 /**
  * Usage resolver (slice 10): where a Media Asset is attached.
  * Matches hosted_url and media_asset_id. Does not scan order_items.
+ *
+ * Email campaigns (PRD-campaign-email-editor slice 05) place images by Media
+ * Asset id in their `content`; any campaign counts, draft, sent or archived,
+ * and its use can never be deleted past (`usageBlocksDeletion`): a sent email
+ * shows the image for good.
  */
 
 import { getSlideMediaMap, SLIDE_PUBLIC_PATHS } from "@/lib/media/slide-media";
@@ -18,10 +23,20 @@ export type ImageUsageEntry = {
     | "partners_page"
     | "slide_media"
     | "item_overlay"
-    | "item_image";
+    | "item_image"
+    | "email_campaign";
   label: string;
   ref_id: string;
 };
+
+/**
+ * Pure — a use that no "Delete anyway" can override: an email campaign's.
+ * A campaign that has sent shows the image from its email rendition for good,
+ * and one that has not may yet.
+ */
+export function usageBlocksDeletion(entry: Pick<ImageUsageEntry, "type">): boolean {
+  return entry.type === "email_campaign";
+}
 
 export type AssetRef = { id: string; hosted_url: string | null };
 
@@ -80,6 +95,12 @@ export type UsageConsumerRows = {
     name: string;
     primary_media_asset_id: string | null;
   }>;
+  /** Email campaigns with blocks: their images by asset id (campaign email editor slice 05). */
+  emailCampaigns?: Array<{
+    id: string;
+    name: string;
+    content: unknown;
+  }>;
   /** Intentionally unused — order snapshots must never count as usage. */
   orderItems?: Array<{ id: string; image_url: string | null }>;
 };
@@ -131,6 +152,20 @@ export function jsonRefsAsset(value: unknown, asset: AssetRef): boolean {
     return Object.values(obj).some((v) => jsonRefsAsset(v, asset));
   }
   return false;
+}
+
+/**
+ * The Media Assets a campaign's blocks place: each block's `image.asset`
+ * (lib/email-campaigns/content.ts). Read from the row as stored, so a row
+ * that no longer parses still counts what it names.
+ */
+export function campaignImageAssetIds(content: unknown): string[] {
+  const blocks = content && typeof content === "object" ? (content as { blocks?: unknown }).blocks : null;
+  if (!Array.isArray(blocks)) return [];
+  return blocks.flatMap((b) => {
+    const asset = b && typeof b === "object" ? (b as { image?: { asset?: unknown } }).image?.asset : undefined;
+    return typeof asset === "string" && asset ? [asset] : [];
+  });
 }
 
 function entryKey(e: ImageUsageEntry): string {
@@ -308,6 +343,12 @@ export function resolveUsages(
         label: slide.consumer ? `Slide (${slide.consumer})` : "Slide media",
         ref_id: slide.publicPath,
       });
+    }
+  }
+
+  for (const c of rows.emailCampaigns ?? []) {
+    if (asset.id && campaignImageAssetIds(c.content).includes(asset.id)) {
+      usages.push({ type: "email_campaign", label: c.name, ref_id: c.id });
     }
   }
 
@@ -692,6 +733,12 @@ export function indexUsages(
     }));
   }
 
+  for (const c of rows.emailCampaigns ?? []) {
+    const keys = new Set<AssetKey>();
+    for (const id of campaignImageAssetIds(c.content)) addExactId(index, id, keys);
+    emit(keys, () => ({ type: "email_campaign", label: c.name, ref_id: c.id }));
+  }
+
   const byUrl: Record<string, ImageUsageEntry[]> = {};
   const byAssetId: Record<string, ImageUsageEntry[]> = {};
   const degenerateSet = degenerate.length > 0 ? new Set(degenerate) : null;
@@ -720,7 +767,8 @@ export type ConsumerTable =
   | "partners"
   | "partners_page"
   | "item_overlay_mappings"
-  | "items";
+  | "items"
+  | "email_campaigns";
 
 /**
  * Exactly the columns the matchers read: row ids/labels, the URL and asset-id
@@ -743,6 +791,8 @@ const CONSUMER_SELECT: Record<ConsumerTable, string> = {
   partners_page: "id, content",
   item_overlay_mappings: "item_id, media_asset_id, items ( name )",
   items: "id, name, primary_media_asset_id",
+  // name: label; content: the blocks' images by asset id.
+  email_campaigns: "id, name, content",
 };
 
 export type UsagePredicateTerm = { column: string; op: "eq" | "ilike"; value: string };
@@ -834,6 +884,9 @@ export function usagePredicateTerms(
       return byId ? [equals("media_asset_id", id)] : null;
     case "items":
       return byId ? [equals("primary_media_asset_id", id)] : null;
+    case "email_campaigns":
+      // A campaign names its images by id only, so a URL alone cannot match one.
+      return byId ? [contains("content::text", id)] : null;
   }
 }
 
@@ -918,6 +971,7 @@ async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageCo
     partnersPages,
     itemOverlays,
     items,
+    emailCampaigns,
   ] = await Promise.all([
     scanConsumer("blog_posts", asset, (t) =>
       applyTerms(admin.from("blog_posts").select(CONSUMER_SELECT.blog_posts), t),
@@ -961,6 +1015,10 @@ async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageCo
         t,
       ),
     ),
+    // Every campaign with blocks, archived ones too: a sent email keeps its images.
+    scanConsumer("email_campaigns", asset, (t) =>
+      applyTerms(admin.from("email_campaigns").select(CONSUMER_SELECT.email_campaigns).not("content", "is", null), t),
+    ),
   ]);
 
   return {
@@ -981,6 +1039,7 @@ async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageCo
       };
     }),
     items: items as UsageConsumerRows["items"],
+    emailCampaigns: emailCampaigns as UsageConsumerRows["emailCampaigns"],
   };
 }
 
