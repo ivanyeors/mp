@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -21,17 +21,31 @@ const CATEGORY_TITLES: Record<string, string> = {
   bolster_protector: "Bolster protectors",
 };
 
-function priceLabel(family: ShopListingFamily): string {
-  if (family.msrpMin == null) return "No MSRP";
+function priceLabel(family: ShopListingFamily): string | null {
+  if (family.msrpMin == null) return null;
   if (family.msrpMax == null || family.msrpMin === family.msrpMax) {
     return formatCurrency(family.msrpMin);
   }
   return `${formatCurrency(family.msrpMin)} to ${formatCurrency(family.msrpMax)}`;
 }
 
+/** "5 sizes, $38.00 to $54.00", or "Size L, $26.00" for a family of one. */
+function detailLabel(family: ShopListingFamily): string {
+  const n = family.sizes.length;
+  const sizes = n === 1 ? `Size ${family.sizes[0]}` : n > 1 ? `${n} sizes` : null;
+  const detail = [sizes, priceLabel(family)].filter(Boolean).join(", ");
+  if (family.priced) return detail;
+  const ask =
+    n > 1
+      ? "Set an MSRP for every size in Costings to sell this."
+      : "Set an MSRP in Costings to sell this.";
+  return detail ? `${detail}. ${ask}` : ask;
+}
+
 /**
- * Inventory that can be sold on its own, one row per storefront product. Sizes
- * are variants of one listing, so "Cervical Neck Support" is a single row with
+ * The place an operator chooses what is in the shop: every cover, case,
+ * protector and accessory in Inventory, one row per storefront product. Sizes
+ * are variants of one product, so "Cervical Neck Support" is a single row with
  * a single switch — not four.
  */
 export function ShopListingToggles() {
@@ -110,11 +124,13 @@ export function ShopListingToggles() {
     <div className="rounded-xl border">
       <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h3 className="text-sm font-medium">Sell from inventory</h3>
+          <h2 className="text-sm font-medium">What&apos;s in the shop</h2>
           <p className="text-xs text-muted-foreground">
-            {loading
-              ? "Loading inventory…"
-              : `${listedCount} of ${families.length} in the shop. Prices come from Costings.`}
+            Switch on what shoppers can buy on its own. Each one is sold in every size it has in
+            Inventory, at its MSRP from Costings.
+          </p>
+          <p className="mt-1 text-xs font-medium">
+            {loading ? "Loading inventory…" : `${listedCount} of ${families.length} in the shop`}
           </p>
         </div>
         <Input
@@ -138,8 +154,11 @@ export function ShopListingToggles() {
       ) : (
         [...byCategory.entries()].map(([category, rows]) => (
           <div key={category}>
-            <div className="bg-muted/50 px-4 py-1.5 text-xs font-medium text-muted-foreground">
-              {CATEGORY_TITLES[category] ?? category}
+            <div className="flex items-center justify-between gap-3 bg-muted/50 px-4 py-1.5 text-xs font-medium text-muted-foreground">
+              <span>{CATEGORY_TITLES[category] ?? category}</span>
+              <span className="font-normal">
+                {rows.filter((f) => f.listed).length} of {rows.length} in the shop
+              </span>
             </div>
             <ul className="divide-y">
               {rows.map((family) => (
@@ -153,18 +172,14 @@ export function ShopListingToggles() {
                       {family.slug && (
                         <Link
                           href={to(`/settings/products/${family.productId}`)}
-                          className="text-muted-foreground hover:text-foreground"
-                          aria-label={`Edit ${family.title}`}
+                          className="-m-2 rounded-md p-2 text-muted-foreground hover:text-foreground active:bg-press"
+                          aria-label={`Edit ${family.title}: photos and description`}
                         >
-                          <ExternalLink className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Link>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {family.sizes.length > 0 && `${family.sizes.length} sizes, `}
-                      {priceLabel(family)}
-                      {!family.priced && ". Set an MSRP in Costings to sell this."}
-                    </div>
+                    <div className="text-xs text-muted-foreground">{detailLabel(family)}</div>
                   </div>
                   <Switch
                     checked={family.listed}
