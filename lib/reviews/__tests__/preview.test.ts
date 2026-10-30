@@ -30,6 +30,7 @@ describe("buildReviewCardPreview", () => {
       "how a card looks after a review manager taps Post",
       "a new 4★ review read through the Places API, answered on Google Maps by hand",
       "a new shop review",
+      "an approved shop review with our reply under it",
     ]);
     for (const { card } of cards) {
       expect(lines(card.text)[0]).toMatch(/^🧪 PREVIEW — .*Sample review, not real\./);
@@ -93,7 +94,7 @@ describe("buildReviewCardPreview", () => {
     expect(cards[0].card.text).toContain("The reply is sample text standing in for Claude's draft.");
   });
 
-  it("routes a reply to a Google preview card, marked so the handler explains instead of saving", async () => {
+  it("routes a reply to a Google or shop preview card, marked so the handler explains instead of saving", async () => {
     const { cards } = await buildReviewCardPreview({ now: NOW, draft: null });
     const reply = (text: string) => ({
       message: {
@@ -106,7 +107,17 @@ describe("buildReviewCardPreview", () => {
     });
     expect(cards[0].card.text.startsWith(PREVIEW_CARD_PREFIX)).toBe(true);
     expect(isReviewUpdate(reply(cards[0].card.text))).toBe(true);
-    expect(isReviewUpdate(reply(cards.at(-1)!.card.text))).toBe(false);
+    expect(cards.at(-1)!.card.text.startsWith(PREVIEW_CARD_PREFIX)).toBe(true);
+    expect(isReviewUpdate(reply(cards.at(-1)!.card.text))).toBe(true);
+    expect(isReviewUpdate(reply("Some other message in the group"))).toBe(false);
+  });
+
+  it("shows a shop review with our reply under it, and Remove reply", async () => {
+    const { cards } = await buildReviewCardPreview({ now: NOW, draft: null });
+    const replied = cards.at(-1)!.card;
+    expect(replied.text).toContain("✅ Approved — shown on the product page.");
+    expect(replied.text).toContain("💬 Our reply on the product page, by Ivan");
+    expect(replied.replyMarkup?.inline_keyboard.flat().map((b) => b.text)).toEqual(["🗑 Remove reply"]);
   });
 });
 
@@ -116,7 +127,7 @@ describe("sendReviewCardPreview", () => {
     const send = vi.fn(async () => ({ ok: true as const, chatId: -1, messageId: (id += 1) }));
     const result = await sendReviewCardPreview({ now: NOW, draft: null, send });
 
-    expect(result).toEqual({ ok: true, sent: 9, total: 9, usedClaude: false });
+    expect(result).toEqual({ ok: true, sent: 10, total: 10, usedClaude: false });
     expect(send.mock.calls[0]).toEqual([PREVIEW_INTRO, undefined]);
     expect(String((send.mock.calls[1] as unknown[])[0])).toMatch(/^🧪 PREVIEW — a new 5★ review/);
     // Last, a customer message card a reply can be tried on.
@@ -134,7 +145,7 @@ describe("sendReviewCardPreview", () => {
     expect(result).toEqual({
       ok: false,
       sent: 1,
-      total: 9,
+      total: 10,
       usedClaude: false,
       error: "Forbidden: bot was kicked from the supergroup chat",
     });

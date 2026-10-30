@@ -1,6 +1,6 @@
 import type { InlineKeyboardButton, InlineKeyboardMarkup } from "@/lib/telegram/bot-api";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
-import { replyWarnings } from "@/lib/reviews/reply-rules";
+import { MAX_REPLY_CHARS, replyWarnings } from "@/lib/reviews/reply-rules";
 import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
 
 /**
@@ -10,8 +10,9 @@ import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
  * buttons for an action that no longer applies.
  *
  * The first line names the source in capitals so nobody mistakes a public
- * Google review (we reply on Google Maps) for a website review (no reply;
- * approve or reject only). Plain text — no parse_mode, nothing to escape.
+ * Google review (we reply on Google Maps) for a website review (approve or
+ * reject, and our reply shows under it on the product page). Plain text — no
+ * parse_mode, nothing to escape.
  *
  * A Google review read through the Places API (`source` places) cannot be
  * answered from here — that API is read-only — so its card links to the review
@@ -36,7 +37,8 @@ const TEAM_NOTE_LINE = `Start a reply with ${TEAM_NOTE_PREFIX} for a team-only n
 // Callback data: rv:<source>:<action>:<id>[:<draft version>] — at most 52 bytes,
 // inside Telegram's 64. Post (and Mark replied) carries the draft version the
 // tapper was looking at, so a draft edited a moment earlier is never published
-// — or recorded as published — unseen.
+// — or recorded as published — unseen. A shop card's Remove reply is
+// `rv:s:unreply:<id>`: it takes down whatever reply the review has.
 // ---------------------------------------------------------------------------
 
 export const REVIEW_CALLBACK_PREFIX = "rv:";
@@ -55,7 +57,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type ReviewCallback =
   | { source: "google"; action: "post" | "done"; id: string; version: number }
   | { source: "google"; action: "skip"; id: string }
-  | { source: "shop"; action: "approve" | "reject"; id: string };
+  | { source: "shop"; action: "approve" | "reject" | "unreply"; id: string };
 
 export function encodeReviewCallback(cb: ReviewCallback): string {
   if (cb.source === "google") {
@@ -74,7 +76,7 @@ export function parseReviewCallback(data: string): ReviewCallback | null {
     }
     if (action === "skip" && parts.length === 4) return { source: "google", action, id };
   }
-  if (source === "s" && (action === "approve" || action === "reject") && parts.length === 4) {
+  if (source === "s" && (action === "approve" || action === "reject" || action === "unreply") && parts.length === 4) {
     return { source: "shop", action, id };
   }
   return null;
@@ -334,8 +336,23 @@ export type ShopReviewForCard = {
   status: "pending" | "approved" | "rejected";
   created_at: string | null;
   productName: string | null;
+  /** Our public reply (null: none), and who set it when. */
+  store_reply: string | null;
+  store_reply_at: string | null;
+  store_reply_by_name: string | null;
 };
 
+const SHOP_REPLY_HOW = "💬 To answer it publicly, reply to this message with our reply.";
+
+/**
+ * A shop review's card. Pending: Approve / Reject. Pending or approved: a reply
+ * to the card sets our public reply (shown under the review while it is
+ * approved), and once there is one, Remove reply takes it down. Rejected: no
+ * buttons, and nothing to answer.
+ *
+ * `actedBy` names who just approved or rejected it; nothing stores that, so a
+ * later redraw (after a reply) says only "Approved".
+ */
 export function renderShopReviewCard(review: ShopReviewForCard, actedBy?: string | null): Card {
   const lines: string[] = [SHOP_CARD_HEADER, `${starLine(review.rating)} · ${review.author_name}`];
   if (review.productName) lines.push(`Product: ${review.productName}`);
@@ -346,24 +363,58 @@ export function renderShopReviewCard(review: ShopReviewForCard, actedBy?: string
   lines.push(quoted(review.body, "(Rating only — no written review)"), "");
 
   const by = actedBy ? ` by ${actedBy}` : "";
-  if (review.status === "approved") {
-    lines.push(`✅ Approved${by} — shown on the product page.`);
-    return { text: lines.join("\n") };
-  }
+  const reply = review.store_reply?.trim() ? clip(review.store_reply.trim(), MAX_REPLY_CHARS) : null;
+  const repliedAt = formatCardDate(review.store_reply_at);
+  const repliedBy = `${review.store_reply_by_name ? `, by ${review.store_reply_by_name}` : ""}${repliedAt ? ` · ${repliedAt}` : ""}`;
+
   if (review.status === "rejected") {
     lines.push(`🚫 Rejected${by} — hidden from the shop.`);
+    if (reply) lines.push("", `💬 Our reply${repliedBy}, hidden with the review:`, reply);
     return { text: lines.join("\n") };
   }
-  lines.push("👉 Approve to show it on the product page, or reject to keep it hidden. Shop reviews get no public reply.");
-  return {
-    text: lines.join("\n"),
-    replyMarkup: {
-      inline_keyboard: [
-        [
-          { text: "✅ Approve", callback_data: encodeReviewCallback({ source: "shop", action: "approve", id: review.id }) },
-          { text: "🚫 Reject", callback_data: encodeReviewCallback({ source: "shop", action: "reject", id: review.id }) },
-        ],
-      ],
-    },
+
+  const removeReply: InlineKeyboardButton = {
+    text: "🗑 Remove reply",
+    callback_data: encodeReviewCallback({ source: "shop", action: "unreply", id: review.id }),
   };
+
+  if (review.status === "approved") {
+    lines.push(`✅ Approved${by} — shown on the product page.`);
+    if (!reply) {
+      lines.push(`${SHOP_REPLY_HOW} It shows under the review on the product page.`, TEAM_NOTE_LINE);
+      return { text: lines.join("\n") };
+    }
+    lines.push(
+      "",
+      `💬 Our reply on the product page${repliedBy}:`,
+      reply,
+      "",
+      "👉 Reply to this message to change our reply.",
+      TEAM_NOTE_LINE,
+    );
+    return { text: lines.join("\n"), replyMarkup: { inline_keyboard: [[removeReply]] } };
+  }
+
+  if (reply) {
+    lines.push(
+      `💬 Our reply${repliedBy}. It shows under the review once the review is approved:`,
+      reply,
+      "",
+      "👉 Approve to show it on the product page, or reject to keep it hidden. Reply to this message to change our reply.",
+    );
+  } else {
+    lines.push(
+      "👉 Approve to show it on the product page, or reject to keep it hidden.",
+      `${SHOP_REPLY_HOW} It shows under the review once the review is approved.`,
+    );
+  }
+  lines.push(TEAM_NOTE_LINE);
+  const keyboard: InlineKeyboardButton[][] = [
+    [
+      { text: "✅ Approve", callback_data: encodeReviewCallback({ source: "shop", action: "approve", id: review.id }) },
+      { text: "🚫 Reject", callback_data: encodeReviewCallback({ source: "shop", action: "reject", id: review.id }) },
+    ],
+  ];
+  if (reply) keyboard.push([removeReply]);
+  return { text: lines.join("\n"), replyMarkup: { inline_keyboard: keyboard } };
 }

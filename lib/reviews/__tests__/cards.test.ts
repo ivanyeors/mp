@@ -59,6 +59,7 @@ describe("review callback data", () => {
     { source: "google", action: "skip", id: ID },
     { source: "shop", action: "approve", id: ID },
     { source: "shop", action: "reject", id: ID },
+    { source: "shop", action: "unreply", id: ID },
   ];
 
   it.each(cases)("round-trips %o inside Telegram's 64 bytes", (cb) => {
@@ -68,7 +69,7 @@ describe("review callback data", () => {
   });
 
   it("rejects anything else, including the inventory bot's callbacks", () => {
-    for (const data of ["pill:XS", "rv:g:post:not-a-uuid:1", `rv:g:post:${ID}`, `rv:g:delete:${ID}`, `rv:s:approve:${ID}:1`, ""]) {
+    for (const data of ["pill:XS", "rv:g:post:not-a-uuid:1", `rv:g:post:${ID}`, `rv:g:delete:${ID}`, `rv:s:approve:${ID}:1`, `rv:g:unreply:${ID}`, ""]) {
       expect(parseReviewCallback(data)).toBeNull();
     }
   });
@@ -301,23 +302,76 @@ describe("shop review card", () => {
     status: "pending" as const,
     created_at: "2026-10-01T02:00:00Z",
     productName: "Mpillow Basic",
+    store_reply: null,
+    store_reply_at: null,
+    store_reply_by_name: null,
   };
+  const replied = {
+    store_reply: "Thank you, Ada! Glad your neck feels better.",
+    store_reply_at: "2026-10-02T03:30:00Z",
+    store_reply_by_name: "Sam",
+  };
+  const callbacks = (card: ReturnType<typeof renderShopReviewCard>) =>
+    buttons(card).map((b) => parseReviewCallback(b.callback_data ?? ""));
 
-  it("is clearly a website review with approve/reject only", () => {
+  it("is clearly a website review: approve/reject, and how to reply", () => {
     const card = renderShopReviewCard(shop);
     expect(card.text.split("\n")[0]).toBe(SHOP_CARD_HEADER);
     expect(card.text).toContain("Product: Mpillow Basic");
-    expect(card.text).toContain("no public reply");
-    expect(buttons(card).map((b) => parseReviewCallback(b.callback_data ?? ""))).toEqual([
+    expect(card.text).toContain("reply to this message with our reply. It shows under the review once the review is approved.");
+    expect(card.text).toContain("Start a reply with // for a team-only note.");
+    expect(callbacks(card)).toEqual([
       { source: "shop", action: "approve", id: ID },
       { source: "shop", action: "reject", id: ID },
     ]);
   });
 
-  it("records who decided", () => {
+  it("records who decided, and an approved card without a reply still says how to answer", () => {
     const card = renderShopReviewCard({ ...shop, status: "approved" }, "Ivan");
     expect(card.replyMarkup).toBeUndefined();
     expect(card.text).toContain("✅ Approved by Ivan");
+    expect(card.text).toContain("It shows under the review on the product page.");
+  });
+
+  it("shows our reply on a pending review, with Remove reply beside Approve / Reject", () => {
+    const card = renderShopReviewCard({ ...shop, ...replied });
+    expect(card.text).toContain("💬 Our reply, by Sam · 2 Oct 2026, 11:30 am. It shows under the review once the review is approved:");
+    expect(card.text).toContain("Thank you, Ada! Glad your neck feels better.");
+    expect(card.text).toContain("Reply to this message to change our reply.");
+    expect(callbacks(card)).toEqual([
+      { source: "shop", action: "approve", id: ID },
+      { source: "shop", action: "reject", id: ID },
+      { source: "shop", action: "unreply", id: ID },
+    ]);
+  });
+
+  it("shows our reply live on an approved review, with only Remove reply", () => {
+    const card = renderShopReviewCard({ ...shop, ...replied, status: "approved" });
+    expect(card.text).toContain("✅ Approved — shown on the product page.");
+    expect(card.text).toContain("💬 Our reply on the product page, by Sam · 2 Oct 2026, 11:30 am:");
+    expect(buttons(card).map((b) => b.text)).toEqual(["🗑 Remove reply"]);
+  });
+
+  it("offers nothing on a rejected review, and says a reply is hidden with it", () => {
+    expect(renderShopReviewCard({ ...shop, status: "rejected" }, "Ivan")).toEqual({
+      text: expect.stringContaining("🚫 Rejected by Ivan — hidden from the shop."),
+    });
+    const card = renderShopReviewCard({ ...shop, ...replied, status: "rejected" });
+    expect(card.replyMarkup).toBeUndefined();
+    expect(card.text).toContain("💬 Our reply, by Sam · 2 Oct 2026, 11:30 am, hidden with the review:");
+  });
+
+  it("fits Telegram's limit at every field's maximum", () => {
+    const card = renderShopReviewCard({
+      ...shop,
+      author_name: "A".repeat(200),
+      title: "T".repeat(300),
+      body: "B".repeat(5000),
+      store_reply: "R".repeat(1500),
+      store_reply_at: replied.store_reply_at,
+      store_reply_by_name: "N".repeat(100),
+    });
+    expect(card.text.length).toBeLessThanOrEqual(4096);
   });
 });
 

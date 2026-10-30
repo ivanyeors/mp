@@ -13,6 +13,7 @@ describe("Telegram actions", () => {
     expect(TELEGRAM_ACTIONS).toEqual([
       "telegram.google-review-reply",
       "telegram.shop-review-moderate",
+      "telegram.shop-review-reply",
       "telegram.social-inbox-reply",
     ]);
     expect(isTelegramAction("telegram.shop-review-moderate")).toBe(true);
