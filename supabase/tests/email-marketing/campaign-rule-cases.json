@@ -1,5 +1,5 @@
 {
-  "about": "Who may receive an email campaign Staff wrote (PRD-email-marketing). composedCampaignBlocker (lib/email-campaigns/rules.ts) and marketing_campaign_blocker() (20261021100000) must give each case's `expected`. `suppressedBy` adds a migration send of theirs with that status; `own` is this campaign's send to them.",
+  "about": "Who may receive an email campaign Staff wrote (PRD-email-marketing). composedCampaignBlocker (lib/email-campaigns/rules.ts) and marketing_campaign_blocker() (20261021100000) must give each case's `expected`. `suppressedBy` adds a migration send of theirs with that status; `own` is this campaign's send to them. `recent` (PRD-campaign-audiences slice 07) is their other email, each `daysAgo`: `kind` campaign (another campaign's send, `status` default sent), points_expiry (a sent points-expiry reminder) or transactional (an order email, which never counts). Suppressing rows are dated 60 days ago, outside the rest period.",
   "cases": [
     { "name": "imported: unclaimed, subscribed", "audience": "imported_not_signed_in", "customer": { "migrated": true, "claimed": false, "marketing_email": "subscribed" }, "expected": null },
     { "name": "imported: not a Migrated customer", "audience": "imported_not_signed_in", "customer": { "migrated": false, "marketing_email": "subscribed" }, "expected": "not_migrated" },
@@ -22,6 +22,22 @@
     { "name": "subscribed: retrying a failure after unsubscribing", "audience": "subscribed", "retryFailed": true, "customer": { "migrated": false, "marketing_email": "unsubscribed", "own": "failed" }, "expected": "unsubscribed" },
     { "name": "segment: subscribed", "audience": "segment", "customer": { "migrated": false, "marketing_email": "subscribed" }, "expected": null },
     { "name": "segment: an unclaimed Migrated customer", "audience": "segment", "customer": { "migrated": true, "claimed": false, "marketing_email": "subscribed" }, "expected": null },
-    { "name": "segment: never agreed", "audience": "segment", "customer": { "migrated": true, "marketing_email": "not_subscribed" }, "expected": "not_subscribed" }
+    { "name": "segment: never agreed", "audience": "segment", "customer": { "migrated": true, "marketing_email": "not_subscribed" }, "expected": "not_subscribed" },
+    { "name": "rest: another campaign 2 days ago", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 2 }] }, "expected": "resting" },
+    { "name": "rest: another campaign 6.5 days ago", "audience": "segment", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 6.5 }] }, "expected": "resting" },
+    { "name": "rest: another campaign 7.5 days ago", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 7.5 }] }, "expected": null },
+    { "name": "rest: 4 in 30 days, the latest 8 days ago", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 8 }, { "daysAgo": 12 }, { "daysAgo": 20 }, { "daysAgo": 29 }] }, "expected": "resting" },
+    { "name": "rest: 3 in 30 days, the latest 8 days ago", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 8 }, { "daysAgo": 12 }, { "daysAgo": 20 }] }, "expected": null },
+    { "name": "rest: 4, but the oldest 31 days ago", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 8 }, { "daysAgo": 12 }, { "daysAgo": 20 }, { "daysAgo": 31 }] }, "expected": null },
+    { "name": "rest: a points-expiry reminder 3 days ago counts", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 3, "kind": "points_expiry" }] }, "expected": "resting" },
+    { "name": "rest: 3 campaigns and a points-expiry reminder make 4 in 30 days", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 9 }, { "daysAgo": 15, "kind": "points_expiry" }, { "daysAgo": 22 }, { "daysAgo": 28 }] }, "expected": "resting" },
+    { "name": "rest: an order email 1 day ago never counts", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 1, "kind": "transactional" }] }, "expected": null },
+    { "name": "rest: a failed send 1 day ago reached nobody", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 1, "status": "failed" }] }, "expected": null },
+    { "name": "rest: a send in flight counts", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "recent": [{ "daysAgo": 0.5, "status": "pending" }] }, "expected": "resting" },
+    { "name": "rest: unsubscribed reads unsubscribed first", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "unsubscribed", "recent": [{ "daysAgo": 1 }] }, "expected": "unsubscribed" },
+    { "name": "rest: never agreed reads not subscribed first", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "not_subscribed", "recent": [{ "daysAgo": 1 }] }, "expected": "not_subscribed" },
+    { "name": "rest: already sent this campaign reads already sent first", "audience": "subscribed", "customer": { "migrated": false, "marketing_email": "subscribed", "own": "sent", "recent": [{ "daysAgo": 1 }] }, "expected": "already_sent" },
+    { "name": "rest: retrying this campaign's failure while resting", "audience": "subscribed", "retryFailed": true, "customer": { "migrated": false, "marketing_email": "subscribed", "own": "failed", "recent": [{ "daysAgo": 2 }] }, "expected": "resting" },
+    { "name": "rest: imported audience, unclaimed, resting", "audience": "imported_not_signed_in", "customer": { "migrated": true, "marketing_email": "subscribed", "claimed": false, "recent": [{ "daysAgo": 2 }] }, "expected": "resting" }
   ]
 }

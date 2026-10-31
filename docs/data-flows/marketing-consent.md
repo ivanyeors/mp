@@ -57,8 +57,10 @@ ticking it is their own `account` choice (slice 02, still to do).
 ## Who receives a campaign
 
 Consent is necessary, not sufficient. `marketing_campaign_blocker()` decides
-each send (ADR 0038): consent, suppression (a bounce or a spam report), and,
-as slices land, the **Rest period** and the sunset rule. An **Audience** or a
+each send (ADR 0038): consent, suppression (a bounce or a spam report), the
+**Rest period** (7 days between marketing emails, at most 4 in 30, points-expiry
+reminders included; `20261031130000`), and, once slice 12 lands, the sunset
+rule. An **Audience** or a
 **Segment** only narrows; neither ever reaches someone the claim refuses.
 
 ## Tests

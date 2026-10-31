@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { InfoTip } from "@/components/ui/info-tip";
 import type { PreflightCheck } from "@/lib/customer-migration/wave-sender";
 import { sendingRows } from "@/lib/email-campaigns/send-flow";
+import { REST_PERIOD_TEXT } from "@/lib/email-campaigns/rules";
 import type { SendingStatus } from "@/lib/email-campaigns/sender";
 import { checkCampaignReadiness } from "./actions";
 import { AllowanceMeters, CheckList, StatusIcon } from "./send-parts";
@@ -88,6 +89,11 @@ export function SendingStatusCard({ status, origin }: { status: SendingStatus | 
                                 The send limit could not be counted{status.allowanceError ? `: ${status.allowanceError}` : ""}.
                             </p>
                         )}
+                        {/* PRD-campaign-audiences slice 07: the rest period, in words. */}
+                        <p className="text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground">Rest period. </span>
+                            {REST_PERIOD_TEXT} Someone resting is skipped, not failed, and a later wave reaches them.
+                        </p>
                         {full ? (
                             <div className="space-y-2 rounded-lg border p-3" role="status">
                                 <p className="text-sm font-medium">

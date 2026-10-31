@@ -8,7 +8,8 @@
  * nobody whose campaign email bounced or drew a complaint, and nobody twice.
  *
  * `composedCampaignBlocker` is the rule the plan uses.
- * `marketing_campaign_blocker()` (20261021100000) is the same rule in SQL,
+ * `marketing_campaign_blocker()` (20261021100000, with the rest period since
+ * 20261031130000) is the same rule in SQL,
  * which `claim_marketing_campaign_send()` re-runs at the moment of each send,
  * so the SQL decides. supabase/tests/email-marketing/campaign-rule-cases.json
  * holds the two equal.
@@ -56,6 +57,19 @@ export const MAX_WAVE_SIZE = 1000;
 export const MAX_TEST_RECIPIENTS = 3;
 /** Segments one campaign may leave out of its audience (PRD-campaign-audiences slice 06). */
 export const MAX_EXCLUDED_SEGMENTS = 3;
+
+/**
+ * The **Rest period** (PRD-campaign-audiences slice 07; owner decision 2):
+ * nobody gets a marketing email within `REST_DAYS` of their last one, or once
+ * they have had `REST_MAX_PER_30_DAYS` in 30 days. `marketing_rest_until()`
+ * (20261031130000) uses the same numbers.
+ */
+export const REST_DAYS = 7;
+export const REST_MAX_PER_30_DAYS = 4;
+export const REST_WINDOW_DAYS = 30;
+
+/** The rest period in words, for the Sending card and the plan. */
+export const REST_PERIOD_TEXT = `Nobody gets a marketing email within ${REST_DAYS} days of their last one, or more than ${REST_MAX_PER_30_DAYS} in ${REST_WINDOW_DAYS} days. Points-expiry reminders count; order and aftercare email never do.`;
 
 export const CAMPAIGN_LIMITS = {
   name: 80,
@@ -333,6 +347,12 @@ export interface CampaignCandidate {
   own: OwnSend | null;
   /** The language they use the site in (`customers.locale`): `zh-CN` gets a campaign's 中文 version (slice 17). */
   locale: string;
+  /**
+   * When their marketing email of the last 30 days reached them, newest first
+   * (`marketing_recent`: any campaign send but a failed one, and points-expiry
+   * reminders). Absent reads as none. PRD-campaign-audiences slice 07.
+   */
+  recentMarketing?: readonly string[];
 }
 
 /** Why a Customer may not receive a Campaign now, in the order the rule checks. */
@@ -344,6 +364,7 @@ export const CAMPAIGN_RULE_BLOCKERS = [
   "not_subscribed",
   "failed",
   "already_sent",
+  "resting",
 ] as const;
 export type CampaignRuleBlocker = (typeof CAMPAIGN_RULE_BLOCKERS)[number];
 
@@ -358,11 +379,34 @@ export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", 
   not_subscribed: "never agreed to marketing email",
   failed: "the send failed before (use Retry failed sends)",
   already_sent: "already sent this campaign",
+  resting: `resting (emailed in the last ${REST_DAYS} days, or ${REST_MAX_PER_30_DAYS} times in ${REST_WINDOW_DAYS} days)`,
   not_failed: "nothing of theirs failed",
   unknown_campaign: "the campaign no longer exists",
   campaign_archived: "the campaign is archived",
   not_found: "the customer no longer exists",
 };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Pure — when someone with these marketing emails is next eligible, or null
+ * when they are not resting at `now`: the later of their latest + 7 days and,
+ * with 4 or more in the last 30 days, their 4th most recent + 30 days. The
+ * twin of `marketing_rest_until()`. Unreadable times are ignored.
+ */
+export function restUntil(recent: readonly string[] | undefined, now: Date = new Date()): string | null {
+  const t = now.getTime();
+  const times = (recent ?? [])
+    .map((at) => Date.parse(at))
+    .filter((at) => Number.isFinite(at) && at <= t && at > t - REST_WINDOW_DAYS * DAY_MS)
+    .sort((a, b) => b - a);
+  if (!times.length) return null;
+  let until = times[0] + REST_DAYS * DAY_MS;
+  if (times.length >= REST_MAX_PER_30_DAYS) {
+    until = Math.max(until, times[REST_MAX_PER_30_DAYS - 1] + REST_WINDOW_DAYS * DAY_MS);
+  }
+  return until > t ? new Date(until).toISOString() : null;
+}
 
 /**
  * Why `c` may not receive a Campaign for `audience` now, or null when they
@@ -371,8 +415,8 @@ export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", 
  */
 export function composedCampaignBlocker(
   audience: CampaignAudience,
-  c: Pick<CampaignCandidate, "migrated" | "claimedAt" | "marketingEmail" | "suppressed" | "own">,
-  { retryFailed = false }: { retryFailed?: boolean } = {},
+  c: Pick<CampaignCandidate, "migrated" | "claimedAt" | "marketingEmail" | "suppressed" | "own" | "recentMarketing">,
+  { retryFailed = false, now = new Date() }: { retryFailed?: boolean; now?: Date } = {},
 ): CampaignRuleBlocker | null {
   if (audience === "imported_not_signed_in") {
     if (!c.migrated) return "not_migrated";
@@ -383,6 +427,8 @@ export function composedCampaignBlocker(
   if (c.marketingEmail !== "subscribed") return "not_subscribed";
   if (c.own?.status === "failed" && !retryFailed) return "failed";
   if (c.own && c.own.status !== "failed") return "already_sent";
+  // Slice 07: last, so a plan still says "already sent" or "unsubscribed" first.
+  if (restUntil(c.recentMarketing, now)) return "resting";
   return null;
 }
 
@@ -421,13 +467,18 @@ export interface CampaignPlan {
   /** Of `eligible`, and of the wave, those who read the site in Chinese (PRD-campaign-email-editor slice 17). */
   eligibleChinese: number;
   selectedChinese: number;
+  /**
+   * Of those resting (`excluded.resting`), the earliest any of them is next
+   * eligible; null with nobody resting (PRD-campaign-audiences slice 07).
+   */
+  restingUntil: string | null;
 }
 
 /** Pure — a wave of `size` from every candidate. A retry selects this Campaign's failed sends only. */
 export function planCampaignWave(
   audience: CampaignAudience,
   candidates: readonly CampaignCandidate[],
-  { size, retryFailed = false }: { size: number; retryFailed?: boolean },
+  { size, retryFailed = false, now = new Date() }: { size: number; retryFailed?: boolean; now?: Date },
 ): CampaignPlan {
   const excluded: Partial<Record<PlanExclusion, number>> = {};
   const exclude = (why: PlanExclusion) => {
@@ -436,10 +487,15 @@ export function planCampaignWave(
   const eligible: CampaignCandidate[] = [];
   let alreadySent = 0;
   let failed = 0;
+  let restingUntil: string | null = null;
   for (const c of candidates) {
     if (c.own && c.own.status !== "failed" && c.own.status !== "pending") alreadySent++;
     if (c.own?.status === "failed") failed++;
-    const blocker = composedCampaignBlocker(audience, c, { retryFailed });
+    const blocker = composedCampaignBlocker(audience, c, { retryFailed, now });
+    if (blocker === "resting") {
+      const until = restUntil(c.recentMarketing, now);
+      if (until && (!restingUntil || until < restingUntil)) restingUntil = until;
+    }
     if (blocker) exclude(blocker);
     else if (retryFailed && c.own?.status !== "failed") exclude("not_failed");
     else eligible.push(c);
@@ -458,6 +514,7 @@ export function planCampaignWave(
     failed,
     eligibleChinese: eligible.filter(readsChinese).length,
     selectedChinese: selection.filter(readsChinese).length,
+    restingUntil,
   };
 }
 
@@ -513,7 +570,7 @@ const isSendStatus = (v: unknown): v is CampaignSendStatus =>
 
 /** The view's columns, in its order. */
 export const CANDIDATE_COLUMNS =
-  "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends";
+  "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends, marketing_recent";
 
 /** Pure — one `marketing_campaign_candidates` row for `campaignId`, or null for a malformed one. */
 export function candidateFromRow(row: Record<string, unknown>, campaignId: string): CampaignCandidate | null {
@@ -541,6 +598,9 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
     suppressed: row.suppressed === true,
     own,
     locale: typeof row.locale === "string" ? row.locale : "en-US",
+    recentMarketing: Array.isArray(row.marketing_recent)
+      ? row.marketing_recent.filter((at): at is string => typeof at === "string")
+      : [],
   };
 }
 

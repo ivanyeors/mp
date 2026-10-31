@@ -1435,7 +1435,7 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
   - `claimCustomerEmail()` — lib/email/customer-emails.ts:47
 
 ### claim_marketing_campaign_send
-Defined in supabase/migrations/20261030130000_campaign_claim_last_name.sql:17
+Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:148
 - Called by:
   - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:292
 
@@ -1680,7 +1680,7 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:213
   - `linkGoogleReview()` — lib/crm/google-review-links.ts:52
 
 ### marketing_campaign_candidates
-Defined in supabase/migrations/20261021100000_email_campaigns.sql:265
+Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:220
 - Read by:
   - `readPaged()` [select] — lib/email-campaigns/store.ts:201
 

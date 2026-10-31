@@ -895,3 +895,39 @@ describe("readSendingStatus", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
+
+// PRD-campaign-audiences slice 07: the rest period, from plan to claim.
+describe("the rest period", () => {
+  const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+  it("plans around someone emailed in the last 7 days, and says when the first can get it", async () => {
+    world.recentMarketing = { [BEA]: [ago(2)], [DAN]: [ago(9)] };
+    const r = await planWave(campaign(), { size: 10 }, setup().s);
+    expect(r.customerIds).not.toContain(BEA);
+    expect(r.customerIds).toContain(DAN);
+    expect(r.plan.excluded.resting).toBe(1);
+    expect(Date.parse(r.plan.restingUntil!)).toBeGreaterThan(Date.now() + 4 * 86_400_000);
+    expect(Date.parse(r.plan.restingUntil!)).toBeLessThan(Date.now() + 6 * 86_400_000);
+  });
+
+  it("skips, never fails, someone who started resting after the plan, writing no ledger row", async () => {
+    const { s, sent } = setup();
+    // Another campaign reached Bea between the plan and the send.
+    world.onClaim = (customerId) => {
+      if (customerId === BEA) world.recentMarketing = { [BEA]: [ago(0.01)] };
+    };
+    const r = await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+    expect(r.skipped).toEqual({ resting: 1 });
+    expect(r.failed).toBe(0);
+    expect(sent.map((e) => e.to)).toEqual(["ann@x.test"]);
+    expect(world.sends.filter((x) => x.customer_id === BEA)).toEqual([]);
+  });
+
+  it("never holds a test: it goes to Staff addresses through no claim", async () => {
+    world.recentMarketing = { [BEA]: [ago(0.01)] };
+    const { s } = setup();
+    const admin = s.admin as unknown as ReturnType<typeof fakeCampaignsClient>;
+    expect(await sendCampaignTest(campaign(), { to: ["bea@x.test"], firstName: "Bea" }, s)).toMatchObject({ sent: ["bea@x.test"] });
+    expect(admin.rpcCalls.filter((c) => c.name === "claim_marketing_campaign_send")).toEqual([]);
+  });
+});

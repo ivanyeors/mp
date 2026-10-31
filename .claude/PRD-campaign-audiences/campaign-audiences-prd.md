@@ -3,8 +3,8 @@
 **Status:** planned (2026-10-30); owner decisions settled 2026-10-31. Built: imported customers
 start subscribed (slice 15), the glossary and ADR 0038 (slice 01), the ticked box at checkout, on
 the customisation contact step and on booking (slice 02, counsel to read), *Email this Segment*
-beside the Segment chips, the purchase filters and stage sub-statuses (slice 04), and leaving
-Segments out of an Audience (slice 06). Slices are in [`issues/`](issues/README.md).
+beside the Segment chips, the purchase filters and stage sub-statuses (slice 04), leaving
+Segments out of an Audience (slice 06), and the rest period (slice 07). Slices are in [`issues/`](issues/README.md).
 **Owner request (2026-10-30):** "Based on our CRM for our customers, research, think and plan how
 we might integrate it with our email marketing feature, so that I'm able to send the right emails
 to the right audience."

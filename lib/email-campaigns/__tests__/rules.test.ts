@@ -10,6 +10,10 @@ import {
   EMPTY_CAMPAIGN_DRAFT,
   FIRST_CAMPAIGN_DRAFT,
   MAX_EXCLUDED_SEGMENTS,
+  REST_DAYS,
+  REST_MAX_PER_30_DAYS,
+  REST_PERIOD_TEXT,
+  REST_WINDOW_DAYS,
   campaignFromRow,
   campaignLedgerKey,
   campaignRowFromDraft,
@@ -20,6 +24,7 @@ import {
   newCampaignDraft,
   nextWaveLabel,
   planCampaignWave,
+  restUntil,
   variablesInEmail,
   type CampaignAudience,
   type CampaignCandidate,
@@ -31,15 +36,37 @@ type Case = {
   name: string;
   audience: CampaignAudience;
   retryFailed?: boolean;
-  customer: { migrated?: boolean; claimed?: boolean; marketing_email: "subscribed" | "not_subscribed" | "unsubscribed"; suppressedBy?: string; own?: CampaignSendStatus };
+  customer: {
+    migrated?: boolean;
+    claimed?: boolean;
+    marketing_email: "subscribed" | "not_subscribed" | "unsubscribed";
+    suppressedBy?: string;
+    own?: CampaignSendStatus;
+    recent?: { daysAgo: number; kind?: "campaign" | "points_expiry" | "transactional"; status?: CampaignSendStatus }[];
+  };
   expected: string | null;
 };
+
+/**
+ * The `marketing_recent` the view would give for a case's other email: every
+ * campaign send but a failed one, and points-expiry reminders; never an order
+ * email. The SQL assert inserts the raw rows instead, so the view's filter is
+ * held to these too.
+ */
+const recentOf = (c: Case, now: Date) =>
+  (c.customer.recent ?? [])
+    .filter((r) => (r.kind ?? "campaign") === "points_expiry" || ((r.kind ?? "campaign") === "campaign" && r.status !== "failed"))
+    .map((r) => new Date(now.getTime() - r.daysAgo * 86_400_000).toISOString());
 
 const CASES = JSON.parse(
   readFileSync(join(process.cwd(), "supabase/tests/email-marketing/campaign-rule-cases.json"), "utf8"),
 ) as { cases: Case[] };
 
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021100000_email_campaigns.sql"), "utf8");
+/** The rule's latest definition: the rest period's (PRD-campaign-audiences slice 07). */
+const RULE_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031130000_campaign_rest_period.sql"), "utf8");
+
+const NOW = new Date("2026-10-31T04:00:00.000Z");
 
 describe("composedCampaignBlocker: campaign-rule-cases.json", () => {
   it("has the cases", () => expect(CASES.cases.length).toBeGreaterThanOrEqual(20));
@@ -60,8 +87,9 @@ describe("composedCampaignBlocker: campaign-rule-cases.json", () => {
           marketingEmail: c.customer.marketing_email,
           suppressed,
           own: own ? { status: own, wave: "cases", sentAt: "2026-10-20T00:00:00Z" } : null,
+          recentMarketing: recentOf(c, NOW),
         },
-        { retryFailed: c.retryFailed },
+        { retryFailed: c.retryFailed, now: NOW },
       ),
     ).toBe(c.expected);
   });
@@ -79,7 +107,7 @@ describe("composedCampaignBlocker: campaign-rule-cases.json", () => {
   });
 
   it("names the same reasons, in the same order, as marketing_campaign_blocker()", () => {
-    const fn = MIGRATION.slice(MIGRATION.indexOf("function public.marketing_campaign_blocker"));
+    const fn = RULE_MIGRATION.slice(RULE_MIGRATION.indexOf("function public.marketing_campaign_blocker"));
     const sqlOrder = CAMPAIGN_RULE_BLOCKERS.map((b) => fn.indexOf(`'${b}'`));
     expect(sqlOrder.every((i) => i > 0)).toBe(true);
     expect([...sqlOrder].sort((a, b) => a - b)).toEqual(sqlOrder);
@@ -520,5 +548,76 @@ describe("leaving Segments out", () => {
       expect(campaignFromRow(row)?.excludeSegmentIds).toEqual([SEG_B]);
       expect(campaignFromRow({ ...row, exclude_segment_ids: null })?.excludeSegmentIds).toEqual([]);
     });
+  });
+});
+
+// PRD-campaign-audiences slice 07: the rest period.
+describe("restUntil", () => {
+  const now = new Date("2026-10-31T04:00:00.000Z");
+  const ago = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
+
+  it("rests someone emailed in the last 7 days, until 7 days after it", () => {
+    expect(restUntil([ago(2)], now)).toBe(new Date(now.getTime() + 5 * 86_400_000).toISOString());
+    expect(restUntil([ago(7.01)], now)).toBeNull();
+    expect(restUntil([], now)).toBeNull();
+    expect(restUntil(undefined, now)).toBeNull();
+  });
+
+  it("rests someone with 4 in 30 days until the 4th most recent leaves the window", () => {
+    // Latest 8 days ago (the 7-day rest is over), 4th most recent 29 days ago: 1 day more.
+    expect(restUntil([ago(8), ago(12), ago(20), ago(29)], now)).toBe(new Date(now.getTime() + 86_400_000).toISOString());
+    expect(restUntil([ago(8), ago(12), ago(20)], now)).toBeNull();
+    // The 5th does not matter; the order given does not either.
+    expect(restUntil([ago(29), ago(8), ago(40), ago(20), ago(12)], now)).toBe(new Date(now.getTime() + 86_400_000).toISOString());
+  });
+
+  it("takes the later of the two", () => {
+    expect(restUntil([ago(1), ago(12), ago(20), ago(25)], now)).toBe(new Date(now.getTime() + 6 * 86_400_000).toISOString());
+    expect(restUntil([ago(6), ago(7), ago(8), ago(9)], now)).toBe(new Date(now.getTime() + 21 * 86_400_000).toISOString());
+  });
+
+  it("ignores unreadable times and times after now", () => {
+    expect(restUntil(["not a date", new Date(now.getTime() + 86_400_000).toISOString()], now)).toBeNull();
+  });
+
+  it("uses the SQL function's numbers, and says them in words", () => {
+    expect([REST_DAYS, REST_MAX_PER_30_DAYS, REST_WINDOW_DAYS]).toEqual([7, 4, 30]);
+    const fn = RULE_MIGRATION.slice(RULE_MIGRATION.indexOf("function public.marketing_rest_until"));
+    expect(fn).toContain("r[1] + interval '7 days'");
+    expect(fn).toContain("cardinality(r) >= 4 then r[4] + interval '30 days'");
+    expect(RULE_MIGRATION).toContain("s.sent_at > p_now - interval '30 days'");
+    expect(REST_PERIOD_TEXT).toMatch(/7 days/);
+    expect(REST_PERIOD_TEXT).toMatch(/more than 4 in 30 days/);
+  });
+});
+
+describe("planCampaignWave: resting", () => {
+  const now = new Date("2026-10-31T04:00:00.000Z");
+  const ago = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
+
+  it("counts the resting apart, never as failed, and says when the first can get it", () => {
+    const list = [
+      cand({ customerId: "a" }),
+      cand({ customerId: "b", recentMarketing: [ago(2)] }),
+      cand({ customerId: "c", recentMarketing: [ago(5)] }),
+      cand({ customerId: "d", recentMarketing: [ago(9)] }),
+      cand({ customerId: "e", marketingEmail: "unsubscribed", recentMarketing: [ago(1)] }),
+    ];
+    const plan = planCampaignWave("subscribed", list, { size: 10, now });
+    expect(plan.selection.map((c) => c.customerId).sort()).toEqual(["a", "d"]);
+    expect(plan.excluded).toEqual({ resting: 2, unsubscribed: 1 });
+    expect(plan.failed).toBe(0);
+    // c rests until 2 days from now, b until 5: the first is c.
+    expect(plan.restingUntil).toBe(new Date(now.getTime() + 2 * 86_400_000).toISOString());
+  });
+
+  it("has no date when nobody rests", () => {
+    expect(planCampaignWave("subscribed", [cand({ customerId: "a" })], { size: 1, now }).restingUntil).toBeNull();
+  });
+
+  it("reads the view's marketing_recent", () => {
+    const row = { customer_id: "a", email: "a@x.test", marketing_recent: [ago(2), 7, null] };
+    expect(candidateFromRow(row, "camp")?.recentMarketing).toEqual([ago(2)]);
+    expect(candidateFromRow({ customer_id: "a", email: "a@x.test" }, "camp")?.recentMarketing).toEqual([]);
   });
 });

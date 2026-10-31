@@ -98,7 +98,7 @@ import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
 import { defaultWaveSize, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
-import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
+import { formatAdminDateMY, formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { cn } from "@/lib/utils";
@@ -1791,6 +1791,10 @@ export function CampaignEditor({
                                                 {Object.entries(plan.plan.excluded).map(([why, count]) => (
                                                     <li key={why}>
                                                         {n(count ?? 0)} left out: {CAMPAIGN_BLOCKER_TEXT[why as keyof typeof CAMPAIGN_BLOCKER_TEXT] ?? why}
+                                                        {/* Slice 07: rested, not failed; a later wave reaches them. */}
+                                                        {why === "resting" && plan.plan.restingUntil
+                                                            ? `; the first can get it from ${formatAdminDateMY(plan.plan.restingUntil)}`
+                                                            : ""}
                                                     </li>
                                                 ))}
                                             </ul>

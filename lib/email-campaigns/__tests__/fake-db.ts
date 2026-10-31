@@ -16,7 +16,7 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  *    each row's Variants and images nested as the shop's select returns them,
  *    and `media_assets` (`in` on `hosted_url`).
  *
- * The claim mirrors the SQL (20261021100000): the wave check, the rule (here
+ * The claim mirrors the SQL (20261031130000): the wave check, the rule (here
  * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
  * `marketing_campaign_blocker`), and the unique (Customer, template) key.
  * assert-01-email-campaigns.sql proves the real function.
@@ -77,6 +77,13 @@ export interface FakeWorld {
   mediaAssets?: { id: string; hosted_url: string }[];
   /** Every table read, in order: what a test checks nothing else was touched with. */
   reads?: string[];
+  /**
+   * The view's `marketing_recent` by Customer (PRD-campaign-audiences slice
+   * 07): their marketing email of the last 30 days, newest first, as the SQL
+   * would count it. Given by a test, not worked out from `sends`, so fixtures
+   * dated near today never rest anyone by accident.
+   */
+  recentMarketing?: Record<string, string[]>;
 }
 
 export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [], settings: {} });
@@ -104,6 +111,7 @@ function candidates(world: FakeWorld): Row[] {
       since: m?.imported_at ?? c.created_at ?? "2026-01-01T00:00:00Z",
       suppressed: suppressedIn(sends),
       campaign_sends: campaignSends,
+      marketing_recent: world.recentMarketing?.[c.id] ?? [],
     };
   });
 }
@@ -192,6 +200,7 @@ export function fakeCampaignsClient(world: FakeWorld) {
         marketingEmail: row.marketing_email as "subscribed",
         suppressed: row.suppressed as boolean,
         own: own ? { status: own.status as "sent", wave: own.wave, sentAt: own.sent_at } : null,
+        recentMarketing: row.marketing_recent as string[],
       },
       { retryFailed: retry },
     );

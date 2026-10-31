@@ -11,7 +11,7 @@
 const PEOPLE = [
   { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false },
   { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], sizes: ["L"], delivered: 10, consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes" },
+  { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes", recent: [3] },
   { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 790, consent: "not_subscribed", imported: true, said: "no" },
   { first: "Elena", last: "Goh", stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, consent: "not_subscribed", imported: true, said: "no" },
   { first: "Farid", last: "Yusof", stage: "lost", detail: null, purchases: 1, bought: ["premium"], sizes: ["XL"], delivered: 200, consent: "unsubscribed", source: "unsubscribe_link", imported: true, said: "no" },
@@ -133,10 +133,12 @@ export default function crm({ now }) {
       ],
     },
     views: {
-      // 20261021100000_email_campaigns.sql: one row per Customer, as a campaign's plan reads them.
+      // 20261021100000_email_campaigns.sql: one row per Customer, as a campaign's plan reads them;
+      // `marketing_recent` (20261031130000) rests Chloe, emailed 3 days ago.
       marketing_campaign_candidates: (t) =>
         (t.customers ?? []).map((c) => {
           const m = (t.migrated_customers ?? []).find((r) => r.customer_id === c.id);
+          const p = PEOPLE.find((x) => c.email.startsWith(`${x.first.toLowerCase().replace(/\s/g, "")}.`));
           return {
             customer_id: c.id,
             email: c.email,
@@ -149,6 +151,7 @@ export default function crm({ now }) {
             since: m?.imported_at ?? c.created_at,
             suppressed: false,
             campaign_sends: {},
+            marketing_recent: (p?.recent ?? []).map(ago),
           };
         }),
       admin_customer_overview: (t) =>
