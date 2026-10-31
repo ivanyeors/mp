@@ -1,8 +1,10 @@
 -- Reach filters (PRD-campaign-audiences slice 05): *Ships to*, *Language*,
--- *Points expire within*, *Campaign* and *Last emailed*, so "At risk · Ships
--- to Singapore · Not emailed in 30 days" is a link, a Segment and an Audience.
+-- *Campaign* and *Last emailed*, so "At risk · Ships to Singapore · Not
+-- emailed in 30 days" is a link, a Segment and an Audience. (The issue's
+-- *Points expire within* is not built: points never expire, ADR 0030 decision
+-- 17, 20261031032017_points_never_expire.sql.)
 --
--- admin_customer_overview appends six columns, after `lifecycle_statuses`:
+-- admin_customer_overview appends five columns, after `lifecycle_statuses`:
 --
 --   ship_country       where they are, as an ISO-2 code: the latest counted
 --                      Order's shipping country (a self-collect or re-adjustment
@@ -13,11 +15,6 @@
 --                      with no Order here and no address is Unknown.
 --   locale             `customers.locale` ('en-US' or 'zh-CN'): the language
 --                      they read the site and its emails in.
---   points_expire_on   the last day their points can be used, as
---                      points_balance() gives it: points_expires_on() over the
---                      points clock, for an available balance above 0. Null
---                      with no balance, no clock, or while points are off
---                      (nothing expires then: expire_due_points).
 --   campaigns_sent     the ids of the campaigns the provider accepted for them
 --                      (sent, or since bounced or complained), as
 --                      `email_campaign_stats` counts a campaign's *Sent*; text,
@@ -135,14 +132,9 @@ select
       now())
   ], null)                                                     as lifecycle_statuses,
   -- Campaign audiences slice 05 (this file): where they are, what they read,
-  -- when their points expire, and what campaigns they got and clicked.
+  -- and what campaigns they got and clicked.
   coalesce(so.country, ad.country)                             as ship_country,
   c.locale,
-  case when ps.enabled and coalesce(pt.points_available, 0) > 0
-       then public.points_expires_on(
-              (select k.last_purchase_at from public.points_clock(c.id) k),
-              ps.expiry_months)
-  end                                                          as points_expire_on,
   coalesce(cs.campaigns_sent, '{}'::text[])                    as campaigns_sent,
   coalesce(cs.campaigns_clicked, '{}'::text[])                 as campaigns_clicked,
   coalesce((select max(cs2.sent_at)
@@ -292,11 +284,7 @@ left join (
     from public.customer_campaign_sends s
    where s.campaign_id is not null
    group by s.customer_id
-) cs on cs.customer_id = c.id
--- One row: whether points are on, and how many months they last.
-cross join lateral (
-  select st.enabled, st.expiry_months from public.points_settings() st
-) ps;
+) cs on cs.customer_id = c.id;
 
 -- Server-only, as every definition before: read with the service role after
 -- the `customers` permission check.

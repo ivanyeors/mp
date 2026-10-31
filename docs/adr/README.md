@@ -42,5 +42,7 @@ one is amended to point at it.
 | [0034](0034-commission-pool-partner-share-customer-discount.md) | Partner commission follows the agreement's Schedule: a flat pool per qualifying order, the partner's share, and a customer discount Staff turn on |
 | [0035](0035-google-reviews-through-places-until-business-profile.md) | Google reviews reach Telegram through the Places API until the Business Profile API is approved |
 | [0036](0036-campaign-email-is-typed-blocks.md) | A campaign's email is typed blocks, rendered by our own components and written in one shared editor |
-| [0037](0037-marketing-consent-by-default.md) | Imported customers start subscribed, and the checkout box is ticked by default |
-| [0038](0038-campaign-audiences-read-the-crm.md) | Campaign audiences read the CRM, and one claim rule decides who receives |
+| [0037](0037-partner-branch-locations.md) | A partner's other clinics are branch Location rows under its main row |
+| [0038](0038-staff-refunds-full-items-or-amount.md) | Staff refund an Order in full, by its lines, or by an amount, and a charge correction needs no return |
+| [0039](0039-marketing-consent-by-default.md) | Imported customers start subscribed, and the checkout box is ticked by default |
+| [0040](0040-campaign-audiences-read-the-crm.md) | Campaign audiences read the CRM, and one claim rule decides who receives |

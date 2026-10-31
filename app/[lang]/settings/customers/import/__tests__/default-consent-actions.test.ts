@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Subscribe imported customers (ADR 0037): both actions check
+ * Subscribe imported customers (ADR 0039): both actions check
  * `customer-import`, re-read the list, call `subscribe_migrated_customers`
  * (the preview with nothing written, the run in one transaction), and the run
  * records one audit row with counts only, never an email.

@@ -247,7 +247,7 @@ export async function POST(req: Request) {
   }
   await admin.from("orders").update({ stripe_session_id: session.sessionId }).eq("id", order.id);
 
-  // The marketing email box (ADR 0037), as at shop checkout: recorded with the
+  // The marketing email box (ADR 0039), as at shop checkout: recorded with the
   // fee's Order, for the signed-in Customer. Never stops the booking.
   await recordBoxConsent(admin, customer.id, body.marketing_email === true, "appointment");
 

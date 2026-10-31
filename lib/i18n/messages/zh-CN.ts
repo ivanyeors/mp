@@ -216,7 +216,6 @@ export const zhCN: Messages = {
       sizingChartDescription:
         "参考下方指引测量你的肩宽。如果数值落在区间中间，请向上取整（例如 16.4 英寸 → 选择 17–18 英寸）。",
       aftercareTitle: "Mpillow 保养视频",
-      aftercareParagraphs: ["Basic Mpillow 的清洗与保养方式。", "想了解更多 Mpillow 的日常维护吗？"],
       careButton: "Mpillow Care",
       bottomCustomise: "开始定制",
       bookAdjustment: "预约调整",

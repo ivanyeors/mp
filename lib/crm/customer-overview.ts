@@ -73,7 +73,6 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "lifecycle_statuses",
   "ship_country",
   "locale",
-  "points_expire_on",
   "campaigns_sent",
   "campaigns_clicked",
   "last_emailed_at",
@@ -219,11 +218,6 @@ export interface CustomerOverviewRow {
   ship_country: string | null;
   /** The language they read the site and its emails in (`customers.locale`). */
   locale: "en-US" | "zh-CN";
-  /**
-   * The last day their points can be used (`YYYY-MM-DD`, Singapore), as the
-   * Profile shows it; null with no balance, or while points are off.
-   */
-  points_expire_on: string | null;
   /** The campaigns the provider accepted for them, as a campaign's *Sent* counts them. */
   campaigns_sent: string[];
   /** Those whose email they clicked (slice 08's counted click). */

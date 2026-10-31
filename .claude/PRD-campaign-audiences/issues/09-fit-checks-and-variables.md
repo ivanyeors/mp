@@ -1,4 +1,4 @@
-# 09 — The right version: fit checks and two Variables
+# 09 — The right version: fit checks and a Variable
 
 **Issue:** not filed
 **Type:** AFK
@@ -24,11 +24,11 @@ email offers an in-store visit*.
   - A products block showing a class some recipients already bought (*12 already own an
     Mbolster*).
   - People who bought in the last 14 days.
-- **Two Variables** in `lib/email-campaigns/variables.ts`, each with fallback words:
-  - **Your pillow**: the latest purchased pillow as the shop names it (*Premium Mpillow, size M*);
-  - **Points expire on**: the date from `points_expires_on()`, offered only while points are live
-    (`needsPoints`, as *Points balance*).
-- The sender reads the two values per recipient in `readCampaignCandidates`; nothing new reaches
+- **One Variable** in `lib/email-campaigns/variables.ts`, with fallback words:
+  - **Your pillow**: the latest purchased pillow as the shop names it (*Premium Mpillow, size M*).
+  - ~~**Points expire on**~~: dropped 2026-10-31. Points never expire (ADR 0030 decision 17), and
+    `points_expires_on()` is gone (`20261031032017_points_never_expire.sql`).
+- The sender reads the value per recipient in `readCampaignCandidates`; nothing new reaches
   the browser except the preview's sample.
 
 ## Acceptance criteria

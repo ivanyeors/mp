@@ -7,7 +7,7 @@ import {
 } from "@/lib/customer-migration/default-consent";
 
 /**
- * Subscribing the imported customers (ADR 0037): Shopify's unsubscribed list
+ * Subscribing the imported customers (ADR 0039): Shopify's unsubscribed list
  * read in the browser, read again on the server, and the SQL function's
  * answer. supabase/tests/campaign-audiences/assert-consent-by-default.sql
  * asserts the function itself.

@@ -1,7 +1,7 @@
 # PRD — Campaign audiences: the CRM decides who gets which email
 
 **Status:** planned (2026-10-30); owner decisions settled 2026-10-31. Built: imported customers
-start subscribed (slice 15), the glossary and ADR 0038 (slice 01), the ticked box at checkout, on
+start subscribed (slice 15), the glossary and ADR 0040 (slice 01), the ticked box at checkout, on
 the customisation contact step and on booking (slice 02, counsel to read), *Email this Segment*
 beside the Segment chips, the purchase filters and stage sub-statuses (slice 04), leaving
 Segments out of an Audience (slice 06), the rest period (slice 07), and clicks and unsubscribes
@@ -70,7 +70,7 @@ cannot say:
 | Ships to Singapore (in-store fitting and re-adjustment are Singapore-only, `CONTEXT.md` *In-store fitting*) | no country on the overview |
 | Reads Chinese | `customers.locale` drives the Chinese version but is not a filter |
 | Owns a size M (covers and cases are sized) | `customer_purchase_lines.pillow_id` holds it; nothing reads it |
-| Points expire within 3 months | *Points* is has / none only |
+| ~~Points expire within 3 months~~ | dropped 2026-10-31: points never expire (ADR 0030 decision 17) |
 | Got campaign X, or not; clicked it; emailed in the last 14 days | `last_campaign_sent_at` is on the overview, not a filter; clicks are not recorded |
 | Everyone in Segment A **except** Segment B | an Audience is one Segment |
 
@@ -213,9 +213,10 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
    link creates or finds the Customer and subscribes them (`newsletter`). They are *Lead*s.
 4. **Purchase filters (04).** *Didn't buy*, *Pillow size*, *Delivered* in days, and the
    **sub-status** on the Stage filter (*New · Delivered*, *At risk · Lapsed*).
-5. **Reach filters (05).** *Ships to* (Singapore, elsewhere, unknown), *Language*, *Points expire
-   within*, *Campaign* (got it, didn't, clicked, didn't click), *Last emailed*. *Not emailed in
-   N days* keeps people never emailed. A Segment on a campaign's own history is refused as that
+5. **Reach filters (05).** *Ships to* (Singapore, elsewhere, unknown), *Language*, *Campaign*
+   (got it, didn't, clicked, didn't click), *Last emailed*. *Not emailed in N days* keeps people
+   never emailed. (*Points expire within* was dropped: points never expire, ADR 0030 decision
+   17.) A Segment on a campaign's own history is refused as that
    campaign's Audience. **Built.**
 6. **Exclude Segments from an Audience (06).** Up to three, fixed with the Audience at the first
    Wave. The plan lists who each one left out.
@@ -225,10 +226,10 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
 8. **Clicks and unsubscribes per campaign (08).** Each site link carries a per-send token,
    recorded on the send, then stripped. The unsubscribe link carries the send, so the consent
    event names the campaign. No link rewriting, no open pixel.
-9. **The right version: fit checks and two Variables (09).** The send checklist compares the email
+9. **The right version: fit checks and a Variable (09).** The send checklist compares the email
    with the Wave's people: Chinese readers without a Chinese version, Variables that fall back,
-   in-store wording to people overseas, products they already own. *Your pillow* and *Points
-   expire on* become Variables.
+   in-store wording to people overseas, products they already own. *Your pillow* becomes a
+   Variable. (*Points expire on* was dropped: points never expire.)
 10. **Keep sending (10).** After its first Wave, a campaign can be set to keep sending to people
     who join its Audience: the daily job (chained onto `results-sla`, no third cron) runs one Wave
     a day for it, inside Resend's room, the pause rule and the rest period. This is how a Playbook
@@ -245,7 +246,7 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
 15. **Imported customers start subscribed (15, built).** The owner's request of 2026-10-31.
     *Subscribe imported customers* on Customers → Import from Shopify takes Shopify's
     unsubscribed list first, keeps those people unsubscribed, and subscribes every other imported
-    customer nobody has asked, as `import_default` (ADR 0037).
+    customer nobody has asked, as `import_default` (ADR 0039).
 
 ## Decisions
 
@@ -285,7 +286,7 @@ change is in the slice it touches.
    (`MARKETING_BOX_LABEL`). It subscribes only someone nobody has asked, never someone who
    unsubscribed; unticking changes nothing. Same request: "make all imported customers
    subscribed to marketing first as it's a new import" (slice 15). Both are recorded under their
-   own **Consent source** (ADR 0037). *Risk the owner accepts:* the PDPC does not let deemed
+   own **Consent source** (ADR 0039). *Risk the owner accepts:* the PDPC does not let deemed
    consent by notification be used for direct marketing, and a box nobody touched is weaker
    evidence than a tick. Counsel should read the wording, and the first email to the people
    subscribed by default should say why they are hearing from us and how to stop.
@@ -335,7 +336,7 @@ audience (filter is live and will sync via the customer's lifecycle stages)". Ye
 
 Proposed for `CONTEXT.md`, *Email marketing*:
 
-- **Consent source**: in `CONTEXT.md` since 2026-10-31 (ADR 0037), with `import_default`,
+- **Consent source**: in `CONTEXT.md` since 2026-10-31 (ADR 0039), with `import_default`,
   `shopify_unsubscribed` and `checkout`. Slice 02 adds `customisation` and `appointment`, slice
   03 `newsletter`.
 - **Rest period**: how long after one marketing email a Customer receives no other, and how many

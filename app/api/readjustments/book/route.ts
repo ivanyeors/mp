@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     );
   }
   const seq = quote.complimentary ? quote.seq : null;
-  // The marketing email box (ADR 0037), once the visit stands: for the
+  // The marketing email box (ADR 0039), once the visit stands: for the
   // signed-in Customer. Never stops the booking.
   const recordConsent = () => recordBoxConsent(admin, customer.id, body.marketing_email === true, "appointment");
 

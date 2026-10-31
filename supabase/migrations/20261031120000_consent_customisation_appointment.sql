@@ -1,5 +1,5 @@
 -- The box where people give their email, past checkout (PRD-campaign-audiences
--- slice 02; ADR 0037).
+-- slice 02; ADR 0039).
 --
 -- The checkout box (20261031090000) is joined by two more, each ticked by
 -- default and each under its own source, so the Customer page says where a

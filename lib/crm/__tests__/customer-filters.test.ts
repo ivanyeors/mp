@@ -14,7 +14,6 @@ import {
   parseCustomerFilters,
   pgTextArray,
   searchParamsFromRecord,
-  sgDatePlusMonths,
   type CustomerFilters,
   type CustomerListQuery,
 } from "@/lib/crm/customer-filters";
@@ -571,7 +570,6 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "not_bought",
       "page",
       "points",
-      "points_expire",
       "rating",
       "readjusted",
       "search",
@@ -603,7 +601,6 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "mobile",
       "not_bought",
       "points",
-      "points_expire",
       "rating",
       "readjusted",
       "search",
@@ -900,29 +897,10 @@ describe("Reach filters (PRD-campaign-audiences slice 05)", () => {
     });
   });
 
-  describe("Points expire within", () => {
-    it("reads within 1 to 24 months", () => {
-      expect(parseCustomerFilters(new URLSearchParams("points_expire=within:3")).filters.points_expire).toEqual({ months: 3 });
-      for (const bad of ["points_expire=within:0", "points_expire=within:25", "points_expire=over:3", "points_expire=3"]) {
-        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({
-          filters: { points_expire: null },
-          ignored: ["points_expire"],
-        });
-      }
-    });
-
-    it("is one lte on points_expire_on, today in Singapore plus the months", () => {
-      expect(query("points_expire=within:3").calls).toEqual([["lte", "points_expire_on", "2027-01-21"], newest]);
-      expect(label("points_expire=within:3")).toEqual(["Points expire within 3 months"]);
-      expect(label("points_expire=within:12")).toEqual(["Points expire within a year"]);
-    });
-
-    it("counts from the Singapore date, and clamps to a shorter month as points_expires_on() does", () => {
-      // 16:30 UTC on 31 Oct is already 1 Nov in Singapore.
-      expect(sgDatePlusMonths(new Date("2026-10-31T16:30:00.000Z"), 1)).toBe("2026-12-01");
-      expect(sgDatePlusMonths(new Date("2026-10-31T04:00:00.000Z"), 1)).toBe("2026-11-30");
-      expect(sgDatePlusMonths(new Date("2027-01-31T04:00:00.000Z"), 1)).toBe("2027-02-28");
-    });
+  it("has no Points expire filter: points never expire (ADR 0030 decision 17)", () => {
+    const { filters } = parseCustomerFilters(new URLSearchParams("points_expire=within:3"));
+    expect(filters).toEqual(DEFAULT_CUSTOMER_FILTERS);
+    expect(query("points_expire=within:3").calls).toEqual([newest]);
   });
 
   describe("Campaign", () => {
@@ -995,13 +973,12 @@ describe("Reach filters (PRD-campaign-audiences slice 05)", () => {
     const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
     const { filters } = parseCustomerFilters(
       new URLSearchParams(
-        `ships_to=not-sg&language=zh-cn&points_expire=within:3&campaign=${CAMPAIGN}:not-clicked&emailed=over:30`,
+        `ships_to=not-sg&language=zh-cn&campaign=${CAMPAIGN}:not-clicked&emailed=over:30`,
       ),
     );
     const url = (applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW }) as unknown as { url: URL }).url;
     expect(url.searchParams.get("ship_country")).toBe("neq.SG");
     expect(url.searchParams.get("locale")).toBe("eq.zh-CN");
-    expect(url.searchParams.get("points_expire_on")).toBe("lte.2027-01-21");
     expect(url.searchParams.get("campaigns_sent")).toBe(`cs.{${CAMPAIGN}}`);
     expect(url.searchParams.get("campaigns_clicked")).toBe(`not.cs.{"${CAMPAIGN}"}`);
     expect(url.searchParams.get("last_emailed_at")).toBe("lt.2026-09-21T04:00:00.000Z");

@@ -30,7 +30,7 @@ type Phase =
     | { kind: "error"; error: string };
 
 /**
- * *Subscribe imported customers* (owner, 2026-10-31; ADR 0037): every imported
+ * *Subscribe imported customers* (owner, 2026-10-31; ADR 0039): every imported
  * customer starts subscribed to marketing email, except the people who
  * unsubscribed in Shopify. Shopify's export says "no" for them and for people
  * nobody asked alike, so nothing runs until the owner gives Shopify's

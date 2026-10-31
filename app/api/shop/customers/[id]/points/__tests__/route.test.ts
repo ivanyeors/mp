@@ -26,7 +26,7 @@ vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 vi.mock("@/lib/staff/working-as", () => ({ getWorkingAs: vi.fn(async () => ({ id: "profile-1", name: "Ivan" })) }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 vi.mock("@/lib/points/server", () => ({
-  readPointsBalance: vi.fn(async () => ({ available: 500, pending: 120, lastPurchaseAt: null, expiresOn: "2028-10-21" })),
+  readPointsBalance: vi.fn(async () => ({ available: 500, pending: 120 })),
   readPendingOrders: vi.fn(async () => []),
   readPointsHistory: vi.fn(async () => []),
   isPartnerCustomer: vi.fn(async () => false),

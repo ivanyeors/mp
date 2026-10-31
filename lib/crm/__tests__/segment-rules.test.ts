@@ -203,7 +203,6 @@ describe("choosing a Segment", () => {
       // PRD-campaign-audiences slice 05's reach filters.
       ships_to: null,
       language: null,
-      points_expire: null,
       campaign: null,
       emailed: null,
       // CRM slice 12's review filters.

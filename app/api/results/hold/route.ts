@@ -199,7 +199,7 @@ const HoldSchema = z
     /** Paired build: an Mbolster held with this Mpillow, under one Checkout. */
     pairedBolster: PairedBolsterSchema.optional(),
     /**
-     * The marketing email box on the contact step, ticked by default (ADR 0037;
+     * The marketing email box on the contact step, ticked by default (ADR 0039;
      * PRD-campaign-audiences slice 02). Absent, as from a configurator tab
      * opened before it, is unticked. A Paired build asks once, here, on the
      * anchor.
@@ -1218,7 +1218,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // The marketing email box (ADR 0037): the email typed on the contact step,
+  // The marketing email box (ADR 0039): the email typed on the contact step,
   // so on a Staff member's device it is the shopper's, never the Staff login's.
   // Subscribes a Customer nobody has asked, never one who unsubscribed, and
   // never stops the hold.

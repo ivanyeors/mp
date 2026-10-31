@@ -221,7 +221,7 @@ export type DefaultConsentResponse = { ok: true; counts: DefaultConsentCounts } 
 
 /**
  * What subscribing the imported customers would do, given Shopify's
- * unsubscribed list (ADR 0037). Writes nothing. An empty list is the owner
+ * unsubscribed list (ADR 0039). Writes nothing. An empty list is the owner
  * saying nobody unsubscribed in Shopify; the page asks them to say so.
  */
 export async function previewDefaultConsent(emails: string[]): Promise<DefaultConsentResponse> {

@@ -1,5 +1,5 @@
 /**
- * Every imported customer starts subscribed (owner, 2026-10-31; ADR 0037).
+ * Every imported customer starts subscribed (owner, 2026-10-31; ADR 0039).
  * Pure: the Import page reads Shopify's unsubscribed list in the browser, and
  * `subscribe_migrated_customers()` (20261031090000) does the rest in one
  * transaction.

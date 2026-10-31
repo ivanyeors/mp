@@ -57,7 +57,7 @@ export const LIFECYCLE_DETAIL_STAGE: Record<LifecycleDetail, LifecycleStage> = {
 
 /** Owner, 2026-10-27: the yearly check-up falls due. */
 export const AT_RISK_AFTER_MONTHS = 12;
-/** Owner, 2026-10-27: Points expire (ADR 0030). */
+/** Owner, 2026-10-27, when Points expired at 24 months (ADR 0030); points no longer expire (2026-10-31). */
 export const LAPSED_AFTER_MONTHS = 24;
 /** Owner, 2026-10-28: repeat purchases make a Customer *Loyal*, as one attended booking does. */
 export const LOYAL_FROM_PURCHASES = 2;

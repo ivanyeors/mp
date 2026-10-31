@@ -6,7 +6,7 @@ import { zhCN } from "@/lib/i18n/messages/zh-CN";
 
 /**
  * The marketing email box where people give their email, past checkout
- * (PRD-campaign-audiences slice 02; ADR 0037): on booking, in the page's
+ * (PRD-campaign-audiences slice 02; ADR 0039): on booking, in the page's
  * language, and on a customisation's contact step. Ticked by default, never
  * required.
  */

@@ -1,5 +1,5 @@
 -- Marketing consent by default (20261031090000_consent_by_default.sql;
--- PRD-campaign-audiences, ADR 0037), asserted against real Postgres.
+-- PRD-campaign-audiences, ADR 0039), asserted against real Postgres.
 --
 -- Run from the repository root against a database with every migration
 -- applied (a throwaway local one, never production). It prints one line,

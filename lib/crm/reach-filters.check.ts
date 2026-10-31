@@ -8,11 +8,11 @@
  * every migration applied (see lib/crm/purchase-lines.check.ts). `psql` must
  * be on the PATH. Everything runs in one transaction that is rolled back.
  *
- * A fixture of six Customers, their Orders, addresses, Points and campaign
- * sends is inserted. Then:
+ * A fixture of six Customers, their Orders, addresses and campaign sends is
+ * inserted. Then:
  *
- *   1. the overview's `ship_country`, `locale`, `points_expire_on`,
- *      `campaigns_sent`, `campaigns_clicked` and `last_emailed_at` are what
+ *   1. the overview's `ship_country`, `locale`, `campaigns_sent`,
+ *      `campaigns_clicked` and `last_emailed_at` are what
  *      the fixture says: the latest counted Order's country beats the
  *      address, a pending Order or a country that is not two letters counts
  *      for nothing, the default address beats a later one, a bounce is a
@@ -21,8 +21,7 @@
  *      it), lists exactly the fixture's Customers it should, *Unknown* never
  *      among Singapore or outside it, and *not emailed in 30 days* keeping the
  *      never-emailed;
- *   3. with points off, nobody's points expire;
- *   4. anon and authenticated still cannot read the view.
+ *   3. anon and authenticated still cannot read the view.
  *
  * Without CRM_CHECK_DATABASE_URL it says so and stops; the TypeScript side is
  * covered by lib/crm/__tests__/customer-filters.test.ts.
@@ -93,9 +92,6 @@ function send(customer: number, campaign: string, status: string, sentDaysAgo: n
 
 function fixture(): string {
   const out: string[] = [
-    // Points on, 24 months, whatever the database had.
-    `insert into public.site_settings (key, value) values ('points_enabled', 'true'), ('points_expiry_months', '24')
-       on conflict (key) do update set value = excluded.value;`,
     `insert into public.email_campaigns (id, name, subject, body, audience) values
        (${lit(CAMPAIGN_A)}, 'CA05 launch', 'S', 'B', 'subscribed'),
        (${lit(CAMPAIGN_B)}, 'CA05 follow-up', 'S', 'B', 'subscribed');`,
@@ -116,15 +112,6 @@ function fixture(): string {
   out.push(address(C.latestAddress, "MY", false, 2));
   out.push(order(C.pendingOnly, "SG", { status: "pending", paidAt: null }));
   out.push(order(C.badCountry, "Singapore"));
-  // Points: Customer 1's clock is 22 months back, so they expire within 3 months;
-  // Customer 2's is a month back; Customer 3 holds none.
-  out.push(
-    `insert into public.points_ledger (customer_id, kind, points, note) values
-       (${lit(cid(C.sgOrder))}, 'adjust', 500, 'CA05'),
-       (${lit(cid(C.myOrder))}, 'adjust', 300, 'CA05'),
-       (${lit(cid(C.defaultAddress))}, 'adjust', 100, 'CA05'),
-       (${lit(cid(C.defaultAddress))}, 'adjust', -100, 'CA05');`,
-  );
   // Campaigns: A reached 1 (clicked), 2 and 3 (bounced: still a send); 4 is pending; B failed for 2.
   out.push(send(C.sgOrder, CAMPAIGN_A, "sent", 40, true));
   out.push(send(C.myOrder, CAMPAIGN_A, "sent", 10));
@@ -151,9 +138,6 @@ const FILTERS: { search: string; lists: number[] }[] = [
   { search: "ships_to=unknown", lists: [C.pendingOnly, C.badCountry] },
   { search: "language=zh-cn", lists: [C.myOrder] },
   { search: "language=en", lists: ALL.filter((n) => n !== C.myOrder) },
-  { search: "points_expire=within:3", lists: [C.sgOrder] },
-  { search: "points_expire=within:1", lists: [] },
-  { search: "points_expire=within:24", lists: [C.sgOrder, C.myOrder] },
   { search: `campaign=${CAMPAIGN_A}:sent`, lists: [C.sgOrder, C.myOrder, C.defaultAddress] },
   { search: `campaign=${CAMPAIGN_A}:not-sent`, lists: [C.latestAddress, C.pendingOnly, C.badCountry] },
   { search: `campaign=${CAMPAIGN_A}:clicked`, lists: [C.sgOrder] },
@@ -171,7 +155,6 @@ type OverviewRow = {
   id: string;
   ship_country: string | null;
   locale: string;
-  points_expire_on: string | null;
   campaigns_sent: string[];
   campaigns_clicked: string[];
   last_emailed_at: string;
@@ -186,14 +169,11 @@ function main() {
       "set client_min_messages = warning;",
       fixture(),
       `select '@@rows@@'::text || jsonb_agg(jsonb_build_object(
-         'id', id, 'ship_country', ship_country, 'locale', locale, 'points_expire_on', points_expire_on,
+         'id', id, 'ship_country', ship_country, 'locale', locale,
          'campaigns_sent', campaigns_sent, 'campaigns_clicked', campaigns_clicked,
          'last_emailed_at', last_emailed_at::text, 'last_campaign_sent_at', last_campaign_sent_at) order by id)
          from public.admin_customer_overview where ${inFixture};`,
-      `select '@@expiry@@'::text || to_jsonb(public.points_expires_on(${lit(monthsAgo(22))}::timestamptz, 24));`,
       ...FILTERS.map((f, i) => filterQuery(`f${i}`, f.search)),
-      `update public.site_settings set value = 'false' where key = 'points_enabled';`,
-      `select '@@off@@'::text || count(*) from public.admin_customer_overview where ${inFixture} and points_expire_on is not null;`,
       `select '@@anon@@'::text || has_table_privilege('anon', 'public.admin_customer_overview', 'select');`,
       `select '@@authenticated@@'::text || has_table_privilege('authenticated', 'public.admin_customer_overview', 'select');`,
       "rollback;",
@@ -210,10 +190,6 @@ function main() {
     "ship_country: the latest counted Order, else the default address, else the latest; Unknown otherwise",
   );
   assert.deepEqual(ALL.map((n) => row(n).locale), ["en-US", "zh-CN", "en-US", "en-US", "en-US", "en-US"], "locale");
-  assert.equal(row(C.sgOrder).points_expire_on, json<string>(r, "expiry"), "points expire on the Profile's date");
-  assert.ok(row(C.myOrder).points_expire_on, "a balance with a clock has a date");
-  assert.equal(row(C.defaultAddress).points_expire_on, null, "no balance, no date");
-  assert.equal(row(C.latestAddress).points_expire_on, null, "no points, no date");
   assert.deepEqual(row(C.sgOrder).campaigns_sent, [CAMPAIGN_A], "a send");
   assert.deepEqual(row(C.sgOrder).campaigns_clicked, [CAMPAIGN_A], "a click");
   assert.deepEqual(row(C.myOrder).campaigns_sent, [CAMPAIGN_A], "a failed send is not one");
@@ -228,10 +204,7 @@ function main() {
     assert.deepEqual(json<string[]>(r, `f${i}`), [...f.lists].sort((a, b) => a - b).map(cid), f.search);
   });
 
-  // 3. Points off.
-  assert.equal(r.get("off"), "0", "nobody's points expire while points are off");
-
-  // 4. Grants.
+  // 3. Grants.
   assert.equal(r.get("anon"), "false", "anon cannot read the overview");
   assert.equal(r.get("authenticated"), "false", "authenticated cannot read the overview");
 

@@ -8,7 +8,7 @@ import { enUS as en } from "@/lib/i18n/messages/en-US";
 import { zhCN as zh } from "@/lib/i18n/messages/zh-CN";
 
 /**
- * The boxes past checkout (PRD-campaign-audiences slice 02; ADR 0037): a
+ * The boxes past checkout (PRD-campaign-audiences slice 02; ADR 0039): a
  * customisation's contact step and booking an appointment. Each moves as the
  * checkout box does, under its own source; a form with no Customer of its own
  * finds or creates one by the email typed, and only when ticked.

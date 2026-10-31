@@ -10,7 +10,7 @@
 
 The owner's request of 2026-10-31: "make all imported customers subscribed to marketing first as
 it's a new import". The invitation to the new website, and every later campaign, reaches every
-imported customer except those who unsubscribed. ADR 0037.
+imported customer except those who unsubscribed. ADR 0039.
 
 ## What was built
 

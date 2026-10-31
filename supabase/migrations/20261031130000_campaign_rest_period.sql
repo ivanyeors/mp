@@ -1,5 +1,5 @@
 -- A rest period between one person's marketing emails (PRD-campaign-audiences
--- slice 07; ADR 0038, decisions 1 and 5; owner decision 2 of 2026-10-31).
+-- slice 07; ADR 0040, decisions 1 and 5; owner decision 2 of 2026-10-31).
 --
 -- Running several campaigns at once must never flood one person. A Customer
 -- is *resting* while either holds:
@@ -25,7 +25,7 @@
 --    lib/email-campaigns/rules.ts, with the same constants.
 -- 2. marketing_campaign_blocker(): `resting` after every other reason, so a
 --    plan's counts still say *already sent* or *unsubscribed* first. The rule
---    stays the one place a send is refused (ADR 0038 (1)).
+--    stays the one place a send is refused (ADR 0040 (1)).
 -- 3. claim_marketing_campaign_send(): locks the Customer's row before the
 --    rule, so two claims for one person (two campaigns at once) are decided
 --    one after the other and the second sees the first's `pending` row. A

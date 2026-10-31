@@ -228,7 +228,6 @@ export const enUS: Messages = {
       sizingChartDescription:
         'Refer to the guide below on how to measure your shoulder length. If your measurements are in-between the options, please round them up (e.g. 16.4" → select 17"–18").',
       aftercareTitle: "Mpillow Aftercare Video",
-      aftercareParagraphs: ["How to wash and clean your Basic Mpillow.", "Want to learn more about doing Mpillow Maintenance?"],
       careButton: "Mpillow Care",
       bottomCustomise: "Customise",
       bookAdjustment: "Book adjustment",

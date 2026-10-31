@@ -10,6 +10,12 @@ import { getSupportInbox } from "@/lib/email/contact";
 import { getSiteOrigin } from "@/lib/site-url";
 import { withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import {
+  BranchSaveError,
+  BranchesSchema,
+  savePartnerBranches,
+  syncBranchNames,
+} from "@/lib/locations/save-branches";
 
 export const runtime = "nodejs";
 
@@ -18,7 +24,10 @@ const bodySchema = z.object({
   description: z.string().trim().max(4000).optional().nullable(),
   address: z.string().trim().max(500).optional().nullable(),
   postal_code: z.string().trim().max(20).optional().nullable(),
+  branch_name: z.string().trim().max(120).optional().nullable(),
   logo_url: z.string().url().max(2000).optional().nullable(),
+  /** The partner's other clinics; replaces the list when sent (ADR 0037). */
+  branches: BranchesSchema.optional(),
 });
 
 /**
@@ -54,7 +63,10 @@ async function notifyStaff(partnerId: string, name: string): Promise<void> {
   }
 }
 
-/** Update ONLY the caller's own linked partners row (id = ctx.partnerId). */
+/**
+ * Update ONLY the caller's own linked partners row (id = ctx.partnerId) and
+ * that row's branches (parent_id = ctx.partnerId).
+ */
 export async function PATCH(req: Request) {
   const ctx = await getPartnerContext();
   if (!isPartnerActive(ctx)) {
@@ -78,6 +90,7 @@ export async function PATCH(req: Request) {
   if (b.description !== undefined) update.description = b.description || null;
   if (b.address !== undefined) update.address = b.address || null;
   if (b.postal_code !== undefined) update.postal_code = b.postal_code || null;
+  if (b.branch_name !== undefined) update.branch_name = b.branch_name || null;
   if (b.logo_url !== undefined) update.logo_url = b.logo_url || null;
 
   const { error } = await supabaseAdmin()
@@ -86,7 +99,23 @@ export async function PATCH(req: Request) {
     .eq("id", ctx.partnerId); // guard: never another partner's row
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  try {
+    if (b.branches) await savePartnerBranches(ctx.partnerId, b.branches);
+    else await syncBranchNames(ctx.partnerId, b.name);
+  } catch (e) {
+    invalidateTag("locations"); // the main row already saved
+    const status = e instanceof BranchSaveError ? e.status : 500;
+    return NextResponse.json({ error: (e as Error).message }, { status });
+  }
+
   invalidateTag("locations");
   await notifyStaff(ctx.partnerId, b.name);
-  return NextResponse.json({ ok: true });
+
+  // The saved clinics with their ids, so the form's next save updates rather than re-adds.
+  const { data: branches } = await supabaseAdmin()
+    .from("partners")
+    .select("id, branch_name, address, postal_code")
+    .eq("parent_id", ctx.partnerId)
+    .order("position", { ascending: true });
+  return NextResponse.json({ ok: true, branches: branches ?? [] });
 }

@@ -1,5 +1,5 @@
 -- Marketing consent by default (PRD-campaign-audiences, owner decisions of
--- 2026-10-31; ADR 0037).
+-- 2026-10-31; ADR 0039).
 --
 -- The owner's call: every imported customer starts subscribed, and the
 -- checkout box is ticked by default. Each is recorded under its own source, so

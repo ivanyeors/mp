@@ -21,7 +21,7 @@ demoable path through all layers.
 | [04](04-spending-at-shop-checkout.md) | Spending at shop checkout, reserved so it can never be spent twice | AFK | **built** | 02 | 4, 5, 9, 13, 14 |
 | [05](05-claim-bonus.md) | The Claim bonus replaces the voucher, for every customer-facing surface | AFK | **built** | 02, 04 | 7 |
 | [06](06-retire-welcome-back-voucher.md) | Retire the Welcome-back voucher | AFK | **built** | 05 | 7, 12 |
-| [07](07-expiry-and-reminders.md) | Expiry after 24 months without a purchase, with reminders at 3, 2 and 1 months | AFK | **built** | 02, 03 | 8 |
+| [07](07-expiry-and-reminders.md) | Expiry after 24 months without a purchase, with reminders at 3, 2 and 1 months | AFK | **retired** (2026-10-31): points never expire | 02, 03 | 8 |
 | [08](08-terms-signoff-and-launch.md) | Sign-off: the terms, counsel, the accountant, a live test, then launch | HITL | **signed off** (2026-10-22); live test after deploy | 03, 04, 05 | all |
 | [09](09-bonus-milestones.md) | Bonus milestones: a progress bar to one-time bonuses (owner, 2026-10-23) | AFK | **built**; applied to production (2026-10-23) | 02, 03 | 15, 16 |
 
@@ -66,8 +66,8 @@ graph TD
 3. **03 and 04 in parallel.** They touch different files: 03 touches Accept, the daily job and
    `charge.refunded`. 04 touches checkout and the session-ending webhooks.
 4. **05,** once 04 has merged, because the bonus must be spendable before any email promises it.
-5. **08,** then the migration's waves. **06** and **07** follow, and both must land before the
-   first reminder is due, 21 months after launch.
+5. **08,** then the migration's waves. **06** follows. (**07** was retired on 2026-10-31: points
+   never expire, so there is no reminder to land before.)
 
 **The import does not wait for points.** Migration slice 04 can import into production now.
 Anyone who claims before points launch gets the Claim bonus at their next sign-in, if the Claim
@@ -90,8 +90,8 @@ same (`claimBonusOffer`).
 **Second hazard.** The balance is never a column on `customers`. The customer can read their own
 row (ADR 0029 (d)), and a stored total drifts from its history. Read it with `points_balance`.
 
-**Third hazard.** There is no third cron (`vercel.json`). The earn, expiry, reminder and sweep
-runners chain onto `results-sla`, as the Aftercare runners do (`lib/aftercare/job.ts`).
+**Third hazard.** There is no third cron (`vercel.json`). The earn, milestone and sweep runners
+chain onto `results-sla`, as the Aftercare runners do (`lib/aftercare/job.ts`).
 
 **Fourth hazard.** Do not touch the Results money path. The hold, the pricers, `planCapture` and
 the hold endings keep `discountAmount: 0`. The only Results change is that Accept resolves a

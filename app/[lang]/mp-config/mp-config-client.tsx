@@ -690,7 +690,7 @@ export function MpConfigClient({
   const [codeStatus, setCodeStatus] = useState<CheckoutCodeStatus>({ state: "idle" });
   const [holdNotes, setHoldNotes] = useState("");
   // The marketing email box on the contact step: ticked by default (owner,
-  // 2026-10-31; ADR 0037). Sent only where the contact step was shown: a
+  // 2026-10-31; ADR 0039). Sent only where the contact step was shown: a
   // finish link and a re-configuration ask for no email, so they send false.
   const [marketingEmail, setMarketingEmail] = useState(true);
   const askedMarketingEmail = !resumeFinish && !staffEdit && marketingEmail;

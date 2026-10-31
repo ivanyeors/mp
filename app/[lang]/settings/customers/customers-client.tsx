@@ -129,7 +129,6 @@ const PANEL_FILTERS: CustomerFilterKey[] = [
     "tags",
     "ships_to",
     "language",
-    "points_expire",
     "campaign",
     "emailed",
     "google_review",

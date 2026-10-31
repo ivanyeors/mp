@@ -1,5 +1,5 @@
 /**
- * **Campaign click** (PRD-campaign-audiences slice 08; ADR 0038 (4)): which
+ * **Campaign click** (PRD-campaign-audiences slice 08; ADR 0040 (4)): which
  * campaign send a visit to the site came from.
  *
  * - **The token.** Each send gets 32 random bytes, base64url (43 characters),

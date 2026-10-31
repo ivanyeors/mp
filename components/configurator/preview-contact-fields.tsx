@@ -41,7 +41,7 @@ export type PreviewContactValues = {
    */
   code: string;
   /**
-   * The marketing email box, ticked by default (ADR 0037; PRD-campaign-audiences
+   * The marketing email box, ticked by default (ADR 0039; PRD-campaign-audiences
    * slice 02). Never required; the hold records it for the email above.
    */
   marketingEmail: boolean;

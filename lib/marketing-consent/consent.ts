@@ -7,7 +7,7 @@
  * These callers change consent, and each names its source:
  *  - the customer, from their Profile, the Customer resolved from the session
  *    (app/[lang]/account/actions.ts), `account`, either way;
- *  - the boxes where people give their email, ticked by default (ADR 0037),
+ *  - the boxes where people give their email, ticked by default (ADR 0039),
  *    subscribe only, and only someone nobody has asked: at checkout
  *    (app/api/shop/checkout) `checkout`; on a customisation's contact step
  *    (app/api/results/hold) `customisation`; on booking an appointment
@@ -19,7 +19,7 @@
  *  - slice 08's complaint webhook, `complaint`.
  * The Shopify import applies `shopify_import` inside its own SQL function, and
  * `subscribe_migrated_customers()` applies `import_default` and
- * `shopify_unsubscribed` (Customers → Import from Shopify; ADR 0037).
+ * `shopify_unsubscribed` (Customers → Import from Shopify; ADR 0039).
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -72,7 +72,7 @@ export async function setMarketingEmail(
 }
 
 /**
- * A box where people give their email (ADR 0037), ticked by default. Ticked,
+ * A box where people give their email (ADR 0039), ticked by default. Ticked,
  * it subscribes a Customer nobody has asked, and nobody else: the SQL skips
  * anyone who unsubscribed or chose already. Unticked, it changes nothing. It
  * never stops the sale, the hold or the booking: a failure is logged and the

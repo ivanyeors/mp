@@ -1,5 +1,5 @@
 -- Clicks and unsubscribes, tied to the campaign send that caused them
--- (PRD-campaign-audiences slice 08; ADR 0038 (4)).
+-- (PRD-campaign-audiences slice 08; ADR 0040 (4)).
 --
 -- 1. The ledger records clicks. Each campaign send gets a click token: 32
 --    random bytes the sender puts on every site link in that one email (`mc`),

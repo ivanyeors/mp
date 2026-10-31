@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * `customers`, and must not bulk-write Customers. The page reads the export in
  * the browser, previews it, imports it in chunks, and lists every Import batch
  * with its Undo. The file is never uploaded or stored. Below them, *Subscribe
- * imported customers* (ADR 0037) starts every imported customer subscribed,
+ * imported customers* (ADR 0039) starts every imported customer subscribed,
  * except the people on Shopify's unsubscribed list.
  */
 export default async function CustomerImportPage({

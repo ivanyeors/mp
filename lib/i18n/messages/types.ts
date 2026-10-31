@@ -149,7 +149,6 @@ export type Messages = {
       sizingChartTitle: string;
       sizingChartDescription: string;
       aftercareTitle: string;
-      aftercareParagraphs: string[];
       careButton: string;
       bottomCustomise: string;
       bookAdjustment: string;
@@ -296,7 +295,7 @@ export type Messages = {
         languageNone: string;
         languageHint: string;
         /**
-         * The marketing email box, ticked by default (ADR 0037): the same words
+         * The marketing email box, ticked by default (ADR 0039): the same words
          * as `MARKETING_BOX_LABEL` at checkout.
          */
         marketingEmail: string;

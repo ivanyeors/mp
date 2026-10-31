@@ -22,7 +22,6 @@ import {
   renderMigrationServiceNoticeEmail,
 } from "./migration";
 import { renderHeldResultReminderEmail, renderPartnerListingUpdatedEmail } from "./ops";
-import { POINTS_EXPIRY_EMAIL_COPY, renderPointsExpiryEmail } from "./points";
 import {
   PARTNER_EMAIL_COPY,
   renderMilestoneEmail,
@@ -62,7 +61,6 @@ import {
   samplePairedMbolsterRemoved,
   samplePairedMbolsterRemovedReady,
   samplePartnerListing,
-  samplePointsExpiry,
   sampleBalanceDue,
   sampleBalanceDueFinish,
   sampleCheckup,
@@ -553,47 +551,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     audience: "customer",
     copy: CHECKUP_EMAIL_COPY,
     render: (f, copy) => renderCheckupEmail({ ...sampleCheckup(f), firstName: null }, copy),
-  },
-
-  // --- Aftercare: points expiry reminders (PRD-loyalty-points slice 07) ---
-  // 3, 2 and 1 months before a balance expires, the latest due only, to
-  // customers with Marketing consent (the check-up's gate) holding at least
-  // the minimum to use. Each id is also its customer_emails.template, with the
-  // Order or Claim bonus entry that started the clock as entity. One set of
-  // words for the three; transactional, with the check-up's footer.
-  {
-    id: "points.expiry_3m",
-    label: "Points expiry — 3 months before",
-    group: "aftercare",
-    audience: "customer",
-    copy: POINTS_EXPIRY_EMAIL_COPY,
-    render: (f, copy) => renderPointsExpiryEmail(samplePointsExpiry(f, 3), copyFor(POINTS_EXPIRY_EMAIL_COPY, copy)),
-  },
-  {
-    id: "points.expiry_2m",
-    label: "Points expiry — 2 months before",
-    group: "aftercare",
-    audience: "customer",
-    copy: POINTS_EXPIRY_EMAIL_COPY,
-    render: (f, copy) => renderPointsExpiryEmail(samplePointsExpiry(f, 2), copyFor(POINTS_EXPIRY_EMAIL_COPY, copy)),
-  },
-  {
-    id: "points.expiry_1m",
-    label: "Points expiry — 1 month before",
-    group: "aftercare",
-    audience: "customer",
-    copy: POINTS_EXPIRY_EMAIL_COPY,
-    render: (f, copy) => renderPointsExpiryEmail(samplePointsExpiry(f, 1), copyFor(POINTS_EXPIRY_EMAIL_COPY, copy)),
-  },
-  {
-    // Same renderer with no first name on file: the greeting changes.
-    id: "points.expiry_no_name",
-    label: "Points expiry — no first name",
-    group: "aftercare",
-    audience: "customer",
-    copy: POINTS_EXPIRY_EMAIL_COPY,
-    render: (f, copy) =>
-      renderPointsExpiryEmail({ ...samplePointsExpiry(f, 1), firstName: null }, copyFor(POINTS_EXPIRY_EMAIL_COPY, copy)),
   },
 
   // --- Partner programme ---

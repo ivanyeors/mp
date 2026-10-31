@@ -330,7 +330,7 @@ export function MbolsterConfigClient({
   const [codeStatus, setCodeStatus] = React.useState<CheckoutCodeStatus>({ state: "idle" });
   const [holdNotes, setHoldNotes] = React.useState("");
   // The marketing email box on the contact step: ticked by default (owner,
-  // 2026-10-31; ADR 0037). A Paired build asks on its Mpillow, not here.
+  // 2026-10-31; ADR 0039). A Paired build asks on its Mpillow, not here.
   const [marketingEmail, setMarketingEmail] = React.useState(true);
   const [holdAddress, setHoldAddress] = React.useState<HoldShippingAddress>({
     recipient: "",

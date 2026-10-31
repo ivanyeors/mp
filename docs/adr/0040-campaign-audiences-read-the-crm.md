@@ -3,7 +3,7 @@
 Status: Accepted (PRD `campaign-audiences`, owner decisions 2026-10-31). Supersedes
 `PRD-crm-retention-loop` decision 6 (*Playbooks are campaigns, not automation*) for campaigns set
 to **Kept sending**. Builds on [ADR 0028](0028-customer-crm.md) (the CRM reads the facts the
-platform already records) and [ADR 0037](0037-marketing-consent-by-default.md) (consent by
+platform already records) and [ADR 0039](0039-marketing-consent-by-default.md) (consent by
 default).
 
 ## Context
@@ -51,7 +51,7 @@ email them" is how a store emails someone who unsubscribed. This record keeps on
 
 The owner's answers that shape the slices (2026-10-31):
 
-- **Consent where people give their email: ticked by default** (ADR 0037), at checkout, on a
+- **Consent where people give their email: ticked by default** (ADR 0039), at checkout, on a
   customisation's contact step and on booking, each under its own **Consent source**.
 - **Rest period:** 7 days between marketing emails, at most 4 in 30 days.
 - **Keep sending:** yes, with a daily cap per campaign and a Pause switch.

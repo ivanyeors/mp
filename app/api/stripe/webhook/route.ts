@@ -77,6 +77,31 @@ async function clawbackRefundPoints(admin: SupabaseClient, orderId: string, refu
   }
 }
 
+/**
+ * The Order an intent paid. Most Orders name their only intent as
+ * `payment_reference`; a Result topped up past its hold was paid on two
+ * (ADR 0016), and only the ledger's charge rows name the other, so a refund on
+ * it would otherwise find no Order and never reach the ledger.
+ */
+async function orderIdForIntent(admin: SupabaseClient, paymentIntentId: string): Promise<string | null> {
+  const { data: byReference, error } = await admin
+    .from("orders")
+    .select("id")
+    .eq("payment_reference", paymentIntentId)
+    .maybeSingle();
+  if (error) throw new Error(`Order lookup for ${paymentIntentId} failed: ${error.message}`);
+  if (byReference) return byReference.id as string;
+
+  const { data: charge, error: chargeErr } = await admin
+    .from("order_payments")
+    .select("order_id")
+    .eq("stripe_object_id", paymentIntentId)
+    .eq("type", "charge")
+    .maybeSingle();
+  if (chargeErr) throw new Error(`Charge lookup for ${paymentIntentId} failed: ${chargeErr.message}`);
+  return (charge?.order_id as string | undefined) ?? null;
+}
+
 /** Idempotently record a failed event to the dead-letter table (keyed by event id). */
 async function recordWebhookFailure(
   admin: SupabaseClient,
@@ -665,12 +690,15 @@ export async function POST(req: Request) {
 
         if (!paymentIntentId) break;
 
+        const refundedOrderId = await orderIdForIntent(admin, paymentIntentId);
+        if (!refundedOrderId) break;
+
         const { data: order, error: refundedError } = await admin
           .from("orders")
           .select(
             "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, coupon_id, customer_id, shipping_address, partner_id, order_items(*)"
           )
-          .eq("payment_reference", paymentIntentId)
+          .eq("id", refundedOrderId)
           .maybeSingle();
 
         if (refundedError) throw new Error(`Refund lookup for ${paymentIntentId} failed: ${refundedError.message}`);
@@ -975,12 +1003,9 @@ export async function POST(req: Request) {
 
         const detail = `Refund ${refund.id} failed (${refund.failure_reason ?? "unknown reason"})`;
 
-        const { data: order } = paymentIntentId
-          ? await admin
-              .from("orders")
-              .select("id, currency")
-              .eq("payment_reference", paymentIntentId)
-              .maybeSingle()
+        const failedOrderId = paymentIntentId ? await orderIdForIntent(admin, paymentIntentId) : null;
+        const { data: order } = failedOrderId
+          ? await admin.from("orders").select("id, currency").eq("id", failedOrderId).maybeSingle()
           : { data: null };
 
         if (order) {

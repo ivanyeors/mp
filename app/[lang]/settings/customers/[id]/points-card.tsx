@@ -38,8 +38,7 @@ const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).
 
 /**
  * Points (PRD-loyalty-points slice 02; ADR 0030): the balance, what is
- * pending and from which Order, when it expires, and the latest ledger
- * entries. Staff with `customers-edit` adjust it with a written reason, which
+ * pending and from which Order, and the latest ledger entries. Staff with `customers-edit` adjust it with a written reason, which
  * is audited; a partner holds no points, so the card says so and offers
  * nothing.
  */
@@ -139,9 +138,6 @@ export function PointsCard({ customerId, canEdit }: { customerId: string; canEdi
                                     {formatPoints(view.balance.pending)} pending, from {view.pending.length} order
                                     {view.pending.length === 1 ? "" : "s"}
                                 </p>
-                            ) : null}
-                            {view.balance.expiresOn ? (
-                                <p className="text-xs text-muted-foreground">Expires on {formatAdminDateMY(view.balance.expiresOn)}</p>
                             ) : null}
                             {view.milestones && view.milestones.total > 0 ? (
                                 <p className="text-xs text-muted-foreground">

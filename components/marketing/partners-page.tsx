@@ -27,7 +27,7 @@ export async function PartnersPage({ params }: PartnersPageProps) {
         </section>
       ) : null}
 
-      <PartnersLogoGrid partners={partners} />
+      <PartnersLogoGrid partners={partners} locale={locale} />
     </main>
   );
 }

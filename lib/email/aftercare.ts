@@ -209,10 +209,7 @@ ${paragraphHtml(footerHtml, { muted: true })}`,
   return { subject: t.subject, html, text };
 }
 
-/**
- * The footer, with its "in your account" as the link to the Profile. The
- * points expiry reminders (./points.ts) carry it too, as the check-up does.
- */
+/** The footer, with its "in your account" as the link to the Profile. */
 export function aftercareFooterHtml(accountUrl: string): string {
   const at = AFTERCARE_EMAIL_FOOTER.indexOf(ACCOUNT_PHRASE);
   return at >= 0

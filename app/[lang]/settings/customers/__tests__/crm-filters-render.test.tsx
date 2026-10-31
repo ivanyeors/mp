@@ -69,7 +69,6 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   lifecycle_statuses: ["lead"],
   ship_country: null,
   locale: "en-US",
-  points_expire_on: null,
   campaigns_sent: [],
   campaigns_clicked: [],
   last_emailed_at: "-infinity",
@@ -253,9 +252,11 @@ describe("Customers list: Reach filters", () => {
   it("opens the PRD's demo link with its three filters, and says how many ship to an unknown country", () => {
     const html = reachFor("stage=at-risk&ships_to=sg&emailed=over:30", 12);
     expect(html).toContain('id="customer-filters-panel"');
-    for (const control of ["Ships to", "Language", "Points expire", "Last emailed", "Campaign", "What they did with the campaign"]) {
+    for (const control of ["Ships to", "Language", "Last emailed", "Campaign", "What they did with the campaign"]) {
       expect(html).toContain(`aria-label="${control}"`);
     }
+    // Points never expire (ADR 0030 decision 17), so there is nothing to filter on.
+    expect(html).not.toContain("Points expire");
     expect(html).toContain("Ships to Singapore");
     expect(html).toContain("Not emailed in 30 days");
     expect(html).toContain("12 more match the other filters but ship to an unknown country");

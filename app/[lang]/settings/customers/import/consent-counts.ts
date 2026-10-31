@@ -3,7 +3,7 @@ import { readDefaultConsentCounts, type DefaultConsentCounts } from "@/lib/custo
 
 /**
  * Where the imported customers stand on marketing email, for the *Subscribe
- * imported customers* card (ADR 0037): the same function the card runs, with
+ * imported customers* card (ADR 0039): the same function the card runs, with
  * no list and nothing written. Null when the read fails, so the card says so.
  */
 export async function loadDefaultConsentCounts(): Promise<DefaultConsentCounts | null> {

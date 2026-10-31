@@ -1,17 +1,17 @@
 // The Customers list, its Segments, and Customers → Import from Shopify:
 // a handful of made-up Customers, some imported from Shopify (one applied
 // Import batch), three saved Segments, the Customer overview as a view, and
-// `subscribe_migrated_customers` (ADR 0037) worked out from these rows.
+// `subscribe_migrated_customers` (ADR 0039) worked out from these rows.
 // One draft email campaign sends to *Premium buyers* and leaves two Segments
 // out (PRD-campaign-audiences slice 06), with the campaign candidates view
 // worked out from the same Customers. Every name and email is invented.
 
 // `sizes` and `delivered` (days since the latest purchase arrived; null while
 // on its way) feed the purchase filters (PRD-campaign-audiences slice 04).
-// `ship` (ISO-2, null for Unknown), `lang` and `expires` (days until their
-// points run out) feed the reach filters (slice 05).
+// `ship` (ISO-2, null for Unknown) and `lang` feed the reach filters (slice 05);
+// `points` is their balance.
 const PEOPLE = [
-  { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false, ship: "SG", expires: 50 },
+  { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false, ship: "SG", points: 1200 },
   { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], sizes: ["L"], delivered: 10, consent: "not_subscribed", imported: true, said: "no", ship: "SG" },
   { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes", recent: [3], ship: "SG" },
   { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 790, consent: "not_subscribed", imported: true, said: "no", ship: "MY", lang: "zh-CN" },
@@ -275,7 +275,7 @@ export default function crm({ now }) {
             has_phone: false,
             phone_valid: false,
             claim_link_first_clicked_at: null,
-            points_available: p.expires == null ? 0 : 1200,
+            points_available: p.points ?? 0,
             claim_bonus_at: null,
             open_followups: 0,
             paid_orders: p.purchases,
@@ -304,7 +304,6 @@ export default function crm({ now }) {
             // Slice 05: where they are, what they read, and what campaigns reached them.
             ship_country: p.ship ?? null,
             locale: p.lang ?? "en-US",
-            points_expire_on: p.expires == null ? null : ago(-p.expires).slice(0, 10),
             campaigns_sent: [...new Set(sent.map((x) => x.campaign_id))],
             campaigns_clicked: [...new Set(sent.filter((x) => x.first_clicked_at).map((x) => x.campaign_id))],
             last_emailed_at: lastSent ?? "-infinity",

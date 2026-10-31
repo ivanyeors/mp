@@ -92,7 +92,7 @@ const CheckoutSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   /**
-   * The marketing email box, ticked by default (ADR 0037). Absent, as from a
+   * The marketing email box, ticked by default (ADR 0039). Absent, as from a
    * checkout tab opened before it, is unticked.
    */
   marketing_email: z.boolean().optional(),
@@ -767,7 +767,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // The marketing email box (ADR 0037): subscribes a Customer nobody has asked,
+  // The marketing email box (ADR 0039): subscribes a Customer nobody has asked,
   // never one who unsubscribed. Never stops the sale.
   await recordCheckoutConsent(admin, customer.id, parsed.data.marketing_email === true);
 

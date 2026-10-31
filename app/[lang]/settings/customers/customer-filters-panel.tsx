@@ -23,7 +23,6 @@ import {
     SHIPS_TO_FILTERS,
     emailedLabel,
     emailedParam,
-    monthsLabel,
     GOOGLE_REVIEW_FILTERS,
     GOOGLE_REVIEW_LABELS,
     NOT_BOUGHT_FILTERS,
@@ -72,8 +71,8 @@ import type { CampaignFilterOption } from "@/lib/email-campaigns/store";
  * reviews, the rating); and (PRD-campaign-audiences slice 04) the Stage's
  * sub-statuses, what they did not buy, their pillow size, and how long ago
  * their latest purchase was delivered; and (slice 05) reach: where they ship
- * to, the language they read, when their points expire, what one campaign
- * did with them, and when a campaign last reached them. Values go through
+ * to, the language they read, what one campaign did with them, and when a
+ * campaign last reached them. Values go through
  * the list's one schema (lib/crm/customer-filters.ts), so a control can never
  * put into the URL what a link could not.
  */
@@ -101,9 +100,6 @@ const DELIVERED_PRESETS: DeliveredFilter[] = [
 ];
 
 const deliveredValue = (v: DeliveredFilter) => `${v.when}:${v.days}`;
-
-/** Presets for *Points expire within*, in months; a link may carry any other. */
-const POINTS_EXPIRE_PRESETS = [1, 3, 6];
 
 /** Presets for *Last emailed*, in days; a link may carry any other. */
 const EMAILED_PRESETS: EmailedFilter[] = [
@@ -161,11 +157,6 @@ export function CustomerFiltersPanel({
         filters.delivered && !DELIVERED_PRESETS.some((p) => deliveredValue(p) === deliveredValue(filters.delivered!))
             ? [...DELIVERED_PRESETS, filters.delivered]
             : DELIVERED_PRESETS;
-
-    const pointsExpireOptions =
-        filters.points_expire && !POINTS_EXPIRE_PRESETS.includes(filters.points_expire.months)
-            ? [...POINTS_EXPIRE_PRESETS, filters.points_expire.months].sort((a, b) => a - b)
-            : POINTS_EXPIRE_PRESETS;
 
     const emailedOptions =
         filters.emailed && !EMAILED_PRESETS.some((p) => emailedParam(p) === emailedParam(filters.emailed!))
@@ -462,7 +453,7 @@ export function CustomerFiltersPanel({
             {/* Reach (PRD-campaign-audiences slice 05): where they are, what they read, and what we last sent them. */}
             <fieldset className="min-w-0 space-y-3 sm:col-span-2 lg:col-span-4">
                 <legend className="mb-1 text-sm font-medium">Reach</legend>
-                <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid min-w-0 gap-3 sm:grid-cols-3">
                     <div className="min-w-0 space-y-2">
                         <Label htmlFor={`${id}-ships-to`}>Ships to</Label>
                         <Select
@@ -515,33 +506,6 @@ export function CustomerFiltersPanel({
                         </Select>
                         <p id={`${id}-language-hint`} className="text-xs text-muted-foreground">
                             The language they use the site in.
-                        </p>
-                    </div>
-                    <div className="min-w-0 space-y-2">
-                        <Label htmlFor={`${id}-points-expire`}>Points expire</Label>
-                        <Select
-                            value={filters.points_expire ? String(filters.points_expire.months) : "any"}
-                            onValueChange={(v) => onChange({ points_expire: v === "any" ? null : { months: Number(v) } })}
-                        >
-                            <SelectTrigger
-                                id={`${id}-points-expire`}
-                                className="w-full"
-                                aria-label="Points expire"
-                                aria-describedby={`${id}-points-expire-hint`}
-                            >
-                                <SelectValue placeholder="Any time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="any">Any time</SelectItem>
-                                {pointsExpireOptions.map((m) => (
-                                    <SelectItem key={m} value={String(m)}>
-                                        Within {monthsLabel(m)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <p id={`${id}-points-expire-hint`} className="text-xs text-muted-foreground">
-                            A balance above 0, on the date their Profile shows. None while points are off.
                         </p>
                     </div>
                     <div className="min-w-0 space-y-2">

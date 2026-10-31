@@ -105,7 +105,7 @@ export const ENGLISH_ONLY_PAGE_META = {
     path: "/mp-care",
     title: "How to care for your Mpillow",
     description:
-      "How to wash, dry, store and look after your custom Mpillow, its covers and its cases, with quick care tips that keep its shape and support right for years.",
+      "Your Mpillow care ritual: fluff it daily, wash the cover sheets weekly and the case monthly, and wash the whole pillow once a year, with video guides.",
   },
   privacyPolicy: {
     path: "/privacy-policy",
@@ -129,7 +129,7 @@ export const ENGLISH_ONLY_PAGE_META = {
     path: "/points",
     title: "How points work",
     description:
-      "How Mpillow points work: what you earn on each order, how to use them as money off a later shop order, when they expire and the rules that apply to them.",
+      "How Mpillow points work: what you earn on each order, how to use them as money off a later shop order, and the rules that apply. Points never expire.",
   },
 } satisfies Record<string, PageMeta & { path: string }>;
 

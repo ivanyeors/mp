@@ -10,7 +10,6 @@ import {
   type LifecycleStage,
 } from "@/lib/crm/lifecycle-stage";
 import { monthsBefore } from "@/lib/crm/months";
-import { sgDate } from "@/lib/analytics/sg-calendar";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
@@ -41,10 +40,10 @@ import type { MarketingEmailState } from "@/lib/marketing-consent/state";
  * *Delivered* and the Stage's sub-statuses, so the retention loop's Playbook
  * audiences are links too. None of them reaches the Review request job either.
  *
- * Slice 05 adds the reach filters: *Ships to*, *Language*, *Points expire
- * within*, *Campaign* (got it, didn't, clicked, didn't click) and *Last
- * emailed*, so *At risk · Ships to Singapore · Not emailed in 30 days* is a
- * link too.
+ * Slice 05 adds the reach filters: *Ships to*, *Language*, *Campaign* (got
+ * it, didn't, clicked, didn't click) and *Last emailed*, so *At risk · Ships
+ * to Singapore · Not emailed in 30 days* is a link too. (Its *Points expire
+ * within* is not built: points never expire, ADR 0030 decision 17.)
  *
  * Each parameter is read on its own: an unknown value (`bought=foo`) is
  * dropped and named in `ignored`, never passed to the query.
@@ -224,17 +223,6 @@ export const LANGUAGE_LABELS: Record<LanguageFilter, string> = {
 };
 
 /**
- * *Points expire within* (slice 05): an available balance whose last day
- * (`points_expire_on`, as the Profile shows it) falls within N months of
- * today in Singapore. A date already passed is in: those points expire on the
- * daily job's next run. Nobody matches while points are off.
- */
-export interface PointsExpireFilter {
-  months: number;
-}
-export const POINTS_EXPIRE_MONTHS_MAX = 24;
-
-/**
  * *Campaign* (slice 05): what one campaign did with them, from the overview's
  * `campaigns_sent` and `campaigns_clicked`. *Got it* is a send the provider
  * accepted, as the campaign's *Sent* counts it; *didn't click* is got it and
@@ -318,8 +306,6 @@ export interface CustomerFilters {
   ships_to: ShipsToFilter | null;
   /** The language they read (`locale`); null for no filter. */
   language: LanguageFilter | null;
-  /** Their points expire within N months; null for no filter. */
-  points_expire: PointsExpireFilter | null;
   /** What one campaign did with them; null for no filter. */
   campaign: CampaignFilter | null;
   /** When a campaign last reached them; null for no filter. */
@@ -355,7 +341,6 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   min_spend: null,
   ships_to: null,
   language: null,
-  points_expire: null,
   campaign: null,
   emailed: null,
   google_review: "all",
@@ -438,11 +423,6 @@ const PARAM_SCHEMAS = {
     .pipe(z.number().positive()),
   ships_to: z.enum(SHIPS_TO_FILTERS),
   language: z.enum(LANGUAGE_FILTERS),
-  points_expire: z
-    .string()
-    .regex(/^within:\d{1,2}$/)
-    .transform((v) => ({ months: Number(v.split(":")[1]) }))
-    .pipe(z.object({ months: z.number().int().min(1).max(POINTS_EXPIRE_MONTHS_MAX) })),
   // `<campaign id>:<state>`; the id is written lower-case, so one campaign is one URL.
   campaign: z
     .string()
@@ -579,7 +559,6 @@ export function customerFilterParams(
   if (f.min_spend != null) out.set("min_spend", String(Math.round(f.min_spend * 100) / 100));
   if (f.ships_to) out.set("ships_to", f.ships_to);
   if (f.language) out.set("language", f.language);
-  if (f.points_expire) out.set("points_expire", `within:${f.points_expire.months}`);
   if (f.campaign) out.set("campaign", `${f.campaign.id}:${f.campaign.state}`);
   if (f.emailed) out.set("emailed", emailedParam(f.emailed));
   if (f.google_review !== "all") out.set("google_review", f.google_review);
@@ -696,7 +675,6 @@ const FILTER_LABELS: {
   min_spend: (v) => `Spent at least ${spend.format(v)}`,
   ships_to: (v) => SHIPS_TO_LABELS[v],
   language: (v) => `Reads ${LANGUAGE_LABELS[v]}`,
-  points_expire: (v) => `Points expire within ${monthsLabel(v.months)}`,
   campaign: (v, ctx) => campaignFilterLabel(v.state, campaignName(v.id, ctx)),
   emailed: (v) => emailedLabel(v),
   google_review: (v) => GOOGLE_REVIEW_LABELS[v as Exclude<GoogleReviewFilter, "all">],
@@ -710,7 +688,7 @@ export function daysLabel(days: number): string {
 }
 
 /** *3 months*, *a year*: a span in months. */
-export function monthsLabel(months: number): string {
+function monthsLabel(months: number): string {
   if (months % 12 === 0) return months === 12 ? "a year" : `${months / 12} years`;
   return months === 1 ? "a month" : `${months} months`;
 }
@@ -739,7 +717,7 @@ export interface CustomerListQuery {
   gt(column: string, value: string | number): this;
   gte(column: string, value: string | number): this;
   lt(column: string, value: string): this;
-  lte(column: string, value: string | number): this;
+  lte(column: string, value: number): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
 
@@ -754,16 +732,6 @@ export function pgTextArray(values: readonly string[]): string {
 
 // Lives in ./months so lib/crm/lifecycle-stage can count months without this module.
 export { monthsBefore };
-
-/**
- * Today in Singapore plus `months`, `YYYY-MM-DD`: the *Points expire within*
- * cutoff. Counted as `points_expires_on()` counts, the day kept or clamped to
- * a shorter month's last.
- */
-export function sgDatePlusMonths(now: Date, months: number): string {
-  const [y, m, d] = sgDate(now).split("-").map(Number) as [number, number, number];
-  return monthsBefore(new Date(Date.UTC(y, m - 1, d)), -months).toISOString().slice(0, 10);
-}
 
 /**
  * Applies the filters and the sort to a query on `admin_customer_overview`.
@@ -833,8 +801,6 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.ships_to === "not-sg") q = q.neq("ship_country", "SG");
   if (filters.ships_to === "unknown") q = q.is("ship_country", null);
   if (filters.language) q = q.eq("locale", LANGUAGE_LOCALE[filters.language]);
-  // A null date (no balance, points off) never matches.
-  if (filters.points_expire) q = q.lte("points_expire_on", sgDatePlusMonths(now, filters.points_expire.months));
   if (filters.campaign) {
     const { id, state } = filters.campaign;
     if (state === "sent" || state === "not-clicked") q = q.contains("campaigns_sent", [id]);

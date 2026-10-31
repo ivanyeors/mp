@@ -11,7 +11,7 @@ import { formatAdminDateMY } from "@/lib/format/admin-date";
  * back to `not_subscribed`, and nothing moves `unsubscribed` → `subscribed`
  * except the customer's own `account` action. The import's default and the
  * boxes (checkout, customisation, booking) subscribe only someone nobody has
- * asked (ADR 0037).
+ * asked (ADR 0039).
  */
 
 export const MARKETING_EMAIL_STATES = ["subscribed", "not_subscribed", "unsubscribed"] as const;
@@ -43,7 +43,7 @@ export const MARKETING_EMAIL_LABEL = "Email me news and offers";
  */
 export const MARKETING_BOX_LABEL = "Email me important updates, event invites and offers. No spam, unsubscribe anytime.";
 
-/** The sources a box records (ADR 0037): subscribe only, only someone nobody has asked. */
+/** The sources a box records (ADR 0039): subscribe only, only someone nobody has asked. */
 export const CONSENT_BOX_SOURCES = ["checkout", "customisation", "appointment"] as const;
 export type ConsentBoxSource = (typeof CONSENT_BOX_SOURCES)[number];
 

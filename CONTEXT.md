@@ -84,7 +84,8 @@ _Avoid_: **Location** (the operator-editable place a Result originated); **Disco
 
 **Location**:
 A physical place a **Result** can originate and an **Appointment** can be booked at. Stored in the `partners` table with `type: own | partner` — `own` = Mpillow studios; `partner` = an external clinic (**Local Ambassador**) shown on `/our-partners` when `visible`. A separate `bookable` flag (default on) says whether it takes **Appointment** bookings — `visible` never does (own studios are saved `visible=false`); the customer picker lists bookable Locations that have an address, and staff flip `bookable` from Settings → Appointments (gear sheet). Each booked event is stamped with the Location id (private extended property) and the Admin Panel calendar shows the Location as a coloured **dot** with a legend. Operators pick a Location per **Result** (distinct from the auto **Source** badge) and manage the list under Settings → **Locations**.
-_Avoid_: conflating with **Source** (auto channel provenance), **Discovery source**, or **Entry source**; calling an `own` studio a partner; a separate `locations` table (it is the `partners` table extended — ADR 0012)
+A partner with several clinics has one Location per clinic: its **main** row, which is also the partner business (the **Partner account**, referral code, **Commission Pool**, logo, write-up, `visible`), and a **branch** row for each other clinic, with `parent_id` set to the main row (ADR 0037). A branch holds only its place (an optional `branch_name` such as "Novena", the address, postal code and `bookable`) and takes the partner's name. It shows on `/our-partners` under its partner, never as a partner of its own. A Location's display name is "partner · branch name" when the clinic has a name. Staff edit all of a partner's clinics in its Settings → Partners dialog, and the partner edits them in Partner Hub settings.
+_Avoid_: conflating with **Source** (auto channel provenance), **Discovery source**, or **Entry source**; calling an `own` studio a partner; a separate `locations` table (it is the `partners` table extended — ADR 0012); a table or JSON list of a partner's addresses (each clinic is a Location row — ADR 0037); counting a branch as a partner (it has no referral code, account or commission)
 
 **Self-collect**:
 A shipping method whose `collect_location_id` names the own **Location** (studio) the customer collects from, instead of a courier delivering. Offered on customisations only (the configurators, the Assisted finish and Staff re-configure), never in shop checkout. The customer gives only who collects; the **Result**, and the **Order** made from it, carry the studio's address with the customer as recipient and a `collect_location` marker, so every "has an address" check holds, the Order is not born delivered, and no courier label can be bought for it. Always a flat rate. A **Paired build**'s Mbolster is collected with its Mpillow.
@@ -372,7 +373,7 @@ The per-customer link in a campaign email, `/account/welcome?c=<token>`. The tok
 _Avoid_: "magic link" — a Claim link never signs anyone in; proof of the email is always the **Sign in** itself
 
 **Marketing consent**:
-Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its **Consent source** and timestamp. Every change is appended to `customer_consent_events`. Two defaults subscribe someone nobody has asked, and never anyone who unsubscribed (owner, 2026-10-31; ADR 0037): every **Migrated customer** not on Shopify's unsubscribed list, and anyone who leaves the box ticked where they give their email (checkout, a customisation's contact step, a booking).
+Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its **Consent source** and timestamp. Every change is appended to `customer_consent_events`. Two defaults subscribe someone nobody has asked, and never anyone who unsubscribed (owner, 2026-10-31; ADR 0039): every **Migrated customer** not on Shopify's unsubscribed list, and anyone who leaves the box ticked where they give their email (checkout, a customisation's contact step, a booking).
 _Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked", which is why Shopify's unsubscribed list is exported separately
 
 **Consent source**:
@@ -441,6 +442,10 @@ _Avoid_: "outcome" (that is the terminal status the resolution drives)
 **RMA status**:
 The lifecycle state: `requested → approved | rejected | cancelled`; `approved → instructions_sent | cancelled`; `instructions_sent → received | cancelled`; `received → completed | refunded`. Terminal: `completed`, `refunded`, `rejected`, `cancelled`. Validated by the pure `canTransition`.
 _Avoid_: inventing intermediate states in UI without adding them to `canTransition`
+
+**Staff refund** (ADR 0038):
+Money Staff send back from the order screen through Stripe: everything left, chosen lines (each at its share of what the customer paid) and the shipping, or a typed amount, always with a reason. *Charged in error* and *Duplicate charge* correct a charge and need nothing back; *Customer returned it* on a **Result** Order needs it shipped and back in person.
+_Avoid_: "refund request" (the customer's ask on a Result Order); "return" for a charge correction, where nothing comes back
 
 **Status event**:
 An append-only `rma_status_events` row (`from_status`, `to_status`, `actor`, `reason`) — the customer-visible **Return** timeline. Distinct from the staff-only `admin_audit_log` entry written alongside it.
@@ -521,11 +526,11 @@ _Avoid_: "verified mobile" — nothing verifies a phone number by code; letting 
 ## Loyalty points (ADR 0030)
 
 **Points**:
-A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, and from a one-time **Claim bonus**. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
+A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, and from a one-time **Claim bonus**. Points never expire. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
 _Avoid_: "store credit", "wallet", "cashback" (each implies cash value or a refund); "rewards" (there is no catalogue); "tier" or "member" for customers (a **Member** is **Staff**; tiers are the partners')
 
 **Points ledger**:
-The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, spend, spend release, clawback, expiry and Staff adjustment. The balance is the sum of the entries and is never stored on `customers`.
+The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, spend, spend release, clawback and Staff adjustment. There is no expiry entry: points never expire (ADR 0030, 2026-10-31). The balance is the sum of the entries and is never stored on `customers`.
 _Avoid_: editing or deleting an entry — a correction is a new `adjust` entry with a reason
 
 **Pending points**:
@@ -537,12 +542,12 @@ _Avoid_: letting pending points be spent, or counting them in the balance
 _Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
 
 **Milestone bonus**:
-Points a **Customer** receives once (`kind = 'milestone_bonus'`) for each bonus milestone they reach: a number of points earned from orders, on a ladder the owner sets (`points_milestones`, at most five). Only points earned on orders count, every `earn` less every `clawback`: spending, expiry, the **Claim bonus**, Staff adjustments and Milestone bonuses neither move it nor set it back. The daily job grants it with the points that reach it; it is never taken back, and each milestone pays once. The Profile shows the ladder as a progress bar (ADR 0030 s to w).
+Points a **Customer** receives once (`kind = 'milestone_bonus'`) for each bonus milestone they reach: a number of points earned from orders, on a ladder the owner sets (`points_milestones`, at most five). Only points earned on orders count, every `earn` less every `clawback`: spending, the **Claim bonus**, Staff adjustments and Milestone bonuses neither move it nor set it back. The daily job grants it with the points that reach it; it is never taken back, and each milestone pays once. The Profile shows the ladder as a progress bar (ADR 0030 s to w).
 _Avoid_: "tier", "level" or "status" (nothing changes after a milestone but the bonus); conflating it with the partner **Milestone track** (units, cash and rate bumps); counting the balance towards it
 
 **Points expiry**:
-The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**. The clock is the **Order** or **Claim bonus** that set the last purchase, and each clock gets its own three reminders. The expiry date shown is the last day the points can be used.
-_Avoid_: expiring points per batch, or describing expiry as fixed at earning time
+Retired (owner, 2026-10-31; ADR 0030 amendment). Points never expire: a balance is kept however long it is between orders, no reminder is sent about it, and no date is shown beside it.
+_Avoid_: an expiry date, a "use them before" reminder, or any copy that implies points lapse
 
 ## Email marketing (PRD-email-marketing, PRD-campaign-email-editor, ADR 0036)
 
@@ -825,7 +830,7 @@ A named non-filling BOM preset (`role: warehouse`) for Apply-to-active-BOM. Must
 ## Partner portal
 
 **Partner account**:
-The login identity of a partner business: a `partner_users` row (mirroring the `admin_users` pattern) linking an auth user to a `type='partner'` **Location** row in the `partners` table. Approved self-serve signup creates/claims that Location row (`visible=false` until Staff flips it). Portal profile edits (company name, logo, write-up, location) write to the **same row** that powers `/our-partners` and appointment booking — one aggregate, one CRUD path. Edits apply **immediately** (hub and `/our-partners` both reflect them); Staff are notified and can one-click hide (`visible=false`) or revert — no draft/published split in v1. Logo guidelines (square, min dimensions, format) are shown at upload. Online-only referrers are rows with no address that never get booked.
+The login identity of a partner business: a `partner_users` row (mirroring the `admin_users` pattern) linking an auth user to a `type='partner'` **Location** row in the `partners` table. Approved self-serve signup creates/claims that Location row (`visible=false` until Staff flips it). Portal profile edits (company name, logo, write-up, locations) write to the **same row** that powers `/our-partners` and appointment booking, and to that row's branch rows for the partner's other clinics (ADR 0037) — one aggregate, one CRUD path. Edits apply **immediately** (hub and `/our-partners` both reflect them); Staff are notified and can one-click hide (`visible=false`) or revert — no draft/published split in v1. Logo guidelines (square, min dimensions, format) are shown at upload. Online-only referrers are rows with no address that never get booked.
 _Avoid_: a separate partner-profile table that can drift from the **Location** row; "partner" alone when you mean the login identity vs the business row
 
 **Partner application**:

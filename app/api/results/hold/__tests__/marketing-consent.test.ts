@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 /**
  * The marketing email box on a customisation's contact step
- * (PRD-campaign-audiences slice 02; ADR 0037). The hold records it for the
+ * (PRD-campaign-audiences slice 02; ADR 0039). The hold records it for the
  * email typed on the form, as `customisation`, once a Paired build included,
  * and only once every gate has passed. Same in-memory harness as
  * telegram-switch.test.ts; the consent write itself is

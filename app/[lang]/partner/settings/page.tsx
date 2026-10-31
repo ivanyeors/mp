@@ -21,12 +21,18 @@ export default async function PartnerSettingsPage({
   const ctx = await requireActivePartnerPage(locale);
 
   const admin = supabaseAdmin();
-  const [{ data: partner }, { data: pu }, { data: pay }] = await Promise.all([
+  const [{ data: partner }, { data: branches }, { data: pu }, { data: pay }] = await Promise.all([
     admin
       .from("partners")
-      .select("name, description, address, postal_code, logo_url, notify_whatsapp")
+      .select("name, description, address, postal_code, branch_name, logo_url, notify_whatsapp")
       .eq("id", ctx.partnerId)
       .maybeSingle(),
+    // The partner's other clinics (ADR 0037), scoped to their own main row.
+    admin
+      .from("partners")
+      .select("id, branch_name, address, postal_code")
+      .eq("parent_id", ctx.partnerId)
+      .order("position", { ascending: true }),
     admin
       .from("partner_users")
       .select("backup_email, backup_email_verified, backup_email_pending")
@@ -49,9 +55,20 @@ export default async function PartnerSettingsPage({
       initialProfile={{
         name: partner?.name ?? ctx.partnerName ?? "",
         description: partner?.description ?? "",
-        address: partner?.address ?? "",
-        postal_code: partner?.postal_code ?? "",
         logo_url: partner?.logo_url ?? null,
+      }}
+      initialLocations={{
+        main: {
+          branch_name: partner?.branch_name ?? "",
+          address: partner?.address ?? "",
+          postal_code: partner?.postal_code ?? "",
+        },
+        branches: (branches ?? []).map((b) => ({
+          id: b.id as string,
+          branch_name: (b.branch_name as string | null) ?? "",
+          address: (b.address as string | null) ?? "",
+          postal_code: (b.postal_code as string | null) ?? "",
+        })),
       }}
       backupEmail={{
         email: pu?.backup_email ?? null,

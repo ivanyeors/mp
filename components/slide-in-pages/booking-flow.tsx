@@ -151,7 +151,7 @@ export function BookingFlow({
   const [phone, setPhone] = React.useState(readjustment?.prefill.phone ?? "");
   const [email, setEmail] = React.useState(readjustment?.prefill.email ?? "");
   const [language, setLanguage] = React.useState<LanguagePreference>("none");
-  // The marketing email box: ticked by default (owner, 2026-10-31; ADR 0037).
+  // The marketing email box: ticked by default (owner, 2026-10-31; ADR 0039).
   // It subscribes only someone nobody has asked; unticking changes nothing.
   const [marketingEmail, setMarketingEmail] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);

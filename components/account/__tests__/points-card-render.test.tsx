@@ -4,10 +4,10 @@ import { SEEDED_MILESTONES } from "@/lib/points/milestones";
 import { PointsCard, PointsComingSoonCard } from "../points-card";
 
 describe("Profile → Points (PRD-loyalty-points slice 02)", () => {
-  it("shows the balance in points and dollars, what is pending and when, the expiry, and the two exclusions", () => {
+  it("shows the balance in points and dollars, what is pending and when, that they never expire, and the two exclusions", () => {
     const html = renderToStaticMarkup(
       <PointsCard
-        balance={{ available: 2130, pending: 540, lastPurchaseAt: "2026-10-20T00:00:00Z", expiresOn: "2028-10-20" }}
+        balance={{ available: 2130, pending: 540 }}
         pending={[
           { orderId: "o1", orderNumber: "MP-10428", points: 540, releaseAt: "2026-11-19T02:00:00Z" },
           { orderId: "o2", orderNumber: "MP-10431", points: 90, releaseAt: null },
@@ -17,7 +17,8 @@ describe("Profile → Points (PRD-loyalty-points slice 02)", () => {
       />,
     );
     expect(html).toContain("Your points: 2,130 points (S$21.30)");
-    expect(html).toContain("Expires on 20 October 2028.");
+    expect(html).toContain("They don&#x27;t expire.");
+    expect(html).not.toMatch(/expires on/i);
     expect(html).toContain("540 points (S$5.40) from order MP-10428, usable from 19 November 2026");
     expect(html).toContain("usable 30 days after it&#x27;s delivered");
     expect(html).toContain("can&#x27;t be used on custom pillows, and points used are not refunded");
@@ -28,7 +29,7 @@ describe("Profile → Points (PRD-loyalty-points slice 02)", () => {
     const html = renderToStaticMarkup(<PointsComingSoonCard earnPerDollar={3} termsHref="/en-US/points" />);
     expect(html).toContain("Coming soon");
     expect(html).toContain("You&#x27;ll earn 3 points for every S$1 you pay for products, before GST.");
-    expect(html).toContain("100 points take S$1 off.");
+    expect(html).toContain("100 points take S$1 off. They don&#x27;t expire.");
     expect(html).toContain('href="/en-US/points"');
     expect(html).not.toContain("Your points");
     expect(html).not.toMatch(/shopify|migrat|moving/i);
@@ -37,7 +38,7 @@ describe("Profile → Points (PRD-loyalty-points slice 02)", () => {
 
 describe("Profile → Points → Bonus milestones (PRD-loyalty-points slice 09)", () => {
   const ladder = [...SEEDED_MILESTONES];
-  const balance = (pending: number) => ({ available: 1750, pending, lastPurchaseAt: "2026-10-20T00:00:00Z", expiresOn: "2028-10-20" });
+  const balance = (pending: number) => ({ available: 1750, pending });
   const live = (earned: number, pending = 0, milestones: { ladder: typeof ladder; earned: number } | null = { ladder, earned }) =>
     renderToStaticMarkup(
       <PointsCard balance={balance(pending)} pending={[]} milestones={milestones} termsHref="/en-US/points" shopHref="/en-US/shop" />,

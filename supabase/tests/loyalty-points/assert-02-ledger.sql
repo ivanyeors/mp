@@ -1,7 +1,8 @@
 -- Loyalty points slice 02 (PRD-loyalty-points; ADR 0030): the ledger, the
 -- partner rule, the candidates, the balance, Staff adjustments and the cost
 -- summary, asserted against real Postgres
--- (20261021120000_points_ledger.sql).
+-- (20261021120000_points_ledger.sql), as points-never-expire left them
+-- (20261031032017_points_never_expire.sql).
 --
 -- Run from the repository root against a database with every migration
 -- applied (a throwaway local one, never production). It prints one line,
@@ -48,8 +49,20 @@ begin
 
   -- Every default seeded, off, and no launch date.
   assert (select enabled = false and launch_at is null and earn_per_dollar = 3 and min_redeem = 500
-            and max_share = 0.5 and expiry_months = 24 and claim_bonus = 1000 and claim_bonus_months = 3
+            and max_share = 0.5 and claim_bonus = 1000 and claim_bonus_months = 3
             from points_settings()), 'settings: the PRD defaults';
+
+  -- Points never expire: no setting, no expiry function, no date on the balance.
+  assert not exists (select 1 from site_settings where key = 'points_expiry_months'), 'settings: no expiry';
+  assert not exists (
+    select 1 from pg_proc
+     where pronamespace = 'public'::regnamespace
+       and proname in ('expire_points', 'expire_due_points', 'points_expiry_reminder_candidates', 'points_clock', 'points_expires_on')
+  ), 'no expiry functions';
+  assert (select array_agg(attname::text order by attnum) from pg_attribute
+           where attrelid = 'public.admin_points_summary'::regclass and attname like 'expired%') is null, 'summary: no expired columns';
+  assert (select string_agg(a, ',') from unnest((select proargnames from pg_proc where oid = 'public.points_balance(uuid)'::regprocedure)) a)
+         = 'p_customer_id,available,pending', 'balance: available and pending only';
 end $$;
 
 -- ---------------------------------------------------------------- fixtures
@@ -89,6 +102,11 @@ begin
   begin
     insert into points_ledger (customer_id, kind, points) values ('0f0f0f0f-0000-4000-8000-000000000001', 'earn', -5);
     assert false, 'an earn is positive';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into points_ledger (customer_id, kind, points) values ('0f0f0f0f-0000-4000-8000-000000000001', 'expire', -5);
+    assert false, 'there is no expire kind';
   exception when check_violation then null;
   end;
   begin
@@ -242,16 +260,12 @@ begin
 
   select * into b from points_balance('0f0f0f0f-0000-4000-8000-000000000003');
   assert b.available = 0 and b.pending = 750, 'balance: nothing available, 750 pending';
-  assert b.expires_on is null, 'balance: nothing to expire';
 
   -- An earned entry moves an Order out of the candidates.
   insert into points_ledger (customer_id, kind, points, order_id)
   values ('0f0f0f0f-0000-4000-8000-000000000003', 'earn', 540, '0f0f0f0f-1000-4000-8000-000000000001');
   select * into b from points_balance('0f0f0f0f-0000-4000-8000-000000000003');
   assert b.available = 540 and b.pending = 210, 'balance: earned moves from pending to available';
-  assert b.last_purchase_at > now() - interval '3 days', 'balance: the latest paid Order';
-  assert b.expires_on = ((b.last_purchase_at at time zone 'Asia/Singapore') + interval '24 months')::date,
-    'balance: expires 24 months after the last purchase';
 
   -- A partner's self-purchase never earns.
   select id into v_self from partners limit 1;

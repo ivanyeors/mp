@@ -4,7 +4,7 @@
 **Type:** AFK, then HITL (counsel on the wording)
 **Status:** **built** at checkout, the customisation contact step and booking (2026-10-31).
 Open: counsel on the wording, the privacy policy line, and the signed-in unsubscribed case
-**Blocked by:** none (owner decision 1 settled: ticked by default; ADR 0037)
+**Blocked by:** none (owner decision 1 settled: ticked by default; ADR 0039)
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:storefront`, `area:email`
 
 ## Goal
@@ -71,7 +71,7 @@ A customer who buys here hears from us unless they say no, at the moment they gi
 - [x] A Staff member's in-store device (Staff assist mode) shows the box to the shopper too, and
   the consent is the shopper's email, never the Staff login's
   (`app/api/results/hold/__tests__/marketing-consent.test.ts`).
-- [ ] Counsel has read the wording, knowing the box is ticked by default (ADR 0037).
+- [ ] Counsel has read the wording, knowing the box is ticked by default (ADR 0039).
 - [ ] The privacy policy has a line on the box (HITL).
 - [ ] A signed-in Customer who unsubscribed sees the box unticked, and ticking it re-subscribes
   them as `account` (not built: today the box is ticked for everyone, and skips them).

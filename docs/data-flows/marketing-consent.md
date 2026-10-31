@@ -26,7 +26,7 @@ is server-only, and the customer's own key cannot call the function.
 | Source | Where | Moves | Route or function |
 |---|---|---|---|
 | `shopify_import` | Customers → Import from Shopify | subscribe, only someone nobody has asked | `apply_shopify_email_consent()`, inside the import's SQL (ADR 0029 h) |
-| `import_default` | Customers → Import from Shopify → *Subscribe imported customers* | subscribe, only someone nobody has asked | `subscribe_migrated_customers()` (ADR 0037) |
+| `import_default` | Customers → Import from Shopify → *Subscribe imported customers* | subscribe, only someone nobody has asked | `subscribe_migrated_customers()` (ADR 0039) |
 | `shopify_unsubscribed` | the same card, from Shopify's unsubscribed list | unsubscribe, except someone who chose to subscribe here since | `subscribe_migrated_customers()` |
 | `checkout` | the box at shop checkout, ticked by default | subscribe, only someone nobody has asked | `app/api/shop/checkout` → `recordCheckoutConsent()` |
 | `customisation` | the box on a customisation's contact step, ticked by default: Mpillow, Basic, Mbolster, a Paired build (once, on the Mpillow), an Assisted customisation | subscribe, only someone nobody has asked | `app/api/results/hold` → `recordBoxConsentByEmail()` |
@@ -62,7 +62,7 @@ ticking it is their own `account` choice (slice 02, still to do).
 ## Who receives a campaign
 
 Consent is necessary, not sufficient. `marketing_campaign_blocker()` decides
-each send (ADR 0038): consent, suppression (a bounce or a spam report), the
+each send (ADR 0040): consent, suppression (a bounce or a spam report), the
 **Rest period** (7 days between marketing emails, at most 4 in 30, points-expiry
 reminders included; `20261031130000`), and, once slice 12 lands, the sunset
 rule. An **Audience** or a

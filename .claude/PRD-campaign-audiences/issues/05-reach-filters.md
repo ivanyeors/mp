@@ -1,4 +1,4 @@
-# 05 — Reach filters: ships to, language, points expiry, campaign history
+# 05 — Reach filters: ships to, language, campaign history, last emailed
 
 **Issue:** not filed
 **Type:** AFK
@@ -19,9 +19,10 @@ As slice 04, each a filter on the overview:
   default address's. A new overview column `ship_country`. *Unknown* is its own value, never
   Singapore.
 - **Language** (`language=zh-cn`, `en`): `customers.locale`.
-- **Points expire within** (`points_expire=within:3`): months until `points_expires_on()`
-  (`20261021170000_points_expiry.sql:76`), for a balance above 0. A new overview column
-  `points_expire_on`.
+- ~~**Points expire within**~~ (`points_expire=within:3`): **dropped 2026-10-31.** Points never
+  expire (owner, 2026-10-31; ADR 0030 decision 17), and `20261031032017_points_never_expire.sql`
+  removed `points_expires_on()`. It was built and then taken out before the slice reached
+  production; an old link's `points_expire` is ignored.
 - **Campaign** (`campaign=<id>:sent`, `:not-sent`, `:clicked`, `:not-clicked`): from
   `customer_campaign_sends`. The control lists campaigns by name.
 - **Last emailed** (`emailed=within:14`, `over:30`, `never`): days since
@@ -29,8 +30,8 @@ As slice 04, each a filter on the overview:
 
 ## As built
 
-- **The overview** appends six columns: `ship_country`, `locale`, `points_expire_on`,
-  `campaigns_sent`, `campaigns_clicked` and `last_emailed_at`.
+- **The overview** appends five columns: `ship_country`, `locale`, `campaigns_sent`,
+  `campaigns_clicked` and `last_emailed_at`.
 - **Ships to.** The latest *counted* Order with a two-letter country (a self-collect or
   re-adjustment Order is the studio's, `SG`), else the default address, else the address saved
   last. A pending Order, or a country that is not two letters, counts for nothing. `not-sg` is
@@ -39,10 +40,6 @@ As slice 04, each a filter on the overview:
 - **Unknown in the summary.** With *Ships to* Singapore or outside it, the list makes a second,
   head-only count with the same filters and `ships_to=unknown`, and says under the chips: *"12
   more match the other filters but ship to an unknown country"*.
-- **Points expire within** mirrors `points_balance()`: `points_expires_on()` over
-  `points_clock()`, for an available balance above 0. It is null while points are off, because
-  nothing expires then. The cutoff is today in Singapore plus N months, clamped as Postgres
-  clamps. Presets 1, 3 and 6 months; a link may carry 1–24.
 - **Campaign** is one campaign and one state (`<id>:sent`, `not-sent`, `clicked`,
   `not-clicked`). *Got it* is a send the provider accepted (sent, bounced or complained), as the
   campaign's own *Sent* counts it. *Didn't click* is got it and never clicked. The control lists

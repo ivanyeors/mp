@@ -179,7 +179,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>(NEW_ADDRESS);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
 
-  // Marketing email: ticked by default (owner, 2026-10-31; ADR 0037). It only
+  // Marketing email: ticked by default (owner, 2026-10-31; ADR 0039). It only
   // ever subscribes someone nobody has asked; unticking changes nothing.
   const [marketingEmail, setMarketingEmail] = useState(true);
 

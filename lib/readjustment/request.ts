@@ -45,7 +45,7 @@ export const ReadjustmentBookingSchema = z
     phone: z.string().min(1),
     language_preference: z.enum(LANGUAGE_PREFERENCES).default("none"),
     /**
-     * The marketing email box, ticked by default (ADR 0037; PRD-campaign-audiences
+     * The marketing email box, ticked by default (ADR 0039; PRD-campaign-audiences
      * slice 02). Absent, as from a booking tab opened before it, is unticked.
      */
     marketing_email: z.boolean().optional(),

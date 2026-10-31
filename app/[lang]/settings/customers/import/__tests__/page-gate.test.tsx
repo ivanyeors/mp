@@ -92,7 +92,7 @@ describe("/settings/customers/import", () => {
     expect(page.props.consent).toEqual({ imported: 3 });
   });
 
-  it("asks for Shopify's unsubscribed list before subscribing anyone (ADR 0037)", () => {
+  it("asks for Shopify's unsubscribed list before subscribing anyone (ADR 0039)", () => {
     const consent = {
       imported: 1240,
       alreadySubscribed: 312,

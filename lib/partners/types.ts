@@ -42,6 +42,10 @@ export type PartnerRow = {
   postal_code: string | null;
   /** Takes appointment bookings. Independent of `visible` (/our-partners only). */
   bookable: boolean;
+  /** Set on a branch: another clinic of the partner whose main row this is (ADR 0037). */
+  parent_id?: string | null;
+  /** The clinic's own name ("Novena"), shown after the partner's name when set. */
+  branch_name?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -50,12 +54,22 @@ export type ResolvedPartnersPage = WorkWithUsContent & {
   updatedAt: string;
 };
 
+/** One clinic of a partner on /our-partners: the main row's or a branch's place. */
+export type PartnerPlace = {
+  id: string;
+  branchName: string | null;
+  address: string;
+  postalCode: string | null;
+};
+
 export type ResolvedPartner = {
   id: string;
   name: string;
   logoUrl: string | null;
   websiteUrl: string | null;
   description: string | null;
+  /** The partner's clinics that have an address, main location first. */
+  locations: PartnerPlace[];
 };
 
 /**
