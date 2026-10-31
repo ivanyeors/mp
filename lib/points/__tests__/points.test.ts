@@ -11,7 +11,7 @@ import { POINTS_PER_DOLLAR, formatDollars, formatPoints, formatPointsCount, poin
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021120000_points_ledger.sql"), "utf8");
 // Points never expire (ADR 0030, 2026-10-31): this one redefines the settings
 // function and the candidates view, so its windows must match too.
-const NEVER_EXPIRE = readFileSync(join(process.cwd(), "supabase/migrations/20261031120000_points_never_expire.sql"), "utf8");
+const NEVER_EXPIRE = readFileSync(join(process.cwd(), "supabase/migrations/20261031032017_points_never_expire.sql"), "utf8");
 
 describe("value (ADR 0030 a, b)", () => {
   it("is 100 points to S$1, shown in both", () => {

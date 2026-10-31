@@ -4,7 +4,7 @@
 **Type:** AFK
 **Status:** retired (owner, 2026-10-31). Points never expire. Everything this slice built (the
 clock, the expiry, the reminders, their emails and the setting) was removed by
-`20261031120000_points_never_expire.sql` and the change that came with it; see ADR 0030's
+`20261031032017_points_never_expire.sql` and the change that came with it; see ADR 0030's
 amendment of 2026-10-31. It never ran in production: points were still off.
 **Blocked by:** 02, 03
 **User stories:** 8

@@ -249,7 +249,7 @@ stored.
   to give points back when the shop cancels an order. This is the only manual path, and it is
   refused for a partner.
 
-**Expiry** (retired 2026-10-31; `20261031120000_points_never_expire.sql` removed all of it)
+**Expiry** (retired 2026-10-31; `20261031032017_points_never_expire.sql` removed all of it)
 
 - **(o) The 24-month clock.** The whole balance expires `points_expiry_months` (24) after the
   customer's last paid Order, or after their Claim bonus if that is later. A new purchase

@@ -158,7 +158,7 @@ retires decision 8 (the 24-month clock) and decision 9 (its reminders), and rule
 
 **Why it was safe to delete rather than wind down.** When this was decided, production had points
 switched off, an empty ledger, no expiry email sent and no saved copy for one. Nothing had
-expired, so nothing is reinstated. The migration (`20261031120000_points_never_expire.sql`)
+expired, so nothing is reinstated. The migration (`20261031032017_points_never_expire.sql`)
 refuses to run on a database that does hold an `expire` entry, because the ledger is
 append-only and those points would have to be given back with `adjust` entries first.
 

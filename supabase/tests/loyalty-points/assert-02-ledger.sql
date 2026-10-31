@@ -2,7 +2,7 @@
 -- partner rule, the candidates, the balance, Staff adjustments and the cost
 -- summary, asserted against real Postgres
 -- (20261021120000_points_ledger.sql), as points-never-expire left them
--- (20261031120000_points_never_expire.sql).
+-- (20261031032017_points_never_expire.sql).
 --
 -- Run from the repository root against a database with every migration
 -- applied (a throwaway local one, never production). It prints one line,
