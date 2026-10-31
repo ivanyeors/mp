@@ -20,7 +20,7 @@ demoable path through the layers it touches.
 | [05](05-reach-filters.md) | Reach filters: ships to, language, points expiry, campaign history | AFK | not started | 08 (clicked values only) |
 | [06](06-exclude-segments.md) | Exclude Segments from an Audience | AFK | **built** | none |
 | [07](07-rest-period.md) | A rest period between one person's emails | AFK | **built** | 01 |
-| [08](08-clicks-and-unsubscribes-per-campaign.md) | Clicks and unsubscribes, tied to the campaign | AFK, then HITL | not started | 01 |
+| [08](08-clicks-and-unsubscribes-per-campaign.md) | Clicks and unsubscribes, tied to the campaign | AFK, then HITL | **built**; privacy policy line open | 01 |
 | [09](09-fit-checks-and-variables.md) | The right version: fit checks and two Variables | AFK | not started | 04, 05 |
 | [10](10-keep-sending.md) | Keep sending: reach people as they join the Audience | AFK | not started | 01, 07 |
 | [11](11-campaign-results.md) | Results per campaign: clicks, unsubscribes, purchases after | AFK | not started | 08 |
@@ -40,7 +40,7 @@ graph TD
   s05[05 Reach filters]
   s06[06 Exclusions · built]
   s07[07 Rest period · built]
-  s08[08 Clicks and unsubscribes per campaign]
+  s08[08 Clicks and unsubscribes · built]
   s09[09 Fit checks and Variables]
   s10[10 Keep sending]
   s11[11 Results]
@@ -80,7 +80,8 @@ graph TD
 3. **Done 2026-10-31:** 01 (glossary, ADR 0038, the consent data-flow page) and the rest of 02
    (the box on the customisation contact step and on booking). Counsel still to read the wording;
    the privacy policy line and the signed-in unsubscribed case are open.
-4. **Done 2026-10-31:** 07 (the rest period: 7 days, at most 4 in 30). **08** next, early, so
-   clicks and unsubscribes are collected before 11 and 12 read them.
+4. **Done 2026-10-31:** 07 (the rest period: 7 days, at most 4 in 30) and 08 (clicks and
+   unsubscribes per send), so clicks are collected before 11 and 12 read them. The privacy
+   policy needs its line on click recording before 08 ships.
 5. **05, 09, then 10 and 11.**
 6. **03, 12 and 13** last: 12 needs six campaigns' clicks, 13 needs unsubscribe reasons.

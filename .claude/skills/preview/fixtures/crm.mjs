@@ -24,6 +24,8 @@ const SEGMENT = "00000000-0000-4000-8000-00000000c001";
 const STAFF_SEGMENT = "00000000-0000-4000-8000-00000000c002";
 const RECENT_SEGMENT = "00000000-0000-4000-8000-00000000c003";
 const CAMPAIGN = "00000000-0000-4000-8000-00000000e001";
+// A campaign already sent (PRD-campaign-audiences slice 08): Chloe clicked it, Farid left from its link.
+const SENT_CAMPAIGN = "00000000-0000-4000-8000-00000000e002";
 
 export default function crm({ now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -130,6 +132,74 @@ export default function crm({ now }) {
           locked_at: null,
           archived_at: null,
         },
+        {
+          id: SENT_CAMPAIGN,
+          name: "November care tips",
+          subject: "Three ways to keep your pillow fresh",
+          preheader: "Washing, airing and when to re-adjust.",
+          body: "Washing, airing and when to re-adjust: three short tips for your pillow.",
+          content: null,
+          greeting: true,
+          button_label: null,
+          button_target: null,
+          button_url: null,
+          audience: "subscribed",
+          segment_id: null,
+          exclude_segment_ids: [],
+          created_by_profile_id: null,
+          created_at: ago(28),
+          updated_at: ago(26),
+          locked_at: ago(26),
+          archived_at: null,
+        },
+      ],
+      customer_campaign_sends: [
+        {
+          id: "00000000-0000-4000-8000-00000000f001",
+          customer_id: customers[5].id,
+          template: `campaign:${SENT_CAMPAIGN}`,
+          campaign_id: SENT_CAMPAIGN,
+          wave: "w1",
+          status: "sent",
+          provider_message_id: "re_sample_1",
+          sent_at: ago(26),
+          attempts: 1,
+          last_error: null,
+          bounced_at: null,
+          complained_at: null,
+          click_token_hash: "b".repeat(64),
+          first_clicked_at: null,
+          clicks: 0,
+        },
+        {
+          id: "00000000-0000-4000-8000-00000000f002",
+          customer_id: customers[2].id,
+          template: `campaign:${SENT_CAMPAIGN}`,
+          campaign_id: SENT_CAMPAIGN,
+          wave: "w2",
+          status: "sent",
+          provider_message_id: "re_sample_2",
+          sent_at: ago(3),
+          attempts: 1,
+          last_error: null,
+          bounced_at: null,
+          complained_at: null,
+          click_token_hash: "c".repeat(64),
+          first_clicked_at: ago(2.9),
+          clicks: 2,
+        },
+      ],
+      customer_consent_events: [
+        {
+          id: 1,
+          customer_id: customers[5].id,
+          channel: "email",
+          from_state: "subscribed",
+          to_state: "unsubscribed",
+          source: "unsubscribe_link",
+          created_at: customers[5].marketing_email_updated_at,
+          campaign_send_id: "00000000-0000-4000-8000-00000000f001",
+        },
       ],
     },
     views: {
@@ -152,6 +222,31 @@ export default function crm({ now }) {
             suppressed: false,
             campaign_sends: {},
             marketing_recent: (p?.recent ?? []).map(ago),
+          };
+        }),
+      // 20261031140000: each campaign's numbers, clicks and unsubscribes included.
+      email_campaign_stats: (t) =>
+        (t.email_campaigns ?? []).map((e) => {
+          const sends = (t.customer_campaign_sends ?? []).filter((s) => s.campaign_id === e.id);
+          const handed = sends.filter((s) => ["sent", "bounced", "complained"].includes(s.status));
+          const ids = new Set(sends.map((s) => s.id));
+          const left = (t.customer_consent_events ?? []).filter(
+            (ev) => ids.has(ev.campaign_send_id) && ev.to_state === "unsubscribed" && ev.source === "unsubscribe_link",
+          );
+          return {
+            campaign_id: e.id,
+            handed: handed.length,
+            bounced: sends.filter((s) => s.bounced_at).length,
+            complained: sends.filter((s) => s.complained_at).length,
+            failed: sends.filter((s) => s.status === "failed").length,
+            pending: sends.filter((s) => s.status === "pending").length,
+            waves: new Set(sends.map((s) => s.wave)).size,
+            first_sent_at: handed.map((s) => s.sent_at).sort()[0] ?? null,
+            last_sent_at: handed.map((s) => s.sent_at).sort().at(-1) ?? null,
+            link_clicks: 0,
+            clicked: sends.filter((s) => s.first_clicked_at).length,
+            clicks: sends.reduce((n, s) => n + (s.clicks ?? 0), 0),
+            unsubscribed: new Set(left.map((ev) => ev.customer_id)).size,
           };
         }),
       admin_customer_overview: (t) =>

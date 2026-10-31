@@ -57,6 +57,8 @@ export interface FakeSend {
   last_error: string | null;
   bounced_at: string | null;
   complained_at: string | null;
+  /** SHA-256 hex of the send's click token (PRD-campaign-audiences slice 08). */
+  click_token_hash?: string | null;
 }
 
 export interface FakeWorld {
@@ -213,7 +215,8 @@ export function fakeCampaignsClient(world: FakeWorld) {
       id = own.id;
     } else {
       if (own) return none("already_sent");
-      id = `send-${++sendSeq}`;
+      // A uuid, as the ledger mints: the unsubscribe link signs it (slice 08).
+      id = `5e5d0000-0000-4000-8000-${String(++sendSeq).padStart(12, "0")}`;
       world.sends.push({
         id,
         customer_id: customerId,
@@ -249,7 +252,11 @@ export function fakeCampaignsClient(world: FakeWorld) {
   function finish(args: Row) {
     const s = world.sends.find((x) => x.id === args.p_send_id);
     if (!s || s.status !== "pending") return { data: false, error: null };
-    if (args.p_sent) Object.assign(s, { status: "sent", provider_message_id: args.p_provider_message_id ?? null });
+    if (args.p_sent) {
+      // Slice 08: the click token's hash, kept with a successful send only (20261031140000).
+      const hash = typeof args.p_click_token_hash === "string" && /^[0-9a-f]{64}$/.test(args.p_click_token_hash) ? args.p_click_token_hash : null;
+      Object.assign(s, { status: "sent", provider_message_id: args.p_provider_message_id ?? null, click_token_hash: hash });
+    }
     else Object.assign(s, { status: "failed", last_error: args.p_error ?? "unknown error" });
     return { data: true, error: null };
   }

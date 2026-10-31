@@ -53,12 +53,19 @@ export async function setMarketingEmail(
     customerId: string;
     to: Exclude<MarketingEmailState, "not_subscribed">;
     source: Exclude<ConsentSource, "shopify_import" | "import_default" | "shopify_unsubscribed">;
+    /**
+     * The campaign send behind it (PRD-campaign-audiences slice 08): from a
+     * verified unsubscribe link. Kept on the event only when the send is this
+     * Customer's own.
+     */
+    campaignSendId?: string | null;
   },
 ): Promise<SetMarketingEmailResult> {
   const { data, error } = await admin.rpc("set_marketing_email", {
     p_customer_id: input.customerId,
     p_to: input.to,
     p_source: input.source,
+    ...(input.campaignSendId ? { p_campaign_send_id: input.campaignSendId } : {}),
   });
   if (error) return { ok: false, error: error.message, notFound: /not found/i.test(error.message) };
   return { ok: true, changed: data === true };

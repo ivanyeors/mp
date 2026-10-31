@@ -6,6 +6,12 @@
  *   It is stateless and never expires, because an unsubscribe link must keep
  *   working for as long as the email exists. It is compared with
  *   `secretMatches`, in constant time.
+ * - **The send** (PRD-campaign-audiences slice 08). A campaign email's link
+ *   also carries its send, `s`, and then its token signs both,
+ *   `HMAC(customer_id + ":" + send_id)`, so the unsubscribe names the
+ *   campaign that caused it and no link can be edited to name another. A link
+ *   without `s` (every email sent before, and the probes) verifies as before
+ *   and names no campaign.
  * - **The page**, `/[lang]/unsubscribe?u=&t=`, confirms with one button. A GET
  *   never changes anything: link scanners prefetch.
  * - **The route**, `POST /api/email/unsubscribe?u=&t=`, takes the button and
@@ -41,13 +47,16 @@ export function unsubscribeConfigured(secret: string | undefined = secretFromEnv
   return Boolean(secret);
 }
 
-/** The token for one Customer, or null without a secret or a valid id. */
+/** The token for one Customer, and one send of theirs when given; null without a secret or a valid id. */
 export function unsubscribeToken(
   customerId: string,
   secret: string | undefined = secretFromEnv(),
+  sendId: string | null = null,
 ): string | null {
   if (!secret || !UUID.test(customerId)) return null;
-  return createHmac("sha256", secret).update(customerId.toLowerCase()).digest("base64url");
+  if (sendId != null && !UUID.test(sendId)) return null;
+  const message = sendId ? `${customerId.toLowerCase()}:${sendId.toLowerCase()}` : customerId.toLowerCase();
+  return createHmac("sha256", secret).update(message).digest("base64url");
 }
 
 /** Constant-time check of a presented link. Fails closed. */
@@ -61,6 +70,26 @@ export function verifyUnsubscribeToken(
   return expected != null && secretMatches(expected, token);
 }
 
+/**
+ * A presented link, verified: whose it is, and the campaign send it names when
+ * it names one it signed. Null for a link that does not verify, which a
+ * campaign link whose `s` was changed no longer does. An older link with an
+ * `s` added by hand still unsubscribes its Customer, and names no send.
+ */
+export function verifyUnsubscribeLink(
+  customerId: string | null | undefined,
+  token: string | null | undefined,
+  sendId: string | null | undefined,
+  secret: string | undefined = secretFromEnv(),
+): { customerId: string; sendId: string | null } | null {
+  if (!customerId || token == null) return null;
+  if (sendId && UUID.test(sendId)) {
+    const signed = unsubscribeToken(customerId, secret, sendId);
+    if (signed != null && secretMatches(signed, token)) return { customerId, sendId: sendId.toLowerCase() };
+  }
+  return verifyUnsubscribeToken(customerId, token, secret) ? { customerId, sendId: null } : null;
+}
+
 export interface UnsubscribeLinks {
   /** The confirm page: the footer link a person clicks. */
   pageUrl: string;
@@ -68,15 +97,20 @@ export interface UnsubscribeLinks {
   oneClickUrl: string;
 }
 
-/** Both links for one Customer, or null when no token can be made. */
+/** Both links for one Customer, naming one send of theirs when given; null when no token can be made. */
 export function unsubscribeLinks(
   customerId: string,
-  opts: { origin?: string; locale?: Locale; secret?: string } = {},
+  opts: { origin?: string; locale?: Locale; secret?: string; sendId?: string | null } = {},
 ): UnsubscribeLinks | null {
-  const token = unsubscribeToken(customerId, opts.secret ?? secretFromEnv());
+  const sendId = opts.sendId ?? null;
+  const token = unsubscribeToken(customerId, opts.secret ?? secretFromEnv(), sendId);
   if (!token) return null;
   const origin = (opts.origin ?? getSiteOrigin()).replace(/\/$/, "");
-  const query = new URLSearchParams({ u: customerId.toLowerCase(), t: token }).toString();
+  const query = new URLSearchParams({
+    u: customerId.toLowerCase(),
+    t: token,
+    ...(sendId ? { s: sendId.toLowerCase() } : {}),
+  }).toString();
   return {
     pageUrl: `${origin}${withLocale(UNSUBSCRIBE_PAGE, opts.locale ?? DEFAULT_LOCALE)}?${query}`,
     oneClickUrl: `${origin}${UNSUBSCRIBE_ROUTE}?${query}`,

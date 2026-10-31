@@ -6,8 +6,13 @@ Whether a **Customer** may be sent marketing email (`customers.marketing_email`:
 row of `customer_consent_events`, which nothing edits or deletes (an Import
 undo removes only its own events).
 
-One SQL function writes it: **`set_marketing_email(customer, to, source)`**
-(last restated in `20261031120000_consent_customisation_appointment.sql`). It
+One SQL function writes it: **`set_marketing_email(customer, to, source, at,
+campaign_send)`** (last restated in
+`20261031140000_campaign_clicks_and_unsubscribes.sql`). The last two arguments
+are optional; `campaign_send` is kept on the event only when the send is that
+Customer's own, so an unsubscribe or a complaint names the campaign behind it.
+Restate it with all five arguments: a four-argument copy would sit beside it
+as an overload and make every older call ambiguous. It
 locks the row, refuses a move the source may not make, writes the state, its
 source and one event together, and returns whether anything changed. Nothing
 calls `update customers set marketing_email` directly, and a trigger refuses
@@ -27,8 +32,8 @@ is server-only, and the customer's own key cannot call the function.
 | `customisation` | the box on a customisation's contact step, ticked by default: Mpillow, Basic, Mbolster, a Paired build (once, on the Mpillow), an Assisted customisation | subscribe, only someone nobody has asked | `app/api/results/hold` → `recordBoxConsentByEmail()` |
 | `appointment` | the box on booking: a guest's customisation visit, a signed-in re-adjustment (free or paid) | subscribe, only someone nobody has asked | `app/api/appointments/book` → `recordBoxConsentByEmail()`; `app/api/readjustments/book` and `/checkout` → `recordBoxConsent()` |
 | `account` | the customer, signed in, on their Profile | either way; the only source that re-subscribes | `app/[lang]/account/actions.ts` → `setMarketingEmail()` |
-| `unsubscribe_link` | the link in every campaign email | unsubscribe | `app/api/email/unsubscribe` |
-| `complaint` | Resend reports a spam complaint on a campaign send | unsubscribe | `record_campaign_send_event()` (`20261020130000`), from `app/api/email/resend-webhook` |
+| `unsubscribe_link` | the link in every campaign email; since slice 08 it names its send | unsubscribe | `app/api/email/unsubscribe` |
+| `complaint` | Resend reports a spam complaint on a campaign send, which it names | unsubscribe | `record_campaign_send_event()` (`20261031140000`), from `app/api/email/resend-webhook` |
 | `support` | Staff, at the customer's request, on the Customer page | unsubscribe only | `app/api/shop/customers/[id]/marketing-consent` |
 
 ## The boxes

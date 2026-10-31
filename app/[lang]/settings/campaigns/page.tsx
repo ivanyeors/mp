@@ -110,7 +110,8 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                         <Badge variant={status.variant}>{status.label}</Badge>
                                         {item.campaign.lockedAt ? (
                                             <span className="tabular-nums">
-                                                Bounced {item.stats.bounced} · spam {item.stats.complained}
+                                                Clicked {item.stats.clicked} · unsubscribed {item.stats.unsubscribed} · bounced{" "}
+                                                {item.stats.bounced} · spam {item.stats.complained}
                                             </span>
                                         ) : null}
                                     </span>
@@ -126,6 +127,8 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                         <TableHead>Campaign</TableHead>
                                         <TableHead className="hidden md:table-cell">Audience</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead className="hidden text-right sm:table-cell">Clicked</TableHead>
+                                        <TableHead className="hidden text-right sm:table-cell">Unsubscribed</TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Bounced</TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Spam</TableHead>
                                         <TableHead className="hidden text-right lg:table-cell">Sign-in clicks</TableHead>
@@ -151,6 +154,12 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant={status.variant}>{status.label}</Badge>
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {item.stats.clicked}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {item.stats.unsubscribed}
                                                 </TableCell>
                                                 <TableCell className="hidden text-right tabular-nums sm:table-cell">
                                                     {item.stats.bounced}

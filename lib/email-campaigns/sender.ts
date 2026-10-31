@@ -98,6 +98,7 @@ import { CHINESE, CHINESE_STATUS_TEXT, chineseAiDrafted, chineseContent, chinese
 import { aiDraftedBlocks, contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
 import { addressesToAsk, campaignContentChecks, joinVersionChecks, type ContentCheck, type ContentIssue, type EmailFacts } from "./content-checks";
 import { campaignImagesProblem, readCampaignImages, type CampaignImageFailure } from "./images";
+import { addClickToken, hashClickToken, newClickToken } from "./click";
 import { checkLinks, type LinkRequest } from "./link-check";
 import { campaignProductPhotos, campaignProductsProblem, readCampaignProducts, unlistedProductText, type UnlistedProduct } from "./products";
 import { roomAgainText } from "./send-flow";
@@ -888,12 +889,16 @@ export async function sendCampaignBatch(
     // Their language: the 中文 version for a reader of Chinese, when there is one (slice 17).
     const language = campaignLanguage(campaign, locale);
     try {
-      const unsubscribe = unsubscribeLinks(customerId, { origin, locale, secret: setup.unsubscribeSecret });
+      // The unsubscribe link names this send, so leaving is counted against
+      // the campaign (PRD-campaign-audiences slice 08).
+      const unsubscribe = unsubscribeLinks(customerId, { origin, locale, secret: setup.unsubscribeSecret, sendId: claim.sendId });
       if (!unsubscribe) throw new Error("no unsubscribe link could be signed");
       const claimUrl =
         campaignSignsIn(campaign) && claim.unclaimedMigrated
           ? (await mintClaimLink(setup.admin, { customerId, template: key, locale, origin })).url
           : null;
+      // Slice 08: one click token for this email's site links; only its hash is kept.
+      const clickToken = newClickToken();
       const rendered = renderCampaignFor(campaign, {
         firstName: claim.firstName,
         lastName: claim.lastName,
@@ -906,13 +911,18 @@ export async function sendCampaignBatch(
         products: productsFor(shown, language),
       });
       const sent = await transport.send({
-        ...rendered,
+        ...addClickToken(rendered, clickToken, origin),
         to: claim.email,
         from,
         replyTo,
         headers: listUnsubscribeHeaders(unsubscribe, { mailto: replyTo }),
       });
-      await finishCampaignSend(setup.admin, { sendId: claim.sendId, sent: true, providerMessageId: sent.id ?? null });
+      await finishCampaignSend(setup.admin, {
+        sendId: claim.sendId,
+        sent: true,
+        providerMessageId: sent.id ?? null,
+        clickTokenHash: await hashClickToken(clickToken),
+      });
       result.sent++;
       result.failuresInARow = 0;
     } catch (err) {

@@ -45,7 +45,7 @@ begin
 
   foreach f in array array[
     'public.claim_campaign_send(uuid, text, text, boolean)',
-    'public.finish_campaign_send(uuid, boolean, text, text)',
+    'public.finish_campaign_send(uuid, boolean, text, text, text)',
     'public.record_campaign_send_event(text, text, timestamptz)',
     'public.campaign_send_blocker(uuid, text, boolean, timestamptz)',
     'public.campaign_service_notice_enabled()'

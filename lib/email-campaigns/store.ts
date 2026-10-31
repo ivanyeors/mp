@@ -33,6 +33,12 @@ export interface CampaignStats {
   lastSentAt: string | null;
   /** Claim links its emails carried that were opened. */
   linkClicks: number;
+  /** Sends with a counted **Campaign click** on a site link (PRD-campaign-audiences slice 08). */
+  clicked: number;
+  /** Every counted click, a person's second and third included. */
+  clicks: number;
+  /** People who left from this campaign's own unsubscribe link (slice 08). */
+  unsubscribed: number;
 }
 
 export const NO_STATS: CampaignStats = {
@@ -45,6 +51,9 @@ export const NO_STATS: CampaignStats = {
   firstSentAt: null,
   lastSentAt: null,
   linkClicks: 0,
+  clicked: 0,
+  clicks: 0,
+  unsubscribed: 0,
 };
 
 const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -61,6 +70,9 @@ export function statsFromRow(row: Record<string, unknown>): CampaignStats {
     firstSentAt: typeof row.first_sent_at === "string" ? row.first_sent_at : null,
     lastSentAt: typeof row.last_sent_at === "string" ? row.last_sent_at : null,
     linkClicks: num(row.link_clicks),
+    clicked: num(row.clicked),
+    clicks: num(row.clicks),
+    unsubscribed: num(row.unsubscribed),
   };
 }
 

@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK, then HITL (privacy policy line)
-**Status:** not started
+**Status:** **built** (2026-10-31). Open: the privacy policy line (HITL)
 **Blocked by:** 01
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:email`
 
@@ -31,9 +31,45 @@ and the campaign's page shows *1 unsubscribed*.
 - **UTMs stay** for GA4, by campaign name, unchanged.
 - **Privacy policy:** a line that marketing emails record which links are clicked (HITL).
 
+## As built (2026-10-31)
+
+- **Migration** `20261031140000_campaign_clicks_and_unsubscribes.sql`:
+  - `customer_campaign_sends` gains `click_token_hash` (SHA-256 hex, unique, shape-checked),
+    `first_clicked_at` and `clicks` (checked to go together).
+  - `finish_campaign_send()` takes the hash as a fifth argument and keeps it with a successful
+    send only. `record_campaign_click(hash, at)` counts a click on a send that went out, and not
+    within 10 seconds of `sent_at`.
+  - `customer_consent_events.campaign_send_id`; `set_marketing_email()` takes it as a fifth
+    argument and keeps it only when the send is that Customer's own. Both functions are dropped and
+    made again, so there is one of each: a future restatement must keep all five arguments, or a
+    four-argument copy becomes an ambiguous overload.
+  - A spam complaint names its send too (`record_campaign_send_event`).
+  - `email_campaign_stats` gains `clicked`, `clicks` and `unsubscribed` (from the campaign's own
+    unsubscribe link; a complaint stays the spam count).
+- **`lib/email-campaigns/click.ts`**: a random 32-byte token per send, its hash, `addClickToken`
+  (every site `href` and every site address in the text, never the unsubscribe page or route,
+  never another site), `stripClickToken`, `recordCampaignClick` (never throws, never logs the
+  token). Web Crypto only, so the proxy needs no `node:crypto`.
+- **The sender** mints a token per email, adds it to the site links and stores its hash on finish.
+  A test send carries none.
+- **`proxy.ts`** takes `mc` off a page request with a 302 (`no-store`, `no-referrer`) before
+  anything renders, and records a GET after the response (`waitUntil`). A HEAD or a known crawler
+  is redirected and not counted. The click identifies nobody and signs nobody in.
+- **The unsubscribe link** carries the send, `s`, signed with the Customer:
+  `HMAC(customer:send)`. A link sent before verifies as before and names no campaign, an `s`
+  added to one by hand included; a link whose `s` was changed no longer verifies. The page
+  passes `s` on with its button.
+- **The campaign** shows *clicked* and *unsubscribed* on its Send card, and as columns in the
+  list. **The Customer timeline** shows *Clicked "<campaign>"* (with the count) and *Unsubscribed
+  … by the unsubscribe link in "<campaign>"* or *by a spam complaint about "<campaign>"*.
+- **Tests:** `click.test.ts`, `click-proxy.test.ts`, sender, unsubscribe and route tests, the
+  timeline's `campaign-clicks.test.ts`, and
+  `supabase/tests/campaign-audiences/assert-08-clicks-unsubscribes.sql`.
+
 ## Acceptance criteria
 
-- [ ] No click token is stored in plain text or logged.
-- [ ] The token is stripped by redirect before the page renders.
-- [ ] An unsubscribe without a send (Profile, support) still works and records no campaign.
-- [ ] No open pixel is added.
+- [x] No click token is stored in plain text or logged.
+- [x] The token is stripped by redirect before the page renders.
+- [x] An unsubscribe without a send (Profile, support) still works and records no campaign.
+- [x] No open pixel is added.
+- [ ] The privacy policy says marketing emails record which links are clicked (HITL).

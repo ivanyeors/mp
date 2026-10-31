@@ -1677,8 +1677,9 @@ export function CampaignEditor({
                                 </div>
                                 {stats ? (
                                     <CardDescription>
-                                        Sent {n(stats.handed)}, bounced {n(stats.bounced)}, marked as spam {n(stats.complained)}, failed{" "}
-                                        {n(stats.failed)}, sign-in link opened {n(stats.linkClicks)}
+                                        Sent {n(stats.handed)}, clicked {n(stats.clicked)}, unsubscribed {n(stats.unsubscribed)}, bounced{" "}
+                                        {n(stats.bounced)}, marked as spam {n(stats.complained)}, failed {n(stats.failed)}, sign-in link opened{" "}
+                                        {n(stats.linkClicks)}
                                     </CardDescription>
                                 ) : null}
                             </CardHeader>

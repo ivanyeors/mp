@@ -34,6 +34,10 @@ export const setMarketingEmailRpc: RpcHandler = (args, db: AftercareFakeDb) => {
   if (source === "shopify_unsubscribed" && customer.marketing_email_source === "account") return { data: false, error: null };
 
   const at = new Date().toISOString();
+  // Slice 08: the campaign send behind it, only when it is this Customer's own.
+  const sends = ((db as Record<string, unknown>).customer_campaign_sends ?? []) as { id: string; customer_id: string }[];
+  const sendId = typeof args.p_campaign_send_id === "string" ? args.p_campaign_send_id : null;
+  const campaignSendId = sendId && sends.some((x) => x.id === sendId && x.customer_id === args.p_customer_id) ? sendId : null;
   Object.assign(customer, { marketing_email: to, marketing_email_source: source, marketing_email_updated_at: at });
   (db.customer_consent_events ??= []).push({
     customer_id: args.p_customer_id,
@@ -42,6 +46,7 @@ export const setMarketingEmailRpc: RpcHandler = (args, db: AftercareFakeDb) => {
     to_state: to,
     source,
     created_at: at,
+    campaign_send_id: campaignSendId,
   });
   return { data: true, error: null };
 };

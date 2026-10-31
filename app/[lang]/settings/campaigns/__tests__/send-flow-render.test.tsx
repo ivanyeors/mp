@@ -161,7 +161,7 @@ describe("the Send card", () => {
         <CampaignEditor
           campaign={campaign}
           draft={campaign}
-          stats={{ handed: 50, bounced: 1, complained: 0, failed: 0, pending: 0, waves: 1, firstSentAt: null, lastSentAt: null, linkClicks: 4 }}
+          stats={{ handed: 50, bounced: 1, complained: 0, failed: 0, pending: 0, waves: 1, firstSentAt: null, lastSentAt: null, linkClicks: 4, clicked: 7, clicks: 9, unsubscribed: 2 }}
           waves={[{ template: "campaign:x", wave: "w1", handed: 50, bounced: 1, complained: 0, failed: 0, pending: 0, lastSentAt: "2026-10-20T02:00:00.000Z" }]}
           segments={[]}
           staffEmail="owner@mpillow.com"

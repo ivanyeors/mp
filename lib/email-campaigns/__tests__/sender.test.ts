@@ -7,7 +7,8 @@ import { forceDarkMode, FORCED_DARK_STYLE_ID, type EmailShellOptions } from "@/l
 import type { CampaignBlocksEmailData } from "@/lib/email/campaign-blocks";
 import type { ComposedCampaignEmailData } from "@/lib/email/campaigns";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
-import { PROBE_CUSTOMER_ID, unsubscribeToken, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
+import { PROBE_CUSTOMER_ID, unsubscribeToken, verifyUnsubscribeLink, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
+import { hashClickToken } from "../click";
 import { CAMPAIGN_PLACEHOLDERS, EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, campaignLedgerKey, type Campaign } from "../rules";
 import { ResendTransport } from "@/lib/email/transport";
 import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
@@ -133,8 +134,10 @@ describe("sendCampaignBatch", () => {
     expect(ann.replyTo).toBe("support@mpillow.com");
     expect(ann.subject).toBe(FIRST_CAMPAIGN_DRAFT.subject);
     expect(ann.html).toContain("Hi Ann,");
-    const token = unsubscribeToken(ANN, SECRET)!;
-    expect(ann.headers?.["List-Unsubscribe"]).toContain(`${ORIGIN}/api/email/unsubscribe?u=${ANN}&t=${token}`);
+    // Slice 08: the link names Ann's send, signed with her.
+    const annSend = world.sends.find((x) => x.customer_id === ANN)!.id;
+    const token = unsubscribeToken(ANN, SECRET, annSend)!;
+    expect(ann.headers?.["List-Unsubscribe"]).toContain(`${ORIGIN}/api/email/unsubscribe?u=${ANN}&t=${token}&s=${annSend}`);
     expect(ann.headers?.["List-Unsubscribe"]).toContain("mailto:support@mpillow.com");
     expect(ann.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(ann.html).toContain(`/zh-CN/unsubscribe?u=${ANN}`);
@@ -595,14 +598,15 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     expect(ann.html).toContain(">Sleep cooler this December</h1>");
     expect(ann.html).toContain("Hi Ann,");
     expect(ann.html).toContain("Hello Ann, our <strong>FibreCool</strong> covers are back.");
-    expect(ann.html).toMatch(/<a class="mp-fg" href="https:\/\/custom\.mpillow\.com\/en-US\/faq"[^>]*>the care guide<\/a>/);
+    // Slice 08: a site link carries the send's click token.
+    expect(ann.html).toMatch(/<a class="mp-fg" href="https:\/\/custom\.mpillow\.com\/en-US\/faq\?mc=[A-Za-z0-9_-]{43}"[^>]*>the care guide<\/a>/);
     expect(ann.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     // Ann was imported and has not signed in: the sign-in button is her own Claim link, in her language.
     expect(world.claimLinks).toEqual([expect.objectContaining({ customer_id: ANN, template: `campaign:${CAMPAIGN}` })]);
     expect(ann.html).toMatch(/\/zh-CN\/account\/welcome\?c=[A-Za-z0-9_-]{43}/);
     expect(ann.html).toContain(`${ORIGIN}/zh-CN/mp-config?utm_source=email_campaign&amp;utm_medium=email&amp;utm_campaign=december-cooling`);
     expect(ann.text).toMatch(/^Sign in: https:\/\/custom\.mpillow\.com\/zh-CN\/account\/welcome\?c=/m);
-    expect(ann.text).toContain("the care guide: https://custom.mpillow.com/en-US/faq");
+    expect(ann.text).toMatch(/the care guide: https:\/\/custom\.mpillow\.com\/en-US\/faq\?mc=[A-Za-z0-9_-]{43}/);
     // Bea signed up here: her sign-in button is her account.
     expect(bea.html).toContain(`${ORIGIN}/en-US/account?utm_source=email_campaign`);
     expect(bea.html).not.toContain("welcome?c=");
@@ -929,5 +933,44 @@ describe("the rest period", () => {
     const admin = s.admin as unknown as ReturnType<typeof fakeCampaignsClient>;
     expect(await sendCampaignTest(campaign(), { to: ["bea@x.test"], firstName: "Bea" }, s)).toMatchObject({ sent: ["bea@x.test"] });
     expect(admin.rpcCalls.filter((c) => c.name === "claim_marketing_campaign_send")).toEqual([]);
+  });
+});
+
+// PRD-campaign-audiences slice 08: clicks and unsubscribes tied to the send.
+describe("each send's click token and unsubscribe link", () => {
+  const tokensIn = (html: string) => [...new Set([...html.matchAll(/[?&](?:amp;)?mc=([A-Za-z0-9_-]{43})/g)].map((m) => m[1]))];
+
+  it("puts one token per email on its site links, keeps only its hash, and leaves the unsubscribe link without it", async () => {
+    const { s, sent } = setup();
+    await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+    const [annTokens, beaTokens] = sent.map((e) => tokensIn(e.html));
+    expect(annTokens).toHaveLength(1);
+    expect(beaTokens).toHaveLength(1);
+    expect(annTokens[0]).not.toBe(beaTokens[0]);
+    const annSend = world.sends.find((x) => x.customer_id === ANN)!;
+    expect(annSend.click_token_hash).toBe(await hashClickToken(annTokens[0]));
+    // The plaintext is in the email only.
+    expect(JSON.stringify(world.sends)).not.toContain(annTokens[0]);
+    // The unsubscribe link names the send instead, and never carries the click token.
+    const unsub = sent[0].html.match(/href="([^"]*\/unsubscribe\?[^"]*)"/)![1].replace(/&amp;/g, "&");
+    expect(unsub).not.toContain("mc=");
+    const u = new URL(unsub);
+    expect(verifyUnsubscribeLink(u.searchParams.get("u"), u.searchParams.get("t"), u.searchParams.get("s"), SECRET)).toEqual({
+      customerId: ANN,
+      sendId: annSend.id,
+    });
+  });
+
+  it("keeps no token for a send that failed", async () => {
+    const { s } = setup({ failFor: new Set(["bea@x.test"]) });
+    await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [BEA] }, s);
+    expect(world.sends.find((x) => x.customer_id === BEA)).toMatchObject({ status: "failed" });
+    expect(world.sends.find((x) => x.customer_id === BEA)?.click_token_hash ?? null).toBeNull();
+  });
+
+  it("never puts a click token on a test", async () => {
+    const { s, sent } = setup();
+    await sendCampaignTest(campaign(), { to: ["me@mpillow.com"], firstName: "Ivan" }, s);
+    expect(sent[0].html).not.toMatch(/[?&](amp;)?mc=/);
   });
 });

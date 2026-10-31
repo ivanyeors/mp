@@ -71,13 +71,21 @@ export async function claimCampaignSend(
  */
 export async function finishCampaignSend(
   admin: SupabaseClient,
-  input: { sendId: string; sent: boolean; providerMessageId?: string | null; error?: string | null },
+  input: {
+    sendId: string;
+    sent: boolean;
+    providerMessageId?: string | null;
+    error?: string | null;
+    /** SHA-256 hex of the send's click token (PRD-campaign-audiences slice 08); kept with a successful send only. */
+    clickTokenHash?: string | null;
+  },
 ): Promise<boolean> {
   const { data, error } = await admin.rpc("finish_campaign_send", {
     p_send_id: input.sendId,
     p_sent: input.sent,
     p_provider_message_id: input.providerMessageId ?? null,
     p_error: input.error ?? null,
+    ...(input.clickTokenHash ? { p_click_token_hash: input.clickTokenHash } : {}),
   });
   if (error) {
     console.error(`[campaign] could not finish send ${input.sendId}:`, error.message);

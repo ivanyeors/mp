@@ -26,7 +26,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:57
   - `readAiUsageThisMonth()` [select] — lib/ai/usage.ts:177
   - `readCancels()` [select] — lib/crm/timeline/sources/results.ts:178
-  - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:267
+  - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:275
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:77
 
 ### admin_roles
@@ -458,8 +458,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:299
   - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:228
   - `readAftercareView()` [select] — lib/aftercare/preferences.ts:149
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:152
-  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:125
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:159
+  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:132
   - `readProfileAftercare()` [select] — lib/aftercare/preferences.ts:203
   - `readWhatsAppGate()` [select] — lib/aftercare/preferences.ts:109
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:382
@@ -1437,7 +1437,7 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
 ### claim_marketing_campaign_send
 Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:148
 - Called by:
-  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:292
+  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:304
 
 ### claim_migrated_customer
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
@@ -1458,13 +1458,13 @@ Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:364
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:52
 References: `customers`, `email_campaigns`
 - Read by:
-  - `campaign-sends.ts` [select] — lib/crm/timeline/sources/campaign-sends.ts:51
-  - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:248
+  - `campaign-sends.ts` [select] — lib/crm/timeline/sources/campaign-sends.ts:56
+  - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:256
 
 ### customer_campaign_wave_stats
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:392
 - Read by:
-  - `readCampaignWaveStats()` [select] — lib/customer-migration/campaign-ledger.ts:169
+  - `readCampaignWaveStats()` [select] — lib/customer-migration/campaign-ledger.ts:177
 
 ### customer_claim_links
 Defined in supabase/migrations/20261020121000_customer_claim_links.sql:41
@@ -1474,10 +1474,10 @@ References: `customers`
 
 ### customer_consent_events
 Defined in supabase/migrations/20261020120000_marketing_consent.sql:73
-References: `customers`
+References: `customer_campaign_sends`, `customers`
 - Read by:
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:160
-  - `sources/consent.ts` [select] — lib/crm/timeline/sources/consent.ts:29
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:167
+  - `sources/consent.ts` [select] — lib/crm/timeline/sources/consent.ts:41
 
 ### customer_emails
 Defined in supabase/migrations/20261020112000_customer_emails.sql:22
@@ -1590,25 +1590,25 @@ Changed from pages: `/results/[id]`
   - `readDropOffSummary()` [select] — lib/analytics/drop-off/store.ts:153
 
 ### email_campaign_stats
-Defined in supabase/migrations/20261021100000_email_campaigns.sql:297
+Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:287
 - Read by:
-  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:138
-  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:76
+  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:150
+  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:88
 
 ### email_campaigns
 Defined in supabase/migrations/20261021100000_email_campaigns.sql:42
 References: `customer_segments`, `mp_staff`
 Changed from pages: `/settings/campaigns/[id]`, `/settings/campaigns/new`
 - Written by:
-  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:169
-  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:149
-  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:179
-  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:164
+  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:181
+  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:161
+  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:191
+  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:176
 - Read by:
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1020
-  - `getCampaign()` [select] — lib/email-campaigns/store.ts:132
-  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:75
-  - `listPastCampaigns()` [select] — lib/email-campaigns/store.ts:108
+  - `getCampaign()` [select] — lib/email-campaigns/store.ts:144
+  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:87
+  - `listPastCampaigns()` [select] — lib/email-campaigns/store.ts:120
 
 ### email_template_copy
 Defined in supabase/migrations/20261021110000_email_template_copy.sql:23
@@ -1628,9 +1628,9 @@ Defined in supabase/migrations/20261021170000_points_expiry.sql:178
   - `runPointsExpiry()` — lib/points/expiry-server.ts:169
 
 ### finish_campaign_send
-Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:265
+Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:63
 - Called by:
-  - `finishCampaignSend()` — lib/customer-migration/campaign-ledger.ts:76
+  - `finishCampaignSend()` — lib/customer-migration/campaign-ledger.ts:83
 
 ### finish_shopify_import
 Defined in supabase/migrations/20261020110000_customer_import_apply.sql:335
@@ -1682,7 +1682,7 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:213
 ### marketing_campaign_candidates
 Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:220
 - Read by:
-  - `readPaged()` [select] — lib/email-campaigns/store.ts:201
+  - `readPaged()` [select] — lib/email-campaigns/store.ts:213
 
 ### media_asset_renditions
 Defined in supabase/migrations/20261030050000_media_asset_renditions.sql:20
@@ -1760,10 +1760,15 @@ Defined in supabase/migrations/20261002020000_ai_crawler_hits.sql:18
 - Called by:
   - `recordCrawlerHit()` — lib/analytics/ai-crawlers.ts:81
 
-### record_campaign_send_event
-Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:302
+### record_campaign_click
+Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:98
 - Called by:
-  - `recordCampaignSendEvent()` — lib/customer-migration/campaign-ledger.ts:105
+  - `recordCampaignClick()` — lib/email-campaigns/click.ts:117
+
+### record_campaign_send_event
+Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:229
+- Called by:
+  - `recordCampaignSendEvent()` — lib/customer-migration/campaign-ledger.ts:113
 
 ### record_review_request_click
 Defined in supabase/migrations/20261020124000_customer_review_requests.sql:65
@@ -1811,9 +1816,9 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
   - `setAftercarePreference()` — lib/aftercare/preferences.ts:49
 
 ### set_marketing_email
-Defined in supabase/migrations/20261031120000_consent_customisation_appointment.sql:44
+Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:139
 - Called by:
-  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:58
+  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:64
 
 ### subscribe_migrated_customers
 Defined in supabase/migrations/20261031090000_consent_by_default.sql:159
@@ -2152,7 +2157,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `readAftercareSettings()` [select] — lib/aftercare/card-server.ts:26
   - `readAiWritingSettings()` [select] — lib/ai/settings.ts:32
   - `readPointsSettings()` [select] — lib/points/server.ts:48
-  - `readServiceNoticeEnabled()` [select] — lib/customer-migration/campaign-ledger.ts:121
+  - `readServiceNoticeEnabled()` [select] — lib/customer-migration/campaign-ledger.ts:129
   - `readTelegramUpdates()` [select] — lib/crm/telegram-updates-server.ts:40
   - `settings-store.ts` [select] — lib/appointments/settings-store.ts:17
   - `site-settings/route.ts` [select] — app/api/site-settings/route.ts:30

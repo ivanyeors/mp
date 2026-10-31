@@ -8,6 +8,7 @@ import {
   probeUnsubscribeRoute,
   unsubscribeLinks,
   unsubscribeToken,
+  verifyUnsubscribeLink,
   verifyUnsubscribeToken,
 } from "@/lib/marketing-consent/unsubscribe";
 import { describeConsent, marketingEmailState } from "@/lib/marketing-consent/state";
@@ -142,5 +143,45 @@ describe("describeConsent", () => {
     expect(describeConsent({ state: "not_subscribed", source: null, updatedAt: null })).toMatch(/^Not subscribed/);
     expect(marketingEmailState(undefined)).toBe("not_subscribed");
     expect(marketingEmailState("yes")).toBe("not_subscribed");
+  });
+});
+
+// PRD-campaign-audiences slice 08: a campaign email's link names its send.
+describe("a link that names its campaign send", () => {
+  const SECRET = "send-secret";
+  const ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
+  const SEND = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
+  const OTHER = "6ba7b811-9dad-41d1-80b4-00c04fd430c8";
+
+  it("signs the Customer and the send together, and carries the send as s", () => {
+    const links = unsubscribeLinks(ID, { origin: "https://custom.mpillow.com", secret: SECRET, sendId: SEND })!;
+    const page = new URL(links.pageUrl);
+    const route = new URL(links.oneClickUrl);
+    expect(page.searchParams.get("s")).toBe(SEND);
+    expect(route.searchParams.get("s")).toBe(SEND);
+    expect(page.searchParams.get("t")).toBe(createHmac("sha256", SECRET).update(`${ID}:${SEND}`).digest("base64url"));
+    expect(page.searchParams.get("t")).not.toBe(unsubscribeToken(ID, SECRET));
+  });
+
+  it("verifies to the Customer and the send", () => {
+    const t = unsubscribeToken(ID, SECRET, SEND)!;
+    expect(verifyUnsubscribeLink(ID, t, SEND, SECRET)).toEqual({ customerId: ID, sendId: SEND });
+  });
+
+  it("names no send when s was changed or added by hand, but still unsubscribes the Customer's own link", () => {
+    const signedForSend = unsubscribeToken(ID, SECRET, SEND)!;
+    // Someone else's send in place of theirs: the signature no longer covers it.
+    expect(verifyUnsubscribeLink(ID, signedForSend, OTHER, SECRET)).toBeNull();
+    // An older link, with an s added: theirs, naming nothing.
+    const plain = unsubscribeToken(ID, SECRET)!;
+    expect(verifyUnsubscribeLink(ID, plain, SEND, SECRET)).toEqual({ customerId: ID, sendId: null });
+    expect(verifyUnsubscribeLink(ID, plain, "not-a-uuid", SECRET)).toEqual({ customerId: ID, sendId: null });
+  });
+
+  it("keeps every link sent before working, and refuses a bad one", () => {
+    expect(verifyUnsubscribeLink(ID, unsubscribeToken(ID, SECRET), null, SECRET)).toEqual({ customerId: ID, sendId: null });
+    expect(verifyUnsubscribeLink(ID, "nope", SEND, SECRET)).toBeNull();
+    expect(verifyUnsubscribeLink(null, "nope", null, SECRET)).toBeNull();
+    expect(unsubscribeToken(ID, SECRET, "bad")).toBeNull();
   });
 });
