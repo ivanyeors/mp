@@ -12,8 +12,9 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * ledger since PRD-loyalty-points slice 06), since
  * migration 06 the Claim links a campaign email carried, by first click,
  * since CRM 06 follow-ups (added, done), since CRM 12 a Linked Google review
- * at its own date, and since migration 08 the campaign emails sent, bounced
- * and complained about.
+ * at its own date, since migration 08 the campaign emails sent, bounced
+ * and complained about, and since ADR 0039 an in-store fitting from the old
+ * Google Form.
  */
 
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
@@ -58,6 +59,7 @@ const ORDERS_ONLY = "00000000-0000-4000-8000-0000000000b5";
 const JESS = "11111111-1111-4111-8111-111111111111";
 const KAI = "11111111-1111-4111-8111-222222222222";
 const FOLLOW_UP = "0e000000-0000-4000-8000-0000000000f1";
+const FITTING = "0e000000-0000-4000-8000-0000000000c1";
 const OPEN_FOLLOW_UP = "0e000000-0000-4000-8000-0000000000f2";
 
 const t = (s: string) => `2026-${s}:00Z`;
@@ -222,6 +224,11 @@ beforeEach(() => {
       { id: "cs-3", customer_id: MEI, template: "migration_service_notice", wave: "n1", status: "failed", provider_message_id: null, sent_at: t("06-13T00:00"), bounced_at: null, complained_at: null },
       { id: "cs-k", customer_id: KIM, template: "migration_announcement", wave: "w1", status: "complained", provider_message_id: "re_k", sent_at: t("06-10T00:06"), bounced_at: null, complained_at: t("06-10T09:00") },
     ],
+    // ADR 0039: Mei's fitting from the old Google Form; Kim's is Kim's alone.
+    customer_fittings: [
+      { id: FITTING, customer_id: MEI, fitted_at: t("08-10T03:00"), recommended_size: "M", configuration_type: "T12", profile_side: "M-LN", serviced_by: "Sophie" },
+      { id: "fit-kim", customer_id: KIM, fitted_at: t("08-11T03:00"), recommended_size: "S", configuration_type: null, profile_side: null, serviced_by: null },
+    ],
     // PRD-loyalty-points: Mei's Claim bonus, and her spend, which is not an
     // account event. Kim's bonus is Kim's alone.
     points_ledger: [
@@ -273,6 +280,7 @@ const EVERYTHING = [
   "aftercare.turned_off:2",
   `result.build_sent:${GUEST}`,
   `result.created:${GUEST}`,
+  `fitting.recorded:${FITTING}`,
   `result.balance_paid:${ANCHOR}`,
   `result.build_sent:${ANCHOR}`,
   `result.created:${ANCHOR}`,
@@ -300,7 +308,7 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(body.next).toBeNull();
     expect(body.unavailable).toEqual([]);
     expect(body.groups.map((g) => g.key)).toEqual([
-      "orders", "results", "readjustments", "returns", "reviews", "aftercare", "marketing", "account", "notes", "followups",
+      "orders", "results", "fittings", "readjustments", "returns", "reviews", "aftercare", "marketing", "account", "notes", "followups",
     ]);
   });
 
@@ -325,6 +333,11 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     });
     expect(JSON.stringify(byId.get(`google_review.written:${G_REVIEW}`))).not.toContain("Slept");
     expect(byId.get(`note.added:${NOTE}`)).toMatchObject({ summary: "Note by Jess", detail: "Prefers a firm fill." });
+    // ADR 0039: the form's codes and who serviced them; measurements and health answers stay on the card.
+    expect(byId.get(`fitting.recorded:${FITTING}`)).toMatchObject({
+      summary: "In-store fitting: Mpillow M · T12 · M-LN (serviced by Sophie)",
+      group: "fittings",
+    });
     expect(byId.get(`note.added:${LEGACY_NOTE}`)?.summary).toMatch(/^Notes before /);
     expect(byId.get(`follow_up.added:${FOLLOW_UP}`)).toMatchObject({
       summary: "Follow-up for Jess, due 29 Sept 2026, added by Kai",
@@ -405,15 +418,15 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(body.groups.map((g) => g.key)).not.toContain("results");
   });
 
-  it("shows a customers-only role the Customer's own facts: reviews, review requests, aftercare, consent, account and notes", async () => {
+  it("shows a customers-only role the Customer's own facts: fittings, reviews, review requests, aftercare, consent, account and notes", async () => {
     signIn(CRM_ONLY);
     const body = await page();
     expect(body.entries.map((e) => e.id)).toEqual(
       EVERYTHING.filter((id) =>
-        /^(note|review|google_review|review_request|aftercare|consent|campaign_email|account|claim_link|follow_up)\./.test(id),
+        /^(fitting|note|review|google_review|review_request|aftercare|consent|campaign_email|account|claim_link|follow_up)\./.test(id),
       ),
     );
-    expect(body.groups.map((g) => g.key)).toEqual(["reviews", "aftercare", "marketing", "account", "notes", "followups"]);
+    expect(body.groups.map((g) => g.key)).toEqual(["fittings", "reviews", "aftercare", "marketing", "account", "notes", "followups"]);
   });
 
   it("shows a complaint on the Customer who made it, and nowhere else", async () => {

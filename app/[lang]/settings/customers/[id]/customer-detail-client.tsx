@@ -60,6 +60,7 @@ import { MarketingConsentCard } from "./marketing-consent-card";
 import { PointsCard } from "./points-card";
 import { CustomerFollowUpsCard } from "./customer-followups-card";
 import { CustomerReviewsCard } from "./customer-reviews-card";
+import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import { LifecycleStageBadge, lifecycleNote } from "../lifecycle-stage-badge";
 
@@ -136,6 +137,8 @@ export type CustomerDetailInitialData = {
     contact?: ContactFactsResult;
     /** The Lifecycle stage (PRD-crm-retention-loop slice 03); null when it could not be read. */
     lifecycle?: AdminCustomerLifecycle | null;
+    /** Fitting records from the old Google Form (ADR 0039); null when they could not be read. */
+    fittings?: CustomerFittingsResult;
 };
 
 const emptyAddress: AddressFormState = {
@@ -906,6 +909,9 @@ export function CustomerDetailClient({
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Fitting history (ADR 0039): in-store fittings from the old Google Form, with their Drive photos */}
+                    <CustomerFittingsCard customerId={customer.id} fittings={initialData?.fittings} />
 
                     {/* Follow-ups (CRM 06): dated to-dos, each assigned to a Staff profile */}
                     <CustomerFollowUpsCard customerId={customer.id} canEdit={canEdit} />

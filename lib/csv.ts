@@ -2,8 +2,9 @@
  * CSV read and write, shared by every import and export that runs in the
  * browser as well as on the server. No Node imports.
  *
- * Callers: the AI-answer report import (`lib/seo-metrics/csv-import.ts`) and
- * the Shopify customer import (`lib/customer-migration/shopify-csv.ts`).
+ * Callers: the AI-answer report import (`lib/seo-metrics/csv-import.ts`), the
+ * Shopify customer import (`lib/customer-migration/shopify-csv.ts`) and the
+ * Google Form fitting import (`lib/fitting-import/google-form-csv.ts`).
  */
 
 /** Minimal RFC 4180 parser: quoted fields, escaped quotes, CRLF or LF, BOM. */

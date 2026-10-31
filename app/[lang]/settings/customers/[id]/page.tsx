@@ -4,6 +4,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { getAdminCustomer, getAdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import { listCustomerNotes } from "@/lib/crm/notes";
 import { getMigratedCustomer } from "@/lib/customer-migration/overview";
+import { listCustomerFittings } from "@/lib/fitting-import/records";
 import { readContactFacts } from "@/lib/crm/contact-facts";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -20,7 +21,8 @@ export const runtime = "nodejs";
  * to make on mount is read here instead, with the Customer's notes and what the
  * Shopify import holds for them (the From Shopify card, migration slice 12).
  * The **Lifecycle stage** (PRD-crm-retention-loop slice 03) is read from the
- * overview, and a failed read only leaves it out.
+ * overview, and a failed read only leaves it out. So are the Customer's
+ * **Fitting records** (ADR 0039), whose card says when they could not be read.
  * The Contact and sign-in card (CRM slice 11) reads the customer row itself;
  * what is matched by phone (WhatsApp, the other numbers seen) is read here
  * once the row's number is known. The orders
@@ -44,11 +46,12 @@ export default async function CustomerDetailPage({
 
     const ctx = await requireAdminPage("customers", locale);
 
-    const [customer, notes, migration, lifecycle] = await Promise.all([
+    const [customer, notes, migration, lifecycle, fittings] = await Promise.all([
         getAdminCustomer(id),
         listCustomerNotes(id).catch(() => null),
         getMigratedCustomer(id),
         getAdminCustomerLifecycle(id).catch(() => null),
+        listCustomerFittings(id).catch(() => null),
     ]);
 
     const initialData: CustomerDetailInitialData = {
@@ -58,6 +61,7 @@ export default async function CustomerDetailPage({
         notes,
         migration,
         lifecycle,
+        fittings,
         contact: customer.ok ? await readContact(customer.row as Customer, ctx) : undefined,
     };
 
