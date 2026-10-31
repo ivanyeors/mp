@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { listSegments } from "@/lib/crm/segments";
 import { keptToday } from "@/lib/email-campaigns/keep-sending";
-import { getCampaign, getCampaignStats, readWaveStats } from "@/lib/email-campaigns/store";
+import { getCampaign, getCampaignStats, readCampaignResults, readWaveStats } from "@/lib/email-campaigns/store";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { campaignAiWriting } from "../ai-writing";
@@ -24,12 +24,14 @@ export default async function EmailCampaignPage({ params }: { params: Promise<{ 
     const admin = supabaseAdmin();
     const campaign = await getCampaign(admin, id);
     if (!campaign || campaign.archivedAt) notFound();
-    const [stats, segments, waves, points, ai] = await Promise.all([
+    const [stats, segments, waves, points, ai, results] = await Promise.all([
         getCampaignStats(admin, id),
         listSegments().catch(() => []),
         readWaveStats(admin, id).then((w) => w.own).catch(() => []),
         campaignPointsLive(),
         campaignAiWriting(),
+        // Slice 11: a started campaign's results; the tab says so when they cannot be read.
+        campaign.lockedAt ? readCampaignResults(admin, id).catch(() => null) : Promise.resolve(null),
     ]);
     const options = segmentOptions(segments, ctx, locale);
     // The Segment it was saved with stays choosable even if it was archived since.
@@ -47,6 +49,7 @@ export default async function EmailCampaignPage({ params }: { params: Promise<{ 
             pointsLive={points}
             ai={ai}
             keptToday={keptToday(waves, new Date())}
+            results={results}
         />
     );
 }

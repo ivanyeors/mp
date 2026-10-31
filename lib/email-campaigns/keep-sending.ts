@@ -37,6 +37,11 @@ export interface KeepSending {
   pausedReason: string | null;
   /** By Segment id: the one it sends to and those it leaves out. Empty with no Segment. */
   segments: Record<string, ApprovedSegment>;
+  /**
+   * When a person turned the holdout on (PRD-campaign-audiences slice 11,
+   * results.ts); null is off. Only while it keeps sending.
+   */
+  holdoutAt: string | null;
 }
 
 export const KEEP_SENDING_OFF: KeepSending = {
@@ -45,10 +50,11 @@ export const KEEP_SENDING_OFF: KeepSending = {
   pausedAt: null,
   pausedReason: null,
   segments: {},
+  holdoutAt: null,
 };
 
 export const KEEP_SENDING_COLUMNS =
-  "keep_sending, keep_sending_daily_cap, keep_sending_paused_at, keep_sending_paused_reason, keep_sending_segments";
+  "keep_sending, keep_sending_daily_cap, keep_sending_paused_at, keep_sending_paused_reason, keep_sending_segments, holdout_at";
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -72,6 +78,7 @@ export function keepSendingFromRow(row: Record<string, unknown>): KeepSending {
     pausedAt: typeof row.keep_sending_paused_at === "string" ? row.keep_sending_paused_at : null,
     pausedReason: typeof row.keep_sending_paused_reason === "string" ? row.keep_sending_paused_reason : null,
     segments,
+    holdoutAt: row.keep_sending === true && typeof row.holdout_at === "string" ? row.holdout_at : null,
   };
 }
 

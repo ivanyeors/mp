@@ -314,7 +314,8 @@ change is in the slice it touches.
    crm page and have a button to save it as a customer segment to create the campaign". That path
    exists: filter the Customers list, *Save as Segment*, then *Email this Segment*. The last step
    was in each chip's menu; it is now also a button beside the chips whenever the list shows a
-   saved Segment, and in the toast after saving one.
+   saved Segment, and in the toast after saving one. *Built (slice 11):* the holdout is a
+   switch on the Keep sending card, offered once the campaign has been sent to 500 people.
 6. **The sign-up creates Customer rows for people who have not bought. Settled as recommended.**
    They are *Lead*s.
 7. **Topics. Settled as recommended:** decided after three months of unsubscribe reasons.

@@ -52,10 +52,16 @@ describe("the stored state", () => {
       pausedAt: "2026-11-01T02:00:00Z",
       pausedReason: "its Segment changed",
       segments: { [SEG]: { filters: { delivered: "over:60" }, filtersVersion: 3 } },
+      holdoutAt: null,
     });
     // What a save stores reads back the same.
     expect(keepSendingFromRow({ keep_sending_segments: approvedSegmentsRow(k.segments) }).segments).toEqual(k.segments);
     expect(approvedSegmentsRow({})).toBeNull();
+  });
+
+  it("reads the holdout only while it keeps sending (slice 11)", () => {
+    expect(keepSendingFromRow({ keep_sending: true, holdout_at: "2026-11-01T02:00:00Z" }).holdoutAt).toBe("2026-11-01T02:00:00Z");
+    expect(keepSendingFromRow({ keep_sending: false, holdout_at: "2026-11-01T02:00:00Z" }).holdoutAt).toBeNull();
   });
 
   it("takes a cap of 1 to 100, whole", () => {

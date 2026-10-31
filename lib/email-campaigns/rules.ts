@@ -31,6 +31,7 @@ import {
 import { chineseVersionOf, chineseWords } from "./chinese-version";
 import { campaignVariable, fallbackWords, isVariableKey, type VariableKey } from "./variables";
 import { KEEP_SENDING_COLUMNS, keepSendingFromRow, type KeepSending } from "./keep-sending";
+import { inHoldout } from "./results";
 
 export { isHttpsUrl };
 
@@ -321,7 +322,8 @@ export function campaignRowFromDraft(d: CampaignDraft) {
 // The rule
 // ---------------------------------------------------------------------------
 
-export const CAMPAIGN_SEND_STATUSES = ["pending", "sent", "failed", "bounced", "complained"] as const;
+/** `held_out`: kept back by the campaign's holdout, never sent it (PRD-campaign-audiences slice 11). */
+export const CAMPAIGN_SEND_STATUSES = ["pending", "sent", "failed", "bounced", "complained", "held_out"] as const;
 export type CampaignSendStatus = (typeof CAMPAIGN_SEND_STATUSES)[number];
 
 /** This Campaign's send to one Customer. */
@@ -357,6 +359,11 @@ export interface CampaignCandidate {
    * reminders). Absent reads as none. PRD-campaign-audiences slice 07.
    */
   recentMarketing?: readonly string[];
+  /**
+   * 0 to 99, the same for them every time (`campaign_holdout_bucket`): under
+   * 10, a campaign's holdout keeps them back (slice 11). Absent reads as none.
+   */
+  holdoutBucket?: number | null;
 }
 
 /** Why a Customer may not receive a Campaign now, in the order the rule checks. */
@@ -367,6 +374,7 @@ export const CAMPAIGN_RULE_BLOCKERS = [
   "suppressed",
   "not_subscribed",
   "failed",
+  "held_out",
   "already_sent",
   "resting",
 ] as const;
@@ -382,6 +390,7 @@ export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", 
   suppressed: "an earlier campaign email bounced or was marked as spam",
   not_subscribed: "never agreed to marketing email",
   failed: "the send failed before (use Retry failed sends)",
+  held_out: "held out to measure the campaign, so never sent it",
   already_sent: "already sent this campaign",
   resting: `resting (emailed in the last ${REST_DAYS} days, or ${REST_MAX_PER_30_DAYS} times in ${REST_WINDOW_DAYS} days)`,
   not_failed: "nothing of theirs failed",
@@ -430,6 +439,8 @@ export function composedCampaignBlocker(
   if (c.suppressed) return "suppressed";
   if (c.marketingEmail !== "subscribed") return "not_subscribed";
   if (c.own?.status === "failed" && !retryFailed) return "failed";
+  // Slice 11: the holdout, for good, before "already sent".
+  if (c.own?.status === "held_out") return "held_out";
   if (c.own && c.own.status !== "failed") return "already_sent";
   // Slice 07: last, so a plan still says "already sent" or "unsubscribed" first.
   if (restUntil(c.recentMarketing, now)) return "resting";
@@ -466,6 +477,11 @@ export interface CampaignPlan {
   excluded: Partial<Record<PlanExclusion, number>>;
   /** Sends already handed to the provider for this Campaign. */
   alreadySent: number;
+  /**
+   * Of `selection`, those its holdout will keep back (slice 11): the claim
+   * records them as held out and sends them nothing. 0 with no holdout.
+   */
+  heldOut: number;
   /** This Campaign's failed sends, which a retry would send again. */
   failed: number;
   /** Of `eligible`, and of the wave, those who read the site in Chinese (PRD-campaign-email-editor slice 17). */
@@ -482,7 +498,12 @@ export interface CampaignPlan {
 export function planCampaignWave(
   audience: CampaignAudience,
   candidates: readonly CampaignCandidate[],
-  { size, retryFailed = false, now = new Date() }: { size: number; retryFailed?: boolean; now?: Date },
+  {
+    size,
+    retryFailed = false,
+    now = new Date(),
+    holdout = false,
+  }: { size: number; retryFailed?: boolean; now?: Date; holdout?: boolean },
 ): CampaignPlan {
   const excluded: Partial<Record<PlanExclusion, number>> = {};
   const exclude = (why: PlanExclusion) => {
@@ -493,7 +514,7 @@ export function planCampaignWave(
   let failed = 0;
   let restingUntil: string | null = null;
   for (const c of candidates) {
-    if (c.own && c.own.status !== "failed" && c.own.status !== "pending") alreadySent++;
+    if (c.own && c.own.status !== "failed" && c.own.status !== "pending" && c.own.status !== "held_out") alreadySent++;
     if (c.own?.status === "failed") failed++;
     const blocker = composedCampaignBlocker(audience, c, { retryFailed, now });
     if (blocker === "resting") {
@@ -515,6 +536,8 @@ export function planCampaignWave(
     selection,
     excluded,
     alreadySent,
+    // A retry sends failed sends again: the claim holds out only a new one.
+    heldOut: holdout && !retryFailed ? selection.filter((c) => inHoldout(c.holdoutBucket)).length : 0,
     failed,
     eligibleChinese: eligible.filter(readsChinese).length,
     selectedChinese: selection.filter(readsChinese).length,
@@ -596,7 +619,7 @@ const isSendStatus = (v: unknown): v is CampaignSendStatus =>
 
 /** The view's columns, in its order. */
 export const CANDIDATE_COLUMNS =
-  "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends, marketing_recent";
+  "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends, marketing_recent, holdout_bucket";
 
 /** Pure — one `marketing_campaign_candidates` row for `campaignId`, or null for a malformed one. */
 export function candidateFromRow(row: Record<string, unknown>, campaignId: string): CampaignCandidate | null {
@@ -627,6 +650,7 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
     recentMarketing: Array.isArray(row.marketing_recent)
       ? row.marketing_recent.filter((at): at is string => typeof at === "string")
       : [],
+    holdoutBucket: typeof row.holdout_bucket === "number" ? row.holdout_bucket : null,
   };
 }
 

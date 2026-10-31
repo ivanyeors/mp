@@ -23,7 +23,7 @@ demoable path through the layers it touches.
 | [08](08-clicks-and-unsubscribes-per-campaign.md) | Clicks and unsubscribes, tied to the campaign | AFK, then HITL | **built**; privacy policy line open | 01 |
 | [09](09-fit-checks-and-variables.md) | The right version: fit checks and a Variable | AFK | **built** | 04, 05 |
 | [10](10-keep-sending.md) | Keep sending: reach people as they join the Audience | AFK | **built** | 01, 07 |
-| [11](11-campaign-results.md) | Results per campaign: clicks, unsubscribes, purchases after | AFK | not started | 08 |
+| [11](11-campaign-results.md) | Results per campaign: clicks, unsubscribes, purchases after | AFK | **built** | 08 |
 | [12](12-engaged-and-unengaged.md) | Engaged and unengaged: a simple rule from the Lifecycle stage | AFK | not started | 08 |
 | [13](13-topics-and-fewer-emails.md) | Later: topics and "fewer emails" | HITL, then AFK | specified | retention slice 11 data |
 | [14](14-signoff.md) | Sign-off: three of the plan's emails on production | HITL | not started | 02, 04, 06–09 |
@@ -43,7 +43,7 @@ graph TD
   s08[08 Clicks and unsubscribes · built]
   s09[09 Fit checks and Variables · built]
   s10[10 Keep sending · built]
-  s11[11 Results]
+  s11[11 Results · built]
   s12[12 Sunset rule]
   s13[13 Topics, later]
   s14[14 Sign-off · HITL]
@@ -85,5 +85,7 @@ graph TD
    policy needs its line on click recording before 08 ships.
 5. **Done 2026-10-31:** 05 (reach filters: ships to, language, campaign history,
    last emailed), then 09 (fit checks before a wave, and *Your pillow*), then 10 (keep sending:
-   one Wave a day per campaign, paused when its Segment changes). **Next:** 11.
+   one Wave a day per campaign, paused when its Segment changes), then 11 (results by stage at
+   send, purchases within 30 days, and a holdout offered from 500 sent).
 6. **03, 12 and 13** last: 12 needs six campaigns' clicks, 13 needs unsubscribe reasons.
+   **Next:** 03 (the sign-up, double opt-in: 02 and owner decision 6 are done), then 12.

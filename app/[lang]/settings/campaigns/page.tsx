@@ -11,6 +11,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { keepSendingStatus } from "@/lib/email-campaigns/keep-sending";
 import { CAMPAIGN_AUDIENCE_LABEL } from "@/lib/email-campaigns/rules";
+import { RESULT_WINDOW_DAYS, formatSgd } from "@/lib/email-campaigns/results";
 import { readSendingStatus, type SendingStatus } from "@/lib/email-campaigns/sender";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
 import { listCampaigns, type CampaignListItem } from "@/lib/email-campaigns/store";
@@ -127,8 +128,8 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                         <KeepSendingBadge item={item} />
                                         {item.campaign.lockedAt ? (
                                             <span className="tabular-nums">
-                                                Clicked {item.stats.clicked} · unsubscribed {item.stats.unsubscribed} · bounced{" "}
-                                                {item.stats.bounced} · spam {item.stats.complained}
+                                                Clicked {item.stats.clicked} · bought {item.stats.bought} · unsubscribed{" "}
+                                                {item.stats.unsubscribed} · bounced {item.stats.bounced} · spam {item.stats.complained}
                                             </span>
                                         ) : null}
                                     </span>
@@ -145,6 +146,9 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                         <TableHead className="hidden md:table-cell">Audience</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Clicked</TableHead>
+                                        <TableHead className="hidden text-right sm:table-cell">
+                                            Bought in {RESULT_WINDOW_DAYS} days
+                                        </TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Unsubscribed</TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Bounced</TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Spam</TableHead>
@@ -177,6 +181,13 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                                 </TableCell>
                                                 <TableCell className="hidden text-right tabular-nums sm:table-cell">
                                                     {item.stats.clicked}
+                                                </TableCell>
+                                                {/* PRD-campaign-audiences slice 11: people sent it who bought within 30 days. */}
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {item.stats.bought}
+                                                    {item.stats.bought ? (
+                                                        <span className="block text-xs text-muted-foreground">{formatSgd(item.stats.boughtTotal)}</span>
+                                                    ) : null}
                                                 </TableCell>
                                                 <TableCell className="hidden text-right tabular-nums sm:table-cell">
                                                     {item.stats.unsubscribed}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Pause, Play, Repeat } from "lucide-react";
+import { FlaskConical, Loader2, Pause, Play, Repeat } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
     keepSendingStatus,
     type KeepSending,
 } from "@/lib/email-campaigns/keep-sending";
+import { HOLDOUT_PERCENT, holdoutBlocker } from "@/lib/email-campaigns/results";
 import { changeKeepSending, type KeepSendingChange } from "./actions";
 import { Field } from "./field";
 
@@ -26,6 +27,9 @@ import { Field } from "./field";
  * who join its Audience. Pause stops it until resumed; a resume, like turning
  * it on, approves the Audience's Segments as they are now. The email and the
  * Audience stay as the first wave fixed them.
+ *
+ * While it keeps sending, a person may hold 10% out to measure it (slice 11),
+ * once it has been sent to 500 people.
  */
 export function KeepSendingCard({
     campaignId,
@@ -33,6 +37,7 @@ export function KeepSendingCard({
     blocker,
     audience,
     today,
+    handed,
     className,
 }: {
     campaignId: string;
@@ -43,6 +48,8 @@ export function KeepSendingCard({
     audience: string;
     /** Emails the daily job's Wave sent today. */
     today: number;
+    /** People sent it so far: the holdout waits for 500. */
+    handed: number;
     className?: string;
 }) {
     const [state, setState] = useState<KeepSending>(initial ?? KEEP_SENDING_OFF);
@@ -160,6 +167,7 @@ export function KeepSendingCard({
                             </Button>
                         </div>
                     ) : null}
+                    {state.on ? <HoldoutRow state={state} handed={handed} busy={busy} spin={spin} change={change} /> : null}
                     <p className="text-xs text-muted-foreground">
                         Its email and Audience stay as they are. To send something different, duplicate the campaign.
                     </p>
@@ -171,5 +179,59 @@ export function KeepSendingCard({
                 </CardContent>
             )}
         </Card>
+    );
+}
+
+/** The holdout (slice 11): off, offered once 500 have been sent it; on, until a person stops it. */
+function HoldoutRow({
+    state,
+    handed,
+    busy,
+    spin,
+    change,
+}: {
+    state: KeepSending;
+    handed: number;
+    busy: string | null;
+    spin: (key: string) => React.ReactNode;
+    change: (key: string, c: KeepSendingChange) => Promise<void>;
+}) {
+    const blocked = state.holdoutAt ? null : holdoutBlocker({ keepSending: state.on }, handed);
+    return (
+        <div className="space-y-2 rounded-md border p-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+                <p className="text-sm font-medium">Hold out {HOLDOUT_PERCENT}% to measure it</p>
+                <InfoTip label="About the holdout">
+                    <p>
+                        A holdout keeps {HOLDOUT_PERCENT}% of the people this campaign would send to from getting it,
+                        chosen the same way every time. The Results tab then compares what they bought in 30 days with
+                        what the people sent it bought, which shows what the email added.
+                    </p>
+                    <p>
+                        The people held out never get this campaign, even after the holdout is stopped. They still get
+                        your other campaigns.
+                    </p>
+                </InfoTip>
+            </div>
+            {state.holdoutAt ? (
+                <>
+                    <p className="text-sm text-muted-foreground">
+                        Holding out {HOLDOUT_PERCENT}% since {formatAdminDateTime(state.holdoutAt)}. Stopping it sends to
+                        the people who join from then on; those already held out never get it.
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => change("holdout", { holdout: false })} disabled={busy !== null}>
+                        {spin("holdout")}
+                        Stop holding out
+                    </Button>
+                </>
+            ) : blocked ? (
+                <p className="text-sm text-muted-foreground">{blocked}</p>
+            ) : (
+                <Button variant="outline" size="sm" onClick={() => change("holdout", { holdout: true })} disabled={busy !== null}>
+                    {spin("holdout") ?? <FlaskConical className="mr-1 h-4 w-4" />}
+                    Hold out {HOLDOUT_PERCENT}%
+                </Button>
+            )}
+        </div>
     );
 }

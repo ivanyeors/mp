@@ -603,6 +603,14 @@ _Avoid_: taking *Unknown* for Singapore, or leaving it out silently (the Custome
 A campaign that, after a first **Wave** a person started, runs one Wave a day by itself (at 10:00, labelled *Daily, 1 Nov*) to people who have joined its **Audience** since, up to its daily cap, inside Resend's daily room less a reserve of 30, the pause rule and the **Rest period**, until paused. Its email and Audience stay as the first Wave locked them; its Segments' filters stay as a person approved them, and the daily job pauses it when one changes (PRD-campaign-audiences slice 10). Chained onto the daily job; no new cron.
 _Avoid_: "automation", "flow", "drip" (each suggests branching or content changes it does not have); reading it as a way to change an email after sending
 
+**Bought after a campaign**:
+A **Customer** sent an **Email campaign** who made a **Purchase** (never a re-adjustment fee) paid within 30 days after it was sent them; its total is net of refunds, and *after a click* when paid after their first **Campaign click** (PRD-campaign-audiences slice 11; retention metric M22). Counted on the campaign's Results tab, by the **Lifecycle stage** they had when sent (kept on the send, since the stage moves), with every rate over people sent and a dash when nobody was.
+_Avoid_: "conversions" or "revenue from email" (people buy for many reasons; only a **Holdout** measures what the email added); rates over opens
+
+**Holdout**:
+The 10% of the people a **Kept sending** campaign would send to that it keeps back while its holdout is on, chosen by a hash of the Customer id (the same people every time, and for every campaign holding out). Each is recorded on the ledger as *held out*: never sent that campaign, by the daily job or any later **Wave**, even once the holdout is off; not counted against Resend's room, the cap or the **Rest period**. Their 30-day purchase rate is set beside that of the people sent in the same weeks. Offered from 500 people sent (owner decision 5; slice 11).
+_Avoid_: "control group" in UI copy; reading a held-out Customer as unsubscribed or suppressed (they get every other campaign)
+
 **Unengaged**:
 A subscribed **Customer** the sunset rule leaves out of campaigns: an *At risk · Lapsed* customer, or a *Lead* who has been a Customer for over 12 months, who clicked none of their last 6 campaigns (owner, 2026-10-31; PRD-campaign-audiences slice 12). Nobody sent fewer than 6 is Unengaged. A Customers filter (*Engagement*), so it can be seen and saved; a campaign leaves it out unless it ticks *Include unengaged*.
 _Avoid_: reading it as a **Lifecycle stage** or as consent (they can still be emailed, and still unsubscribe); "inactive", "dormant"

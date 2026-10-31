@@ -9,7 +9,7 @@ import type { CampaignContent } from "../content";
 import { KEEP_SENDING_OFF, type KeepSending, type LiveSegment } from "../keep-sending";
 import { keptSendingLine, runKeptSending, type KeptSendingDeps } from "../keep-sending-run";
 import { campaignLedgerKey, EMPTY_CAMPAIGN_DRAFT, type Campaign } from "../rules";
-import type { CampaignSenderSetup } from "../sender";
+import { sendCampaignBatch, type CampaignSenderSetup } from "../sender";
 import { readKeptSendingCampaigns } from "../store";
 import { emptyWorld, fakeCampaignsClient, type FakeSend, type FakeWorld } from "./fake-db";
 
@@ -206,6 +206,35 @@ describe("one Wave a day (slice 10)", () => {
     expect(run.sent).toBe(0);
     expect(sent).toEqual([]);
     expect(audited).toEqual([]);
+  });
+});
+
+describe("the holdout (slice 11)", () => {
+  // p3's id is in the bucket under 10 (holdoutBucketOf: 7); nobody else of p2 to p7 is.
+  const holding = () => campaign({ keepSending: keep({ dailyCap: 20, holdoutAt: "2026-10-30T02:00:00Z" }) });
+
+  it("holds the bucket out: recorded, never sent, and not counted against the cap or Resend's room", async () => {
+    world.campaigns[0].holdout = true;
+    const run = await runKeptSending(deps([holding()]));
+    expect(run.campaigns[0]).toMatchObject({ sent: 5, skipped: { held_out: 1 } });
+    expect(sent.map((e) => e.to)).not.toContain("p3@x.test");
+    expect(keptSends().find((s) => s.customer_id === id(3))).toMatchObject({ status: "held_out", provider_message_id: null });
+
+    // A re-run the same day finds nobody left to send it to.
+    const again = await runKeptSending(deps([holding()]));
+    expect(again.campaigns[0]).toMatchObject({ sent: 0, eligible: 0 });
+  });
+
+  it("never sends them that campaign by a later Wave, even with the holdout off", async () => {
+    world.campaigns[0].holdout = true;
+    await runKeptSending(deps([holding()]));
+    world.campaigns[0].holdout = false;
+    const s = setup();
+    const batch = await sendCampaignBatch(campaign({ keepSending: keep() }), { wave: "w2", customerIds: [id(3)] }, s);
+    expect(batch).toMatchObject({ sent: 0, skipped: { held_out: 1 } });
+    const retry = await sendCampaignBatch(campaign({ keepSending: keep() }), { wave: "w3", customerIds: [id(3)], retryFailed: true }, s);
+    expect(retry).toMatchObject({ sent: 0, skipped: { held_out: 1 } });
+    expect(sent.map((e) => e.to)).not.toContain("p3@x.test");
   });
 });
 

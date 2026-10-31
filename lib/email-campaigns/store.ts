@@ -28,6 +28,7 @@ import {
   type RecipientFacts,
 } from "./fit-checks";
 import type { RecipientPillow } from "./variables";
+import { resultsFromRows, type CampaignResults } from "./results";
 import { approvedSegmentsRow, KEEP_SENDING_COLUMNS, keepSendingFromRow, keptWaveLabel, type ApprovedSegment, type KeepSending } from "./keep-sending";
 
 export { finishCampaignSend };
@@ -50,6 +51,16 @@ export interface CampaignStats {
   clicks: number;
   /** People who left from this campaign's own unsubscribe link (slice 08). */
   unsubscribed: number;
+  /** People sent it who bought within 30 days (slice 11, results.ts). */
+  bought: number;
+  /** Of those, the ones who bought after their first click. */
+  boughtAfterClick: number;
+  /** What they bought, in S$, net of refunds. */
+  boughtTotal: number;
+  /** People sent it under 30 days ago, whose window is still open. */
+  counting: number;
+  /** People its holdout kept back: never sent it (slice 11). */
+  heldOut: number;
 }
 
 export const NO_STATS: CampaignStats = {
@@ -65,6 +76,11 @@ export const NO_STATS: CampaignStats = {
   clicked: 0,
   clicks: 0,
   unsubscribed: 0,
+  bought: 0,
+  boughtAfterClick: 0,
+  boughtTotal: 0,
+  counting: 0,
+  heldOut: 0,
 };
 
 const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -84,6 +100,11 @@ export function statsFromRow(row: Record<string, unknown>): CampaignStats {
     clicked: num(row.clicked),
     clicks: num(row.clicks),
     unsubscribed: num(row.unsubscribed),
+    bought: num(row.bought),
+    boughtAfterClick: num(row.bought_after_click),
+    boughtTotal: num(row.bought_total),
+    counting: num(row.counting),
+    heldOut: num(row.held_out),
   };
 }
 
@@ -283,7 +304,9 @@ export async function saveKeepSending(
     | { on: false }
     | { dailyCap: number }
     | { paused: true; at: string }
-    | { paused: false; segments: Record<string, ApprovedSegment> },
+    | { paused: false; segments: Record<string, ApprovedSegment> }
+    | { holdout: true; at: string }
+    | { holdout: false },
 ): Promise<KeepSending> {
   const row =
     "on" in change
@@ -295,7 +318,10 @@ export async function saveKeepSending(
             keep_sending_paused_reason: null,
             keep_sending_segments: approvedSegmentsRow(change.segments),
           }
-        : { keep_sending: false, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null }
+        : // Off ends the holdout too: only a campaign that keeps sending holds out. Its held-out rows stay.
+          { keep_sending: false, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null, holdout_at: null }
+      : "holdout" in change
+        ? { holdout_at: change.holdout ? change.at : null }
       : "paused" in change
         ? change.paused
           ? { keep_sending_paused_at: change.at, keep_sending_paused_reason: null }
@@ -324,15 +350,27 @@ export async function pauseKeptSending(admin: SupabaseClient, id: string, reason
   if (error) throw new Error(`Could not pause the campaign: ${error.message}`);
 }
 
-/** How many sends one Wave of a campaign has claimed, whatever became of them: the day's cap counts them all. */
+/**
+ * How many sends one Wave of a campaign has claimed, whatever became of them:
+ * the day's cap counts them all. People held out got no email and are not
+ * counted (slice 11).
+ */
 export async function countWaveClaims(admin: SupabaseClient, campaignId: string, wave: string): Promise<number> {
   const { count, error } = await admin
     .from("customer_campaign_sends")
     .select("id", { count: "exact", head: true })
     .eq("campaign_id", campaignId)
-    .eq("wave", wave);
+    .eq("wave", wave)
+    .neq("status", "held_out");
   if (error) throw new Error(`Could not count today's sends: ${error.message}`);
   return count ?? 0;
+}
+
+/** One campaign's results by stage, and its holdout beside the people sent (slice 11). Throws on a failed read. */
+export async function readCampaignResults(admin: SupabaseClient, id: string): Promise<CampaignResults> {
+  const { data, error } = await admin.from("email_campaign_stage_results").select("*").eq("campaign_id", id);
+  if (error) throw new Error(`Could not read the campaign's results: ${error.message}`);
+  return resultsFromRows((data ?? []) as Record<string, unknown>[]);
 }
 
 /** Today's kept-sending emails the provider took, across campaigns: the Sending card's line. */

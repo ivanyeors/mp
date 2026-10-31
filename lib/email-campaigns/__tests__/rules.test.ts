@@ -49,13 +49,13 @@ type Case = {
 
 /**
  * The `marketing_recent` the view would give for a case's other email: every
- * campaign send but a failed one, and points-expiry reminders; never an order
- * email. The SQL assert inserts the raw rows instead, so the view's filter is
+ * campaign send but a failed or held-out one, and points-expiry reminders;
+ * never an order email. The SQL assert inserts the raw rows instead, so the view's filter is
  * held to these too.
  */
 const recentOf = (c: Case, now: Date) =>
   (c.customer.recent ?? [])
-    .filter((r) => (r.kind ?? "campaign") === "points_expiry" || ((r.kind ?? "campaign") === "campaign" && r.status !== "failed"))
+    .filter((r) => (r.kind ?? "campaign") === "points_expiry" || ((r.kind ?? "campaign") === "campaign" && r.status !== "failed" && r.status !== "held_out"))
     .map((r) => new Date(now.getTime() - r.daysAgo * 86_400_000).toISOString());
 
 const CASES = JSON.parse(
@@ -65,6 +65,8 @@ const CASES = JSON.parse(
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021100000_email_campaigns.sql"), "utf8");
 /** The rule's latest definition: the rest period's (PRD-campaign-audiences slice 07). */
 const RULE_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031144935_campaign_rest_period.sql"), "utf8");
+/** The rule's latest definition: slice 11 added `held_out`. */
+const BLOCKER_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031162653_campaign_results.sql"), "utf8");
 
 const NOW = new Date("2026-10-31T04:00:00.000Z");
 
@@ -107,7 +109,7 @@ describe("composedCampaignBlocker: campaign-rule-cases.json", () => {
   });
 
   it("names the same reasons, in the same order, as marketing_campaign_blocker()", () => {
-    const fn = RULE_MIGRATION.slice(RULE_MIGRATION.indexOf("function public.marketing_campaign_blocker"));
+    const fn = BLOCKER_MIGRATION.slice(BLOCKER_MIGRATION.indexOf("function public.marketing_campaign_blocker"));
     const sqlOrder = CAMPAIGN_RULE_BLOCKERS.map((b) => fn.indexOf(`'${b}'`));
     expect(sqlOrder.every((i) => i > 0)).toBe(true);
     expect([...sqlOrder].sort((a, b) => a - b)).toEqual(sqlOrder);

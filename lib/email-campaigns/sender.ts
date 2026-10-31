@@ -779,7 +779,12 @@ export async function planWave(
   const { candidates, leftOut } = excludeSegmentMembers(audience, leaveOut);
   // Never past today's room: the rest of the audience waits for the next wave.
   const room = readiness.allowance?.remaining ?? 0;
-  const { selection, ...plan } = planCampaignWave(campaign.audience, candidates, { size: Math.min(n, room), retryFailed });
+  const { selection, ...plan } = planCampaignWave(campaign.audience, candidates, {
+    size: Math.min(n, room),
+    retryFailed,
+    // Slice 11: who its holdout will keep back, so the plan can say so.
+    holdout: Boolean(campaign.keepSending?.holdoutAt),
+  });
   const wanted = Math.min(n, plan.eligible);
   const customerIds = selection.map((c) => c.customerId);
   return {

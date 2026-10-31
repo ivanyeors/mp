@@ -48,6 +48,7 @@ import {
   type PastCampaign,
 } from "@/lib/email-campaigns/store";
 import { keepSendingBlocker, parseDailyCap, KEEP_SENDING_MAX_CAP, type KeepSending } from "@/lib/email-campaigns/keep-sending";
+import { holdoutBlocker } from "@/lib/email-campaigns/results";
 import { BLANK_PREVIEW, STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
 import { imageAssetsIn } from "@/lib/email-campaigns/content";
 import { NO_DETAILS, POINTS_NOT_LIVE, SAMPLE_RECIPIENT, type PreviewAs } from "@/lib/email-campaigns/variables";
@@ -516,7 +517,8 @@ export type KeepSendingChange =
   | { on: true; dailyCap: number }
   | { on: false }
   | { dailyCap: number }
-  | { paused: boolean };
+  | { paused: boolean }
+  | { holdout: boolean };
 
 const CAP_ERROR = `A day's cap is 1 to ${KEEP_SENDING_MAX_CAP}.`;
 
@@ -525,6 +527,10 @@ const CAP_ERROR = `A day's cap is 1 to ${KEEP_SENDING_MAX_CAP}.`;
  * a resume, take the Segments' filters as they are now: what the person
  * approves. Only a campaign a person has sent to can keep sending, and its
  * email and Audience stay as the first wave fixed them. Audited as the person.
+ *
+ * The holdout (PRD-campaign-audiences slice 11) is turned on here too, once
+ * the campaign keeps sending and has been sent to 500 people. Off keeps those
+ * already held out from ever getting it.
  */
 export async function changeKeepSending(id: string, change: KeepSendingChange): Promise<KeepSendingAnswer> {
   const ctx = await assertAdmin("campaigns");
@@ -545,6 +551,13 @@ export async function changeKeepSending(id: string, change: KeepSendingChange): 
     } else if ("on" in change) {
       keepSending = await saveKeepSending(admin, id, { on: false });
       action = "email_campaign.keep_sending_off";
+    } else if ("holdout" in change) {
+      if (change.holdout) {
+        const blocked = holdoutBlocker({ keepSending: Boolean(before?.on) }, (await getCampaignStats(admin, id)).handed);
+        if (blocked) return { ok: false, error: blocked };
+      }
+      keepSending = await saveKeepSending(admin, id, change.holdout ? { holdout: true, at: new Date().toISOString() } : { holdout: false });
+      action = change.holdout ? "email_campaign.holdout_on" : "email_campaign.holdout_off";
     } else if ("dailyCap" in change) {
       const dailyCap = parseDailyCap(change.dailyCap);
       if (!dailyCap) return { ok: false, error: CAP_ERROR, fieldErrors: { dailyCap: CAP_ERROR } };
@@ -566,8 +579,16 @@ export async function changeKeepSending(id: string, change: KeepSendingChange): 
     action,
     entityType: "email_campaign",
     entityId: id,
-    before: before ? { on: before.on, daily_cap: before.dailyCap, paused_at: before.pausedAt, paused_reason: before.pausedReason } : null,
-    after: { on: keepSending.on, daily_cap: keepSending.dailyCap, paused_at: keepSending.pausedAt, segments: Object.keys(keepSending.segments) },
+    before: before
+      ? { on: before.on, daily_cap: before.dailyCap, paused_at: before.pausedAt, paused_reason: before.pausedReason, holdout_at: before.holdoutAt }
+      : null,
+    after: {
+      on: keepSending.on,
+      daily_cap: keepSending.dailyCap,
+      paused_at: keepSending.pausedAt,
+      segments: Object.keys(keepSending.segments),
+      holdout_at: keepSending.holdoutAt,
+    },
   });
   return { ok: true, keepSending };
 }

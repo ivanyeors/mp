@@ -397,6 +397,9 @@ export const PAUSE_LINES_TEXT = `A wave pauses sending when more than ${PAUSE_BO
 /** Pure — one row per wave, oldest first, judged as the pause rule judges it (`wavePause`). */
 export function waveRows(stats: readonly CampaignWaveStats[]): WaveRow[] {
   return [...stats]
+    // A wave whose every row a holdout kept back (PRD-campaign-audiences slice
+    // 11) sent nobody and claimed nothing to send: not a wave to judge.
+    .filter((s) => s.handed + s.failed + s.pending > 0)
     .sort((a, b) => (Date.parse(a.lastSentAt ?? "") || Infinity) - (Date.parse(b.lastSentAt ?? "") || Infinity))
     .map((s) => {
       const state: WaveState =

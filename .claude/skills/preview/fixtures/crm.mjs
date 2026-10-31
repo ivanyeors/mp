@@ -6,7 +6,9 @@
 // out (PRD-campaign-audiences slice 06), with the campaign candidates view
 // worked out from the same Customers; another, *Pillow check-up*, says *Your
 // pillow* and offers the studio and an Mbolster, for slice 09's fit checks.
-// Every name and email is invented.
+// *November care tips* has about 600 made-up sends, each with a stage at send
+// and a seeded click and purchase, and a holdout on for six days (slice 11's
+// Results tab). Every name and email is invented.
 
 // `sizes` and `delivered` (days since the latest purchase arrived; null while
 // on its way) feed the purchase filters (PRD-campaign-audiences slice 04).
@@ -37,7 +39,99 @@ const SENT_CAMPAIGN = "00000000-0000-4000-8000-00000000e002";
 const CHECKUP_CAMPAIGN = "00000000-0000-4000-8000-00000000e003";
 // Slice 10: *November care tips* keeps sending (three went today); *Second purchase* the daily run paused.
 const SECOND_CAMPAIGN = "00000000-0000-4000-8000-00000000e004";
-const OFF = { keep_sending: false, keep_sending_daily_cap: 20, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null };
+const OFF = { keep_sending: false, keep_sending_daily_cap: 20, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null, holdout_at: null };
+
+/** A seeded generator, so every run draws the same sample results. */
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Slice 11: *November care tips*'s made-up sends, to made-up Customer ids (no
+ * Customer row: the Results tab counts the ledger), and what each did next.
+ * w1 went 45 days ago (its 30 days are over), w2 12 days ago, then a daily
+ * Wave on each of the last five days, the holdout keeping two back from each.
+ */
+function resultSends(ago) {
+  const draw = rng(11);
+  const stageOf = (r) => (r < 0.35 ? "lead" : r < 0.65 ? "new" : r < 0.85 ? "loyal" : "at_risk");
+  const sgDate = (days) => new Date(Date.parse(ago(days)) + 8 * 3_600_000).toISOString().slice(0, 10);
+  const plan = [
+    ...Array.from({ length: 240 }, () => ({ wave: "w1", days: 45, held: false })),
+    ...Array.from({ length: 260 }, () => ({ wave: "w2", days: 12, held: false })),
+    ...[5, 4, 3, 2, 1].flatMap((d) =>
+      Array.from({ length: 20 }, (_, k) => ({ wave: `daily-${sgDate(d)}`, days: d - 0.01 * k, held: k % 10 === 4 })),
+    ),
+  ];
+  const outcomes = new Map();
+  const rows = plan.map((x, n) => {
+    const id = `00000000-0000-4000-8000-0000000a${String(n + 1).padStart(4, "0")}`;
+    const stage = stageOf(draw());
+    const clicked = !x.held && draw() < (stage === "loyal" ? 0.2 : 0.12);
+    const buyRate = { lead: 0.02, new: 0.04, loyal: 0.08, at_risk: 0.03 }[stage] * (x.held ? 0.7 : 1) * (clicked ? 2.5 : 1);
+    const bought = draw() < buyRate;
+    outcomes.set(id, {
+      bought,
+      spent: bought ? Math.round(150 + draw() * 300) : 0,
+      afterClick: bought && clicked,
+      unsubscribed: !x.held && !clicked && draw() < 0.01,
+    });
+    return {
+      id,
+      customer_id: `00000000-0000-4000-8000-0000000d${String(n + 1).padStart(4, "0")}`,
+      template: `campaign:${SENT_CAMPAIGN}`,
+      campaign_id: SENT_CAMPAIGN,
+      wave: x.wave,
+      status: x.held ? "held_out" : "sent",
+      provider_message_id: x.held ? null : `re_result_${n}`,
+      sent_at: ago(x.days),
+      attempts: 1,
+      last_error: null,
+      bounced_at: null,
+      complained_at: !x.held && n === 77 ? ago(x.days - 0.5) : null,
+      click_token_hash: null,
+      first_clicked_at: clicked ? ago(x.days - 0.2) : null,
+      clicks: clicked ? 1 : 0,
+      stage_at_send: stage,
+    };
+  });
+  return { rows, outcomes };
+}
+
+/** `email_campaign_send_outcomes`, from the ledger and the sample outcomes: one row per send that went or was held out. */
+function outcomesOf(t, outcomes) {
+  const left = new Set(
+    (t.customer_consent_events ?? []).filter((ev) => ev.to_state === "unsubscribed" && ev.source === "unsubscribe_link").map((ev) => ev.campaign_send_id),
+  );
+  const monthAgo = Date.now() - 30 * 86_400_000;
+  return (t.customer_campaign_sends ?? [])
+    .filter((s) => s.campaign_id && ["sent", "bounced", "complained", "held_out"].includes(s.status))
+    .map((s) => {
+      const o = outcomes.get(s.id) ?? { bought: false, spent: 0, afterClick: false, unsubscribed: false };
+      return {
+        send_id: s.id,
+        campaign_id: s.campaign_id,
+        held_out: s.status === "held_out",
+        stage_at_send: s.stage_at_send ?? null,
+        sent_at: s.sent_at,
+        clicked: Boolean(s.first_clicked_at),
+        complained: Boolean(s.complained_at),
+        unsubscribed: left.has(s.id) || o.unsubscribed,
+        synthetic_left: o.unsubscribed,
+        purchases: o.bought ? 1 : 0,
+        spent: o.spent,
+        bought_after_click: o.afterClick,
+        counting: Date.parse(s.sent_at) > monthAgo,
+      };
+    });
+}
 
 /** When they last bought, in days, or null: as the overview's `last_purchase_at`. */
 const lastBoughtDays = (p) => (p.purchases ? (p.lastBought ?? (p.stage === "at_risk" ? 800 : 40)) : null);
@@ -46,6 +140,7 @@ export default function crm({ now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
   // Today's kept-sending Wave, as the daily job labels it: Singapore's date.
   const keptToday = `daily-${new Date(now.getTime() + 8 * 3_600_000).toISOString().slice(0, 10)}`;
+  const results = resultSends(ago);
   const customers = PEOPLE.map((p, i) => ({
     id: `00000000-0000-4000-8000-0000000c0${String(i + 1).padStart(3, "0")}`,
     email: `${p.first.toLowerCase().replace(/\s/g, "")}.${p.last.toLowerCase()}@example.com`,
@@ -165,12 +260,14 @@ export default function crm({ now }) {
           segment_id: null,
           exclude_segment_ids: [],
           created_by_profile_id: null,
-          created_at: ago(28),
-          updated_at: ago(26),
-          locked_at: ago(26),
+          created_at: ago(48),
+          updated_at: ago(46),
+          locked_at: ago(46),
           archived_at: null,
           ...OFF,
           keep_sending: true,
+          // Slice 11: holding 10% out since six days ago.
+          holdout_at: ago(6),
         },
         {
           id: SECOND_CAMPAIGN,
@@ -253,7 +350,8 @@ export default function crm({ now }) {
           wave: "w1",
           status: "sent",
           provider_message_id: "re_sample_1",
-          sent_at: ago(26),
+          sent_at: ago(45),
+          stage_at_send: "new",
           attempts: 1,
           last_error: null,
           bounced_at: null,
@@ -271,6 +369,7 @@ export default function crm({ now }) {
           status: "sent",
           provider_message_id: "re_sample_2",
           sent_at: ago(3),
+          stage_at_send: "new",
           attempts: 1,
           last_error: null,
           bounced_at: null,
@@ -289,6 +388,7 @@ export default function crm({ now }) {
           status: "sent",
           provider_message_id: `re_kept_${n}`,
           sent_at: ago(0.01),
+          stage_at_send: ["loyal", "new", "at_risk"][n],
           attempts: 1,
           last_error: null,
           bounced_at: null,
@@ -306,6 +406,7 @@ export default function crm({ now }) {
           status: "sent",
           provider_message_id: `re_second_${n}`,
           sent_at: ago(10),
+          stage_at_send: ["lead", "loyal"][n],
           attempts: 1,
           last_error: null,
           bounced_at: null,
@@ -314,6 +415,7 @@ export default function crm({ now }) {
           first_clicked_at: null,
           clicks: 0,
         })),
+        ...results.rows,
       ],
       customer_consent_events: [
         {
@@ -368,10 +470,11 @@ export default function crm({ now }) {
             failed: rows.filter((s) => s.status === "failed").length,
             pending: rows.filter((s) => s.status === "pending").length,
             last_sent_at: handed.map((s) => s.sent_at).sort().at(-1) ?? null,
+            held_out: rows.filter((s) => s.status === "held_out").length,
           };
         });
       },
-      // 20261031152709: each campaign's numbers, clicks and unsubscribes included.
+      // 20261031162653: each campaign's numbers, with purchases after it and the held out.
       email_campaign_stats: (t) =>
         (t.email_campaigns ?? []).map((e) => {
           const sends = (t.customer_campaign_sends ?? []).filter((s) => s.campaign_id === e.id);
@@ -380,6 +483,7 @@ export default function crm({ now }) {
           const left = (t.customer_consent_events ?? []).filter(
             (ev) => ids.has(ev.campaign_send_id) && ev.to_state === "unsubscribed" && ev.source === "unsubscribe_link",
           );
+          const out = outcomesOf(t, results.outcomes).filter((o) => o.campaign_id === e.id && !o.held_out);
           return {
             campaign_id: e.id,
             handed: handed.length,
@@ -393,9 +497,45 @@ export default function crm({ now }) {
             link_clicks: 0,
             clicked: sends.filter((s) => s.first_clicked_at).length,
             clicks: sends.reduce((n, s) => n + (s.clicks ?? 0), 0),
-            unsubscribed: new Set(left.map((ev) => ev.customer_id)).size,
+            unsubscribed: new Set(left.map((ev) => ev.customer_id)).size + out.filter((o) => o.synthetic_left).length,
+            bought: out.filter((o) => o.purchases > 0).length,
+            bought_after_click: out.filter((o) => o.bought_after_click).length,
+            bought_total: out.reduce((n, o) => n + o.spent, 0),
+            counting: out.filter((o) => o.counting).length,
+            held_out: sends.filter((s) => s.status === "held_out").length,
           };
         }),
+      // 20261031162653: by cohort and stage at send.
+      email_campaign_stage_results: (t) => {
+        const out = outcomesOf(t, results.outcomes);
+        const since = new Map();
+        for (const o of out) if (o.held_out && (!since.has(o.campaign_id) || o.sent_at < since.get(o.campaign_id))) since.set(o.campaign_id, o.sent_at);
+        const tagged = [
+          ...out.map((o) => ({ ...o, cohort: o.held_out ? "held_out" : "sent" })),
+          ...out.filter((o) => !o.held_out && since.has(o.campaign_id) && o.sent_at >= since.get(o.campaign_id)).map((o) => ({ ...o, cohort: "sent_since_holdout" })),
+        ];
+        const groups = new Map();
+        for (const o of tagged) {
+          const key = `${o.campaign_id}|${o.cohort}|${o.stage_at_send ?? "unknown"}`;
+          groups.set(key, [...(groups.get(key) ?? []), o]);
+        }
+        return [...groups.entries()].map(([key, rows]) => {
+          const [campaign_id, cohort, stage] = key.split("|");
+          return {
+            campaign_id,
+            cohort,
+            stage,
+            people: rows.length,
+            clicked: rows.filter((o) => o.clicked).length,
+            unsubscribed: rows.filter((o) => o.unsubscribed).length,
+            complained: rows.filter((o) => o.complained).length,
+            bought: rows.filter((o) => o.purchases > 0).length,
+            bought_after_click: rows.filter((o) => o.bought_after_click).length,
+            bought_total: rows.reduce((n, o) => n + o.spent, 0),
+            counting: rows.filter((o) => o.counting).length,
+          };
+        });
+      },
       // 20261031144619: each pillow line, for *Your pillow* (slice 09): one a Customer, of their Tier and first size.
       customer_purchase_lines: (t) =>
         (t.customers ?? []).flatMap((c) => {

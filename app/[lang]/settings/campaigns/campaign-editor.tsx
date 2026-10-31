@@ -95,6 +95,7 @@ import {
 import { emailSaysNothing, STARTERS, startedFrom, starterAudience, type Starter } from "@/lib/email-campaigns/starters";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
+import type { CampaignResults } from "@/lib/email-campaigns/results";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
 import { defaultWaveSize, fitSummary, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
@@ -132,6 +133,7 @@ import { CheckList, StatusIcon } from "./send-parts";
 import { StarterThumbnail } from "./starter-thumbnail";
 import { WaveTable } from "./wave-table";
 import { KeepSendingCard } from "./keep-sending-card";
+import { CampaignResultsPanel } from "./results-panel";
 import { keepSendingBlocker } from "@/lib/email-campaigns/keep-sending";
 
 /** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
@@ -253,6 +255,7 @@ export function CampaignEditor({
     pointsLive = false,
     ai = AI_OFF,
     keptToday = 0,
+    results = null,
 }: {
     /** Null for a new one. */
     campaign: Campaign | null;
@@ -269,6 +272,8 @@ export function CampaignEditor({
     ai?: AiWritingAvailability;
     /** Emails the daily job's Wave sent today (PRD-campaign-audiences slice 10). */
     keptToday?: number;
+    /** A started campaign's results by stage (slice 11); null when not read. */
+    results?: CampaignResults | null;
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
@@ -398,7 +403,7 @@ export function CampaignEditor({
     }, [campaign, input, locale, router]);
 
     // ── Write: tabs, selection, panes ──────────────────────────────────────
-    const [tab, setTab] = useState<"write" | "send">("write");
+    const [tab, setTab] = useState<"write" | "send" | "results">("write");
     const [selected, setSelected] = useState<string | null>(null);
     const [pane, setPane] = useState<"write" | "preview">("write");
     const [addOpen, setAddOpen] = useState(false);
@@ -1495,10 +1500,12 @@ export function CampaignEditor({
                 </div>
             ) : null}
 
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "write" | "send")}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "write" | "send" | "results")}>
                 <TabsList>
                     <TabsTrigger value="write">Write</TabsTrigger>
                     <TabsTrigger value="send">Send</TabsTrigger>
+                    {/* PRD-campaign-audiences slice 11: once a wave has gone. */}
+                    {locked ? <TabsTrigger value="results">Results</TabsTrigger> : null}
                 </TabsList>
 
                 {/* Both tabs stay mounted: a wave keeps sending, and the email keeps its history, while the other is open. */}
@@ -1792,6 +1799,13 @@ export function CampaignEditor({
                                             audience can get it ({n(plan.plan.eligibleBuyers)} have ordered before; they go first).
                                             {plan.plan.alreadySent ? ` ${n(plan.plan.alreadySent)} already have it.` : ""}
                                         </p>
+                                        {/* PRD-campaign-audiences slice 11: the holdout's share of this wave. */}
+                                        {plan.plan.heldOut ? (
+                                            <p className="text-muted-foreground">
+                                                The holdout keeps {n(plan.plan.heldOut)} of this wave back to measure the campaign: they are
+                                                recorded and never sent it.
+                                            </p>
+                                        ) : null}
                                         {Object.keys(plan.plan.excluded).length || plan.leftOutBySegment.length ? (
                                             <ul className="list-inside list-disc text-muted-foreground">
                                                 {/* Slice 06: who each left-out Segment took away, before the rule. */}
@@ -1897,10 +1911,17 @@ export function CampaignEditor({
                             blocker={keepSendingBlocker(campaign, stats?.handed ?? 0)}
                             audience={audienceWords}
                             today={keptToday}
+                            handed={stats?.handed ?? 0}
                             className="max-md:order-1"
                         />
                     ) : null}
                 </TabsContent>
+
+                {locked ? (
+                    <TabsContent value="results">
+                        <CampaignResultsPanel stats={stats} results={results} />
+                    </TabsContent>
+                ) : null}
             </Tabs>
 
             <SendConfirmDialog open={confirmOpen} onOpenChange={setConfirmOpen} details={confirmation} onConfirm={startWave} />
