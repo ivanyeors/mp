@@ -18,7 +18,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
-const { migrationCells } = await import("../migration-card");
+const { migrationFigures } = await import("../migration-card");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
 
 const summary: MigrationSummary = {
@@ -36,38 +36,35 @@ const summary: MigrationSummary = {
   emailed: 960,
   emailsBounced: 12,
   emailsComplained: 1,
+  stages: {
+    imported: { here: 230, unreachable: 20 },
+    emailed: { here: 660, unreachable: 12 },
+    clicked: { here: 160, unreachable: 1 },
+    signed_up: { here: 30, unreachable: 0 },
+    claim_bonus: { here: 95, unreachable: 0 },
+    ordered: { here: 25, unreachable: 0 },
+  },
 };
 
 describe("Migration card", () => {
-  it("adds Clicked (of imported), the Claim bonus (of imported), the points spent and the Revenue of their paid orders", () => {
-    const cells = migrationCells(summary);
-    // Migration 08's Emailed sits before Clicked, in funnel order.
-    expect(cells.map((c) => c.label)).toEqual([
-      "Imported",
-      "Signed up",
-      "Emailed",
-      "Clicked",
-      "Claim bonus",
-      "Points spent",
-      "Revenue",
-    ]);
-    const cell = (label: string) => cells.find((c) => c.label === label)!;
-    expect(cell("Clicked")).toEqual({ label: "Clicked", value: "300 (25%)", detail: "opened their Claim link" });
-    expect(cell("Claim bonus")).toEqual({ label: "Claim bonus", value: "120 (10%)", detail: "got the sign-in bonus in points" });
+  it("adds the points spent and the Revenue of their paid orders under the journey", () => {
+    const figures = migrationFigures(summary);
+    expect(figures.map((f) => f.label)).toEqual(["Points spent", "Revenue"]);
+    const figure = (label: string) => figures.find((f) => f.label === label)!;
     // A balance is always shown in points and dollars (ADR 0030 (b)).
-    expect(cell("Points spent")).toEqual({ label: "Points spent", value: "31,000 points (S$310.00)", detail: "on 31 paid orders" });
-    expect(cell("Revenue").value).toMatch(/4,250\.50$/);
-    expect(cell("Revenue").detail).toBe("from 31 paid orders that used points");
+    expect(figure("Points spent")).toEqual({ label: "Points spent", value: "31,000 points (S$310.00)", detail: "on 31 paid orders" });
+    expect(figure("Revenue").value).toMatch(/4,250\.50$/);
+    expect(figure("Revenue").detail).toBe("from 31 paid orders that used points");
   });
 
   it("reads one paid order in the singular", () => {
-    const cells = migrationCells({ ...summary, pointsOrders: 1 });
-    expect(cells.find((c) => c.label === "Points spent")!.detail).toBe("on 1 paid order");
-    expect(cells.find((c) => c.label === "Revenue")!.detail).toBe("from 1 paid order that used points");
+    const figures = migrationFigures({ ...summary, pointsOrders: 1 });
+    expect(figures.find((f) => f.label === "Points spent")!.detail).toBe("on 1 paid order");
+    expect(figures.find((f) => f.label === "Revenue")!.detail).toBe("from 1 paid order that used points");
   });
 
   it("says nothing of a voucher", () => {
-    expect(JSON.stringify(migrationCells(summary))).not.toMatch(/voucher/i);
+    expect(JSON.stringify(migrationFigures(summary))).not.toMatch(/voucher/i);
   });
 });
 

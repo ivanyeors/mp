@@ -18,7 +18,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
-const { MigrationCard, migrationCells } = await import("../migration-card");
+const { MigrationCard, journeyNotes } = await import("../migration-card");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
 
 const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
@@ -87,6 +87,14 @@ const summary: MigrationSummary = {
   emailed: 960,
   emailsBounced: 12,
   emailsComplained: 1,
+  stages: {
+    imported: { here: 230, unreachable: 20 },
+    emailed: { here: 660, unreachable: 12 },
+    clicked: { here: 160, unreachable: 1 },
+    signed_up: { here: 30, unreachable: 0 },
+    claim_bonus: { here: 95, unreachable: 0 },
+    ordered: { here: 25, unreachable: 0 },
+  },
 };
 
 const list = (rows: CustomerOverviewRow[], migration: MigrationSummary | null = null) =>
@@ -147,11 +155,28 @@ describe("Customers list", () => {
 });
 
 describe("Migration card", () => {
-  it("reads N (created a, matched b) and s (s/N %), of which k had an account before import", () => {
-    expect(migrationCells(summary).slice(0, 2)).toEqual([
-      { label: "Imported", value: "1,200", detail: "created 900, matched 300" },
-      { label: "Signed up", value: "150 (13%)", detail: "of which 40 already had an account before import" },
-    ]);
+  it("draws the journey, one row a stage, with who reached it and who is here now", () => {
+    const html = renderToString(
+      <MigrationCard summary={summary} notSignedUpHref="/en-US/settings/customers" onShowNotSignedUp={() => {}} />,
+    );
+    for (const stage of ["imported", "emailed", "clicked", "signed_up", "claim_bonus", "ordered"]) {
+      expect(html).toContain(`data-stage="${stage}"`);
+    }
+    // Emailed: 970 reached (660 + 160 + 30 + 95 + 25), 81% of imported; 660 here, 12 of them out of reach.
+    expect(html).toContain("Emailed: 970 reached, 81% of imported. 660 here now, 12 of them can&#x27;t be emailed; 310 went further.");
+    expect(html).toContain("Clicked: 310 reached, 26% of imported, 32% of emailed.");
+    expect(html).toContain("Where each of the 1,200 customers imported from Shopify is now.");
+  });
+
+  it("puts created and matched, and the accounts that predate the import, in the stages' tooltips", () => {
+    expect(journeyNotes(summary)).toEqual({
+      imported: "Created 900, matched 300.",
+      emailed: "12 bounced, 1 marked as spam.",
+      signed_up: "40 already had an account before import.",
+    });
+    expect(journeyNotes({ ...summary, emailsBounced: 0, emailsComplained: 0, signedUpBeforeImport: 0 })).toEqual({
+      imported: "Created 900, matched 300.",
+    });
   });
 
   it("links to the list of those from Shopify not signed up yet", () => {

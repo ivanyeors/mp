@@ -1393,9 +1393,9 @@ Defined in supabase/migrations/20261021120000_points_ledger.sql:261
   - `adjustPoints()` — lib/points/server.ts:161
 
 ### admin_customer_migration_summary
-Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
+Defined in supabase/migrations/20261031120000_migration_journey_stages.sql:40
 - Read by:
-  - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
+  - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:133
 
 ### admin_customer_overview
 Defined in supabase/migrations/20261028033330_lifecycle_stage.sql:107
@@ -1404,7 +1404,7 @@ Defined in supabase/migrations/20261028033330_lifecycle_stage.sql:107
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
   - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:111
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:220
+  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:245
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:45
   - `resolveSegment()` [select] — lib/crm/segments.ts:245
 
@@ -1693,7 +1693,7 @@ References: `media_assets`
 Defined in supabase/migrations/20261020100000_customer_import.sql:52
 References: `customer_addresses`, `customer_import_batches`, `customers`
 - Read by:
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:217
+  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:242
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:25
   - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:38
 

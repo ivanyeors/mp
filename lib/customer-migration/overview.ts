@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import type { JourneyStage, JourneyStageCount } from "./journey";
 
 /**
  * What the Admin Panel shows about the Shopify import (migration slice 12):
@@ -14,7 +15,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  * Every column of `admin_customer_migration_summary`, in the view's order.
  * Slices 06 and 08 appended their funnel columns (*Emailed*, *Clicked*); the
  * Claim bonus and what points did replaced the voucher's in
- * PRD-loyalty-points slice 06. The view test keeps the two equal.
+ * PRD-loyalty-points slice 06; the Journey stages came last (2026-10-31).
+ * The view test keeps the two equal.
  */
 export const MIGRATION_SUMMARY_COLUMNS = [
   "imported",
@@ -31,6 +33,15 @@ export const MIGRATION_SUMMARY_COLUMNS = [
   "emailed",
   "emails_bounced",
   "emails_complained",
+  "stage_imported",
+  "stage_imported_unreachable",
+  "stage_emailed",
+  "stage_emailed_unreachable",
+  "stage_clicked",
+  "stage_clicked_unreachable",
+  "stage_signed_up",
+  "stage_claim_bonus",
+  "stage_ordered",
 ] as const;
 
 export interface MigrationSummary {
@@ -62,6 +73,12 @@ export interface MigrationSummary {
   emailsBounced: number;
   /** Of `imported`, the ones who marked one as spam: unsubscribed. */
   emailsComplained: number;
+  /**
+   * Where each of `imported` is now: their furthest **Journey stage**, and of
+   * those, the ones no campaign email can reach (20261031120000). The stages
+   * sum to `imported`; `unreachable` is 0 from *Signed up* on.
+   */
+  stages: Record<JourneyStage, JourneyStageCount>;
 }
 
 const count = (v: unknown): number => {
@@ -86,6 +103,14 @@ export function migrationSummaryFromRow(row: Partial<Record<(typeof MIGRATION_SU
     emailed: count(row?.emailed),
     emailsBounced: count(row?.emails_bounced),
     emailsComplained: count(row?.emails_complained),
+    stages: {
+      imported: { here: count(row?.stage_imported), unreachable: count(row?.stage_imported_unreachable) },
+      emailed: { here: count(row?.stage_emailed), unreachable: count(row?.stage_emailed_unreachable) },
+      clicked: { here: count(row?.stage_clicked), unreachable: count(row?.stage_clicked_unreachable) },
+      signed_up: { here: count(row?.stage_signed_up), unreachable: 0 },
+      claim_bonus: { here: count(row?.stage_claim_bonus), unreachable: 0 },
+      ordered: { here: count(row?.stage_ordered), unreachable: 0 },
+    },
   };
 }
 

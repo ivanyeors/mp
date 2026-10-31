@@ -2,49 +2,27 @@
 
 import { useState } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
-import { percentOf, signedUpPercent, type MigrationSummary } from "@/lib/customer-migration/overview";
+import { migrationJourney, shareLabel, type JourneyStage } from "@/lib/customer-migration/journey";
+import type { MigrationSummary } from "@/lib/customer-migration/overview";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { formatPoints } from "@/lib/points/value";
 import { cn } from "@/lib/utils";
+import { MigrationJourney } from "./migration-journey";
+
+const n = (v: number) => v.toLocaleString("en-SG");
 
 /**
- * One figure on the card: slice 06 adds *Clicked*; slice 08 adds *Emailed*,
- * before it; PRD-loyalty-points slice 06 adds *Claim bonus*, *Points spent*
- * and *Revenue*, what the Claim bonus drove.
+ * What the migration earned, under the funnel: money, not people, so not a
+ * stage. PRD-loyalty-points slice 06 added both; they count the paid orders of
+ * imported customers that used points.
  */
-type MigrationCell = { label: string; value: string; detail: string };
+type MigrationFigure = { label: string; value: string; detail: string };
 
-export function migrationCells(summary: MigrationSummary): MigrationCell[] {
-    const n = (v: number) => v.toLocaleString("en-SG");
+export function migrationFigures(summary: MigrationSummary): MigrationFigure[] {
     const orders = (v: number) => `${n(v)} paid order${v === 1 ? "" : "s"}`;
     return [
-        {
-            label: "Imported",
-            value: n(summary.imported),
-            detail: `created ${n(summary.created)}, matched ${n(summary.matched)}`,
-        },
-        {
-            label: "Signed up",
-            value: `${n(summary.signedUp)} (${signedUpPercent(summary)}%)`,
-            detail: `of which ${n(summary.signedUpBeforeImport)} already had an account before import`,
-        },
-        {
-            label: "Emailed",
-            value: `${n(summary.emailed)} (${percentOf(summary.emailed, summary.imported)}%)`,
-            detail: `${n(summary.emailsBounced)} bounced, ${n(summary.emailsComplained)} marked as spam`,
-        },
-        {
-            label: "Clicked",
-            value: `${n(summary.clicked)} (${percentOf(summary.clicked, summary.imported)}%)`,
-            detail: "opened their Claim link",
-        },
-        {
-            label: "Claim bonus",
-            value: `${n(summary.claimBonuses)} (${percentOf(summary.claimBonuses, summary.imported)}%)`,
-            detail: "got the sign-in bonus in points",
-        },
         {
             label: "Points spent",
             value: formatPoints(summary.migratedPointsSpent),
@@ -58,11 +36,27 @@ export function migrationCells(summary: MigrationSummary): MigrationCell[] {
     ];
 }
 
+/** One more line for a stage's tooltip: the facts the funnel folds in. */
+export function journeyNotes(summary: MigrationSummary): Partial<Record<JourneyStage, string>> {
+    const notes: Partial<Record<JourneyStage, string>> = {
+        imported: `Created ${n(summary.created)}, matched ${n(summary.matched)}.`,
+    };
+    if (summary.emailsBounced > 0 || summary.emailsComplained > 0) {
+        notes.emailed = `${n(summary.emailsBounced)} bounced, ${n(summary.emailsComplained)} marked as spam.`;
+    }
+    if (summary.signedUpBeforeImport > 0) {
+        notes.signed_up = `${n(summary.signedUpBeforeImport)} already had an account before import.`;
+    }
+    return notes;
+}
+
 /**
  * The Shopify migration on the Customers page (migration slice 12), from the
  * first applied Import batch on. Visible to anyone with `customers`; counted
  * by `admin_customer_migration_summary`, which reads the same overview as the
- * list, so the card and the *From Shopify* filter agree.
+ * list, so the card and the *From Shopify* filter agree. Since 2026-10-31 it
+ * is one funnel of where every imported customer is now
+ * (lib/customer-migration/journey.ts).
  */
 export function MigrationCard({
     summary,
@@ -75,11 +69,11 @@ export function MigrationCard({
     /** Applies that filter in place (the list keeps its filters in state and the URL). */
     onShowNotSignedUp: () => void;
 }) {
-    // Phones open on a one-line summary; the seven figures are a tap away.
-    const [figuresOpen, setFiguresOpen] = useState(false);
+    // Phones open on a one-line summary; the funnel is a tap away.
+    const [journeyOpen, setJourneyOpen] = useState(false);
     if (summary.batchesApplied < 1) return null;
     const notSignedUp = summary.imported - summary.signedUp;
-    const cells = migrationCells(summary);
+    const steps = migrationJourney(summary);
 
     return (
         <Card className="max-md:gap-1">
@@ -88,59 +82,60 @@ export function MigrationCard({
                     Shopify migration
                     <InfoTip label="About the Shopify migration">
                         <p>
-                            Customers brought in from the Shopify export. <em>Created</em> rows are new
-                            Customers; <em>matched</em> rows were already here and were only filled in.
+                            Every customer brought in from the Shopify export sits at the furthest stage they have
+                            reached. Each bar is everyone who reached that stage: the dark part is still there, the
+                            light part went further, and gray is there but can&apos;t be emailed (unsubscribed, or an
+                            email bounced or was marked as spam).
                         </p>
                         <p>
-                            <em>Signed up</em> counts those who have an account now. Some already had one
-                            before the import reached them.
+                            Someone who skipped a step, such as signing up without a campaign email, counts as past it.
+                            Hover a bar to see how many did the step itself.
                         </p>
                         <p>
-                            <em>Emailed</em> counts those a campaign email went out to. A bounced address
-                            and anyone who marked one as spam get no more.
+                            <em>Signed up</em> counts those with an account now; some had one before the import.{" "}
+                            <em>Ordered</em> counts a paid order here after their import.
                         </p>
                         <p>
-                            <em>Clicked</em> counts those who opened the link in a campaign email.{" "}
-                            <em>Claim bonus</em> counts those whose sign-in added the bonus points.
-                        </p>
-                        <p>
-                            <em>Points spent</em> and <em>Revenue</em> count the paid orders of imported
-                            customers that used points.
+                            <em>Points spent</em> and <em>Revenue</em> count the paid orders of imported customers that
+                            used points.
                         </p>
                     </InfoTip>
                 </CardTitle>
+                <CardDescription className="max-md:hidden">
+                    {`Where each of the ${n(summary.imported)} customers imported from Shopify is now.`}
+                </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 max-md:space-y-0">
+            <CardContent className="space-y-4 max-md:space-y-0">
                 <button
                     type="button"
-                    onClick={() => setFiguresOpen((o) => !o)}
-                    aria-expanded={figuresOpen}
+                    onClick={() => setJourneyOpen((o) => !o)}
+                    aria-expanded={journeyOpen}
                     className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-2 rounded-md px-2 text-left text-sm transition-colors active:bg-press md:hidden"
                 >
                     <span className="min-w-0">
-                        <span className="font-semibold tabular-nums">{summary.imported.toLocaleString("en-SG")}</span>{" "}
-                        imported,{" "}
-                        <span className="font-semibold tabular-nums">{cells[1]!.value}</span> signed up
+                        <span className="font-semibold tabular-nums">{n(summary.imported)}</span> imported,{" "}
+                        <span className="font-semibold tabular-nums">
+                            {n(summary.signedUp)} ({shareLabel(summary.signedUp, summary.imported)})
+                        </span>{" "}
+                        signed up
                     </span>
                     <ChevronDown
-                        className={cn("size-4 shrink-0 text-muted-foreground transition-transform", figuresOpen && "rotate-180")}
+                        className={cn("size-4 shrink-0 text-muted-foreground transition-transform", journeyOpen && "rotate-180")}
                         aria-hidden
                     />
                 </button>
-                <dl
-                    className={cn(
-                        "grid grid-cols-2 gap-x-3 gap-y-4 max-md:py-2 md:gap-3 xl:grid-cols-3",
-                        !figuresOpen && "max-md:hidden",
-                    )}
-                >
-                    {cells.map((cell) => (
-                        <div key={cell.label} className="min-w-0 rounded-lg border p-3 max-md:rounded-none max-md:border-0 max-md:p-0">
-                            <dt className="text-xs text-muted-foreground">{cell.label}</dt>
-                            <dd className="text-lg font-semibold tabular-nums break-words md:text-xl">{cell.value}</dd>
-                            <dd className="text-xs text-muted-foreground">{cell.detail}</dd>
-                        </div>
-                    ))}
-                </dl>
+                <div className={cn("space-y-4 max-md:pt-2 max-md:pb-3", !journeyOpen && "max-md:hidden")}>
+                    <MigrationJourney steps={steps} notes={journeyNotes(summary)} />
+                    <dl className="flex flex-wrap gap-x-6 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
+                        {migrationFigures(summary).map((f) => (
+                            <div key={f.label} className="flex flex-wrap items-baseline gap-x-1.5">
+                                <dt>{f.label}</dt>
+                                <dd className="text-sm font-semibold text-foreground">{f.value}</dd>
+                                <dd>{f.detail}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                </div>
                 {notSignedUp > 0 && (
                     <a
                         href={notSignedUpHref}
@@ -150,7 +145,7 @@ export function MigrationCard({
                         }}
                         className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline active:opacity-60 max-md:min-h-11"
                     >
-                        {notSignedUp.toLocaleString("en-SG")} from Shopify not signed up yet
+                        {n(notSignedUp)} from Shopify not signed up yet
                         <ArrowRight className="h-3.5 w-3.5" />
                     </a>
                 )}

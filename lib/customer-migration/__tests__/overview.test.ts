@@ -27,6 +27,15 @@ describe("migrationSummaryFromRow", () => {
         emailed: "5",
         emails_bounced: "1",
         emails_complained: 0,
+        stage_imported: "1",
+        stage_imported_unreachable: "1",
+        stage_emailed: 0,
+        stage_emailed_unreachable: 0,
+        stage_clicked: "1",
+        stage_clicked_unreachable: 0,
+        stage_signed_up: 0,
+        stage_claim_bonus: "2",
+        stage_ordered: 1,
       }),
     ).toEqual({
       imported: 5,
@@ -43,6 +52,14 @@ describe("migrationSummaryFromRow", () => {
       emailed: 5,
       emailsBounced: 1,
       emailsComplained: 0,
+      stages: {
+        imported: { here: 1, unreachable: 1 },
+        emailed: { here: 0, unreachable: 0 },
+        clicked: { here: 1, unreachable: 0 },
+        signed_up: { here: 0, unreachable: 0 },
+        claim_bonus: { here: 2, unreachable: 0 },
+        ordered: { here: 1, unreachable: 0 },
+      },
     });
   });
 
@@ -62,6 +79,14 @@ describe("migrationSummaryFromRow", () => {
       emailed: 0,
       emailsBounced: 0,
       emailsComplained: 0,
+      stages: {
+        imported: { here: 0, unreachable: 0 },
+        emailed: { here: 0, unreachable: 0 },
+        clicked: { here: 0, unreachable: 0 },
+        signed_up: { here: 0, unreachable: 0 },
+        claim_bonus: { here: 0, unreachable: 0 },
+        ordered: { here: 0, unreachable: 0 },
+      },
     });
   });
 });
