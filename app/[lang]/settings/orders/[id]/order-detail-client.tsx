@@ -75,7 +75,9 @@ import { collectLocationOf } from "@/lib/shipping/self-collect";
 import { isSoldOrderStatus } from "@/lib/ecommerce/sold-status";
 import { orderStatusLabel } from "@/lib/shop/order-display";
 import { cn } from "@/lib/utils";
+import { refundableAmount } from "@/lib/ecommerce/admin-refund";
 import { EasyshipFulfilment } from "./easyship-fulfilment";
+import { RefundDialog, type RefundIssued } from "./refund-dialog";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -259,13 +261,12 @@ export default function OrderDetailPage({
     // Inventory deduction status
 
     // Refund / cancel / restock
-    const [refundOpen, setRefundOpen] = useState(false);
-    const [refundAmount, setRefundAmount] = useState("");
-    const [refunding, setRefunding] = useState(false);
     const [cancelOpen, setCancelOpen] = useState(false);
     const [cancelling, setCancelling] = useState(false);
     const [restockOpen, setRestockOpen] = useState(false);
     const [restockQty, setRestockQty] = useState<Record<string, string>>({});
+    // The refund a restock follows, so its stock movement names it.
+    const [restockRefundId, setRestockRefundId] = useState<string | null>(null);
     const [restocking, setRestocking] = useState(false);
     const [deductingStock, setDeductingStock] = useState(false);
     const [stockError, setStockError] = useState<string | null>(null);
@@ -472,23 +473,21 @@ export default function OrderDetailPage({
         }
     }, [orderId, fetchMpConfigLinks]);
 
-    const refundableRemaining = order
-        ? Math.max(0, Number(order.total) - Number(order.amount_refunded ?? 0))
-        : 0;
+    const refundableRemaining = order ? refundableAmount(order) : 0;
 
     const isResultOrder = order
         ? isResultCustomisedOrder(order.items ?? [])
         : false;
     const pendingRefundRequest = order?.refund_request_status === "requested";
 
-    // Accessory orders: direct staff refund. Result orders: only via request approve.
+    // Any paid order. On a Result order a refund for a return still needs the
+    // product back in person; the dialog asks.
     const canRefund =
         !!order?.payment_reference &&
         order.status !== "refunded" &&
         order.status !== "pending" &&
         order.status !== "payment_failed" &&
-        refundableRemaining > 0 &&
-        !isResultOrder;
+        refundableRemaining > 0;
 
     const canCancel =
         !!order &&
@@ -496,41 +495,31 @@ export default function OrderDetailPage({
         order.status !== "refunded" &&
         !isResultOrder;
 
+    // Open right after a refund for a return, before Stripe's webhook has
+    // marked the order refunded.
     const canRestock =
         !!order &&
-        (order.status === "refunded" ||
+        (restockOpen ||
+            order.status === "refunded" ||
             order.status === "partially_refunded" ||
             Number(order.amount_refunded ?? 0) > 0);
 
-    const handleRefund = async () => {
-        if (!order) return;
-        setRefunding(true);
+    const handleRefunded = async (issued: RefundIssued) => {
         setActionError(null);
-        try {
-            const trimmed = refundAmount.trim();
-            const body =
-                trimmed.length > 0
-                    ? { amount: Number.parseFloat(trimmed) }
-                    : {};
-            const res = await fetch(`/api/shop/orders/${orderId}/refund`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-            });
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? "Couldn't issue the refund.");
-            setRefundOpen(false);
-            setRefundAmount("");
-            const updated = await fetchOrder();
-            await fetchTimeline();
-            if (updated && shouldPromptRestock(updated)) {
-                setRestockOpen(true);
-            }
-        } catch (e) {
-            setActionError(e instanceof Error ? e.message : "Couldn't issue the refund.");
-        } finally {
-            setRefunding(false);
+        const updated = await fetchOrder();
+        await fetchTimeline();
+        // Only goods that came back go back on the shelf: a charge correction
+        // keeps everything with the customer.
+        if (issued.reason !== "returned" || !updated || !orderHasRestockableLines(updated)) return;
+        const prefill: Record<string, string> = {};
+        for (const item of updated.items ?? []) {
+            const left = item.quantity - (item.returned_quantity ?? 0);
+            const qty = Math.min(issued.returnedQuantities[item.id] ?? 0, left);
+            if (qty > 0) prefill[item.id] = String(qty);
         }
+        setRestockQty(prefill);
+        setRestockRefundId(issued.stripeRefundId);
+        setRestockOpen(true);
     };
 
     const handleCancel = async () => {
@@ -617,12 +606,16 @@ export default function OrderDetailPage({
             const res = await fetch(`/api/shop/orders/${orderId}/restock`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ items }),
+                body: JSON.stringify({
+                    items,
+                    ...(restockRefundId ? { stripe_refund_id: restockRefundId } : {}),
+                }),
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error ?? "Couldn't restock.");
             setRestockOpen(false);
             setRestockQty({});
+            setRestockRefundId(null);
             await fetchOrder();
             await fetchTimeline();
         } catch (e) {
@@ -819,7 +812,13 @@ export default function OrderDetailPage({
                                 ) : null}
                             </div>
                             {canRestock && (
-                                <Dialog open={restockOpen} onOpenChange={setRestockOpen}>
+                                <Dialog
+                                    open={restockOpen}
+                                    onOpenChange={(next) => {
+                                        setRestockOpen(next);
+                                        if (!next) setRestockRefundId(null);
+                                    }}
+                                >
                                     <DialogTrigger asChild>
                                         <Button size="sm" variant="outline" className="w-full mt-3">
                                             <RotateCcw className="mr-2 h-4 w-4" />
@@ -1690,61 +1689,20 @@ export default function OrderDetailPage({
                             )}
                             {isResultOrder && !order.refund_request_status && (
                                 <p className="text-xs text-muted-foreground pt-1">
-                                    On customised orders, the customer asks for a refund after delivery.
-                                    Approve it only once they&apos;ve returned it in person.
+                                    A charging mistake can be refunded below at any time. A refund
+                                    for a returned customised product needs it back in person first.
                                 </p>
                             )}
-                            {actionError && (refundOpen || cancelOpen) && (
+                            {actionError && cancelOpen && (
                                 <p className="text-sm text-destructive pt-1">{actionError}</p>
                             )}
                             <div className="flex flex-col gap-2 pt-2 border-t">
                                 {canRefund && (
-                                    <Dialog open={refundOpen} onOpenChange={(open) => {
-                                        setRefundOpen(open);
-                                        if (open) {
-                                            setRefundAmount("");
-                                            setActionError(null);
-                                        }
-                                    }}>
-                                        <DialogTrigger asChild>
-                                            <Button size="sm" variant="outline" className="w-full">
-                                                Issue refund
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>Issue refund</DialogTitle>
-                                            </DialogHeader>
-                                            <p className="text-sm text-muted-foreground">
-                                                Refundable balance: {formatSGD(refundableRemaining)}.
-                                                Leave the amount blank to refund it all. The ledger updates once Stripe confirms.
-                                            </p>
-                                            <div className="space-y-1.5 py-2">
-                                                <Label htmlFor="refund-amount">Amount (optional)</Label>
-                                                <Input
-                                                    id="refund-amount"
-                                                    type="number"
-                                                    min={0.01}
-                                                    max={refundableRemaining}
-                                                    step={0.01}
-                                                    placeholder={String(refundableRemaining)}
-                                                    value={refundAmount}
-                                                    onChange={(e) => setRefundAmount(e.target.value)}
-                                                />
-                                            </div>
-                                            {actionError && refundOpen && (
-                                                <p className="text-sm text-destructive">{actionError}</p>
-                                            )}
-                                            <DialogFooter>
-                                                <Button onClick={handleRefund} disabled={refunding}>
-                                                    {refunding ? (
-                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    ) : null}
-                                                    Confirm refund
-                                                </Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
+                                    <RefundDialog
+                                        order={order}
+                                        isResultOrder={isResultOrder}
+                                        onRefunded={handleRefunded}
+                                    />
                                 )}
                                 {canCancel && (
                                     <Dialog open={cancelOpen} onOpenChange={(open) => {

@@ -27,6 +27,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth/admin", () => ({
   assertAdmin: async () => ({ userId: "staff-1" }),
   requireAdmin: async () => null,
+  getAdminContext: async () => ({ userId: "staff-1" }),
 }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: vi.fn() }));
 vi.mock("@/lib/stripe/refunds", () => ({ refundPayment: h.refundPayment }));
@@ -91,6 +92,17 @@ beforeEach(() => {
   };
 });
 
+/** A Staff full refund, as the order screen sends it. */
+const fullRefund = () =>
+  new Request(`https://x.test/api/shop/orders/${ORDER}/refund`, {
+    method: "POST",
+    body: JSON.stringify({
+      request_id: "0b0b0b0b-2000-4000-8000-000000000001",
+      mode: "full",
+      reason: "charged_in_error",
+    }),
+  });
+
 /** The charge.refunded webhook rolls the refund into amount_refunded. */
 const settle = (amount: number) => {
   h.order.amount_refunded = Number(h.order.amount_refunded) + amount;
@@ -116,10 +128,7 @@ describe("refunds with points used (rule l)", () => {
   });
 
   it("a full refund returns the S$80 paid, not the S$100 the items cost", async () => {
-    const res = await adminRefund(
-      new Request(`https://x.test/api/shop/orders/${ORDER}/refund`, { method: "POST", body: "{}" }),
-      { params: Promise.resolve({ id: ORDER }) },
-    );
+    const res = await adminRefund(fullRefund(), { params: Promise.resolve({ id: ORDER }) });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true, amount: 80 });
     expect(refundedAmountArg(0)).toBeUndefined();
@@ -128,10 +137,7 @@ describe("refunds with points used (rule l)", () => {
   it("no refund writes a points entry, or calls a points function", async () => {
     h.rmaItems = [{ quantity: 2, order_items: { unit_price: 50 } }];
     await issueRmaRefund("rma-1");
-    await adminRefund(
-      new Request(`https://x.test/api/shop/orders/${ORDER}/refund`, { method: "POST", body: "{}" }),
-      { params: Promise.resolve({ id: ORDER }) },
-    );
+    await adminRefund(fullRefund(), { params: Promise.resolve({ id: ORDER }) });
     expect(h.tables).not.toContain("points_ledger");
     expect(h.writes.filter((w) => w.startsWith("rpc:"))).toEqual([]);
 

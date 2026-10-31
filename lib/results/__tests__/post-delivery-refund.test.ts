@@ -6,11 +6,11 @@ import { describe, it, expect } from "vitest";
 import {
   customerCancelDeniedReason,
   customerRefundRequestDeniedReason,
-  directRefundDeniedReason,
   isPostDelivery,
   isResultCustomisedOrder,
   operatorApproveDeniedReason,
   operatorRejectDeniedReason,
+  staffRefundDeniedReason,
 } from "@/lib/results/post-delivery-refund";
 
 const resultItems = [
@@ -105,23 +105,34 @@ describe("slice 11 — post-delivery refund policy", () => {
     ).toMatch(/no pending/i);
   });
 
-  it("AC5: direct refund on Result orders reuses request gate; accessories unrestricted", () => {
+  it("AC5: a Staff refund for a return of a customised order needs it shipped and back in person", () => {
+    const returned = { returned: true, inPersonReturnAcknowledged: true };
     expect(
-      directRefundDeniedReason(
-        { status: "shipped", refund_request_status: "requested" },
-        resultItems,
-        true,
-      ),
+      staffRefundDeniedReason({ status: "shipped", refund_request_status: null }, resultItems, returned),
     ).toBeNull();
     expect(
-      directRefundDeniedReason(
-        { status: "shipped", refund_request_status: null },
-        resultItems,
-        true,
-      ),
-    ).toMatch(/no pending/i);
+      staffRefundDeniedReason({ status: "shipped" }, resultItems, {
+        returned: true,
+        inPersonReturnAcknowledged: false,
+      }),
+    ).toMatch(/in person/i);
     expect(
-      directRefundDeniedReason({ status: "confirmed" }, accessoryItems, false),
+      staffRefundDeniedReason({ status: "processing" }, resultItems, returned),
+    ).toMatch(/after it has shipped/i);
+  });
+
+  it("correcting a charge on a customised order needs no return, at any stage", () => {
+    expect(
+      staffRefundDeniedReason({ status: "processing" }, resultItems, {
+        returned: false,
+        inPersonReturnAcknowledged: false,
+      }),
+    ).toBeNull();
+    expect(
+      staffRefundDeniedReason({ status: "confirmed" }, accessoryItems, {
+        returned: true,
+        inPersonReturnAcknowledged: false,
+      }),
     ).toBeNull();
   });
 

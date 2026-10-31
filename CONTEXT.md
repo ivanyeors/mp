@@ -439,6 +439,10 @@ _Avoid_: "outcome" (that is the terminal status the resolution drives)
 The lifecycle state: `requested → approved | rejected | cancelled`; `approved → instructions_sent | cancelled`; `instructions_sent → received | cancelled`; `received → completed | refunded`. Terminal: `completed`, `refunded`, `rejected`, `cancelled`. Validated by the pure `canTransition`.
 _Avoid_: inventing intermediate states in UI without adding them to `canTransition`
 
+**Staff refund** (ADR 0038):
+Money Staff send back from the order screen through Stripe: everything left, chosen lines (each at its share of what the customer paid) and the shipping, or a typed amount, always with a reason. *Charged in error* and *Duplicate charge* correct a charge and need nothing back; *Customer returned it* on a **Result** Order needs it shipped and back in person.
+_Avoid_: "refund request" (the customer's ask on a Result Order); "return" for a charge correction, where nothing comes back
+
 **Status event**:
 An append-only `rma_status_events` row (`from_status`, `to_status`, `actor`, `reason`) — the customer-visible **Return** timeline. Distinct from the staff-only `admin_audit_log` entry written alongside it.
 _Avoid_: mutating `rma_requests.status` without appending an event (status is a cache of the latest event)

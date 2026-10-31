@@ -32,6 +32,7 @@ Controlled refunds after delivery for customised Orders.
 - Account order UI: no cancel; pre-delivery notice; request form after ship
 - Operator: `POST /api/shop/orders/[id]/refund-request` approve/reject; approve calls `refundPayment` (ledger via webhook)
 - Direct staff refund on Result orders blocked unless pending request + return ack; accessory refund/cancel unchanged
+- **Amended by ADR 0038 (2026-10-31):** a Staff refund that corrects a charge needs no return on any Order; only a refund for a return of a Result Order keeps the shipped + in-person-return rule (`staffRefundDeniedReason`).
 - Tests: `lib/results/__tests__/post-delivery-refund.test.ts`
 
 ## Blocked by

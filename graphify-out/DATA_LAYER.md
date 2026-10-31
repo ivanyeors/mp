@@ -313,7 +313,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
 Defined in supabase/migrations/0028_ecommerce.sql:272
 References: `customers`
 - Written by:
-  - `POST()` [delete] — app/api/stripe/webhook/route.ts:254
+  - `POST()` [delete] — app/api/stripe/webhook/route.ts:279
 
 ### categories
 Defined in supabase/migrations/0028_ecommerce.sql:15
@@ -344,20 +344,20 @@ References: `collections`, `products`
 ### commissions
 Defined in supabase/migrations/20260728020000_commissions.sql:25
 References: `order_items`, `orders`, `partner_payouts`, `partners`
-Changed from pages: `/mp-basic`, `/mp-config`, `/partner`, `/results/[id]`, `/settings/partner-commissions`, `/settings/rma/[id]`
+Changed from pages: `/mp-basic`, `/mp-config`, `/partner`, `/results/[id]`, `/settings/orders/[id]`, `/settings/partner-commissions`, `/settings/rma/[id]`
 - Written by:
   - `createHeldCommissionsForOrder()` [upsert] — lib/commissions/ledger.ts:60
-  - `recordPayout()` [select,update] — lib/commissions/ledger.ts:263
-  - `settleDueCommissions()` [select,update] — lib/commissions/ledger.ts:159
-  - `voidCommissionsForOrder()` [update] — lib/commissions/ledger.ts:139
-  - `voidCommissionsForRma()` [update] — lib/commissions/ledger.ts:99
+  - `recordPayout()` [select,update] — lib/commissions/ledger.ts:276
+  - `settleDueCommissions()` [select,update] — lib/commissions/ledger.ts:172
+  - `voidCommissionsForItems()` [update] — lib/commissions/ledger.ts:112
+  - `voidCommissionsForOrder()` [update] — lib/commissions/ledger.ts:152
 - Read by:
   - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:54
   - `countNonVoidCommissions()` [select] — lib/milestones/ledger.ts:57
   - `loadAdminReferralRows()` [select] — lib/commissions/referral-rows.ts:220
   - `loadMilestoneDashboard()` [select] — lib/milestones/ledger.ts:170
   - `loadPartnerMoneyReferrals()` [select] — lib/commissions/referral-rows.ts:183
-  - `releasedBalance()` [select] — lib/commissions/ledger.ts:203
+  - `releasedBalance()` [select] — lib/commissions/ledger.ts:216
   - `sendReferralEarnedEmail()` [select] — lib/email/partner.ts:373
 
 ### config_upload
@@ -855,7 +855,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:48
   - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:337
   - `POST()` [insert,update] — app/api/shop/orders/[id]/mp-config-link/route.ts:60
-  - `POST()` [update] — app/api/stripe/webhook/route.ts:185
+  - `POST()` [update] — app/api/stripe/webhook/route.ts:210
   - `attachHoldPaymentIntent()` [select,update] — lib/authorization-hold/index.ts:41
   - `cascadeEnding()` [update] — lib/results/pair-ending.ts:75
   - `createMpConfigFromCustomization()` [insert,select] — lib/ecommerce/mp-config-sync.ts:157
@@ -950,7 +950,7 @@ Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`,
   - `loadOrderItem()` [select] — lib/ecommerce/restock-order.ts:33
   - `loadOrderShippableLines()` [select] — lib/shipping/lines.ts:93
   - `loadSoldOrders()` [select] — lib/analytics/sales-report.ts:127
-  - `voidCommissionsForRma()` [select] — lib/commissions/ledger.ts:106
+  - `voidCommissionsForItems()` [select] — lib/commissions/ledger.ts:119
 
 ### order_margins
 Defined in supabase/migrations/20260702120000_order_margins.sql:8
@@ -967,8 +967,10 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`
 - Written by:
   - `recordLedgerEntry()` [insert] — lib/ecommerce/money-ledger.ts:126
 - Read by:
-  - `POST()` [select] — app/api/stripe/webhook/route.ts:992
+  - `POST()` [select] — app/api/stripe/webhook/route.ts:1017
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:136
+  - `orderIdForIntent()` [select] — app/api/stripe/webhook/route.ts:95
+  - `paymentIntentsOf()` [select] — app/api/shop/orders/[id]/refund/route.ts:79
   - `rollupOrderMoney()` [select] — lib/ecommerce/money-ledger.ts:150
   - `stripeCharges()` [select] — lib/analytics/sales-report.ts:82
 
@@ -1017,15 +1019,15 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:721
   - `POST()` [select,update] — app/api/shop/orders/[id]/cancel/route.ts:22
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund-request/route.ts:43
-  - `POST()` [select,update] — app/api/shop/orders/[id]/refund/route.ts:35
+  - `POST()` [select,update] — app/api/shop/orders/[id]/refund/route.ts:122
   - `POST()` [delete,insert,select] — app/api/shop/orders/route.ts:125
-  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:260
+  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:285
   - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:921
   - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:170
   - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:261
   - `deductOrderStock()` [update] — lib/ecommerce/order-stock.ts:25
   - `deductOrderStockOrFlag()` [update] — lib/ecommerce/order-stock.ts:80
-  - `flagOrder()` [update] — app/api/stripe/webhook/route.ts:127
+  - `flagOrder()` [update] — app/api/stripe/webhook/route.ts:152
   - `fulfillOrder()` [select,update] — app/[lang]/settings/orders/actions.ts:66
   - `markOrderDeliveredByCourier()` [update] — lib/ecommerce/fulfilment.ts:85
   - `markOrderShipped()` [select,update] — lib/ecommerce/fulfilment.ts:35
@@ -1070,6 +1072,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:206
   - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:41
   - `loadSoldOrders()` [select] — lib/analytics/sales-report.ts:117
+  - `orderIdForIntent()` [select] — app/api/stripe/webhook/route.ts:87
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:391
   - `sources/orders.ts` [select] — lib/crm/timeline/sources/orders.ts:67
   - `updateCustomerStats()` [select] — lib/ecommerce/customers.ts:72
@@ -1105,7 +1108,7 @@ Defined in supabase/migrations/20260728040000_payouts.sql:36
 References: `partners`
 Changed from pages: `/settings/partner-commissions`
 - Written by:
-  - `recordPayout()` [insert] — lib/commissions/ledger.ts:246
+  - `recordPayout()` [insert] — lib/commissions/ledger.ts:259
 - Read by:
   - `/partner` (page) [select] — components/partner/payout-summary.tsx:34
   - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:62
@@ -1724,7 +1727,7 @@ Defined in supabase/migrations/20261021170000_points_expiry.sql:222
 Defined in supabase/migrations/20261021120000_points_ledger.sql:79
 References: `customers`, `mp_staff`, `orders`
 - Read by:
-  - `pointsWereReleased()` [select] — app/api/stripe/webhook/route.ts:109
+  - `pointsWereReleased()` [select] — app/api/stripe/webhook/route.ts:134
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:24
   - `readOrderPoints()` [select] — lib/points/order.ts:45
   - `readPointsHistory()` [select] — lib/points/server.ts:92
@@ -2185,7 +2188,7 @@ References: `social_conversations`
 ### stripe_webhook_failures
 Defined in supabase/migrations/0033_stripe_webhook_failures.sql:8
 - Written by:
-  - `recordWebhookFailure()` [upsert] — app/api/stripe/webhook/route.ts:87
+  - `recordWebhookFailure()` [upsert] — app/api/stripe/webhook/route.ts:112
 
 ### tax_rates
 Defined in supabase/migrations/0036_tax_rates.sql:16
@@ -2606,8 +2609,8 @@ app/[lang]/settings/orders/page.tsx
 app/[lang]/settings/orders/[id]/page.tsx
 - Endpoints: `/api/mp-config/responses [GET]`, `/api/shop/orders/[id] [GET,PATCH]`, `/api/shop/orders/[id]/cancel [POST]`, `/api/shop/orders/[id]/deduct-stock [POST]`, `/api/shop/orders/[id]/easyship [GET,POST]`, `/api/shop/orders/[id]/easyship/label`, `/api/shop/orders/[id]/easyship/rates [POST]`, `/api/shop/orders/[id]/fulfill [POST]`, `/api/shop/orders/[id]/mp-config-link [DELETE,GET,POST]`, `/api/shop/orders/[id]/refund [POST]`, `/api/shop/orders/[id]/refund-request [POST]`, `/api/shop/orders/[id]/restock [POST]`, `/api/shop/orders/[id]/timeline [GET,POST]`
 - Loads: `loadAdminOrderDetail()`, `loadAdminOrderMpConfigLinks()`, `loadAdminOrderTimeline()`, `readOrderPoints()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `inventory_transactions`, `mp_config_responses`, `mp_staff`, `order_emails`, `order_items`, `order_shipments`, `order_timeline`, `orders`, `product_variants`, `shipping_rate_quotes`
-- Reads, through the same: `admin_roles`, `admin_users`, `api_configs`, `config_upload`, `customers`, `mp_config_response_photos`, `order_margins`, `points_ledger`, `points_order_candidates`, `site_settings`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `commissions`, `inventory_transactions`, `mp_config_responses`, `mp_staff`, `order_emails`, `order_items`, `order_shipments`, `order_timeline`, `orders`, `product_variants`, `shipping_rate_quotes`
+- Reads, through the same: `admin_roles`, `admin_users`, `api_configs`, `config_upload`, `customers`, `mp_config_response_photos`, `order_margins`, `order_payments`, `points_ledger`, `points_order_candidates`, `site_settings`
 
 ### /settings/page-builder
 app/[lang]/settings/page-builder/page.tsx
