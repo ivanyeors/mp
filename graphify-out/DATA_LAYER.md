@@ -1392,6 +1392,11 @@ Defined in supabase/migrations/20261021120000_points_ledger.sql:261
 - Called by:
   - `adjustPoints()` — lib/points/server.ts:161
 
+### admin_customer_lifecycle_counts
+Defined in supabase/migrations/20261031140000_customer_lifecycle_counts.sql:22
+- Called by:
+  - `getLifecycleSummary()` — lib/crm/lifecycle-summary-server.ts:11
+
 ### admin_customer_migration_summary
 Defined in supabase/migrations/20261031120000_migration_journey_stages.sql:40
 - Read by:
@@ -2458,7 +2463,7 @@ app/[lang]/settings/costings/services/page.tsx
 ### /settings/customers
 app/[lang]/settings/customers/page.tsx
 - Endpoints: `/api/admin/working-as [POST]`, `/api/settings/customers/aftercare [GET,PUT]`, `/api/settings/customers/followups [GET]`, `/api/settings/customers/google-reviews [GET]`, `/api/settings/customers/segments`, `/api/settings/customers/telegram-updates [GET,PUT]`, `/api/settings/customers/telegram-updates/test [POST]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id]/followups/[followupId]`
-- Loads: `getMigrationSummary()`, `getSiteSettings()`, `listAdminCustomers()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
+- Loads: `getLifecycleSummary()`, `getMigrationSummary()`, `getSiteSettings()`, `listAdminCustomers()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_emails`, `customer_followups`, `customer_review_requests`, `customer_segments`, `customer_whatsapp`, `customers`, `mp_staff`, `site_settings`
 - Reads, through the same: `admin_customer_migration_summary`, `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `customer_preference_events`, `customer_purchase_lines`, `email_template_copy`, `order_items`, `orders`, `pillow_products`, `readjustment_bookings`, `service_prices`, `whatsapp_inbound`
 

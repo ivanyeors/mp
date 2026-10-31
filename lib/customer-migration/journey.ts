@@ -1,3 +1,4 @@
+import { shareLabel } from "@/lib/format/share";
 import type { MigrationSummary } from "./overview";
 
 /**
@@ -99,20 +100,6 @@ function didStepCount(stage: JourneyStage, summary: MigrationSummary): number | 
     default:
       return null;
   }
-}
-
-/**
- * `part` of `whole` as a share to print. Never "0%" for some, nor "100%" for
- * not all: "<1%" and ">99%" keep one customer visible in the figures, as the
- * bar's minimum width does in the chart.
- */
-export function shareLabel(part: number, whole: number): string {
-  if (whole <= 0 || part <= 0) return "0%";
-  if (part >= whole) return "100%";
-  const pct = (part / whole) * 100;
-  if (pct < 1) return "<1%";
-  if (pct > 99) return ">99%";
-  return `${Math.round(pct)}%`;
 }
 
 /** The six steps of the journey, in order, from the summary's stage counts. */

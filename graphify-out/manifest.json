@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793462267.5341394,
-    "seen": 1793462516.6195726,
-    "ast_hash": "4f617fd08f883e5fdab45f525d74842c",
+    "mtime": 1793463608.9192266,
+    "seen": 1793463676.6531823,
+    "ast_hash": "5ac58692be3f422115f6b102719ee9d4",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -15672,9 +15672,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/04-stage-chips.md": {
-    "mtime": 1793412618.7311904,
-    "seen": 1793462516.6190057,
-    "ast_hash": "8902e98a45c83bcff8801380cb439dda",
+    "mtime": 1793463608.914473,
+    "seen": 1793463676.6523929,
+    "ast_hash": "08f85f0b2d156922fd872c1fda061472",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/05-next-step-on-customer.md": {
@@ -16932,21 +16932,75 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/journey.test.ts": {
-    "mtime": 1793462064.1381273,
-    "seen": 1793462516.6163623,
-    "ast_hash": "66a0fad8681f57c0168395883bdc27e3",
+    "mtime": 1793463608.9205198,
+    "seen": 1793463676.6502697,
+    "ast_hash": "906b3ab2875da202da229ad5632f0f13",
     "semantic_hash": ""
   },
   "lib/customer-migration/journey.ts": {
-    "mtime": 1793462186.0523324,
-    "seen": 1793462516.6164014,
-    "ast_hash": "42a3899447f041e682f7fe8f125b462f",
+    "mtime": 1793463608.920635,
+    "seen": 1793463676.6502922,
+    "ast_hash": "5f102aa15b8f2bd2f16214943a44bdb9",
     "semantic_hash": ""
   },
   "supabase/migrations/20261031120000_migration_journey_stages.sql": {
     "mtime": 1793461873.2741158,
     "seen": 1793462516.6186874,
     "ast_hash": "c2d01a560ef645550e5ee8ff59660bbb",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/fixtures/customer-lifecycle.mjs": {
+    "mtime": 1793463427.8142083,
+    "seen": 1793463676.6490102,
+    "ast_hash": "d45351fc5818ef6cc47df185ab5d709b",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/stacked-bar.ts": {
+    "mtime": 1793463320.826202,
+    "seen": 1793463676.6491559,
+    "ast_hash": "b497b7f0a43da0f1a9ea8204cac23550",
+    "semantic_hash": ""
+  },
+  "lib/crm/__tests__/lifecycle-counts-sql.test.ts": {
+    "mtime": 1793463459.1991472,
+    "seen": 1793463676.6501594,
+    "ast_hash": "062a8a93bc9ae1bfd1392ec7d0414193",
+    "semantic_hash": ""
+  },
+  "lib/crm/__tests__/lifecycle-summary.test.ts": {
+    "mtime": 1793463459.197355,
+    "seen": 1793463676.6501663,
+    "ast_hash": "ccef5310f968f5a66975cd96577d5887",
+    "semantic_hash": ""
+  },
+  "lib/crm/lifecycle-summary-server.ts": {
+    "mtime": 1793463307.3262012,
+    "seen": 1793463676.6502044,
+    "ast_hash": "33bfc160ffba178073fa83b539d00540",
+    "semantic_hash": ""
+  },
+  "lib/crm/lifecycle-summary.ts": {
+    "mtime": 1793463502.116362,
+    "seen": 1793463676.6502056,
+    "ast_hash": "2eb6f427622d77878b1eb4cead5dc6e8",
+    "semantic_hash": ""
+  },
+  "lib/format/__tests__/share.test.ts": {
+    "mtime": 1793463250.6524541,
+    "seen": 1793463676.6506267,
+    "ast_hash": "98bd5d7bc1937eae3b2c547cd7640413",
+    "semantic_hash": ""
+  },
+  "lib/format/share.ts": {
+    "mtime": 1793463250.6191487,
+    "seen": 1793463676.650631,
+    "ast_hash": "6f39baf122a8d5b3d49b2dfd648e8050",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261031140000_customer_lifecycle_counts.sql": {
+    "mtime": 1793463238.0501971,
+    "seen": 1793463676.652046,
+    "ast_hash": "062242ae5c336130038d8cdaab1e87d9",
     "semantic_hash": ""
   }
 }

@@ -5,6 +5,7 @@ import { withLocale } from "@/lib/i18n/routing";
 import { listAdminCustomers } from "@/lib/ecommerce/admin/customers";
 import { customerFilterParams, parseCustomerFilters, searchParamsFromRecord } from "@/lib/crm/customer-filters";
 import { getMigrationSummary } from "@/lib/customer-migration/overview";
+import { getLifecycleSummary } from "@/lib/crm/lifecycle-summary-server";
 import { getSiteSettings } from "@/lib/site-settings";
 import { SLA_SETTING_KEYS, parseSlaSettings } from "@/lib/sla-reminders";
 import { readTelegramUpdates } from "@/lib/crm/telegram-updates-server";
@@ -71,9 +72,11 @@ export default async function SettingsCustomersPage({
     const { filters, ignored } = parseCustomerFilters(searchParamsFromRecord(query));
     const first = { ...filters, page: 1, limit: LIMIT };
 
-    const [customers, migration, segments, telegramUpdates, aftercare] = await Promise.all([
+    const [customers, migration, lifecycle, segments, telegramUpdates, aftercare] = await Promise.all([
         listAdminCustomers(customerFilterParams(first, { paging: true })),
         getMigrationSummary(),
+        // The Customer lifecycle chart (2026-10-31); null and the chart is left out.
+        getLifecycleSummary(),
         // The Segments row (CRM slice 05), with live counts; on a failure the row fetches them.
         listSegments().catch(() => undefined),
         view === "settings" ? readTelegramUpdatesCard() : Promise.resolve(undefined),
@@ -107,6 +110,7 @@ export default async function SettingsCustomersPage({
                 initialFilters={first}
                 ignoredFilters={ignored}
                 migration={migration}
+                lifecycle={lifecycle}
                 initialSegments={segments}
                 canEdit={canEdit}
                 canEmail={hasPermission(ctx, "campaigns")}

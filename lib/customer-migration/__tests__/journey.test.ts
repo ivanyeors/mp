@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { JOURNEY_STAGES, migrationJourney, shareLabel, type JourneyStage, type JourneyStageCount } from "@/lib/customer-migration/journey";
+import { JOURNEY_STAGES, migrationJourney, type JourneyStage, type JourneyStageCount } from "@/lib/customer-migration/journey";
 import type { MigrationSummary } from "@/lib/customer-migration/overview";
 import { barSegments } from "@/app/[lang]/settings/customers/migration-journey";
 
@@ -93,17 +93,6 @@ describe("migrationJourney", () => {
   it("draws nothing for nobody imported", () => {
     const none = migrationJourney(summary({}));
     expect(none.every((x) => x.reached === 0 && x.total === 0 && x.ofTotal === "0%")).toBe(true);
-  });
-});
-
-describe("shareLabel", () => {
-  it("never says 0% of some, nor 100% of not all", () => {
-    expect(shareLabel(0, 10)).toBe("0%");
-    expect(shareLabel(1, 0)).toBe("0%");
-    expect(shareLabel(1, 2158)).toBe("<1%");
-    expect(shareLabel(2157, 2158)).toBe(">99%");
-    expect(shareLabel(10, 10)).toBe("100%");
-    expect(shareLabel(1, 3)).toBe("33%");
   });
 });
 

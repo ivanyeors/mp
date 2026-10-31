@@ -1,9 +1,9 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { JOURNEY_HERE_MEANS, JOURNEY_STAGES, type JourneyStage, type JourneyStep } from "@/lib/customer-migration/journey";
 import { cn } from "@/lib/utils";
+import { stackedPartStyle } from "./stacked-bar";
 
 /**
  * The Shopify migration as one funnel (owner, 2026-10-31). Each row is a
@@ -72,23 +72,6 @@ export function barSegments(step: Pick<JourneyStep, "wentFurther" | "here" | "un
     return segments;
 }
 
-const GAP_PX = 2;
-const MIN_PX = 2;
-
-/**
- * Where a part sits, in CSS. A 2px gap in the card's colour follows every part
- * but the last. A part never draws thinner than 2px, so one customer still
- * shows; it pushes the parts after it along rather than hiding under them.
- */
-function segmentStyle(s: BarSegment, index: number, last: boolean): CSSProperties {
-    const pct = (v: number) => `${(v * 100).toFixed(4)}%`;
-    return {
-        left: index === 0 ? 0 : `max(${pct(s.from)}, ${index * (MIN_PX + GAP_PX)}px)`,
-        right: last ? 0 : `calc(${pct(1 - s.to)} + ${GAP_PX}px)`,
-        minWidth: MIN_PX,
-    };
-}
-
 const n = (v: number) => v.toLocaleString("en-SG");
 
 function JourneyBar({ step, note }: { step: JourneyStep; note?: string }) {
@@ -122,7 +105,7 @@ function JourneyBar({ step, note }: { step: JourneyStep; note?: string }) {
                                 (i === lastData || s.kind === "track") && "rounded-r-[4px]",
                                 s.kind === "track" && i === 0 && "rounded-l-[4px]",
                             )}
-                            style={segmentStyle(s, i, i === segments.length - 1)}
+                            style={stackedPartStyle(s, i, i === segments.length - 1)}
                         />
                     ))}
                 </div>
