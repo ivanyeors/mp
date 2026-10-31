@@ -92,7 +92,20 @@ export async function voidCommissionsForRma(
     .from("rma_request_items")
     .select("order_item_id")
     .eq("rma_request_id", rmaId);
-  const ids = (items ?? []).map((i) => i.order_item_id).filter(Boolean);
+  await voidCommissionsForItems(
+    admin,
+    (items ?? []).map((i) => i.order_item_id).filter(Boolean),
+  );
+}
+
+/**
+ * Void what refunding these returned lines reverses, by the rule above. Shared
+ * by the RMA refund and a Staff refund for a return; idempotent.
+ */
+export async function voidCommissionsForItems(
+  admin: SupabaseClient,
+  ids: string[],
+): Promise<void> {
   if (ids.length === 0) return;
 
   const voided = { status: "void", voided_at: new Date().toISOString() };

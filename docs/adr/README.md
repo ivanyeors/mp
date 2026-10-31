@@ -43,3 +43,4 @@ one is amended to point at it.
 | [0035](0035-google-reviews-through-places-until-business-profile.md) | Google reviews reach Telegram through the Places API until the Business Profile API is approved |
 | [0036](0036-campaign-email-is-typed-blocks.md) | A campaign's email is typed blocks, rendered by our own components and written in one shared editor |
 | [0037](0037-partner-branch-locations.md) | A partner's other clinics are branch Location rows under its main row |
+| [0038](0038-staff-refunds-full-items-or-amount.md) | Staff refund an Order in full, by its lines, or by an amount, and a charge correction needs no return |
