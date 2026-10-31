@@ -83,14 +83,9 @@ export function MarketingFooter() {
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="flex flex-col gap-8">
           <div className="max-w-md space-y-5">
-            {/* The brand's dark-blue logo in both themes. On the dark footer it
-                sits on a white tile, as in the scrolled header's white pill,
-                rather than switching to a light-blue logo. */}
-            <Link
-              href={to("/")}
-              aria-label="Mpillow home"
-              className="inline-flex rounded-2xl dark:bg-white dark:p-2"
-            >
+            {/* The brand's dark-blue logo in both themes, straight on the
+                footer: there is no light-blue logo for dark mode. */}
+            <Link href={to("/")} aria-label="Mpillow home" className="inline-flex">
               <Image
                 src={LOGO_SRC}
                 unoptimized
