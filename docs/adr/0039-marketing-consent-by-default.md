@@ -70,5 +70,5 @@ Two facts constrain how:
   advises asking them again, a re-permission campaign or a reversal needs no new data.
 - The customisation contact step and appointment booking get the same ticked box in slice 02,
   under their own sources, `customisation` and `appointment`, which move exactly as `checkout`
-  does (`20261031120000`; [where consent is written](../data-flows/marketing-consent.md)). The
+  does (`20261031144854`; [where consent is written](../data-flows/marketing-consent.md)). The
   footer sign-up (slice 03) stays double opt-in.

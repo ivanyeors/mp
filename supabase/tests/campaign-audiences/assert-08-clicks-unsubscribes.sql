@@ -1,4 +1,4 @@
--- Clicks and unsubscribes per campaign (20261031140000; PRD-campaign-audiences
+-- Clicks and unsubscribes per campaign (20261031152709; PRD-campaign-audiences
 -- slice 08), asserted against real Postgres.
 --
 -- Run from the repository root against a database with every migration

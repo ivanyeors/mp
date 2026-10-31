@@ -17,7 +17,7 @@ import { formatAdminDateMY } from "@/lib/format/admin-date";
 export const MARKETING_EMAIL_STATES = ["subscribed", "not_subscribed", "unsubscribed"] as const;
 export type MarketingEmailState = (typeof MARKETING_EMAIL_STATES)[number];
 
-/** Who or what made a change. The migrations' checks list the same ten (20261031120000). */
+/** Who or what made a change. The migrations' checks list the same ten (20261031144854). */
 export const CONSENT_SOURCES = [
   "shopify_import",
   "import_default",

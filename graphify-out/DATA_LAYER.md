@@ -1400,7 +1400,7 @@ Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
   - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261031150000_customer_overview_reach_filters.sql:39
+Defined in supabase/migrations/20261031152806_customer_overview_reach_filters.sql:39
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
@@ -1444,7 +1444,7 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
   - `claimCustomerEmail()` — lib/email/customer-emails.ts:47
 
 ### claim_marketing_campaign_send
-Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:148
+Defined in supabase/migrations/20261031144935_campaign_rest_period.sql:148
 - Called by:
   - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:421
 
@@ -1548,7 +1548,7 @@ References: `customers`, `mp_staff`
   - `sources/aftercare.ts` [select] — lib/crm/timeline/sources/aftercare.ts:35
 
 ### customer_purchase_lines
-Defined in supabase/migrations/20261031100000_customer_overview_purchase_filters.sql:48
+Defined in supabase/migrations/20261031144619_customer_overview_purchase_filters.sql:48
 - Read by:
   - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:158
   - `readLatestPillows()` [select] — lib/email-campaigns/store.ts:315
@@ -1599,7 +1599,7 @@ Changed from pages: `/results/[id]`
   - `readDropOffSummary()` [select] — lib/analytics/drop-off/store.ts:153
 
 ### email_campaign_stats
-Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:287
+Defined in supabase/migrations/20261031152709_campaign_clicks_and_unsubscribes.sql:287
 - Read by:
   - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:203
   - `listCampaigns()` [select] — lib/email-campaigns/store.ts:98
@@ -1633,7 +1633,7 @@ Changed from pages: `/settings/email-templates/[id]`
   - `readSavedEmailCopy()` [select] — lib/email/copy-store.ts:36
 
 ### finish_campaign_send
-Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:63
+Defined in supabase/migrations/20261031152709_campaign_clicks_and_unsubscribes.sql:63
 - Called by:
   - `finishCampaignSend()` — lib/customer-migration/campaign-ledger.ts:83
 
@@ -1685,7 +1685,7 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:213
   - `linkGoogleReview()` — lib/crm/google-review-links.ts:52
 
 ### marketing_campaign_candidates
-Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:220
+Defined in supabase/migrations/20261031144935_campaign_rest_period.sql:220
 - Read by:
   - `readPaged()` [select] — lib/email-campaigns/store.ts:266
 
@@ -1761,12 +1761,12 @@ Defined in supabase/migrations/20261002020000_ai_crawler_hits.sql:18
   - `recordCrawlerHit()` — lib/analytics/ai-crawlers.ts:81
 
 ### record_campaign_click
-Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:98
+Defined in supabase/migrations/20261031152709_campaign_clicks_and_unsubscribes.sql:98
 - Called by:
   - `recordCampaignClick()` — lib/email-campaigns/click.ts:117
 
 ### record_campaign_send_event
-Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:229
+Defined in supabase/migrations/20261031152709_campaign_clicks_and_unsubscribes.sql:229
 - Called by:
   - `recordCampaignSendEvent()` — lib/customer-migration/campaign-ledger.ts:113
 
@@ -1816,12 +1816,12 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
   - `setAftercarePreference()` — lib/aftercare/preferences.ts:49
 
 ### set_marketing_email
-Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:139
+Defined in supabase/migrations/20261031152709_campaign_clicks_and_unsubscribes.sql:139
 - Called by:
   - `setMarketingEmail()` — lib/marketing-consent/consent.ts:64
 
 ### subscribe_migrated_customers
-Defined in supabase/migrations/20261031090000_consent_by_default.sql:159
+Defined in supabase/migrations/20261031144524_consent_by_default.sql:159
 - Called by:
   - `loadDefaultConsentCounts()` — app/[lang]/settings/customers/import/consent-counts.ts:10
   - `previewDefaultConsent()` — app/[lang]/settings/customers/import/actions.ts:232

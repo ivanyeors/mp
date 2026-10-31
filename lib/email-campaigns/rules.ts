@@ -9,7 +9,7 @@
  *
  * `composedCampaignBlocker` is the rule the plan uses.
  * `marketing_campaign_blocker()` (20261021100000, with the rest period since
- * 20261031130000) is the same rule in SQL,
+ * 20261031144935) is the same rule in SQL,
  * which `claim_marketing_campaign_send()` re-runs at the moment of each send,
  * so the SQL decides. supabase/tests/email-marketing/campaign-rule-cases.json
  * holds the two equal.
@@ -62,7 +62,7 @@ export const MAX_EXCLUDED_SEGMENTS = 3;
  * The **Rest period** (PRD-campaign-audiences slice 07; owner decision 2):
  * nobody gets a marketing email within `REST_DAYS` of their last one, or once
  * they have had `REST_MAX_PER_30_DAYS` in 30 days. `marketing_rest_until()`
- * (20261031130000) uses the same numbers.
+ * (20261031144935) uses the same numbers.
  */
 export const REST_DAYS = 7;
 export const REST_MAX_PER_30_DAYS = 4;

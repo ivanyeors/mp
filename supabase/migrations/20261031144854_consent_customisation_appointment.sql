@@ -1,7 +1,7 @@
 -- The box where people give their email, past checkout (PRD-campaign-audiences
 -- slice 02; ADR 0039).
 --
--- The checkout box (20261031090000) is joined by two more, each ticked by
+-- The checkout box (20261031144524) is joined by two more, each ticked by
 -- default and each under its own source, so the Customer page says where a
 -- person said yes and each can be counted by source:
 --      customisation   the contact step of a customisation (Mpillow, Basic,
@@ -39,7 +39,7 @@ alter table public.customer_consent_events add constraint customer_consent_event
 -- ---------------------------------------------------------------------
 -- 2. The one write path
 -- ---------------------------------------------------------------------
--- As 20261031090000, with the two boxes beside `checkout`. Returns whether
+-- As 20261031144524, with the two boxes beside `checkout`. Returns whether
 -- anything changed.
 create or replace function public.set_marketing_email(
   p_customer_id uuid,

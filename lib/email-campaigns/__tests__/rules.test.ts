@@ -64,7 +64,7 @@ const CASES = JSON.parse(
 
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021100000_email_campaigns.sql"), "utf8");
 /** The rule's latest definition: the rest period's (PRD-campaign-audiences slice 07). */
-const RULE_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031130000_campaign_rest_period.sql"), "utf8");
+const RULE_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031144935_campaign_rest_period.sql"), "utf8");
 
 const NOW = new Date("2026-10-31T04:00:00.000Z");
 

@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** built 2026-10-31 (`20261031150000_customer_overview_reach_filters.sql`; not yet applied to production)
+**Status:** built 2026-10-31 (`20261031152806_customer_overview_reach_filters.sql`; applied to production 2026-10-31)
 **Blocked by:** 08 for the *clicked* values (built)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 

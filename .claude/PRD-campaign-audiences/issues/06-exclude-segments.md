@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** built 2026-10-31 (`20261031110000_email_campaign_exclusions.sql`; not yet applied to production)
+**Status:** built 2026-10-31 (`20261031144834_email_campaign_exclusions.sql`; applied to production 2026-10-31)
 **Blocked by:** none
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:email`
 

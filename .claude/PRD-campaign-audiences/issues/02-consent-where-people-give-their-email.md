@@ -29,7 +29,7 @@ A customer who buys here hears from us unless they say no, at the moment they gi
   - appointment booking (`app/api/appointments/book/route.ts`), Customisation and Re-adjustment.
 - **Still to do:** for a signed-in Customer who unsubscribed, show the box unticked; ticking it is
   then their own action and re-subscribes them as `account`. Chinese copy.
-- **Migration:** `checkout` is in (`20261031090000_consent_by_default.sql`); add `customisation`
+- **Migration:** `checkout` is in (`20261031144524_consent_by_default.sql`); add `customisation`
   and `appointment` (and `newsletter` for slice 03) the same way. Every write goes through
   `set_marketing_email()`.
 - **The Customer timeline** names the source (*from the box at checkout*): built.
@@ -37,7 +37,7 @@ A customer who buys here hears from us unless they say no, at the moment they gi
 
 ## As built (2026-10-31)
 
-- **Migration** `20261031120000_consent_customisation_appointment.sql`: the sources
+- **Migration** `20261031144854_consent_customisation_appointment.sql`: the sources
   `customisation` and `appointment` on both checks, and `set_marketing_email()` restated so each
   moves as `checkout` does (subscribe only, only someone nobody has asked, quietly skipping anyone
   else). Asserted by `supabase/tests/campaign-audiences/assert-02-consent-boxes.sql`.

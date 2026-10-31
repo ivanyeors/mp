@@ -1,4 +1,4 @@
--- The rest period (20261031130000_campaign_rest_period.sql; PRD-campaign-audiences
+-- The rest period (20261031144935_campaign_rest_period.sql; PRD-campaign-audiences
 -- slice 07), asserted against real Postgres. The rule's cases are in
 -- supabase/tests/email-marketing/campaign-rule-cases.json, which
 -- assert-01-email-campaigns.sql runs; this covers the rest: what counts, the

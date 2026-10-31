@@ -31,7 +31,7 @@ Nov*.
 
 ## As built (2026-10-31)
 
-- **Migration** `20261031130000_campaign_rest_period.sql`:
+- **Migration** `20261031144935_campaign_rest_period.sql`:
   - `marketing_recent(customer)`: their marketing email of the last 30 days, newest first. Any
     campaign ledger row but a failed one (`pending` counts, so two campaigns' Waves at once cannot
     both reach someone), and `points.expiry_%` reminders that were sent. Order, aftercare and

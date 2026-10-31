@@ -1,4 +1,4 @@
--- The customisation and appointment boxes (20261031120000; PRD-campaign-audiences
+-- The customisation and appointment boxes (20261031144854; PRD-campaign-audiences
 -- slice 02, ADR 0039), asserted against real Postgres.
 --
 -- Run from the repository root against a database with every migration

@@ -19,7 +19,7 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  *    `admin_customer_overview` (each Customer's facts), `customer_purchase_lines`
  *    (the test's pillow lines) and `pillow_products`.
  *
- * The claim mirrors the SQL (20261031130000): the wave check, the rule (here
+ * The claim mirrors the SQL (20261031144935): the wave check, the rule (here
  * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
  * `marketing_campaign_blocker`), and the unique (Customer, template) key.
  * assert-01-email-campaigns.sql proves the real function.
@@ -264,7 +264,7 @@ export function fakeCampaignsClient(world: FakeWorld) {
     const s = world.sends.find((x) => x.id === args.p_send_id);
     if (!s || s.status !== "pending") return { data: false, error: null };
     if (args.p_sent) {
-      // Slice 08: the click token's hash, kept with a successful send only (20261031140000).
+      // Slice 08: the click token's hash, kept with a successful send only (20261031152709).
       const hash = typeof args.p_click_token_hash === "string" && /^[0-9a-f]{64}$/.test(args.p_click_token_hash) ? args.p_click_token_hash : null;
       Object.assign(s, { status: "sent", provider_message_id: args.p_provider_message_id ?? null, click_token_hash: hash });
     }

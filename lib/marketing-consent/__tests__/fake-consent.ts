@@ -1,7 +1,7 @@
 import type { AftercareFakeDb, RpcHandler } from "@/lib/aftercare/__tests__/fake-db";
 
 /**
- * set_marketing_email as 20261031120000_consent_customisation_appointment.sql defines it, for
+ * set_marketing_email as 20261031144854_consent_customisation_appointment.sql defines it, for
  * the in-memory client (`fakeAftercareDb`): the state, its provenance and one
  * event together; nothing when unchanged; only the moves each source may make.
  * supabase/tests/customer-migration/assert-07-marketing-consent.sql and

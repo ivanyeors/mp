@@ -8,7 +8,7 @@ undo removes only its own events).
 
 One SQL function writes it: **`set_marketing_email(customer, to, source, at,
 campaign_send)`** (last restated in
-`20261031140000_campaign_clicks_and_unsubscribes.sql`). The last two arguments
+`20261031152709_campaign_clicks_and_unsubscribes.sql`). The last two arguments
 are optional; `campaign_send` is kept on the event only when the send is that
 Customer's own, so an unsubscribe or a complaint names the campaign behind it.
 Restate it with all five arguments: a four-argument copy would sit beside it
@@ -33,7 +33,7 @@ is server-only, and the customer's own key cannot call the function.
 | `appointment` | the box on booking: a guest's customisation visit, a signed-in re-adjustment (free or paid) | subscribe, only someone nobody has asked | `app/api/appointments/book` → `recordBoxConsentByEmail()`; `app/api/readjustments/book` and `/checkout` → `recordBoxConsent()` |
 | `account` | the customer, signed in, on their Profile | either way; the only source that re-subscribes | `app/[lang]/account/actions.ts` → `setMarketingEmail()` |
 | `unsubscribe_link` | the link in every campaign email; since slice 08 it names its send | unsubscribe | `app/api/email/unsubscribe` |
-| `complaint` | Resend reports a spam complaint on a campaign send, which it names | unsubscribe | `record_campaign_send_event()` (`20261031140000`), from `app/api/email/resend-webhook` |
+| `complaint` | Resend reports a spam complaint on a campaign send, which it names | unsubscribe | `record_campaign_send_event()` (`20261031152709`), from `app/api/email/resend-webhook` |
 | `support` | Staff, at the customer's request, on the Customer page | unsubscribe only | `app/api/shop/customers/[id]/marketing-consent` |
 
 ## The boxes
@@ -64,7 +64,7 @@ ticking it is their own `account` choice (slice 02, still to do).
 Consent is necessary, not sufficient. `marketing_campaign_blocker()` decides
 each send (ADR 0040): consent, suppression (a bounce or a spam report), the
 **Rest period** (7 days between marketing emails, at most 4 in 30, points-expiry
-reminders included; `20261031130000`), and, once slice 12 lands, the sunset
+reminders included; `20261031144935`), and, once slice 12 lands, the sunset
 rule. An **Audience** or a
 **Segment** only narrows; neither ever reaches someone the claim refuses.
 

@@ -81,7 +81,7 @@ end $$;
 -- ---------------------------------------------------------------- backfill
 -- Replaying this slice's migration puts its own set_marketing_email back for
 -- the rest of this rolled-back transaction, as it always did. Since
--- 20261031140000 the current one has a fifth argument, so it is dropped first:
+-- 20261031152709 the current one has a fifth argument, so it is dropped first:
 -- two overloads would make every four-argument call ambiguous.
 drop function public.set_marketing_email(uuid, text, text, timestamptz, uuid);
 \o /dev/null

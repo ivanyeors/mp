@@ -132,7 +132,7 @@ create index if not exists customer_consent_events_campaign_send_idx
   on public.customer_consent_events (campaign_send_id)
   where campaign_send_id is not null;
 
--- As 20261031120000, with `p_campaign_send_id`: dropped and made again, so a
+-- As 20261031144854, with `p_campaign_send_id`: dropped and made again, so a
 -- call with four arguments, positional or named, still finds the one function.
 drop function if exists public.set_marketing_email(uuid, text, text, timestamptz);
 

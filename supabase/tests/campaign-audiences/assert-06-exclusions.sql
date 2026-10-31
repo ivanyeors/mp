@@ -1,6 +1,6 @@
 -- Slice 06 (PRD-campaign-audiences): Segments left out of a campaign's
 -- audience, asserted against real Postgres
--- (20261031110000_email_campaign_exclusions.sql).
+-- (20261031144834_email_campaign_exclusions.sql).
 --
 -- Run from the repository root against a database with every migration
 -- applied (a throwaway local one, never production). It prints one line,

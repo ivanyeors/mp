@@ -33,7 +33,7 @@ and the campaign's page shows *1 unsubscribed*.
 
 ## As built (2026-10-31)
 
-- **Migration** `20261031140000_campaign_clicks_and_unsubscribes.sql`:
+- **Migration** `20261031152709_campaign_clicks_and_unsubscribes.sql`:
   - `customer_campaign_sends` gains `click_token_hash` (SHA-256 hex, unique, shape-checked),
     `first_clicked_at` and `clicks` (checked to go together).
   - `finish_campaign_send()` takes the hash as a fifth argument and keeps it with a successful

@@ -14,7 +14,7 @@ imported customer except those who unsubscribed. ADR 0039.
 
 ## What was built
 
-- **`20261031090000_consent_by_default.sql`**: the sources `import_default`,
+- **`20261031144524_consent_by_default.sql`**: the sources `import_default`,
   `shopify_unsubscribed` and `checkout`; `set_marketing_email()` lets each make only its own move
   (a default subscribes only someone nobody has asked); `subscribe_migrated_customers(list,
   apply)` unsubscribes everyone on Shopify's unsubscribed list, then subscribes every other

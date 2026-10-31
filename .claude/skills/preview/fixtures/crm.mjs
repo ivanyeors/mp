@@ -260,7 +260,7 @@ export default function crm({ now }) {
     },
     views: {
       // 20261021100000_email_campaigns.sql: one row per Customer, as a campaign's plan reads them;
-      // `marketing_recent` (20261031130000) rests Chloe, emailed 3 days ago.
+      // `marketing_recent` (20261031144935) rests Chloe, emailed 3 days ago.
       marketing_campaign_candidates: (t) =>
         (t.customers ?? []).map((c) => {
           const m = (t.migrated_customers ?? []).find((r) => r.customer_id === c.id);
@@ -280,7 +280,7 @@ export default function crm({ now }) {
             marketing_recent: (p?.recent ?? []).map(ago),
           };
         }),
-      // 20261031140000: each campaign's numbers, clicks and unsubscribes included.
+      // 20261031152709: each campaign's numbers, clicks and unsubscribes included.
       email_campaign_stats: (t) =>
         (t.email_campaigns ?? []).map((e) => {
           const sends = (t.customer_campaign_sends ?? []).filter((s) => s.campaign_id === e.id);
@@ -305,7 +305,7 @@ export default function crm({ now }) {
             unsubscribed: new Set(left.map((ev) => ev.customer_id)).size,
           };
         }),
-      // 20261031100000: each pillow line, for *Your pillow* (slice 09): one a Customer, of their Tier and first size.
+      // 20261031144619: each pillow line, for *Your pillow* (slice 09): one a Customer, of their Tier and first size.
       customer_purchase_lines: (t) =>
         (t.customers ?? []).flatMap((c) => {
           const p = PEOPLE.find((x) => c.email.startsWith(`${x.first.toLowerCase().replace(/\s/g, "")}.`));
@@ -383,7 +383,7 @@ export default function crm({ now }) {
         }),
     },
     rpc: {
-      // 20261031090000_consent_by_default.sql, counting only.
+      // 20261031144524_consent_by_default.sql, counting only.
       subscribe_migrated_customers: ({ p_unsubscribed = [] }, { tables }) => {
         const list = new Set(p_unsubscribed.map((e) => String(e).trim().toLowerCase()).filter(Boolean));
         const byId = new Map((tables.customers ?? []).map((c) => [c.id, c]));

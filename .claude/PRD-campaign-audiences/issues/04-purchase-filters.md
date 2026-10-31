@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** built 2026-10-31 (`20261031100000_customer_overview_purchase_filters.sql`; not yet applied to production)
+**Status:** built 2026-10-31 (`20261031144619_customer_overview_purchase_filters.sql`; applied to production 2026-10-31)
 **Blocked by:** none
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`
 

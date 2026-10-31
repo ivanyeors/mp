@@ -1,7 +1,7 @@
 /**
  * Every imported customer starts subscribed (owner, 2026-10-31; ADR 0039).
  * Pure: the Import page reads Shopify's unsubscribed list in the browser, and
- * `subscribe_migrated_customers()` (20261031090000) does the rest in one
+ * `subscribe_migrated_customers()` (20261031144524) does the rest in one
  * transaction.
  *
  * Shopify's export says only yes or no to email marketing, and its "no" covers
