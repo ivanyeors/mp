@@ -564,7 +564,7 @@ A ready-made layout: a list of **Email blocks** with **Placeholders** for its wo
 _Avoid_: "template" (an **Email template** is the words of a platform email; a Starter is the start of a campaign); "layout" on its own (the shell's layout is code, and nobody edits it)
 
 **Variable**:
-A value the platform fills in when an email is sent, shown to **Staff** as a chip they drag or insert into the words and written `{first_name}`. In an **Email campaign** it is a recipient's detail (*First name*, *Last name*, *Points balance* while points are live) with **fallback words** for a customer who has none, set once per campaign. In an **Email template** it is that email's own data, such as `{order_number}`.
+A value the platform fills in when an email is sent, shown to **Staff** as a chip they drag or insert into the words and written `{first_name}`. In an **Email campaign** it is a recipient's detail (*First name*, *Last name*, *Points balance* while points are live, *Your pillow*: the pillow they bought last, as the shop names it) with **fallback words** for a customer who has none, set once per campaign. In an **Email template** it is that email's own data, such as `{order_number}`.
 _Avoid_: "merge field", "merge tag"; "placeholder" (that is the hint text, a **Placeholder**)
 
 **Placeholder**:

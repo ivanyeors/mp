@@ -96,7 +96,7 @@ import { emailSaysNothing, STARTERS, startedFrom, starterAudience, type Starter 
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
-import { defaultWaveSize, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
+import { defaultWaveSize, fitSummary, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
 import { formatAdminDateMY, formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -480,6 +480,10 @@ export function CampaignEditor({
         };
     }, [campaignId, readChecks, saves]);
     const pauseFailing = checks?.some((c) => c.key === "pause" && !c.ok) ?? false;
+    // The checked wave's plan (see *Waves* below). Its fit checks (PRD-campaign-audiences slice 09) are advice
+    // about who it goes to, listed with the email's own until the plan is checked again.
+    const [plan, setPlan] = useState<Extract<WaveAnswer, { ok: true }> | null>(null);
+    const advice = useMemo(() => [...(readiness?.advice ?? []), ...(plan?.fit ?? [])], [readiness, plan]);
 
     // What the email's checks say of each block, beside it: only while the block is as it was saved, and checked.
     // In 中文 (slice 17), the 中文 version's, while its words are as saved; its badges already say what isn't translated.
@@ -493,14 +497,14 @@ export function CampaignEditor({
         const now = asSaved(content);
         // A block marked *Drafted with AI* when saved, and kept since, says so no more. In 中文, its 中文 words' mark.
         const marked = new Set(inChinese ? chineseAiDrafted(content) : (content.aiDrafted ?? []));
-        for (const c of [...readiness.checks.filter(isEmailCheck).filter((c) => !c.ok && c.key !== "chinese"), ...readiness.advice]) {
+        for (const c of [...readiness.checks.filter(isEmailCheck).filter((c) => !c.ok && c.key !== "chinese"), ...advice]) {
             for (const i of c.issues) {
                 if ((i.language ?? DEFAULT_LOCALE) !== language || (c.key === "ai_drafted" && !marked.has(i.blockId ?? ""))) continue;
                 if (i.blockId && saved.has(i.blockId) && saved.get(i.blockId) === now.get(i.blockId)) (out[i.blockId] ??= []).push(i.what);
             }
         }
         return out;
-    }, [readiness, content, savedContent, inChinese]);
+    }, [readiness, advice, content, savedContent, inChinese]);
 
     // ── Test ───────────────────────────────────────────────────────────────
     const [testTo, setTestTo] = useState(staffEmail);
@@ -539,7 +543,6 @@ export function CampaignEditor({
     const size = Math.min(sizeInput ?? defaultWaveSize(allowance, firstWave, MAX_WAVE_SIZE), maxSize);
     const [retryFailed, setRetryFailed] = useState(false);
     const [resume, setResume] = useState(false);
-    const [plan, setPlan] = useState<Extract<WaveAnswer, { ok: true }> | null>(null);
     const [planError, setPlanError] = useState<string | null>(null);
     const [planning, setPlanning] = useState(false);
     const [progress, setProgress] = useState<WaveProgress | null>(null);
@@ -575,7 +578,8 @@ export function CampaignEditor({
     /** How many the checked plan sends now: the eligible, less who waits for later waves. */
     const planned = plan ? plan.plan.eligible - plan.waiting : 0;
     // Who gets which language (slice 17), from the saved campaign the plan is of.
-    const languageLine = plan
+    // Readers of Chinese with no 中文 version are a fit check's (slice 09), which says what would fix it.
+    const languageLine = plan && !plan.fit.some((c) => c.key === "fit_chinese")
         ? languageSummary({
               eligible: plan.plan.eligible,
               eligibleChinese: plan.plan.eligibleChinese,
@@ -1652,7 +1656,7 @@ export function CampaignEditor({
                                     <CardDescription>Nothing is sent, not even a test, until these pass.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {checks ? <CheckList checks={checks} advice={readiness?.advice} /> : <Loader2 className="h-4 w-4 animate-spin" />}
+                                    {checks ? <CheckList checks={checks} advice={advice} /> : <Loader2 className="h-4 w-4 animate-spin" />}
                                 </CardContent>
                             </Card>
                         </div>
@@ -1685,7 +1689,7 @@ export function CampaignEditor({
                             </CardHeader>
                             <CardContent className="flex flex-col gap-5">
                                 <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
-                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice: readiness?.advice, allowance, resume }).map((step) => (
+                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice, allowance, resume }).map((step) => (
                                         <li key={step.key} className={cn("flex items-start gap-2 text-sm", step.items && "sm:col-span-2")}>
                                             <StatusIcon ok={step.done} advisory={step.advisory} />
                                             <span className="min-w-0">
@@ -1801,6 +1805,11 @@ export function CampaignEditor({
                                             </ul>
                                         ) : null}
                                         {languageLine ? <p>{languageLine}</p> : null}
+                                        {plan.fit.length ? (
+                                            <p className="text-muted-foreground">
+                                                {fitSummary(plan.fit.length)}
+                                            </p>
+                                        ) : null}
                                         {plan.plan.eligible > 0 ? (
                                             <p className="font-medium">
                                                 {waitingSummary({

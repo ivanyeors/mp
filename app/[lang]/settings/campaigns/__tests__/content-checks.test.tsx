@@ -152,6 +152,7 @@ describe("The email, in the Send card", () => {
       limitedBy: null,
       waiting: 0,
       leftOutBySegment: [],
+      fit: [],
     });
     mount();
     await openTab("Send");

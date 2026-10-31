@@ -1227,6 +1227,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `loadSoldOrders()` [select] — lib/analytics/sales-report.ts:149
   - `loadVariantLabels()` [select] — lib/stripe/variant-labels.ts:82
   - `pillowDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:141
+  - `readProductClasses()` [select] — lib/email-campaigns/store.ts:362
   - `resultCouponLineItems()` [select] — lib/results/discount.ts:116
   - `syncPillowProducts()` [select] — lib/ecommerce/inventory-sync.ts:21
   - `syncShopifyPricingFromSupabase()` [select] — lib/shopify/pricing.ts:82
@@ -1382,6 +1383,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `main()` [select] — scripts/stripe-sync-all.ts:73
   - `readCampaignProductCards()` [select] — lib/email-campaigns/products.ts:92
   - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:115
+  - `readProductClasses()` [select] — lib/email-campaigns/store.ts:356
   - `resolveSurfaceKey()` [select] — lib/page-faq/seed.ts:24
   - `resultCouponLineItems()` [select] — lib/results/discount.ts:131
   - `setComposedProductImage()` [select] — app/[lang]/settings/inventory/actions.ts:452
@@ -1407,6 +1409,7 @@ Defined in supabase/migrations/20261031150000_customer_overview_reach_filters.sq
   - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:140
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:220
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:57
+  - `readRecipientFacts()` [select] — lib/email-campaigns/store.ts:341
   - `resolveSegment()` [select] — lib/crm/segments.ts:245
 
 ### admin_google_reviews_unlinked
@@ -1443,7 +1446,7 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
 ### claim_marketing_campaign_send
 Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:148
 - Called by:
-  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:347
+  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:421
 
 ### claim_migrated_customer
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
@@ -1548,6 +1551,7 @@ References: `customers`, `mp_staff`
 Defined in supabase/migrations/20261031100000_customer_overview_purchase_filters.sql:48
 - Read by:
   - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:158
+  - `readLatestPillows()` [select] — lib/email-campaigns/store.ts:315
 
 ### customer_review_requests
 Defined in supabase/migrations/20261020124000_customer_review_requests.sql:36
@@ -1597,24 +1601,24 @@ Changed from pages: `/results/[id]`
 ### email_campaign_stats
 Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:287
 - Read by:
-  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:193
-  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:88
+  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:203
+  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:98
 
 ### email_campaigns
 Defined in supabase/migrations/20261021100000_email_campaigns.sql:42
 References: `customer_segments`, `mp_staff`
 Changed from pages: `/settings/campaigns/[id]`, `/settings/campaigns/new`
 - Written by:
-  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:224
-  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:204
-  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:234
-  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:219
+  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:234
+  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:214
+  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:244
+  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:229
 - Read by:
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1020
-  - `getCampaign()` [select] — lib/email-campaigns/store.ts:187
-  - `listCampaignFilterOptions()` [select] — lib/email-campaigns/store.ts:163
-  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:87
-  - `listPastCampaigns()` [select] — lib/email-campaigns/store.ts:120
+  - `getCampaign()` [select] — lib/email-campaigns/store.ts:197
+  - `listCampaignFilterOptions()` [select] — lib/email-campaigns/store.ts:173
+  - `listCampaigns()` [select] — lib/email-campaigns/store.ts:97
+  - `listPastCampaigns()` [select] — lib/email-campaigns/store.ts:130
 
 ### email_template_copy
 Defined in supabase/migrations/20261021110000_email_template_copy.sql:23
@@ -1683,7 +1687,7 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:213
 ### marketing_campaign_candidates
 Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:220
 - Read by:
-  - `readPaged()` [select] — lib/email-campaigns/store.ts:256
+  - `readPaged()` [select] — lib/email-campaigns/store.ts:266
 
 ### media_asset_renditions
 Defined in supabase/migrations/20261030050000_media_asset_renditions.sql:20
@@ -2445,7 +2449,7 @@ app/[lang]/settings/campaigns/[id]/page.tsx
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `campaignAiWriting()`, `campaignPointsLive()`, `getCampaign()`, `getCampaignStats()`, `listSegments()`, `readWaveStats()`, `requireAdminPage()`, `useAiDraft()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
-- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `email_campaign_stats`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_purchase_lines`, `customer_segments`, `email_campaign_stats`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `pillow_products`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
 
 ### /settings/campaigns/new
 app/[lang]/settings/campaigns/new/page.tsx
@@ -2453,7 +2457,7 @@ app/[lang]/settings/campaigns/new/page.tsx
 - Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`
 - Loads: `campaignAiWriting()`, `campaignPointsLive()`, `listSegments()`, `requireAdminPage()`, `useAiDraft()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `email_campaigns`, `media_assets`, `media_folders`, `mp_staff`
-- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_segments`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `blog_posts`, `categories`, `collection_products`, `customer_campaign_sends`, `customer_campaign_wave_stats`, `customer_purchase_lines`, `customer_segments`, `item_overlay_mappings`, `items`, `landing_sections`, `marketing_campaign_candidates`, `partners`, `partners_page`, `pillow_products`, `product_images`, `product_variants`, `products`, `site_settings`, `variant_stock`
 
 ### /settings/costings
 app/[lang]/settings/costings/page.tsx

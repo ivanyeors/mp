@@ -21,7 +21,7 @@ const data = (over: Partial<CampaignBlocksEmailData> = {}): CampaignBlocksEmailD
   preheader: CHINESE_SAMPLE_LINES.preheader,
   content: CHINESE_SAMPLE_CONTENT,
   greeting: true,
-  values: { first_name: "美玲", last_name: "陈", points_balance: "" },
+  values: { first_name: "美玲", last_name: "陈", points_balance: "", your_pillow: "Premium Mpillow, size M" },
   buttonHref: (b) => ("target" in b && b.target === "url" ? (b.url ?? null) : `https://custom.mpillow.com/zh-CN/${b.target}`),
   images: EMAIL_BLOCK_SAMPLE_IMAGES,
   products: CHINESE_SAMPLE_PRODUCTS,
@@ -49,7 +49,7 @@ describe("renderCampaignBlocksEmail in 中文", () => {
   });
 
   it("says a polite hello alone for a reader with no name, whose first name is 您", () => {
-    const r = renderCampaignBlocksEmail(data({ values: { first_name: "您", last_name: "", points_balance: "" } }));
+    const r = renderCampaignBlocksEmail(data({ values: { first_name: "您", last_name: "", points_balance: "", your_pillow: "Premium Mpillow, size M" } }));
     expect(r.text).toContain("\n您好！\n");
     expect(r.text).not.toContain("您，您好");
   });
@@ -62,7 +62,7 @@ describe("renderCampaignBlocksEmail in 中文", () => {
   });
 
   it("is the English email for a reader of English, and for a campaign with no 中文 version", () => {
-    const english = renderCampaignBlocksEmail(data({ language: "en-US", values: { first_name: "Bea", last_name: "", points_balance: "" } }));
+    const english = renderCampaignBlocksEmail(data({ language: "en-US", values: { first_name: "Bea", last_name: "", points_balance: "", your_pillow: "Premium Mpillow, size M" } }));
     expect(english.subject).toBe("Bea, sleep cooler this December");
     expect(english.html).toContain('<html lang="en"');
     expect(english.html).toContain("Unsubscribe</a>");

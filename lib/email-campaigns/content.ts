@@ -713,8 +713,8 @@ export function fillVariables(content: CampaignContent, values: Record<VariableK
   return { ...content, blocks: content.blocks.map((b) => fill(b, null) as EmailBlock) };
 }
 
-/** A block's buttons: a buttons block's one or two, a hero's or an image + text's own. */
-function buttonsOf(b: EmailBlock): BlockButton[] {
+/** Pure — a block's buttons: a buttons block's one or two, a hero's or an image + text's own. */
+export function buttonsOf(b: EmailBlock): BlockButton[] {
   if (b.type === "buttons") return b.buttons;
   if ((b.type === "hero" || b.type === "split") && b.button) return [b.button];
   return [];

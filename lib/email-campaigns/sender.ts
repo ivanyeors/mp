@@ -102,8 +102,17 @@ import { addClickToken, hashClickToken, newClickToken } from "./click";
 import { checkLinks, type LinkRequest } from "./link-check";
 import { campaignProductPhotos, campaignProductsProblem, readCampaignProducts, unlistedProductText, type UnlistedProduct } from "./products";
 import { roomAgainText } from "./send-flow";
-import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
-import { campaignVariable, SAMPLE_RECIPIENT, variableValues, type VariableRecipient } from "./variables";
+import { campaignFitChecks, fitUnreadCheck } from "./fit-checks";
+import {
+  claimMarketingCampaignSend,
+  finishCampaignSend,
+  readCampaignCandidates,
+  readLatestPillows,
+  readProductClasses,
+  readRecipientFacts,
+  readWaveStats,
+} from "./store";
+import { campaignVariable, SAMPLE_RECIPIENT, variableValues, type RecipientPillow, type VariableRecipient } from "./variables";
 
 export { MAX_CONSECUTIVE_FAILURES };
 
@@ -203,6 +212,10 @@ export const campaignSignsIn = (campaign: Pick<Campaign, "button" | "content">) 
 export const usesPointsBalance = (campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">) =>
   variablesInEmail(campaign).some((key) => campaignVariable(key).needsPoints);
 
+/** Pure — the Campaign says each recipient's *Your pillow* (PRD-campaign-audiences slice 09), so each batch reads their pillows. */
+export const usesYourPillow = (campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">) =>
+  variablesInEmail(campaign).includes("your_pillow");
+
 /**
  * Pure — the language a reader in `locale` gets the Campaign in (slice 17):
  * its 中文 version for a reader of Chinese, when it has one; else English.
@@ -230,11 +243,8 @@ type CampaignEmailParts = Pick<Campaign, "name" | "subject" | "preheader" | "bod
  */
 export function renderCampaignFor(
   campaign: CampaignEmailParts,
-  p: {
-    firstName: string | null;
-    /** The recipient's other details, for the Variables a block campaign uses (slice 13). */
-    lastName?: string | null;
-    pointsBalance?: number | null;
+  p: VariableRecipient & {
+    /** `firstName`, and the recipient's other details, for the Variables a block campaign uses (slice 13). */
     origin: string;
     locale: Locale;
     claimUrl: string | null;
@@ -298,15 +308,13 @@ export function renderCampaignPreview(
     firstName,
     lastName = null,
     pointsBalance = null,
+    pillow = null,
     forceDark = false,
     images,
     products,
     locale = DEFAULT_LOCALE,
-  }: {
+  }: VariableRecipient & {
     origin: string;
-    firstName: string | null;
-    lastName?: string | null;
-    pointsBalance?: number | null;
     forceDark?: boolean;
     images?: CampaignBlockImages;
     products?: CampaignBlockProducts;
@@ -318,6 +326,7 @@ export function renderCampaignPreview(
     firstName,
     lastName,
     pointsBalance,
+    pillow,
     origin: base,
     locale,
     claimUrl: null,
@@ -703,6 +712,12 @@ export interface WavePlanResult {
    * (PRD-campaign-audiences slice 06), in the campaign's order; empty with none.
    */
   leftOutBySegment: LeftOutBySegment[];
+  /**
+   * Where the email and the wave's people do not match (slice 09,
+   * fit-checks.ts): advice only, listed with the email's own; empty when
+   * nothing to say.
+   */
+  fit: ContentCheck[];
 }
 
 /** A Segment a campaign leaves out, as the wave reads it: its name, and its Customers' ids page by page. */
@@ -760,16 +775,35 @@ export async function planWave(
   const room = readiness.allowance?.remaining ?? 0;
   const { selection, ...plan } = planCampaignWave(campaign.audience, candidates, { size: Math.min(n, room), retryFailed });
   const wanted = Math.min(n, plan.eligible);
+  const customerIds = selection.map((c) => c.customerId);
   return {
     readiness,
     wave: nextWaveLabel(waves.own.map((w) => w.wave)),
     plan,
-    customerIds: selection.map((c) => c.customerId),
+    customerIds,
     requested: n,
     limitedBy: readiness.allowance && selection.length < wanted ? readiness.allowance.binding : null,
     waiting: plan.eligible - selection.length,
     leftOutBySegment: leftOut,
+    fit: await fitChecks(campaign, customerIds, setup),
   };
+}
+
+/**
+ * The fit checks over the wave's people (slice 09). Advice: a read that fails
+ * says so in one line, and holds nothing.
+ */
+async function fitChecks(campaign: Campaign, customerIds: readonly string[], setup: CampaignSenderSetup): Promise<ContentCheck[]> {
+  if (!customerIds.length) return [];
+  try {
+    const productIds = campaign.content
+      ? [...new Set(campaign.content.blocks.flatMap((b) => (b.type === "products" ? b.products : [])).filter(Boolean))]
+      : [];
+    const [recipients, classes] = await Promise.all([readRecipientFacts(setup.admin, customerIds), readProductClasses(setup.admin, productIds)]);
+    return campaignFitChecks(campaign, recipients, { origin: originOf(setup), productClasses: classes, now: setup.now?.() ?? new Date() });
+  } catch (err) {
+    return [fitUnreadCheck(err instanceof Error ? err.message : String(err))];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -865,6 +899,16 @@ export async function sendCampaignBatch(
   const key = campaignLedgerKey(campaign.id);
   // Each balance is a read of its own: only for an email that says it.
   const readsPoints = usesPointsBalance(campaign);
+  // Their pillows, once for the batch: only for an email that says *Your pillow* (slice 09).
+  let pillows = new Map<string, RecipientPillow>();
+  if (usesYourPillow(campaign)) {
+    try {
+      pillows = await readLatestPillows(setup.admin, ids);
+    } catch (err) {
+      result.stopped = err instanceof Error ? err.message : String(err);
+      return result;
+    }
+  }
 
   for (const customerId of ids) {
     if (result.failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
@@ -903,6 +947,7 @@ export async function sendCampaignBatch(
         firstName: claim.firstName,
         lastName: claim.lastName,
         pointsBalance: readsPoints ? (await readPointsBalance(setup.admin, customerId)).available : null,
+        pillow: pillows.get(customerId) ?? null,
         origin,
         locale,
         claimUrl,

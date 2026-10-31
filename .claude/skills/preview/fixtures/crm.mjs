@@ -4,7 +4,9 @@
 // `subscribe_migrated_customers` (ADR 0039) worked out from these rows.
 // One draft email campaign sends to *Premium buyers* and leaves two Segments
 // out (PRD-campaign-audiences slice 06), with the campaign candidates view
-// worked out from the same Customers. Every name and email is invented.
+// worked out from the same Customers; another, *Pillow check-up*, says *Your
+// pillow* and offers the studio and an Mbolster, for slice 09's fit checks.
+// Every name and email is invented.
 
 // `sizes` and `delivered` (days since the latest purchase arrived; null while
 // on its way) feed the purchase filters (PRD-campaign-audiences slice 04).
@@ -19,6 +21,9 @@ const PEOPLE = [
   { first: "Farid", last: "Yusof", stage: "lost", detail: null, purchases: 1, bought: ["premium"], sizes: ["XL"], delivered: 200, consent: "unsubscribed", source: "unsubscribe_link", imported: true, said: "no", ship: "SG" },
   { first: "Grace", last: "Lee", stage: "loyal", detail: "repeat_purchases", purchases: 2, bought: ["premium", "accessory"], sizes: ["M"], delivered: 50, consent: "not_subscribed", imported: true, said: "no", ship: null },
   { first: "Hui Min", last: "Chua", stage: "new", detail: "awaiting_delivery", purchases: 1, bought: ["premium"], sizes: ["S"], delivered: null, consent: "subscribed", source: "checkout", imported: false, ship: "SG", lang: "zh-CN" },
+  // Slice 09's fit checks: Jun ships to Malaysia and bought 9 days ago; Kavya's country is unknown, and she has no pillow here.
+  { first: "Jun", last: "Wei", stage: "new", detail: "delivered", purchases: 1, bought: ["basic"], sizes: ["M"], delivered: 3, consent: "subscribed", source: "checkout", imported: false, ship: "MY", lastBought: 9 },
+  { first: "Kavya", last: "Iyer", stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, consent: "subscribed", source: "account", imported: false, ship: null },
 ];
 
 const BATCH = "00000000-0000-4000-8000-00000000b001";
@@ -28,6 +33,11 @@ const RECENT_SEGMENT = "00000000-0000-4000-8000-00000000c003";
 const CAMPAIGN = "00000000-0000-4000-8000-00000000e001";
 // A campaign already sent (PRD-campaign-audiences slice 08): Chloe clicked it, Farid left from its link.
 const SENT_CAMPAIGN = "00000000-0000-4000-8000-00000000e002";
+// A block campaign that says *Your pillow* and offers the studio and an Mbolster (slice 09's fit checks).
+const CHECKUP_CAMPAIGN = "00000000-0000-4000-8000-00000000e003";
+
+/** When they last bought, in days, or null: as the overview's `last_purchase_at`. */
+const lastBoughtDays = (p) => (p.purchases ? (p.lastBought ?? (p.stage === "at_risk" ? 800 : 40)) : null);
 
 export default function crm({ now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -154,6 +164,50 @@ export default function crm({ now }) {
           locked_at: ago(26),
           archived_at: null,
         },
+        {
+          id: CHECKUP_CAMPAIGN,
+          name: "Pillow check-up",
+          subject: "A check-up for {your_pillow}",
+          preheader: "A free re-adjustment, at the studio.",
+          body: "",
+          content: {
+            v: 1,
+            blocks: [
+              { id: "title", type: "heading", level: 1, text: "A check-up for {your_pillow}" },
+              {
+                id: "words",
+                type: "text",
+                paragraphs: [
+                  {
+                    kind: "p",
+                    runs: [{ text: "Pillows settle over the first months. Come in for a free re-adjustment at the studio, and we will set it to how you sleep now." }],
+                  },
+                ],
+              },
+              {
+                id: "book",
+                type: "buttons",
+                buttons: [
+                  { label: "Book a fitting", target: "book_fitting", style: "primary" },
+                  { label: "Pair it with an Mbolster", target: "customise_mbolster", style: "secondary" },
+                ],
+              },
+            ],
+            fallbacks: {},
+          },
+          greeting: true,
+          button_label: null,
+          button_target: null,
+          button_url: null,
+          audience: "subscribed",
+          segment_id: null,
+          exclude_segment_ids: [],
+          created_by_profile_id: null,
+          created_at: ago(1),
+          updated_at: ago(1),
+          locked_at: null,
+          archived_at: null,
+        },
       ],
       customer_campaign_sends: [
         {
@@ -215,7 +269,7 @@ export default function crm({ now }) {
             customer_id: c.id,
             email: c.email,
             first_name: c.first_name,
-            locale: "en-US",
+            locale: p?.lang ?? "en-US",
             marketing_email: c.marketing_email,
             migrated: Boolean(m),
             claimed_at: m?.claimed_at ?? null,
@@ -251,6 +305,24 @@ export default function crm({ now }) {
             unsubscribed: new Set(left.map((ev) => ev.customer_id)).size,
           };
         }),
+      // 20261031100000: each pillow line, for *Your pillow* (slice 09): one a Customer, of their Tier and first size.
+      customer_purchase_lines: (t) =>
+        (t.customers ?? []).flatMap((c) => {
+          const p = PEOPLE.find((x) => c.email.startsWith(`${x.first.toLowerCase().replace(/\s/g, "")}.`));
+          const tier = p?.bought.find((b) => b === "premium" || b === "basic");
+          if (!p || !tier) return [];
+          return [
+            {
+              customer_id: c.id,
+              order_id: `${c.id.slice(0, -3)}0d1`,
+              order_item_id: `${c.id.slice(0, -3)}1d1`,
+              paid_at: ago(lastBoughtDays(p) ?? 40),
+              product_type: "pillow",
+              tier,
+              size: p.sizes[0] ?? null,
+            },
+          ];
+        }),
       admin_customer_overview: (t) =>
         (t.customers ?? []).map((c) => {
           const i = PEOPLE.findIndex((p) => c.email.startsWith(`${p.first.toLowerCase().replace(/\s/g, "")}.`));
@@ -280,7 +352,7 @@ export default function crm({ now }) {
             open_followups: 0,
             paid_orders: p.purchases,
             first_paid_at: p.purchases ? ago(300) : null,
-            last_paid_at: p.purchases ? ago(p.stage === "at_risk" ? 800 : 40) : null,
+            last_paid_at: p.purchases ? ago(lastBoughtDays(p)) : null,
             bought: p.bought,
             last_readjusted_at: null,
             search_text: `${c.first_name} ${c.last_name} ${c.email}`.toLowerCase(),
@@ -293,7 +365,7 @@ export default function crm({ now }) {
             review_rating: null,
             last_campaign_sent_at: lastSent,
             purchases: p.purchases,
-            last_purchase_at: p.purchases ? ago(p.stage === "at_risk" ? 800 : 40) : null,
+            last_purchase_at: p.purchases ? ago(lastBoughtDays(p)) : null,
             lifecycle_stage: p.stage,
             lifecycle_detail: p.detail,
             lifecycle_undated: false,

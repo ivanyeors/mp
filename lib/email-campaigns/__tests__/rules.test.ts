@@ -389,8 +389,8 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
   it("fills only known Variables in its subject and preview line", () => {
     const r = CampaignDraftSchema.safeParse({ ...draft, subject: "{nickname}, hello", preheader: "{points}" });
     expect(Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]))).toEqual({
-      subject: "{nickname} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
-      preheader: "{points} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+      subject: "{nickname} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.",
+      preheader: "{points} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.",
     });
     // A legacy campaign's subject is its words, braces and all.
     expect(CampaignDraftSchema.safeParse({ ...FIRST_CAMPAIGN_DRAFT, subject: "{nickname}" }).success).toBe(true);
@@ -404,8 +404,8 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     ];
     const r = CampaignDraftSchema.safeParse({ ...draft, content: { ...content, blocks } });
     expect(Object.fromEntries(r.error!.issues.map((i) => [i.path.join("."), i.message]))).toEqual({
-      "content.blocks.0.text": "{soon} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
-      "content.blocks.1.paragraphs": "{frist_name} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.",
+      "content.blocks.0.text": "{soon} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.",
+      "content.blocks.1.paragraphs": "{frist_name} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.",
       "content.blocks.2.buttons.0.label": "{first_name} can go in a heading, a text block, the subject or the preview line, not here.",
     });
   });

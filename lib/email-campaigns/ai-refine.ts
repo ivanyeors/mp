@@ -57,7 +57,7 @@ What you may say:
 - Points: the request says whether you may mention them.
 
 Variables:
-- A Variable is a detail of the reader filled in at send: written {first_name}, {last_name} or {points_balance} in a line, or as a run {"var": "first_name"} in a text block.
+- A Variable is a detail of the reader filled in at send: written {first_name}, {last_name}, {points_balance} or {your_pillow} in a line, or as a run {"var": "first_name"} in a text block.
 - A subject line or a preview line may use {first_name} once, and no other Variable.
 - A rewrite keeps every Variable of the original, written as the original writes it, and adds none.
 

@@ -21,7 +21,7 @@ demoable path through the layers it touches.
 | [06](06-exclude-segments.md) | Exclude Segments from an Audience | AFK | **built** | none |
 | [07](07-rest-period.md) | A rest period between one person's emails | AFK | **built** | 01 |
 | [08](08-clicks-and-unsubscribes-per-campaign.md) | Clicks and unsubscribes, tied to the campaign | AFK, then HITL | **built**; privacy policy line open | 01 |
-| [09](09-fit-checks-and-variables.md) | The right version: fit checks and a Variable | AFK | not started | 04, 05 |
+| [09](09-fit-checks-and-variables.md) | The right version: fit checks and a Variable | AFK | **built** | 04, 05 |
 | [10](10-keep-sending.md) | Keep sending: reach people as they join the Audience | AFK | not started | 01, 07 |
 | [11](11-campaign-results.md) | Results per campaign: clicks, unsubscribes, purchases after | AFK | not started | 08 |
 | [12](12-engaged-and-unengaged.md) | Engaged and unengaged: a simple rule from the Lifecycle stage | AFK | not started | 08 |
@@ -41,7 +41,7 @@ graph TD
   s06[06 Exclusions · built]
   s07[07 Rest period · built]
   s08[08 Clicks and unsubscribes · built]
-  s09[09 Fit checks and Variables]
+  s09[09 Fit checks and Variables · built]
   s10[10 Keep sending]
   s11[11 Results]
   s12[12 Sunset rule]
@@ -84,5 +84,5 @@ graph TD
    unsubscribes per send), so clicks are collected before 11 and 12 read them. The privacy
    policy needs its line on click recording before 08 ships.
 5. **Done 2026-10-31:** 05 (reach filters: ships to, language, campaign history,
-   last emailed). **Next:** 09, then 10 and 11.
+   last emailed), then 09 (fit checks before a wave, and *Your pillow*). **Next:** 10 and 11.
 6. **03, 12 and 13** last: 12 needs six campaigns' clicks, 13 needs unsubscribe reasons.

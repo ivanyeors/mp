@@ -61,6 +61,7 @@ vi.mock("@/lib/email-campaigns/sender", async (importOriginal) => ({
       limitedBy: null,
       waiting: 0,
       leftOutBySegment: [],
+      fit: [],
     };
   }),
 }));

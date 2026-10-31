@@ -18,6 +18,16 @@ import {
   type CampaignClaimBlocker,
   type CampaignDraft,
 } from "./rules";
+import {
+  latestPillows,
+  PILLOW_LINE_COLUMNS,
+  productClasses,
+  RECIPIENT_FACT_COLUMNS,
+  recipientFactsFromRow,
+  type BoughtClass,
+  type RecipientFacts,
+} from "./fit-checks";
+import type { RecipientPillow } from "./variables";
 
 export { finishCampaignSend };
 
@@ -290,6 +300,70 @@ export async function readCampaignCandidates(
     }
   }
   return out;
+}
+
+/**
+ * Each customer's latest pillow, for *Your pillow* (PRD-campaign-audiences
+ * slice 09): their pillow purchase lines, the latest of them. One with no
+ * pillow line here is left out, and reads the fallback.
+ */
+export async function readLatestPillows(admin: SupabaseClient, customerIds: readonly string[]): Promise<Map<string, RecipientPillow>> {
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; i < customerIds.length; i += ID_CHUNK) {
+    const ids = customerIds.slice(i, i + ID_CHUNK);
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await admin
+        .from("customer_purchase_lines")
+        .select(PILLOW_LINE_COLUMNS)
+        .eq("product_type", "pillow")
+        .in("customer_id", ids)
+        .order("order_item_id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw new Error(`Could not read their pillows: ${error.message}`);
+      const page = (data ?? []) as Record<string, unknown>[];
+      rows.push(...page);
+      if (page.length < PAGE) break;
+    }
+  }
+  return latestPillows(rows);
+}
+
+/**
+ * What the fit checks know of each planned recipient (slice 09), in the
+ * order asked: the Customer overview's facts (`RECIPIENT_FACT_COLUMNS`: no
+ * review, rating or note) and their latest pillow. One not in the overview
+ * is left out.
+ */
+export async function readRecipientFacts(admin: SupabaseClient, customerIds: readonly string[]): Promise<RecipientFacts[]> {
+  const rows = new Map<string, Record<string, unknown>>();
+  for (let i = 0; i < customerIds.length; i += ID_CHUNK) {
+    const ids = customerIds.slice(i, i + ID_CHUNK);
+    const { data, error } = await admin.from("admin_customer_overview").select(RECIPIENT_FACT_COLUMNS).in("id", ids);
+    if (error) throw new Error(`Could not read who it goes to: ${error.message}`);
+    for (const row of (data ?? []) as unknown as Record<string, unknown>[]) rows.set(String(row.id), row);
+  }
+  const pillows = await readLatestPillows(admin, customerIds);
+  return customerIds.flatMap((id) => {
+    const row = rows.get(id);
+    const facts = row ? recipientFactsFromRow(row, pillows.get(id) ?? null) : null;
+    return facts ? [facts] : [];
+  });
+}
+
+/** What buying each product makes you (slice 09), as the purchase lines classify it. Products that no longer exist are left out. */
+export async function readProductClasses(admin: SupabaseClient, productIds: readonly string[]): Promise<Record<string, BoughtClass[]>> {
+  if (!productIds.length) return {};
+  const { data, error } = await admin.from("products").select("id, product_type, product_variants(pillow_product_id)").in("id", [...productIds]);
+  if (error) throw new Error(`Could not read the products: ${error.message}`);
+  const rows = (data ?? []) as unknown as { id: string; product_type: string | null; product_variants: { pillow_product_id: number | string | null }[] | null }[];
+  const pillowIds = [...new Set(rows.flatMap((r) => (r.product_variants ?? []).flatMap((v) => (v.pillow_product_id == null ? [] : [String(v.pillow_product_id)]))))];
+  const kinds = new Map<string, string>();
+  if (pillowIds.length) {
+    const { data: pillows, error: pillowError } = await admin.from("pillow_products").select("id, kind").in("id", pillowIds);
+    if (pillowError) throw new Error(`Could not read the pillow products: ${pillowError.message}`);
+    for (const p of (pillows ?? []) as { id: number | string; kind: string | null }[]) if (p.kind) kinds.set(String(p.id), p.kind);
+  }
+  return productClasses(rows, kinds);
 }
 
 /** Every wave of every campaign email, for the pause rule, and this Campaign's own. */

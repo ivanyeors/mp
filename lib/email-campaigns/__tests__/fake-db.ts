@@ -14,7 +14,10 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  *    and `points_balance`;
  *  - for a campaign's products (slice 07), `products` (`select`, `in`) with
  *    each row's Variants and images nested as the shop's select returns them,
- *    and `media_assets` (`in` on `hosted_url`).
+ *    and `media_assets` (`in` on `hosted_url`);
+ *  - for the fit checks and *Your pillow* (PRD-campaign-audiences slice 09),
+ *    `admin_customer_overview` (each Customer's facts), `customer_purchase_lines`
+ *    (the test's pillow lines) and `pillow_products`.
  *
  * The claim mirrors the SQL (20261031130000): the wave check, the rule (here
  * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
@@ -35,6 +38,10 @@ export interface FakeCustomer {
   marketing_email?: string;
   total_orders?: number;
   created_at?: string;
+  /** The overview's, for the fit checks (slice 09). */
+  ship_country?: string | null;
+  bought?: string[];
+  last_purchase_at?: string | null;
 }
 
 export interface FakeMigrated {
@@ -86,6 +93,10 @@ export interface FakeWorld {
    * dated near today never rest anyone by accident.
    */
   recentMarketing?: Record<string, string[]>;
+  /** `customer_purchase_lines` pillow rows: `customer_id`, `product_type`, `tier`, `size`, `paid_at`, `order_item_id` (slice 09). */
+  pillowLines?: Row[];
+  /** `pillow_products` rows: `id`, `kind`. */
+  pillowProducts?: Row[];
 }
 
 export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [], settings: {} });
@@ -271,6 +282,21 @@ export function fakeCampaignsClient(world: FakeWorld) {
       if (table === "customer_campaign_wave_stats") return query(() => waveStats(world));
       if (table === "customer_campaign_sends") return query(() => world.sends as unknown as Row[]);
       if (table === "admin_audit_log") return query(() => (world.auditLog ?? []) as unknown as Row[]);
+      if (table === "admin_customer_overview")
+        return query(() =>
+          world.customers.map((c) => ({
+            id: c.id,
+            first_name: c.first_name ?? null,
+            last_name: c.last_name ?? null,
+            locale: c.locale ?? "en-US",
+            ship_country: c.ship_country ?? null,
+            bought: c.bought ?? [],
+            last_purchase_at: c.last_purchase_at ?? null,
+            points_available: c.points ?? 0,
+          })),
+        );
+      if (table === "customer_purchase_lines") return query(() => world.pillowLines ?? []);
+      if (table === "pillow_products") return query(() => world.pillowProducts ?? []);
       if (table === "site_settings") return query(() => Object.entries(world.settings).map(([key, value]) => ({ key, value })));
       throw new Error(`fake: no table ${table}`);
     },

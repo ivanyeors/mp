@@ -395,4 +395,4 @@ revoke execute on function public.revert_shopify_email_consent(uuid) from public
 grant execute on function public.revert_shopify_email_consent(uuid) to service_role;
 
 comment on table public.customer_consent_events is
-  'Marketing consent changes. Append-only; written only by set_marketing_email(). Sources: 20261031090000_consent_by_default.sql.';
+  'Marketing consent changes. Append-only; written only by set_marketing_email(). Sources: the consent_by_default migration.';

@@ -50,6 +50,13 @@ export const CHECK_LABEL: Record<string, string> = {
   image_words: "Words beside the images",
   ai_drafted: "Drafted with AI",
   links_unchecked: "Links not checked",
+  // Who the wave goes to, against the email (PRD-campaign-audiences slice 09): advice, after a plan.
+  fit_chinese: "Readers of Chinese",
+  fit_fallbacks: "Who reads the fallback words",
+  fit_in_store: "In-store visits",
+  fit_already_own: "Products they already own",
+  fit_recent: "Recent buyers",
+  fit_unread: "Who it goes to",
   send_limit: "Room in the sending plan",
   reports: "Bounce and spam reports",
 };
@@ -318,6 +325,15 @@ export function languageSummary(p: { eligible: number; eligibleChinese: number; 
   if (!p.hasChinese) return `${readers}; they get English, as this email has no 中文 version.`;
   const wave = p.selected < p.eligible ? ` In this wave, ${n(p.selectedChinese)} of ${n(p.selected)} get it.` : "";
   return `${readers} and will get the 中文 version; everyone else gets English.${wave}`;
+}
+
+/**
+ * Pure — the plan's line on its fit checks (PRD-campaign-audiences slice 09),
+ * which *The email* lists with its advice: `count` of them.
+ */
+export function fitSummary(count: number): string | null {
+  if (!count) return null;
+  return `Recommended: ${count === 1 ? "one thing" : `${n(count)} things`} about who it goes to, listed under The email above. None holds the wave.`;
 }
 
 // ─── After a wave ────────────────────────────────────────────────────────────
