@@ -5,11 +5,17 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { listAdminLocationRows } from "@/lib/partners";
 import { touchLastUsed } from "@/lib/media-assets";
+import {
+  BranchSaveError,
+  BranchesSchema,
+  savePartnerBranches,
+} from "@/lib/locations/save-branches";
 
 export const runtime = "nodejs";
 
 // ponytail: table/route still named `partners` (ADR 0012 — no rename); these rows
 // are Locations. `type` discriminates own studios from partner clinics.
+
 const CreateSchema = z.object({
   name: z.string().min(1).max(200),
   logo_url: z.string().nullable().optional(),
@@ -20,7 +26,10 @@ const CreateSchema = z.object({
   type: z.enum(["own", "partner"]).optional().default("partner"),
   address: z.string().nullable().optional(),
   postal_code: z.string().nullable().optional(),
+  branch_name: z.string().trim().max(120).nullable().optional(),
   bookable: z.boolean().optional().default(true),
+  /** The partner's further clinics. Only a partner has them. */
+  branches: BranchesSchema.optional(),
 });
 
 export async function GET() {
@@ -68,6 +77,7 @@ export async function POST(req: Request) {
         type: parsed.type,
         address: parsed.address ?? null,
         postal_code: parsed.postal_code ?? null,
+        branch_name: parsed.branch_name || null,
         bookable: parsed.bookable,
         position: nextPosition,
       })
@@ -76,6 +86,17 @@ export async function POST(req: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (parsed.branches?.length) {
+      try {
+        await savePartnerBranches(data.id, parsed.branches);
+      } catch (e) {
+        // A partner half-added is worse than one not added: take the main row back out.
+        await admin.from("partners").delete().eq("id", data.id);
+        invalidateTag("locations");
+        throw e;
+      }
     }
 
     await touchLastUsed({
@@ -91,6 +112,9 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues }, { status: 400 });
+    }
+    if (err instanceof BranchSaveError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
     }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

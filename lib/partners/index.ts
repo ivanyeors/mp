@@ -1,9 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { getLocationRows, selectPartnerRows } from "@/lib/locations";
+import { branchesByParent, getLocationRows, selectPartnerRows } from "@/lib/locations";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import {
   DEFAULT_AGREEMENT_MD,
   DEFAULT_WORK_WITH_US,
+  type PartnerPlace,
   type PartnerRow,
   type PartnersPageRow,
   type ResolvedPartner,
@@ -36,13 +37,26 @@ function resolveWorkWithUs(
   };
 }
 
-function toResolvedPartner(row: PartnerRow): ResolvedPartner {
+function toPlace(row: PartnerRow): PartnerPlace | null {
+  const address = row.address?.trim();
+  if (!address) return null;
+  return {
+    id: row.id,
+    branchName: row.branch_name?.trim() || null,
+    address,
+    postalCode: row.postal_code?.trim() || null,
+  };
+}
+
+/** A partner with its clinics: the main row's place first, then its branches'. */
+function toResolvedPartner(row: PartnerRow, branches: PartnerRow[]): ResolvedPartner {
   return {
     id: row.id,
     name: row.name,
     logoUrl: row.logo_url,
     websiteUrl: row.website_url,
     description: row.description,
+    locations: [row, ...branches].map(toPlace).filter((p): p is PartnerPlace => p !== null),
   };
 }
 
@@ -91,8 +105,11 @@ export async function getAgreementMarkdown(): Promise<string> {
 export async function getPartners(opts?: {
   includeHidden?: boolean;
 }): Promise<ResolvedPartner[]> {
-  const rows = selectPartnerRows(await getLocationRows(), opts?.includeHidden);
-  return rows.map(toResolvedPartner);
+  const all = await getLocationRows();
+  const branches = branchesByParent(all);
+  return selectPartnerRows(all, opts?.includeHidden).map((row) =>
+    toResolvedPartner(row, branches.get(row.id) ?? []),
+  );
 }
 
 export async function getPartnerRows(opts?: {
@@ -101,11 +118,18 @@ export async function getPartnerRows(opts?: {
   return selectPartnerRows(await getLocationRows(), opts?.includeHidden);
 }
 
-export type { WorkWithUsContent, PartnersPageRow, PartnerRow, ResolvedPartner, ResolvedPartnersPage };
+export type {
+  WorkWithUsContent,
+  PartnersPageRow,
+  PartnerPlace,
+  PartnerRow,
+  ResolvedPartner,
+  ResolvedPartnersPage,
+};
 
 /**
- * Every location row (own + partner) ordered by position, for the admin
- * Locations table. Throws on a Supabase error so callers can map it to a
+ * Every location row (own + partner, branches included) ordered by position,
+ * for the admin Locations table, which nests each partner's branches. Throws on a Supabase error so callers can map it to a
  * status code.
  */
 export async function listAdminLocationRows(): Promise<PartnerRow[]> {

@@ -88,7 +88,7 @@ function userObject(u) {
     email_confirmed_at: at,
     phone: u.phone ?? "",
     confirmed_at: at,
-    last_sign_in_at: at,
+    last_sign_in_at: u.last_sign_in_at ?? at,
     app_metadata: { provider: "email", providers: ["email"] },
     user_metadata: u.user_metadata ?? {},
     identities: [],

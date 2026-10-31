@@ -220,8 +220,15 @@ for (const [vname, vopts] of viewports) {
       for (const c of shot.clicks ?? []) {
         // A visible tab named exactly this wins over earlier text that only contains
         // it: on a product page "Reviews" is the tab, not "4.5 (2 reviews)" above it.
+        // An icon-only button has no text, so its accessible name comes last.
         const tab = page.getByRole("tab", { name: c, exact: true }).filter({ visible: true });
-        const target = (await tab.count()) ? tab.first() : page.getByText(c, { exact: false }).first();
+        const text = page.getByText(c, { exact: false });
+        const button = page.getByRole("button", { name: c }).filter({ visible: true });
+        const target = (await tab.count())
+          ? tab.first()
+          : (await text.count()) || !(await button.count())
+            ? text.first()
+            : button.first();
         await target.click({ timeout: 15_000 });
         await settle(page);
       }
