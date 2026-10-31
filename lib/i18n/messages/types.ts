@@ -149,7 +149,6 @@ export type Messages = {
       sizingChartTitle: string;
       sizingChartDescription: string;
       aftercareTitle: string;
-      aftercareParagraphs: string[];
       careButton: string;
       bottomCustomise: string;
       bookAdjustment: string;

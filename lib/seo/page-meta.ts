@@ -105,7 +105,7 @@ export const ENGLISH_ONLY_PAGE_META = {
     path: "/mp-care",
     title: "How to care for your Mpillow",
     description:
-      "How to wash, dry, store and look after your custom Mpillow, its covers and its cases, with quick care tips that keep its shape and support right for years.",
+      "Your Mpillow care ritual: fluff it daily, wash the cover sheets weekly and the case monthly, and wash the whole pillow once a year, with video guides.",
   },
   privacyPolicy: {
     path: "/privacy-policy",

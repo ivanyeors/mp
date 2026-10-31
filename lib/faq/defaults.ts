@@ -133,12 +133,12 @@ export const FAQ_DEFAULTS: FaqDefaultCategory[] = [
           "en-US": {
             question: "What is the Mpillow Inner Protector for?",
             answer:
-              "Our Mpillow design with hygiene in mind. The inner protector helps to prevent all kinds of dirt and bacteria even liquids or saliva from entering the pillow or reaching the fillings.\n\nAs it is made from a waterproof layer beneath the fabric, even water molecules could not penetrate into the fabric. With that being said, you will still need to wash the inner protector once every 6 months as there are many layers of protection provided by the pillow cover and pillow case. However all the dirt and germs will all be trapped in the protector, so washing is still recommended. However washing it more frequently or less is still up to your preference.",
+              "Our Mpillow design with hygiene in mind. The inner protector helps to prevent all kinds of dirt and bacteria even liquids or saliva from entering the pillow or reaching the fillings.\n\nAs it is made from a waterproof layer beneath the fabric, even water molecules could not penetrate into the fabric. Because the cover sheets and pillow case add more layers of protection on top, the inner protector only needs washing once a year, when you wash the whole pillow. Dirt and germs collect in the protector, so do not skip it. You can wash it more often if you prefer. See the [care ritual](/mp-care) for the full routine.",
           },
           "zh-CN": {
             question: "Mpillow 内胆保护套有什么作用？",
             answer:
-              "我们的设计以卫生为优先。内胆保护套可防止污垢、细菌、液体和唾液进入填充物。\n\n织物下方有防水层——水分子也无法渗透。建议每 6 个月清洗一次内胆保护套；具体频率可按个人喜好调整。",
+              "我们的设计以卫生为优先。内胆保护套可防止污垢、细菌、液体和唾液进入填充物。\n\n织物下方有防水层——水分子也无法渗透。由于外层还有床单套和枕套保护，内胆保护套每年清洗一次即可，与整只枕头一起清洗。污垢和细菌会积聚在保护套中，请勿省略；也可按个人喜好更频繁地清洗。完整步骤请参阅[保养指南](/mp-care)。",
           },
         },
       },
