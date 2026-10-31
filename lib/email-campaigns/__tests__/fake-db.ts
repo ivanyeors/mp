@@ -17,7 +17,8 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  *    and `media_assets` (`in` on `hosted_url`);
  *  - for the fit checks and *Your pillow* (PRD-campaign-audiences slice 09),
  *    `admin_customer_overview` (each Customer's facts), `customer_purchase_lines`
- *    (the test's pillow lines) and `pillow_products`.
+ *    (the test's pillow lines) and `pillow_products`;
+ *  - for kept sending (slice 10), `email_campaigns` (`eq`, `is`, `order`).
  *
  * The claim mirrors the SQL (20261031144935): the wave check, the rule (here
  * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
@@ -97,6 +98,8 @@ export interface FakeWorld {
   pillowLines?: Row[];
   /** `pillow_products` rows: `id`, `kind`. */
   pillowProducts?: Row[];
+  /** `email_campaigns` rows, as the table holds them: what the daily job's list reads (PRD-campaign-audiences slice 10). */
+  campaignRows?: Row[];
 }
 
 export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [], settings: {} });
@@ -169,6 +172,7 @@ function query(rows: () => Row[]) {
   const q = {
     select: (_columns?: string, opts?: { count?: string; head?: boolean }) => ((head = opts?.head === true), q),
     eq: (col: string, v: unknown) => (filters.push((r) => r[col] === v), q),
+    is: (col: string, v: unknown) => (filters.push((r) => (r[col] ?? null) === v), q),
     in: (col: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[col])), q),
     gte: (col: string, v: string) => (filters.push((r) => String(r[col]) >= v), q),
     order: (col: string, opts?: { ascending?: boolean }) => ((order = col), (descending = opts?.ascending === false), q),
@@ -297,6 +301,7 @@ export function fakeCampaignsClient(world: FakeWorld) {
         );
       if (table === "customer_purchase_lines") return query(() => world.pillowLines ?? []);
       if (table === "pillow_products") return query(() => world.pillowProducts ?? []);
+      if (table === "email_campaigns") return query(() => world.campaignRows ?? []);
       if (table === "site_settings") return query(() => Object.entries(world.settings).map(([key, value]) => ({ key, value })));
       throw new Error(`fake: no table ${table}`);
     },

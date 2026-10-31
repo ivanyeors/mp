@@ -14,6 +14,7 @@ export const runtime = "nodejs";
 
 type AuditRow = {
   id: string;
+  actor_id?: string | null;
   actor_email: string | null;
   actor_profile_id?: string | null;
   action: string;
@@ -70,9 +71,11 @@ export default async function AuditLogPage({
 
   const actorProfile = (r: AuditRow) =>
     r.actor_profile_id ? profileName.get(r.actor_profile_id) : undefined;
+  // No person: a job the system ran by itself, such as kept sending (PRD-campaign-audiences slice 10).
+  const actorName = (r: AuditRow) => r.actor_email ?? (r.actor_id ? "—" : "System");
   const actorLabel = (r: AuditRow) => {
     const profile = actorProfile(r);
-    return `${r.actor_email ?? "—"}${profile ? ` as ${profile}` : ""}`;
+    return `${actorName(r)}${profile ? ` as ${profile}` : ""}`;
   };
 
   const chip = (href: string, label: string, active: boolean) => (
@@ -171,7 +174,7 @@ export default async function AuditLogPage({
                       {formatTimestamp(r.created_at)}
                     </td>
                     <td className="px-4 py-3">
-                      {r.actor_email ?? "—"}
+                      {actorName(r)}
                       {actorProfile(r) ? (
                         <span className="text-muted-foreground"> as {actorProfile(r)}</span>
                       ) : null}

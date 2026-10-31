@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { listSegments } from "@/lib/crm/segments";
+import { keptToday } from "@/lib/email-campaigns/keep-sending";
 import { getCampaign, getCampaignStats, readWaveStats } from "@/lib/email-campaigns/store";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -36,6 +37,16 @@ export default async function EmailCampaignPage({ params }: { params: Promise<{ 
         options.push({ id: campaign.segmentId, name: "(archived Segment)" });
     }
     return (
-        <CampaignEditor campaign={campaign} draft={campaign} stats={stats} waves={waves} segments={options} staffEmail={ctx.email} pointsLive={points} ai={ai} />
+        <CampaignEditor
+            campaign={campaign}
+            draft={campaign}
+            stats={stats}
+            waves={waves}
+            segments={options}
+            staffEmail={ctx.email}
+            pointsLive={points}
+            ai={ai}
+            keptToday={keptToday(waves, new Date())}
+        />
     );
 }

@@ -30,6 +30,7 @@ import {
 } from "./content";
 import { chineseVersionOf, chineseWords } from "./chinese-version";
 import { campaignVariable, fallbackWords, isVariableKey, type VariableKey } from "./variables";
+import { KEEP_SENDING_COLUMNS, keepSendingFromRow, type KeepSending } from "./keep-sending";
 
 export { isHttpsUrl };
 
@@ -248,12 +249,14 @@ export interface Campaign extends CampaignDraft {
   lockedAt: string | null;
   archivedAt: string | null;
   createdBy: string | null;
+  /** Kept sending (PRD-campaign-audiences slice 10): off unless a person turned it on after the first wave. */
+  keepSending?: KeepSending;
 }
 
 /** The one table row's columns, in its order. */
 export const CAMPAIGN_COLUMNS =
   "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, exclude_segment_ids, " +
-  "created_at, updated_at, locked_at, archived_at, creator:mp_staff!created_by_profile_id(name)";
+  `created_at, updated_at, locked_at, archived_at, ${KEEP_SENDING_COLUMNS}, creator:mp_staff!created_by_profile_id(name)`;
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
@@ -292,6 +295,7 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
     lockedAt: str(row.locked_at),
     archivedAt: str(row.archived_at),
     createdBy: str((creator as { name?: unknown } | null | undefined)?.name),
+    keepSending: keepSendingFromRow(row),
   };
 }
 
@@ -576,10 +580,13 @@ export function selfDefeatingAudience(
   );
 }
 
-/** Pure — the next wave's label: `w1`, `w2`, … after the ones the Campaign has. */
+/**
+ * Pure — the next wave's label: `w1`, `w2`, … after the ones the Campaign has.
+ * The daily job's Waves (`daily-…`, slice 10) are not numbered and are not counted.
+ */
 export function nextWaveLabel(existing: readonly string[]): string {
   const taken = new Set(existing);
-  let n = existing.length + 1;
+  let n = existing.filter((w) => /^w\d+$/.test(w)).length + 1;
   while (taken.has(`w${n}`)) n++;
   return `w${n}`;
 }

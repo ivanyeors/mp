@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
-import { SegmentUnavailableError, getSegment, resolveSegment } from "@/lib/crm/segments";
+import { getSegment } from "@/lib/crm/segments";
 import { readSegmentFilters } from "@/lib/crm/segment-rules";
 import {
   CampaignDraftSchema,
@@ -28,7 +28,6 @@ import {
   sendCampaignTest,
   usesPointsBalance,
   type BatchResult,
-  type CampaignExclusionSource,
   type CampaignReadiness,
   type WavePlanResult,
 } from "@/lib/email-campaigns/sender";
@@ -36,7 +35,19 @@ import { campaignImageFieldErrors, readCampaignImages } from "@/lib/email-campai
 import { readCampaignProductCards, shopProductCard, type CampaignProductCard, type ShopProductRow } from "@/lib/email-campaigns/products";
 import { getProducts } from "@/lib/ecommerce/products";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
-import { archiveCampaign, createCampaign, getCampaign, listPastCampaigns, lockCampaign, updateCampaign, type PastCampaign } from "@/lib/email-campaigns/store";
+import { approveSegments, leftOutSegments, segmentAudience } from "@/lib/email-campaigns/segment-sources";
+import {
+  archiveCampaign,
+  createCampaign,
+  getCampaign,
+  getCampaignStats,
+  listPastCampaigns,
+  lockCampaign,
+  saveKeepSending,
+  updateCampaign,
+  type PastCampaign,
+} from "@/lib/email-campaigns/store";
+import { keepSendingBlocker, parseDailyCap, KEEP_SENDING_MAX_CAP, type KeepSending } from "@/lib/email-campaigns/keep-sending";
 import { BLANK_PREVIEW, STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
 import { imageAssetsIn } from "@/lib/email-campaigns/content";
 import { NO_DETAILS, POINTS_NOT_LIVE, SAMPLE_RECIPIENT, type PreviewAs } from "@/lib/email-campaigns/variables";
@@ -413,29 +424,6 @@ export async function sendCampaignTestAction(
   return { ok: true, sent: result.sent.length, failed: result.failed };
 }
 
-/**
- * The Segments a campaign leaves out (PRD-campaign-audiences slice 06), each
- * with its name, so a wave refused for one says which. Never widened: one that
- * is archived, needs review or is gone refuses the wave, as the Segment it is
- * sent to does.
- */
-async function leftOutSegments(ids: readonly string[]): Promise<CampaignExclusionSource[]> {
-  return Promise.all(
-    ids.map(async (segmentId) => {
-      const name = (await getSegment(segmentId))?.name ?? "a Segment that no longer exists";
-      async function* customerIds() {
-        try {
-          yield* resolveSegment(segmentId);
-        } catch (err) {
-          if (!(err instanceof SegmentUnavailableError)) throw err;
-          throw new Error(`It leaves out “${name}”, which cannot be used: ${err.message} Take it out of Leave out, or fix the Segment.`);
-        }
-      }
-      return { segmentId, name, ids: customerIds };
-    }),
-  );
-}
-
 export type WaveRequest = { size: number; retryFailed?: boolean; resume?: boolean };
 
 export type WaveAnswer =
@@ -463,7 +451,7 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
       campaign,
       { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume), freshLinks: start === true },
       setup,
-      campaign.segmentId ? () => resolveSegment(campaign.segmentId!) : undefined,
+      segmentAudience(campaign),
       await leftOutSegments(campaign.excludeSegmentIds),
     );
   } catch (err) {
@@ -516,4 +504,70 @@ export async function sendCampaignBatchAction(
     campaignSenderSetup(),
   );
   return { ok: true, ...result };
+}
+
+// ---------------------------------------------------------------------------
+// Kept sending (PRD-campaign-audiences slice 10)
+// ---------------------------------------------------------------------------
+
+export type KeepSendingAnswer = { ok: true; keepSending: KeepSending } | Failure;
+
+export type KeepSendingChange =
+  | { on: true; dailyCap: number }
+  | { on: false }
+  | { dailyCap: number }
+  | { paused: boolean };
+
+const CAP_ERROR = `A day's cap is 1 to ${KEEP_SENDING_MAX_CAP}.`;
+
+/**
+ * Turns keep sending on or off, changes its cap, pauses or resumes it. On, and
+ * a resume, take the Segments' filters as they are now: what the person
+ * approves. Only a campaign a person has sent to can keep sending, and its
+ * email and Audience stay as the first wave fixed them. Audited as the person.
+ */
+export async function changeKeepSending(id: string, change: KeepSendingChange): Promise<KeepSendingAnswer> {
+  const ctx = await assertAdmin("campaigns");
+  const campaign = await loadCampaign(id);
+  if (!campaign || campaign.archivedAt) return NOT_FOUND;
+  const admin = supabaseAdmin();
+  const before = campaign.keepSending ?? null;
+  let keepSending: KeepSending;
+  let action: string;
+  try {
+    if ("on" in change && change.on) {
+      const dailyCap = parseDailyCap(change.dailyCap);
+      if (!dailyCap) return { ok: false, error: CAP_ERROR, fieldErrors: { dailyCap: CAP_ERROR } };
+      const blocked = keepSendingBlocker(campaign, (await getCampaignStats(admin, id)).handed);
+      if (blocked) return { ok: false, error: blocked };
+      keepSending = await saveKeepSending(admin, id, { on: true, dailyCap, segments: await approveSegments(campaign) });
+      action = "email_campaign.keep_sending_on";
+    } else if ("on" in change) {
+      keepSending = await saveKeepSending(admin, id, { on: false });
+      action = "email_campaign.keep_sending_off";
+    } else if ("dailyCap" in change) {
+      const dailyCap = parseDailyCap(change.dailyCap);
+      if (!dailyCap) return { ok: false, error: CAP_ERROR, fieldErrors: { dailyCap: CAP_ERROR } };
+      if (!before?.on) return { ok: false, error: "Turn keep sending on first." };
+      keepSending = await saveKeepSending(admin, id, { dailyCap });
+      action = "email_campaign.keep_sending_cap";
+    } else {
+      if (!before?.on) return { ok: false, error: "Turn keep sending on first." };
+      keepSending = change.paused
+        ? await saveKeepSending(admin, id, { paused: true, at: new Date().toISOString() })
+        : await saveKeepSending(admin, id, { paused: false, segments: await approveSegments(campaign) });
+      action = change.paused ? "email_campaign.keep_sending_pause" : "email_campaign.keep_sending_resume";
+    }
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+  await recordAdminAction({
+    actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
+    action,
+    entityType: "email_campaign",
+    entityId: id,
+    before: before ? { on: before.on, daily_cap: before.dailyCap, paused_at: before.pausedAt, paused_reason: before.pausedReason } : null,
+    after: { on: keepSending.on, daily_cap: keepSending.dailyCap, paused_at: keepSending.pausedAt, segments: Object.keys(keepSending.segments) },
+  });
+  return { ok: true, keepSending };
 }

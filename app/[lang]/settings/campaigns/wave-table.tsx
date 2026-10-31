@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
+import { waveName } from "@/lib/email-campaigns/keep-sending";
 import { PAUSE_LINES_TEXT, waveRows, type WaveRow } from "@/lib/email-campaigns/send-flow";
 import { formatAdminDateTime } from "@/lib/format/admin-date";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,7 @@ export function WaveTable({ waves, className }: { waves: CampaignWaveStats[]; cl
                 {rows.map((r) => (
                     <li key={r.wave} className="space-y-1 py-3 text-sm">
                         <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium">Wave {r.wave}</span>
+                            <span className="font-medium">{r.wave === waveName(r.wave) ? `Wave ${r.wave}` : waveName(r.wave)}</span>
                             <StateBadge row={r} />
                         </div>
                         <p className="text-xs text-muted-foreground">{r.lastSentAt ? formatAdminDateTime(r.lastSentAt) : "not sent yet"}</p>
@@ -69,7 +70,7 @@ export function WaveTable({ waves, className }: { waves: CampaignWaveStats[]; cl
                     <TableBody>
                         {rows.map((r) => (
                             <TableRow key={r.wave}>
-                                <TableCell className="font-medium">{r.wave}</TableCell>
+                                <TableCell className="font-medium">{waveName(r.wave)}</TableCell>
                                 <TableCell className="text-sm">{r.lastSentAt ? formatAdminDateTime(r.lastSentAt) : "—"}</TableCell>
                                 <TableCell className="text-right tabular-nums">{n(r.sent)}</TableCell>
                                 <TableCell className="text-right tabular-nums">

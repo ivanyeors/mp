@@ -600,7 +600,7 @@ Where a **Customer** is, as a two-letter country: their latest counted **Order**
 _Avoid_: taking *Unknown* for Singapore, or leaving it out silently (the Customers list says how many a Singapore or overseas filter leaves out); calling it where they live (it is where we last shipped to)
 
 **Kept sending**:
-A campaign that, after a first **Wave** a person started, runs one Wave a day by itself to people who have joined its **Audience** since, inside Resend's daily room, the pause rule and the **Rest period**, until paused. Its email and Audience stay as the first Wave locked them. Chained onto the daily job; no new cron.
+A campaign that, after a first **Wave** a person started, runs one Wave a day by itself (at 10:00, labelled *Daily, 1 Nov*) to people who have joined its **Audience** since, up to its daily cap, inside Resend's daily room less a reserve of 30, the pause rule and the **Rest period**, until paused. Its email and Audience stay as the first Wave locked them; its Segments' filters stay as a person approved them, and the daily job pauses it when one changes (PRD-campaign-audiences slice 10). Chained onto the daily job; no new cron.
 _Avoid_: "automation", "flow", "drip" (each suggests branching or content changes it does not have); reading it as a way to change an email after sending
 
 **Unengaged**:

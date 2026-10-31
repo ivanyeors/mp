@@ -28,6 +28,7 @@ import {
   type RecipientFacts,
 } from "./fit-checks";
 import type { RecipientPillow } from "./variables";
+import { approvedSegmentsRow, KEEP_SENDING_COLUMNS, keepSendingFromRow, keptWaveLabel, type ApprovedSegment, type KeepSending } from "./keep-sending";
 
 export { finishCampaignSend };
 
@@ -247,6 +248,102 @@ export async function lockCampaign(admin: SupabaseClient, id: string): Promise<v
     .eq("id", id)
     .is("locked_at", null);
   if (error) throw new Error(`Could not lock the campaign: ${error.message}`);
+}
+
+// ---------------------------------------------------------------------------
+// Kept sending (PRD-campaign-audiences slice 10; 20261031155043_campaign_keep_sending.sql)
+// ---------------------------------------------------------------------------
+
+/** Every live campaign kept sending and not paused, oldest started first: the daily job's list. */
+export async function readKeptSendingCampaigns(admin: SupabaseClient): Promise<Campaign[]> {
+  const { data, error } = await admin
+    .from("email_campaigns")
+    .select(CAMPAIGN_COLUMNS)
+    .eq("keep_sending", true)
+    .is("keep_sending_paused_at", null)
+    .is("archived_at", null)
+    .order("locked_at", { ascending: true });
+  if (error) throw new Error(`Could not read the campaigns that keep sending: ${error.message}`);
+  return ((data ?? []) as unknown as Record<string, unknown>[]).flatMap((row) => {
+    const c = campaignFromRow(row);
+    return c && c.lockedAt ? [c] : [];
+  });
+}
+
+/**
+ * A person's change to keep sending: on (with the Segments' filters they
+ * approve now), off, a new cap, a pause or a resume. A live campaign only;
+ * returns the state as stored.
+ */
+export async function saveKeepSending(
+  admin: SupabaseClient,
+  id: string,
+  change:
+    | { on: true; dailyCap: number; segments: Record<string, ApprovedSegment> }
+    | { on: false }
+    | { dailyCap: number }
+    | { paused: true; at: string }
+    | { paused: false; segments: Record<string, ApprovedSegment> },
+): Promise<KeepSending> {
+  const row =
+    "on" in change
+      ? change.on
+        ? {
+            keep_sending: true,
+            keep_sending_daily_cap: change.dailyCap,
+            keep_sending_paused_at: null,
+            keep_sending_paused_reason: null,
+            keep_sending_segments: approvedSegmentsRow(change.segments),
+          }
+        : { keep_sending: false, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null }
+      : "paused" in change
+        ? change.paused
+          ? { keep_sending_paused_at: change.at, keep_sending_paused_reason: null }
+          : { keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: approvedSegmentsRow(change.segments) }
+        : { keep_sending_daily_cap: change.dailyCap };
+  const { data, error } = await admin
+    .from("email_campaigns")
+    .update(row)
+    .eq("id", id)
+    .is("archived_at", null)
+    .select(KEEP_SENDING_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(`Could not save keep sending: ${error.message}`);
+  if (!data) throw new Error("That campaign does not exist.");
+  return keepSendingFromRow(data as unknown as Record<string, unknown>);
+}
+
+/** The daily job pauses a campaign, saying why; a no-op for one a person paused or turned off meanwhile. */
+export async function pauseKeptSending(admin: SupabaseClient, id: string, reason: string, at: Date): Promise<void> {
+  const { error } = await admin
+    .from("email_campaigns")
+    .update({ keep_sending_paused_at: at.toISOString(), keep_sending_paused_reason: reason.slice(0, 500) })
+    .eq("id", id)
+    .eq("keep_sending", true)
+    .is("keep_sending_paused_at", null);
+  if (error) throw new Error(`Could not pause the campaign: ${error.message}`);
+}
+
+/** How many sends one Wave of a campaign has claimed, whatever became of them: the day's cap counts them all. */
+export async function countWaveClaims(admin: SupabaseClient, campaignId: string, wave: string): Promise<number> {
+  const { count, error } = await admin
+    .from("customer_campaign_sends")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_id", campaignId)
+    .eq("wave", wave);
+  if (error) throw new Error(`Could not count today's sends: ${error.message}`);
+  return count ?? 0;
+}
+
+/** Today's kept-sending emails the provider took, across campaigns: the Sending card's line. */
+export async function readKeptToday(admin: SupabaseClient, now: Date): Promise<number> {
+  const { count, error } = await admin
+    .from("customer_campaign_sends")
+    .select("id", { count: "exact", head: true })
+    .eq("wave", keptWaveLabel(now))
+    .in("status", ["sent", "bounced", "complained"]);
+  if (error) throw new Error(`Could not count today's kept-sending emails: ${error.message}`);
+  return count ?? 0;
 }
 
 /** PostgREST returns at most this many rows a request, so reads page. */

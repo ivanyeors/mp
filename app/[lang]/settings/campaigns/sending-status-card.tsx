@@ -8,6 +8,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import type { PreflightCheck } from "@/lib/customer-migration/wave-sender";
 import { sendingRows } from "@/lib/email-campaigns/send-flow";
 import { REST_PERIOD_TEXT } from "@/lib/email-campaigns/rules";
+import { KEEP_SENDING_RESERVE, KEEP_SENDING_TIME } from "@/lib/email-campaigns/keep-sending";
 import type { SendingStatus } from "@/lib/email-campaigns/sender";
 import { checkCampaignReadiness } from "./actions";
 import { AllowanceMeters, CheckList, StatusIcon } from "./send-parts";
@@ -19,7 +20,16 @@ import { AllowanceMeters, CheckList, StatusIcon } from "./send-parts";
  * month. The key stays in Vercel (PRD decision 1): nothing here carries it.
  * *Run every check* adds the ones that call the live site.
  */
-export function SendingStatusCard({ status, origin }: { status: SendingStatus | null; origin: string }) {
+export function SendingStatusCard({
+    status,
+    origin,
+    keptSending = 0,
+}: {
+    status: SendingStatus | null;
+    origin: string;
+    /** Campaigns kept sending and not paused (PRD-campaign-audiences slice 10). */
+    keptSending?: number;
+}) {
     const [full, setFull] = useState<PreflightCheck[] | null>(null);
     const [checking, setChecking] = useState(false);
     const runAll = async () => {
@@ -94,6 +104,19 @@ export function SendingStatusCard({ status, origin }: { status: SendingStatus | 
                             <span className="font-medium text-foreground">Rest period. </span>
                             {REST_PERIOD_TEXT} Someone resting is skipped, not failed, and a later wave reaches them.
                         </p>
+                        {/* PRD-campaign-audiences slice 10: what the daily job sent today. */}
+                        {keptSending > 0 || (status.keptToday ?? 0) > 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground">Kept sending. </span>
+                                {keptSending === 0
+                                    ? "No campaign keeps sending now"
+                                    : `${keptSending} campaign${keptSending === 1 ? " keeps" : "s keep"} sending at ${KEEP_SENDING_TIME} each day`}
+                                {status.keptToday === null
+                                    ? "; today's could not be counted."
+                                    : `; ${status.keptToday === 0 ? "none" : status.keptToday} sent today.`}{" "}
+                                They leave {KEEP_SENDING_RESERVE} of the day for tests and your own waves.
+                            </p>
+                        ) : null}
                         {full ? (
                             <div className="space-y-2 rounded-lg border p-3" role="status">
                                 <p className="text-sm font-medium">

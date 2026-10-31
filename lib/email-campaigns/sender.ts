@@ -107,6 +107,7 @@ import {
   claimMarketingCampaignSend,
   finishCampaignSend,
   readCampaignCandidates,
+  readKeptToday,
   readLatestPillows,
   readProductClasses,
   readRecipientFacts,
@@ -560,6 +561,8 @@ export interface SendingStatus {
   checks: PreflightCheck[];
   allowance: SendAllowance | null;
   allowanceError: string | null;
+  /** Today's kept-sending emails across campaigns (PRD-campaign-audiences slice 10); null when they could not be counted. */
+  keptToday: number | null;
 }
 
 /**
@@ -577,8 +580,11 @@ export async function readSendingStatus(setup: CampaignSenderSetup): Promise<Sen
       ? "Resend reports bounces and spam to this site, so they are left out of later sends"
       : "CAMPAIGN_RESEND_WEBHOOK_SECRET is not set: bounces and spam reports are not recorded, and the pause rule cannot see them",
   });
-  const { allowance, error } = await tryAllowance(setup);
-  return { sender: senderOf(setup), checks, allowance, allowanceError: allowance ? null : (error ?? null) };
+  const [{ allowance, error }, keptToday] = await Promise.all([
+    tryAllowance(setup),
+    readKeptToday(setup.admin, (setup.now ?? (() => new Date()))()).catch(() => null),
+  ]);
+  return { sender: senderOf(setup), checks, allowance, allowanceError: allowance ? null : (error ?? null), keptToday };
 }
 
 // ---------------------------------------------------------------------------

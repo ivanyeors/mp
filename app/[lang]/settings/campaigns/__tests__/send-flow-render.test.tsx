@@ -44,6 +44,7 @@ const status = (over: Partial<SendingStatus> = {}): SendingStatus => ({
   checks: [ok("transport"), ok("from"), ok("reply_to"), ok("site"), ok("reports")],
   allowance: allowance(),
   allowanceError: null,
+  keptToday: 0,
   ...over,
 });
 const text = (html: string) =>

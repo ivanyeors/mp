@@ -35,12 +35,17 @@ const CAMPAIGN = "00000000-0000-4000-8000-00000000e001";
 const SENT_CAMPAIGN = "00000000-0000-4000-8000-00000000e002";
 // A block campaign that says *Your pillow* and offers the studio and an Mbolster (slice 09's fit checks).
 const CHECKUP_CAMPAIGN = "00000000-0000-4000-8000-00000000e003";
+// Slice 10: *November care tips* keeps sending (three went today); *Second purchase* the daily run paused.
+const SECOND_CAMPAIGN = "00000000-0000-4000-8000-00000000e004";
+const OFF = { keep_sending: false, keep_sending_daily_cap: 20, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null };
 
 /** When they last bought, in days, or null: as the overview's `last_purchase_at`. */
 const lastBoughtDays = (p) => (p.purchases ? (p.lastBought ?? (p.stage === "at_risk" ? 800 : 40)) : null);
 
 export default function crm({ now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
+  // Today's kept-sending Wave, as the daily job labels it: Singapore's date.
+  const keptToday = `daily-${new Date(now.getTime() + 8 * 3_600_000).toISOString().slice(0, 10)}`;
   const customers = PEOPLE.map((p, i) => ({
     id: `00000000-0000-4000-8000-0000000c0${String(i + 1).padStart(3, "0")}`,
     email: `${p.first.toLowerCase().replace(/\s/g, "")}.${p.last.toLowerCase()}@example.com`,
@@ -143,6 +148,7 @@ export default function crm({ now }) {
           updated_at: ago(1),
           locked_at: null,
           archived_at: null,
+          ...OFF,
         },
         {
           id: SENT_CAMPAIGN,
@@ -163,6 +169,34 @@ export default function crm({ now }) {
           updated_at: ago(26),
           locked_at: ago(26),
           archived_at: null,
+          ...OFF,
+          keep_sending: true,
+        },
+        {
+          id: SECOND_CAMPAIGN,
+          name: "Second purchase",
+          subject: "Pair your pillow with an Mbolster",
+          preheader: "Made to match the pillow you sleep on.",
+          body: "Your pillow has had two months to settle. An Mbolster made to match it supports your back and knees.",
+          content: null,
+          greeting: true,
+          button_label: null,
+          button_target: null,
+          button_url: null,
+          audience: "segment",
+          segment_id: SEGMENT,
+          exclude_segment_ids: [STAFF_SEGMENT],
+          created_by_profile_id: null,
+          created_at: ago(12),
+          updated_at: ago(1),
+          locked_at: ago(10),
+          archived_at: null,
+          ...OFF,
+          keep_sending: true,
+          keep_sending_daily_cap: 10,
+          keep_sending_paused_at: ago(0.2),
+          keep_sending_paused_reason: "its Segment “Premium buyers” changed since keep sending was turned on",
+          keep_sending_segments: { [SEGMENT]: { filters: { bought: "premium" }, filters_version: 2 } },
         },
         {
           id: CHECKUP_CAMPAIGN,
@@ -207,6 +241,7 @@ export default function crm({ now }) {
           updated_at: ago(1),
           locked_at: null,
           archived_at: null,
+          ...OFF,
         },
       ],
       customer_campaign_sends: [
@@ -244,6 +279,41 @@ export default function crm({ now }) {
           first_clicked_at: ago(2.9),
           clicks: 2,
         },
+        // Slice 10: today's kept-sending Wave of *November care tips*, and *Second purchase*'s first wave.
+        ...[0, 1, 3].map((i, n) => ({
+          id: `00000000-0000-4000-8000-00000000f1${String(n).padStart(2, "0")}`,
+          customer_id: customers[i].id,
+          template: `campaign:${SENT_CAMPAIGN}`,
+          campaign_id: SENT_CAMPAIGN,
+          wave: keptToday,
+          status: "sent",
+          provider_message_id: `re_kept_${n}`,
+          sent_at: ago(0.01),
+          attempts: 1,
+          last_error: null,
+          bounced_at: null,
+          complained_at: null,
+          click_token_hash: String(n).repeat(64),
+          first_clicked_at: null,
+          clicks: 0,
+        })),
+        ...[4, 6].map((i, n) => ({
+          id: `00000000-0000-4000-8000-00000000f2${String(n).padStart(2, "0")}`,
+          customer_id: customers[i].id,
+          template: `campaign:${SECOND_CAMPAIGN}`,
+          campaign_id: SECOND_CAMPAIGN,
+          wave: "w1",
+          status: "sent",
+          provider_message_id: `re_second_${n}`,
+          sent_at: ago(10),
+          attempts: 1,
+          last_error: null,
+          bounced_at: null,
+          complained_at: null,
+          click_token_hash: String(n + 5).repeat(64),
+          first_clicked_at: null,
+          clicks: 0,
+        })),
       ],
       customer_consent_events: [
         {
@@ -280,6 +350,27 @@ export default function crm({ now }) {
             marketing_recent: (p?.recent ?? []).map(ago),
           };
         }),
+      // Each wave of each campaign email, as the pause rule and the Waves table read them.
+      customer_campaign_wave_stats: (t) => {
+        const groups = new Map();
+        for (const s of t.customer_campaign_sends ?? []) {
+          const key = `${s.template}\u0000${s.wave}`;
+          groups.set(key, [...(groups.get(key) ?? []), s]);
+        }
+        return [...groups.values()].map((rows) => {
+          const handed = rows.filter((s) => ["sent", "bounced", "complained"].includes(s.status));
+          return {
+            template: rows[0].template,
+            wave: rows[0].wave,
+            handed: handed.length,
+            bounced: rows.filter((s) => s.bounced_at).length,
+            complained: rows.filter((s) => s.complained_at).length,
+            failed: rows.filter((s) => s.status === "failed").length,
+            pending: rows.filter((s) => s.status === "pending").length,
+            last_sent_at: handed.map((s) => s.sent_at).sort().at(-1) ?? null,
+          };
+        });
+      },
       // 20261031152709: each campaign's numbers, clicks and unsubscribes included.
       email_campaign_stats: (t) =>
         (t.email_campaigns ?? []).map((e) => {

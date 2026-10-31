@@ -131,6 +131,8 @@ import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./sen
 import { CheckList, StatusIcon } from "./send-parts";
 import { StarterThumbnail } from "./starter-thumbnail";
 import { WaveTable } from "./wave-table";
+import { KeepSendingCard } from "./keep-sending-card";
+import { keepSendingBlocker } from "@/lib/email-campaigns/keep-sending";
 
 /** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
 export type SegmentOption = { id: string; name: string; customersHref?: string | null };
@@ -250,6 +252,7 @@ export function CampaignEditor({
     staffEmail,
     pointsLive = false,
     ai = AI_OFF,
+    keptToday = 0,
 }: {
     /** Null for a new one. */
     campaign: Campaign | null;
@@ -264,6 +267,8 @@ export function CampaignEditor({
     pointsLive?: boolean;
     /** AI writing on, and Claude set up (slice 09): off shows no ✨ at all. */
     ai?: AiWritingAvailability;
+    /** Emails the daily job's Wave sent today (PRD-campaign-audiences slice 10). */
+    keptToday?: number;
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
@@ -588,6 +593,11 @@ export function CampaignEditor({
               hasChinese: Boolean(chineseVersionOf(campaign?.content)),
           })
         : null;
+    // Who it goes to, in words: the confirmation's and Keep sending's.
+    const audienceWords =
+        CAMPAIGN_AUDIENCE_LABEL[audience] +
+        (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : "") +
+        (excludeSegmentIds.length ? `, leaving out ${excludeSegmentIds.map((x) => `“${segmentName(x)}”`).join(", ")}` : "");
     const confirmation: SendConfirmation | null = plan
         ? {
               count: planned,
@@ -595,10 +605,7 @@ export function CampaignEditor({
               subject,
               from: plan.readiness.sender.from,
               replyTo: plan.readiness.sender.replyTo,
-              audience:
-                  CAMPAIGN_AUDIENCE_LABEL[audience] +
-                  (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : "") +
-                  (excludeSegmentIds.length ? `, leaving out ${excludeSegmentIds.map((x) => `“${segmentName(x)}”`).join(", ")}` : ""),
+              audience: audienceWords,
               firstWave,
           }
         : null;
@@ -1880,6 +1887,18 @@ export function CampaignEditor({
                                 <WaveTable waves={waves} className={locked ? "max-md:order-first" : undefined} />
                             </CardContent>
                         </Card>
+                    ) : null}
+
+                    {/* PRD-campaign-audiences slice 10: a started campaign may keep sending by itself. */}
+                    {campaign && locked ? (
+                        <KeepSendingCard
+                            campaignId={campaign.id}
+                            initial={campaign.keepSending}
+                            blocker={keepSendingBlocker(campaign, stats?.handed ?? 0)}
+                            audience={audienceWords}
+                            today={keptToday}
+                            className="max-md:order-1"
+                        />
                     ) : null}
                 </TabsContent>
             </Tabs>
