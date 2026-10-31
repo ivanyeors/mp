@@ -60,7 +60,7 @@ export default async function PointsTermsPage({
         <section className="space-y-3">
           <h2 className="text-xl font-semibold tracking-tight">Your points</h2>
           <p className="leading-relaxed text-muted-foreground">
-            Your balance, the points on their way and the date they expire are on your{" "}
+            Your balance and the points on their way are on your{" "}
             <Link href={withLocale("/account", locale)} className="underline underline-offset-4">
               account
             </Link>

@@ -169,12 +169,13 @@ begin
   v := grant_due_milestone_bonuses(now());
   assert v = 0, 'a re-run grants nothing, ' || v;
 
-  -- Spending and expiry don't set the bar back; earning moves it.
-  insert into points_ledger (customer_id, kind, points) values
-    ('09090909-0000-4000-8000-000000000001', 'expire', -900),
-    ('09090909-0000-4000-8000-000000000001', 'earn', 200);
+  -- Spending and Staff removals don't set the bar back; earning moves it.
+  insert into points_ledger (customer_id, kind, points, note) values
+    ('09090909-0000-4000-8000-000000000001', 'spend', -500, null),
+    ('09090909-0000-4000-8000-000000000001', 'adjust', -400, 'Staff removal'),
+    ('09090909-0000-4000-8000-000000000001', 'earn', 200, null);
   select * into p from points_milestone_progress where customer_id = '09090909-0000-4000-8000-000000000001';
-  assert p.earned = 1100 and p.granted = 0, 'Ann: 1,100 earned, expiry not counted';
+  assert p.earned = 1100 and p.granted = 0, 'Ann: 1,100 earned, spending and removals not counted';
   v := grant_due_milestone_bonuses(now());
   assert v = 1 and (select milestone from t_bonus where who = 'Ann') = 1, 'Ann: milestone 1 once she reaches it';
 

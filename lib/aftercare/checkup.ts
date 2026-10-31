@@ -388,11 +388,10 @@ export type CheckupEmailDecision = AftercareEmailDecision | { send: false; skip:
 
 /**
  * The consent gate of a consent-gated reminder: an email that would go, goes
- * only to a Customer whose `marketing_email` is `subscribed`. One rule, shared
- * by the check-up (below) and the points expiry reminders
- * (`decidePointsReminderEmail`, lib/points/expiry.ts; PRD-loyalty-points slice
- * 07), so the two cannot drift apart. `not_subscribed`, `unsubscribed` and an
- * unknown value are all no.
+ * only to a Customer whose `marketing_email` is `subscribed`. The check-up
+ * (below) is the one reminder that uses it now; the points expiry reminders
+ * that shared it went when points stopped expiring (ADR 0030, 2026-10-31).
+ * `not_subscribed`, `unsubscribed` and an unknown value are all no.
  */
 export function requireMarketingConsent(
   decision: AftercareEmailDecision,
@@ -418,9 +417,8 @@ export function decideCheckupEmail(input: {
   const decision = decideAftercareEmail(input);
   // ── CONSENT ── The one Aftercare rule that reads marketing_email (README, second hazard): a
   // paid visit is direct marketing under the PDPA. If counsel advises a Premium Mpillow buyer may
-  // be reminded without it, make this line `return decision` (customer-crm PRD, Owner decisions);
-  // the points expiry reminders keep the gate (owner decision 9, PRD-loyalty-points). Pinned by
-  // checkup.test.ts and checkup-job.test.ts, which say which assertions change with it.
+  // be reminded without it, make this line `return decision` (customer-crm PRD, Owner decisions).
+  // Pinned by checkup.test.ts and checkup-job.test.ts, which say which assertions change with it.
   return requireMarketingConsent(decision, input.marketingEmail);
 }
 

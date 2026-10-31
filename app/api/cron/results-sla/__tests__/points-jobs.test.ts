@@ -4,13 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Points join the daily job: earned points are released (PRD-loyalty-points
- * slice 03) and the milestone bonuses they reach granted (slice 09), stale
- * checkout reservations given back (slice 04), and balances expired and their
- * reminders sent (slice 07), chained onto results-sla with no third cron, each as of the job's own clock, and a failure reported in the
- * job's answer without stopping what follows.
+ * slice 03) and the milestone bonuses they reach granted (slice 09), and stale
+ * checkout reservations given back (slice 04), chained onto results-sla with
+ * no third cron, each as of the job's own clock, and a failure reported in the
+ * job's answer without stopping what follows. Points never expire (ADR 0030,
+ * 2026-10-31), so nothing expires a balance or reminds anyone about one.
  *
- * The real cron handler, runPointsEarn, runPointsMilestones and
- * runPointsExpiry; the Supabase
+ * The real cron handler, runPointsEarn and runPointsMilestones; the Supabase
  * client is a fake with no Results to work on and the points settings in
  * `h.settings`, and every other chained job is a stub.
  */
@@ -52,14 +52,14 @@ beforeEach(() => {
   h.settings = [];
 });
 
-const calls = (fn: string) => h.rpc.mock.calls.filter(([name]) => name === fn) as [string, { p_now: string; p_within_months?: number }][];
+const calls = (fn: string) => h.rpc.mock.calls.filter(([name]) => name === fn) as [string, { p_now: string }][];
 
 const POINTS_ON = [
   { key: "points_enabled", value: "true" },
   { key: "points_launch_at", value: "2026-11-01T00:00:00Z" },
 ];
 
-describe("the daily job releases earned points and stale reservations, and expires balances", () => {
+describe("the daily job releases earned points and stale reservations, and expires nothing", () => {
   it("chains onto results-sla in order, and vercel.json keeps two crons", () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), "vercel.json"), "utf8")) as { crons: unknown[] };
     expect(vercel.crons).toHaveLength(2);
@@ -67,24 +67,18 @@ describe("the daily job releases earned points and stale reservations, and expir
     const earn = sla.search(/await runPointsEarn\(admin, now\)/);
     const milestones = sla.search(/await runPointsMilestones\(admin, now\)/);
     const sweep = sla.search(/await releaseStalePointReservations\(admin, now\)/);
-    const expiry = sla.search(/await runPointsExpiry\(admin, \{ origin, now \}\)/);
     expect(earn).toBeGreaterThan(0);
     // Milestone bonuses right after the release, so a bonus lands on the same
     // run as the points that reached it.
     expect(milestones).toBeGreaterThan(earn);
     expect(sla.slice(earn, milestones).match(/\bawait\b/g)).toHaveLength(1);
     expect(sweep).toBeGreaterThan(milestones);
-    // The expiry runs right after the reservation sweep, so a reservation the
-    // sweep gives back today is in the balance it expires.
-    expect(sweep).toBeGreaterThan(earn);
-    expect(expiry).toBeGreaterThan(sweep);
-    // Right after: nothing else is awaited between the two.
-    expect(sla.slice(sweep, expiry).match(/\bawait\b/g)).toHaveLength(1);
+    expect(sla).not.toMatch(/expir\w*points|PointsExpiry|points\/expiry/i);
   });
 
-  it("releases and expires as of the job's clock, once per run, and reports what it wrote", async () => {
+  it("releases as of the job's clock, once per run, and reports what it wrote", async () => {
     h.rpc.mockImplementation(async (fn: string) => ({
-      data: { release_earned_points: 3, grant_due_milestone_bonuses: 5, release_stale_point_reservations: 2, expire_due_points: 4 }[fn] ?? null,
+      data: { release_earned_points: 3, grant_due_milestone_bonuses: 5, release_stale_point_reservations: 2 }[fn] ?? null,
       error: null,
     }));
     const before = Date.now();
@@ -93,26 +87,25 @@ describe("the daily job releases earned points and stale reservations, and expir
     expect(body.points).toEqual({ written: 3 });
     expect(body.pointsMilestones).toEqual({ granted: 5 });
     expect(body.pointsReservations).toEqual({ ok: true, released: 2 });
-    expect(body.pointsExpiry).toMatchObject({ ok: true, enabled: false, expired: 4, candidates: 0, errors: [] });
-    for (const fn of ["release_earned_points", "grant_due_milestone_bonuses", "release_stale_point_reservations", "expire_due_points"]) {
+    expect(body).not.toHaveProperty("pointsExpiry");
+    for (const fn of ["release_earned_points", "grant_due_milestone_bonuses", "release_stale_point_reservations"]) {
       expect(calls(fn)).toHaveLength(1);
       const [, args] = calls(fn)[0];
       expect(Date.parse(args.p_now)).toBeGreaterThanOrEqual(before - 1000);
       expect(Date.parse(args.p_now)).toBeLessThanOrEqual(Date.now());
     }
-    // Points off: nobody is listed for a reminder.
-    expect(h.rpc).toHaveBeenCalledTimes(4);
+    expect(h.rpc).toHaveBeenCalledTimes(3);
   });
 
-  it("with points on, lists the reminders as of the job's clock, 3 months ahead", async () => {
+  it("with points on, still expires nothing and reminds nobody", async () => {
     h.settings = POINTS_ON;
-    h.rpc.mockImplementation(async (fn: string) => ({ data: fn === "points_expiry_reminder_candidates" ? [] : 0, error: null }));
-    const { body } = await tick();
-    expect(body.pointsExpiry).toMatchObject({ ok: true, enabled: true, expired: 0, candidates: 0, due: 0 });
-    expect(calls("points_expiry_reminder_candidates")).toHaveLength(1);
-    const [, args] = calls("points_expiry_reminder_candidates")[0];
-    expect(args.p_within_months).toBe(3);
-    expect(args.p_now).toBe(calls("expire_due_points")[0][1].p_now);
+    h.rpc.mockResolvedValue({ data: 0, error: null });
+    await tick();
+    expect(h.rpc.mock.calls.map(([fn]) => fn).sort()).toEqual([
+      "grant_due_milestone_bonuses",
+      "release_earned_points",
+      "release_stale_point_reservations",
+    ]);
   });
 
   it("reports a failure and still runs the jobs after it", async () => {
@@ -123,11 +116,6 @@ describe("the daily job releases earned points and stale reservations, and expir
     expect(body.points).toEqual({ error: "Could not release earned points: connection reset" });
     expect(body.pointsMilestones).toEqual({ error: "Could not grant milestone bonuses: connection reset" });
     expect(body.pointsReservations).toEqual({ ok: false, error: "Could not release stale point reservations: connection reset" });
-    expect(body.pointsExpiry).toMatchObject({
-      ok: false,
-      expired: 0,
-      errors: ["Could not expire points: connection reset", "Could not list the points expiry reminders: connection reset"],
-    });
     expect(h.crmTelegram).toHaveBeenCalledOnce();
     expect(body.crmTelegram).toEqual({ ok: true });
   });

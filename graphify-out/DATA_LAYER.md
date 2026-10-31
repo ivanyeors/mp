@@ -844,7 +844,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
 - Written by:
   - `DELETE()` [delete,select] — app/api/mp-config/responses/[id]/route.ts:72
   - `DELETE()` [update] — app/api/shop/orders/[id]/mp-config-link/route.ts:116
-  - `GET()` [select,update] — app/api/cron/results-sla/route.ts:111
+  - `GET()` [select,update] — app/api/cron/results-sla/route.ts:110
   - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:317
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:72
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:135
@@ -1385,7 +1385,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
 ### adjust_points
 Defined in supabase/migrations/20261021120000_points_ledger.sql:261
 - Called by:
-  - `adjustPoints()` — lib/points/server.ts:165
+  - `adjustPoints()` — lib/points/server.ts:161
 
 ### admin_customer_migration_summary
 Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
@@ -1415,9 +1415,9 @@ Defined in supabase/migrations/20260902000002_admin_orders_revenue_summary.sql:1
   - `loadOrdersDashboard()` — lib/ecommerce/admin/orders-dashboard.ts:62
 
 ### admin_points_summary
-Defined in supabase/migrations/20261023120000_points_milestones.sql:218
+Defined in supabase/migrations/20261031120000_points_never_expire.sql:132
 - Read by:
-  - `readPointsSummary()` [select] — lib/points/server.ts:192
+  - `readPointsSummary()` [select] — lib/points/server.ts:186
 
 ### claim_bonus_window_end
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:29
@@ -1488,7 +1488,6 @@ Changed from pages: `/account`, `/account/addresses`, `/account/orders`, `/accou
   - `markCustomerEmailSent()` [update] — lib/email/customer-emails.ts:62
 - Read by:
   - `loadLedger()` [select] — lib/aftercare/checkup-server.ts:213
-  - `readLedger()` [select] — lib/points/expiry-server.ts:129
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:365
 
 ### customer_followups
@@ -1622,11 +1621,6 @@ Changed from pages: `/settings/email-templates/[id]`
   - `readSavedCopy()` [select] — lib/email/copy-admin.ts:77
   - `readSavedEmailCopy()` [select] — lib/email/copy-store.ts:36
 
-### expire_due_points
-Defined in supabase/migrations/20261021170000_points_expiry.sql:178
-- Called by:
-  - `runPointsExpiry()` — lib/points/expiry-server.ts:169
-
 ### finish_campaign_send
 Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:265
 - Called by:
@@ -1667,7 +1661,7 @@ Defined in supabase/migrations/20261025000000_coupon_usage_cap.sql:19
 ### is_partner_customer
 Defined in supabase/migrations/20261021120000_points_ledger.sql:143
 - Called by:
-  - `isPartnerCustomer()` — lib/points/server.ts:152
+  - `isPartnerCustomer()` — lib/points/server.ts:148
 
 ### landing_page_publishes
 Defined in supabase/migrations/20260909000000_landing_section_drafts.sql:34
@@ -1709,14 +1703,9 @@ Defined in supabase/migrations/20261020121000_customer_claim_links.sql:82
   - `openClaimLink()` — lib/customer-migration/claim-link.ts:147
 
 ### points_balance
-Defined in supabase/migrations/20261021170000_points_expiry.sql:93
+Defined in supabase/migrations/20261031120000_points_never_expire.sql:157
 - Called by:
-  - `readPointsBalance()` — lib/points/server.ts:67
-
-### points_expiry_reminder_candidates
-Defined in supabase/migrations/20261021170000_points_expiry.sql:222
-- Called by:
-  - `readCandidates()` — lib/points/expiry-server.ts:104
+  - `readPointsBalance()` — lib/points/server.ts:65
 
 ### points_ledger
 Defined in supabase/migrations/20261021120000_points_ledger.sql:79
@@ -1725,20 +1714,20 @@ References: `customers`, `mp_staff`, `orders`
   - `pointsWereReleased()` [select] — app/api/stripe/webhook/route.ts:109
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:24
   - `readOrderPoints()` [select] — lib/points/order.ts:45
-  - `readPointsHistory()` [select] — lib/points/server.ts:92
+  - `readPointsHistory()` [select] — lib/points/server.ts:88
   - `sendClaimBonusEmail()` [select] — lib/customer-migration/claim.ts:105
   - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:75
 
 ### points_milestone_progress
 Defined in supabase/migrations/20261023120000_points_milestones.sql:119
 - Read by:
-  - `readMilestoneStanding()` [select] — lib/points/server.ts:140
+  - `readMilestoneStanding()` [select] — lib/points/server.ts:136
 
 ### points_order_candidates
-Defined in supabase/migrations/20261021120000_points_ledger.sql:177
+Defined in supabase/migrations/20261031120000_points_never_expire.sql:89
 - Read by:
   - `readOrderPoints()` [select] — lib/points/order.ts:46
-  - `readPendingOrders()` [select] — lib/points/server.ts:113
+  - `readPendingOrders()` [select] — lib/points/server.ts:109
 
 ### preview_shopify_import_undo
 Defined in supabase/migrations/20261020110000_customer_import_apply.sql:497
@@ -2127,7 +2116,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `runReplaceEverywhere()` [select,upsert] — lib/media/replace.ts:369
   - `saveAiWritingSettings()` [upsert] — lib/ai/settings.ts:47
   - `saveDiscoverySourceCatalog()` [upsert] — lib/discovery-source/index.ts:54
-  - `savePointsSettings()` [delete,upsert] — lib/points/server.ts:57
+  - `savePointsSettings()` [delete,upsert] — lib/points/server.ts:55
   - `saveServices()` [upsert] — app/[lang]/settings/costings/save/route.ts:301
 - Read by:
   - `GET()` [select] — app/api/appointments/slots/route.ts:63
@@ -2144,7 +2133,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
   - `loadReviewRequestSettings()` [select] — lib/aftercare/review-request-server.ts:102
   - `readAftercareSettings()` [select] — lib/aftercare/card-server.ts:26
   - `readAiWritingSettings()` [select] — lib/ai/settings.ts:32
-  - `readPointsSettings()` [select] — lib/points/server.ts:48
+  - `readPointsSettings()` [select] — lib/points/server.ts:46
   - `readServiceNoticeEnabled()` [select] — lib/customer-migration/campaign-ledger.ts:121
   - `readTelegramUpdates()` [select] — lib/crm/telegram-updates-server.ts:40
   - `settings-store.ts` [select] — lib/appointments/settings-store.ts:17

@@ -9,6 +9,9 @@ import { POINTS_DEFAULTS, PointsSettingsSchema, pointsSettingsFromRows, pointsSe
 import { POINTS_PER_DOLLAR, formatDollars, formatPoints, formatPointsCount, pointsToDollars } from "../value";
 
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021120000_points_ledger.sql"), "utf8");
+// Points never expire (ADR 0030, 2026-10-31): this one redefines the settings
+// function and the candidates view, so its windows must match too.
+const NEVER_EXPIRE = readFileSync(join(process.cwd(), "supabase/migrations/20261031120000_points_never_expire.sql"), "utf8");
 
 describe("value (ADR 0030 a, b)", () => {
   it("is 100 points to S$1, shown in both", () => {
@@ -40,13 +43,18 @@ describe("settings", () => {
       ["points_earn_per_dollar", "3"],
       ["points_min_redeem", "500"],
       ["points_max_share", "0.5"],
-      ["points_expiry_months", "24"],
       ["points_claim_bonus", "1000"],
       ["points_claim_bonus_months", "3"],
     ]) {
       expect(MIGRATION).toContain(`('${key}', '${value}')`);
     }
     expect(MIGRATION).not.toMatch(/\('points_launch_at'/);
+  });
+
+  it("has no expiry: no setting, and the row is deleted", () => {
+    expect(Object.keys(POINTS_DEFAULTS)).not.toContain("expiryMonths");
+    expect(pointsSettingsToRows({ ...POINTS_DEFAULTS, launchAt: null }).upsert.map((r) => r.key)).not.toContain("points_expiry_months");
+    expect(NEVER_EXPIRE).toContain("delete from public.site_settings where key = 'points_expiry_months';");
   });
 
   it("refuses turning points on with no launch date, odd dollar amounts, and shares outside 0 to 100%", () => {
@@ -110,7 +118,9 @@ describe("settings", () => {
 describe("the return window", () => {
   it("is the RMA window, in SQL too", () => {
     expect(DEFAULT_RETURN_WINDOW_DAYS).toBe(30);
-    expect(MIGRATION.match(/interval '(\d+) days'/g)?.every((m) => m === `interval '${DEFAULT_RETURN_WINDOW_DAYS} days'`)).toBe(true);
+    for (const sql of [MIGRATION, NEVER_EXPIRE]) {
+      expect(sql.match(/interval '(\d+) days'/g)?.every((m) => m === `interval '${DEFAULT_RETURN_WINDOW_DAYS} days'`)).toBe(true);
+    }
   });
 });
 

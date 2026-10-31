@@ -40,9 +40,9 @@ The owner's decisions of 2026-10-21, as the PRD lists them:
 5. GST does not count.
 6. Only Orders paid from launch earn.
 7. Points used are never refunded; a partial return treats them as spent on what was kept.
-8. The balance expires 24 months after the last purchase, with reminders 3, 2 and 1 months
-   before.
-9. Reminders go only to customers who agreed to marketing email.
+8. ~~The balance expires 24 months after the last purchase, with reminders 3, 2 and 1 months
+   before.~~ Retired 2026-10-31: points never expire (amendment below).
+9. ~~Reminders go only to customers who agreed to marketing email.~~ Retired with 8.
 10. The Claim bonus is 1,000 points (S$10).
 11. Its window is 3 months from the customer's first campaign email, or from the first wave if we
     never emailed them; there is no calendar end date.
@@ -69,8 +69,9 @@ The rules that implement them, (a) to (r), are the PRD's *Rules* section, unchan
 - **Refunds and adjustments.** (l) Refund code does not change. (m) A refund after release claws
   back `floor(rate × refund)`, no more than earned or available. (n) Staff adjust with a reason;
   never for a partner.
-- **Expiry.** (o) The whole balance, 24 months after the last paid Order or the Claim bonus.
-  (p) Reminders at 3, 2 and 1 months, to `subscribed` Customers only, once per clock.
+- **Expiry.** ~~(o) The whole balance, 24 months after the last paid Order or the Claim bonus.
+  (p) Reminders at 3, 2 and 1 months, to `subscribed` Customers only, once per clock.~~ Retired
+  2026-10-31: points never expire (amendment below).
 - **Storage and partners.** (q) `points_ledger` is append-only and server-only; the balance is
   never a column on `customers`. (r) A Customer is a partner when an approved `partner_users` row
   holds their login or their email (or verified backup email), matched as `loadPartnerRow`
@@ -136,3 +137,42 @@ earning or spending changes after it, nothing is taken away, and the bonus is th
 **Consequences.** The ledger has an eighth kind, `milestone_bonus`, and a `milestone` column.
 The cost summary counts the bonuses. The terms gained a section and are dated 23 October 2026.
 The partner **Milestone track** is unchanged and separate.
+
+## Amendment (2026-10-31): points never expire
+
+The owner removed expiry from the points system: no expiry date, anywhere.
+
+**Decision 17.** Points never expire. A balance is kept however long it is between orders. This
+retires decision 8 (the 24-month clock) and decision 9 (its reminders), and rules (o) and (p).
+
+- **Nothing expires a balance.** `expire_points`, `expire_due_points`, the clock
+  (`points_clock`, `points_expires_on`) and the daily job's expiry step are gone, and the ledger
+  has no `expire` kind.
+- **Nobody is reminded.** The three `points.expiry_*` emails, their copy and their registry
+  entries are gone. The check-up reminder keeps its consent gate (`requireMarketingConsent`),
+  which no other email now shares.
+- **No date is shown.** `points_balance()` returns `available` and `pending` only. The Profile
+  says the points don't expire; the Staff card, the terms and the Staff guide show no date.
+- **No setting.** `points_expiry_months` is gone from `site_settings`, `points_settings()` and
+  Settings → Discounts → Points, and the cost summary loses its `expired` lines.
+
+**Why it was safe to delete rather than wind down.** When this was decided, production had points
+switched off, an empty ledger, no expiry email sent and no saved copy for one. Nothing had
+expired, so nothing is reinstated. The migration (`20261031120000_points_never_expire.sql`)
+refuses to run on a database that does hold an `expire` entry, because the ledger is
+append-only and those points would have to be given back with `adjust` entries first.
+
+**Considered.**
+
+- *Keep expiry but set it very long (say 120 months):* rejected. The owner asked for no expiry
+  date, and a far-off date is still a date to explain, remind about and carry as a liability
+  rule.
+- *Keep the `expire` kind for history:* rejected. No entry of that kind exists, and keeping it
+  would let code write one again.
+
+**Consequences.** The terms gained a "Points don't expire" section and are dated 31 October 2026.
+The change only adds to what customers keep, and points were not yet live. The liability points create no longer
+shrinks through expiry, so what customers hold only falls when they spend or a refund claws
+back: the accountant should know (slice 08). The CRM's *Lapsed* sub-status still starts at 24
+months without a purchase: it was set when points expired at 24 months, and is a separate
+retention rule that this amendment does not change.

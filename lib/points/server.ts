@@ -11,15 +11,13 @@ import { POINTS_SETTING_KEYS, pointsSettingsFromRows, pointsSettingsToRows, type
 
 export { POINTS_KIND_LABEL, POINTS_LEDGER_KINDS, type PointsLedgerKind } from "./kinds";
 
+/** What a Customer holds. Points never expire, so there is no date. */
 export interface PointsBalance {
   available: number;
   pending: number;
-  lastPurchaseAt: string | null;
-  /** A Singapore date, "2028-10-21"; null while nothing is available. */
-  expiresOn: string | null;
 }
 
-export const NO_BALANCE: PointsBalance = { available: 0, pending: 0, lastPurchaseAt: null, expiresOn: null };
+export const NO_BALANCE: PointsBalance = { available: 0, pending: 0 };
 
 export interface PointsEntry {
   id: string;
@@ -71,8 +69,6 @@ export async function readPointsBalance(admin: SupabaseClient, customerId: strin
   return {
     available: int(row.available),
     pending: int(row.pending),
-    lastPurchaseAt: typeof row.last_purchase_at === "string" ? row.last_purchase_at : null,
-    expiresOn: typeof row.expires_on === "string" ? row.expires_on : null,
   };
 }
 
@@ -178,8 +174,6 @@ export interface PointsSummary {
   earned: number;
   spent: number;
   spentThisMonth: number;
-  expired: number;
-  expiredThisMonth: number;
   clawedBack: number;
   clawedBackThisMonth: number;
   claimBonuses: number;
@@ -198,8 +192,6 @@ export async function readPointsSummary(admin: SupabaseClient): Promise<PointsSu
     earned: int(r.earned_points),
     spent: int(r.spent_points),
     spentThisMonth: int(r.spent_points_month),
-    expired: int(r.expired_points),
-    expiredThisMonth: int(r.expired_points_month),
     clawedBack: int(r.clawed_back_points),
     clawedBackThisMonth: int(r.clawed_back_points_month),
     claimBonuses: int(r.claim_bonuses),

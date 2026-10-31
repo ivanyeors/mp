@@ -13,7 +13,6 @@ export const POINTS_SETTING_KEYS = {
   earnPerDollar: "points_earn_per_dollar",
   minRedeem: "points_min_redeem",
   maxShare: "points_max_share",
-  expiryMonths: "points_expiry_months",
   claimBonus: "points_claim_bonus",
   claimBonusMonths: "points_claim_bonus_months",
   milestones: "points_milestones",
@@ -27,7 +26,6 @@ export interface PointsSettings {
   minRedeem: number;
   /** 0 to 1: the most of the products' price points may pay. */
   maxShare: number;
-  expiryMonths: number;
   claimBonus: number;
   claimBonusMonths: number;
   /** The bonus milestones, lowest first; empty for none (slice 09). */
@@ -40,7 +38,6 @@ export const POINTS_DEFAULTS: PointsSettings = {
   earnPerDollar: 3,
   minRedeem: 500,
   maxShare: 0.5,
-  expiryMonths: 24,
   claimBonus: 1000,
   claimBonusMonths: 3,
   // A missing or malformed ladder is none, never a default one: a bonus is
@@ -64,7 +61,6 @@ export function pointsSettingsFromRows(rows: readonly { key: string; value: stri
     earnPerDollar: num(get(POINTS_SETTING_KEYS.earnPerDollar), (n) => n >= 0, POINTS_DEFAULTS.earnPerDollar),
     minRedeem: num(get(POINTS_SETTING_KEYS.minRedeem), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.minRedeem),
     maxShare: num(get(POINTS_SETTING_KEYS.maxShare), (n) => n >= 0 && n <= 1, POINTS_DEFAULTS.maxShare),
-    expiryMonths: num(get(POINTS_SETTING_KEYS.expiryMonths), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.expiryMonths),
     claimBonus: num(get(POINTS_SETTING_KEYS.claimBonus), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.claimBonus),
     claimBonusMonths: num(get(POINTS_SETTING_KEYS.claimBonusMonths), (n) => Number.isInteger(n) && n >= 0, POINTS_DEFAULTS.claimBonusMonths),
     milestones: parseMilestones(get(POINTS_SETTING_KEYS.milestones)),
@@ -99,7 +95,6 @@ export const PointsSettingsSchema = z
     earnPerDollar: z.number().min(0, "At least 0.").max(20, "At most 20 points per S$1."),
     minRedeem: z.number().int().min(100, "At least 100 points (S$1).").max(100000).refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
     maxShare: z.number().gt(0, "Above 0%.").max(1, "At most 100%."),
-    expiryMonths: z.number().int().min(1, "At least 1 month.").max(120, "At most 120 months."),
     claimBonus: z.number().int().min(0).max(100000).refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
     claimBonusMonths: z.number().int().min(1, "At least 1 month.").max(24, "At most 24 months."),
     milestones: z
@@ -127,7 +122,6 @@ export function pointsSettingsToRows(s: PointsSettings): { upsert: { key: string
     { key: POINTS_SETTING_KEYS.earnPerDollar, value: String(s.earnPerDollar) },
     { key: POINTS_SETTING_KEYS.minRedeem, value: String(s.minRedeem) },
     { key: POINTS_SETTING_KEYS.maxShare, value: String(s.maxShare) },
-    { key: POINTS_SETTING_KEYS.expiryMonths, value: String(s.expiryMonths) },
     { key: POINTS_SETTING_KEYS.claimBonus, value: String(s.claimBonus) },
     { key: POINTS_SETTING_KEYS.claimBonusMonths, value: String(s.claimBonusMonths) },
     { key: POINTS_SETTING_KEYS.milestones, value: formatMilestones(s.milestones) },

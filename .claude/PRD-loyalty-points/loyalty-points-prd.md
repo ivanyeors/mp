@@ -7,7 +7,8 @@ branch. Start building once it merges.
 **ADR:** `docs/adr/0030-loyalty-points.md`, written by slice 01 (0028 went to the CRM and 0029 to
 the migration; take the next free number if either moves).
 **Owner decisions:** taken on 2026-10-21, plus bonus milestones on 2026-10-23, all listed below.
-Nothing is open for the owner. Counsel and the accountant have questions in slice 08.
+On 2026-10-31 the owner retired expiry: points never expire, and decisions 8 and 9 and rules (o)
+and (p) no longer apply (ADR 0030, amendment of 2026-10-31). Nothing is open for the owner. Counsel and the accountant have questions in slice 08.
 
 ## Problem statement
 
@@ -45,12 +46,12 @@ off a later shop order. The Claim gives each **Migrated customer** a starting ba
 7. **Points used to buy products are never refunded,** and a partial return treats them as spent
    on what the customer kept. A refund is cash only, up to the cash paid on the Order.
 
-**Expiry**
+**Expiry** (retired 2026-10-31: points never expire)
 
-8. **Points expire 24 months after the customer's last purchase,** with reminder emails 3, 2 and
-   1 months before.
-9. **Reminders go only to customers who agreed to marketing email,** as the check-up reminder
-   does (CRM slice 08).
+8. ~~**Points expire 24 months after the customer's last purchase,** with reminder emails 3, 2 and
+   1 months before.~~ Retired: points never expire.
+9. ~~**Reminders go only to customers who agreed to marketing email,** as the check-up reminder
+   does (CRM slice 08).~~ Retired with decision 8: there are no expiry reminders.
 
 **The Claim bonus**
 
@@ -248,7 +249,7 @@ stored.
   to give points back when the shop cancels an order. This is the only manual path, and it is
   refused for a partner.
 
-**Expiry**
+**Expiry** (retired 2026-10-31; `20261031120000_points_never_expire.sql` removed all of it)
 
 - **(o) The 24-month clock.** The whole balance expires `points_expiry_months` (24) after the
   customer's last paid Order, or after their Claim bonus if that is later. A new purchase
@@ -330,7 +331,7 @@ terms are advertised anyway:
 | `points_earn_per_dollar` | `3` |
 | `points_min_redeem` | `500` |
 | `points_max_share` | `0.5` |
-| `points_expiry_months` | `24` |
+| ~~`points_expiry_months`~~ | removed 2026-10-31 |
 | `points_claim_bonus` | `1000` |
 | `points_claim_bonus_months` | `3` |
 | `points_milestones` | `1000:100,2500:300,5000:800,10000:2000` (slice 09) |

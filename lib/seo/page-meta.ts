@@ -129,7 +129,7 @@ export const ENGLISH_ONLY_PAGE_META = {
     path: "/points",
     title: "How points work",
     description:
-      "How Mpillow points work: what you earn on each order, how to use them as money off a later shop order, when they expire and the rules that apply to them.",
+      "How Mpillow points work: what you earn on each order, how to use them as money off a later shop order, and the rules that apply. Points never expire.",
   },
 } satisfies Record<string, PageMeta & { path: string }>;
 
