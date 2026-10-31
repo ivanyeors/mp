@@ -15,7 +15,7 @@ import {
  * so they get the denied page and never see the button.
  */
 
-const h = vi.hoisted(() => ({ permissions: new Set<string>(), history: [] as unknown[] }));
+const h = vi.hoisted(() => ({ permissions: new Set<string>(), history: [] as unknown[], consent: null as unknown }));
 
 vi.mock("@/lib/auth/admin", () => ({
   requireAdminPage: vi.fn(async (permission: string) => {
@@ -26,6 +26,7 @@ vi.mock("@/lib/auth/admin", () => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: vi.fn() }));
 vi.mock("../history", () => ({ loadImportHistory: vi.fn(async () => h.history) }));
+vi.mock("../consent-counts", () => ({ loadDefaultConsentCounts: vi.fn(async () => h.consent) }));
 vi.mock("@/lib/ecommerce/admin/customers", () => ({
   listAdminCustomers: vi.fn(async () => ({ ok: true, rows: [], total: 0, page: 1, limit: 20 })),
 }));
@@ -84,9 +85,38 @@ describe("/settings/customers/import", () => {
   it.each(["owner", "admin"] as const)("opens for %s, with the import history", async (role) => {
     signInAs(role);
     h.history = [{ id: "b1" }];
-    const page = (await ImportPage({ params })) as ReactElement<{ history: unknown }>;
+    h.consent = { imported: 3 };
+    const page = (await ImportPage({ params })) as ReactElement<{ history: unknown; consent: unknown }>;
     expect(page.type).toBe(CustomerImportClient);
     expect(page.props.history).toEqual([{ id: "b1" }]);
+    expect(page.props.consent).toEqual({ imported: 3 });
+  });
+
+  it("asks for Shopify's unsubscribed list before subscribing anyone (ADR 0037)", () => {
+    const consent = {
+      imported: 1240,
+      alreadySubscribed: 312,
+      toSubscribe: 905,
+      stayUnsubscribed: 23,
+      listed: 0,
+      listedCustomers: 0,
+      toUnsubscribe: 0,
+    };
+    const html = renderToStaticMarkup(<CustomerImportClient consent={consent} />);
+    expect(html).toContain("Subscribe imported customers");
+    expect(html).toContain("905</span> of 1,240 imported customers are not subscribed yet");
+    expect(html).toContain("Shopify&#x27;s unsubscribed list");
+    expect(html).toContain("Nobody has unsubscribed in Shopify");
+    // Nothing to run until the list, or the owner's word, is given.
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Subscribe 905 customers<\/button>/);
+  });
+
+  it("shows no subscribe card before anyone is imported, and says so when it cannot read", () => {
+    const none = { imported: 0, alreadySubscribed: 0, toSubscribe: 0, stayUnsubscribed: 0, listed: 0, listedCustomers: 0, toUnsubscribe: 0 };
+    expect(renderToStaticMarkup(<CustomerImportClient consent={none} />)).not.toContain("Subscribe imported customers");
+    expect(renderToStaticMarkup(<CustomerImportClient consent={null} />)).toContain(
+      "Could not read the imported customers&#x27; marketing choices",
+    );
   });
 
   it("says the file stays in the tab, and offers only a .csv pick", () => {

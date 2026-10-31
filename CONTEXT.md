@@ -372,8 +372,12 @@ The per-customer link in a campaign email, `/account/welcome?c=<token>`. The tok
 _Avoid_: "magic link" — a Claim link never signs anyone in; proof of the email is always the **Sign in** itself
 
 **Marketing consent**:
-Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its source and timestamp. Every change is appended to `customer_consent_events`.
-_Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked"
+Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its **Consent source** and timestamp. Every change is appended to `customer_consent_events`. Two defaults subscribe someone nobody has asked, and never anyone who unsubscribed (owner, 2026-10-31; ADR 0037): every **Migrated customer** not on Shopify's unsubscribed list, and a buyer who leaves the checkout box ticked.
+_Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked", which is why Shopify's unsubscribed list is exported separately
+
+**Consent source**:
+What set a **Customer**'s **Marketing consent**, stored with it and on each event: `shopify_import` (the export's *yes*), `import_default` (subscribed because they were imported), `shopify_unsubscribed` (on Shopify's unsubscribed list), `checkout` (the box at checkout, ticked by default), `account` (the customer, from their Profile), `unsubscribe_link`, `complaint`, `support` (Staff, at the customer's request, unsubscribe only). Only `account` re-subscribes someone who unsubscribed.
+_Avoid_: "list" or "signup source"; reading `import_default` or `checkout` as the customer's own choice
 
 **Import batch**:
 One import that wrote to the database, run from **Admin Panel** → Customers → Import from Shopify. It records the file's name and SHA-256, the counts by outcome, the **Staff** who ran it, and when. It is the unit of reconciliation, of resume, and of undo.

@@ -4,17 +4,17 @@ A tracer-bullet breakdown of the PRD (`../campaign-audiences-prd.md`). Each slic
 demoable path through the layers it touches.
 
 - **Triage label:** `needs-triage` (all slices)
-- **Tracker:** not filed. File the PRD as one issue and each slice as a sub-issue when the owner
-  has settled decisions 1–3.
-- **Owner decisions:** see the PRD. Decisions 1 (consent capture), 2 (rest period) and 3 (keep
-  sending) gate slices 02, 07 and 10.
+- **Tracker:** not filed. File the PRD as one issue and each slice as a sub-issue.
+- **Owner decisions:** all settled on 2026-10-31 (see the PRD). Consent is ticked by default and
+  imported customers start subscribed (ADR 0037); rest period and keep sending as recommended;
+  the sunset rule is a simple rule read from the Lifecycle stage.
 
 ## Slices
 
 | # | Title | Type | Status | Blocked by |
 |---|-------|------|--------|------------|
-| [01](01-glossary-and-adr.md) | Glossary and ADR | AFK, then HITL | not started | owner decisions 1–3 |
-| [02](02-consent-where-people-give-their-email.md) | Ask for consent where people give their email | AFK, then HITL | not started | 01 |
+| [01](01-glossary-and-adr.md) | Glossary and ADR | AFK | started (Consent source, ADR 0037) | none |
+| [02](02-consent-where-people-give-their-email.md) | Ask for consent where people give their email | AFK, then HITL | checkout **built**; customisation, booking not started | none |
 | [03](03-newsletter-sign-up.md) | A sign-up for people who have not bought, double opt-in | AFK | not started | 02, owner decision 6 |
 | [04](04-purchase-filters.md) | Purchase filters: didn't buy, pillow size, delivered, sub-status | AFK | not started | none |
 | [05](05-reach-filters.md) | Reach filters: ships to, language, points expiry, campaign history | AFK | not started | 08 (clicked values only) |
@@ -24,15 +24,15 @@ demoable path through the layers it touches.
 | [09](09-fit-checks-and-variables.md) | The right version: fit checks and two Variables | AFK | not started | 04, 05 |
 | [10](10-keep-sending.md) | Keep sending: reach people as they join the Audience | AFK | not started | 01, 07 |
 | [11](11-campaign-results.md) | Results per campaign: clicks, unsubscribes, purchases after | AFK | not started | 08 |
-| [12](12-engaged-and-unengaged.md) | Engaged and unengaged: the sunset rule | AFK | not started | 08 + three months, owner decision 4 |
+| [12](12-engaged-and-unengaged.md) | Engaged and unengaged: a simple rule from the Lifecycle stage | AFK | not started | 08 |
 | [13](13-topics-and-fewer-emails.md) | Later: topics and "fewer emails" | HITL, then AFK | specified | retention slice 11 data |
 | [14](14-signoff.md) | Sign-off: three of the plan's emails on production | HITL | not started | 02, 04, 06–09 |
+| [15](15-imported-customers-start-subscribed.md) | Imported customers start subscribed | AFK, then HITL | **built** | none |
 
 ## Dependency graph
 
 ```mermaid
 graph TD
-  d1[Owner decisions 1–3]
   s01[01 Glossary and ADR]
   s02[02 Consent at checkout, customisation, booking]
   s03[03 Sign-up, double opt-in]
@@ -47,10 +47,11 @@ graph TD
   s12[12 Sunset rule]
   s13[13 Topics, later]
   s14[14 Sign-off · HITL]
+  s15[15 Imported customers subscribed · built]
   r07[Retention slice 07 · Playbooks]
   r11[Retention slice 11 · unsubscribe reasons]
 
-  d1 --> s01
+  s15 --> s14
   s01 --> s02 --> s03
   s01 --> s07 --> s10
   s01 --> s08
@@ -72,11 +73,12 @@ graph TD
 
 ## Build order
 
-1. **04 and 06 now.** Neither needs a decision, and 04 unblocks the retention loop's Playbooks.
-2. **The owner settles decisions 1–3; then 01.**
-3. **02 next, as soon as counsel approves the wording.** Every day without it, new buyers join the
-   list unable to be emailed.
+1. **Done 2026-10-31:** 15 (imported customers subscribed), 02's checkout box, and *Email this
+   Segment* as a button. The owner runs 15 once Shopify's unsubscribed list is exported.
+2. **04 and 06 now.** 04 unblocks the retention loop's Playbooks and the stage sub-statuses.
+3. **01, and the rest of 02** (customisation, booking), with counsel reading the ticked-box
+   wording.
 4. **07 before more than one campaign runs at a time**, and **08** early, so clicks and
    unsubscribes are collected before 11 and 12 read them.
 5. **05, 09, then 10 and 11.**
-6. **03, 12 and 13** last: 12 needs three months of clicks, 13 needs unsubscribe reasons.
+6. **03, 12 and 13** last: 12 needs six campaigns' clicks, 13 needs unsubscribe reasons.

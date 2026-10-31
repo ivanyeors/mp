@@ -2,11 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { MARKETING_GROUP } from "@/lib/crm/timeline/groups";
 import { readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
-import {
-  CONSENT_SOURCE_LABEL,
-  isConsentSource,
-  type ConsentSource,
-} from "@/lib/marketing-consent/state";
+import { consentSourcePhrase, isConsentSource } from "@/lib/marketing-consent/state";
 
 /**
  * Marketing consent changes (migration slice 07) on the Customer timeline
@@ -22,11 +18,6 @@ type EventRow = {
   source: string;
   created_at: string;
 };
-
-/** "from the Shopify export", "by the unsubscribe link in an email", ... */
-function provenance(source: ConsentSource): string {
-  return `${source === "shopify_import" ? "from" : "by"} ${CONSENT_SOURCE_LABEL[source]}`;
-}
 
 export const consentAdapter: TimelineAdapter = {
   key: "consent",
@@ -52,7 +43,7 @@ export const consentAdapter: TimelineAdapter = {
           at: e.created_at,
           kind,
           ref: { type: "customer_consent_event", id: String(e.id) },
-          summary: isConsentSource(e.source) ? `${what} ${provenance(e.source)}` : what,
+          summary: isConsentSource(e.source) ? `${what} ${consentSourcePhrase(e.source)}` : what,
         };
       },
     );

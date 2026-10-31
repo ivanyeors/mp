@@ -29,6 +29,11 @@ import {
   type StartImportInput,
 } from "@/lib/customer-migration/apply";
 import { readUndoCounts, type UndoCounts } from "@/lib/customer-migration/batches";
+import {
+  readDefaultConsentCounts,
+  readEmailList,
+  type DefaultConsentCounts,
+} from "@/lib/customer-migration/default-consent";
 
 /**
  * Customers → Import from Shopify (PRD-shopify-customer-migration, slices 02
@@ -209,5 +214,57 @@ export async function undoShopifyImport(batchId: string, confirmation: string): 
       },
     });
   }
+  return { ok: true, counts };
+}
+
+export type DefaultConsentResponse = { ok: true; counts: DefaultConsentCounts } | { ok: false; error: string };
+
+/**
+ * What subscribing the imported customers would do, given Shopify's
+ * unsubscribed list (ADR 0037). Writes nothing. An empty list is the owner
+ * saying nobody unsubscribed in Shopify; the page asks them to say so.
+ */
+export async function previewDefaultConsent(emails: string[]): Promise<DefaultConsentResponse> {
+  await assertAdmin("customer-import");
+  const list = readEmailList(emails);
+  if (!list.ok) return list;
+
+  const { data, error } = await supabaseAdmin().rpc("subscribe_migrated_customers", {
+    p_unsubscribed: list.emails,
+    p_apply: false,
+  });
+  const counts = readDefaultConsentCounts(data);
+  if (error || !counts) return { ok: false, error: `Could not count the imported customers: ${error?.message ?? "no answer"}` };
+  return { ok: true, counts };
+}
+
+/**
+ * Unsubscribe everyone on Shopify's unsubscribed list, then subscribe every
+ * other imported customer nobody has asked, as `import_default`, in one
+ * transaction, and record `customer_consent.import_default` with the counts.
+ * Run again after a later import: it changes only who is new.
+ */
+export async function subscribeImportedByDefault(emails: string[]): Promise<DefaultConsentResponse> {
+  const ctx = await assertAdmin("customer-import");
+  const list = readEmailList(emails);
+  if (!list.ok) return list;
+
+  const { data, error } = await supabaseAdmin().rpc("subscribe_migrated_customers", {
+    p_unsubscribed: list.emails,
+    p_apply: true,
+  });
+  const counts = readDefaultConsentCounts(data);
+  if (error || !counts) return { ok: false, error: `Could not subscribe the imported customers: ${error?.message ?? "no answer"}` };
+  await recordAdminAction({
+    actor: ctx,
+    action: "customer_consent.import_default",
+    entityType: "customer_import",
+    after: {
+      subscribed: counts.subscribed ?? 0,
+      unsubscribed: counts.unsubscribed ?? 0,
+      imported: counts.imported,
+      listed: counts.listed,
+    },
+  });
   return { ok: true, counts };
 }

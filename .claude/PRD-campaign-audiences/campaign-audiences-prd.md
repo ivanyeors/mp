@@ -1,6 +1,8 @@
 # PRD — Campaign audiences: the CRM decides who gets which email
 
-**Status:** planned (2026-10-30). Nothing built. Slices are in [`issues/`](issues/README.md).
+**Status:** planned (2026-10-30); owner decisions settled 2026-10-31. Built: imported customers
+start subscribed (slice 15), the ticked checkout box (slice 02, checkout only), and *Email this
+Segment* beside the Segment chips. Slices are in [`issues/`](issues/README.md).
 **Owner request (2026-10-30):** "Based on our CRM for our customers, research, think and plan how
 we might integrate it with our email marketing feature, so that I'm able to send the right emails
 to the right audience."
@@ -11,7 +13,7 @@ Resend's plan), `PRD-campaign-email-editor` (blocks, Variables, the Chinese vers
 checklist), `PRD-loyalty-points` (ADR 0030).
 **Does not replace:** retention-loop slices 04 (stage chips) and 07 (Playbooks). This plan gives
 the Playbooks the audiences they need, and lets them keep sending (slice 10 here).
-**Owner decisions:** seven open. See [Owner decisions](#owner-decisions).
+**Owner decisions:** all seven answered on 2026-10-31. See [Owner decisions](#owner-decisions).
 
 ## The short version
 
@@ -197,11 +199,13 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
 
 1. **Glossary and ADR (01).** New terms and one ADR before any code: see
    [Glossary](#glossary-slice-01).
-2. **Ask for consent where people give their email (02).** An unticked *Email me news and offers*
-   box at shop checkout, on the customisation contact step (Mpillow, Mbolster, a Paired build,
-   the Assisted finish) and on appointment booking. Ticking it records consent through
-   `set_marketing_email()` with a new source (`checkout`, `customisation`, `appointment`).
-   Unticked changes nothing; nothing re-subscribes an `unsubscribed` Customer but their own tick.
+2. **Ask for consent where people give their email (02).** A box, ticked by default (owner
+   decision 1), at shop checkout, on the customisation contact step (Mpillow, Mbolster, a Paired
+   build, the Assisted finish) and on appointment booking: *Email me important updates, event
+   invites and offers. No spam, unsubscribe anytime.* Left ticked, it records consent through
+   `set_marketing_email()` with its own source (`checkout`, `customisation`, `appointment`), and
+   only for someone nobody has asked. Unticked changes nothing; nothing re-subscribes an
+   `unsubscribed` Customer but their own Profile. **Checkout is built.**
 3. **A sign-up for people who have not bought (03).** A footer form, double opt-in: the confirm
    link creates or finds the Customer and subscribes them (`newsletter`). They are *Lead*s.
 4. **Purchase filters (04).** *Didn't buy*, *Pillow size*, *Delivered* in days, and the
@@ -226,12 +230,17 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
     reaches each customer at their own 60 days.
 11. **Results per campaign (11).** Delivered, clicked, unsubscribed, spam reports, and purchases
     within 30 days by people sent it, by stage. An optional holdout for kept-sending campaigns.
-12. **Engaged and unengaged (12).** A subscriber who has clicked nothing in their last N campaigns
-    and has not bought or signed in for 12 months is *Unengaged*: left out of campaigns unless one
-    asks for them, after one "still want to hear from us?" email.
+12. **Engaged and unengaged (12).** A simple rule read from the **Lifecycle stage** (owner
+    decision 4): buyers of the last 24 months are always engaged; a *Lead* of over 12 months or
+    an *At risk · Lapsed* customer with no campaign click in their last 6 campaigns is
+    *Unengaged*. It is a Customers filter, and campaigns leave it out unless they ask for it.
 13. **Later: topics and fewer emails (13).** Specified, not scheduled; decided on unsubscribe
     reasons.
 14. **Sign-off (14).** The owner sends three of the emails in the table above on production.
+15. **Imported customers start subscribed (15, built).** The owner's request of 2026-10-31.
+    *Subscribe imported customers* on Customers → Import from Shopify takes Shopify's
+    unsubscribed list first, keeps those people unsubscribed, and subscribes every other imported
+    customer nobody has asked, as `import_default` (ADR 0037).
 
 ## Decisions
 
@@ -260,37 +269,70 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
 
 ## Owner decisions
 
-1. **Where to ask for consent, and how.** Recommended: an unticked box at shop checkout, the
-   customisation contact step and appointment booking (single opt-in, since the order or
-   booking confirmation reaches that address at once), and double opt-in for the footer sign-up.
-   Counsel checks the wording against the PDPC's Advisory Guidelines before slice 02 ships.
-   For a customisation, the Customer is found or created at hold when the box is ticked (today
-   it is created at Accept), so a person whose quote ends without an Order can still be a
-   subscribed *Lead*. Unticked, nothing changes.
-2. **The rest period.** Recommended: 7 days between marketing emails, at most 4 in 30 days.
-   Counted: campaign sends and points-expiry reminders. Not counted: transactional and aftercare.
-   One code constant, not a setting, like the stage thresholds.
-3. **Keep sending** reverses `PRD-crm-retention-loop` decision 6 and its *Out of scope* line
-   ("automated flows that send without a person starting a Wave"). Recommended: yes, with the
-   guards in decision 6 above, a daily cap per campaign, and a Pause switch. The Playbooks are
-   the reason.
-4. **The sunset rule.** Recommended: *Unengaged* after no click in their last 6 campaigns and no
-   purchase, booking or sign-in for 12 months; one re-permission email first; their consent stays
-   `subscribed` (it is a sending choice, not consent).
-5. **A holdout.** Recommended: off until a kept-sending campaign has passed 500 people sent; then
-   a stable 10% by hash of the Customer id. At today's list sizes the numbers are directional.
-6. **The sign-up creates Customer rows for people who have not bought.** `CONTEXT.md` says a
-   Customer is created at checkout, at Sign in, or by the import; this adds "or by confirming the
-   sign-up". Recommended: yes; they are *Lead*s, which the funnel already names.
-7. **Topics** (slice 13): decided after three months of unsubscribe reasons (retention slice 11).
+Answered on 2026-10-31. The owner's words are quoted; where the answer changed the plan, the
+change is in the slice it touches.
+
+1. **Where to ask for consent, and how. Settled, changed: ticked by default.** "Fine but a ticked
+   box first by default (word in a way that say the emails are for important update, special
+   events promo, promise no spam, keep it short)", and "consent during checkout is auto agree
+   first, they can unsub when they are seeing marketing emails". The box reads *Email me
+   important updates, event invites and offers. No spam, unsubscribe anytime.*
+   (`CHECKOUT_MARKETING_LABEL`). It subscribes only someone nobody has asked, never someone who
+   unsubscribed; unticking changes nothing. Same request: "make all imported customers
+   subscribed to marketing first as it's a new import" (slice 15). Both are recorded under their
+   own **Consent source** (ADR 0037). *Risk the owner accepts:* the PDPC does not let deemed
+   consent by notification be used for direct marketing, and a box nobody touched is weaker
+   evidence than a tick. Counsel should read the wording, and the first email to the people
+   subscribed by default should say why they are hearing from us and how to stop.
+2. **The rest period. Settled as recommended.** 7 days between marketing emails, at most 4 in 30
+   days; points-expiry reminders count.
+3. **Keep sending. Settled as recommended.** It reverses `PRD-crm-retention-loop` decision 6,
+   with a daily cap per campaign and a Pause switch.
+4. **The sunset rule. Settled, changed: a simple rule read from the Lifecycle stage.** "Can we
+   create a simple rule based filter? with our customer's lifecycle stage in mind". The rule:
+
+   | Lifecycle stage | Unengaged? |
+   |---|---|
+   | *New*, *Loyal* | Never: they bought or visited in the last 12 months |
+   | *At risk* (12–24 months since the last Purchase or booking) | Never: still worth winning back |
+   | *At risk · Lapsed* (over 24 months) | When they clicked none of their last 6 campaigns |
+   | *Lead* (never bought), a Customer for over 12 months | When they clicked none of their last 6 campaigns |
+   | *Lost* | Already out: *Lost* means unsubscribed |
+
+   A customer sent fewer than 6 campaigns is never Unengaged, so nobody is until clicks have been
+   recorded (slice 08) for a while. *Unengaged* is an *Engagement* filter on the Customers list,
+   so it can be seen, saved and emailed like any other, and campaigns leave it out unless they
+   tick *Include unengaged* (a win-back does). Consent is unchanged. Slice 12.
+5. **A holdout. Not answered; the recommendation stands** (off until a kept-sending campaign has
+   passed 500 people). The answer given was a requirement: "we need to be able to filter from our
+   crm page and have a button to save it as a customer segment to create the campaign". That path
+   exists: filter the Customers list, *Save as Segment*, then *Email this Segment*. The last step
+   was in each chip's menu; it is now also a button beside the chips whenever the list shows a
+   saved Segment, and in the toast after saving one.
+6. **The sign-up creates Customer rows for people who have not bought. Settled as recommended.**
+   They are *Lead*s.
+7. **Topics. Settled as recommended:** decided after three months of unsubscribe reasons.
+
+### Live audiences, by Lifecycle stage
+
+Asked on 2026-10-31: "lmk if there is a way for user to filter our customer and define them as
+audience (filter is live and will sync via the customer's lifecycle stages)". Yes, today:
+
+- A **Segment** is a saved filter, not a list of people. Each **Wave** reads it again, so a
+  Segment *Stage: At risk* holds whoever is At risk on the day the Wave is planned.
+- The **Lifecycle stage** is never stored: it is worked out from Purchases, bookings and consent
+  each time it is read, so it is always current.
+- What it does not do yet is send by itself as people move into the stage: each Wave needs a
+  person. **Keep sending** (slice 10) closes that gap, and sub-statuses such as *New · Delivered*
+  and *At risk · Lapsed* arrive as filters in slice 04.
 
 ## Glossary (slice 01)
 
 Proposed for `CONTEXT.md`, *Email marketing*:
 
-- **Consent source**: where a Customer's **Marketing consent** was given or withdrawn. Today
-  `shopify_import`, `account`, `unsubscribe_link`, `complaint`, `support`; this plan adds
-  `checkout`, `customisation`, `appointment`, `newsletter`. _Avoid_: "list" or "signup source".
+- **Consent source**: in `CONTEXT.md` since 2026-10-31 (ADR 0037), with `import_default`,
+  `shopify_unsubscribed` and `checkout`. Slice 02 adds `customisation` and `appointment`, slice
+  03 `newsletter`.
 - **Rest period**: how long after one marketing email a Customer receives no other, and how many
   they may receive in 30 days. _Avoid_: "frequency cap" in UI copy; "smart sending".
 - **Exclusion**: a Segment whose Customers a campaign's Audience leaves out. Fixed with the

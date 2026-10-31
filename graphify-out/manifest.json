@@ -2082,9 +2082,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/checkout/route.ts": {
-    "mtime": 1793395301.4595912,
-    "seen": 1793395931.5292583,
-    "ast_hash": "2a18bf656bd54ba2aa1f83cc7e72b0e2",
+    "mtime": 1793414578.1153865,
+    "seen": 1793414887.5092201,
+    "ast_hash": "3fb48176eb227c106eeddaac24c5db5c",
     "semantic_hash": ""
   },
   "app/api/shop/coupons/[id]/route.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793395301.3758376,
-    "seen": 1793395931.5341675,
-    "ast_hash": "7a3da529298c7c02536de1b69cba67e4",
+    "mtime": 1793414578.112881,
+    "seen": 1793414887.5135808,
+    "ast_hash": "a7b7958915ff5e53afb658e1acd90466",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -12624,15 +12624,15 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/import/__tests__/preview-action.test.ts": {
-    "mtime": 1793088377.6944973,
-    "seen": 1793370261.870492,
-    "ast_hash": "17960ece11974ed48b1b376bb81cf3d9",
+    "mtime": 1793414578.1135538,
+    "seen": 1793414887.508711,
+    "ast_hash": "6e768d11e98b4ccfca19f94cba50dab3",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/import/actions.ts": {
-    "mtime": 1793088377.6944973,
-    "seen": 1793370261.8704953,
-    "ast_hash": "f60e4e7596cdb0466fe7b18d13bba26a",
+    "mtime": 1793414578.1136832,
+    "seen": 1793414887.5087156,
+    "ast_hash": "eef41933faa6273202feb1b5ae23c1c0",
     "semantic_hash": ""
   },
   "lib/__tests__/csv.test.ts": {
@@ -13680,9 +13680,9 @@
     "semantic_hash": ""
   },
   "lib/crm/timeline/sources/consent.ts": {
-    "mtime": 1793088377.8938565,
-    "seen": 1793370261.8722732,
-    "ast_hash": "d04f2314556b99ff125cfb220f5799d7",
+    "mtime": 1793414578.1160698,
+    "seen": 1793414887.5101857,
+    "ast_hash": "da868dcac781e296925f031db24b7880",
     "semantic_hash": ""
   },
   "lib/email/__tests__/transactional-no-unsubscribe.test.ts": {
@@ -13692,9 +13692,9 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/fake-consent.ts": {
-    "mtime": 1793088377.9060125,
-    "seen": 1793370261.8731153,
-    "ast_hash": "840e2f29dc7b536694bb4021cbf5a7d3",
+    "mtime": 1793414578.1160698,
+    "seen": 1793414887.510742,
+    "ast_hash": "a2b53561c709d9d02c1295fc290f5a2e",
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/unsubscribe.test.ts": {
@@ -13704,15 +13704,15 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/consent.ts": {
-    "mtime": 1793088377.9060647,
-    "seen": 1793370261.873119,
-    "ast_hash": "bb0910ea6a5429b1adf2e3856a636e59",
+    "mtime": 1793414578.1160698,
+    "seen": 1793414887.5107458,
+    "ast_hash": "6a43bc0507c1af52c0d5e59159033825",
     "semantic_hash": ""
   },
   "lib/marketing-consent/state.ts": {
-    "mtime": 1793088377.9060647,
-    "seen": 1793370261.873121,
-    "ast_hash": "5190e13fa6d77f23bee1950cbb71f380",
+    "mtime": 1793414578.1160698,
+    "seen": 1793414887.510748,
+    "ast_hash": "9264aee16748a1c0b653470b848f7d4a",
     "semantic_hash": ""
   },
   "lib/marketing-consent/unsubscribe-route.check.ts": {
@@ -14106,9 +14106,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0029-shopify-customer-migration.md": {
-    "mtime": 1793088377.7617433,
-    "seen": 1793370261.8764327,
-    "ast_hash": "c48166c967cb111b93c110a947deaec7",
+    "mtime": 1793414578.1156907,
+    "seen": 1793414887.5136821,
+    "ast_hash": "3241ac43e686b156f1c92feca1d0271c",
     "semantic_hash": ""
   },
   "lib/rules-engine/__tests__/streamline-premium.test.ts": {
@@ -16776,9 +16776,9 @@
     "semantic_hash": ""
   },
   "docs/adr/README.md": {
-    "mtime": 1793395301.4878376,
-    "seen": 1793395931.5342853,
-    "ast_hash": "b1adaa54fcb5c9069ee543730129fd72",
+    "mtime": 1793414578.1156907,
+    "seen": 1793414887.5137022,
+    "ast_hash": "f005968481385529bdf1f9230868d47a",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/shop.mjs": {
@@ -16878,21 +16878,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/campaign-audiences-prd.md": {
-    "mtime": 1793395723.555828,
-    "seen": 1793395931.5328367,
-    "ast_hash": "75dedbf84308b3d93fcb2a64a5c4d947",
+    "mtime": 1793414578.110838,
+    "seen": 1793414887.5124078,
+    "ast_hash": "c80632ac89859c4f89ea0002c97ab182",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/01-glossary-and-adr.md": {
-    "mtime": 1793395762.1196458,
-    "seen": 1793395931.5328383,
-    "ast_hash": "50d4fd060ae23cd0e8840551beabac6d",
+    "mtime": 1793414578.110838,
+    "seen": 1793414887.51241,
+    "ast_hash": "1bb2642246de50a25f8fdb81b8ab9069",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/02-consent-where-people-give-their-email.md": {
-    "mtime": 1793395762.119827,
-    "seen": 1793395931.5328398,
-    "ast_hash": "ff2bfbdbdd17733b49235bbe5d27067d",
+    "mtime": 1793414578.110838,
+    "seen": 1793414887.5124116,
+    "ast_hash": "2af85206f9fd043ba4e16a8c3fec3577",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/03-newsletter-sign-up.md": {
@@ -16950,9 +16950,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/12-engaged-and-unengaged.md": {
-    "mtime": 1793395815.6447031,
-    "seen": 1793395931.5328534,
-    "ast_hash": "5f6a9b23721d05f967a9f7fd83f784d9",
+    "mtime": 1793414578.110838,
+    "seen": 1793414887.5124292,
+    "ast_hash": "aac9c371bb6f97827bae6ad10acbf807",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/13-topics-and-fewer-emails.md": {
@@ -16968,9 +16968,69 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/README.md": {
-    "mtime": 1793395845.3878253,
-    "seen": 1793395931.5328577,
-    "ast_hash": "ab8249b391cead7c0da589d66bf651b0",
+    "mtime": 1793414578.1116254,
+    "seen": 1793414887.5124357,
+    "ast_hash": "bde6ee98d3fb28e04d8949afef0969fa",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/fixtures/crm.mjs": {
+    "mtime": 1793414463.623804,
+    "seen": 1793414887.5085583,
+    "ast_hash": "af1944f787a5c50af846ba91a7024c92",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/import/__tests__/default-consent-actions.test.ts": {
+    "mtime": 1793414154.0278113,
+    "seen": 1793414887.5087082,
+    "ast_hash": "d8e72cc99d30d0d5d7b0459365a4590e",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/customers/import/consent-counts.ts": {
+    "mtime": 1793413802.9354534,
+    "seen": 1793414887.5087178,
+    "ast_hash": "b0b9ec45dd9045f7674d0f0ffa3a6702",
+    "semantic_hash": ""
+  },
+  "lib/customer-migration/__tests__/default-consent.test.ts": {
+    "mtime": 1793414139.3198116,
+    "seen": 1793414887.5102174,
+    "ast_hash": "2edea8e4f6f1603c772d0a61f42dffb1",
+    "semantic_hash": ""
+  },
+  "lib/customer-migration/default-consent.ts": {
+    "mtime": 1793413784.4318197,
+    "seen": 1793414887.5102577,
+    "ast_hash": "a5bd85cc0ad809d36537e1691f964e64",
+    "semantic_hash": ""
+  },
+  "lib/marketing-consent/__tests__/checkout-consent.test.ts": {
+    "mtime": 1793414127.5278118,
+    "seen": 1793414887.51074,
+    "ast_hash": "bdb5e4d333adafc7a4f39a46125a1961",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261031090000_consent_by_default.sql": {
+    "mtime": 1793413652.4069874,
+    "seen": 1793414887.5122902,
+    "ast_hash": "8412962479d7a9853d549448ffa99bfc",
+    "semantic_hash": ""
+  },
+  "supabase/tests/campaign-audiences/assert-consent-by-default.sql": {
+    "mtime": 1793413695.587702,
+    "seen": 1793414887.5122926,
+    "ast_hash": "f4bddc7a9853befabd50b6f582467e0b",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-campaign-audiences/issues/15-imported-customers-start-subscribed.md": {
+    "mtime": 1793414397.5485468,
+    "seen": 1793414887.5124342,
+    "ast_hash": "404a08eb70fdec20eda1033ac356e74d",
+    "semantic_hash": ""
+  },
+  "docs/adr/0037-marketing-consent-by-default.md": {
+    "mtime": 1793414309.8998077,
+    "seen": 1793414887.5137002,
+    "ast_hash": "e4a65302cc1b804d3ec8042bca6f81e8",
     "semantic_hash": ""
   }
 }

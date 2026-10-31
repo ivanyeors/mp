@@ -458,8 +458,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:299
   - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:228
   - `readAftercareView()` [select] — lib/aftercare/preferences.ts:149
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:89
-  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:62
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:113
+  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:86
   - `readProfileAftercare()` [select] — lib/aftercare/preferences.ts:203
   - `readWhatsAppGate()` [select] — lib/aftercare/preferences.ts:109
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:382
@@ -473,7 +473,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `handleApply()` [insert] — app/api/shop/customize/route.ts:630
   - `handleApplyBolster()` [insert] — app/api/shop/customize/route.ts:746
 - Read by:
-  - `POST()` [select] — app/api/shop/checkout/route.ts:277
+  - `POST()` [select] — app/api/shop/checkout/route.ts:283
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:168
 
 ### exchange_rates
@@ -939,9 +939,9 @@ Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`,
 - Written by:
   - `POST()` [insert] — app/api/readjustments/checkout/route.ts:199
   - `POST()` [insert] — app/api/results/[id]/accept/route.ts:603
-  - `POST()` [insert] — app/api/shop/checkout/route.ts:801
+  - `POST()` [insert] — app/api/shop/checkout/route.ts:811
   - `POST()` [insert] — app/api/shop/orders/route.ts:136
-  - `abandonPendingOrder()` [delete] — app/api/shop/checkout/route.ts:928
+  - `abandonPendingOrder()` [delete] — app/api/shop/checkout/route.ts:938
   - `restockOrderItem()` [update] — lib/ecommerce/restock-order.ts:147
 - Read by:
   - `deductOrderStock()` [select] — lib/ecommerce/order-stock.ts:44
@@ -978,7 +978,7 @@ References: `orders`
 Changed from pages: `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shop/checkout`
 - Written by:
   - `GET()` [update] — app/api/shop/orders/[id]/easyship/label/route.ts:45
-  - `POST()` [insert] — app/api/shop/checkout/route.ts:767
+  - `POST()` [insert] — app/api/shop/checkout/route.ts:777
   - `applyShipmentToOrder()` [upsert] — lib/shipping/order-shipment.ts:142
   - `buyOrderLabel()` [update,upsert] — lib/shipping/order-shipment.ts:217
 - Read by:
@@ -1014,13 +1014,13 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [delete,insert,update] — app/api/results/[id]/accept/route.ts:525
   - `POST()` [update] — app/api/settings/readjustments/[id]/route.ts:137
   - `POST()` [select,update] — app/api/shipping/easyship/webhook/route.ts:51
-  - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:721
+  - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:727
   - `POST()` [select,update] — app/api/shop/orders/[id]/cancel/route.ts:22
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund-request/route.ts:43
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund/route.ts:35
   - `POST()` [delete,insert,select] — app/api/shop/orders/route.ts:125
   - `POST()` [select,update] — app/api/stripe/webhook/route.ts:260
-  - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:921
+  - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:931
   - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:170
   - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:261
   - `deductOrderStock()` [update] — lib/ecommerce/order-stock.ts:25
@@ -1202,7 +1202,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/[lang]/settings/inventory/configure/save/route.ts:118
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:59
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:69
-  - `POST()` [select] — app/api/shop/checkout/route.ts:367
+  - `POST()` [select] — app/api/shop/checkout/route.ts:373
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:671
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:194
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:161
@@ -1323,7 +1323,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/costi
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:49
   - `GET()` [select] — app/api/shop/products/[id]/variants/route.ts:35
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:84
-  - `POST()` [select] — app/api/shop/checkout/route.ts:166
+  - `POST()` [select] — app/api/shop/checkout/route.ts:172
   - `POST()` [select] — app/api/shop/orders/route.ts:104
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:301
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:103
@@ -1476,8 +1476,8 @@ References: `customers`
 Defined in supabase/migrations/20261020120000_marketing_consent.sql:73
 References: `customers`
 - Read by:
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:97
-  - `sources/consent.ts` [select] — lib/crm/timeline/sources/consent.ts:38
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:121
+  - `sources/consent.ts` [select] — lib/crm/timeline/sources/consent.ts:29
 
 ### customer_emails
 Defined in supabase/migrations/20261020112000_customer_emails.sql:22
@@ -1521,14 +1521,14 @@ Defined in supabase/migrations/20261020100000_customer_import.sql:28
 References: `mp_staff`
 Changed from pages: `/settings/customers/import`
 - Written by:
-  - `startShopifyImport()` [insert] — app/[lang]/settings/customers/import/actions.ts:94
+  - `startShopifyImport()` [insert] — app/[lang]/settings/customers/import/actions.ts:99
 - Read by:
   - `loadImportHistory()` [select] — app/[lang]/settings/customers/import/history.ts:21
 
 ### customer_import_preview_matches
 Defined in supabase/migrations/20261020100000_customer_import.sql:82
 - Called by:
-  - `previewShopifyImport()` — app/[lang]/settings/customers/import/actions.ts:63
+  - `previewShopifyImport()` — app/[lang]/settings/customers/import/actions.ts:68
 
 ### customer_preference_events
 Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:35
@@ -1635,7 +1635,7 @@ Defined in supabase/migrations/20261020130000_customer_campaign_sends.sql:265
 ### finish_shopify_import
 Defined in supabase/migrations/20261020110000_customer_import_apply.sql:335
 - Called by:
-  - `finishShopifyImport()` — app/[lang]/settings/customers/import/actions.ts:156
+  - `finishShopifyImport()` — app/[lang]/settings/customers/import/actions.ts:161
 
 ### google_calendar_channels
 Defined in supabase/migrations/20261020024120_whatsapp_inbound_calendar_channels.sql:21
@@ -1657,7 +1657,7 @@ Defined in supabase/migrations/20261023120000_points_milestones.sql:181
 ### import_shopify_customers
 Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.sql:52
 - Called by:
-  - `applyShopifyImportChunk()` — app/[lang]/settings/customers/import/actions.ts:128
+  - `applyShopifyImportChunk()` — app/[lang]/settings/customers/import/actions.ts:133
 
 ### increment_coupon_usage
 Defined in supabase/migrations/20261025000000_coupon_usage_cap.sql:19
@@ -1743,7 +1743,7 @@ Defined in supabase/migrations/20261021120000_points_ledger.sql:177
 ### preview_shopify_import_undo
 Defined in supabase/migrations/20261020110000_customer_import_apply.sql:497
 - Called by:
-  - `previewShopifyImportUndo()` — app/[lang]/settings/customers/import/actions.ts:178
+  - `previewShopifyImportUndo()` — app/[lang]/settings/customers/import/actions.ts:183
 
 ### publish_landing_draft
 Defined in supabase/migrations/20260909010000_landing_restore_snapshot.sql:15
@@ -1811,9 +1811,16 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
   - `setAftercarePreference()` — lib/aftercare/preferences.ts:49
 
 ### set_marketing_email
-Defined in supabase/migrations/20261020120000_marketing_consent.sql:155
+Defined in supabase/migrations/20261031090000_consent_by_default.sql:68
 - Called by:
-  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:48
+  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:52
+
+### subscribe_migrated_customers
+Defined in supabase/migrations/20261031090000_consent_by_default.sql:159
+- Called by:
+  - `loadDefaultConsentCounts()` — app/[lang]/settings/customers/import/consent-counts.ts:10
+  - `previewDefaultConsent()` — app/[lang]/settings/customers/import/actions.ts:232
+  - `subscribeImportedByDefault()` — app/[lang]/settings/customers/import/actions.ts:252
 
 ### support_chat_codes
 Defined in supabase/migrations/20261024120000_support_chats.sql:110
@@ -1849,7 +1856,7 @@ Changed from pages: `/shipping-refund-policies`, `/support`
 ### undo_shopify_import
 Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.sql:455
 - Called by:
-  - `undoShopifyImport()` — app/[lang]/settings/customers/import/actions.ts:194
+  - `undoShopifyImport()` — app/[lang]/settings/customers/import/actions.ts:199
 
 ### unlink_google_review
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:256
@@ -2028,7 +2035,7 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:95
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:143
   - `POST()` [select] — app/api/results/hold/route.ts:566
-  - `POST()` [select] — app/api/shop/checkout/route.ts:505
+  - `POST()` [select] — app/api/shop/checkout/route.ts:511
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:213
   - `getActiveShippingMethods()` [select] — lib/ecommerce/shipping.ts:7
   - `getAllShippingMethods()` [select] — lib/ecommerce/shipping.ts:20
@@ -2214,7 +2221,7 @@ Changed from pages: `/settings/users`
 Defined in supabase/migrations/20260630120000_variant_stock_bolster.sql:10
 - Read by:
   - `GET()` [select] — app/api/shop/stock/route.ts:32
-  - `POST()` [select] — app/api/shop/checkout/route.ts:234
+  - `POST()` [select] — app/api/shop/checkout/route.ts:240
   - `attachStockAvailable()` [select] — lib/ecommerce/products.ts:21
 
 ## Pages
@@ -2477,8 +2484,8 @@ app/[lang]/settings/customers/[id]/page.tsx
 
 ### /settings/customers/import
 app/[lang]/settings/customers/import/page.tsx
-- Server actions: `applyShopifyImportChunk()`, `finishShopifyImport()`, `previewShopifyImport()`, `previewShopifyImportUndo()`, `startShopifyImport()`, `undoShopifyImport()`
-- Loads: `loadImportHistory()`, `requireAdminPage()`
+- Server actions: `applyShopifyImportChunk()`, `finishShopifyImport()`, `previewDefaultConsent()`, `previewShopifyImport()`, `previewShopifyImportUndo()`, `startShopifyImport()`, `subscribeImportedByDefault()`, `undoShopifyImport()`
+- Loads: `loadDefaultConsentCounts()`, `loadImportHistory()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_import_batches`, `mp_staff`
 - Reads, through the same: `admin_roles`, `admin_users`
 

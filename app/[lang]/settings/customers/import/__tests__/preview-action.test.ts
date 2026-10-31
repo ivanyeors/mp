@@ -163,6 +163,9 @@ describe("the preview writes nothing, and the import writes only through its SQL
       "finish_shopify_import",
       "import_shopify_customers",
       "preview_shopify_import_undo",
+      // Preview and run of Subscribe imported customers (ADR 0037).
+      "subscribe_migrated_customers",
+      "subscribe_migrated_customers",
       "undo_shopify_import",
     ]);
     // The preview's own body reads only.
