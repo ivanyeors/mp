@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { LOGO_SRC, LOGO_INV_SRC } from "@/lib/brand-logo";
+import { LOGO_SRC } from "@/lib/brand-logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Facebook, Instagram, Linkedin, Youtube } from "lucide-react";
@@ -83,22 +83,21 @@ export function MarketingFooter() {
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="flex flex-col gap-8">
           <div className="max-w-md space-y-5">
-            <Link href={to("/")} className="inline-block">
+            {/* The brand's dark-blue logo in both themes. On the dark footer it
+                sits on a white tile, as in the scrolled header's white pill,
+                rather than switching to a light-blue logo. */}
+            <Link
+              href={to("/")}
+              aria-label="Mpillow home"
+              className="inline-flex rounded-2xl dark:bg-white dark:p-2"
+            >
               <Image
                 src={LOGO_SRC}
                 unoptimized
                 alt="Mpillow"
                 width={80}
                 height={80}
-                className="h-16 w-16 object-contain dark:hidden"
-              />
-              <Image
-                src={LOGO_INV_SRC}
-                unoptimized
-                alt="Mpillow"
-                width={80}
-                height={80}
-                className="hidden h-16 w-16 object-contain dark:block"
+                className="h-16 w-16 object-contain"
               />
             </Link>
             <ul className="flex flex-wrap gap-2" role="list">
