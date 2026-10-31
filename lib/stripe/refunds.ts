@@ -36,3 +36,24 @@ export async function refundPayment(opts: RefundOpts): Promise<Stripe.Refund> {
 
   return stripe.refunds.create(params, { idempotencyKey: opts.idempotencyKey });
 }
+
+/**
+ * What Stripe will still refund on each intent's charge, in cents: captured
+ * less every refund it holds, pending ones included, which the money ledger
+ * only learns of once they settle.
+ */
+export async function intentRefundableBalances(
+  paymentIntentIds: string[],
+): Promise<Array<{ paymentIntentId: string; refundableCents: number }>> {
+  const stripe = getStripe();
+  return Promise.all(
+    paymentIntentIds.map(async (paymentIntentId) => {
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+        expand: ["latest_charge"],
+      });
+      const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
+      const refundableCents = charge ? Math.max(0, charge.amount_captured - charge.amount_refunded) : 0;
+      return { paymentIntentId, refundableCents };
+    }),
+  );
+}

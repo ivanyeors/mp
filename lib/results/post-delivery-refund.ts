@@ -95,14 +95,22 @@ export function operatorRejectDeniedReason(
 }
 
 /**
- * Direct staff refund on Result orders must go through the request + return ack path.
- * Non-Result (accessory) orders keep the existing admin refund route.
+ * A Staff refund on a Result Order. Correcting a charge (a wrong amount, a
+ * duplicate) takes nothing back, so it is always allowed. A refund because the
+ * customer gave the product back keeps US18's rule: after it shipped, and only
+ * once it is back in person. Non-Result Orders: always allowed.
  */
-export function directRefundDeniedReason(
+export function staffRefundDeniedReason(
   order: OrderRefundFields,
   items: OrderItemLike[],
-  inPersonReturnAcknowledged: boolean,
+  opts: { returned: boolean; inPersonReturnAcknowledged: boolean },
 ): string | null {
-  if (!isResultCustomisedOrder(items)) return null;
-  return operatorApproveDeniedReason(order, items, inPersonReturnAcknowledged);
+  if (!isResultCustomisedOrder(items) || !opts.returned) return null;
+  if (!isPostDelivery(order)) {
+    return "A customised order can only be refunded as a return after it has shipped.";
+  }
+  if (!opts.inPersonReturnAcknowledged) {
+    return "Confirm the customer returned the product in person before refunding it as a return.";
+  }
+  return null;
 }

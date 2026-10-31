@@ -16,16 +16,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  PartnerLocationsFields,
+  locationDraftsToPayload,
+  toLocationDrafts,
+  type LocationDraft,
+} from "@/components/partner/partner-locations-fields";
 import { LOGO_GUIDELINES, checkLogoFile } from "@/lib/partner-upload/limits";
 import { checkPayoutImage } from "@/lib/payout-upload/limits";
 
 type Profile = {
   name: string;
   description: string;
-  address: string;
-  postal_code: string;
   logo_url: string | null;
 };
+
+type Place = { id?: string; branch_name: string; address: string; postal_code: string };
 
 type PaymentDetails = {
   qrUrl: string | null;
@@ -37,17 +43,23 @@ type PaymentDetails = {
 export function PartnerSettingsClient({
   whatsappNumber,
   initialProfile,
+  initialLocations,
   backupEmail,
   paymentDetails,
   notifyWhatsapp,
 }: {
   whatsappNumber: string;
   initialProfile: Profile;
+  /** Their main location, then their other clinics. */
+  initialLocations: { main: Place; branches: Place[] };
   backupEmail: { email: string | null; verified: boolean; pending: string | null };
   paymentDetails: PaymentDetails;
   notifyWhatsapp: boolean;
 }) {
   const [profile, setProfile] = useState<Profile>(initialProfile);
+  const [locations, setLocations] = useState<LocationDraft[]>(() =>
+    toLocationDrafts(initialLocations.main, initialLocations.branches),
+  );
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -81,16 +93,29 @@ export function PartnerSettingsClient({
 
   async function saveProfile() {
     if (!profile.name.trim()) return toast.error("Company name is required.");
+    const places = locationDraftsToPayload(locations);
+    if (!places.ok) return toast.error(places.error);
     setSavingProfile(true);
     try {
       const res = await fetch("/api/partner/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify({
+          ...profile,
+          branch_name: places.branch_name,
+          address: places.address,
+          postal_code: places.postal_code,
+          branches: places.branches,
+        }),
       });
       const json = await res.json().catch(() => null);
-      if (res.ok && json?.ok) toast.success("Profile saved. Your public listing is updated.");
-      else toast.error(json?.error ?? "Save failed");
+      if (res.ok && json?.ok) {
+        toast.success("Profile saved. Your public listing is updated.");
+        // New clinics now have ids, so a second save updates them rather than adding them again.
+        setLocations((prev) => toLocationDrafts(prev[0] ?? {}, json.branches ?? []));
+      } else {
+        toast.error(json?.error ?? "Save failed");
+      }
     } finally {
       setSavingProfile(false);
     }
@@ -174,15 +199,14 @@ export function PartnerSettingsClient({
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input id="address" value={profile.address} onChange={(e) => set("address", e.target.value)} />
+          <div className="space-y-2">
+            <div>
+              <Label>Locations</Label>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Add every clinic patients can visit. Each one is listed on /our-partners.
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="postal">Postal code</Label>
-              <Input id="postal" value={profile.postal_code} onChange={(e) => set("postal_code", e.target.value)} />
-            </div>
+            <PartnerLocationsFields value={locations} onChange={setLocations} />
           </div>
 
           <Button onClick={saveProfile} disabled={savingProfile}>
