@@ -17,8 +17,8 @@ const sgDate = (iso: string) =>
 /**
  * Profile → Points (PRD-loyalty-points slice 02; ADR 0030): the customer's own
  * balance in points and dollars, what is pending and from when it is usable,
- * when the balance expires, and how far they are along the bonus milestones
- * (slice 09). Read server-side for the session's Customer; shown only while
+ * and how far they are along the bonus milestones (slice 09). Points never
+ * expire, so no date is shown beside the balance. Read server-side for the session's Customer; shown only while
  * points are live.
  */
 export function PointsCard({
@@ -44,12 +44,11 @@ export function PointsCard({
             Your points: {formatPoints(balance.available)}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Use them as money off your next shop order, in S$1 steps, at checkout.{" "}
+            Use them as money off your next shop order, in S$1 steps, at checkout. They don&apos;t expire.{" "}
             <Link href={shopHref} className="underline">
               Shop
             </Link>
           </p>
-          {balance.expiresOn ? <p className="text-sm text-muted-foreground">Expires on {sgDate(balance.expiresOn)}.</p> : null}
         </div>
       </div>
 
@@ -106,7 +105,7 @@ export function PointsComingSoonCard({
           </div>
           <p className="text-sm text-muted-foreground">
             {earnPerDollar > 0 ? `You'll earn ${earnPerDollar} points for every S$1 you pay for products, before GST. ` : null}
-            {`Use them as money off a later order: ${formatPointsCount(POINTS_PER_DOLLAR)} take S$1 off.`}
+            {`Use them as money off a later order: ${formatPointsCount(POINTS_PER_DOLLAR)} take S$1 off. They don't expire.`}
           </p>
         </div>
       </div>

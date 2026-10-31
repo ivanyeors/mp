@@ -79,8 +79,8 @@ function MilestonesField({
                 <p className="text-sm font-medium">Bonus milestones</p>
                 <p className="text-xs text-muted-foreground">
                     When the points a customer has earned from orders reach a milestone, we add its bonus, once. Spending
-                    or expiry never sets them back. A new or lower milestone is given on the next daily run to everyone
-                    already past it. Leave none to switch milestones off.
+                    never sets them back. A new or lower milestone is given on the next daily run to everyone already
+                    past it. Leave none to switch milestones off.
                 </p>
             </div>
             {milestones.length ? (
@@ -212,8 +212,8 @@ export function PointsSettingsCard() {
                     <InfoTip label="About points">
                         <p>
                             Customers earn points on what they pay and spend them as money off a shop order. 100 points
-                            are S$1, always. Custom pillows earn points but can&apos;t take them, and points used are
-                            never refunded.
+                            are S$1, always, and they never expire. Custom pillows earn points but can&apos;t take them,
+                            and points used are never refunded.
                         </p>
                         <p>Partners neither earn nor spend points: they have their own milestone tiers.</p>
                     </InfoTip>
@@ -270,12 +270,6 @@ export function PointsSettingsCard() {
                                 step={5}
                             />
                             <NumberField
-                                id="points-expiry"
-                                label="Points expire after (months without a purchase)"
-                                value={settings.expiryMonths}
-                                onChange={(n) => set("expiryMonths", n)}
-                            />
-                            <NumberField
                                 id="points-bonus"
                                 label="Claim bonus (points)"
                                 hint={`${formatPoints(settings.claimBonus)}, once, for an imported customer who signs in.`}
@@ -311,9 +305,6 @@ export function PointsSettingsCard() {
                         <p>Pending, still in a return window: {formatPoints(summary.pending)}</p>
                         <p>
                             Used: {formatPoints(summary.spent)} ({formatPoints(summary.spentThisMonth)} this month)
-                        </p>
-                        <p>
-                            Expired: {formatPoints(summary.expired)} ({formatPoints(summary.expiredThisMonth)} this month)
                         </p>
                         <p>
                             Taken back on refunds: {formatPoints(summary.clawedBack)} ({formatPoints(summary.clawedBackThisMonth)} this month)

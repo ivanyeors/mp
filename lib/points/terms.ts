@@ -14,7 +14,7 @@ export interface PointsTermsSection {
 }
 
 /** When the terms last changed. Changes come with 30 days' notice (the last section). */
-export const POINTS_TERMS_UPDATED = "23 October 2026";
+export const POINTS_TERMS_UPDATED = "31 October 2026";
 
 const share = (s: number) => (s === 0.5 ? "half" : `${Math.round(s * 100)}%`);
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
@@ -56,7 +56,7 @@ export function pointsTermsSections(s: PointsSettings): PointsTermsSection[] {
               `When the points you've earned from orders add up to a milestone, we add bonus points to your account, once for each milestone: ${s.milestones
                 .map((m) => `at ${m.at.toLocaleString("en-SG")} points earned, ${worth(m.bonus)}`)
                 .join("; ")}.`,
-              "Only points earned on orders count towards a milestone, from the day they become usable. Bonus points, points for signing in and points we add for any other reason don't count. Using points or letting them expire doesn't set you back. If you return something after its points became usable, the points we take back come off your total.",
+              "Only points earned on orders count towards a milestone, from the day they become usable. Bonus points, points for signing in and points we add for any other reason don't count. Using points doesn't set you back. If you return something after its points became usable, the points we take back come off your total.",
               "A bonus you've received is yours to keep, even if a return later takes your total below its milestone. Each milestone gives its bonus once.",
             ],
           },
@@ -73,11 +73,8 @@ export function pointsTermsSections(s: PointsSettings): PointsTermsSection[] {
         ]
       : []),
     {
-      heading: "When points expire",
-      paragraphs: [
-        `Points expire ${months(s.expiryMonths)} after your last purchase. Every purchase starts the ${months(s.expiryMonths)} again, for all your points.`,
-        "If you agreed to hear from us by email, we remind you 3 months, 2 months and 1 month before your points expire.",
-      ],
+      heading: "Points don't expire",
+      paragraphs: ["Your points stay in your account for as long as you have it, however long it is between orders."],
     },
     {
       heading: "Partners",

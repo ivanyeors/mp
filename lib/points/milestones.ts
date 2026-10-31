@@ -4,8 +4,8 @@
  *
  * A ladder on the points a Customer has earned from orders over their
  * lifetime: every `earn` less every `clawback`. Reaching a milestone adds a
- * one-time bonus, granted by the daily job. Spending, expiry, Staff
- * adjustments and bonuses neither move the bar nor set it back.
+ * one-time bonus, granted by the daily job. Spending, Staff adjustments and
+ * bonuses neither move the bar nor set it back.
  *
  * The ladder is one `site_settings` value, "points earned:bonus" pairs:
  * "1000:100,2500:300". `parseMilestones` reads it exactly as SQL's

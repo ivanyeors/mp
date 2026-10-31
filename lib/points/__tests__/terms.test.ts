@@ -26,8 +26,7 @@ describe("pointsTermsSections", () => {
       "Points can't be used on custom pillows",
       "Points used are not refunded. A return refunds money only, up to the money you paid on that order",
       "within 3 months of the email we sent you about it adds 1,000 points (S$10) to your account, once",
-      "Points expire 24 months after your last purchase",
-      "3 months, 2 months and 1 month before",
+      "Your points stay in your account for as long as you have it",
       "Partner accounts neither earn nor use points",
       "can't be cashed out, transferred to anyone else, or bought",
       "30 days before we change these terms. A change never takes away points you already have",
@@ -37,10 +36,9 @@ describe("pointsTermsSections", () => {
   });
 
   it("follows the settings", () => {
-    const t = text({ ...POINTS_DEFAULTS, earnPerDollar: 5, minRedeem: 1000, maxShare: 0.3, expiryMonths: 12, claimBonus: 1500, claimBonusMonths: 1 });
+    const t = text({ ...POINTS_DEFAULTS, earnPerDollar: 5, minRedeem: 1000, maxShare: 0.3, claimBonus: 1500, claimBonusMonths: 1 });
     expect(t).toContain("5 points for every S$1");
     expect(t).toContain("from S$10, up to 30% of the products' price");
-    expect(t).toContain("expire 12 months after your last purchase");
     expect(t).toContain("within 1 month of the email we sent you about it adds 1,500 points (S$15)");
   });
 
@@ -49,7 +47,7 @@ describe("pointsTermsSections", () => {
     for (const rule of [
       "at 1,000 points earned, 100 points (S$1); at 2,500 points earned, 300 points (S$3); at 5,000 points earned, 800 points (S$8); at 10,000 points earned, 2,000 points (S$20).",
       "Only points earned on orders count towards a milestone",
-      "Using points or letting them expire doesn't set you back",
+      "Using points doesn't set you back",
       "the points we take back come off your total",
       "A bonus you've received is yours to keep",
       "Each milestone gives its bonus once",
@@ -57,6 +55,13 @@ describe("pointsTermsSections", () => {
       expect(t).toContain(rule);
     }
     expect(text()).not.toContain("Bonus milestones");
+  });
+
+  it("says points don't expire, with no expiry date or reminder", () => {
+    const t = text({ ...POINTS_DEFAULTS, milestones: [...SEEDED_MILESTONES] });
+    expect(t).toContain("Points don't expire");
+    expect(t.match(/expir/gi)).toHaveLength(1);
+    expect(t).not.toMatch(/remind/i);
   });
 
   it("leaves the signing-in bonus out when there is none", () => {

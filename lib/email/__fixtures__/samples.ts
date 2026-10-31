@@ -369,22 +369,6 @@ export function sampleCheckup(fixture: EmailFixture = "happy") {
   };
 }
 
-/**
- * PRD-loyalty-points slice 07: a points expiry reminder, `months` before the
- * balance expires. 2,130 points (S$21.30), expiring on 12 March 2028.
- */
-export function samplePointsExpiry(fixture: EmailFixture = "happy", months: 1 | 2 | 3 = 3) {
-  return {
-    firstName: pick(fixture, "Wei Ling"),
-    points: 2130,
-    expiresOn: pick(fixture, "12 March 2028"),
-    months,
-    shopUrl: `${ORIGIN}/en-US/shop`,
-    termsUrl: `${ORIGIN}/en-US/points`,
-    accountUrl: `${ORIGIN}/en-US/account`,
-  };
-}
-
 // Migration slice 08: the campaign emails. Each link is what the wave sender
 // builds for one Customer (a Claim link with the campaign's UTMs, and the
 // unsubscribe confirm page); the tokens here are made up.

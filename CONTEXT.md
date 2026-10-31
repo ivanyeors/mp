@@ -522,11 +522,11 @@ _Avoid_: "verified mobile" — nothing verifies a phone number by code; letting 
 ## Loyalty points (ADR 0030)
 
 **Points**:
-A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, and from a one-time **Claim bonus**. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
+A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, and from a one-time **Claim bonus**. Points never expire. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
 _Avoid_: "store credit", "wallet", "cashback" (each implies cash value or a refund); "rewards" (there is no catalogue); "tier" or "member" for customers (a **Member** is **Staff**; tiers are the partners')
 
 **Points ledger**:
-The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, spend, spend release, clawback, expiry and Staff adjustment. The balance is the sum of the entries and is never stored on `customers`.
+The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, spend, spend release, clawback and Staff adjustment. There is no expiry entry: points never expire (ADR 0030, 2026-10-31). The balance is the sum of the entries and is never stored on `customers`.
 _Avoid_: editing or deleting an entry — a correction is a new `adjust` entry with a reason
 
 **Pending points**:
@@ -538,12 +538,12 @@ _Avoid_: letting pending points be spent, or counting them in the balance
 _Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
 
 **Milestone bonus**:
-Points a **Customer** receives once (`kind = 'milestone_bonus'`) for each bonus milestone they reach: a number of points earned from orders, on a ladder the owner sets (`points_milestones`, at most five). Only points earned on orders count, every `earn` less every `clawback`: spending, expiry, the **Claim bonus**, Staff adjustments and Milestone bonuses neither move it nor set it back. The daily job grants it with the points that reach it; it is never taken back, and each milestone pays once. The Profile shows the ladder as a progress bar (ADR 0030 s to w).
+Points a **Customer** receives once (`kind = 'milestone_bonus'`) for each bonus milestone they reach: a number of points earned from orders, on a ladder the owner sets (`points_milestones`, at most five). Only points earned on orders count, every `earn` less every `clawback`: spending, the **Claim bonus**, Staff adjustments and Milestone bonuses neither move it nor set it back. The daily job grants it with the points that reach it; it is never taken back, and each milestone pays once. The Profile shows the ladder as a progress bar (ADR 0030 s to w).
 _Avoid_: "tier", "level" or "status" (nothing changes after a milestone but the bonus); conflating it with the partner **Milestone track** (units, cash and rate bumps); counting the balance towards it
 
 **Points expiry**:
-The whole balance expires 24 months after the customer's last paid **Order**, or after their **Claim bonus** if that is later. A new purchase restarts the clock. Reminders go 3, 2 and 1 months before, only to customers with **Marketing consent**. The clock is the **Order** or **Claim bonus** that set the last purchase, and each clock gets its own three reminders. The expiry date shown is the last day the points can be used.
-_Avoid_: expiring points per batch, or describing expiry as fixed at earning time
+Retired (owner, 2026-10-31; ADR 0030 amendment). Points never expire: a balance is kept however long it is between orders, no reminder is sent about it, and no date is shown beside it.
+_Avoid_: an expiry date, a "use them before" reminder, or any copy that implies points lapse
 
 ## Email marketing (PRD-email-marketing, PRD-campaign-email-editor, ADR 0036)
 

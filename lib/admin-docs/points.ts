@@ -16,8 +16,8 @@ export const POINTS_GUIDE: DocGuide = {
   slug: "points",
   title: "Mpillow Points",
   summary:
-    "How customers earn and use points, the Claim bonus, bonus milestones, expiry, refunds, what customers and Staff see, what it costs, and how to launch.",
-  updated: "23 October 2026",
+    "How customers earn and use points, the Claim bonus, bonus milestones, refunds, what customers and Staff see, what it costs, and how to launch.",
+  updated: "31 October 2026",
 };
 
 const DISCOUNTS = { label: "Discounts → Points", href: "/settings/discounts" };
@@ -73,6 +73,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
             "Points are not money: they can't be cashed out, given to someone else, or bought.",
             "They can't be used on custom pillows, re-adjustment fees or orders Staff make, only on shop orders.",
             "Points used are never refunded. A refund is money only, up to the money paid.",
+            "Points never expire. A balance stays however long it is between orders, and no reminder is sent about it.",
             "Partners neither earn nor use points. Their reward is the partner milestone tiers.",
           ],
         },
@@ -87,12 +88,11 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
           head: ["Setting", "Now", "What it means"],
           rows: [
             ["Launch", s.launchAt ? sgDateTime(s.launchAt) : "Not set", "Only orders paid from then earn."],
-            ["Points are on", s.enabled ? "Yes" : "No", "Off: nothing earns, nothing can be used, nothing expires."],
+            ["Points are on", s.enabled ? "Yes" : "No", "Off: nothing earns and nothing can be used."],
             ["Earn rate", `${rate} points per S$1`, `${rate}% back on products, before GST. Shipping doesn't earn.`],
             ["Value", `${POINTS_PER_DOLLAR} points = S$1`, "Fixed in code."],
             ["Fewest used at once", min, "Points are used in S$1 steps from here."],
             ["Most of an order", share, "Of the products' price after any discount code. Never shipping."],
-            ["Expiry", months(s.expiryMonths), "After the customer's last purchase. Every purchase starts it again."],
             [
               "Claim bonus",
               s.claimBonus > 0 ? worth(s.claimBonus) : "None",
@@ -172,7 +172,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
           kind: "list",
           items: [
             "Only points earned on orders count. The Claim bonus, Staff adjustments and milestone bonuses themselves don't.",
-            "Using points or letting them expire never sets a customer back. Points taken back on a refund do come off their total.",
+            "Using points never sets a customer back. Points taken back on a refund do come off their total.",
             "A bonus is never taken back, even if a refund later takes the customer below its milestone. Each milestone pays once.",
             "The daily job adds a bonus on the same run as the points that reach it. Pending points show on the bar, lighter, but count only once they're usable.",
             "Changing the ladder never pays a milestone twice: a customer holds one bonus for each milestone they have reached. A new or lower milestone is added on the next daily run for everyone already past it.",
@@ -219,20 +219,6 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
       ],
     },
     {
-      id: "expiry",
-      heading: "Expiry and reminders",
-      blocks: [
-        {
-          kind: "p",
-          text: `A customer's whole balance expires ${months(s.expiryMonths)} after their last paid order, or their Claim bonus if that is later. Any purchase starts the ${months(s.expiryMonths)} again, for every point. The daily job expires a balance the day after its expiry date.`,
-        },
-        {
-          kind: "p",
-          text: `Reminders go 3 months, 2 months and 1 month before, once each, only to customers who agreed to marketing email, and only while they hold at least ${min}. Nothing expires while points are off.`,
-        },
-      ],
-    },
-    {
       id: "refunds",
       heading: "Refunds",
       blocks: [
@@ -255,7 +241,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
           head: ["Where", "What"],
           rows: [
             ["Profile, before the launch", '"Mpillow Points: Coming soon", the earn rate, the milestones as an empty bar, and a link to the terms.'],
-            ["Profile, once live", "The balance in points and dollars, its expiry date, points on their way with the day each becomes usable, and the milestone bar."],
+            ["Profile, once live", "The balance in points and dollars, that they don't expire, points on their way with the day each becomes usable, and the milestone bar."],
             ["Profile, switched off after the launch", "Nothing: customers may hold points then, so it doesn't say coming soon."],
             ["Checkout", "A Points section to use them, with the two exclusions beside it (no custom pillows, no refund of points used)."],
             ["Order page", '"Earns N points, usable from <date>" while pending, then "Earned N points".'],
@@ -274,7 +260,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
         {
           kind: "list",
           items: [
-            "Customers → a customer → Points: the balance, what is pending, the expiry date, the points earned from orders and the milestones reached, and the latest 20 entries. Needs Customers.",
+            "Customers → a customer → Points: the balance, what is pending, the points earned from orders and the milestones reached, and the latest 20 entries. Needs Customers.",
             "Add or remove points there, with a written reason, for example to give points back when we cancel an order. Needs Customers: make changes. It is refused for a partner, or below zero, and every adjustment is in the Audit log.",
             `Change the settings, and see what points cost, on ${DISCOUNTS.label}. Needs Discounts.`,
           ],
@@ -291,7 +277,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
       blocks: [
         {
           kind: "p",
-          text: `Every point a customer holds is S$0.01 off a future order. ${DISCOUNTS.label} shows what customers hold, what is pending, and what has been used, expired and taken back, this month and in total, with the Claim bonuses and milestone bonuses given.`,
+          text: `Every point a customer holds is S$0.01 off a future order. ${DISCOUNTS.label} shows what customers hold, what is pending, and what has been used and taken back, this month and in total, with the Claim bonuses and milestone bonuses given.`,
         },
         {
           kind: "p",

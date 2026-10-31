@@ -53,10 +53,9 @@ describe("pointsGuideSections", () => {
   });
 
   it("states the numbers the settings hold", () => {
-    const t = text(pointsGuideSections({ ...seeded, earnPerDollar: 5, minRedeem: 1000, maxShare: 0.3, expiryMonths: 12 }, now));
+    const t = text(pointsGuideSections({ ...seeded, earnPerDollar: 5, minRedeem: 1000, maxShare: 0.3 }, now));
     expect(t).toContain("5 points per S$1");
     expect(t).toContain("from 1,000 points (S$10), up to 30% of the products' price");
-    expect(t).toContain("expires 12 months after their last paid order");
     expect(t).toContain("A S$89 order with no discount earns 445 points (S$4.45).");
   });
 
