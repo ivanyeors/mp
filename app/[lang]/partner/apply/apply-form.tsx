@@ -228,9 +228,10 @@ export function ApplyForm({
         </Button>
       </form>
 
-      {/* Agreement pops up only after the fields validate — larger modal for comfortable reading. */}
+      {/* Agreement pops up only after the fields validate — 70% of the screen wide for
+          comfortable reading; below md it is the full-width drawer. */}
       <Dialog open={agreementOpen} onOpenChange={setAgreementOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="md:max-w-[70vw]">
           <DialogHeader>
             <DialogTitle>Partner Agreement</DialogTitle>
             <DialogDescription>
