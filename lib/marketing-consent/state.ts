@@ -10,18 +10,21 @@ import { formatAdminDateMY } from "@/lib/format/admin-date";
  * appends every change to `customer_consent_events`. Nothing moves a Customer
  * back to `not_subscribed`, and nothing moves `unsubscribed` → `subscribed`
  * except the customer's own `account` action. The import's default and the
- * checkout box subscribe only someone nobody has asked (ADR 0037).
+ * boxes (checkout, customisation, booking) subscribe only someone nobody has
+ * asked (ADR 0037).
  */
 
 export const MARKETING_EMAIL_STATES = ["subscribed", "not_subscribed", "unsubscribed"] as const;
 export type MarketingEmailState = (typeof MARKETING_EMAIL_STATES)[number];
 
-/** Who or what made a change. The migrations' checks list the same eight (20261031090000). */
+/** Who or what made a change. The migrations' checks list the same ten (20261031120000). */
 export const CONSENT_SOURCES = [
   "shopify_import",
   "import_default",
   "shopify_unsubscribed",
   "checkout",
+  "customisation",
+  "appointment",
   "account",
   "unsubscribe_link",
   "complaint",
@@ -33,10 +36,16 @@ export type ConsentSource = (typeof CONSENT_SOURCES)[number];
 export const MARKETING_EMAIL_LABEL = "Email me news and offers";
 
 /**
- * The checkout box, ticked by default (owner, 2026-10-31): what the emails are,
- * and the promise, in one line.
+ * The box where people give their email, ticked by default (owner, 2026-10-31):
+ * what the emails are, and the promise, in one line. The same words at
+ * checkout, on a customisation's contact step and on booking; the booking
+ * form's Chinese is in its messages (`slides.bookAppointment.flow.marketingEmail`).
  */
-export const CHECKOUT_MARKETING_LABEL = "Email me important updates, event invites and offers. No spam, unsubscribe anytime.";
+export const MARKETING_BOX_LABEL = "Email me important updates, event invites and offers. No spam, unsubscribe anytime.";
+
+/** The sources a box records (ADR 0037): subscribe only, only someone nobody has asked. */
+export const CONSENT_BOX_SOURCES = ["checkout", "customisation", "appointment"] as const;
+export type ConsentBoxSource = (typeof CONSENT_BOX_SOURCES)[number];
 
 export const MARKETING_EMAIL_STATE_LABEL: Record<MarketingEmailState, string> = {
   subscribed: "Subscribed",
@@ -50,6 +59,8 @@ export const CONSENT_SOURCE_LABEL: Record<ConsentSource, string> = {
   import_default: "the import, by default",
   shopify_unsubscribed: "Shopify's unsubscribed list",
   checkout: "the box at checkout",
+  customisation: "the box when they customised",
+  appointment: "the box when they booked",
   account: "the customer, in their account",
   unsubscribe_link: "the unsubscribe link in an email",
   complaint: "a spam complaint",
@@ -88,7 +99,7 @@ export interface MarketingConsentView {
 }
 
 /** Sources that read "from …", not "by …": a file or a form, not a person. */
-const FROM_SOURCES: readonly ConsentSource[] = ["shopify_import", "import_default", "shopify_unsubscribed", "checkout"];
+const FROM_SOURCES: readonly ConsentSource[] = ["shopify_import", "import_default", "shopify_unsubscribed", ...CONSENT_BOX_SOURCES];
 
 /** "from the Shopify export", "by the customer, in their account". */
 export function consentSourcePhrase(source: ConsentSource): string {

@@ -13,8 +13,8 @@ demoable path through the layers it touches.
 
 | # | Title | Type | Status | Blocked by |
 |---|-------|------|--------|------------|
-| [01](01-glossary-and-adr.md) | Glossary and ADR | AFK | started (Consent source, ADR 0037) | none |
-| [02](02-consent-where-people-give-their-email.md) | Ask for consent where people give their email | AFK, then HITL | checkout **built**; customisation, booking not started | none |
+| [01](01-glossary-and-adr.md) | Glossary and ADR | AFK | **built** | none |
+| [02](02-consent-where-people-give-their-email.md) | Ask for consent where people give their email | AFK, then HITL | **built** at checkout, customisation, booking; counsel to read | none |
 | [03](03-newsletter-sign-up.md) | A sign-up for people who have not bought, double opt-in | AFK | not started | 02, owner decision 6 |
 | [04](04-purchase-filters.md) | Purchase filters: didn't buy, pillow size, delivered, sub-status | AFK | **built** | none |
 | [05](05-reach-filters.md) | Reach filters: ships to, language, points expiry, campaign history | AFK | not started | 08 (clicked values only) |
@@ -33,8 +33,8 @@ demoable path through the layers it touches.
 
 ```mermaid
 graph TD
-  s01[01 Glossary and ADR]
-  s02[02 Consent at checkout, customisation, booking]
+  s01[01 Glossary and ADR · built]
+  s02[02 Consent at checkout, customisation, booking · built]
   s03[03 Sign-up, double opt-in]
   s04[04 Purchase filters · built]
   s05[05 Reach filters]
@@ -77,8 +77,9 @@ graph TD
    Segment* as a button. The owner runs 15 once Shopify's unsubscribed list is exported.
 2. **Done 2026-10-31:** 04 (purchase filters and stage sub-statuses, which unblock the retention
    loop's Playbooks) and 06 (exclusions).
-3. **01, and the rest of 02** (customisation, booking), with counsel reading the ticked-box
-   wording.
+3. **Done 2026-10-31:** 01 (glossary, ADR 0038, the consent data-flow page) and the rest of 02
+   (the box on the customisation contact step and on booking). Counsel still to read the wording;
+   the privacy policy line and the signed-in unsubscribed case are open.
 4. **07 before more than one campaign runs at a time**, and **08** early, so clicks and
    unsubscribes are collected before 11 and 12 read them.
 5. **05, 09, then 10 and 11.**

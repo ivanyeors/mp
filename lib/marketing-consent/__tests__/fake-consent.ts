@@ -1,16 +1,17 @@
 import type { AftercareFakeDb, RpcHandler } from "@/lib/aftercare/__tests__/fake-db";
 
 /**
- * set_marketing_email as 20261031090000_consent_by_default.sql defines it, for
+ * set_marketing_email as 20261031120000_consent_customisation_appointment.sql defines it, for
  * the in-memory client (`fakeAftercareDb`): the state, its provenance and one
  * event together; nothing when unchanged; only the moves each source may make.
  * supabase/tests/customer-migration/assert-07-marketing-consent.sql and
- * supabase/tests/campaign-audiences/assert-consent-by-default.sql assert the
+ * supabase/tests/campaign-audiences/assert-consent-by-default.sql and
+ * supabase/tests/campaign-audiences/assert-02-consent-boxes.sql assert the
  * real function against Postgres.
  */
-const SUBSCRIBERS = ["account", "shopify_import", "import_default", "checkout"];
+const SUBSCRIBERS = ["account", "shopify_import", "import_default", "checkout", "customisation", "appointment"];
 /** Subscribe only someone nobody has asked; skip anyone else quietly. */
-const ONLY_NOBODY_ASKED = ["shopify_import", "import_default", "checkout"];
+const ONLY_NOBODY_ASKED = ["shopify_import", "import_default", "checkout", "customisation", "appointment"];
 
 export const setMarketingEmailRpc: RpcHandler = (args, db: AftercareFakeDb) => {
   const to = args.p_to as string;
@@ -19,7 +20,7 @@ export const setMarketingEmailRpc: RpcHandler = (args, db: AftercareFakeDb) => {
     return { data: null, error: { message: `A consent change subscribes or unsubscribes, not ${to}` } };
   }
   if (to === "subscribed" && !SUBSCRIBERS.includes(source)) {
-    return { data: null, error: { message: `Only the customer, the import or the checkout box subscribes them (not ${source})` } };
+    return { data: null, error: { message: `Only the customer, the import or a box they left ticked subscribes them (not ${source})` } };
   }
   if (to === "unsubscribed" && ONLY_NOBODY_ASKED.includes(source)) {
     return { data: null, error: { message: `The source ${source} never unsubscribes anyone` } };

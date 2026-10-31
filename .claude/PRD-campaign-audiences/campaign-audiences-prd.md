@@ -1,9 +1,10 @@
 # PRD — Campaign audiences: the CRM decides who gets which email
 
 **Status:** planned (2026-10-30); owner decisions settled 2026-10-31. Built: imported customers
-start subscribed (slice 15), the ticked checkout box (slice 02, checkout only), *Email this
-Segment* beside the Segment chips, the purchase filters and stage sub-statuses (slice 04), and
-leaving Segments out of an Audience (slice 06). Slices are in [`issues/`](issues/README.md).
+start subscribed (slice 15), the glossary and ADR 0038 (slice 01), the ticked box at checkout, on
+the customisation contact step and on booking (slice 02, counsel to read), *Email this Segment*
+beside the Segment chips, the purchase filters and stage sub-statuses (slice 04), and leaving
+Segments out of an Audience (slice 06). Slices are in [`issues/`](issues/README.md).
 **Owner request (2026-10-30):** "Based on our CRM for our customers, research, think and plan how
 we might integrate it with our email marketing feature, so that I'm able to send the right emails
 to the right audience."
@@ -206,7 +207,7 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
    invites and offers. No spam, unsubscribe anytime.* Left ticked, it records consent through
    `set_marketing_email()` with its own source (`checkout`, `customisation`, `appointment`), and
    only for someone nobody has asked. Unticked changes nothing; nothing re-subscribes an
-   `unsubscribed` Customer but their own Profile. **Checkout is built.**
+   `unsubscribed` Customer but their own Profile. **Built at all three; counsel to read.**
 3. **A sign-up for people who have not bought (03).** A footer form, double opt-in: the confirm
    link creates or finds the Customer and subscribes them (`newsletter`). They are *Lead*s.
 4. **Purchase filters (04).** *Didn't buy*, *Pillow size*, *Delivered* in days, and the
@@ -278,7 +279,7 @@ change is in the slice it touches.
    events promo, promise no spam, keep it short)", and "consent during checkout is auto agree
    first, they can unsub when they are seeing marketing emails". The box reads *Email me
    important updates, event invites and offers. No spam, unsubscribe anytime.*
-   (`CHECKOUT_MARKETING_LABEL`). It subscribes only someone nobody has asked, never someone who
+   (`MARKETING_BOX_LABEL`). It subscribes only someone nobody has asked, never someone who
    unsubscribed; unticking changes nothing. Same request: "make all imported customers
    subscribed to marketing first as it's a new import" (slice 15). Both are recorded under their
    own **Consent source** (ADR 0037). *Risk the owner accepts:* the PDPC does not let deemed

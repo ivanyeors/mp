@@ -14,6 +14,7 @@ import { getWorkingAs } from "@/lib/staff/working-as";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
+import { recordBoxConsentByEmail } from "@/lib/marketing-consent/consent";
 import { sendTelegram, type TelegramStatus } from "@/lib/telegram/notify";
 import { renderOnlineResultHeld } from "@/lib/crm/telegram-updates";
 import { isOnlineResultNoticeOn } from "@/lib/crm/telegram-updates-server";
@@ -197,6 +198,13 @@ const HoldSchema = z
     recommendationRecord: z.record(z.string(), z.unknown()).optional(),
     /** Paired build: an Mbolster held with this Mpillow, under one Checkout. */
     pairedBolster: PairedBolsterSchema.optional(),
+    /**
+     * The marketing email box on the contact step, ticked by default (ADR 0037;
+     * PRD-campaign-audiences slice 02). Absent, as from a configurator tab
+     * opened before it, is unticked. A Paired build asks once, here, on the
+     * anchor.
+     */
+    marketingEmail: z.boolean().optional(),
   })
   .superRefine((v, ctx) => {
     if (v.pairedBolster) {
@@ -1209,6 +1217,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: insErr.message }, { status: 500 });
     }
   }
+
+  // The marketing email box (ADR 0037): the email typed on the contact step,
+  // so on a Staff member's device it is the shopper's, never the Staff login's.
+  // Subscribes a Customer nobody has asked, never one who unsubscribed, and
+  // never stops the hold.
+  await recordBoxConsentByEmail(admin, input.email, input.marketingEmail === true, "customisation");
 
   // No inventory reserve or deduct on hold (US36).
 

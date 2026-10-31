@@ -99,7 +99,7 @@ Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:3
   - `persistJourneyIngest()` [update,upsert] — lib/analytics/journey/ingest.ts:201
   - `stampVisitorRef()` [upsert] — lib/referrals/index.ts:176
 - Read by:
-  - `POST()` [select] — app/api/results/hold/route.ts:687
+  - `POST()` [select] — app/api/results/hold/route.ts:695
   - `stitchUnlinkedGaEvents()` [select] — lib/analytics/journey/ga-sync.ts:178
 
 ### analytics_visits
@@ -218,7 +218,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:79
   - `GET()` [select] — app/api/mp-config/assist/route.ts:79
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:224
-  - `POST()` [select] — app/api/results/hold/route.ts:473
+  - `POST()` [select] — app/api/results/hold/route.ts:481
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:251
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
 
@@ -440,7 +440,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `updateCustomerStats()` [update] — lib/ecommerce/customers.ts:82
 - Read by:
   - `GET()` [select] — app/api/settings/customers/[id]/timeline/route.ts:47
-  - `POST()` [select] — app/api/results/hold/route.ts:875
+  - `POST()` [select] — app/api/results/hold/route.ts:883
   - `POST()` [select] — app/api/shop/customers/[id]/addresses/route.ts:53
   - `POST()` [select] — app/api/shop/customers/[id]/followups/route.ts:65
   - `POST()` [select] — app/api/shop/customers/[id]/notes/route.ts:45
@@ -458,8 +458,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:299
   - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:228
   - `readAftercareView()` [select] — lib/aftercare/preferences.ts:149
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:113
-  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:86
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:152
+  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:125
   - `readProfileAftercare()` [select] — lib/aftercare/preferences.ts:203
   - `readWhatsAppGate()` [select] — lib/aftercare/preferences.ts:109
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:382
@@ -579,7 +579,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:115
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:224
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:202
-  - `POST()` [select] — app/api/results/hold/route.ts:492
+  - `POST()` [select] — app/api/results/hold/route.ts:500
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:382
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
@@ -670,7 +670,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
 - Read by:
   - `GET()` [select] — app/api/results/addons/route.ts:77
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:303
-  - `POST()` [select] — app/api/results/hold/route.ts:563
+  - `POST()` [select] — app/api/results/hold/route.ts:571
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:368
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:311
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:163
@@ -719,7 +719,7 @@ Changed from pages: `/settings/inventory`
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:297
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:94
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:140
-  - `POST()` [select] — app/api/results/hold/route.ts:453
+  - `POST()` [select] — app/api/results/hold/route.ts:461
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:367
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:310
   - `assertFillingLines()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:37
@@ -853,7 +853,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/finish/route.ts:53
   - `POST()` [select,update] — app/api/results/[id]/reconfigure/route.ts:113
   - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:48
-  - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:337
+  - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:345
   - `POST()` [insert,update] — app/api/shop/orders/[id]/mp-config-link/route.ts:60
   - `POST()` [update] — app/api/stripe/webhook/route.ts:185
   - `attachHoldPaymentIntent()` [select,update] — lib/authorization-hold/index.ts:41
@@ -937,7 +937,7 @@ Defined in supabase/migrations/0028_ecommerce.sql:456
 References: `customization_configs`, `orders`, `product_variants`, `service_prices`
 Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/shop/checkout`
 - Written by:
-  - `POST()` [insert] — app/api/readjustments/checkout/route.ts:199
+  - `POST()` [insert] — app/api/readjustments/checkout/route.ts:200
   - `POST()` [insert] — app/api/results/[id]/accept/route.ts:603
   - `POST()` [insert] — app/api/shop/checkout/route.ts:811
   - `POST()` [insert] — app/api/shop/orders/route.ts:136
@@ -1010,7 +1010,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
 - Written by:
   - `PATCH()` [select,update] — app/api/shop/orders/[id]/route.ts:66
   - `POST()` [select,update] — app/api/account/orders/[orderNumber]/refund-request/route.ts:34
-  - `POST()` [insert,select,update] — app/api/readjustments/checkout/route.ts:95
+  - `POST()` [insert,select,update] — app/api/readjustments/checkout/route.ts:96
   - `POST()` [delete,insert,update] — app/api/results/[id]/accept/route.ts:525
   - `POST()` [update] — app/api/settings/readjustments/[id]/route.ts:137
   - `POST()` [select,update] — app/api/shipping/easyship/webhook/route.ts:51
@@ -1476,7 +1476,7 @@ References: `customers`
 Defined in supabase/migrations/20261020120000_marketing_consent.sql:73
 References: `customers`
 - Read by:
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:121
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:160
   - `sources/consent.ts` [select] — lib/crm/timeline/sources/consent.ts:29
 
 ### customer_emails
@@ -1811,9 +1811,9 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
   - `setAftercarePreference()` — lib/aftercare/preferences.ts:49
 
 ### set_marketing_email
-Defined in supabase/migrations/20261031090000_consent_by_default.sql:68
+Defined in supabase/migrations/20261031120000_consent_customisation_appointment.sql:44
 - Called by:
-  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:52
+  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:58
 
 ### subscribe_migrated_customers
 Defined in supabase/migrations/20261031090000_consent_by_default.sql:159
@@ -1884,8 +1884,8 @@ Defined in supabase/migrations/20261013120000_readjustment_bookings.sql:10
 References: `customers`, `order_items`, `orders`, `partners`
 Changed from pages: `/appointments`, `/settings/appointments`
 - Written by:
-  - `POST()` [insert,update] — app/api/readjustments/book/route.ts:72
-  - `POST()` [insert,select,update] — app/api/readjustments/checkout/route.ts:82
+  - `POST()` [insert,update] — app/api/readjustments/book/route.ts:76
+  - `POST()` [insert,select,update] — app/api/readjustments/checkout/route.ts:83
   - `POST()` [select,update] — app/api/settings/readjustments/[id]/route.ts:115
   - `expireReadjustmentBooking()` [update] — lib/readjustment/checkout.ts:288
   - `finalizeReadjustmentBooking()` [select,update] — lib/readjustment/checkout.ts:171
@@ -1909,7 +1909,7 @@ References: `items`, `mp_config_responses`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/results/[id]`
 - Written by:
   - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:511
-  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1181
+  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1189
   - `reorderResult` [insert,select] — lib/results/reorder.ts:224
 - Read by:
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:141
@@ -1921,7 +1921,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id
 - Written by:
   - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:511
   - `POST()` [delete,insert] — app/api/results/[id]/reconfigure/route.ts:316
-  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1198
+  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1206
   - `reorderResult` [insert,select] — lib/results/reorder.ts:224
 - Read by:
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:69
@@ -2034,7 +2034,7 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:418
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:95
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:143
-  - `POST()` [select] — app/api/results/hold/route.ts:566
+  - `POST()` [select] — app/api/results/hold/route.ts:574
   - `POST()` [select] — app/api/shop/checkout/route.ts:511
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:213
   - `getActiveShippingMethods()` [select] — lib/ecommerce/shipping.ts:7
@@ -2139,7 +2139,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
 - Read by:
   - `GET()` [select] — app/api/appointments/slots/route.ts:63
   - `GET()` [select] — app/api/settings/appointments/events/route.ts:38
-  - `POST()` [select] — app/api/appointments/book/route.ts:84
+  - `POST()` [select] — app/api/appointments/book/route.ts:90
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:981
   - `getSiteSettings()` [select] — lib/site-settings.ts:13
   - `loadCheckupSettings()` [select] — lib/aftercare/checkup-server.ts:126

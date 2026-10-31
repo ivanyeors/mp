@@ -43,3 +43,4 @@ one is amended to point at it.
 | [0035](0035-google-reviews-through-places-until-business-profile.md) | Google reviews reach Telegram through the Places API until the Business Profile API is approved |
 | [0036](0036-campaign-email-is-typed-blocks.md) | A campaign's email is typed blocks, rendered by our own components and written in one shared editor |
 | [0037](0037-marketing-consent-by-default.md) | Imported customers start subscribed, and the checkout box is ticked by default |
+| [0038](0038-campaign-audiences-read-the-crm.md) | Campaign audiences read the CRM, and one claim rule decides who receives |

@@ -5,6 +5,7 @@ import { CalendarIcon, Check, MapPin } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -150,6 +151,9 @@ export function BookingFlow({
   const [phone, setPhone] = React.useState(readjustment?.prefill.phone ?? "");
   const [email, setEmail] = React.useState(readjustment?.prefill.email ?? "");
   const [language, setLanguage] = React.useState<LanguagePreference>("none");
+  // The marketing email box: ticked by default (owner, 2026-10-31; ADR 0037).
+  // It subscribes only someone nobody has asked; unticking changes nothing.
+  const [marketingEmail, setMarketingEmail] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [confirmed, setConfirmed] = React.useState<Location | null>(null);
@@ -226,6 +230,7 @@ export function BookingFlow({
         guest_name: name.trim(),
         phone: phone.trim(),
         language_preference: language,
+        marketing_email: marketingEmail,
         locale,
       }),
     });
@@ -289,6 +294,7 @@ export function BookingFlow({
           email: email.trim(),
           appointment_type: type,
           language_preference: language,
+          marketing_email: marketingEmail,
         }),
       });
       if (res.ok) {
@@ -528,6 +534,15 @@ export function BookingFlow({
             {rt.emailLocked}
           </p>
         ) : null}
+        <label className="flex items-start gap-2 text-sm text-muted-foreground">
+          <Checkbox
+            id="booking-marketing-email"
+            className="mt-0.5"
+            checked={marketingEmail}
+            onCheckedChange={(checked) => setMarketingEmail(checked === true)}
+          />
+          {t.marketingEmail}
+        </label>
       </div>
 
       {/* Language preference: Staff read it on the event and try to match it. */}

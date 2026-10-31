@@ -9,6 +9,7 @@ import {
   parseAppointmentSettings,
 } from "@/lib/appointments/settings";
 import { getLocation } from "@/lib/locations";
+import { recordBoxConsentByEmail } from "@/lib/marketing-consent/consent";
 import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -24,6 +25,11 @@ const BookSchema = z.object({
   email: z.string().email(),
   appointment_type: z.enum(["customisation", "readjustment"]).default("customisation"),
   language_preference: z.enum(LANGUAGE_PREFERENCES).default("none"),
+  /**
+   * The marketing email box, ticked by default (ADR 0037; PRD-campaign-audiences
+   * slice 02). Absent, as from a booking tab opened before it, is unticked.
+   */
+  marketing_email: z.boolean().optional(),
 });
 
 /** POST /api/appointments/book → create GCal event + pending reminder row. */
@@ -115,6 +121,11 @@ export async function POST(req: Request) {
       settings,
       notes: languagePreferenceNotes(parsed.language_preference),
     });
+
+    // The marketing email box (ADR 0037), once the visit is on the calendar:
+    // finds or creates the Customer by the email given. Subscribes someone
+    // nobody has asked, never one who unsubscribed; never stops the booking.
+    await recordBoxConsentByEmail(admin, parsed.email, parsed.marketing_email === true, "appointment");
 
     return NextResponse.json({ ok: true, eventId, contact });
   } catch (e) {

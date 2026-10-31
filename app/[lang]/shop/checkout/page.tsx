@@ -47,7 +47,7 @@ import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { POINTS_ACCOUNT_ERROR, POINTS_CHECKOUT_COPY } from "@/lib/points/spend";
-import { CHECKOUT_MARKETING_LABEL } from "@/lib/marketing-consent/state";
+import { MARKETING_BOX_LABEL } from "@/lib/marketing-consent/state";
 import { CheckoutCodeField } from "@/components/shop/checkout-code-field";
 import {
   checkoutCodeDiscount,
@@ -785,7 +785,7 @@ export default function CheckoutPage() {
                       checked={marketingEmail}
                       onCheckedChange={(checked) => setMarketingEmail(checked === true)}
                     />
-                    {CHECKOUT_MARKETING_LABEL}
+                    {MARKETING_BOX_LABEL}
                   </label>
                 </div>
 

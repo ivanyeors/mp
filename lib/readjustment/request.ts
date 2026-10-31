@@ -44,6 +44,11 @@ export const ReadjustmentBookingSchema = z
     guest_name: z.string().trim().min(1).max(200),
     phone: z.string().min(1),
     language_preference: z.enum(LANGUAGE_PREFERENCES).default("none"),
+    /**
+     * The marketing email box, ticked by default (ADR 0037; PRD-campaign-audiences
+     * slice 02). Absent, as from a booking tab opened before it, is unticked.
+     */
+    marketing_email: z.boolean().optional(),
   })
   .refine((b) => Boolean(b.order_item_id) !== Boolean(b.unlisted), {
     message: "Pick one of your purchases, or say it isn't listed",

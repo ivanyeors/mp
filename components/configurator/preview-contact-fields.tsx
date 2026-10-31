@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { CheckoutCodeField } from "@/components/shop/checkout-code-field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/lib/configurator/step-validation";
 import type { CheckoutCodeContext, CheckoutCodeStatus } from "@/lib/checkout-code/shared";
 import { useCheckoutCode } from "@/lib/checkout-code/use-checkout-code";
+import { MARKETING_BOX_LABEL } from "@/lib/marketing-consent/state";
 
 export type PreviewContactValues = {
   email: string;
@@ -38,6 +40,11 @@ export type PreviewContactValues = {
    * #74) or a discount code. Never blocks moving on; the hold resolves it again.
    */
   code: string;
+  /**
+   * The marketing email box, ticked by default (ADR 0037; PRD-campaign-audiences
+   * slice 02). Never required; the hold records it for the email above.
+   */
+  marketingEmail: boolean;
 };
 
 type Option = { id: string; label: string };
@@ -56,7 +63,7 @@ type Props = {
 
 /** Field checks for authorize / Save without purchasing. */
 export function previewContactFieldChecks(
-  values: PreviewContactValues,
+  values: Omit<PreviewContactValues, "marketingEmail">,
 ): FieldCheck[] {
   const otherSelected = values.discoverySource === OTHER_DISCOVERY_SOURCE_ID;
   const otherText = values.discoverySourceOther.trim();
@@ -151,6 +158,16 @@ export function PreviewContactFields({
           {fieldErrors.email ? (
             <p className="text-sm text-destructive">{fieldErrors.email}</p>
           ) : null}
+          {/* Ticked by default (owner, 2026-10-31). Unticked changes nothing. */}
+          <label className="flex items-start gap-2 pt-1 text-sm text-muted-foreground">
+            <Checkbox
+              id="hold-marketing-email"
+              className="mt-0.5"
+              checked={values.marketingEmail}
+              onCheckedChange={(checked) => onChange({ marketingEmail: checked === true })}
+            />
+            {MARKETING_BOX_LABEL}
+          </label>
         </div>
         <div className="space-y-2">
           <Label htmlFor="hold-phone">Mobile</Label>

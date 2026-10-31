@@ -330,7 +330,7 @@ A **Customisation session** a **Staff** member originates with an **Assist link*
 _Avoid_: **Staff assist mode** (a shared in-store device with **Staff** at the controls and extra editors on the preview, gated on the `results` permission — the assisted customer is not **Staff**, is not in the room, and sees none of that chrome); **Partner-assisted customisation** (the partner's device, launched from **Partner Hub**, an **Authorization hold** taken up front, a **Referral** stamped for **Commission**); "staff assist" as shorthand for this in commit messages, code, or copy — it names the other thing; calling the unpaid submission an **Order**
 
 **Customer**:
-A shopper's record (`customers` row), created at checkout, at **Sign in**, or by the Shopify import. It **has an account** once a **Sign in** is bound to it (`auth_user_id`). Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
+A shopper's record (`customers` row), created at checkout, at **Sign in**, by the Shopify import, when someone leaves the marketing email box ticked on a customisation's contact step or a booking (PRD-campaign-audiences slice 02), or, once it is built, by confirming the newsletter sign-up (slice 03; owner decision 6). One created by a box or the sign-up who has bought nothing is a *Lead*. It **has an account** once a **Sign in** is bound to it (`auth_user_id`). Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
 _Avoid_: conflating with **Customer preference** (cover/case choices only)
 
 **Order**:
@@ -372,12 +372,12 @@ The per-customer link in a campaign email, `/account/welcome?c=<token>`. The tok
 _Avoid_: "magic link" — a Claim link never signs anyone in; proof of the email is always the **Sign in** itself
 
 **Marketing consent**:
-Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its **Consent source** and timestamp. Every change is appended to `customer_consent_events`. Two defaults subscribe someone nobody has asked, and never anyone who unsubscribed (owner, 2026-10-31; ADR 0037): every **Migrated customer** not on Shopify's unsubscribed list, and a buyer who leaves the checkout box ticked.
+Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its **Consent source** and timestamp. Every change is appended to `customer_consent_events`. Two defaults subscribe someone nobody has asked, and never anyone who unsubscribed (owner, 2026-10-31; ADR 0037): every **Migrated customer** not on Shopify's unsubscribed list, and anyone who leaves the box ticked where they give their email (checkout, a customisation's contact step, a booking).
 _Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked", which is why Shopify's unsubscribed list is exported separately
 
 **Consent source**:
-What set a **Customer**'s **Marketing consent**, stored with it and on each event: `shopify_import` (the export's *yes*), `import_default` (subscribed because they were imported), `shopify_unsubscribed` (on Shopify's unsubscribed list), `checkout` (the box at checkout, ticked by default), `account` (the customer, from their Profile), `unsubscribe_link`, `complaint`, `support` (Staff, at the customer's request, unsubscribe only). Only `account` re-subscribes someone who unsubscribed.
-_Avoid_: "list" or "signup source"; reading `import_default` or `checkout` as the customer's own choice
+What set a **Customer**'s **Marketing consent**, stored with it and on each event: `shopify_import` (the export's *yes*), `import_default` (subscribed because they were imported), `shopify_unsubscribed` (on Shopify's unsubscribed list), `checkout` (the box at checkout, ticked by default), `customisation` (the same box on a customisation's contact step: Mpillow, Basic, Mbolster, a Paired build's Mpillow, an Assisted customisation), `appointment` (the same box on booking a customisation or a re-adjustment), `account` (the customer, from their Profile), `unsubscribe_link`, `complaint`, `support` (Staff, at the customer's request, unsubscribe only). Only `account` re-subscribes someone who unsubscribed.
+_Avoid_: "list" or "signup source"; reading `import_default`, `checkout`, `customisation` or `appointment` as the customer's own choice
 
 **Import batch**:
 One import that wrote to the database, run from **Admin Panel** → Customers → Import from Shopify. It records the file's name and SHA-256, the counts by outcome, the **Staff** who ran it, and when. It is the unit of reconciliation, of resume, and of undo.
@@ -575,8 +575,28 @@ Words Claude wrote for a campaign, from the subject and the brief **Staff** gave
 _Avoid_: "AI-generated email" (no email is generated without a person); calling the brief a prompt in the UI
 
 **Audience**:
-Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**, less anyone in up to three **Segments** it leaves out (*Leave out people in…*, PRD-campaign-audiences slice 06). Each Segment, sent to or left out, is read again when each **Wave** is planned, and one that is archived or needs review refuses the Wave by name. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
-_Avoid_: reading an Audience as the people who will receive it — **Marketing consent** and suppression narrow it at every send
+Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**, minus its **Exclusions** (*Leave out people in…*, PRD-campaign-audiences slice 06). The **Rest period** and the sunset rule (**Unengaged**) narrow it at every send, as consent does. Each Segment, sent to or left out, is read again when each **Wave** is planned, and one that is archived or needs review refuses the Wave by name. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
+_Avoid_: reading an Audience as the people who will receive it — **Marketing consent**, suppression, the **Rest period** and the sunset rule narrow it at every send
+
+**Exclusion**:
+A **Segment** whose **Customers** a campaign's **Audience** leaves out, up to three (`email_campaigns.exclude_segment_ids`). Read again with the Audience at every **Wave**; fixed with it once the first Wave is planned. It only ever narrows: someone in two counts once, against the first. The plan says how many each one left out.
+_Avoid_: "suppression list" (suppression is bounces and spam reports, for every campaign); "blocklist"; using one to reach anyone
+
+**Rest period**:
+How long after one marketing email a **Customer** receives no other, and how many they may receive in 30 days (owner, 2026-10-31: 7 days, at most 4; a points-expiry reminder counts). Checked in the claim rule, like consent. A Customer inside it is *rested*: skipped, not failed, with no ledger row, so a later **Wave** reaches them; the plan says when they are next eligible. Transactional and aftercare email never count.
+_Avoid_: "frequency cap" in UI copy; "smart sending"; reading a rested Customer as failed
+
+**Campaign click**:
+The first time someone opened a site link from one campaign send, recorded on that send (`customer_campaign_sends`) from a token in the link, then stripped from the address. It shows the link came from that email, not who is holding it: emails are forwarded and link scanners click, so counts are approximate. Never used to identify a browser or merge a **Visitor** into a **Customer**.
+_Avoid_: "open" (not recorded: there is no pixel); treating a click as proof of who clicked; rewriting links through Resend
+
+**Kept sending**:
+A campaign that, after a first **Wave** a person started, runs one Wave a day by itself to people who have joined its **Audience** since, inside Resend's daily room, the pause rule and the **Rest period**, until paused. Its email and Audience stay as the first Wave locked them. Chained onto the daily job; no new cron.
+_Avoid_: "automation", "flow", "drip" (each suggests branching or content changes it does not have); reading it as a way to change an email after sending
+
+**Unengaged**:
+A subscribed **Customer** the sunset rule leaves out of campaigns: an *At risk · Lapsed* customer, or a *Lead* who has been a Customer for over 12 months, who clicked none of their last 6 campaigns (owner, 2026-10-31; PRD-campaign-audiences slice 12). Nobody sent fewer than 6 is Unengaged. A Customers filter (*Engagement*), so it can be seen and saved; a campaign leaves it out unless it ticks *Include unengaged*.
+_Avoid_: reading it as a **Lifecycle stage** or as consent (they can still be emailed, and still unsubscribe); "inactive", "dormant"
 
 **Email template**:
 The words of one email the platform sends (an order confirmation, a return update, a customisation notice…): its subject, inbox preview line, heading, messages and button labels, with **Variables** such as `{order_number}`. Owner and Admin edit them on **Admin Panel** → Email templates (`email_template_copy`); the layout, the data (items, amounts, addresses, codes, links) and the footer stay in code. An unedited email sends its original words, and any failure to read an edit falls back to them.

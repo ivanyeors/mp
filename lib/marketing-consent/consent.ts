@@ -4,11 +4,15 @@
  * role: `customer_consent_events` is server-only, and `set_marketing_email()`
  * is not executable by the customer's own key.
  *
- * Five callers change consent, and each names its source:
+ * These callers change consent, and each names its source:
  *  - the customer, from their Profile, the Customer resolved from the session
  *    (app/[lang]/account/actions.ts), `account`, either way;
- *  - the box at checkout, ticked by default (app/api/shop/checkout),
- *    `checkout`, subscribe only, and only someone nobody has asked;
+ *  - the boxes where people give their email, ticked by default (ADR 0037),
+ *    subscribe only, and only someone nobody has asked: at checkout
+ *    (app/api/shop/checkout) `checkout`; on a customisation's contact step
+ *    (app/api/results/hold) `customisation`; on booking an appointment
+ *    (app/api/appointments/book, app/api/readjustments/book and /checkout)
+ *    `appointment`;
  *  - the one-click unsubscribe link (app/api/email/unsubscribe), `unsubscribe_link`;
  *  - Staff, when the customer asks them to stop
  *    (app/api/shop/customers/[id]/marketing-consent), `support`, unsubscribe only;
@@ -19,9 +23,11 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import {
   isConsentSource,
   marketingEmailState,
+  type ConsentBoxSource,
   type ConsentEvent,
   type ConsentSource,
   type MarketingConsentView,
@@ -59,23 +65,56 @@ export async function setMarketingEmail(
 }
 
 /**
- * The checkout box (ADR 0037), ticked by default. Ticked, it subscribes a
- * Customer nobody has asked, and nobody else: the SQL skips anyone who
- * unsubscribed or chose already. Unticked, it changes nothing. It never stops
- * a checkout: a failure is logged and the order goes on.
+ * A box where people give their email (ADR 0037), ticked by default. Ticked,
+ * it subscribes a Customer nobody has asked, and nobody else: the SQL skips
+ * anyone who unsubscribed or chose already. Unticked, it changes nothing. It
+ * never stops the sale, the hold or the booking: a failure is logged and the
+ * request goes on.
  */
-export async function recordCheckoutConsent(
+export async function recordBoxConsent(
   admin: SupabaseClient,
   customerId: string,
   ticked: boolean,
+  source: ConsentBoxSource,
 ): Promise<void> {
   if (!ticked) return;
   try {
-    const res = await setMarketingEmail(admin, { customerId, to: "subscribed", source: "checkout" });
-    if (!res.ok) console.error("[checkout] marketing consent not recorded:", res.error);
+    const res = await setMarketingEmail(admin, { customerId, to: "subscribed", source });
+    if (!res.ok) console.error(`[${source}] marketing consent not recorded:`, res.error);
   } catch (e) {
-    console.error("[checkout] marketing consent not recorded:", e instanceof Error ? e.message : e);
+    console.error(`[${source}] marketing consent not recorded:`, e instanceof Error ? e.message : e);
   }
+}
+
+/** The checkout box: its Order already has its Customer. */
+export function recordCheckoutConsent(admin: SupabaseClient, customerId: string, ticked: boolean): Promise<void> {
+  return recordBoxConsent(admin, customerId, ticked, "checkout");
+}
+
+/**
+ * A box on a form that takes an email but makes no Customer of its own (a
+ * customisation's contact step, a guest's booking). Ticked, it finds the
+ * Customer by the email typed, or creates one, then records as
+ * `recordBoxConsent` does. The email is always the one typed on the form, so
+ * on a Staff member's device it is the shopper's, never the Staff login's.
+ * Unticked, it neither looks up nor creates anyone.
+ */
+export async function recordBoxConsentByEmail(
+  admin: SupabaseClient,
+  email: string,
+  ticked: boolean,
+  source: Exclude<ConsentBoxSource, "checkout">,
+  customerIdFor: (email: string) => Promise<string> = async (e) => (await findOrCreateCustomer(e)).id,
+): Promise<void> {
+  if (!ticked) return;
+  let customerId: string;
+  try {
+    customerId = await customerIdFor(email);
+  } catch (e) {
+    console.error(`[${source}] marketing consent not recorded:`, e instanceof Error ? e.message : e);
+    return;
+  }
+  await recordBoxConsent(admin, customerId, true, source);
 }
 
 /** A Customer's state, or null when there is no such Customer. */

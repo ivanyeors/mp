@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/messages/en-US.ts": {
-    "mtime": 1793395302.5518377,
-    "seen": 1793395931.5307302,
-    "ast_hash": "2e0d7314c2721defad3b72b1c37ecb47",
+    "mtime": 1793431848.5188427,
+    "seen": 1793432366.966465,
+    "ast_hash": "6d6b0f24b2b1838c97e2ae4af45c9816",
     "semantic_hash": ""
   },
   "lib/i18n/messages/index.ts": {
@@ -714,15 +714,15 @@
     "semantic_hash": ""
   },
   "lib/i18n/messages/types.ts": {
-    "mtime": 1793395302.5518377,
-    "seen": 1793395931.530733,
-    "ast_hash": "1c3175ede32da4c5932c86be77ff9955",
+    "mtime": 1793431137.7788613,
+    "seen": 1793432366.9664688,
+    "ast_hash": "6cc9683586f0744d02fff4693d6f5dec",
     "semantic_hash": ""
   },
   "lib/i18n/messages/zh-CN.ts": {
-    "mtime": 1793395302.5558376,
-    "seen": 1793395931.5307343,
-    "ast_hash": "235650ef5e1e66f513dbee74cc010455",
+    "mtime": 1793431137.7815454,
+    "seen": 1793432366.9664695,
+    "ast_hash": "21db15d432d89b0b3921d028198f5dbf",
     "semantic_hash": ""
   },
   "lib/i18n/routing.ts": {
@@ -2022,9 +2022,9 @@
     "semantic_hash": ""
   },
   "app/api/results/hold/route.ts": {
-    "mtime": 1793395301.4558377,
-    "seen": 1793395931.5290859,
-    "ast_hash": "9496aa13f2efcca4105e1f732c4a23de",
+    "mtime": 1793431046.8582323,
+    "seen": 1793432366.9653175,
+    "ast_hash": "f61fb5c8622cbcbd66c3596867ed2d83",
     "semantic_hash": ""
   },
   "app/api/results/route.ts": {
@@ -2520,9 +2520,9 @@
     "semantic_hash": ""
   },
   "app/api/appointments/book/route.ts": {
-    "mtime": 1793395301.4479132,
-    "seen": 1793395931.5288613,
-    "ast_hash": "b05dd99bf22f762b6c622feb0256f252",
+    "mtime": 1793431080.6309023,
+    "seen": 1793432366.9649012,
+    "ast_hash": "98816fe388e4cdb55df7e39d83714943",
     "semantic_hash": ""
   },
   "app/api/appointments/ics/__tests__/route.test.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793430314.897672,
-    "seen": 1793430527.457224,
-    "ast_hash": "2abc7f473a6df840ebed5c472a68ad70",
+    "mtime": 1793431396.2890837,
+    "seen": 1793432366.970281,
+    "ast_hash": "577eab717c47aa8584ab831621dc697d",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -11910,27 +11910,27 @@
     "semantic_hash": ""
   },
   "app/api/readjustments/book/__tests__/route.test.ts": {
-    "mtime": 1793395301.4518375,
-    "seen": 1793395931.52903,
-    "ast_hash": "d8814820cfe24977b39e2687c7f617ff",
+    "mtime": 1793431277.3833625,
+    "seen": 1793432366.9652267,
+    "ast_hash": "fd4ec70b6d869c07fa9b381ce6732b28",
     "semantic_hash": ""
   },
   "app/api/readjustments/book/route.ts": {
-    "mtime": 1793395301.4518375,
-    "seen": 1793395931.5290322,
-    "ast_hash": "895bc6c970877bc4b6a0f9fe2ad16852",
+    "mtime": 1793431080.6279294,
+    "seen": 1793432366.9652307,
+    "ast_hash": "ca01160efb32d39f59a5197b3973411d",
     "semantic_hash": ""
   },
   "app/api/readjustments/checkout/__tests__/route.test.ts": {
-    "mtime": 1793395301.4518375,
-    "seen": 1793395931.5290349,
-    "ast_hash": "01800699d9c0add1485f98efb7777b50",
+    "mtime": 1793431286.4965203,
+    "seen": 1793432366.9652338,
+    "ast_hash": "1b4d2052a9bbaefbe0ca1e7121a8897e",
     "semantic_hash": ""
   },
   "app/api/readjustments/checkout/route.ts": {
-    "mtime": 1793395301.4518375,
-    "seen": 1793395931.529037,
-    "ast_hash": "7f248155b095e31429c576a7131b302a",
+    "mtime": 1793431080.6286867,
+    "seen": 1793432366.9652376,
+    "ast_hash": "abc081e4da1353d8cb2900517deef7dc",
     "semantic_hash": ""
   },
   "app/api/results/hold/__tests__/measured-by.test.ts": {
@@ -12060,9 +12060,9 @@
     "semantic_hash": ""
   },
   "lib/readjustment/request.ts": {
-    "mtime": 1793395302.5614922,
-    "seen": 1793395931.5310345,
-    "ast_hash": "b9c89e4695764af6069b871677af4583",
+    "mtime": 1793431068.52183,
+    "seen": 1793432366.9667811,
+    "ast_hash": "d6cfea1b467545cda813ee6e411c02ef",
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/order-lines-service.test.ts": {
@@ -13692,9 +13692,9 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/fake-consent.ts": {
-    "mtime": 1793414578.1160698,
-    "seen": 1793414887.510742,
-    "ast_hash": "a2b53561c709d9d02c1295fc290f5a2e",
+    "mtime": 1793431035.6259522,
+    "seen": 1793432366.9664934,
+    "ast_hash": "4f25f4d6a90aabca7b233776ddd0a547",
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/unsubscribe.test.ts": {
@@ -13704,15 +13704,15 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/consent.ts": {
-    "mtime": 1793414578.1160698,
-    "seen": 1793414887.5107458,
-    "ast_hash": "6a43bc0507c1af52c0d5e59159033825",
+    "mtime": 1793431027.7458582,
+    "seen": 1793432366.9664965,
+    "ast_hash": "3289eabd08e13a787d0018dd31656142",
     "semantic_hash": ""
   },
   "lib/marketing-consent/state.ts": {
-    "mtime": 1793414578.1160698,
-    "seen": 1793414887.510748,
-    "ast_hash": "9264aee16748a1c0b653470b848f7d4a",
+    "mtime": 1793431014.618587,
+    "seen": 1793432366.9664986,
+    "ast_hash": "111b20f821fb58a106d2b4f5136bbafe",
     "semantic_hash": ""
   },
   "lib/marketing-consent/unsubscribe-route.check.ts": {
@@ -14148,9 +14148,9 @@
     "semantic_hash": ""
   },
   "docs/data-flows/README.md": {
-    "mtime": 1793395301.4918377,
-    "seen": 1793395931.5342896,
-    "ast_hash": "7ebd5de0b762fc2bbe498fcf9ef98e9c",
+    "mtime": 1793431455.220461,
+    "seen": 1793432366.9704487,
+    "ast_hash": "9ce28dbac63ec3d484a8434f0427bce2",
     "semantic_hash": ""
   },
   "docs/data-flows/inventory.md": {
@@ -16776,9 +16776,9 @@
     "semantic_hash": ""
   },
   "docs/adr/README.md": {
-    "mtime": 1793414578.1156907,
-    "seen": 1793414887.5137022,
-    "ast_hash": "f005968481385529bdf1f9230868d47a",
+    "mtime": 1793431424.3988175,
+    "seen": 1793432366.9704435,
+    "ast_hash": "2e488de4bf1a19cd39790c0d95970f78",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/shop.mjs": {
@@ -16878,21 +16878,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/campaign-audiences-prd.md": {
-    "mtime": 1793430321.1684701,
-    "seen": 1793430527.4564168,
-    "ast_hash": "a90b67f6a80c4ef5b843d2c0b3400217",
+    "mtime": 1793431491.4657154,
+    "seen": 1793432366.968541,
+    "ast_hash": "87489d92ef9610901a13826bd99a41a3",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/01-glossary-and-adr.md": {
-    "mtime": 1793414578.110838,
-    "seen": 1793414887.51241,
-    "ast_hash": "1bb2642246de50a25f8fdb81b8ab9069",
+    "mtime": 1793431491.466333,
+    "seen": 1793432366.9685442,
+    "ast_hash": "72fe8d20517f2eb996f369d819c2aede",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/02-consent-where-people-give-their-email.md": {
-    "mtime": 1793414578.110838,
-    "seen": 1793414887.5124116,
-    "ast_hash": "2af85206f9fd043ba4e16a8c3fec3577",
+    "mtime": 1793431491.4667516,
+    "seen": 1793432366.9685473,
+    "ast_hash": "b126506be147a059e7fb723bbe7e28c8",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/03-newsletter-sign-up.md": {
@@ -16968,9 +16968,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/README.md": {
-    "mtime": 1793430314.899497,
-    "seen": 1793430527.456435,
-    "ast_hash": "fa0f6afbdc3dac770a4322debd56884a",
+    "mtime": 1793431491.4672873,
+    "seen": 1793432366.968595,
+    "ast_hash": "909b6f0ed483309370dd107bd7dd2ad2",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/crm.mjs": {
@@ -17004,9 +17004,9 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/checkout-consent.test.ts": {
-    "mtime": 1793414127.5278118,
-    "seen": 1793414887.51074,
-    "ast_hash": "bdb5e4d333adafc7a4f39a46125a1961",
+    "mtime": 1793431027.7274463,
+    "seen": 1793432366.9664922,
+    "ast_hash": "25c9ebeec58b258ec08306169222780b",
     "semantic_hash": ""
   },
   "supabase/migrations/20261031090000_consent_by_default.sql": {
@@ -17028,9 +17028,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0037-marketing-consent-by-default.md": {
-    "mtime": 1793414309.8998077,
-    "seen": 1793414887.5137002,
-    "ast_hash": "e4a65302cc1b804d3ec8042bca6f81e8",
+    "mtime": 1793431496.5795267,
+    "seen": 1793432366.970438,
+    "ast_hash": "0e98805f0202eb08559e742c8fc2c838",
     "semantic_hash": ""
   },
   "supabase/migrations/20261031100000_customer_overview_purchase_filters.sql": {
@@ -17055,6 +17055,48 @@
     "mtime": 1793429817.544983,
     "seen": 1793430527.4563003,
     "ast_hash": "9011135e422074e2cc3c93af5e50f003",
+    "semantic_hash": ""
+  },
+  "app/api/appointments/book/__tests__/marketing-consent.test.ts": {
+    "mtime": 1793431301.8426514,
+    "seen": 1793432366.9648852,
+    "ast_hash": "22d50e77e1b8329dc6c6111c9abc2a76",
+    "semantic_hash": ""
+  },
+  "app/api/results/hold/__tests__/marketing-consent.test.ts": {
+    "mtime": 1793431210.5638607,
+    "seen": 1793432366.965299,
+    "ast_hash": "9149cd992672be1214ca236c48a87c9e",
+    "semantic_hash": ""
+  },
+  "lib/marketing-consent/__tests__/box-consent.test.ts": {
+    "mtime": 1793431240.8150983,
+    "seen": 1793432366.9664898,
+    "ast_hash": "bf3276fa91bd87cd112dd78719138ca9",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261031120000_consent_customisation_appointment.sql": {
+    "mtime": 1793430965.8427904,
+    "seen": 1793432366.9683392,
+    "ast_hash": "e698a66537e73026cfb63bfc30654d75",
+    "semantic_hash": ""
+  },
+  "supabase/tests/campaign-audiences/assert-02-consent-boxes.sql": {
+    "mtime": 1793430979.5947912,
+    "seen": 1793432366.9683425,
+    "ast_hash": "cde7567578ea5d38329f43db7eb32d5d",
+    "semantic_hash": ""
+  },
+  "docs/adr/0038-campaign-audiences-read-the-crm.md": {
+    "mtime": 1793431422.1668174,
+    "seen": 1793432366.9704409,
+    "ast_hash": "71b1877d2c3ac6996081115733ebf145",
+    "semantic_hash": ""
+  },
+  "docs/data-flows/marketing-consent.md": {
+    "mtime": 1793431460.6268198,
+    "seen": 1793432366.9704554,
+    "ast_hash": "124ee1192fee42c41236b6e29efdb677",
     "semantic_hash": ""
   }
 }

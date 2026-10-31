@@ -68,5 +68,7 @@ Two facts constrain how:
   campaign; the first Waves to them should be small, buyers first, as Waves already are.
 - Who was subscribed by default can always be listed (`marketing_email_source`), so if counsel
   advises asking them again, a re-permission campaign or a reversal needs no new data.
-- The customisation contact step and appointment booking get the same ticked box in slice 02;
-  the footer sign-up (slice 03) stays double opt-in.
+- The customisation contact step and appointment booking get the same ticked box in slice 02,
+  under their own sources, `customisation` and `appointment`, which move exactly as `checkout`
+  does (`20261031120000`; [where consent is written](../data-flows/marketing-consent.md)). The
+  footer sign-up (slice 03) stays double opt-in.

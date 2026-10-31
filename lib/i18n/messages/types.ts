@@ -295,6 +295,11 @@ export type Messages = {
         languageMandarin: string;
         languageNone: string;
         languageHint: string;
+        /**
+         * The marketing email box, ticked by default (ADR 0037): the same words
+         * as `MARKETING_BOX_LABEL` at checkout.
+         */
+        marketingEmail: string;
         /** Customisation booking: the Measurement service fees, `{premium}` / `{basic}` (ADR 0024). */
         measurementFeeNote: string;
       };

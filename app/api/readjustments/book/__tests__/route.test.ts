@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 
 /**
  * POST /api/readjustments/book — a Complimentary re-adjustment (ADR 0024).
@@ -18,6 +19,7 @@ const h = vi.hoisted(() => ({
   insertError: null as null | { code: string; message: string },
   isSlotFree: vi.fn(),
   bookCalendarSlot: vi.fn(),
+  recordBoxConsent: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -75,6 +77,8 @@ vi.mock("@/lib/appointments/settings-store", () => ({
   getAppointmentSettings: vi.fn(async () => ({ readjustmentSummaryMatch: "Mpillow Re-adjustment" })),
 }));
 
+vi.mock("@/lib/marketing-consent/consent", () => ({ recordBoxConsent: h.recordBoxConsent }));
+
 const { POST } = await import("@/app/api/readjustments/book/route");
 
 const ITEM = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -114,6 +118,7 @@ const post = (extra: Row = {}) =>
   );
 
 beforeEach(() => {
+  resetRateLimits();
   vi.clearAllMocks();
   h.bookings = [];
   h.customer = { id: "cust-1", email: "ada@x.test" };
@@ -230,5 +235,42 @@ describe("POST /api/readjustments/book", () => {
     h.isSlotFree.mockResolvedValue(false);
     expect((await post()).status).toBe(409);
     expect(h.bookings).toEqual([]);
+  });
+});
+
+// PRD-campaign-audiences slice 02: the marketing email box, ticked by default.
+describe("POST /api/readjustments/book — the marketing email box", () => {
+  const consent = () => h.recordBoxConsent.mock.calls.map(([, customerId, ticked, source]) => ({ customerId, ticked, source }));
+
+  it("records it for the signed-in Customer, as appointment, once the visit stands", async () => {
+    expect((await post({ marketing_email: true })).status).toBe(200);
+    expect(consent()).toEqual([{ customerId: "cust-1", ticked: true, source: "appointment" }]);
+  });
+
+  it("absent, as from a tab opened before the box, is unticked", async () => {
+    expect((await post()).status).toBe(200);
+    expect(consent()).toEqual([{ customerId: "cust-1", ticked: false, source: "appointment" }]);
+  });
+
+  it("records it when the invite exists though a later step failed", async () => {
+    h.bookCalendarSlot.mockImplementation(async (input: { onEventCreated?: (id: string) => Promise<void> }) => {
+      await input.onEventCreated?.("evt-1");
+      throw new Error("reminder insert failed");
+    });
+    expect((await post({ marketing_email: true })).status).toBe(200);
+    expect(consent()).toEqual([{ customerId: "cust-1", ticked: true, source: "appointment" }]);
+  });
+
+  it("records nothing for a visit that was not booked", async () => {
+    h.bookCalendarSlot.mockRejectedValue(new Error("calendar down"));
+    expect((await post({ marketing_email: true })).status).toBe(502);
+    h.isSlotFree.mockResolvedValue(false);
+    expect((await post({ marketing_email: true })).status).toBe(409);
+    expect(h.recordBoxConsent).not.toHaveBeenCalled();
+  });
+
+  it("reads the box only as a boolean", async () => {
+    expect((await post({ marketing_email: "on" })).status).toBe(400);
+    expect(h.recordBoxConsent).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fakeAftercareDb, type AftercareFakeDb } from "@/lib/aftercare/__tests__/fake-db";
 import { setMarketingEmailRpc } from "@/lib/marketing-consent/__tests__/fake-consent";
 import { recordCheckoutConsent } from "@/lib/marketing-consent/consent";
-import { CHECKOUT_MARKETING_LABEL, describeConsent } from "@/lib/marketing-consent/state";
+import { MARKETING_BOX_LABEL, describeConsent } from "@/lib/marketing-consent/state";
 
 /**
  * The checkout box, ticked by default (ADR 0037): ticked, it subscribes a
@@ -62,10 +62,10 @@ describe("recordCheckoutConsent", () => {
 
 describe("the box's words and its provenance", () => {
   it("says what the emails are and promises no spam, in one line", () => {
-    expect(CHECKOUT_MARKETING_LABEL).toMatch(/important updates/);
-    expect(CHECKOUT_MARKETING_LABEL).toMatch(/offers/);
-    expect(CHECKOUT_MARKETING_LABEL).toMatch(/No spam/);
-    expect(CHECKOUT_MARKETING_LABEL.length).toBeLessThanOrEqual(100);
+    expect(MARKETING_BOX_LABEL).toMatch(/important updates/);
+    expect(MARKETING_BOX_LABEL).toMatch(/offers/);
+    expect(MARKETING_BOX_LABEL).toMatch(/No spam/);
+    expect(MARKETING_BOX_LABEL.length).toBeLessThanOrEqual(100);
   });
 
   it("names each new source on the Customer page", () => {
