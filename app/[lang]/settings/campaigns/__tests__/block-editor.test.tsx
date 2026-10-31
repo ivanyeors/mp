@@ -68,6 +68,7 @@ const LEGACY: CampaignDraft = {
   button: { target: "url", label: "Shop the covers", url: "https://mpillow.com/shop" },
   audience: "subscribed",
   segmentId: null,
+  excludeSegmentIds: [],
 };
 const CONTENT: CampaignContent = {
   v: 1,

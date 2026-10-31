@@ -575,7 +575,7 @@ Words Claude wrote for a campaign, from the subject and the brief **Staff** gave
 _Avoid_: "AI-generated email" (no email is generated without a person); calling the brief a prompt in the UI
 
 **Audience**:
-Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
+Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**, less anyone in up to three **Segments** it leaves out (*Leave out people in…*, PRD-campaign-audiences slice 06). Each Segment, sent to or left out, is read again when each **Wave** is planned, and one that is archived or needs review refuses the Wave by name. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
 _Avoid_: reading an Audience as the people who will receive it — **Marketing consent** and suppression narrow it at every send
 
 **Email template**:

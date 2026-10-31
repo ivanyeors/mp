@@ -54,6 +54,8 @@ export const WAVE_LABEL = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
 export const MAX_WAVE_SIZE = 1000;
 /** The most addresses one test goes to. */
 export const MAX_TEST_RECIPIENTS = 3;
+/** Segments one campaign may leave out of its audience (PRD-campaign-audiences slice 06). */
+export const MAX_EXCLUDED_SEGMENTS = 3;
 
 export const CAMPAIGN_LIMITS = {
   name: 80,
@@ -124,10 +126,21 @@ function draftSchema({ required }: { required: boolean }) {
         }),
       audience: z.enum(CAMPAIGN_AUDIENCES),
       segmentId: z.string().uuid().nullable().default(null),
+      // Slice 06 (PRD-campaign-audiences): Segments whose Customers this campaign leaves out.
+      excludeSegmentIds: z
+        .array(z.string().uuid())
+        .max(MAX_EXCLUDED_SEGMENTS, `Leave out at most ${MAX_EXCLUDED_SEGMENTS} Segments.`)
+        .default([]),
     })
     .superRefine((d, ctx) => {
       if (d.audience === "segment" && !d.segmentId) {
         ctx.addIssue({ code: "custom", path: ["segmentId"], message: "Choose the Segment to send to." });
+      }
+      if (new Set(d.excludeSegmentIds).size !== d.excludeSegmentIds.length) {
+        ctx.addIssue({ code: "custom", path: ["excludeSegmentIds"], message: "A Segment is left out twice." });
+      }
+      if (d.audience === "segment" && d.segmentId && d.excludeSegmentIds.includes(d.segmentId)) {
+        ctx.addIssue({ code: "custom", path: ["excludeSegmentIds"], message: "It cannot leave out the Segment it is sent to." });
       }
       if (!d.content) {
         if (required && !d.body.trim()) ctx.addIssue({ code: "custom", path: ["body"], message: "Write the email." });
@@ -162,7 +175,9 @@ function draftSchema({ required }: { required: boolean }) {
 
 /**
  * What the editor saves. `button` is null for none; `segmentId` only with the
- * Segment audience. Mirrors the table's checks, so a draft that parses saves.
+ * Segment audience; `excludeSegmentIds` with any audience, at most 3, never
+ * the one it is sent to. Mirrors the table's checks, so a draft that parses
+ * saves.
  */
 export const CampaignDraftSchema = draftSchema({ required: true });
 
@@ -223,7 +238,7 @@ export interface Campaign extends CampaignDraft {
 
 /** The one table row's columns, in its order. */
 export const CAMPAIGN_COLUMNS =
-  "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, " +
+  "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, exclude_segment_ids, " +
   "created_at, updated_at, locked_at, archived_at, creator:mp_staff!created_by_profile_id(name)";
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
@@ -255,6 +270,9 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
         : null,
     audience: audience as CampaignAudience,
     segmentId: str(row.segment_id),
+    excludeSegmentIds: Array.isArray(row.exclude_segment_ids)
+      ? row.exclude_segment_ids.filter((v): v is string => typeof v === "string")
+      : [],
     createdAt: str(row.created_at) ?? "",
     updatedAt: str(row.updated_at) ?? "",
     lockedAt: str(row.locked_at),
@@ -277,6 +295,7 @@ export function campaignRowFromDraft(d: CampaignDraft) {
     button_url: d.button?.target === "url" ? d.button.url : null,
     audience: d.audience,
     segment_id: d.audience === "segment" ? d.segmentId : null,
+    exclude_segment_ids: d.excludeSegmentIds,
   };
 }
 
@@ -442,6 +461,45 @@ export function planCampaignWave(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Leaving Segments out (PRD-campaign-audiences slice 06)
+// ---------------------------------------------------------------------------
+
+/** A Segment the campaign leaves out, resolved when the wave is planned: who it chooses now. */
+export interface SegmentExclusion {
+  segmentId: string;
+  name: string;
+  customerIds: ReadonlySet<string>;
+}
+
+/** How many of the audience one left-out Segment took away. */
+export interface LeftOutBySegment {
+  segmentId: string;
+  name: string;
+  count: number;
+}
+
+/**
+ * Pure — the audience less everyone a left-out Segment chooses, before the
+ * rule runs. It only drops: what comes out is a subset of what went in, in the
+ * same order. Someone in two left-out Segments counts once, against the first
+ * in the campaign's order; every left-out Segment is listed, at 0 when it took
+ * nobody away.
+ */
+export function excludeSegmentMembers<C extends Pick<CampaignCandidate, "customerId">>(
+  candidates: readonly C[],
+  exclusions: readonly SegmentExclusion[],
+): { candidates: C[]; leftOut: LeftOutBySegment[] } {
+  const leftOut = exclusions.map((x) => ({ segmentId: x.segmentId, name: x.name, count: 0 }));
+  const kept: C[] = [];
+  for (const c of candidates) {
+    const at = exclusions.findIndex((x) => x.customerIds.has(c.customerId));
+    if (at < 0) kept.push(c);
+    else leftOut[at]!.count++;
+  }
+  return { candidates: kept, leftOut };
+}
+
 /** Pure — the next wave's label: `w1`, `w2`, … after the ones the Campaign has. */
 export function nextWaveLabel(existing: readonly string[]): string {
   const taken = new Set(existing);
@@ -518,6 +576,7 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   button: { target: "sign_in", label: "Sign in and collect your points", url: null },
   audience: "imported_not_signed_in",
   segmentId: null,
+  excludeSegmentIds: [],
 };
 
 /**
@@ -536,6 +595,7 @@ export const EMPTY_CAMPAIGN_DRAFT: CampaignDraft = {
   button: null,
   audience: "imported_not_signed_in",
   segmentId: null,
+  excludeSegmentIds: [],
 };
 
 /**

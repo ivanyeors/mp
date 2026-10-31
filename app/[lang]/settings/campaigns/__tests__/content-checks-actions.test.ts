@@ -23,6 +23,7 @@ const CAMPAIGN: Campaign = {
   button: null,
   audience: "subscribed",
   segmentId: null,
+  excludeSegmentIds: [],
   id: ID,
   createdAt: "2026-10-21T00:00:00Z",
   updatedAt: "2026-10-21T00:00:00Z",
@@ -59,6 +60,7 @@ vi.mock("@/lib/email-campaigns/sender", async (importOriginal) => ({
       requested: 1,
       limitedBy: null,
       waiting: 0,
+      leftOutBySegment: [],
     };
   }),
 }));

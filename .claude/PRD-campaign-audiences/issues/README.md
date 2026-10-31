@@ -18,7 +18,7 @@ demoable path through the layers it touches.
 | [03](03-newsletter-sign-up.md) | A sign-up for people who have not bought, double opt-in | AFK | not started | 02, owner decision 6 |
 | [04](04-purchase-filters.md) | Purchase filters: didn't buy, pillow size, delivered, sub-status | AFK | **built** | none |
 | [05](05-reach-filters.md) | Reach filters: ships to, language, points expiry, campaign history | AFK | not started | 08 (clicked values only) |
-| [06](06-exclude-segments.md) | Exclude Segments from an Audience | AFK | not started | none |
+| [06](06-exclude-segments.md) | Exclude Segments from an Audience | AFK | **built** | none |
 | [07](07-rest-period.md) | A rest period between one person's emails | AFK | not started | 01 |
 | [08](08-clicks-and-unsubscribes-per-campaign.md) | Clicks and unsubscribes, tied to the campaign | AFK, then HITL | not started | 01 |
 | [09](09-fit-checks-and-variables.md) | The right version: fit checks and two Variables | AFK | not started | 04, 05 |
@@ -38,7 +38,7 @@ graph TD
   s03[03 Sign-up, double opt-in]
   s04[04 Purchase filters · built]
   s05[05 Reach filters]
-  s06[06 Exclusions]
+  s06[06 Exclusions · built]
   s07[07 Rest period]
   s08[08 Clicks and unsubscribes per campaign]
   s09[09 Fit checks and Variables]
@@ -75,8 +75,8 @@ graph TD
 
 1. **Done 2026-10-31:** 15 (imported customers subscribed), 02's checkout box, and *Email this
    Segment* as a button. The owner runs 15 once Shopify's unsubscribed list is exported.
-2. **04 built 2026-10-31; 06 now.** 04 unblocks the retention loop's Playbooks and the stage
-   sub-statuses.
+2. **Done 2026-10-31:** 04 (purchase filters and stage sub-statuses, which unblock the retention
+   loop's Playbooks) and 06 (exclusions).
 3. **01, and the rest of 02** (customisation, booking), with counsel reading the ticked-box
    wording.
 4. **07 before more than one campaign runs at a time**, and **08** early, so clicks and

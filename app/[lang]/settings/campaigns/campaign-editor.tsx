@@ -16,6 +16,7 @@ import {
     Redo2,
     Send,
     Undo2,
+    X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AiButton } from "@/components/block-editor/ai-button";
@@ -82,6 +83,7 @@ import {
     CAMPAIGN_BLOCKER_TEXT,
     CAMPAIGN_LIMITS,
     CAMPAIGN_PLACEHOLDERS,
+    MAX_EXCLUDED_SEGMENTS,
     MAX_TEST_RECIPIENTS,
     MAX_WAVE_SIZE,
     variablesInEmail,
@@ -275,9 +277,10 @@ export function CampaignEditor({
         greeting: initial.greeting,
         audience: initial.audience,
         segmentId: initial.segmentId ?? "",
+        excludeSegmentIds: initial.excludeSegmentIds ?? [],
     }));
     const draft = history.value;
-    const { name, subject, preheader, body, content, greeting, audience, segmentId } = draft;
+    const { name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds } = draft;
     const { choice: buttonChoice, label: buttonLabel, url: buttonUrl } = draft.button;
     const edit = (patch: Partial<EditorDraft>, burst?: string) => history.set((e) => ({ ...e, ...patch }), { burst });
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
@@ -292,7 +295,15 @@ export function CampaignEditor({
     const editChinese = (edit: (c: CampaignContent) => CampaignContent, burst?: string) => history.set((e) => (e.content ? { ...e, content: edit(e.content) } : e), { burst });
 
     const setAudience = (v: CampaignAudience) => edit({ audience: v });
-    const setSegmentId = (v: string) => edit({ segmentId: v });
+    // The Segment it is sent to is never one it leaves out (slice 06).
+    const setSegmentId = (v: string) => edit({ segmentId: v, excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
+    const leaveOut = (v: string) => edit({ excludeSegmentIds: [...excludeSegmentIds, v].slice(0, MAX_EXCLUDED_SEGMENTS) });
+    const keepIn = (v: string) => edit({ excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
+    const segmentName = (id: string) => segments.find((s) => s.id === id)?.name ?? "(archived Segment)";
+    // What *Leave out* can still add: not the Segment it is sent to, nor one already left out.
+    const leaveOutChoices = segments.filter(
+        (s) => !excludeSegmentIds.includes(s.id) && !(audience === "segment" && s.id === segmentId),
+    );
     // The chosen Segment's Customers list (PRD-crm-retention-loop slice 02).
     const chosenSegmentHref = segments.find((s) => s.id === segmentId)?.customersHref ?? null;
     // What the email says, as Clear all and Undo see it.
@@ -312,12 +323,13 @@ export function CampaignEditor({
             greeting,
             audience,
             segmentId: audience === "segment" ? segmentId || null : null,
+            excludeSegmentIds,
             button:
                 content || buttonChoice === "none"
                     ? null
                     : { target: buttonChoice, label: buttonLabel, url: buttonChoice === "url" ? buttonUrl : null },
         }),
-        [name, subject, preheader, body, content, greeting, audience, segmentId, buttonChoice, buttonLabel, buttonUrl],
+        [name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds, buttonChoice, buttonLabel, buttonUrl],
     );
     const inputKey = JSON.stringify(input);
     const [savedKey, setSavedKey] = useState(inputKey);
@@ -579,7 +591,10 @@ export function CampaignEditor({
               subject,
               from: plan.readiness.sender.from,
               replyTo: plan.readiness.sender.replyTo,
-              audience: CAMPAIGN_AUDIENCE_LABEL[audience] + (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : ""),
+              audience:
+                  CAMPAIGN_AUDIENCE_LABEL[audience] +
+                  (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : "") +
+                  (excludeSegmentIds.length ? `, leaving out ${excludeSegmentIds.map((x) => `“${segmentName(x)}”`).join(", ")}` : ""),
               firstWave,
           }
         : null;
@@ -1012,6 +1027,57 @@ export function CampaignEditor({
                         </Field>
                     ) : null}
                 </div>
+                {/* Slice 06 (PRD-campaign-audiences): Segments whose Customers this campaign leaves out, with any audience. */}
+                <Field
+                    label="Leave out people in…"
+                    htmlFor="c-leave-out"
+                    error={fieldErrors.excludeSegmentIds}
+                    hint={
+                        segments.length
+                            ? `Up to ${MAX_EXCLUDED_SEGMENTS} Segments, read again at every wave: someone in one is not sent this campaign.`
+                            : "No segments yet. Save one from the filters on the Customers list."
+                    }
+                >
+                    <div className="space-y-2">
+                        {excludeSegmentIds.length ? (
+                            <ul className="flex flex-wrap gap-2" aria-label="Segments left out">
+                                {excludeSegmentIds.map((x) => (
+                                    <li key={x}>
+                                        <Badge variant="secondary" className="max-w-full gap-1 py-0.5 pr-0.5 font-normal">
+                                            <span className="truncate">{segmentName(x)}</span>
+                                            {locked ? null : (
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Stop leaving out ${segmentName(x)}`}
+                                                    onClick={() => keepIn(x)}
+                                                    className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors after:absolute after:-inset-3 after:content-[''] hover:bg-muted-foreground/20 active:bg-press"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                        </Badge>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                        {locked || excludeSegmentIds.length >= MAX_EXCLUDED_SEGMENTS ? null : (
+                            // Keyed by the list, so it reads its placeholder again after each choice.
+                            <Select key={excludeSegmentIds.join(",")} value="" onValueChange={leaveOut}>
+                                <SelectTrigger id="c-leave-out" className="w-full justify-between sm:w-1/2" disabled={!leaveOutChoices.length}>
+                                    <SelectValue placeholder={excludeSegmentIds.length ? "Leave out another Segment" : "Nobody: choose a Segment"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {leaveOutChoices.map((s) => (
+                                        <SelectItem key={s.id} value={s.id}>
+                                            {s.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                        {locked && !excludeSegmentIds.length ? <p className="text-sm text-muted-foreground">Nobody.</p> : null}
+                    </div>
+                </Field>
                 <p className="text-sm">
                     <span className="font-medium">From</span>{" "}
                     <span className="break-words text-muted-foreground">
@@ -1714,8 +1780,14 @@ export function CampaignEditor({
                                             audience can get it ({n(plan.plan.eligibleBuyers)} have ordered before; they go first).
                                             {plan.plan.alreadySent ? ` ${n(plan.plan.alreadySent)} already have it.` : ""}
                                         </p>
-                                        {Object.keys(plan.plan.excluded).length ? (
+                                        {Object.keys(plan.plan.excluded).length || plan.leftOutBySegment.length ? (
                                             <ul className="list-inside list-disc text-muted-foreground">
+                                                {/* Slice 06: who each left-out Segment took away, before the rule. */}
+                                                {plan.leftOutBySegment.map((x) => (
+                                                    <li key={x.segmentId}>
+                                                        {n(x.count)} left out: in “{x.name}”
+                                                    </li>
+                                                ))}
                                                 {Object.entries(plan.plan.excluded).map(([why, count]) => (
                                                     <li key={why}>
                                                         {n(count ?? 0)} left out: {CAMPAIGN_BLOCKER_TEXT[why as keyof typeof CAMPAIGN_BLOCKER_TEXT] ?? why}

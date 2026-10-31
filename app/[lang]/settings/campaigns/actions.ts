@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
-import { resolveSegment } from "@/lib/crm/segments";
+import { SegmentUnavailableError, getSegment, resolveSegment } from "@/lib/crm/segments";
 import {
   CampaignDraftSchema,
   CampaignPreviewSchema,
@@ -26,6 +26,7 @@ import {
   sendCampaignTest,
   usesPointsBalance,
   type BatchResult,
+  type CampaignExclusionSource,
   type CampaignReadiness,
   type WavePlanResult,
 } from "@/lib/email-campaigns/sender";
@@ -80,11 +81,14 @@ async function loadCampaign(id: string): Promise<Campaign | null> {
 const staffFirstName = async (memberId: string) => (await getWorkingAs(memberId))?.name.split(/\s+/)[0] ?? null;
 
 /** The audit's snapshot: what was sent and to whom, never a customer. A block campaign's blocks by type. */
-const auditSnapshot = (c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "button" | "content">) => ({
+const auditSnapshot = (
+  c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "excludeSegmentIds" | "button" | "content">,
+) => ({
   name: c.name,
   subject: c.subject,
   audience: c.audience,
   segment_id: c.segmentId,
+  exclude_segment_ids: c.excludeSegmentIds,
   button: c.button?.target ?? null,
   blocks: c.content ? c.content.blocks.map((b) => b.type) : null,
 });
@@ -391,6 +395,29 @@ export async function sendCampaignTestAction(
   return { ok: true, sent: result.sent.length, failed: result.failed };
 }
 
+/**
+ * The Segments a campaign leaves out (PRD-campaign-audiences slice 06), each
+ * with its name, so a wave refused for one says which. Never widened: one that
+ * is archived, needs review or is gone refuses the wave, as the Segment it is
+ * sent to does.
+ */
+async function leftOutSegments(ids: readonly string[]): Promise<CampaignExclusionSource[]> {
+  return Promise.all(
+    ids.map(async (segmentId) => {
+      const name = (await getSegment(segmentId))?.name ?? "a Segment that no longer exists";
+      async function* customerIds() {
+        try {
+          yield* resolveSegment(segmentId);
+        } catch (err) {
+          if (!(err instanceof SegmentUnavailableError)) throw err;
+          throw new Error(`It leaves out “${name}”, which cannot be used: ${err.message} Take it out of Leave out, or fix the Segment.`);
+        }
+      }
+      return { segmentId, name, ids: customerIds };
+    }),
+  );
+}
+
 export type WaveRequest = { size: number; retryFailed?: boolean; resume?: boolean };
 
 export type WaveAnswer =
@@ -416,6 +443,7 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
       { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume), freshLinks: start === true },
       setup,
       campaign.segmentId ? () => resolveSegment(campaign.segmentId!) : undefined,
+      await leftOutSegments(campaign.excludeSegmentIds),
     );
   } catch (err) {
     return { ok: false, error: message(err) };

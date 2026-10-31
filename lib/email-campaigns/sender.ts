@@ -81,6 +81,7 @@ import {
   campaignLedgerKey,
   CAMPAIGN_BLOCKER_TEXT,
   CAMPAIGN_PLACEHOLDERS,
+  excludeSegmentMembers,
   mentionsPoints,
   MAX_TEST_RECIPIENTS,
   MAX_WAVE_SIZE,
@@ -90,6 +91,8 @@ import {
   WAVE_LABEL,
   type Campaign,
   type CampaignPlan,
+  type LeftOutBySegment,
+  type SegmentExclusion,
 } from "./rules";
 import { CHINESE, CHINESE_STATUS_TEXT, chineseAiDrafted, chineseContent, chineseGaps, chineseVersionOf, chineseVersionProblems } from "./chinese-version";
 import { aiDraftedBlocks, contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
@@ -694,11 +697,39 @@ export interface WavePlanResult {
   limitedBy: "daily" | "monthly" | null;
   /** Eligible people this wave leaves for later waves. */
   waiting: number;
+  /**
+   * Who each left-out Segment took away before the rule ran
+   * (PRD-campaign-audiences slice 06), in the campaign's order; empty with none.
+   */
+  leftOutBySegment: LeftOutBySegment[];
+}
+
+/** A Segment a campaign leaves out, as the wave reads it: its name, and its Customers' ids page by page. */
+export interface CampaignExclusionSource {
+  segmentId: string;
+  name: string;
+  ids: () => AsyncIterable<string[]>;
+}
+
+/** Every id each left-out Segment chooses now. Throws, as `resolveSegment` does, for one that cannot be read. */
+async function readExclusions(sources: readonly CampaignExclusionSource[]): Promise<SegmentExclusion[]> {
+  return Promise.all(
+    sources.map(async (x) => {
+      const customerIds = new Set<string>();
+      for await (const page of x.ids()) for (const id of page) customerIds.add(id);
+      return { segmentId: x.segmentId, name: x.name, customerIds };
+    }),
+  );
 }
 
 /**
  * The checks, and who a wave of `size` would go to now. Changes nothing; the
  * caller locks the Campaign before the first batch.
+ *
+ * `exclusions` are the Segments the Campaign leaves out (PRD-campaign-audiences
+ * slice 06): their Customers are dropped from the audience before the rule
+ * runs, whatever the audience. A left-out Segment that cannot be read refuses
+ * the wave, never leaves nobody out.
  */
 export async function planWave(
   campaign: Campaign,
@@ -710,17 +741,20 @@ export async function planWave(
   }: { size: number; retryFailed?: boolean; resume?: boolean; freshLinks?: boolean },
   setup: CampaignSenderSetup,
   segmentIds?: () => AsyncIterable<string[]>,
+  exclusions: readonly CampaignExclusionSource[] = [],
 ): Promise<WavePlanResult> {
   if (campaign.archivedAt) throw new Error("This campaign is archived.");
   const n = Math.floor(size);
   if (!Number.isInteger(n) || n < 1 || n > MAX_WAVE_SIZE) {
     throw new Error(`A wave is 1 to ${MAX_WAVE_SIZE} people.`);
   }
-  const [readiness, waves, candidates] = await Promise.all([
+  const [readiness, waves, audience, leaveOut] = await Promise.all([
     campaignReadiness(setup, { campaign, resume, freshLinks }),
     readWaveStats(setup.admin, campaign.id),
     readCampaignCandidates(setup.admin, campaign, segmentIds),
+    readExclusions(exclusions),
   ]);
+  const { candidates, leftOut } = excludeSegmentMembers(audience, leaveOut);
   // Never past today's room: the rest of the audience waits for the next wave.
   const room = readiness.allowance?.remaining ?? 0;
   const { selection, ...plan } = planCampaignWave(campaign.audience, candidates, { size: Math.min(n, room), retryFailed });
@@ -733,6 +767,7 @@ export async function planWave(
     requested: n,
     limitedBy: readiness.allowance && selection.length < wanted ? readiness.allowance.binding : null,
     waiting: plan.eligible - selection.length,
+    leftOutBySegment: leftOut,
   };
 }
 

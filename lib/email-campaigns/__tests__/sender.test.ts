@@ -334,6 +334,60 @@ describe("planWave", () => {
     expect(segment.plan.considered).toBe(2);
     expect(segment.customerIds).toEqual([BEA]);
   });
+
+  // PRD-campaign-audiences slice 06.
+  describe("leaving Segments out", () => {
+    const ids = (...pages: string[][]) =>
+      async function* () {
+        yield* pages;
+      };
+
+    it("drops their Customers before the rule, with Everyone subscribed too, and says how many each took", async () => {
+      const { s } = setup();
+      const r = await planWave(campaign(), { size: 10 }, s, undefined, [
+        { segmentId: "seg-staff", name: "Staff and test accounts", ids: ids([BEA], [CAL]) },
+        { segmentId: "seg-recent", name: "Bought in the last 14 days", ids: ids([BEA, ANN]) },
+      ]);
+      // Bea is in both: she counts once, against the first.
+      expect(r.leftOutBySegment).toEqual([
+        { segmentId: "seg-staff", name: "Staff and test accounts", count: 2 },
+        { segmentId: "seg-recent", name: "Bought in the last 14 days", count: 1 },
+      ]);
+      expect(r.customerIds).toEqual([DAN]);
+      // Cal left with the Segment, before the rule could count her unsubscribe.
+      expect(r.plan.considered).toBe(1);
+      expect(r.plan.excluded).toEqual({});
+    });
+
+    it("works with a Segment audience, and lists a Segment that took nobody", async () => {
+      const { s } = setup();
+      const r = await planWave(
+        campaign({ audience: "segment", segmentId: "3f2b6c1e-8d4a-4f0b-9c7e-1a2b3c4d5e6f" }),
+        { size: 10 },
+        s,
+        ids([BEA, ANN, DAN]),
+        [{ segmentId: "seg-none", name: "Nobody here", ids: ids([id(99)]) }, { segmentId: "seg-ann", name: "Ann", ids: ids([ANN]) }],
+      );
+      expect(r.leftOutBySegment.map((x) => x.count)).toEqual([0, 1]);
+      expect(r.customerIds).toEqual([BEA, DAN]);
+    });
+
+    it("leaves nobody out without exclusions", async () => {
+      const r = await planWave(campaign(), { size: 10 }, setup().s);
+      expect(r.leftOutBySegment).toEqual([]);
+      expect(r.plan.considered).toBe(4);
+    });
+
+    it("refuses the wave when a left-out Segment cannot be read, never sending to more", async () => {
+      const { s } = setup();
+      const refused = async function* (): AsyncGenerator<string[]> {
+        throw new Error("It leaves out “Staff”, which cannot be used: This Segment is archived.");
+      };
+      await expect(
+        planWave(campaign(), { size: 10 }, s, undefined, [{ segmentId: "seg-staff", name: "Staff", ids: refused }]),
+      ).rejects.toThrow(/leaves out “Staff”.*archived/);
+    });
+  });
 });
 
 describe("sendCampaignTest", () => {

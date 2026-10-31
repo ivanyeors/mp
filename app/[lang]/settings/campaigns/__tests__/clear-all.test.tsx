@@ -48,6 +48,7 @@ const DRAFT: CampaignDraft = {
   button: { target: "url", label: "Shop the covers", url: "https://mpillow.com/shop" },
   audience: "subscribed",
   segmentId: null,
+  excludeSegmentIds: [],
 };
 const saved = (over: Partial<Campaign> = {}): Campaign => ({
   ...DRAFT,

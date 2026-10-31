@@ -46,6 +46,7 @@ describe("newCampaignDraft", () => {
       button: null,
       audience: "segment",
       segmentId: LIVE.id,
+      excludeSegmentIds: [],
     });
     // Blank on purpose: it does not save until Staff write the email.
     expect(CampaignDraftSchema.safeParse(draft).success).toBe(false);

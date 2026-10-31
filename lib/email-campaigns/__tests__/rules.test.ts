@@ -2,17 +2,20 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  CAMPAIGN_COLUMNS,
   CAMPAIGN_PLACEHOLDERS,
   CAMPAIGN_RULE_BLOCKERS,
   CampaignDraftSchema,
   CampaignPreviewSchema,
   EMPTY_CAMPAIGN_DRAFT,
   FIRST_CAMPAIGN_DRAFT,
+  MAX_EXCLUDED_SEGMENTS,
   campaignFromRow,
   campaignLedgerKey,
   campaignRowFromDraft,
   candidateFromRow,
   composedCampaignBlocker,
+  excludeSegmentMembers,
   mentionsPoints,
   newCampaignDraft,
   nextWaveLabel,
@@ -149,6 +152,7 @@ describe("placeholders, not prefilled words (PRD-campaign-email-editor slice 01)
         button: null,
         audience: "imported_not_signed_in",
         segmentId: null,
+        excludeSegmentIds: [],
       });
     }
     expect(EMPTY_CAMPAIGN_DRAFT.audience).toBe(FIRST_CAMPAIGN_DRAFT.audience);
@@ -433,5 +437,88 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     const row = { id: "c1", ...campaignRowFromDraft(CampaignDraftSchema.parse(draft)), audience: "subscribed" };
     expect(campaignFromRow({ ...row, content: { v: 1, blocks: [{ id: "x", type: "html", html: "<script>" }], fallbacks: {} } })).toBeNull();
     expect(campaignFromRow({ ...row, content: { v: 2, blocks: [], fallbacks: {} } })).toBeNull();
+  });
+});
+
+// PRD-campaign-audiences slice 06.
+describe("leaving Segments out", () => {
+  const SEG_A = "5e000000-0000-4000-8000-0000000000a1";
+  const SEG_B = "5e000000-0000-4000-8000-0000000000b2";
+  const SEG_C = "5e000000-0000-4000-8000-0000000000c3";
+  const SEG_D = "5e000000-0000-4000-8000-0000000000d4";
+  const base = { ...FIRST_CAMPAIGN_DRAFT, audience: "subscribed" as const };
+  const issues = (input: Record<string, unknown>) => {
+    const r = CampaignDraftSchema.safeParse({ ...base, ...input });
+    return r.success ? [] : r.error.issues.map((i) => i.message);
+  };
+
+  describe("excludeSegmentMembers", () => {
+    const c = (customerId: string) => ({ customerId });
+    const set = (...ids: string[]) => new Set(ids);
+
+    it("only narrows: what comes out is what went in, less the left out, in order", () => {
+      // Every combination of 6 candidates and 2 exclusions drawn from 8 ids.
+      const all = Array.from({ length: 8 }, (_, i) => `id-${i}`);
+      for (let seed = 0; seed < 200; seed++) {
+        const pick = (salt: number) => all.filter((_, i) => ((seed * 31 + salt * 17) >> i) & 1);
+        const candidates = pick(1).slice(0, 6).map(c);
+        const exclusions = [
+          { segmentId: "a", name: "A", customerIds: set(...pick(2)) },
+          { segmentId: "b", name: "B", customerIds: set(...pick(3), "not-a-candidate") },
+        ];
+        const { candidates: kept, leftOut } = excludeSegmentMembers(candidates, exclusions);
+        const inputIds = candidates.map((x) => x.customerId);
+        // Never one that was not there; never one a left-out Segment holds.
+        expect(kept.every((x) => inputIds.includes(x.customerId))).toBe(true);
+        expect(kept.some((x) => exclusions.some((e) => e.customerIds.has(x.customerId)))).toBe(false);
+        expect(kept.map((x) => x.customerId)).toEqual(inputIds.filter((x) => kept.some((k) => k.customerId === x)));
+        expect(kept.length + leftOut.reduce((sum, x) => sum + x.count, 0)).toBe(candidates.length);
+      }
+    });
+
+    it("counts someone in two against the first, and lists one that took nobody", () => {
+      const out = excludeSegmentMembers([c("1"), c("2"), c("3")], [
+        { segmentId: "a", name: "A", customerIds: set("2") },
+        { segmentId: "b", name: "B", customerIds: set("2", "3") },
+        { segmentId: "c", name: "C", customerIds: set("9") },
+      ]);
+      expect(out.candidates).toEqual([c("1")]);
+      expect(out.leftOut).toEqual([
+        { segmentId: "a", name: "A", count: 1 },
+        { segmentId: "b", name: "B", count: 1 },
+        { segmentId: "c", name: "C", count: 0 },
+      ]);
+    });
+
+    it("leaves everyone in with no exclusions", () => {
+      expect(excludeSegmentMembers([c("1")], [])).toEqual({ candidates: [c("1")], leftOut: [] });
+    });
+  });
+
+  describe("the draft", () => {
+    it("leaves nobody out by default, with any audience", () => {
+      expect(CampaignDraftSchema.parse(base).excludeSegmentIds).toEqual([]);
+      expect(CampaignDraftSchema.parse({ ...base, excludeSegmentIds: [SEG_A, SEG_B] }).excludeSegmentIds).toEqual([SEG_A, SEG_B]);
+    });
+
+    it("takes at most 3, each once, and never the Segment it is sent to", () => {
+      expect(issues({ excludeSegmentIds: [SEG_A, SEG_B, SEG_C, SEG_D] })).toContain(
+        `Leave out at most ${MAX_EXCLUDED_SEGMENTS} Segments.`,
+      );
+      expect(issues({ excludeSegmentIds: [SEG_A, SEG_A] })).toContain("A Segment is left out twice.");
+      expect(issues({ audience: "segment", segmentId: SEG_A, excludeSegmentIds: [SEG_A] })).toContain(
+        "It cannot leave out the Segment it is sent to.",
+      );
+      expect(issues({ excludeSegmentIds: ["not-a-uuid"] }).length).toBeGreaterThan(0);
+    });
+
+    it("is stored as exclude_segment_ids and read back", () => {
+      const draft = CampaignDraftSchema.parse({ ...base, excludeSegmentIds: [SEG_B] });
+      expect(campaignRowFromDraft(draft).exclude_segment_ids).toEqual([SEG_B]);
+      expect(CAMPAIGN_COLUMNS).toContain("exclude_segment_ids");
+      const row = { id: "5e000000-0000-4000-8000-000000000001", audience: "subscribed", exclude_segment_ids: [SEG_B, 7] };
+      expect(campaignFromRow(row)?.excludeSegmentIds).toEqual([SEG_B]);
+      expect(campaignFromRow({ ...row, exclude_segment_ids: null })?.excludeSegmentIds).toEqual([]);
+    });
   });
 });

@@ -1,13 +1,15 @@
 // The Customers list, its Segments, and Customers → Import from Shopify:
 // a handful of made-up Customers, some imported from Shopify (one applied
-// Import batch), one saved Segment, the Customer overview as a view, and
+// Import batch), three saved Segments, the Customer overview as a view, and
 // `subscribe_migrated_customers` (ADR 0037) worked out from these rows.
-// Every name and email is invented.
+// One draft email campaign sends to *Premium buyers* and leaves two Segments
+// out (PRD-campaign-audiences slice 06), with the campaign candidates view
+// worked out from the same Customers. Every name and email is invented.
 
 // `sizes` and `delivered` (days since the latest purchase arrived; null while
 // on its way) feed the purchase filters (PRD-campaign-audiences slice 04).
 const PEOPLE = [
-  { first: "Aisha", last: "Rahman", stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false },
+  { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false },
   { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], sizes: ["L"], delivered: 10, consent: "not_subscribed", imported: true, said: "no" },
   { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes" },
   { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 790, consent: "not_subscribed", imported: true, said: "no" },
@@ -19,6 +21,9 @@ const PEOPLE = [
 
 const BATCH = "00000000-0000-4000-8000-00000000b001";
 const SEGMENT = "00000000-0000-4000-8000-00000000c001";
+const STAFF_SEGMENT = "00000000-0000-4000-8000-00000000c002";
+const RECENT_SEGMENT = "00000000-0000-4000-8000-00000000c003";
+const CAMPAIGN = "00000000-0000-4000-8000-00000000e001";
 
 export default function crm({ now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -28,7 +33,7 @@ export default function crm({ now }) {
     first_name: p.first,
     last_name: p.last,
     phone: null,
-    tags: [],
+    tags: p.tags ?? [],
     total_orders: p.purchases,
     total_spent: p.purchases * 189,
     marketing_email: p.consent,
@@ -85,9 +90,67 @@ export default function crm({ now }) {
           updated_at: ago(5),
           archived_at: null,
         },
+        {
+          id: STAFF_SEGMENT,
+          name: "Staff and test accounts",
+          filters: { tags: "staff" },
+          filters_version: 2,
+          created_at: ago(4),
+          updated_at: ago(4),
+          archived_at: null,
+        },
+        {
+          id: RECENT_SEGMENT,
+          name: "Delivered in the last 14 days",
+          filters: { delivered: "within:14" },
+          filters_version: 2,
+          created_at: ago(3),
+          updated_at: ago(3),
+          archived_at: null,
+        },
+      ],
+      email_campaigns: [
+        {
+          id: CAMPAIGN,
+          name: "December cooling launch",
+          subject: "Sleep cooler this December",
+          preheader: "Our FibreCool covers are back, in every size.",
+          body: "Our FibreCool covers are back in every size, for the warm nights ahead.",
+          content: null,
+          greeting: true,
+          button_label: null,
+          button_target: null,
+          button_url: null,
+          audience: "segment",
+          segment_id: SEGMENT,
+          exclude_segment_ids: [STAFF_SEGMENT, RECENT_SEGMENT],
+          created_by_profile_id: null,
+          created_at: ago(2),
+          updated_at: ago(1),
+          locked_at: null,
+          archived_at: null,
+        },
       ],
     },
     views: {
+      // 20261021100000_email_campaigns.sql: one row per Customer, as a campaign's plan reads them.
+      marketing_campaign_candidates: (t) =>
+        (t.customers ?? []).map((c) => {
+          const m = (t.migrated_customers ?? []).find((r) => r.customer_id === c.id);
+          return {
+            customer_id: c.id,
+            email: c.email,
+            first_name: c.first_name,
+            locale: "en-US",
+            marketing_email: c.marketing_email,
+            migrated: Boolean(m),
+            claimed_at: m?.claimed_at ?? null,
+            orders_count: c.total_orders,
+            since: m?.imported_at ?? c.created_at,
+            suppressed: false,
+            campaign_sends: {},
+          };
+        }),
       admin_customer_overview: (t) =>
         (t.customers ?? []).map((c) => {
           const i = PEOPLE.findIndex((p) => c.email.startsWith(`${p.first.toLowerCase().replace(/\s/g, "")}.`));
