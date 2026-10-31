@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
-import { parseCustomerFilters } from "@/lib/crm/customer-filters";
+import { DEFAULT_CUSTOMER_FILTERS, parseCustomerFilters, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
 /**
- * The Customers list's CRM filters (CRM slice 04): the Filters panel, the
+ * The Customers list's CRM filters (CRM slice 04): the mega filter's groups, the
  * active-filter summary with *Clear all*, the *ignored* note, and the *Last
  * order* column. The list opens from a link in the state that link describes.
  */
@@ -15,6 +15,26 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
+const { CustomerFilterGroup } = await import("../customer-filters-panel");
+
+/** One group of the mega filter, as it renders inside the open panel. */
+const groupFor = (
+  group: "stage" | "purchases" | "reach" | "account" | "reviews",
+  filters: Partial<CustomerListFilters>,
+  campaigns?: { id: string; name: string }[],
+) =>
+  renderToString(
+    <CustomerFilterGroup
+      group={group}
+      filters={{ ...DEFAULT_CUSTOMER_FILTERS, ...filters }}
+      onChange={() => {}}
+      campaigns={campaigns}
+    />,
+  );
+
+/** A list URL's filters, in one group of the mega filter. */
+const groupForUrl = (group: Parameters<typeof groupFor>[0], url: string, campaigns?: { id: string; name: string }[]) =>
+  groupFor(group, parseCustomerFilters(new URLSearchParams(url)).filters, campaigns);
 
 const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   id: "c1",
@@ -90,9 +110,11 @@ const listFor = (url: string, rows: CustomerOverviewRow[] = [row({})]) => {
 describe("Customers list: CRM filters", () => {
   it("opens a link with its filters in the panel and the summary", () => {
     const html = listFor("bought=premium&last_order=over:12&readjusted=never");
-    expect(html).toContain('id="customer-filters-panel"');
-    expect(html).toContain('aria-label="Last order"');
-    expect(html).toContain('aria-label="Re-adjusted"');
+    // The mega filter opens over the list, so a link does not open it: its chips say what is set.
+    expect(html).toContain('aria-expanded="false"');
+    const purchases = groupForUrl("purchases", "bought=premium&last_order=over:12&readjusted=never");
+    expect(purchases).toContain('aria-label="Last order"');
+    expect(purchases).toContain('aria-label="Re-adjusted"');
     expect(html).toContain("Bought Premium Mpillow");
     expect(html).toContain("Last order over a year ago");
     expect(html).toContain("Never re-adjusted");
@@ -130,22 +152,18 @@ describe("Customers list: CRM filters", () => {
 
   it("puts the Points filter in the panel, and labels it in the summary (PRD-loyalty-points slice 06)", () => {
     const html = listFor("points=has");
-    expect(html).toContain('id="customer-filters-panel"');
-    expect(html).toContain('aria-label="Points"');
+    expect(groupForUrl("account", "points=has")).toContain('aria-label="Points"');
     expect(html).toContain("Has points");
-    expect(listFor("")).not.toContain('aria-label="Points"');
     expect(listFor("points=none")).toContain("No points");
     // The retired voucher filter is gone from the panel.
-    expect(html).not.toMatch(/voucher/i);
+    expect(groupForUrl("account", "points=has")).not.toMatch(/voucher/i);
   });
 
   it("puts migration slice 07's Email consent filter in the panel, and labels it in the summary", () => {
     const html = listFor("consent=unsubscribed");
-    expect(html).toContain('id="customer-filters-panel"');
-    expect(html).toContain('aria-label="Email consent"');
+    expect(groupForUrl("reach", "consent=unsubscribed")).toContain('aria-label="Email consent"');
     expect(html).toContain("Email unsubscribed");
     expect(html).toContain("Clear all");
-    expect(listFor("")).not.toContain('aria-label="Email consent"');
   });
 
   it("offers the last-order and spend sorts", () => {
@@ -208,14 +226,14 @@ describe("Customers list: Lifecycle stage", () => {
 
   it("opens a stage link with its boxes ticked and its summary chip", () => {
     const html = listFor("stage=at-risk,lost");
-    expect(html).toContain('id="customer-filters-panel"');
     expect(html).toContain("Stage: At risk or Lost");
     expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>1</);
+    const stage = groupForUrl("stage", "stage=at-risk,lost");
     // Each stage box says its rule.
-    expect(html).toContain("Unsubscribed from marketing, with no purchase or attended booking since");
+    expect(stage).toContain("Unsubscribed from marketing, with no purchase or attended booking since");
     // At risk and Lost, and At risk's Lapsed, implied by its stage and locked (slice 04).
-    expect(html.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(3);
-    expect(html).toMatch(/<button[^>]*role="checkbox"[^>]*aria-checked="true"[^>]*disabled=""[^>]*id="[^"]*-stage-lapsed"/);
+    expect(stage.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(3);
+    expect(stage).toMatch(/<button[^>]*role="checkbox"[^>]*aria-checked="true"[^>]*disabled=""[^>]*id="[^"]*-stage-lapsed"/);
   });
 
   it("opens a sub-status link with only that box ticked, beside its stage's rule (PRD-campaign-audiences slice 04)", () => {
@@ -224,10 +242,13 @@ describe("Customers list: Lifecycle stage", () => {
     expect(html).toContain("Didn&#x27;t buy Mbolster");
     expect(html).toContain("Pillow size M");
     expect(html).toContain("Delivered over 30 days ago");
-    expect(html).toContain("Over 24 months");
     expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>4</);
-    // Lapsed, Mbolster under Didn't buy, and M.
-    expect(html.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(3);
+    const url = "stage=at-risk:lapsed&not_bought=mbolster&size=m&delivered=over:30";
+    const stage = groupForUrl("stage", url);
+    expect(stage).toContain("Over 24 months");
+    // Lapsed alone in Stage; Mbolster under Didn't buy, and M, in Purchases.
+    expect(stage.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(1);
+    expect(groupForUrl("purchases", url).match(/role="checkbox" aria-checked="true"/g)?.length).toBe(2);
   });
 });
 
@@ -251,12 +272,12 @@ describe("Customers list: Reach filters", () => {
 
   it("opens the PRD's demo link with its three filters, and says how many ship to an unknown country", () => {
     const html = reachFor("stage=at-risk&ships_to=sg&emailed=over:30", 12);
-    expect(html).toContain('id="customer-filters-panel"');
-    for (const control of ["Ships to", "Language", "Last emailed", "Campaign", "What they did with the campaign"]) {
-      expect(html).toContain(`aria-label="${control}"`);
+    const reach = groupForUrl("reach", "stage=at-risk&ships_to=sg&emailed=over:30");
+    for (const control of ["Email consent", "Ships to", "Language", "Last emailed", "Campaign", "What they did with the campaign"]) {
+      expect(reach).toContain(`aria-label="${control}"`);
     }
     // Points never expire (ADR 0030 decision 17), so there is nothing to filter on.
-    expect(html).not.toContain("Points expire");
+    expect(reach).not.toContain("Points expire");
     expect(html).toContain("Ships to Singapore");
     expect(html).toContain("Not emailed in 30 days");
     expect(html).toContain("12 more match the other filters but ship to an unknown country");
@@ -266,8 +287,9 @@ describe("Customers list: Reach filters", () => {
   it("names the campaign on its chip, and offers the campaigns by name", () => {
     const html = reachFor(`campaign=${CAMPAIGN}:not-clicked`);
     expect(html).toContain("Got “November care tips”, didn&#x27;t click");
-    expect(html).toContain("November care tips");
-    expect(html).toContain("Got it, didn&#x27;t click");
+    const reach = groupForUrl("reach", `campaign=${CAMPAIGN}:not-clicked`, [{ id: CAMPAIGN, name: "November care tips" }]);
+    expect(reach).toContain("November care tips");
+    expect(reach).toContain("Got it, didn&#x27;t click");
   });
 
   it("says nothing of Unknown without a known-country filter, or when there are none", () => {

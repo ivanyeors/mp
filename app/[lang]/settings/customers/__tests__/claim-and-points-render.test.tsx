@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
 import type { MigrationSummary, MigratedCustomerFacts } from "@/lib/customer-migration/overview";
+import { DEFAULT_CUSTOMER_FILTERS, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
 /**
  * What the Claim link and the Claim bonus add to the Customers page
@@ -18,6 +19,22 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
+const { CustomerFilterGroup } = await import("../customer-filters-panel");
+
+/** One group of the mega filter, as it renders inside the open panel. */
+const groupFor = (
+  group: "stage" | "purchases" | "reach" | "account" | "reviews",
+  filters: Partial<CustomerListFilters>,
+  campaigns?: { id: string; name: string }[],
+) =>
+  renderToString(
+    <CustomerFilterGroup
+      group={group}
+      filters={{ ...DEFAULT_CUSTOMER_FILTERS, ...filters }}
+      onChange={() => {}}
+      campaigns={campaigns}
+    />,
+  );
 const { migrationCells } = await import("../migration-card");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
 
@@ -79,9 +96,12 @@ describe("Customers list: Points filter", () => {
         initialFilters={{ search: null, tags: [], account: "all", source: "shopify", points: "has", sort: "newest" }}
       />,
     );
-    expect(html).toContain('aria-label="Points"');
     expect(html).toContain("Has points");
     expect(html).toContain("No customers match these filters.");
+    // In the mega filter's Account group.
+    const account = groupFor("account", { points: "has" });
+    expect(account).toContain('aria-label="Points"');
+    expect(account).toContain("Has points");
   });
 });
 

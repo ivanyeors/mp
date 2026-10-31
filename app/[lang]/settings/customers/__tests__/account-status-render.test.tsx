@@ -4,6 +4,7 @@ import type { Customer } from "@/lib/types/ecommerce";
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import type { MigrationSummary, MigratedCustomerFacts } from "@/lib/customer-migration/overview";
+import { DEFAULT_CUSTOMER_FILTERS, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
 /**
  * Account status on every Customer, and the Shopify migration surfaces
@@ -20,6 +21,22 @@ vi.mock("next/navigation", () => ({
 const { CustomersClient } = await import("../customers-client");
 const { MigrationCard, migrationCells } = await import("../migration-card");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
+const { CustomerFilterGroup } = await import("../customer-filters-panel");
+
+/** One group of the mega filter, as it renders inside the open panel. */
+const groupFor = (
+  group: "stage" | "purchases" | "reach" | "account" | "reviews",
+  filters: Partial<CustomerListFilters>,
+  campaigns?: { id: string; name: string }[],
+) =>
+  renderToString(
+    <CustomerFilterGroup
+      group={group}
+      filters={{ ...DEFAULT_CUSTOMER_FILTERS, ...filters }}
+      onChange={() => {}}
+      campaigns={campaigns}
+    />,
+  );
 
 const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   id: "c1",
@@ -137,12 +154,16 @@ describe("Customers list", () => {
         }}
       />,
     );
-    for (const label of ['aria-label="Account"', 'aria-label="Source"', 'aria-label="Email consent"', 'aria-label="Sort"']) {
-      expect(html).toContain(label);
-    }
+    // The sort stays in the toolbar; the filters are the mega filter's, and their chips.
+    expect(html).toContain('aria-label="Sort"');
+    expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>3</);
+    const account = groupFor("account", { account: "no-account", source: "shopify" });
+    for (const label of ['aria-label="Account"', 'aria-label="Source"']) expect(account).toContain(label);
+    expect(account).toContain("No account, email not verified");
+    expect(groupFor("reach", { consent: "unsubscribed" })).toContain('aria-label="Email consent"');
     expect(html).toContain("No account");
     expect(html).toContain("From Shopify");
-    expect(html).toContain("Unsubscribed");
+    expect(html).toContain("Email unsubscribed");
     expect(html).toContain("Recently signed up");
     expect(html).toContain("No customers match these filters.");
   });
