@@ -8,15 +8,17 @@
 
 // `sizes` and `delivered` (days since the latest purchase arrived; null while
 // on its way) feed the purchase filters (PRD-campaign-audiences slice 04).
+// `ship` (ISO-2, null for Unknown), `lang` and `expires` (days until their
+// points run out) feed the reach filters (slice 05).
 const PEOPLE = [
-  { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false },
-  { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], sizes: ["L"], delivered: 10, consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes", recent: [3] },
-  { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 790, consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Elena", last: "Goh", stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Farid", last: "Yusof", stage: "lost", detail: null, purchases: 1, bought: ["premium"], sizes: ["XL"], delivered: 200, consent: "unsubscribed", source: "unsubscribe_link", imported: true, said: "no" },
-  { first: "Grace", last: "Lee", stage: "loyal", detail: "repeat_purchases", purchases: 2, bought: ["premium", "accessory"], sizes: ["M"], delivered: 50, consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Hui Min", last: "Chua", stage: "new", detail: "awaiting_delivery", purchases: 1, bought: ["premium"], sizes: ["S"], delivered: null, consent: "subscribed", source: "checkout", imported: false },
+  { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false, ship: "SG", expires: 50 },
+  { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], sizes: ["L"], delivered: 10, consent: "not_subscribed", imported: true, said: "no", ship: "SG" },
+  { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes", recent: [3], ship: "SG" },
+  { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 790, consent: "not_subscribed", imported: true, said: "no", ship: "MY", lang: "zh-CN" },
+  { first: "Elena", last: "Goh", stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, consent: "not_subscribed", imported: true, said: "no", ship: null },
+  { first: "Farid", last: "Yusof", stage: "lost", detail: null, purchases: 1, bought: ["premium"], sizes: ["XL"], delivered: 200, consent: "unsubscribed", source: "unsubscribe_link", imported: true, said: "no", ship: "SG" },
+  { first: "Grace", last: "Lee", stage: "loyal", detail: "repeat_purchases", purchases: 2, bought: ["premium", "accessory"], sizes: ["M"], delivered: 50, consent: "not_subscribed", imported: true, said: "no", ship: null },
+  { first: "Hui Min", last: "Chua", stage: "new", detail: "awaiting_delivery", purchases: 1, bought: ["premium"], sizes: ["S"], delivered: null, consent: "subscribed", source: "checkout", imported: false, ship: "SG", lang: "zh-CN" },
 ];
 
 const BATCH = "00000000-0000-4000-8000-00000000b001";
@@ -254,6 +256,10 @@ export default function crm({ now }) {
           const i = PEOPLE.findIndex((p) => c.email.startsWith(`${p.first.toLowerCase().replace(/\s/g, "")}.`));
           const p = PEOPLE[i] ?? { stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, imported: false };
           const m = (t.migrated_customers ?? []).find((r) => r.customer_id === c.id);
+          const sent = (t.customer_campaign_sends ?? []).filter(
+            (x) => x.customer_id === c.id && x.campaign_id && ["sent", "bounced", "complained"].includes(x.status),
+          );
+          const lastSent = sent.map((x) => x.sent_at).sort().at(-1) ?? null;
           return {
             ...c,
             has_account: false,
@@ -269,7 +275,7 @@ export default function crm({ now }) {
             has_phone: false,
             phone_valid: false,
             claim_link_first_clicked_at: null,
-            points_available: 0,
+            points_available: p.expires == null ? 0 : 1200,
             claim_bonus_at: null,
             open_followups: 0,
             paid_orders: p.purchases,
@@ -285,7 +291,7 @@ export default function crm({ now }) {
             shop_reviews_count: 0,
             shop_review_avg_rating: null,
             review_rating: null,
-            last_campaign_sent_at: null,
+            last_campaign_sent_at: lastSent,
             purchases: p.purchases,
             last_purchase_at: p.purchases ? ago(p.stage === "at_risk" ? 800 : 40) : null,
             lifecycle_stage: p.stage,
@@ -295,6 +301,13 @@ export default function crm({ now }) {
             pillow_sizes: p.sizes,
             last_delivered_at: p.delivered == null ? null : ago(p.delivered),
             lifecycle_statuses: [p.stage, p.detail].filter(Boolean),
+            // Slice 05: where they are, what they read, and what campaigns reached them.
+            ship_country: p.ship ?? null,
+            locale: p.lang ?? "en-US",
+            points_expire_on: p.expires == null ? null : ago(-p.expires).slice(0, 10),
+            campaigns_sent: [...new Set(sent.map((x) => x.campaign_id))],
+            campaigns_clicked: [...new Set(sent.filter((x) => x.first_clicked_at).map((x) => x.campaign_id))],
+            last_emailed_at: lastSent ?? "-infinity",
           };
         }),
     },

@@ -200,6 +200,12 @@ describe("choosing a Segment", () => {
       delivered: null,
       readjusted: "never",
       min_spend: null,
+      // PRD-campaign-audiences slice 05's reach filters.
+      ships_to: null,
+      language: null,
+      points_expire: null,
+      campaign: null,
+      emailed: null,
       // CRM slice 12's review filters.
       google_review: "all",
       shop_review: "all",

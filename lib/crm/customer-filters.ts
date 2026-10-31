@@ -10,6 +10,7 @@ import {
   type LifecycleStage,
 } from "@/lib/crm/lifecycle-stage";
 import { monthsBefore } from "@/lib/crm/months";
+import { sgDate } from "@/lib/analytics/sg-calendar";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
@@ -39,6 +40,11 @@ import type { MarketingEmailState } from "@/lib/marketing-consent/state";
  * PRD-campaign-audiences slice 04 adds *Didn't buy*, *Pillow size*,
  * *Delivered* and the Stage's sub-statuses, so the retention loop's Playbook
  * audiences are links too. None of them reaches the Review request job either.
+ *
+ * Slice 05 adds the reach filters: *Ships to*, *Language*, *Points expire
+ * within*, *Campaign* (got it, didn't, clicked, didn't click) and *Last
+ * emailed*, so *At risk · Ships to Singapore · Not emailed in 30 days* is a
+ * link too.
  *
  * Each parameter is read on its own: an unknown value (`bought=foo`) is
  * dropped and named in `ignored`, never passed to the query.
@@ -192,6 +198,78 @@ export interface LastOrderFilter {
 }
 export const LAST_ORDER_MONTHS_MAX = 120;
 
+/**
+ * *Ships to* (PRD-campaign-audiences slice 05), from the overview's
+ * `ship_country`: the latest counted Order's shipping country, else the
+ * default address's. *Unknown* is its own value, never Singapore: a
+ * Shopify-era buyer with no Order here and no address is one.
+ */
+export const SHIPS_TO_FILTERS = ["sg", "not-sg", "unknown"] as const;
+export type ShipsToFilter = (typeof SHIPS_TO_FILTERS)[number];
+
+export const SHIPS_TO_LABELS: Record<ShipsToFilter, string> = {
+  sg: "Ships to Singapore",
+  "not-sg": "Ships outside Singapore",
+  unknown: "Ships to an unknown country",
+};
+
+/** *Language* (slice 05): the language they read the site and its emails in, `customers.locale`. */
+export const LANGUAGE_FILTERS = ["en", "zh-cn"] as const;
+export type LanguageFilter = (typeof LANGUAGE_FILTERS)[number];
+const LANGUAGE_LOCALE: Record<LanguageFilter, "en-US" | "zh-CN"> = { en: "en-US", "zh-cn": "zh-CN" };
+
+export const LANGUAGE_LABELS: Record<LanguageFilter, string> = {
+  en: "English",
+  "zh-cn": "Chinese",
+};
+
+/**
+ * *Points expire within* (slice 05): an available balance whose last day
+ * (`points_expire_on`, as the Profile shows it) falls within N months of
+ * today in Singapore. A date already passed is in: those points expire on the
+ * daily job's next run. Nobody matches while points are off.
+ */
+export interface PointsExpireFilter {
+  months: number;
+}
+export const POINTS_EXPIRE_MONTHS_MAX = 24;
+
+/**
+ * *Campaign* (slice 05): what one campaign did with them, from the overview's
+ * `campaigns_sent` and `campaigns_clicked`. *Got it* is a send the provider
+ * accepted, as the campaign's *Sent* counts it; *didn't click* is got it and
+ * never clicked; *didn't get it* includes everyone it never reached.
+ */
+export const CAMPAIGN_FILTER_STATES = ["sent", "not-sent", "clicked", "not-clicked"] as const;
+export type CampaignFilterState = (typeof CAMPAIGN_FILTER_STATES)[number];
+export interface CampaignFilter {
+  /** The campaign's id, lower-case. */
+  id: string;
+  state: CampaignFilterState;
+}
+
+/** How a *Campaign* filter reads, for a campaign named `name`. */
+export function campaignFilterLabel(state: CampaignFilterState, name: string): string {
+  switch (state) {
+    case "sent":
+      return `Got ${name}`;
+    case "not-sent":
+      return `Didn't get ${name}`;
+    case "clicked":
+      return `Clicked ${name}`;
+    case "not-clicked":
+      return `Got ${name}, didn't click`;
+  }
+}
+
+/**
+ * *Last emailed* (slice 05): the latest campaign email the provider accepted
+ * for them. *Within N days*; *not in the last N days*, which keeps everyone
+ * never emailed; or *never*. Order, aftercare and points emails don't count.
+ */
+export type EmailedFilter = { when: "within" | "over"; days: number } | { when: "never" };
+export const EMAILED_DAYS_MAX = 730;
+
 export const CUSTOMER_SORTS = [
   "newest",
   "oldest",
@@ -236,6 +314,16 @@ export interface CustomerFilters {
   readjusted: ReadjustedFilter | null;
   /** `total_spent` (platform Orders) at least this; null for no filter. */
   min_spend: number | null;
+  /** Where they are (`ship_country`); null for no filter. */
+  ships_to: ShipsToFilter | null;
+  /** The language they read (`locale`); null for no filter. */
+  language: LanguageFilter | null;
+  /** Their points expire within N months; null for no filter. */
+  points_expire: PointsExpireFilter | null;
+  /** What one campaign did with them; null for no filter. */
+  campaign: CampaignFilter | null;
+  /** When a campaign last reached them; null for no filter. */
+  emailed: EmailedFilter | null;
   /** The Google review (CRM slice 12). */
   google_review: GoogleReviewFilter;
   /** Left a Shop review. */
@@ -265,6 +353,11 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   delivered: null,
   readjusted: null,
   min_spend: null,
+  ships_to: null,
+  language: null,
+  points_expire: null,
+  campaign: null,
+  emailed: null,
   google_review: "all",
   shop_review: "all",
   rating: null,
@@ -343,6 +436,34 @@ const PARAM_SCHEMAS = {
     .regex(/^\d{1,7}(\.\d{1,2})?$/)
     .transform(Number)
     .pipe(z.number().positive()),
+  ships_to: z.enum(SHIPS_TO_FILTERS),
+  language: z.enum(LANGUAGE_FILTERS),
+  points_expire: z
+    .string()
+    .regex(/^within:\d{1,2}$/)
+    .transform((v) => ({ months: Number(v.split(":")[1]) }))
+    .pipe(z.object({ months: z.number().int().min(1).max(POINTS_EXPIRE_MONTHS_MAX) })),
+  // `<campaign id>:<state>`; the id is written lower-case, so one campaign is one URL.
+  campaign: z
+    .string()
+    .regex(/^[0-9a-fA-F-]{36}:[a-z-]+$/)
+    .transform((v) => {
+      const at = v.lastIndexOf(":");
+      return { id: v.slice(0, at).toLowerCase(), state: v.slice(at + 1) };
+    })
+    .pipe(z.object({ id: z.string().uuid(), state: z.enum(CAMPAIGN_FILTER_STATES) })),
+  emailed: z
+    .string()
+    .regex(/^((within|over):\d{1,3}|never)$/)
+    .transform((v): EmailedFilter | { when: "within" | "over"; days: number } =>
+      v === "never" ? { when: "never" } : { when: v.split(":")[0] as "within" | "over", days: Number(v.split(":")[1]) },
+    )
+    .pipe(
+      z.union([
+        z.object({ when: z.literal("never") }),
+        z.object({ when: z.enum(["within", "over"]), days: z.number().int().min(1).max(EMAILED_DAYS_MAX) }),
+      ]),
+    ),
   google_review: z.enum(GOOGLE_REVIEW_FILTERS),
   shop_review: z.enum(SHOP_REVIEW_FILTERS),
   rating: z.enum(RATING_FILTERS),
@@ -456,6 +577,11 @@ export function customerFilterParams(
   if (f.delivered) out.set("delivered", `${f.delivered.when}:${f.delivered.days}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
   if (f.min_spend != null) out.set("min_spend", String(Math.round(f.min_spend * 100) / 100));
+  if (f.ships_to) out.set("ships_to", f.ships_to);
+  if (f.language) out.set("language", f.language);
+  if (f.points_expire) out.set("points_expire", `within:${f.points_expire.months}`);
+  if (f.campaign) out.set("campaign", `${f.campaign.id}:${f.campaign.state}`);
+  if (f.emailed) out.set("emailed", emailedParam(f.emailed));
   if (f.google_review !== "all") out.set("google_review", f.google_review);
   if (f.shop_review !== "all") out.set("shop_review", f.shop_review);
   if (f.rating) out.set("rating", f.rating);
@@ -465,6 +591,11 @@ export function customerFilterParams(
     out.set("limit", String(f.limit));
   }
   return out;
+}
+
+/** The *Last emailed* value as the URL writes it: `within:14`, `over:30`, `never`. */
+export function emailedParam(v: EmailedFilter): string {
+  return v.when === "never" ? "never" : `${v.when}:${v.days}`;
 }
 
 /** Whether `key` chooses fewer Customers than the default does. */
@@ -518,8 +649,30 @@ export const CONSENT_LABELS: Record<ConsentFilter, string> = {
 
 const spend = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 
+/**
+ * What a summary label may need beyond the filters: the campaigns' names, by
+ * id, for *Campaign*. A campaign not in it reads *a campaign*.
+ */
+export interface CustomerFilterLabelContext {
+  campaignNames?: ReadonlyMap<string, string>;
+}
+
+/** *Got “November care tips”*: a campaign's name in quotes, or *a campaign* when it is not known here. */
+function campaignName(id: string, ctx: CustomerFilterLabelContext): string {
+  const name = ctx.campaignNames?.get(id);
+  return name ? `“${name}”` : "a campaign";
+}
+
+/** How *Last emailed* reads, in its control and its summary chip. */
+export function emailedLabel(v: EmailedFilter): string {
+  if (v.when === "never") return "Never emailed";
+  return v.when === "within" ? `Emailed within ${daysLabel(v.days)}` : `Not emailed in ${daysLabel(v.days)}`;
+}
+
 /** How each filter reads in the summary above the list. */
-const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFilters[K]>) => string } = {
+const FILTER_LABELS: {
+  [K in CustomerFilterKey]: (value: NonNullable<CustomerFilters[K]>, ctx: CustomerFilterLabelContext) => string;
+} = {
   search: (v) => `Search: “${v}”`,
   tags: (v) => `Tags: ${v.join(", ")}`,
   account: (v) => (v === "signed-up" ? "Signed up" : "No account"),
@@ -541,6 +694,11 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
     v.when === "within" ? `Delivered within ${daysLabel(v.days)}` : `Delivered over ${daysLabel(v.days)} ago`,
   readjusted: (v) => (v === "ever" ? "Re-adjusted" : "Never re-adjusted"),
   min_spend: (v) => `Spent at least ${spend.format(v)}`,
+  ships_to: (v) => SHIPS_TO_LABELS[v],
+  language: (v) => `Reads ${LANGUAGE_LABELS[v]}`,
+  points_expire: (v) => `Points expire within ${monthsLabel(v.months)}`,
+  campaign: (v, ctx) => campaignFilterLabel(v.state, campaignName(v.id, ctx)),
+  emailed: (v) => emailedLabel(v),
   google_review: (v) => GOOGLE_REVIEW_LABELS[v as Exclude<GoogleReviewFilter, "all">],
   shop_review: (v) => (v === "yes" ? "Left a shop review" : "No shop review"),
   rating: (v) => RATING_LABELS[v],
@@ -551,16 +709,20 @@ export function daysLabel(days: number): string {
   return days === 1 ? "a day" : `${days} days`;
 }
 
-function monthsLabel(months: number): string {
+/** *3 months*, *a year*: a span in months. */
+export function monthsLabel(months: number): string {
   if (months % 12 === 0) return months === 12 ? "a year" : `${months / 12} years`;
   return months === 1 ? "a month" : `${months} months`;
 }
 
 /** The active filters, each with its summary label, in URL order. */
-export function describeCustomerFilters(filters: ChosenFilters): { key: CustomerFilterKey; label: string }[] {
+export function describeCustomerFilters(
+  filters: ChosenFilters,
+  ctx: CustomerFilterLabelContext = {},
+): { key: CustomerFilterKey; label: string }[] {
   return CUSTOMER_FILTER_KEYS.filter((key) => isCustomerFilterActive(filters, key)).map((key) => ({
     key,
-    label: (FILTER_LABELS[key] as (v: unknown) => string)(filters[key]),
+    label: (FILTER_LABELS[key] as (v: unknown, c: CustomerFilterLabelContext) => string)(filters[key], ctx),
   }));
 }
 
@@ -570,13 +732,14 @@ export interface CustomerListQuery {
   overlaps(column: string, value: string): this;
   contains(column: string, value: string[]): this;
   eq(column: string, value: boolean | string | number): this;
+  neq(column: string, value: string): this;
   in(column: string, values: readonly string[]): this;
   is(column: string, value: null): this;
   not(column: string, operator: "is" | "cs" | "ov", value: string | null): this;
   gt(column: string, value: string | number): this;
   gte(column: string, value: string | number): this;
   lt(column: string, value: string): this;
-  lte(column: string, value: number): this;
+  lte(column: string, value: string | number): this;
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
 
@@ -591,6 +754,16 @@ export function pgTextArray(values: readonly string[]): string {
 
 // Lives in ./months so lib/crm/lifecycle-stage can count months without this module.
 export { monthsBefore };
+
+/**
+ * Today in Singapore plus `months`, `YYYY-MM-DD`: the *Points expire within*
+ * cutoff. Counted as `points_expires_on()` counts, the day kept or clamped to
+ * a shorter month's last.
+ */
+export function sgDatePlusMonths(now: Date, months: number): string {
+  const [y, m, d] = sgDate(now).split("-").map(Number) as [number, number, number];
+  return monthsBefore(new Date(Date.UTC(y, m - 1, d)), -months).toISOString().slice(0, 10);
+}
 
 /**
  * Applies the filters and the sort to a query on `admin_customer_overview`.
@@ -654,6 +827,30 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.readjusted === "ever") q = q.not("last_readjusted_at", "is", null);
   if (filters.readjusted === "never") q = q.is("last_readjusted_at", null);
   if (filters.min_spend != null) q = q.gte("total_spent", filters.min_spend);
+
+  // Slice 05. A null country is never Singapore, and `<>` never lists it either.
+  if (filters.ships_to === "sg") q = q.eq("ship_country", "SG");
+  if (filters.ships_to === "not-sg") q = q.neq("ship_country", "SG");
+  if (filters.ships_to === "unknown") q = q.is("ship_country", null);
+  if (filters.language) q = q.eq("locale", LANGUAGE_LOCALE[filters.language]);
+  // A null date (no balance, points off) never matches.
+  if (filters.points_expire) q = q.lte("points_expire_on", sgDatePlusMonths(now, filters.points_expire.months));
+  if (filters.campaign) {
+    const { id, state } = filters.campaign;
+    if (state === "sent" || state === "not-clicked") q = q.contains("campaigns_sent", [id]);
+    if (state === "not-sent") q = q.not("campaigns_sent", "cs", pgTextArray([id]));
+    if (state === "clicked") q = q.contains("campaigns_clicked", [id]);
+    if (state === "not-clicked") q = q.not("campaigns_clicked", "cs", pgTextArray([id]));
+  }
+  if (filters.emailed) {
+    const e = filters.emailed;
+    if (e.when === "never") q = q.is("last_campaign_sent_at", null);
+    else {
+      const cutoff = new Date(now.getTime() - e.days * DAY_MS).toISOString();
+      // `last_emailed_at` is '-infinity' for never, so *not in N days* keeps them.
+      q = e.when === "within" ? q.gte("last_campaign_sent_at", cutoff) : q.lt("last_emailed_at", cutoff);
+    }
+  }
 
   // CRM slice 12. Each Customer is in exactly one Google review value.
   if (filters.google_review === "linked") q = q.not("google_reviewed_at", "is", null);

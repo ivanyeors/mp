@@ -449,7 +449,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `countNewCustomers()` [select] — lib/crm/telegram-update-sources.ts:64
   - `customerIdForResult()` [select] — lib/crm/customer-link.ts:22
   - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:8
-  - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:77
+  - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:106
   - `getCurrentCustomerId()` [select] — lib/shop/customer-addresses.ts:39
   - `getCustomerById()` [select] — lib/ecommerce/customers.ts:36
   - `getCustomers()` [select] — lib/ecommerce/customers.ts:53
@@ -1393,14 +1393,15 @@ Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
   - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261031100000_customer_overview_purchase_filters.sql:112
+Defined in supabase/migrations/20261031150000_customer_overview_reach_filters.sql:42
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
+  - `countShipsToUnknown()` [select] — lib/ecommerce/admin/customers.ts:79
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
-  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:111
+  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:140
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:220
-  - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:45
+  - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:57
   - `resolveSegment()` [select] — lib/crm/segments.ts:245
 
 ### admin_google_reviews_unlinked
@@ -1437,7 +1438,7 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
 ### claim_marketing_campaign_send
 Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:148
 - Called by:
-  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:304
+  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:347
 
 ### claim_migrated_customer
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
@@ -1592,7 +1593,7 @@ Changed from pages: `/results/[id]`
 ### email_campaign_stats
 Defined in supabase/migrations/20261031140000_campaign_clicks_and_unsubscribes.sql:287
 - Read by:
-  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:150
+  - `getCampaignStats()` [select] — lib/email-campaigns/store.ts:193
   - `listCampaigns()` [select] — lib/email-campaigns/store.ts:88
 
 ### email_campaigns
@@ -1600,13 +1601,14 @@ Defined in supabase/migrations/20261021100000_email_campaigns.sql:42
 References: `customer_segments`, `mp_staff`
 Changed from pages: `/settings/campaigns/[id]`, `/settings/campaigns/new`
 - Written by:
-  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:181
-  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:161
-  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:191
-  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:176
+  - `archiveCampaign()` [update] — lib/email-campaigns/store.ts:224
+  - `createCampaign()` [insert] — lib/email-campaigns/store.ts:204
+  - `lockCampaign()` [update] — lib/email-campaigns/store.ts:234
+  - `updateCampaign()` [update] — lib/email-campaigns/store.ts:219
 - Read by:
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1020
-  - `getCampaign()` [select] — lib/email-campaigns/store.ts:144
+  - `getCampaign()` [select] — lib/email-campaigns/store.ts:187
+  - `listCampaignFilterOptions()` [select] — lib/email-campaigns/store.ts:163
   - `listCampaigns()` [select] — lib/email-campaigns/store.ts:87
   - `listPastCampaigns()` [select] — lib/email-campaigns/store.ts:120
 
@@ -1682,7 +1684,7 @@ Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:213
 ### marketing_campaign_candidates
 Defined in supabase/migrations/20261031130000_campaign_rest_period.sql:220
 - Read by:
-  - `readPaged()` [select] — lib/email-campaigns/store.ts:213
+  - `readPaged()` [select] — lib/email-campaigns/store.ts:256
 
 ### media_asset_renditions
 Defined in supabase/migrations/20261030050000_media_asset_renditions.sql:20
@@ -2476,9 +2478,9 @@ app/[lang]/settings/costings/services/page.tsx
 ### /settings/customers
 app/[lang]/settings/customers/page.tsx
 - Endpoints: `/api/admin/working-as [POST]`, `/api/settings/customers/aftercare [GET,PUT]`, `/api/settings/customers/followups [GET]`, `/api/settings/customers/google-reviews [GET]`, `/api/settings/customers/segments`, `/api/settings/customers/telegram-updates [GET,PUT]`, `/api/settings/customers/telegram-updates/test [POST]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id]/followups/[followupId]`
-- Loads: `getMigrationSummary()`, `getSiteSettings()`, `listAdminCustomers()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
+- Loads: `getMigrationSummary()`, `getSiteSettings()`, `listAdminCustomers()`, `listCampaignFilterOptions()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_emails`, `customer_followups`, `customer_review_requests`, `customer_segments`, `customer_whatsapp`, `customers`, `mp_staff`, `site_settings`
-- Reads, through the same: `admin_customer_migration_summary`, `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `customer_preference_events`, `customer_purchase_lines`, `email_template_copy`, `order_items`, `orders`, `pillow_products`, `readjustment_bookings`, `service_prices`, `whatsapp_inbound`
+- Reads, through the same: `admin_customer_migration_summary`, `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `customer_preference_events`, `customer_purchase_lines`, `email_campaigns`, `email_template_copy`, `order_items`, `orders`, `pillow_products`, `readjustment_bookings`, `service_prices`, `whatsapp_inbound`
 
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx

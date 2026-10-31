@@ -557,6 +557,25 @@ export function excludeSegmentMembers<C extends Pick<CampaignCandidate, "custome
   return { candidates: kept, leftOut };
 }
 
+/**
+ * Pure — PRD-campaign-audiences slice 05. A Segment chosen by what this same
+ * campaign did (*got it*, *clicked it*, *got it, didn't click*) holds only
+ * people it has already reached, and nobody gets a campaign twice: as its
+ * Audience it would never send. The words saying so, or null when it can.
+ * *Didn't get it* is fine: that is who it has left to reach.
+ */
+export function selfDefeatingAudience(
+  campaignId: string,
+  segment: { name: string; filters: { campaign: { id: string; state: string } | null } },
+): string | null {
+  const c = segment.filters.campaign;
+  if (!c || c.id !== campaignId.toLowerCase() || c.state === "not-sent") return null;
+  return (
+    `“${segment.name}” chooses people this campaign has already been sent, and nobody gets a campaign twice, ` +
+    `so it would never send. Send it to another Segment, or use “${segment.name}” for a follow-up campaign.`
+  );
+}
+
 /** Pure — the next wave's label: `w1`, `w2`, … after the ones the Campaign has. */
 export function nextWaveLabel(existing: readonly string[]): string {
   const taken = new Set(existing);

@@ -5,11 +5,13 @@ import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
 import { SegmentUnavailableError, getSegment, resolveSegment } from "@/lib/crm/segments";
+import { readSegmentFilters } from "@/lib/crm/segment-rules";
 import {
   CampaignDraftSchema,
   CampaignPreviewSchema,
   EMPTY_CAMPAIGN_DRAFT,
   MAX_TEST_RECIPIENTS,
+  selfDefeatingAudience,
   type Campaign,
   type CampaignDraft,
   type CampaignDraftInput,
@@ -127,6 +129,20 @@ async function pointsBalanceRefusal(admin: SupabaseClient, draft: CampaignDraft,
   return { ok: false, error: `${POINTS_NOT_LIVE}, so Points balance can't go in the email. Take it out to save.` };
 }
 
+/**
+ * PRD-campaign-audiences slice 05: the words refusing a Segment chosen by this
+ * campaign's own history (*got it*, *clicked it*), which would never send; null
+ * when the Audience can send. A Segment that is gone or needs review is left
+ * to the wave's own refusal.
+ */
+async function audienceRefusal(campaignId: string, segmentId: string | null): Promise<string | null> {
+  if (!segmentId) return null;
+  const segment = await getSegment(segmentId);
+  if (!segment) return null;
+  const { filters } = readSegmentFilters(segment.filters, segment.filtersVersion);
+  return selfDefeatingAudience(campaignId, { name: segment.name, filters });
+}
+
 /** Saves a new campaign (no id) or a draft's changes. A campaign that has started sending only takes a new name. */
 export async function saveCampaign(
   id: string | null,
@@ -156,6 +172,8 @@ export async function saveCampaign(
     if (refused) return refused;
     // A started campaign takes only a new name: its images are as they were sent.
     if (!before.lockedAt) {
+      const neverSends = await audienceRefusal(id, parsed.draft.segmentId);
+      if (neverSends) return { ok: false, error: "Check the highlighted fields.", fieldErrors: { segmentId: neverSends } };
       const unpictured = await imageProblems(admin, parsed.draft);
       if (unpictured) return unpictured;
     }
@@ -438,6 +456,9 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
   const setup = campaignSenderSetup();
   let result: WavePlanResult;
   try {
+    // The Segment may have changed since the campaign was saved.
+    const neverSends = await audienceRefusal(id, campaign.segmentId);
+    if (neverSends) return { ok: false, error: neverSends };
     result = await planWave(
       campaign,
       { size: Number(req.size), retryFailed: Boolean(req.retryFailed), resume: Boolean(req.resume), freshLinks: start === true },

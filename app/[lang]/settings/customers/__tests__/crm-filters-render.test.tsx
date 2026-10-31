@@ -67,6 +67,12 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   pillow_sizes: [],
   last_delivered_at: null,
   lifecycle_statuses: ["lead"],
+  ship_country: null,
+  locale: "en-US",
+  points_expire_on: null,
+  campaigns_sent: [],
+  campaigns_clicked: [],
+  last_emailed_at: "-infinity",
   ...over,
 });
 
@@ -223,5 +229,49 @@ describe("Customers list: Lifecycle stage", () => {
     expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>4</);
     // Lapsed, Mbolster under Didn't buy, and M.
     expect(html.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(3);
+  });
+});
+
+// PRD-campaign-audiences slice 05: reach.
+describe("Customers list: Reach filters", () => {
+  const CAMPAIGN = "0b5c6c1e-2a7d-4c4e-9f3a-1d2e3f4a5b6c";
+  const reachFor = (url: string, shipsToUnknown: number | null = null) => {
+    const { filters, ignored } = parseCustomerFilters(new URLSearchParams(url));
+    return renderToString(
+      <CustomersClient
+        initialData={{ customers: { ok: true, rows: [row({})], total: 1, page: 1, limit: 20, shipsToUnknown } }}
+        initialFilters={filters}
+        ignoredFilters={ignored}
+        campaigns={[
+          { id: CAMPAIGN, name: "November care tips" },
+          { id: "1c6d7d2f-3b8e-4d5f-8a4b-2e3f4a5b6c7d", name: "October launch" },
+        ]}
+      />,
+    );
+  };
+
+  it("opens the PRD's demo link with its three filters, and says how many ship to an unknown country", () => {
+    const html = reachFor("stage=at-risk&ships_to=sg&emailed=over:30", 12);
+    expect(html).toContain('id="customer-filters-panel"');
+    for (const control of ["Ships to", "Language", "Points expire", "Last emailed", "Campaign", "What they did with the campaign"]) {
+      expect(html).toContain(`aria-label="${control}"`);
+    }
+    expect(html).toContain("Ships to Singapore");
+    expect(html).toContain("Not emailed in 30 days");
+    expect(html).toContain("12 more match the other filters but ship to an unknown country");
+    expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>3</);
+  });
+
+  it("names the campaign on its chip, and offers the campaigns by name", () => {
+    const html = reachFor(`campaign=${CAMPAIGN}:not-clicked`);
+    expect(html).toContain("Got “November care tips”, didn&#x27;t click");
+    expect(html).toContain("November care tips");
+    expect(html).toContain("Got it, didn&#x27;t click");
+  });
+
+  it("says nothing of Unknown without a known-country filter, or when there are none", () => {
+    expect(reachFor("ships_to=unknown", 5)).not.toContain("unknown country:");
+    expect(reachFor("ships_to=not-sg", 0)).not.toContain("unknown country:");
+    expect(reachFor("ships_to=not-sg", 1)).toContain("1 more matches the other filters but ships to an unknown country");
   });
 });

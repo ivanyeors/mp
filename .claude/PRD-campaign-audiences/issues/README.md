@@ -17,7 +17,7 @@ demoable path through the layers it touches.
 | [02](02-consent-where-people-give-their-email.md) | Ask for consent where people give their email | AFK, then HITL | **built** at checkout, customisation, booking; counsel to read | none |
 | [03](03-newsletter-sign-up.md) | A sign-up for people who have not bought, double opt-in | AFK | not started | 02, owner decision 6 |
 | [04](04-purchase-filters.md) | Purchase filters: didn't buy, pillow size, delivered, sub-status | AFK | **built** | none |
-| [05](05-reach-filters.md) | Reach filters: ships to, language, points expiry, campaign history | AFK | not started | 08 (clicked values only) |
+| [05](05-reach-filters.md) | Reach filters: ships to, language, points expiry, campaign history | AFK | **built** | 08 (clicked values only) |
 | [06](06-exclude-segments.md) | Exclude Segments from an Audience | AFK | **built** | none |
 | [07](07-rest-period.md) | A rest period between one person's emails | AFK | **built** | 01 |
 | [08](08-clicks-and-unsubscribes-per-campaign.md) | Clicks and unsubscribes, tied to the campaign | AFK, then HITL | **built**; privacy policy line open | 01 |
@@ -37,7 +37,7 @@ graph TD
   s02[02 Consent at checkout, customisation, booking · built]
   s03[03 Sign-up, double opt-in]
   s04[04 Purchase filters · built]
-  s05[05 Reach filters]
+  s05[05 Reach filters · built]
   s06[06 Exclusions · built]
   s07[07 Rest period · built]
   s08[08 Clicks and unsubscribes · built]
@@ -83,5 +83,6 @@ graph TD
 4. **Done 2026-10-31:** 07 (the rest period: 7 days, at most 4 in 30) and 08 (clicks and
    unsubscribes per send), so clicks are collected before 11 and 12 read them. The privacy
    policy needs its line on click recording before 08 ships.
-5. **05, 09, then 10 and 11.**
+5. **Done 2026-10-31:** 05 (reach filters: ships to, language, points expiry, campaign history,
+   last emailed). **Next:** 09, then 10 and 11.
 6. **03, 12 and 13** last: 12 needs six campaigns' clicks, 13 needs unsubscribe reasons.

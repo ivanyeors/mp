@@ -214,7 +214,9 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
 4. **Purchase filters (04).** *Didn't buy*, *Pillow size*, *Delivered* in days, and the
    **sub-status** on the Stage filter (*New · Delivered*, *At risk · Lapsed*).
 5. **Reach filters (05).** *Ships to* (Singapore, elsewhere, unknown), *Language*, *Points expire
-   within*, *Campaign* (got it, didn't, clicked, didn't click), *Last emailed*.
+   within*, *Campaign* (got it, didn't, clicked, didn't click), *Last emailed*. *Not emailed in
+   N days* keeps people never emailed. A Segment on a campaign's own history is refused as that
+   campaign's Audience. **Built.**
 6. **Exclude Segments from an Audience (06).** Up to three, fixed with the Audience at the first
    Wave. The plan lists who each one left out.
 7. **A rest period (07).** Nobody receives a marketing email within N days of the last one, or

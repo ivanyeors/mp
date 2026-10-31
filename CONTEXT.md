@@ -575,7 +575,7 @@ Words Claude wrote for a campaign, from the subject and the brief **Staff** gave
 _Avoid_: "AI-generated email" (no email is generated without a person); calling the brief a prompt in the UI
 
 **Audience**:
-Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**, minus its **Exclusions** (*Leave out people in…*, PRD-campaign-audiences slice 06). The **Rest period** and the sunset rule (**Unengaged**) narrow it at every send, as consent does. Each Segment, sent to or left out, is read again when each **Wave** is planned, and one that is archived or needs review refuses the Wave by name. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
+Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**, minus its **Exclusions** (*Leave out people in…*, PRD-campaign-audiences slice 06). The **Rest period** and the sunset rule (**Unengaged**) narrow it at every send, as consent does. Each Segment, sent to or left out, is read again when each **Wave** is planned, and one that is archived or needs review refuses the Wave by name. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send. A Segment chosen by what the same campaign did (*got it*, *clicked it*, *got it, didn't click*) is refused as its Audience, on Save and at every Wave: everyone in it has been sent the campaign already, so it would never send (PRD-campaign-audiences slice 05). It is for a follow-up campaign.
 _Avoid_: reading an Audience as the people who will receive it — **Marketing consent**, suppression, the **Rest period** and the sunset rule narrow it at every send
 
 **Exclusion**:
@@ -589,6 +589,10 @@ _Avoid_: "frequency cap" in UI copy; "smart sending"; reading a rested Customer 
 **Campaign click**:
 The first time someone opened a site link from one campaign send, recorded on that send (`customer_campaign_sends`) from a token in the link, then stripped from the address. It shows the link came from that email, not who is holding it: emails are forwarded and link scanners click, so counts are approximate. Never used to identify a browser or merge a **Visitor** into a **Customer**.
 _Avoid_: "open" (not recorded: there is no pixel); treating a click as proof of who clicked; rewriting links through Resend
+
+**Ships to**:
+Where a **Customer** is, as a two-letter country: their latest counted **Order**'s shipping country (a self-collect or re-adjustment **Order** is the studio's, Singapore), else their default address's, else the address they saved last (`ship_country` on the Customer overview; PRD-campaign-audiences slice 05). *Unknown* when none names one, as for a Shopify-era buyer with no **Order** here and no address. In-store fitting and re-adjustment are Singapore-only, so it decides which wording an email may use.
+_Avoid_: taking *Unknown* for Singapore, or leaving it out silently (the Customers list says how many a Singapore or overseas filter leaves out); calling it where they live (it is where we last shipped to)
 
 **Kept sending**:
 A campaign that, after a first **Wave** a person started, runs one Wave a day by itself to people who have joined its **Audience** since, inside Resend's daily room, the pause rule and the **Rest period**, until paused. Its email and Audience stay as the first Wave locked them. Chained onto the daily job; no new cron.

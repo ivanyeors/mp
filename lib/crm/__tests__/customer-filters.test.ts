@@ -14,6 +14,7 @@ import {
   parseCustomerFilters,
   pgTextArray,
   searchParamsFromRecord,
+  sgDatePlusMonths,
   type CustomerFilters,
   type CustomerListQuery,
 } from "@/lib/crm/customer-filters";
@@ -40,6 +41,7 @@ function recorder() {
     overlaps: record("overlaps"),
     contains: record("contains"),
     eq: record("eq"),
+    neq: record("neq"),
     in: record("in"),
     is: record("is"),
     not: record("not"),
@@ -554,11 +556,14 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
       "account",
       "bought",
+      "campaign",
       "consent",
       "delivered",
+      "emailed",
       "followups",
       "google",
       "google_review",
+      "language",
       "last_order",
       "limit",
       "min_spend",
@@ -566,9 +571,11 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "not_bought",
       "page",
       "points",
+      "points_expire",
       "rating",
       "readjusted",
       "search",
+      "ships_to",
       "shop_review",
       "size",
       "sort",
@@ -583,19 +590,24 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_KEYS].sort()).toEqual([
       "account",
       "bought",
+      "campaign",
       "consent",
       "delivered",
+      "emailed",
       "followups",
       "google",
       "google_review",
+      "language",
       "last_order",
       "min_spend",
       "mobile",
       "not_bought",
       "points",
+      "points_expire",
       "rating",
       "readjusted",
       "search",
+      "ships_to",
       "shop_review",
       "size",
       "source",
@@ -844,6 +856,155 @@ describe("Purchase filters (PRD-campaign-audiences slice 04)", () => {
     expect(url.searchParams.getAll("bought")).toEqual(['ov.{"premium"}', 'not.ov.{"mbolster"}']);
     expect(url.searchParams.get("pillow_sizes")).toBe('ov.{"M"}');
     expect(url.searchParams.get("last_delivered_at")).toBe("lt.2026-09-21T04:00:00.000Z");
+    expect(url.searchParams.has("or")).toBe(false);
+  });
+});
+
+// PRD-campaign-audiences slice 05: where they are, what they read, what we last sent them.
+describe("Reach filters (PRD-campaign-audiences slice 05)", () => {
+  const CAMPAIGN = "0b5c6c1e-2a7d-4c4e-9f3a-1d2e3f4a5b6c";
+  const names = new Map([[CAMPAIGN, "November care tips"]]);
+  const label = (search: string) =>
+    describeCustomerFilters(parseCustomerFilters(new URLSearchParams(search)).filters, { campaignNames: names }).map(
+      (f) => f.label,
+    );
+
+  describe("Ships to", () => {
+    it("reads Singapore, outside it, or unknown", () => {
+      expect(parseCustomerFilters(new URLSearchParams("ships_to=not-sg")).filters.ships_to).toBe("not-sg");
+      for (const bad of ["ships_to=SG", "ships_to=my", "ships_to=sg,unknown"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { ships_to: null }, ignored: ["ships_to"] });
+      }
+    });
+
+    it("never takes an unknown country for Singapore, nor for outside it", () => {
+      expect(query("ships_to=sg").calls).toEqual([["eq", "ship_country", "SG"], newest]);
+      // `<>` never lists a null: Unknown stays out of *outside Singapore* too.
+      expect(query("ships_to=not-sg").calls).toEqual([["neq", "ship_country", "SG"], newest]);
+      expect(query("ships_to=unknown").calls).toEqual([["is", "ship_country", null], newest]);
+    });
+
+    it("labels each", () => {
+      expect(label("ships_to=sg")).toEqual(["Ships to Singapore"]);
+      expect(label("ships_to=not-sg")).toEqual(["Ships outside Singapore"]);
+      expect(label("ships_to=unknown")).toEqual(["Ships to an unknown country"]);
+    });
+  });
+
+  describe("Language", () => {
+    it("reads English or Chinese as customers.locale holds them", () => {
+      expect(query("language=zh-cn").calls).toEqual([["eq", "locale", "zh-CN"], newest]);
+      expect(query("language=en").calls).toEqual([["eq", "locale", "en-US"], newest]);
+      expect(parseCustomerFilters(new URLSearchParams("language=zh-CN"))).toMatchObject({ ignored: ["language"] });
+      expect(label("language=zh-cn")).toEqual(["Reads Chinese"]);
+    });
+  });
+
+  describe("Points expire within", () => {
+    it("reads within 1 to 24 months", () => {
+      expect(parseCustomerFilters(new URLSearchParams("points_expire=within:3")).filters.points_expire).toEqual({ months: 3 });
+      for (const bad of ["points_expire=within:0", "points_expire=within:25", "points_expire=over:3", "points_expire=3"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({
+          filters: { points_expire: null },
+          ignored: ["points_expire"],
+        });
+      }
+    });
+
+    it("is one lte on points_expire_on, today in Singapore plus the months", () => {
+      expect(query("points_expire=within:3").calls).toEqual([["lte", "points_expire_on", "2027-01-21"], newest]);
+      expect(label("points_expire=within:3")).toEqual(["Points expire within 3 months"]);
+      expect(label("points_expire=within:12")).toEqual(["Points expire within a year"]);
+    });
+
+    it("counts from the Singapore date, and clamps to a shorter month as points_expires_on() does", () => {
+      // 16:30 UTC on 31 Oct is already 1 Nov in Singapore.
+      expect(sgDatePlusMonths(new Date("2026-10-31T16:30:00.000Z"), 1)).toBe("2026-12-01");
+      expect(sgDatePlusMonths(new Date("2026-10-31T04:00:00.000Z"), 1)).toBe("2026-11-30");
+      expect(sgDatePlusMonths(new Date("2027-01-31T04:00:00.000Z"), 1)).toBe("2027-02-28");
+    });
+  });
+
+  describe("Campaign", () => {
+    it("reads a campaign id and what they did, the id written lower-case", () => {
+      expect(parseCustomerFilters(new URLSearchParams(`campaign=${CAMPAIGN.toUpperCase()}:not-clicked`)).filters.campaign).toEqual({
+        id: CAMPAIGN,
+        state: "not-clicked",
+      });
+      for (const bad of [`campaign=${CAMPAIGN}`, `campaign=${CAMPAIGN}:opened`, "campaign=launch:sent", `campaign=${CAMPAIGN}:sent:x`]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { campaign: null }, ignored: ["campaign"] });
+      }
+    });
+
+    it("reads campaigns_sent and campaigns_clicked; didn't click is got it and never clicked", () => {
+      const one = `{"${CAMPAIGN}"}`;
+      expect(query(`campaign=${CAMPAIGN}:sent`).calls).toEqual([["contains", "campaigns_sent", [CAMPAIGN]], newest]);
+      expect(query(`campaign=${CAMPAIGN}:not-sent`).calls).toEqual([["not", "campaigns_sent", "cs", one], newest]);
+      expect(query(`campaign=${CAMPAIGN}:clicked`).calls).toEqual([["contains", "campaigns_clicked", [CAMPAIGN]], newest]);
+      expect(query(`campaign=${CAMPAIGN}:not-clicked`).calls).toEqual([
+        ["contains", "campaigns_sent", [CAMPAIGN]],
+        ["not", "campaigns_clicked", "cs", one],
+        newest,
+      ]);
+    });
+
+    it("labels by the campaign's name, or *a campaign* when it is not known", () => {
+      expect(label(`campaign=${CAMPAIGN}:sent`)).toEqual(["Got “November care tips”"]);
+      expect(label(`campaign=${CAMPAIGN}:not-sent`)).toEqual(["Didn't get “November care tips”"]);
+      expect(label(`campaign=${CAMPAIGN}:clicked`)).toEqual(["Clicked “November care tips”"]);
+      expect(label(`campaign=${CAMPAIGN}:not-clicked`)).toEqual(["Got “November care tips”, didn't click"]);
+      const { filters } = parseCustomerFilters(new URLSearchParams(`campaign=${CAMPAIGN}:sent`));
+      expect(describeCustomerFilters(filters).map((f) => f.label)).toEqual(["Got a campaign"]);
+      expect(customerFilterParams(filters).get("campaign")).toBe(`${CAMPAIGN}:sent`);
+    });
+  });
+
+  describe("Last emailed", () => {
+    it("reads within or over 1 to 730 days, or never", () => {
+      expect(parseCustomerFilters(new URLSearchParams("emailed=never")).filters.emailed).toEqual({ when: "never" });
+      expect(parseCustomerFilters(new URLSearchParams("emailed=over:30")).filters.emailed).toEqual({ when: "over", days: 30 });
+      for (const bad of ["emailed=over:0", "emailed=within:731", "emailed=never:3", "emailed=since:14", "emailed=ever"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { emailed: null }, ignored: ["emailed"] });
+      }
+    });
+
+    it("keeps the never-emailed in *not emailed in N days*, with one lt and no or", () => {
+      expect(query("emailed=within:14").calls).toEqual([["gte", "last_campaign_sent_at", "2026-10-07T04:00:00.000Z"], newest]);
+      expect(query("emailed=over:30").calls).toEqual([["lt", "last_emailed_at", "2026-09-21T04:00:00.000Z"], newest]);
+      expect(query("emailed=never").calls).toEqual([["is", "last_campaign_sent_at", null], newest]);
+    });
+
+    it("labels each, and writes them back", () => {
+      expect(label("emailed=within:14")).toEqual(["Emailed within 14 days"]);
+      expect(label("emailed=over:30")).toEqual(["Not emailed in 30 days"]);
+      expect(label("emailed=never")).toEqual(["Never emailed"]);
+      expect(customerFilterParams({ emailed: { when: "never" } }).toString()).toBe("emailed=never");
+    });
+  });
+
+  it("makes the PRD's demo one link: At risk, Ships to Singapore, Not emailed in 30 days", () => {
+    const search = "stage=at-risk&ships_to=sg&emailed=over:30";
+    const { filters, ignored } = parseCustomerFilters(new URLSearchParams(search));
+    expect(ignored).toEqual([]);
+    expect(customerFilterParams(filters).toString()).toBe("stage=at-risk&ships_to=sg&emailed=over%3A30");
+    expect(label(search)).toEqual(["Stage: At risk", "Ships to Singapore", "Not emailed in 30 days"]);
+    expect(clearCustomerFilters(filters)).toEqual(DEFAULT_CUSTOMER_FILTERS);
+  });
+
+  it("goes to PostgREST as plain filters, never or=", () => {
+    const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
+    const { filters } = parseCustomerFilters(
+      new URLSearchParams(
+        `ships_to=not-sg&language=zh-cn&points_expire=within:3&campaign=${CAMPAIGN}:not-clicked&emailed=over:30`,
+      ),
+    );
+    const url = (applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW }) as unknown as { url: URL }).url;
+    expect(url.searchParams.get("ship_country")).toBe("neq.SG");
+    expect(url.searchParams.get("locale")).toBe("eq.zh-CN");
+    expect(url.searchParams.get("points_expire_on")).toBe("lte.2027-01-21");
+    expect(url.searchParams.get("campaigns_sent")).toBe(`cs.{${CAMPAIGN}}`);
+    expect(url.searchParams.get("campaigns_clicked")).toBe(`not.cs.{"${CAMPAIGN}"}`);
+    expect(url.searchParams.get("last_emailed_at")).toBe("lt.2026-09-21T04:00:00.000Z");
     expect(url.searchParams.has("or")).toBe(false);
   });
 });

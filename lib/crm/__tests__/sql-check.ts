@@ -59,6 +59,10 @@ export class SqlFilter implements CustomerListQuery {
     this.where.push(`${column} = ${sqlLiteral(value)}`);
     return this;
   }
+  neq(column: string, value: string) {
+    this.where.push(`${column} <> ${sqlLiteral(value)}`);
+    return this;
+  }
   in(column: string, values: readonly string[]) {
     this.where.push(`${column} in (${values.map(sqlLiteral).join(", ")})`);
     return this;
@@ -87,7 +91,7 @@ export class SqlFilter implements CustomerListQuery {
     this.where.push(`${column} < ${sqlLiteral(value)}`);
     return this;
   }
-  lte(column: string, value: number) {
+  lte(column: string, value: string | number) {
     this.where.push(`${column} <= ${sqlLiteral(value)}`);
     return this;
   }

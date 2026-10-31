@@ -71,6 +71,12 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "pillow_sizes",
   "last_delivered_at",
   "lifecycle_statuses",
+  "ship_country",
+  "locale",
+  "points_expire_on",
+  "campaigns_sent",
+  "campaigns_clicked",
+  "last_emailed_at",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -205,6 +211,29 @@ export interface CustomerOverviewRow {
   last_delivered_at: string | null;
   /** The stage and its sub-status, when it has one (`["at_risk", "lapsed"]`): the Stage filter's column. */
   lifecycle_statuses: (LifecycleStage | LifecycleDetail)[];
+  /**
+   * Where they are, ISO-2 (PRD-campaign-audiences slice 05): the latest
+   * counted Order's shipping country, else their default address's, else the
+   * address saved last. Null is *Unknown*, never Singapore.
+   */
+  ship_country: string | null;
+  /** The language they read the site and its emails in (`customers.locale`). */
+  locale: "en-US" | "zh-CN";
+  /**
+   * The last day their points can be used (`YYYY-MM-DD`, Singapore), as the
+   * Profile shows it; null with no balance, or while points are off.
+   */
+  points_expire_on: string | null;
+  /** The campaigns the provider accepted for them, as a campaign's *Sent* counts them. */
+  campaigns_sent: string[];
+  /** Those whose email they clicked (slice 08's counted click). */
+  campaigns_clicked: string[];
+  /**
+   * `last_campaign_sent_at`, or `"-infinity"` for never: only the *Last
+   * emailed* filter reads it, so *not emailed in 30 days* keeps the
+   * never-emailed. Show `last_campaign_sent_at` instead.
+   */
+  last_emailed_at: string;
 }
 
 /** Display name, or null when the Customer has none. */

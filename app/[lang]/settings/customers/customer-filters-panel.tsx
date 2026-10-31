@@ -17,6 +17,13 @@ import {
 import {
     BOUGHT_FILTERS,
     BOUGHT_LABELS,
+    CAMPAIGN_FILTER_STATES,
+    LANGUAGE_FILTERS,
+    LANGUAGE_LABELS,
+    SHIPS_TO_FILTERS,
+    emailedLabel,
+    emailedParam,
+    monthsLabel,
     GOOGLE_REVIEW_FILTERS,
     GOOGLE_REVIEW_LABELS,
     NOT_BOUGHT_FILTERS,
@@ -32,12 +39,16 @@ import {
     type CustomerFilterKey,
     type CustomerFilterParam,
     type CustomerListFilters,
+    type CampaignFilterState,
     type DeliveredFilter,
+    type EmailedFilter,
     type GoogleReviewFilter,
+    type LanguageFilter,
     type LastOrderFilter,
     type PointsFilter,
     type RatingFilter,
     type ReadjustedFilter,
+    type ShipsToFilter,
     type ShopReviewFilter,
     type StageFilter,
 } from "@/lib/crm/customer-filters";
@@ -50,6 +61,7 @@ import {
     LIFECYCLE_STAGE_LABEL,
     LIFECYCLE_STAGE_RULE,
 } from "@/lib/crm/lifecycle-stage";
+import type { CampaignFilterOption } from "@/lib/email-campaigns/store";
 
 /**
  * The Customers list's CRM filters: the **Lifecycle stage**
@@ -59,7 +71,9 @@ import {
  * (migration slice 07); and reviews (CRM slice 12: the Google review, Shop
  * reviews, the rating); and (PRD-campaign-audiences slice 04) the Stage's
  * sub-statuses, what they did not buy, their pillow size, and how long ago
- * their latest purchase was delivered. Values go through
+ * their latest purchase was delivered; and (slice 05) reach: where they ship
+ * to, the language they read, when their points expire, what one campaign
+ * did with them, and when a campaign last reached them. Values go through
  * the list's one schema (lib/crm/customer-filters.ts), so a control can never
  * put into the URL what a link could not.
  */
@@ -88,6 +102,28 @@ const DELIVERED_PRESETS: DeliveredFilter[] = [
 
 const deliveredValue = (v: DeliveredFilter) => `${v.when}:${v.days}`;
 
+/** Presets for *Points expire within*, in months; a link may carry any other. */
+const POINTS_EXPIRE_PRESETS = [1, 3, 6];
+
+/** Presets for *Last emailed*, in days; a link may carry any other. */
+const EMAILED_PRESETS: EmailedFilter[] = [
+    { when: "within", days: 7 },
+    { when: "within", days: 14 },
+    { when: "within", days: 30 },
+    { when: "over", days: 14 },
+    { when: "over", days: 30 },
+    { when: "over", days: 60 },
+    { when: "never" },
+];
+
+/** How each *Campaign* state reads in its control, for the campaign chosen. */
+const CAMPAIGN_STATE_OPTION: Record<CampaignFilterState, string> = {
+    sent: "Got it",
+    "not-sent": "Didn't get it",
+    clicked: "Clicked it",
+    "not-clicked": "Got it, didn't click",
+};
+
 function deliveredLabel(v: DeliveredFilter): string {
     return v.when === "within" ? `Within ${daysLabel(v.days)}` : `Over ${daysLabel(v.days)} ago`;
 }
@@ -105,10 +141,13 @@ function onEnter(e: KeyboardEvent<HTMLInputElement>) {
 export function CustomerFiltersPanel({
     filters,
     onChange,
+    campaigns = [],
     children,
 }: {
     filters: CustomerListFilters;
     onChange: (patch: Partial<CustomerListFilters>) => void;
+    /** The *Campaign* filter's choices: campaigns that have started sending, latest first. */
+    campaigns?: readonly CampaignFilterOption[];
     /** Extra controls at the top of the panel: the toolbar's selects, on a phone. */
     children?: ReactNode;
 }) {
@@ -122,6 +161,22 @@ export function CustomerFiltersPanel({
         filters.delivered && !DELIVERED_PRESETS.some((p) => deliveredValue(p) === deliveredValue(filters.delivered!))
             ? [...DELIVERED_PRESETS, filters.delivered]
             : DELIVERED_PRESETS;
+
+    const pointsExpireOptions =
+        filters.points_expire && !POINTS_EXPIRE_PRESETS.includes(filters.points_expire.months)
+            ? [...POINTS_EXPIRE_PRESETS, filters.points_expire.months].sort((a, b) => a - b)
+            : POINTS_EXPIRE_PRESETS;
+
+    const emailedOptions =
+        filters.emailed && !EMAILED_PRESETS.some((p) => emailedParam(p) === emailedParam(filters.emailed!))
+            ? [...EMAILED_PRESETS, filters.emailed]
+            : EMAILED_PRESETS;
+
+    // A link's campaign that is not among the choices still shows, by its id.
+    const campaignOptions =
+        filters.campaign && !campaigns.some((c) => c.id === filters.campaign!.id)
+            ? [...campaigns, { id: filters.campaign.id, name: "A campaign not listed here" }]
+            : campaigns;
 
     // Ticking a stage takes in its sub-statuses: normalizeStageFilter drops them.
     const toggleStage = (value: StageFilter, checked: boolean) => {
@@ -404,6 +459,190 @@ export function CustomerFiltersPanel({
                 <TagsField tags={filters.tags} onChange={(tags) => onChange({ tags })} />
             </div>
 
+            {/* Reach (PRD-campaign-audiences slice 05): where they are, what they read, and what we last sent them. */}
+            <fieldset className="min-w-0 space-y-3 sm:col-span-2 lg:col-span-4">
+                <legend className="mb-1 text-sm font-medium">Reach</legend>
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-ships-to`}>Ships to</Label>
+                        <Select
+                            value={filters.ships_to ?? "any"}
+                            onValueChange={(v) => onChange({ ships_to: v === "any" ? null : (v as ShipsToFilter) })}
+                        >
+                            <SelectTrigger
+                                id={`${id}-ships-to`}
+                                className="w-full"
+                                aria-label="Ships to"
+                                aria-describedby={`${id}-ships-to-hint`}
+                            >
+                                <SelectValue placeholder="Anywhere" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="any">Anywhere</SelectItem>
+                                {SHIPS_TO_FILTERS.map((v) => (
+                                    <SelectItem key={v} value={v}>
+                                        {v === "sg" ? "Singapore" : v === "not-sg" ? "Outside Singapore" : "Unknown"}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p id={`${id}-ships-to-hint`} className="text-xs text-muted-foreground">
+                            Their latest order&apos;s address, else their default one. Unknown is never Singapore.
+                        </p>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-language`}>Language</Label>
+                        <Select
+                            value={filters.language ?? "any"}
+                            onValueChange={(v) => onChange({ language: v === "any" ? null : (v as LanguageFilter) })}
+                        >
+                            <SelectTrigger
+                                id={`${id}-language`}
+                                className="w-full"
+                                aria-label="Language"
+                                aria-describedby={`${id}-language-hint`}
+                            >
+                                <SelectValue placeholder="Any language" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="any">Any language</SelectItem>
+                                {LANGUAGE_FILTERS.map((v) => (
+                                    <SelectItem key={v} value={v}>
+                                        {LANGUAGE_LABELS[v]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p id={`${id}-language-hint`} className="text-xs text-muted-foreground">
+                            The language they use the site in.
+                        </p>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-points-expire`}>Points expire</Label>
+                        <Select
+                            value={filters.points_expire ? String(filters.points_expire.months) : "any"}
+                            onValueChange={(v) => onChange({ points_expire: v === "any" ? null : { months: Number(v) } })}
+                        >
+                            <SelectTrigger
+                                id={`${id}-points-expire`}
+                                className="w-full"
+                                aria-label="Points expire"
+                                aria-describedby={`${id}-points-expire-hint`}
+                            >
+                                <SelectValue placeholder="Any time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="any">Any time</SelectItem>
+                                {pointsExpireOptions.map((m) => (
+                                    <SelectItem key={m} value={String(m)}>
+                                        Within {monthsLabel(m)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p id={`${id}-points-expire-hint`} className="text-xs text-muted-foreground">
+                            A balance above 0, on the date their Profile shows. None while points are off.
+                        </p>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-emailed`}>Last emailed</Label>
+                        <Select
+                            value={filters.emailed ? emailedParam(filters.emailed) : "any"}
+                            onValueChange={(v) => {
+                                const parsed = customerFiltersSchema.shape.emailed.safeParse(v);
+                                onChange({ emailed: parsed.success ? (parsed.data ?? null) : null });
+                            }}
+                        >
+                            <SelectTrigger
+                                id={`${id}-emailed`}
+                                className="w-full"
+                                aria-label="Last emailed"
+                                aria-describedby={`${id}-emailed-hint`}
+                            >
+                                <SelectValue placeholder="Any time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="any">Any time</SelectItem>
+                                {emailedOptions.map((o) => (
+                                    <SelectItem key={emailedParam(o)} value={emailedParam(o)}>
+                                        {emailedLabel(o)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p id={`${id}-emailed-hint`} className="text-xs text-muted-foreground">
+                            A campaign email. &ldquo;Not emailed&rdquo; includes people never emailed.
+                        </p>
+                    </div>
+                </div>
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-campaign`}>Campaign</Label>
+                        <Select
+                            value={filters.campaign?.id ?? "any"}
+                            onValueChange={(v) =>
+                                onChange({
+                                    campaign: v === "any" ? null : { id: v, state: filters.campaign?.state ?? "sent" },
+                                })
+                            }
+                        >
+                            <SelectTrigger
+                                id={`${id}-campaign`}
+                                disabled={campaignOptions.length === 0}
+                                className="w-full"
+                                aria-label="Campaign"
+                                aria-describedby={`${id}-campaign-hint`}
+                            >
+                                <SelectValue placeholder={campaignOptions.length ? "Any campaign" : "None sent yet"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="any">Any campaign</SelectItem>
+                                {campaignOptions.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                        {c.name || "Untitled campaign"}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p id={`${id}-campaign-hint`} className="text-xs text-muted-foreground">
+                            {campaignOptions.length
+                                ? "Campaigns that have started sending, latest first."
+                                : "No campaign has started sending yet."}
+                        </p>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                        <Label htmlFor={`${id}-campaign-state`}>What they did</Label>
+                        <Select
+                            value={filters.campaign?.state ?? "sent"}
+                            onValueChange={(v) =>
+                                filters.campaign &&
+                                onChange({ campaign: { id: filters.campaign.id, state: v as CampaignFilterState } })
+                            }
+                        >
+                            <SelectTrigger
+                                id={`${id}-campaign-state`}
+                                disabled={!filters.campaign}
+                                className="w-full"
+                                aria-label="What they did with the campaign"
+                                aria-describedby={`${id}-campaign-state-hint`}
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {CAMPAIGN_FILTER_STATES.map((v) => (
+                                    <SelectItem key={v} value={v}>
+                                        {CAMPAIGN_STATE_OPTION[v]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p id={`${id}-campaign-state-hint`} className="text-xs text-muted-foreground">
+                            A click is a visit to the site from a link in that email.
+                        </p>
+                    </div>
+                </div>
+            </fieldset>
+
             {/* Reviews (CRM slice 12): a Google review counts once Staff have linked it. */}
             <fieldset className="min-w-0 space-y-3 sm:col-span-2 lg:col-span-4">
                 <legend className="mb-1 text-sm font-medium">Reviews</legend>
@@ -500,6 +739,17 @@ function ignoredNote(ignored: readonly CustomerFilterParam[]): string {
 }
 
 /**
+ * With *Ships to* Singapore or elsewhere (PRD-campaign-audiences slice 05):
+ * how many more match every other filter but have no known country, so the
+ * list says whom it leaves out. Null when there are none to mention.
+ */
+export function shipsToUnknownNote(filters: Pick<CustomerListFilters, "ships_to">, unknown: number | null | undefined): string | null {
+    if ((filters.ships_to !== "sg" && filters.ships_to !== "not-sg") || !unknown) return null;
+    const n = unknown.toLocaleString("en-SG");
+    return `${n} more match${unknown === 1 ? "es" : ""} the other filters but ship${unknown === 1 ? "s" : ""} to an unknown country: no order or address of theirs names one.`;
+}
+
+/**
  * The active filters above the table, each with ×, and *Clear all*. Also the
  * note for parameters a link carried that the list could not read: they were
  * dropped, never applied.
@@ -507,16 +757,24 @@ function ignoredNote(ignored: readonly CustomerFilterParam[]): string {
 export function CustomerFilterSummary({
     filters,
     ignored,
+    campaigns = [],
+    shipsToUnknown = null,
     onClear,
     onClearAll,
 }: {
     filters: CustomerListFilters;
     ignored: readonly CustomerFilterParam[];
+    /** Names for a *Campaign* filter's chip. */
+    campaigns?: readonly CampaignFilterOption[];
+    /** With *Ships to*: how many more ship to an unknown country (`listAdminCustomers`). */
+    shipsToUnknown?: number | null;
     onClear: (key: CustomerFilterKey) => void;
     onClearAll: () => void;
 }) {
     const [noteOpen, setNoteOpen] = useState(true);
-    const active = describeCustomerFilters(filters);
+    const campaignNames = new Map(campaigns.map((c) => [c.id, c.name]));
+    const active = describeCustomerFilters(filters, { campaignNames });
+    const unknownNote = shipsToUnknownNote(filters, shipsToUnknown);
     const showNote = noteOpen && ignored.length > 0;
     if (!active.length && !showNote) return null;
 
@@ -555,6 +813,7 @@ export function CustomerFilterSummary({
                     </Button>
                 </div>
             )}
+            {unknownNote && <p className="text-sm text-muted-foreground">{unknownNote}</p>}
         </div>
     );
 }

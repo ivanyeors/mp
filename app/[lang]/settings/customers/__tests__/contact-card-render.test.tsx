@@ -183,6 +183,12 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   pillow_sizes: [],
   last_delivered_at: null,
   lifecycle_statuses: ["lead"],
+  ship_country: null,
+  locale: "en-US",
+  points_expire_on: null,
+  campaigns_sent: [],
+  campaigns_clicked: [],
+  last_emailed_at: "-infinity",
   ...over,
 });
 

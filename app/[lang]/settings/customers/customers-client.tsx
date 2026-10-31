@@ -66,6 +66,7 @@ import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-
 import { LifecycleStageBadge, LifecycleStageCell, lifecycleNote } from "./lifecycle-stage-badge";
 import { MigrationCard } from "./migration-card";
 import { SegmentsRow } from "./segments-row";
+import type { CampaignFilterOption } from "@/lib/email-campaigns/store";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,8 @@ export type CustomersListResponse = {
     total: number;
     page: number;
     limit: number;
+    /** With *Ships to* Singapore or elsewhere: how many more ship to an unknown country (slice 05). */
+    shipsToUnknown?: number | null;
 };
 
 export type CustomersInitialData = {
@@ -124,6 +127,11 @@ const PANEL_FILTERS: CustomerFilterKey[] = [
     "consent",
     "points",
     "tags",
+    "ships_to",
+    "language",
+    "points_expire",
+    "campaign",
+    "emailed",
     "google_review",
     "shop_review",
     "rating",
@@ -223,6 +231,7 @@ export function CustomersClient({
     ignoredFilters = [],
     migration = null,
     initialSegments,
+    campaigns = [],
     canEdit = false,
     canEmail = false,
 }: {
@@ -235,6 +244,8 @@ export function CustomersClient({
     migration?: MigrationSummary | null;
     /** The Segments row (CRM slice 05), read by the page; undefined and the row fetches them. */
     initialSegments?: CustomerSegment[];
+    /** The *Campaign* filter's choices (PRD-campaign-audiences slice 05), latest started first. */
+    campaigns?: readonly CampaignFilterOption[];
     /** `customers-edit`: saving, updating, renaming and archiving Segments. */
     canEdit?: boolean;
     /** `campaigns`: *Email this Segment* (PRD-crm-retention-loop slice 02). */
@@ -266,6 +277,7 @@ export function CustomersClient({
     // Data state
     const [customers, setCustomers] = useState<CustomerOverviewRow[]>(initialData?.customers.rows ?? []);
     const [total, setTotal] = useState(initialData?.customers.total ?? 0);
+    const [shipsToUnknown, setShipsToUnknown] = useState<number | null>(initialData?.customers.shipsToUnknown ?? null);
     const [loading, setLoading] = useState(!initialData);
 
     // The RSC page already fetched page 1 — skip the mount fetch once.
@@ -352,9 +364,11 @@ export function CustomersClient({
             const json = await res.json();
             setCustomers(json.rows ?? []);
             setTotal(json.total ?? 0);
+            setShipsToUnknown(typeof json.shipsToUnknown === "number" ? json.shipsToUnknown : null);
         } catch {
             setCustomers([]);
             setTotal(0);
+            setShipsToUnknown(null);
         } finally {
             setLoading(false);
         }
@@ -517,7 +531,7 @@ export function CustomersClient({
 
             {panelOpen && (
                 <div id="customer-filters-panel">
-                    <CustomerFiltersPanel filters={filters} onChange={changeFilters}>
+                    <CustomerFiltersPanel filters={filters} onChange={changeFilters} campaigns={campaigns}>
                         <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 md:hidden">{toolbarSelects}</div>
                     </CustomerFiltersPanel>
                 </div>
@@ -526,6 +540,8 @@ export function CustomersClient({
             <CustomerFilterSummary
                 filters={filters}
                 ignored={ignoredFilters}
+                campaigns={campaigns}
+                shipsToUnknown={loading ? null : shipsToUnknown}
                 onClear={clearFilter}
                 onClearAll={clearAll}
             />

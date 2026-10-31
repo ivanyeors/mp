@@ -139,6 +139,49 @@ export async function listPastCampaigns(admin: SupabaseClient): Promise<PastCamp
   );
 }
 
+/** A campaign the Customers list's *Campaign* filter offers (PRD-campaign-audiences slice 05). */
+export interface CampaignFilterOption {
+  id: string;
+  name: string;
+}
+
+/** The most the *Campaign* filter lists: the latest started. */
+export const CAMPAIGN_FILTER_OPTIONS_LISTED = 100;
+
+/**
+ * Every campaign that has started sending, archived ones too, the latest
+ * started first: the ones *got it*, *clicked it* and the rest can be about.
+ * `alsoIds` adds campaigns a link names that are not among them (a draft, an
+ * older one), so its chip still reads a name. Names only, never content:
+ * the Customers page reads these with `customers`, not `campaigns`. Throws on
+ * a failed read.
+ */
+export async function listCampaignFilterOptions(
+  admin: SupabaseClient,
+  alsoIds: readonly string[] = [],
+): Promise<CampaignFilterOption[]> {
+  const started = await admin
+    .from("email_campaigns")
+    .select("id, name")
+    .not("locked_at", "is", null)
+    .order("locked_at", { ascending: false })
+    .limit(CAMPAIGN_FILTER_OPTIONS_LISTED);
+  if (started.error) throw new Error(`Could not read the campaigns: ${started.error.message}`);
+  const options = ((started.data ?? []) as Record<string, unknown>[]).flatMap((r) =>
+    typeof r.id === "string" ? [{ id: r.id, name: typeof r.name === "string" ? r.name : "" }] : [],
+  );
+  const missing = alsoIds.filter((id) => !options.some((o) => o.id === id));
+  if (!missing.length) return options;
+  const more = await admin.from("email_campaigns").select("id, name").in("id", missing);
+  if (more.error) throw new Error(`Could not read the campaigns: ${more.error.message}`);
+  return [
+    ...options,
+    ...((more.data ?? []) as Record<string, unknown>[]).flatMap((r) =>
+      typeof r.id === "string" ? [{ id: r.id, name: typeof r.name === "string" ? r.name : "" }] : [],
+    ),
+  ];
+}
+
 /** One Campaign, archived or not; null when there is none. */
 export async function getCampaign(admin: SupabaseClient, id: string): Promise<Campaign | null> {
   const { data, error } = await admin.from("email_campaigns").select(CAMPAIGN_COLUMNS).eq("id", id).maybeSingle();
