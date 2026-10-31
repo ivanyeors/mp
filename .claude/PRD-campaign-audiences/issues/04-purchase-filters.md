@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** not started
+**Status:** built 2026-10-31 (`20261031100000_customer_overview_purchase_filters.sql`; not yet applied to production)
 **Blocked by:** none
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`
 
@@ -33,9 +33,28 @@ Audience with no other change:
 A Segment saved with an older `filters_version` still reads (`readSegmentFilters`); bump the
 version only if a stored value changes meaning.
 
+## As built
+
+- **Stage sub-statuses** need one more overview column, `lifecycle_statuses` (the stage and its
+  sub-status, `{at_risk,lapsed}`). A sub-status name never repeats a stage's, so a mix such as
+  `stage=new,at-risk:lapsed` is one overlap, not an `or` (ADR 0028 (d)). Main stages alone still
+  filter on `lifecycle_stage`. A sub-status beside its own stage is dropped (the stage holds it),
+  and in the panel its box shows ticked and locked.
+- **Pillow size** reads `customer_purchase_lines.size`, appended to that view (`classifyOrderLine`'s
+  size: a Result's `assigned_size`, else the pillow product's), aggregated into `pillow_sizes`.
+- **Delivered** is the *latest purchase's* delivery (`last_delivered_at`), the same Order that
+  gives a New Customer's sub-status, so someone with a newer order still on its way matches
+  neither *within* nor *over*. Presets 7, 14, 30 days and over 30, 60, 90; a link may carry 1–730.
+- No `filters_version` bump: no stored value changed meaning.
+
 ## Acceptance criteria
 
-- [ ] `campaign-rule-cases.json` is untouched: filters choose, the claim rule decides.
-- [ ] Each filter has a mapping test (`lib/crm/__tests__/`) and a SQL check against the overview.
-- [ ] *Didn't buy* and *Bought* together (`bought=premium&not_bought=mbolster`) is one query.
-- [ ] No filter reaches the review request job.
+- [x] `campaign-rule-cases.json` is untouched: filters choose, the claim rule decides.
+- [x] Each filter has a mapping test (`lib/crm/__tests__/customer-filters.test.ts`) and a SQL
+      check against the overview: `lib/crm/purchase-lines.check.ts` (sizes, *Didn't buy*,
+      *Pillow size*) and `lib/crm/lifecycle-stage.check.ts` (sub-statuses, *Delivered*,
+      `last_delivered_at`, `lifecycle_statuses`), both passing on a database with every migration
+      applied.
+- [x] *Didn't buy* and *Bought* together (`bought=premium&not_bought=mbolster`) is one query:
+      `bought=ov.{premium}&bought=not.ov.{mbolster}`.
+- [x] No filter reaches the review request job.

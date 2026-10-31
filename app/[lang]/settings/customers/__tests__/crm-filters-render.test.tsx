@@ -64,6 +64,9 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   lifecycle_detail: "repeat_purchases",
   lifecycle_undated: false,
   attended_bookings: 0,
+  pillow_sizes: [],
+  last_delivered_at: null,
+  lifecycle_statuses: ["lead"],
   ...over,
 });
 
@@ -205,6 +208,20 @@ describe("Customers list: Lifecycle stage", () => {
     expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>1</);
     // Each stage box says its rule.
     expect(html).toContain("Unsubscribed from marketing, with no purchase or attended booking since");
-    expect(html.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(2);
+    // At risk and Lost, and At risk's Lapsed, implied by its stage and locked (slice 04).
+    expect(html.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(3);
+    expect(html).toMatch(/<button[^>]*role="checkbox"[^>]*aria-checked="true"[^>]*disabled=""[^>]*id="[^"]*-stage-lapsed"/);
+  });
+
+  it("opens a sub-status link with only that box ticked, beside its stage's rule (PRD-campaign-audiences slice 04)", () => {
+    const html = listFor("stage=at-risk:lapsed&not_bought=mbolster&size=m&delivered=over:30");
+    expect(html).toContain("Stage: At risk · Lapsed");
+    expect(html).toContain("Didn&#x27;t buy Mbolster");
+    expect(html).toContain("Pillow size M");
+    expect(html).toContain("Delivered over 30 days ago");
+    expect(html).toContain("Over 24 months");
+    expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>4</);
+    // Lapsed, Mbolster under Didn't buy, and M.
+    expect(html.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(3);
   });
 });

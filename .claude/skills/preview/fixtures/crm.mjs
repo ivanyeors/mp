@@ -4,15 +4,17 @@
 // `subscribe_migrated_customers` (ADR 0037) worked out from these rows.
 // Every name and email is invented.
 
+// `sizes` and `delivered` (days since the latest purchase arrived; null while
+// on its way) feed the purchase filters (PRD-campaign-audiences slice 04).
 const PEOPLE = [
-  { first: "Aisha", last: "Rahman", stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], consent: "subscribed", source: "account", imported: false },
-  { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], consent: "subscribed", source: "shopify_import", imported: true, said: "yes" },
-  { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Elena", last: "Goh", stage: "lead", detail: null, purchases: 0, bought: [], consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Farid", last: "Yusof", stage: "lost", detail: null, purchases: 1, bought: ["premium"], consent: "unsubscribed", source: "unsubscribe_link", imported: true, said: "no" },
-  { first: "Grace", last: "Lee", stage: "loyal", detail: "repeat_purchases", purchases: 2, bought: ["premium", "accessory"], consent: "not_subscribed", imported: true, said: "no" },
-  { first: "Hui Min", last: "Chua", stage: "new", detail: "awaiting_delivery", purchases: 1, bought: ["premium"], consent: "subscribed", source: "checkout", imported: false },
+  { first: "Aisha", last: "Rahman", stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false },
+  { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], sizes: ["L"], delivered: 10, consent: "not_subscribed", imported: true, said: "no" },
+  { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes" },
+  { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 790, consent: "not_subscribed", imported: true, said: "no" },
+  { first: "Elena", last: "Goh", stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, consent: "not_subscribed", imported: true, said: "no" },
+  { first: "Farid", last: "Yusof", stage: "lost", detail: null, purchases: 1, bought: ["premium"], sizes: ["XL"], delivered: 200, consent: "unsubscribed", source: "unsubscribe_link", imported: true, said: "no" },
+  { first: "Grace", last: "Lee", stage: "loyal", detail: "repeat_purchases", purchases: 2, bought: ["premium", "accessory"], sizes: ["M"], delivered: 50, consent: "not_subscribed", imported: true, said: "no" },
+  { first: "Hui Min", last: "Chua", stage: "new", detail: "awaiting_delivery", purchases: 1, bought: ["premium"], sizes: ["S"], delivered: null, consent: "subscribed", source: "checkout", imported: false },
 ];
 
 const BATCH = "00000000-0000-4000-8000-00000000b001";
@@ -89,7 +91,7 @@ export default function crm({ now }) {
       admin_customer_overview: (t) =>
         (t.customers ?? []).map((c) => {
           const i = PEOPLE.findIndex((p) => c.email.startsWith(`${p.first.toLowerCase().replace(/\s/g, "")}.`));
-          const p = PEOPLE[i] ?? { stage: "lead", detail: null, purchases: 0, bought: [], imported: false };
+          const p = PEOPLE[i] ?? { stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, imported: false };
           const m = (t.migrated_customers ?? []).find((r) => r.customer_id === c.id);
           return {
             ...c,
@@ -129,6 +131,9 @@ export default function crm({ now }) {
             lifecycle_detail: p.detail,
             lifecycle_undated: false,
             attended_bookings: 0,
+            pillow_sizes: p.sizes,
+            last_delivered_at: p.delivered == null ? null : ago(p.delivered),
+            lifecycle_statuses: [p.stage, p.detail].filter(Boolean),
           };
         }),
     },

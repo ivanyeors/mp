@@ -193,7 +193,11 @@ describe("choosing a Segment", () => {
       followups: "all",
       stage: [],
       bought: ["premium"],
+      // PRD-campaign-audiences slice 04's purchase filters.
+      not_bought: [],
+      size: [],
       last_order: null,
+      delivered: null,
       readjusted: "never",
       min_spend: null,
       // CRM slice 12's review filters.

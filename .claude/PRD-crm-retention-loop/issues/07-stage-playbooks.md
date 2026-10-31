@@ -30,8 +30,8 @@ Segment.
   `pointsCheck` respected. The sign-in invitation (`INVITATION_STARTER`) is the pattern.
 - *New campaign*'s Start panel and the editor's Starters tab already offer every Starter; each
   Playbook opens its stage's Segment (slice 04's) as the Audience, or leaves the Segment to
-  choose when none has that name. *Welcome back* needs the *Lapsed* sub-status as a filter, which the
-  Stage filter does not choose yet (slice 03 chooses main stages only): add it here.
+  choose when none has that name. *Welcome back* needs the *Lapsed* sub-status as a filter: the Stage filter
+  chooses it since PRD-campaign-audiences slice 04 (`stage=at-risk:lapsed`, 2026-10-31).
 - Everything else is the existing send flow: test, readiness, waves within Resend's plan.
 
 ## Acceptance criteria

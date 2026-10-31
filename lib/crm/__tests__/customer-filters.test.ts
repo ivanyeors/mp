@@ -523,8 +523,12 @@ describe("customerFilterParams", () => {
       points: "has",
       followups: "open",
       consent: "unsubscribed",
+      stage: ["lead", "awaiting_delivery", "lapsed"],
       bought: ["premium", "mbolster"],
+      not_bought: ["basic", "accessory"],
+      size: ["S", "XL"],
       last_order: { when: "over", months: 18 },
+      delivered: { when: "within", days: 14 },
       readjusted: "never",
       min_spend: 249.9,
       sort: "last-order",
@@ -551,6 +555,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "account",
       "bought",
       "consent",
+      "delivered",
       "followups",
       "google",
       "google_review",
@@ -558,12 +563,14 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "limit",
       "min_spend",
       "mobile",
+      "not_bought",
       "page",
       "points",
       "rating",
       "readjusted",
       "search",
       "shop_review",
+      "size",
       "sort",
       "source",
       "stage",
@@ -577,17 +584,20 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "account",
       "bought",
       "consent",
+      "delivered",
       "followups",
       "google",
       "google_review",
       "last_order",
       "min_spend",
       "mobile",
+      "not_bought",
       "points",
       "rating",
       "readjusted",
       "search",
       "shop_review",
+      "size",
       "source",
       "stage",
       "tags",
@@ -700,5 +710,140 @@ describe("the Stage filter", () => {
     const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
     const q = applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW });
     expect((q as unknown as { url: URL }).url.searchParams.get("lifecycle_stage")).toBe("in.(at_risk,lost)");
+  });
+});
+
+// PRD-campaign-audiences slice 04: the Playbooks' audiences.
+describe("Purchase filters (PRD-campaign-audiences slice 04)", () => {
+  const label = (search: string) =>
+    describeCustomerFilters(parseCustomerFilters(new URLSearchParams(search)).filters).map((f) => f.label);
+
+  describe("Didn't buy", () => {
+    it("reads the classes Bought reads, once each, in the same order", () => {
+      expect(parseCustomerFilters(new URLSearchParams("not_bought=accessory,mbolster,accessory")).filters.not_bought).toEqual([
+        "mbolster",
+        "accessory",
+      ]);
+      expect(parseCustomerFilters(new URLSearchParams("not_bought=pillow"))).toMatchObject({
+        filters: { not_bought: [] },
+        ignored: ["not_bought"],
+      });
+    });
+
+    it("is not.ov on the same `bought` column, so beside Bought it is one query", () => {
+      expect(query("bought=premium&not_bought=mbolster").calls).toEqual([
+        ["overlaps", "bought", '{"premium"}'],
+        ["not", "bought", "ov", '{"mbolster"}'],
+        newest,
+      ]);
+    });
+
+    it("labels and writes back like Bought", () => {
+      expect(label("bought=premium&not_bought=mbolster,accessory")).toEqual([
+        "Bought Premium Mpillow",
+        "Didn't buy Mbolster or Accessories",
+      ]);
+      expect(customerFilterParams({ not_bought: ["mbolster"] }).toString()).toBe("not_bought=mbolster");
+    });
+  });
+
+  describe("Pillow size", () => {
+    it("reads lower-case sizes into the overview's, smallest first, once each", () => {
+      expect(parseCustomerFilters(new URLSearchParams("size=xl,m,m")).filters.size).toEqual(["M", "XL"]);
+      for (const bad of ["size=M", "size=xxl", "size=m,big"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { size: [] }, ignored: ["size"] });
+      }
+    });
+
+    it("is one overlap on pillow_sizes, and writes lower case back", () => {
+      expect(query("size=m,l").calls).toEqual([["overlaps", "pillow_sizes", '{"M","L"}'], newest]);
+      expect(customerFilterParams({ size: ["M", "L"] }).toString()).toBe("size=m%2Cl");
+      expect(label("size=m,l")).toEqual(["Pillow size M or L"]);
+    });
+  });
+
+  describe("Delivered", () => {
+    it("reads within or over a number of days, 1 to 730", () => {
+      expect(parseCustomerFilters(new URLSearchParams("delivered=over:30")).filters.delivered).toEqual({ when: "over", days: 30 });
+      for (const bad of ["delivered=over:0", "delivered=within:731", "delivered=since:14", "delivered=over:1.5", "delivered=14"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { delivered: null }, ignored: ["delivered"] });
+      }
+    });
+
+    it("counts whole days back from now on last_delivered_at", () => {
+      expect(query("delivered=within:14").calls).toEqual([["gte", "last_delivered_at", "2026-10-07T04:00:00.000Z"], newest]);
+      expect(query("delivered=over:30").calls).toEqual([["lt", "last_delivered_at", "2026-09-21T04:00:00.000Z"], newest]);
+    });
+
+    it("labels days", () => {
+      expect(label("delivered=within:14")).toEqual(["Delivered within 14 days"]);
+      expect(label("delivered=over:1")).toEqual(["Delivered over a day ago"]);
+      expect(customerFilterParams({ delivered: { when: "over", days: 30 } }).toString()).toBe("delivered=over%3A30");
+    });
+  });
+
+  describe("Stage sub-statuses", () => {
+    it("reads each sub-status after its stage, in funnel order", () => {
+      expect(
+        parseCustomerFilters(new URLSearchParams("stage=at-risk:lapsed,new:awaiting-delivery,loyal:repeat-purchases,lead")).filters
+          .stage,
+      ).toEqual(["lead", "awaiting_delivery", "repeat_purchases", "lapsed"]);
+      for (const sub of ["new:delivered", "new:settled", "loyal:bookings"]) {
+        expect(parseCustomerFilters(new URLSearchParams(`stage=${sub}`)).ignored, sub).toEqual([]);
+      }
+    });
+
+    it("refuses a sub-status under the wrong stage, or in the database's spelling", () => {
+      for (const bad of ["stage=loyal:lapsed", "stage=at-risk:awaiting-delivery", "stage=new:awaiting_delivery", "stage=lost:lapsed"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { stage: [] }, ignored: ["stage"] });
+      }
+    });
+
+    it("drops a sub-status beside its own stage: the stage holds it", () => {
+      expect(parseCustomerFilters(new URLSearchParams("stage=new:delivered,new,at-risk:lapsed")).filters.stage).toEqual([
+        "new",
+        "lapsed",
+      ]);
+    });
+
+    it("is one overlap on lifecycle_statuses with a sub-status, and `in` on the stage without", () => {
+      expect(query("stage=new,at-risk:lapsed").calls).toEqual([
+        ["overlaps", "lifecycle_statuses", '{"new","lapsed"}'],
+        newest,
+      ]);
+      expect(query("stage=new,at-risk").calls).toEqual([["in", "lifecycle_stage", ["new", "at_risk"]], newest]);
+    });
+
+    it("labels a sub-status with its stage, and writes it back", () => {
+      expect(label("stage=new,at-risk:lapsed")).toEqual(["Stage: New or At risk · Lapsed"]);
+      const { filters } = parseCustomerFilters(new URLSearchParams("stage=at-risk:lapsed,new:awaiting-delivery"));
+      expect(customerFilterParams(filters).get("stage")).toBe("new:awaiting-delivery,at-risk:lapsed");
+    });
+  });
+
+  it("makes the PRD's demo one link: Bought Premium, Didn't buy Mbolster, Delivered over 30 days ago", () => {
+    const search = "bought=premium&not_bought=mbolster&delivered=over:30";
+    const { filters, ignored } = parseCustomerFilters(new URLSearchParams(search));
+    expect(ignored).toEqual([]);
+    expect(customerFilterParams(filters).toString()).toBe("bought=premium&not_bought=mbolster&delivered=over%3A30");
+    expect(describeCustomerFilters(filters).map((f) => f.label)).toEqual([
+      "Bought Premium Mpillow",
+      "Didn't buy Mbolster",
+      "Delivered over 30 days ago",
+    ]);
+    expect(clearCustomerFilters(filters)).toEqual(DEFAULT_CUSTOMER_FILTERS);
+  });
+
+  it("goes to PostgREST as plain filters, never or=", () => {
+    const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
+    const { filters } = parseCustomerFilters(
+      new URLSearchParams("stage=new,at-risk:lapsed&bought=premium&not_bought=mbolster&size=m&delivered=over:30"),
+    );
+    const url = (applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW }) as unknown as { url: URL }).url;
+    expect(url.searchParams.get("lifecycle_statuses")).toBe('ov.{"new","lapsed"}');
+    expect(url.searchParams.getAll("bought")).toEqual(['ov.{"premium"}', 'not.ov.{"mbolster"}']);
+    expect(url.searchParams.get("pillow_sizes")).toBe('ov.{"M"}');
+    expect(url.searchParams.get("last_delivered_at")).toBe("lt.2026-09-21T04:00:00.000Z");
+    expect(url.searchParams.has("or")).toBe(false);
   });
 });

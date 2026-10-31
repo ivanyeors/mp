@@ -1,6 +1,14 @@
 import { z } from "zod";
-import { PURCHASE_CLASSES, type PurchaseClass } from "@/lib/crm/customer-overview";
-import { LIFECYCLE_STAGES, LIFECYCLE_STAGE_LABEL, type LifecycleStage } from "@/lib/crm/lifecycle-stage";
+import { PILLOW_SIZES, PURCHASE_CLASSES, type PillowSize, type PurchaseClass } from "@/lib/crm/customer-overview";
+import {
+  LIFECYCLE_DETAILS,
+  LIFECYCLE_DETAIL_LABEL,
+  LIFECYCLE_DETAIL_STAGE,
+  LIFECYCLE_STAGES,
+  LIFECYCLE_STAGE_LABEL,
+  type LifecycleDetail,
+  type LifecycleStage,
+} from "@/lib/crm/lifecycle-stage";
 import { monthsBefore } from "@/lib/crm/months";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
@@ -27,6 +35,10 @@ import type { MarketingEmailState } from "@/lib/marketing-consent/state";
  * *"reviewed us 5★ on Google"* is one link. Review data may choose any CRM
  * list except who gets a Review request (README, sixth hazard): that job never
  * reads these filters or their columns.
+ *
+ * PRD-campaign-audiences slice 04 adds *Didn't buy*, *Pillow size*,
+ * *Delivered* and the Stage's sub-statuses, so the retention loop's Playbook
+ * audiences are links too. None of them reaches the Review request job either.
  *
  * Each parameter is read on its own: an unknown value (`bought=foo`) is
  * dropped and named in `ignored`, never passed to the query.
@@ -94,17 +106,74 @@ const CONSENT_STATE: Record<Exclude<ConsentFilter, "all">, MarketingEmailState> 
 /**
  * *Stage* (PRD-crm-retention-loop slice 03): any of these **Lifecycle
  * stages**, the overview's `lifecycle_stage`. The URL spells them with
- * hyphens (`stage=at-risk,lost`), as every other filter value. Main stages
- * only: a sub-status (*Lapsed*) is not a filter yet.
+ * hyphens (`stage=at-risk,lost`), as every other filter value.
+ *
+ * Slice 04 (PRD-campaign-audiences) adds the sub-statuses beside them, each
+ * written after its stage (`stage=new:awaiting-delivery,at-risk:lapsed`), as
+ * the overview's `lifecycle_detail` names them. A sub-status names one stage,
+ * so one beside its own stage is dropped: the stage already holds it. Held in
+ * funnel order, each stage followed by its sub-statuses.
  */
-export const STAGE_FILTERS = LIFECYCLE_STAGES;
-export type StageFilter = LifecycleStage;
-const STAGE_PARAMS = ["lead", "new", "loyal", "at-risk", "lost"] as const;
-const stageParam = (stage: LifecycleStage) => stage.replace("_", "-");
+export type StageFilter = LifecycleStage | LifecycleDetail;
+export const STAGE_FILTERS: readonly StageFilter[] = LIFECYCLE_STAGES.flatMap((stage) => [
+  stage,
+  ...LIFECYCLE_DETAILS.filter((d) => LIFECYCLE_DETAIL_STAGE[d] === stage),
+]);
+const hyphens = (v: string) => v.replace(/_/g, "-");
+const isMainStage = (v: StageFilter): v is LifecycleStage => (LIFECYCLE_STAGES as readonly string[]).includes(v);
+/** A Stage filter value as the URL writes it: `at-risk`, `at-risk:lapsed`. */
+export function stageFilterParam(v: StageFilter): string {
+  return isMainStage(v) ? hyphens(v) : `${hyphens(LIFECYCLE_DETAIL_STAGE[v])}:${hyphens(v)}`;
+}
+const STAGE_PARAMS = new Set(STAGE_FILTERS.map(stageFilterParam));
+
+/** How a Stage filter value reads: *At risk*, *At risk · Lapsed*. */
+export function stageFilterLabel(v: StageFilter): string {
+  return isMainStage(v)
+    ? LIFECYCLE_STAGE_LABEL[v]
+    : `${LIFECYCLE_STAGE_LABEL[LIFECYCLE_DETAIL_STAGE[v]]} · ${LIFECYCLE_DETAIL_LABEL[v]}`;
+}
+
+/**
+ * The Stage values as one canonical list: funnel order, once each, and no
+ * sub-status beside its own stage.
+ */
+export function normalizeStageFilter(values: readonly StageFilter[]): StageFilter[] {
+  return STAGE_FILTERS.filter(
+    (v) => values.includes(v) && (isMainStage(v) || !values.includes(LIFECYCLE_DETAIL_STAGE[v])),
+  );
+}
 
 /** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */
 export const BOUGHT_FILTERS = PURCHASE_CLASSES;
 export type BoughtFilter = PurchaseClass;
+
+/**
+ * *Didn't buy* (PRD-campaign-audiences slice 04): none of these on any counted
+ * Order. The complement of *Bought*, from the same `bought` column, so
+ * `bought=premium&not_bought=mbolster` is one query.
+ */
+export const NOT_BOUGHT_FILTERS = PURCHASE_CLASSES;
+
+/**
+ * *Pillow size* (slice 04): owns a pillow of any of these sizes, from the
+ * overview's `pillow_sizes`. The URL writes them lower-case (`size=m,l`).
+ */
+export { PILLOW_SIZES, type PillowSize };
+
+/**
+ * *Delivered* (slice 04): the latest purchase was delivered within the last N
+ * days (`within:14`), or more than N days ago (`over:30`), from the overview's
+ * `last_delivered_at`. Days, because Playbooks are timed in days. A Customer
+ * whose latest purchase is still on its way, or with no purchase here,
+ * matches neither.
+ */
+export interface DeliveredFilter {
+  when: "within" | "over";
+  days: number;
+}
+export const DELIVERED_DAYS_MAX = 730;
+const DAY_MS = 86_400_000;
 
 /** *Re-adjusted*: an attended **Re-adjustment booking**, ever or never. */
 export const READJUSTED_FILTERS = ["ever", "never"] as const;
@@ -153,11 +222,17 @@ export interface CustomerFilters {
   followups: FollowUpFilter;
   /** *Email consent*: `marketing_email` on the overview. */
   consent: ConsentFilter;
-  /** In any of these Lifecycle stages; empty for no filter. */
+  /** In any of these Lifecycle stages or sub-statuses; empty for no filter. */
   stage: StageFilter[];
   /** Bought any of these on a counted Order; empty for no filter. */
   bought: BoughtFilter[];
+  /** Bought none of these on a counted Order; empty for no filter. */
+  not_bought: BoughtFilter[];
+  /** Owns a pillow of any of these sizes; empty for no filter. */
+  size: PillowSize[];
   last_order: LastOrderFilter | null;
+  /** Days since the latest purchase was delivered; null for no filter. */
+  delivered: DeliveredFilter | null;
   readjusted: ReadjustedFilter | null;
   /** `total_spent` (platform Orders) at least this; null for no filter. */
   min_spend: number | null;
@@ -184,7 +259,10 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   consent: "all",
   stage: [],
   bought: [],
+  not_bought: [],
+  size: [],
   last_order: null,
+  delivered: null,
   readjusted: null,
   min_spend: null,
   google_review: "all",
@@ -217,15 +295,21 @@ const PARAM_SCHEMAS = {
   points: z.enum(POINTS_FILTERS),
   followups: z.enum(FOLLOW_UP_FILTERS),
   consent: z.enum(CONSENT_FILTERS),
-  // As `bought`: an unknown value drops the parameter; kept in stage order, once each.
+  // As `bought`: an unknown value drops the parameter; kept in funnel order, once each.
   stage: commaList
-    .pipe(z.array(z.enum(STAGE_PARAMS)))
-    .transform((v) => STAGE_FILTERS.filter((stage) => v.includes(stageParam(stage) as (typeof STAGE_PARAMS)[number]))),
+    .pipe(z.array(z.string().refine((v) => STAGE_PARAMS.has(v))))
+    .transform((v) => normalizeStageFilter(STAGE_FILTERS.filter((s) => v.includes(stageFilterParam(s))))),
   // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
   // once each, so the same set always writes the same URL.
   bought: commaList
     .pipe(z.array(z.enum(BOUGHT_FILTERS)))
     .transform((v) => BOUGHT_FILTERS.filter((c) => v.includes(c))),
+  not_bought: commaList
+    .pipe(z.array(z.enum(NOT_BOUGHT_FILTERS)))
+    .transform((v) => NOT_BOUGHT_FILTERS.filter((c) => v.includes(c))),
+  size: commaList
+    .pipe(z.array(z.enum(["xs", "s", "m", "l", "xl"])))
+    .transform((v) => PILLOW_SIZES.filter((size) => v.includes(size.toLowerCase() as Lowercase<PillowSize>))),
   last_order: z
     .string()
     .regex(/^(within|over):\d{1,3}$/)
@@ -237,6 +321,19 @@ const PARAM_SCHEMAS = {
       z.object({
         when: z.enum(["within", "over"]),
         months: z.number().int().min(1).max(LAST_ORDER_MONTHS_MAX),
+      }),
+    ),
+  delivered: z
+    .string()
+    .regex(/^(within|over):\d{1,3}$/)
+    .transform((v) => {
+      const [when, days] = v.split(":");
+      return { when: when as DeliveredFilter["when"], days: Number(days) };
+    })
+    .pipe(
+      z.object({
+        when: z.enum(["within", "over"]),
+        days: z.number().int().min(1).max(DELIVERED_DAYS_MAX),
       }),
     ),
   readjusted: z.enum(READJUSTED_FILTERS),
@@ -302,7 +399,14 @@ export interface ParsedCustomerFilters {
 }
 
 export function parseCustomerFilters(params: URLSearchParams): ParsedCustomerFilters {
-  const filters: CustomerFilters = { ...DEFAULT_CUSTOMER_FILTERS, tags: [], stage: [], bought: [] };
+  const filters: CustomerFilters = {
+    ...DEFAULT_CUSTOMER_FILTERS,
+    tags: [],
+    stage: [],
+    bought: [],
+    not_bought: [],
+    size: [],
+  };
   const ignored: FilterKey[] = [];
   for (const key of FILTER_KEYS) {
     const raw = params.get(key);
@@ -344,9 +448,12 @@ export function customerFilterParams(
   if (f.points !== "all") out.set("points", f.points);
   if (f.followups !== "all") out.set("followups", f.followups);
   if (f.consent !== "all") out.set("consent", f.consent);
-  if (f.stage.length) out.set("stage", f.stage.map(stageParam).join(","));
+  if (f.stage.length) out.set("stage", f.stage.map(stageFilterParam).join(","));
   if (f.bought.length) out.set("bought", f.bought.join(","));
+  if (f.not_bought.length) out.set("not_bought", f.not_bought.join(","));
+  if (f.size.length) out.set("size", f.size.map((size) => size.toLowerCase()).join(","));
   if (f.last_order) out.set("last_order", `${f.last_order.when}:${f.last_order.months}`);
+  if (f.delivered) out.set("delivered", `${f.delivered.when}:${f.delivered.days}`);
   if (f.readjusted) out.set("readjusted", f.readjusted);
   if (f.min_spend != null) out.set("min_spend", String(Math.round(f.min_spend * 100) / 100));
   if (f.google_review !== "all") out.set("google_review", f.google_review);
@@ -422,18 +529,27 @@ const FILTER_LABELS: { [K in CustomerFilterKey]: (value: NonNullable<CustomerFil
   points: (v) => POINTS_LABELS[v as Exclude<PointsFilter, "all">],
   followups: () => "Has an open follow-up",
   consent: (v) => `Email ${CONSENT_LABELS[v]}`,
-  stage: (v) => `Stage: ${v.map((s) => LIFECYCLE_STAGE_LABEL[s]).join(" or ")}`,
+  stage: (v) => `Stage: ${v.map(stageFilterLabel).join(" or ")}`,
   bought: (v) => `Bought ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
+  not_bought: (v) => `Didn't buy ${v.map((c) => BOUGHT_LABELS[c]).join(" or ")}`,
+  size: (v) => `Pillow size ${v.join(" or ")}`,
   last_order: (v) =>
     v.when === "within"
       ? `Last order within ${monthsLabel(v.months)}`
       : `Last order over ${monthsLabel(v.months)} ago`,
+  delivered: (v) =>
+    v.when === "within" ? `Delivered within ${daysLabel(v.days)}` : `Delivered over ${daysLabel(v.days)} ago`,
   readjusted: (v) => (v === "ever" ? "Re-adjusted" : "Never re-adjusted"),
   min_spend: (v) => `Spent at least ${spend.format(v)}`,
   google_review: (v) => GOOGLE_REVIEW_LABELS[v as Exclude<GoogleReviewFilter, "all">],
   shop_review: (v) => (v === "yes" ? "Left a shop review" : "No shop review"),
   rating: (v) => RATING_LABELS[v],
 };
+
+/** *14 days*, *a day*: the *Delivered* filter's span. */
+export function daysLabel(days: number): string {
+  return days === 1 ? "a day" : `${days} days`;
+}
 
 function monthsLabel(months: number): string {
   if (months % 12 === 0) return months === 12 ? "a year" : `${months / 12} years`;
@@ -456,7 +572,7 @@ export interface CustomerListQuery {
   eq(column: string, value: boolean | string | number): this;
   in(column: string, values: readonly string[]): this;
   is(column: string, value: null): this;
-  not(column: string, operator: "is" | "cs", value: string | null): this;
+  not(column: string, operator: "is" | "cs" | "ov", value: string | null): this;
   gt(column: string, value: string | number): this;
   gte(column: string, value: string | number): this;
   lt(column: string, value: string): this;
@@ -479,9 +595,9 @@ export { monthsBefore };
 /**
  * Applies the filters and the sort to a query on `admin_customer_overview`.
  * Paging is the caller's (`range`). Pure: it only calls the query's methods,
- * and *Last order* counts back from `now`. *Stage* is the one exception: the
- * view computes `lifecycle_stage` with the database's own `now()`, so `now`
- * does not move it (PRD-crm-retention-loop slice 03).
+ * and *Last order* and *Delivered* count back from `now`. *Stage* is the one
+ * exception: the view computes `lifecycle_stage` with the database's own
+ * `now()`, so `now` does not move it (PRD-crm-retention-loop slice 03).
  *
  * `order: false` applies the filters only and leaves the order to the caller:
  * a Segment's count needs none, and `resolveSegment` (lib/crm/segments.ts)
@@ -514,12 +630,26 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
 
   if (filters.followups === "open") q = q.gt("open_followups", 0);
   if (filters.consent !== "all") q = q.eq("marketing_email", CONSENT_STATE[filters.consent]);
-  if (filters.stage.length) q = q.in("lifecycle_stage", filters.stage);
+  // Main stages alone read the stage; with a sub-status, `lifecycle_statuses`
+  // holds both names, so it is still one overlap and never an `or`.
+  if (filters.stage.length) {
+    q = filters.stage.every(isMainStage)
+      ? q.in("lifecycle_stage", filters.stage)
+      : q.overlaps("lifecycle_statuses", pgTextArray(filters.stage));
+  }
 
   if (filters.bought.length) q = q.overlaps("bought", pgTextArray(filters.bought));
+  // `bought` is never null ('{}' for nothing), so *Didn't buy* keeps a Customer who bought nothing.
+  if (filters.not_bought.length) q = q.not("bought", "ov", pgTextArray(filters.not_bought));
+  if (filters.size.length) q = q.overlaps("pillow_sizes", pgTextArray(filters.size));
   if (filters.last_order) {
     const cutoff = monthsBefore(now, filters.last_order.months).toISOString();
     q = filters.last_order.when === "within" ? q.gte("last_purchase_at", cutoff) : q.lt("last_purchase_at", cutoff);
+  }
+  if (filters.delivered) {
+    // Whole days back from `now`, as the overview's 30 days to *Settled*.
+    const cutoff = new Date(now.getTime() - filters.delivered.days * DAY_MS).toISOString();
+    q = filters.delivered.when === "within" ? q.gte("last_delivered_at", cutoff) : q.lt("last_delivered_at", cutoff);
   }
   if (filters.readjusted === "ever") q = q.not("last_readjusted_at", "is", null);
   if (filters.readjusted === "never") q = q.is("last_readjusted_at", null);

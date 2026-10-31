@@ -68,6 +68,9 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "lifecycle_detail",
   "lifecycle_undated",
   "attended_bookings",
+  "pillow_sizes",
+  "last_delivered_at",
+  "lifecycle_statuses",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -83,6 +86,10 @@ export const CUSTOMER_OVERVIEW_SELECT = CUSTOMER_OVERVIEW_COLUMNS.join(", ");
  */
 export const PURCHASE_CLASSES = ["premium", "basic", "mbolster", "accessory"] as const;
 export type PurchaseClass = (typeof PURCHASE_CLASSES)[number];
+
+/** Pillow sizes, smallest first, as `pillow_products.size` and the overview's `pillow_sizes` hold them. */
+export const PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
+export type PillowSize = (typeof PILLOW_SIZES)[number];
 
 /** One row of `admin_customer_overview`. */
 export interface CustomerOverviewRow {
@@ -189,6 +196,15 @@ export interface CustomerOverviewRow {
   lifecycle_undated: boolean;
   /** Attended **Re-adjustment bookings**; the latest is `last_readjusted_at`. */
   attended_bookings: number;
+  /**
+   * The sizes of every pillow on a counted Order, XS to XL, once each
+   * (PRD-campaign-audiences slice 04); empty for none.
+   */
+  pillow_sizes: PillowSize[];
+  /** When the latest purchase was delivered; null while it is on its way, or with none here. */
+  last_delivered_at: string | null;
+  /** The stage and its sub-status, when it has one (`["at_risk", "lapsed"]`): the Stage filter's column. */
+  lifecycle_statuses: (LifecycleStage | LifecycleDetail)[];
 }
 
 /** Display name, or null when the Customer has none. */

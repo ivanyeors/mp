@@ -21,14 +21,18 @@
  *      `applyCustomerFilters`, returns exactly what a hand-written SQL query
  *      over the base tables returns;
  *   5. the searches `Tan, Mei`, `(test)`, `a%b` and others run, and find
- *      exactly the fixture Customers they should.
+ *      exactly the fixture Customers they should;
+ *   6. (PRD-campaign-audiences slice 04) each line's pillow size and the
+ *      overview's `pillow_sizes` are compared as in 2 and 3, and *Didn't buy*
+ *      and *Pillow size*, alone and beside *Bought*, list exactly the fixture
+ *      Customers whose `bought` and `pillow_sizes` the fixture declares.
  *
  * Without CRM_CHECK_DATABASE_URL it says so and stops; the TypeScript side is
  * covered by lib/crm/__tests__/purchase-lines.test.ts.
  */
 import assert from "node:assert/strict";
 import { applyCustomerFilters, parseCustomerFilters } from "@/lib/crm/customer-filters";
-import { boughtClasses, isCountedOrder, purchaseLine, type PurchaseLine } from "@/lib/crm/purchase-lines";
+import { boughtClasses, isCountedOrder, pillowSizes, purchaseLine, type PurchaseLine } from "@/lib/crm/purchase-lines";
 import type { OrderRow } from "@/lib/readjustment/purchases";
 import {
   BOOKINGS,
@@ -36,8 +40,10 @@ import {
   CUSTOMERS,
   LINES,
   ORDERS,
+  PILLOW_ID_SIZE,
   PRODUCTS,
   SEARCHES,
+  SIZES,
   VARIANTS,
   lineRow,
   monthsAgo,
@@ -200,6 +206,7 @@ where c.${inFixture}
 type ViewRow = { customer_id: string | null; order_id: string; order_item_id: string; paid_at: string } & PurchaseLine;
 type OverviewRow = {
   id: string;
+  pillow_sizes: string[];
   paid_orders: number;
   first_paid_at: string | null;
   last_paid_at: string | null;
@@ -209,17 +216,33 @@ type OverviewRow = {
 };
 type DbOrder = OrderRow & { customer_id: string | null };
 
+/** The line, less its keys, in PurchaseLine's key order. */
+const lineOf = (r: ViewRow): PurchaseLine => ({ product_type: r.product_type, tier: r.tier, size: r.size });
+
+type Name = keyof typeof CUSTOMERS;
+const bought = (name: Name, c: string) => (BOUGHT[name] as string[]).includes(c);
+const sized = (name: Name, ...sizes: string[]) => sizes.some((z) => (SIZES[name] as string[]).includes(z));
+
+/** Slice 04's filters, and which fixture Customers each lists, read from the fixture's declarations. */
+const SLICE_04_FILTERS: { search: string; lists: (name: Name) => boolean }[] = [
+  { search: "not_bought=premium", lists: (n) => !bought(n, "premium") },
+  { search: "not_bought=mbolster,accessory", lists: (n) => !bought(n, "mbolster") && !bought(n, "accessory") },
+  { search: "bought=premium&not_bought=accessory", lists: (n) => bought(n, "premium") && !bought(n, "accessory") },
+  { search: "size=l,xl", lists: (n) => sized(n, "L", "XL") },
+  { search: "size=m&not_bought=basic", lists: (n) => sized(n, "M") && !bought(n, "basic") },
+];
+
 const sameTime = (a: string | null, b: string | null) => (a == null || b == null ? a === b : Date.parse(a) === Date.parse(b));
 
 function main() {
   const ids = json<Record<keyof PillowIds, number | null>>(
     psql(`select '@@pillow@@'::text || jsonb_build_object(
-      'premium', (select min(id) from public.pillow_products where kind = 'premium'),
-      'basic', (select min(id) from public.pillow_products where kind = 'basic'),
+      'premium', (select min(id) from public.pillow_products where kind = 'premium' and size = ${lit(PILLOW_ID_SIZE)}),
+      'basic', (select min(id) from public.pillow_products where kind = 'basic' and size = ${lit(PILLOW_ID_SIZE)}),
       'missing', (select coalesce(max(id), 0) + 1000 from public.pillow_products));`),
     "pillow",
   );
-  assert.ok(ids.premium != null && ids.basic != null, "the database needs a Premium and a Basic pillow product");
+  assert.ok(ids.premium != null && ids.basic != null, `the database needs a size ${PILLOW_ID_SIZE} Premium and Basic pillow product`);
   const pillow = ids as PillowIds;
 
   const searches = SEARCHES.map((s, i) => filterQuery(`search_${i}`, new URLSearchParams({ search: s.search }).toString()));
@@ -233,6 +256,7 @@ function main() {
       `select '@@overview@@'::text || coalesce(jsonb_agg(to_jsonb(o)), '[]') from public.admin_customer_overview o where o.${inFixture};`,
       HAND_WRITTEN,
       filterQuery("acceptance", "bought=premium&last_order=over:12&readjusted=never"),
+      ...SLICE_04_FILTERS.map((f, i) => filterQuery(`slice04_${i}`, f.search)),
       ...searches,
       "rollback;",
     ].join("\n"),
@@ -256,11 +280,11 @@ function main() {
       view.delete(line.id);
       const label = `${order.order_number} line ${line.id}`;
       if (!ts || !sql) {
-        if (ts || sql) diffs.push(`${label}: TypeScript ${JSON.stringify(ts)}, SQL ${JSON.stringify(sql && { product_type: sql.product_type, tier: sql.tier })}`);
+        if (ts || sql) diffs.push(`${label}: TypeScript ${JSON.stringify(ts)}, SQL ${JSON.stringify(sql && lineOf(sql))}`);
         continue;
       }
-      if (ts.product_type !== sql.product_type || ts.tier !== sql.tier) {
-        diffs.push(`${label}: TypeScript ${JSON.stringify(ts)}, SQL ${JSON.stringify({ product_type: sql.product_type, tier: sql.tier })}`);
+      if (ts.product_type !== sql.product_type || ts.tier !== sql.tier || ts.size !== sql.size) {
+        diffs.push(`${label}: TypeScript ${JSON.stringify(ts)}, SQL ${JSON.stringify(lineOf(sql))}`);
       }
       if (sql.customer_id !== order.customer_id || sql.order_id !== order.id || !sameTime(sql.paid_at, order.paid_at)) {
         diffs.push(`${label}: the view's keys do not match its Order`);
@@ -270,7 +294,7 @@ function main() {
   for (const id of view.keys()) diffs.push(`view row ${id} has no Order line`);
   for (const l of LINES) {
     const sql = json<ViewRow[]>(results, "view").find((r) => r.order_item_id === l.id) ?? null;
-    const got = sql && { product_type: sql.product_type, tier: sql.tier };
+    const got = sql && lineOf(sql);
     if (JSON.stringify(got) !== JSON.stringify(l.expect)) diffs.push(`fixture "${l.why}": SQL ${JSON.stringify(got)}, expected ${JSON.stringify(l.expect)}`);
   }
 
@@ -308,6 +332,10 @@ function main() {
       diffs.push(`overview ${name}: ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
     }
     if (JSON.stringify(row.bought) !== JSON.stringify(BOUGHT[name])) diffs.push(`overview ${name}: bought ${row.bought}, fixture says ${BOUGHT[name]}`);
+    if (JSON.stringify(row.pillow_sizes) !== JSON.stringify(pillowSizes(lines))) {
+      diffs.push(`overview ${name}: pillow_sizes ${row.pillow_sizes}, TypeScript ${pillowSizes(lines)}`);
+    }
+    if (JSON.stringify(row.pillow_sizes) !== JSON.stringify(SIZES[name])) diffs.push(`overview ${name}: pillow_sizes ${row.pillow_sizes}, fixture says ${SIZES[name]}`);
   }
 
   // --- 4. the acceptance filter against the hand-written query -------------
@@ -320,6 +348,17 @@ function main() {
   if (JSON.stringify(handWritten) !== JSON.stringify(wanted)) diffs.push(`hand-written query: ${handWritten}, fixture says ${wanted}`);
   if (JSON.stringify(mapped) !== JSON.stringify(handWritten)) diffs.push(`bought=premium&last_order=over:12&readjusted=never: ${mapped}, hand-written ${handWritten}`);
 
+  // --- 6. slice 04's filters, against what the fixture declares -------------
+  SLICE_04_FILTERS.forEach((f, i) => {
+    const got = json<string[]>(results, `slice04_${i}`);
+    const want = (Object.keys(CUSTOMERS) as (keyof typeof CUSTOMERS)[])
+      .filter((name) => f.lists(name))
+      .map((name) => CUSTOMERS[name].id)
+      .sort();
+    if (want.length === 0) diffs.push(`${f.search}: the fixture has no Customer for it`);
+    if (JSON.stringify(got) !== JSON.stringify(want)) diffs.push(`${f.search}: ${got}, expected ${want}`);
+  });
+
   // --- 5. searches ----------------------------------------------------------
   SEARCHES.forEach((s, i) => {
     const found = json<string[]>(results, `search_${i}`);
@@ -329,7 +368,7 @@ function main() {
 
   console.log(
     `compared ${compared} order lines (${fixtureCompared} fixture, ${compared - fixtureCompared} the database's own), ` +
-      `${overview.size} overview rows, the acceptance filter (${mapped.length} Customers) and ${SEARCHES.length} searches`,
+      `${overview.size} overview rows, the acceptance filter (${mapped.length} Customers), ${SLICE_04_FILTERS.length} purchase filters and ${SEARCHES.length} searches`,
   );
   for (const d of diffs) console.log(`FAIL  ${d}`);
   assert.equal(diffs.length, 0, `${diffs.length} difference(s)`);

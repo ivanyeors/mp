@@ -19,24 +19,37 @@ import {
     BOUGHT_LABELS,
     GOOGLE_REVIEW_FILTERS,
     GOOGLE_REVIEW_LABELS,
+    NOT_BOUGHT_FILTERS,
+    PILLOW_SIZES,
     POINTS_LABELS,
     RATING_FILTERS,
     RATING_LABELS,
-    STAGE_FILTERS,
     customerFiltersSchema,
+    daysLabel,
     describeCustomerFilters,
+    normalizeStageFilter,
     type ConsentFilter,
     type CustomerFilterKey,
     type CustomerFilterParam,
     type CustomerListFilters,
+    type DeliveredFilter,
     type GoogleReviewFilter,
     type LastOrderFilter,
     type PointsFilter,
     type RatingFilter,
     type ReadjustedFilter,
     type ShopReviewFilter,
+    type StageFilter,
 } from "@/lib/crm/customer-filters";
-import { LIFECYCLE_STAGE_LABEL, LIFECYCLE_STAGE_RULE } from "@/lib/crm/lifecycle-stage";
+import {
+    LIFECYCLE_DETAILS,
+    LIFECYCLE_DETAIL_LABEL,
+    LIFECYCLE_DETAIL_RULE,
+    LIFECYCLE_DETAIL_STAGE,
+    LIFECYCLE_STAGES,
+    LIFECYCLE_STAGE_LABEL,
+    LIFECYCLE_STAGE_RULE,
+} from "@/lib/crm/lifecycle-stage";
 
 /**
  * The Customers list's CRM filters: the **Lifecycle stage**
@@ -44,7 +57,9 @@ import { LIFECYCLE_STAGE_LABEL, LIFECYCLE_STAGE_RULE } from "@/lib/crm/lifecycle
  * they last ordered, whether they have been re-adjusted, what they spent, and
  * tags; Points (PRD-loyalty-points slice 06); Email consent
  * (migration slice 07); and reviews (CRM slice 12: the Google review, Shop
- * reviews, the rating). Values go through
+ * reviews, the rating); and (PRD-campaign-audiences slice 04) the Stage's
+ * sub-statuses, what they did not buy, their pillow size, and how long ago
+ * their latest purchase was delivered. Values go through
  * the list's one schema (lib/crm/customer-filters.ts), so a control can never
  * put into the URL what a link could not.
  */
@@ -60,6 +75,22 @@ const LAST_ORDER_PRESETS: LastOrderFilter[] = [
 ];
 
 const lastOrderValue = (v: LastOrderFilter) => `${v.when}:${v.months}`;
+
+/** Presets for *Delivered*, in days, as Playbooks are timed; a link may carry any other. */
+const DELIVERED_PRESETS: DeliveredFilter[] = [
+    { when: "within", days: 7 },
+    { when: "within", days: 14 },
+    { when: "within", days: 30 },
+    { when: "over", days: 30 },
+    { when: "over", days: 60 },
+    { when: "over", days: 90 },
+];
+
+const deliveredValue = (v: DeliveredFilter) => `${v.when}:${v.days}`;
+
+function deliveredLabel(v: DeliveredFilter): string {
+    return v.when === "within" ? `Within ${daysLabel(v.days)}` : `Over ${daysLabel(v.days)} ago`;
+}
 
 function lastOrderLabel(v: LastOrderFilter): string {
     const span = v.months % 12 === 0 ? `${v.months / 12} year${v.months === 12 ? "" : "s"}` : `${v.months} month${v.months === 1 ? "" : "s"}`;
@@ -87,9 +118,15 @@ export function CustomerFiltersPanel({
             ? [...LAST_ORDER_PRESETS, filters.last_order]
             : LAST_ORDER_PRESETS;
 
-    const toggleStage = (value: (typeof STAGE_FILTERS)[number], checked: boolean) => {
+    const deliveredOptions =
+        filters.delivered && !DELIVERED_PRESETS.some((p) => deliveredValue(p) === deliveredValue(filters.delivered!))
+            ? [...DELIVERED_PRESETS, filters.delivered]
+            : DELIVERED_PRESETS;
+
+    // Ticking a stage takes in its sub-statuses: normalizeStageFilter drops them.
+    const toggleStage = (value: StageFilter, checked: boolean) => {
         const next = checked ? [...filters.stage, value] : filters.stage.filter((s) => s !== value);
-        onChange({ stage: STAGE_FILTERS.filter((s) => next.includes(s)) });
+        onChange({ stage: normalizeStageFilter(next) });
     };
 
     const toggleBought = (value: (typeof BOUGHT_FILTERS)[number], checked: boolean) => {
@@ -97,31 +134,75 @@ export function CustomerFiltersPanel({
         onChange({ bought: BOUGHT_FILTERS.filter((b) => next.includes(b)) });
     };
 
+    const toggleNotBought = (value: (typeof NOT_BOUGHT_FILTERS)[number], checked: boolean) => {
+        const next = checked ? [...filters.not_bought, value] : filters.not_bought.filter((b) => b !== value);
+        onChange({ not_bought: NOT_BOUGHT_FILTERS.filter((b) => next.includes(b)) });
+    };
+
+    const toggleSize = (value: (typeof PILLOW_SIZES)[number], checked: boolean) => {
+        const next = checked ? [...filters.size, value] : filters.size.filter((s) => s !== value);
+        onChange({ size: PILLOW_SIZES.filter((s) => next.includes(s)) });
+    };
+
     return (
         <div className="grid min-w-0 gap-5 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
             {children}
             <fieldset className="min-w-0 sm:col-span-2 lg:col-span-4">
                 <legend className="mb-2.5 text-sm font-medium">Stage</legend>
-                <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-5">
-                    {STAGE_FILTERS.map((value) => (
-                        <div key={value} className="flex min-w-0 items-start gap-2">
-                            <Checkbox
-                                id={`${id}-stage-${value}`}
-                                checked={filters.stage.includes(value)}
-                                onCheckedChange={(checked) => toggleStage(value, checked === true)}
-                                aria-describedby={`${id}-stage-${value}-rule`}
-                                className="mt-0.5"
-                            />
-                            <div className="min-w-0">
-                                <Label htmlFor={`${id}-stage-${value}`} className="font-normal">
-                                    {LIFECYCLE_STAGE_LABEL[value]}
-                                </Label>
-                                <p id={`${id}-stage-${value}-rule`} className="text-xs text-muted-foreground">
-                                    {LIFECYCLE_STAGE_RULE[value]}
-                                </p>
+                <div className="grid gap-x-5 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+                    {LIFECYCLE_STAGES.map((stage) => {
+                        const stageChecked = filters.stage.includes(stage);
+                        const details = LIFECYCLE_DETAILS.filter((d) => LIFECYCLE_DETAIL_STAGE[d] === stage);
+                        return (
+                            <div key={stage} className="min-w-0 space-y-2">
+                                <div className="flex min-w-0 items-start gap-2">
+                                    <Checkbox
+                                        id={`${id}-stage-${stage}`}
+                                        checked={stageChecked}
+                                        onCheckedChange={(checked) => toggleStage(stage, checked === true)}
+                                        aria-describedby={`${id}-stage-${stage}-rule`}
+                                        className="mt-0.5"
+                                    />
+                                    <div className="min-w-0">
+                                        <Label htmlFor={`${id}-stage-${stage}`} className="font-normal">
+                                            {LIFECYCLE_STAGE_LABEL[stage]}
+                                        </Label>
+                                        <p id={`${id}-stage-${stage}-rule`} className="text-xs text-muted-foreground">
+                                            {LIFECYCLE_STAGE_RULE[stage]}
+                                        </p>
+                                    </div>
+                                </div>
+                                {/* Sub-statuses (slice 04): implied, and so locked, while their stage is ticked. */}
+                                {details.length > 0 && (
+                                    <div className="ml-6 space-y-1.5 border-l pl-3">
+                                        {details.map((detail) => (
+                                            <div key={detail} className="flex min-w-0 items-start gap-2">
+                                                <Checkbox
+                                                    id={`${id}-stage-${detail}`}
+                                                    checked={stageChecked || filters.stage.includes(detail)}
+                                                    disabled={stageChecked}
+                                                    onCheckedChange={(checked) => toggleStage(detail, checked === true)}
+                                                    aria-describedby={`${id}-stage-${detail}-rule`}
+                                                    className="mt-0.5"
+                                                />
+                                                <div className="min-w-0">
+                                                    <Label htmlFor={`${id}-stage-${detail}`} className="font-normal">
+                                                        {LIFECYCLE_DETAIL_LABEL[detail]}
+                                                    </Label>
+                                                    <p
+                                                        id={`${id}-stage-${detail}-rule`}
+                                                        className="text-xs text-muted-foreground"
+                                                    >
+                                                        {LIFECYCLE_DETAIL_RULE[detail]}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
                 <p className="mt-2.5 text-xs text-muted-foreground">
                     Any of those ticked. A purchase is a paid order with a product on it; a re-adjustment fee is not one,
@@ -148,6 +229,60 @@ export function CustomerFiltersPanel({
                 <p className="text-xs text-muted-foreground">Any of those ticked, on a paid order.</p>
             </fieldset>
 
+            <fieldset className="min-w-0 space-y-2.5">
+                <legend className="mb-2.5 text-sm font-medium">Didn&apos;t buy</legend>
+                {NOT_BOUGHT_FILTERS.map((value) => (
+                    <div key={value} className="flex items-center gap-2">
+                        <Checkbox
+                            id={`${id}-not-bought-${value}`}
+                            checked={filters.not_bought.includes(value)}
+                            onCheckedChange={(checked) => toggleNotBought(value, checked === true)}
+                        />
+                        <Label htmlFor={`${id}-not-bought-${value}`} className="font-normal">
+                            {BOUGHT_LABELS[value]}
+                        </Label>
+                    </div>
+                ))}
+                <p className="text-xs text-muted-foreground">None of those ticked, on any paid order.</p>
+            </fieldset>
+
+            <div className="min-w-0 space-y-4">
+                <fieldset className="min-w-0">
+                    <legend className="mb-2.5 text-sm font-medium">Pillow size</legend>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2.5">
+                        {PILLOW_SIZES.map((value) => (
+                            <div key={value} className="flex items-center gap-2">
+                                <Checkbox
+                                    id={`${id}-size-${value}`}
+                                    checked={filters.size.includes(value)}
+                                    onCheckedChange={(checked) => toggleSize(value, checked === true)}
+                                />
+                                <Label htmlFor={`${id}-size-${value}`} className="font-normal">
+                                    {value}
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="mt-2.5 text-xs text-muted-foreground">Owns a pillow of any of those sizes.</p>
+                </fieldset>
+                <div className="space-y-2">
+                    <Label htmlFor={`${id}-readjusted`}>Re-adjusted</Label>
+                    <Select
+                        value={filters.readjusted ?? "any"}
+                        onValueChange={(v) => onChange({ readjusted: v === "any" ? null : (v as ReadjustedFilter) })}
+                    >
+                        <SelectTrigger id={`${id}-readjusted`} className="w-full" aria-label="Re-adjusted">
+                            <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="any">Any</SelectItem>
+                            <SelectItem value="ever">Re-adjusted</SelectItem>
+                            <SelectItem value="never">Never re-adjusted</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
             <div className="min-w-0 space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor={`${id}-last-order`}>Last order</Label>
@@ -172,20 +307,34 @@ export function CustomerFiltersPanel({
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor={`${id}-readjusted`}>Re-adjusted</Label>
+                    <Label htmlFor={`${id}-delivered`}>Delivered</Label>
                     <Select
-                        value={filters.readjusted ?? "any"}
-                        onValueChange={(v) => onChange({ readjusted: v === "any" ? null : (v as ReadjustedFilter) })}
+                        value={filters.delivered ? deliveredValue(filters.delivered) : "any"}
+                        onValueChange={(v) => {
+                            const parsed = customerFiltersSchema.shape.delivered.safeParse(v);
+                            onChange({ delivered: parsed.success ? (parsed.data ?? null) : null });
+                        }}
                     >
-                        <SelectTrigger id={`${id}-readjusted`} className="w-full" aria-label="Re-adjusted">
-                            <SelectValue placeholder="Any" />
+                        <SelectTrigger
+                            id={`${id}-delivered`}
+                            className="w-full"
+                            aria-label="Delivered"
+                            aria-describedby={`${id}-delivered-hint`}
+                        >
+                            <SelectValue placeholder="Any time" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="any">Any</SelectItem>
-                            <SelectItem value="ever">Re-adjusted</SelectItem>
-                            <SelectItem value="never">Never re-adjusted</SelectItem>
+                            <SelectItem value="any">Any time</SelectItem>
+                            {deliveredOptions.map((o) => (
+                                <SelectItem key={deliveredValue(o)} value={deliveredValue(o)}>
+                                    {deliveredLabel(o)}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
+                    <p id={`${id}-delivered-hint`} className="text-xs text-muted-foreground">
+                        Their latest purchase. One still on its way matches neither.
+                    </p>
                 </div>
             </div>
 

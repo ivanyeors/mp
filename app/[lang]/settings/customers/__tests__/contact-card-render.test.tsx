@@ -180,6 +180,9 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   lifecycle_detail: null,
   lifecycle_undated: false,
   attended_bookings: 0,
+  pillow_sizes: [],
+  last_delivered_at: null,
+  lifecycle_statuses: ["lead"],
   ...over,
 });
 

@@ -1393,7 +1393,7 @@ Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
   - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261028033330_lifecycle_stage.sql:107
+Defined in supabase/migrations/20261031100000_customer_overview_purchase_filters.sql:112
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
@@ -1540,7 +1540,7 @@ References: `customers`, `mp_staff`
   - `sources/aftercare.ts` [select] — lib/crm/timeline/sources/aftercare.ts:35
 
 ### customer_purchase_lines
-Defined in supabase/migrations/20261020122000_customer_purchase_lines.sql:34
+Defined in supabase/migrations/20261031100000_customer_overview_purchase_filters.sql:48
 - Read by:
   - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:158
 

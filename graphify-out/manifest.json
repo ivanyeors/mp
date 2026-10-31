@@ -13074,9 +13074,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/customer-filters.test.ts": {
-    "mtime": 1793395302.5198376,
-    "seen": 1793395931.5300415,
-    "ast_hash": "d0b96dcd72dcc8743c6a444816db9995",
+    "mtime": 1793429114.6534495,
+    "seen": 1793429650.1711652,
+    "ast_hash": "b9a83c809a1445a12f84dba07f25865e",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/customer-overview-view.test.ts": {
@@ -13086,15 +13086,15 @@
     "semantic_hash": ""
   },
   "lib/crm/customer-filters.ts": {
-    "mtime": 1793395302.5238376,
-    "seen": 1793395931.5300925,
-    "ast_hash": "8e0ff0b25c3e0da915a9f87633d90582",
+    "mtime": 1793428937.1827424,
+    "seen": 1793429650.1712534,
+    "ast_hash": "3ec071ae3139c4d475c83bdc47a132a7",
     "semantic_hash": ""
   },
   "lib/crm/customer-overview.ts": {
-    "mtime": 1793395302.5238376,
-    "seen": 1793395931.530097,
-    "ast_hash": "b642e59758b56b07aec3e6a8994bd91c",
+    "mtime": 1793428937.1817822,
+    "seen": 1793429650.1712587,
+    "ast_hash": "17ff93f98daafbec64d1cb655337ca6f",
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/overview.test.ts": {
@@ -13596,27 +13596,27 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/purchase-lines-fixture.ts": {
-    "mtime": 1793088377.891089,
-    "seen": 1793370261.8721535,
-    "ast_hash": "ed0856c3ec83d935b2127245b27a715f",
+    "mtime": 1793429026.073433,
+    "seen": 1793429650.1712317,
+    "ast_hash": "60452cefcbc1c5ad1f6d0ee130f6bc1f",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/purchase-lines.test.ts": {
-    "mtime": 1793088377.891089,
-    "seen": 1793370261.8721564,
-    "ast_hash": "100ecef57ed5c02950125617720f55f9",
+    "mtime": 1793428980.9171147,
+    "seen": 1793429650.1712346,
+    "ast_hash": "3b3c162a293b05ebc1b9d4f8c3dd7c73",
     "semantic_hash": ""
   },
   "lib/crm/purchase-lines.check.ts": {
-    "mtime": 1793395302.5238376,
-    "seen": 1793395931.5301254,
-    "ast_hash": "91cf4be7450c25d2f753cc3e01c5f8d6",
+    "mtime": 1793429030.880093,
+    "seen": 1793429650.1712835,
+    "ast_hash": "ef69de90290e169606f4ff6ce6d523a6",
     "semantic_hash": ""
   },
   "lib/crm/purchase-lines.ts": {
-    "mtime": 1793088377.891089,
-    "seen": 1793370261.8722203,
-    "ast_hash": "2ef87faf1fd4ed6a2efd70b337b06dcb",
+    "mtime": 1793428937.1833155,
+    "seen": 1793429650.1712852,
+    "ast_hash": "ccdaabdee3311d7a8688841ec8c781f6",
     "semantic_hash": ""
   },
   "lib/ecommerce/__tests__/admin-customers-list.test.ts": {
@@ -13770,9 +13770,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/segment-rules.test.ts": {
-    "mtime": 1793395302.5198376,
-    "seen": 1793395931.5300784,
-    "ast_hash": "626acbe6dc82a7ec2229a4b2caba1bbf",
+    "mtime": 1793429295.8081388,
+    "seen": 1793429650.1712403,
+    "ast_hash": "e33bf4b5c6946a77d2da30f1fa351365",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/segments.test.ts": {
@@ -15636,9 +15636,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/sql-check.ts": {
-    "mtime": 1793395302.5238376,
-    "seen": 1793395931.530082,
-    "ast_hash": "9a063b0547c5ecbc0cc01983232c58e5",
+    "mtime": 1793428925.9563558,
+    "seen": 1793429650.1712446,
+    "ast_hash": "62054bc5090e5680348f0d58419191b8",
     "semantic_hash": ""
   },
   "lib/crm/customer-link.ts": {
@@ -15648,15 +15648,15 @@
     "semantic_hash": ""
   },
   "lib/crm/lifecycle-stage.check.ts": {
-    "mtime": 1793395302.5238376,
-    "seen": 1793395931.5301137,
-    "ast_hash": "9a5d8141538a64b194e177b1913798b1",
+    "mtime": 1793429074.9538743,
+    "seen": 1793429650.1712735,
+    "ast_hash": "ee2c6a383a167ddb7fa311c5833a1474",
     "semantic_hash": ""
   },
   "lib/crm/lifecycle-stage.ts": {
-    "mtime": 1793395302.5238376,
-    "seen": 1793395931.5301158,
-    "ast_hash": "7d87a4e022037e4041346715361a1b2b",
+    "mtime": 1793429168.9438467,
+    "seen": 1793429650.1712759,
+    "ast_hash": "07fe2daf425c1c99eace2cba9ae7b5f7",
     "semantic_hash": ""
   },
   "lib/crm/months.ts": {
@@ -15720,9 +15720,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/07-stage-playbooks.md": {
-    "mtime": 1793395301.370693,
-    "seen": 1793395931.5331917,
-    "ast_hash": "ca65b395505b6925dca8a060fea969d2",
+    "mtime": 1793429446.506776,
+    "seen": 1793429650.173592,
+    "ast_hash": "bf8f30e24b7b9289c6a255b3cdeb3299",
     "semantic_hash": ""
   },
   ".claude/PRD-crm-retention-loop/issues/08-signoff.md": {
@@ -16902,9 +16902,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/04-purchase-filters.md": {
-    "mtime": 1793395828.8638256,
-    "seen": 1793395931.5328424,
-    "ast_hash": "76b38bfa5aa4975249d9a6b43d6f33ae",
+    "mtime": 1793429439.1994412,
+    "seen": 1793429650.1733093,
+    "ast_hash": "abe1c4d0fb8979a3d69437647ffbaec3",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/05-reach-filters.md": {
@@ -16968,15 +16968,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/README.md": {
-    "mtime": 1793414578.1116254,
-    "seen": 1793414887.5124357,
-    "ast_hash": "bde6ee98d3fb28e04d8949afef0969fa",
+    "mtime": 1793429439.199938,
+    "seen": 1793429650.1733413,
+    "ast_hash": "3b21649e5fbfee5bd7fe7cd1efad84a8",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/crm.mjs": {
-    "mtime": 1793414463.623804,
-    "seen": 1793414887.5085583,
-    "ast_hash": "af1944f787a5c50af846ba91a7024c92",
+    "mtime": 1793429249.3706968,
+    "seen": 1793429650.169806,
+    "ast_hash": "a1e111efa98a80fb86730c4c613e6a06",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/import/__tests__/default-consent-actions.test.ts": {
@@ -17031,6 +17031,12 @@
     "mtime": 1793414309.8998077,
     "seen": 1793414887.5137002,
     "ast_hash": "e4a65302cc1b804d3ec8042bca6f81e8",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261031100000_customer_overview_purchase_filters.sql": {
+    "mtime": 1793428774.15066,
+    "seen": 1793429650.1731925,
+    "ast_hash": "ae275135a65c682899f8ca790f4a7585",
     "semantic_hash": ""
   }
 }

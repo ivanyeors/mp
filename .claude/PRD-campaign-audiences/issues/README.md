@@ -16,7 +16,7 @@ demoable path through the layers it touches.
 | [01](01-glossary-and-adr.md) | Glossary and ADR | AFK | started (Consent source, ADR 0037) | none |
 | [02](02-consent-where-people-give-their-email.md) | Ask for consent where people give their email | AFK, then HITL | checkout **built**; customisation, booking not started | none |
 | [03](03-newsletter-sign-up.md) | A sign-up for people who have not bought, double opt-in | AFK | not started | 02, owner decision 6 |
-| [04](04-purchase-filters.md) | Purchase filters: didn't buy, pillow size, delivered, sub-status | AFK | not started | none |
+| [04](04-purchase-filters.md) | Purchase filters: didn't buy, pillow size, delivered, sub-status | AFK | **built** | none |
 | [05](05-reach-filters.md) | Reach filters: ships to, language, points expiry, campaign history | AFK | not started | 08 (clicked values only) |
 | [06](06-exclude-segments.md) | Exclude Segments from an Audience | AFK | not started | none |
 | [07](07-rest-period.md) | A rest period between one person's emails | AFK | not started | 01 |
@@ -36,7 +36,7 @@ graph TD
   s01[01 Glossary and ADR]
   s02[02 Consent at checkout, customisation, booking]
   s03[03 Sign-up, double opt-in]
-  s04[04 Purchase filters]
+  s04[04 Purchase filters · built]
   s05[05 Reach filters]
   s06[06 Exclusions]
   s07[07 Rest period]
@@ -75,7 +75,8 @@ graph TD
 
 1. **Done 2026-10-31:** 15 (imported customers subscribed), 02's checkout box, and *Email this
    Segment* as a button. The owner runs 15 once Shopify's unsubscribed list is exported.
-2. **04 and 06 now.** 04 unblocks the retention loop's Playbooks and the stage sub-statuses.
+2. **04 built 2026-10-31; 06 now.** 04 unblocks the retention loop's Playbooks and the stage
+   sub-statuses.
 3. **01, and the rest of 02** (customisation, booking), with counsel reading the ticked-box
    wording.
 4. **07 before more than one campaign runs at a time**, and **08** early, so clicks and

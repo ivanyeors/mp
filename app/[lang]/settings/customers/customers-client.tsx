@@ -109,12 +109,16 @@ function getCustomerName(customer: CustomerOverviewRow): string {
 /**
  * The filters that live in the Filters panel rather than the toolbar: the
  * Lifecycle stage (PRD-crm-retention-loop slice 03), CRM slice 04's, Points (PRD-loyalty-points slice 06), migration slice 07's
- * Email consent, and CRM slice 12's reviews.
+ * Email consent, CRM slice 12's reviews, and PRD-campaign-audiences slice
+ * 04's purchase filters.
  */
 const PANEL_FILTERS: CustomerFilterKey[] = [
     "stage",
     "bought",
+    "not_bought",
+    "size",
     "last_order",
+    "delivered",
     "readjusted",
     "min_spend",
     "consent",
