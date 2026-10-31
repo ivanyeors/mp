@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useId, useState, useCallback, useRef, type ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { User, Search, Loader2, Mail, SlidersHorizontal, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,13 +24,6 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { EmptyState } from "@/components/settings/empty-state";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -58,7 +51,7 @@ import {
     segmentParams,
     type CustomerSegment,
 } from "@/lib/crm/segment-rules";
-import { CustomerFilterSummary, CustomerMegaFilter, MEGA_FILTER_KEYS } from "./customer-filters-panel";
+import { CustomerFilterSummary, CustomerSortSelect, MEGA_FILTER_KEYS } from "./customer-filters-panel";
 import { LifecycleStageBadge, LifecycleStageCell, lifecycleNote } from "./lifecycle-stage-badge";
 import { MigrationCard } from "./migration-card";
 import { SegmentsRow } from "./segments-row";
@@ -229,9 +222,6 @@ export function CustomersClient({
     const [filters, setFilters] = useState<CustomerListFilters>(() => ({ ...DEFAULT_CUSTOMER_FILTERS, ...initialFilters }));
     const [search, setSearch] = useState(filters.search ?? "");
     const [page, setPage] = useState(1);
-    // The mega filter starts closed: it opens over the list, and the chips
-    // above the list already say what a link has set.
-    const [panelOpen, setPanelOpen] = useState(false);
     // The Segment chosen on this list (CRM slice 05): a Segment's own link
     // opens with it chosen, so changing a filter offers *Update {name}*.
     const [segmentId, setSegmentId] = useState<string | null>(() => {
@@ -272,6 +262,8 @@ export function CustomersClient({
 
     const filtersQuery = customerFilterParams(filters).toString();
     const panelCount = MEGA_FILTER_KEYS.filter((k) => isCustomerFilterActive(filters, k)).length;
+    // The filters page reads and writes the same parameters, the search and sort included.
+    const filtersHref = to(`/settings/customers/filters${filtersQuery ? `?${filtersQuery}` : ""}`);
     const filtered = CUSTOMER_FILTER_KEYS.some((k) => isCustomerFilterActive(filters, k));
 
     // Keep the address bar in step without a server round trip, so the list's
@@ -284,15 +276,13 @@ export function CustomersClient({
         if (url.href !== window.location.href) window.history.replaceState(null, "", url);
     }, [filtersQuery]);
 
-    const changeSort = (value: string) => changeFilters({ sort: value as CustomerSort });
+    const changeSort = (sort: CustomerSort) => changeFilters({ sort });
 
     // The summary's × and Clear all. Search is also the box's text.
     const clearFilter = (key: CustomerFilterKey) => {
         if (key === "search") setSearch("");
         applyFilters((f) => clearCustomerFilter(f, key));
     };
-    // The mega filter's *Clear filters*: its own filters, not the search or the sort.
-    const clearMegaFilters = () => applyFilters((f) => MEGA_FILTER_KEYS.reduce((acc, k) => clearCustomerFilter(acc, k), f));
     const clearAll = () => {
         setSearch("");
         setSegmentId(null);
@@ -359,24 +349,6 @@ export function CustomersClient({
         return pages;
     };
 
-    // In the toolbar from md; on a phone, at the top of the mega filter, labelled.
-    const sortId = useId();
-    const sortSelect = (id?: string) => (
-        <Select value={filters.sort} onValueChange={changeSort}>
-            <SelectTrigger id={id} className="w-full min-w-0 md:w-48" aria-label="Sort">
-                <SelectValue placeholder="Sort" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="newest">Newest first</SelectItem>
-                <SelectItem value="oldest">Oldest first</SelectItem>
-                <SelectItem value="name-asc">Name A to Z</SelectItem>
-                <SelectItem value="name-desc">Name Z to A</SelectItem>
-                <SelectItem value="signed-up">Recently signed up</SelectItem>
-                <SelectItem value="last-order">Last order</SelectItem>
-                <SelectItem value="spend">Most spent</SelectItem>
-            </SelectContent>
-        </Select>
-    );
 
     return (
         <div className="space-y-4 md:space-y-6">
@@ -400,46 +372,30 @@ export function CustomersClient({
                 onSelect={setSegmentId}
             />
 
-            {/* Toolbar: search, the sort and the mega filter's button; on a phone, search and Filters. */}
-            <CustomerMegaFilter
-                open={panelOpen}
-                onOpenChange={setPanelOpen}
-                filters={filters}
-                onChange={changeFilters}
-                onClearFilters={clearMegaFilters}
-                campaigns={campaigns}
-                total={loading ? null : total}
-                trigger={
-                    <Button type="button" variant={panelOpen ? "secondary" : "outline"} className="shrink-0">
+            {/* Toolbar: search, the sort from md, and Filters, which opens the filters page (the mega filter). */}
+            <div className="flex items-center gap-2 sm:gap-3">
+                <div className="relative min-w-0 flex-1 md:max-w-sm">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <Input
+                        placeholder="Search by name or email…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
+                <div className="ml-auto hidden md:block">
+                    <CustomerSortSelect value={filters.sort} onChange={changeSort} />
+                </div>
+                <Button variant="outline" className="shrink-0" asChild>
+                    <Link href={filtersHref}>
                         <SlidersHorizontal className="mr-1.5 h-4 w-4" />
                         Filters
                         {panelCount > 0 && (
                             <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">{panelCount}</Badge>
                         )}
-                    </Button>
-                }
-                toolbar={(trigger) => (
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="relative min-w-0 flex-1 md:max-w-sm">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                            <Input
-                                placeholder="Search by name or email…"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9"
-                            />
-                        </div>
-                        <div className="ml-auto hidden md:block">{sortSelect()}</div>
-                        {trigger}
-                    </div>
-                )}
-                phoneExtra={
-                    <div className="space-y-2">
-                        <Label htmlFor={sortId}>Sort</Label>
-                        {sortSelect(sortId)}
-                    </div>
-                }
-            />
+                    </Link>
+                </Button>
+            </div>
 
             <CustomerFilterSummary
                 filters={filters}

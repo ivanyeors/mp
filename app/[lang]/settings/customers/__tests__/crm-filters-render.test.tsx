@@ -110,8 +110,8 @@ const listFor = (url: string, rows: CustomerOverviewRow[] = [row({})]) => {
 describe("Customers list: CRM filters", () => {
   it("opens a link with its filters in the panel and the summary", () => {
     const html = listFor("bought=premium&last_order=over:12&readjusted=never");
-    // The mega filter opens over the list, so a link does not open it: its chips say what is set.
-    expect(html).toContain('aria-expanded="false"');
+    // Filters opens the filters page with the same parameters; the chips say what is set.
+    expect(html).toContain('href="/en-US/settings/customers/filters?bought=premium&amp;last_order=over%3A12&amp;readjusted=never"');
     const purchases = groupForUrl("purchases", "bought=premium&last_order=over:12&readjusted=never");
     expect(purchases).toContain('aria-label="Last order"');
     expect(purchases).toContain('aria-label="Re-adjusted"');
@@ -126,7 +126,7 @@ describe("Customers list: CRM filters", () => {
   it("keeps the panel closed, and shows no summary, for the plain list", () => {
     const html = listFor("");
     expect(html).toContain("Filters");
-    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('href="/en-US/settings/customers/filters"');
     expect(html).not.toContain('id="customer-filters-panel"');
     expect(html).not.toContain("Clear all");
   });

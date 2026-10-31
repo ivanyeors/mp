@@ -1,14 +1,12 @@
 "use client";
 
-import { useId, useState, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
-import { Loader2, X } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useId, useState, type KeyboardEvent } from "react";
+import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
     Select,
     SelectContent,
@@ -17,20 +15,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from "@/components/ui/sheet";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
-import {
     BOUGHT_FILTERS,
     BOUGHT_LABELS,
     CAMPAIGN_FILTER_STATES,
+    CUSTOMER_SORTS,
     LANGUAGE_FILTERS,
     LANGUAGE_LABELS,
     SHIPS_TO_FILTERS,
@@ -53,6 +41,7 @@ import {
     type CustomerFilterKey,
     type CustomerFilterParam,
     type CustomerListFilters,
+    type CustomerSort,
     type CampaignFilterState,
     type DeliveredFilter,
     type EmailedFilter,
@@ -82,7 +71,8 @@ import {
 import type { CampaignFilterOption } from "@/lib/email-campaigns/store";
 
 /**
- * The Customers list's filters, as one mega filter (CustomerMegaFilter): the
+ * The Customers list's filters, as one mega filter, a page of its own
+ * (/settings/customers/filters, `filters/filters-page-client.tsx`): the
  * **Lifecycle stage** and its sub-statuses (PRD-crm-retention-loop slice 03,
  * PRD-campaign-audiences slice 04); purchases (CRM slice 04, campaign
  * audiences slice 04); reach: consent (migration slice 07), where they ship
@@ -151,7 +141,7 @@ function onEnter(e: KeyboardEvent<HTMLInputElement>) {
 }
 
 /**
- * The mega filter's groups, in the order its rail lists them. Every filter
+ * The mega filter's groups, in the order its page lists them. Every filter
  * key but `search` (the box above the list) is in exactly one group
  * (`customer-filter-groups.test.ts`).
  */
@@ -187,263 +177,53 @@ export const CUSTOMER_FILTER_GROUPS: readonly {
 /** Every key the mega filter holds: all but `search`. */
 export const MEGA_FILTER_KEYS: readonly CustomerFilterKey[] = CUSTOMER_FILTER_GROUPS.flatMap((g) => g.keys);
 
+/** The list's sorts, as its Sort select offers them. */
+const SORT_LABELS: Record<CustomerSort, string> = {
+    newest: "Newest first",
+    oldest: "Oldest first",
+    "name-asc": "Name A to Z",
+    "name-desc": "Name Z to A",
+    "signed-up": "Recently signed up",
+    "last-order": "Last order",
+    spend: "Most spent",
+};
+
+/** The list's Sort: in its toolbar from md, and on the filters page on a phone. */
+export function CustomerSortSelect({
+    value,
+    onChange,
+    id,
+    className,
+}: {
+    value: CustomerSort;
+    onChange: (sort: CustomerSort) => void;
+    id?: string;
+    className?: string;
+}) {
+    return (
+        <Select value={value} onValueChange={(v) => onChange(v as CustomerSort)}>
+            <SelectTrigger id={id} className={className ?? "w-full min-w-0 md:w-48"} aria-label="Sort">
+                <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+                {CUSTOMER_SORTS.map((sort) => (
+                    <SelectItem key={sort} value={sort}>
+                        {SORT_LABELS[sort]}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
+
 /** How many of a group's filters are set. */
 export function groupFilterCount(filters: CustomerListFilters, group: { keys: readonly CustomerFilterKey[] }): number {
     return group.keys.filter((k) => isCustomerFilterActive(filters, k)).length;
 }
 
-/** The group the mega filter opens on: the first with a filter set, else Stage. */
-export function firstActiveGroup(filters: CustomerListFilters): CustomerFilterGroupId {
-    return CUSTOMER_FILTER_GROUPS.find((g) => groupFilterCount(filters, g) > 0)?.id ?? "stage";
-}
-
 /** *Show 128 customers*, *Show 1 customer*. */
 export function showCustomersLabel(total: number): string {
     return `Show ${total.toLocaleString("en-SG")} ${total === 1 ? "customer" : "customers"}`;
-}
-
-type MegaFilterProps = {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    filters: CustomerListFilters;
-    onChange: (patch: Partial<CustomerListFilters>) => void;
-    /** Clears the mega filter's own filters: not the search box, not the sort. */
-    onClearFilters: () => void;
-    campaigns?: readonly CampaignFilterOption[];
-    /** Customers the list holds with these filters; null while it counts. */
-    total: number | null;
-    /** The Filters button. */
-    trigger: ReactElement;
-    /**
-     * The toolbar, given the trigger to place in it. From md it anchors the
-     * panel, which opens below it at its full width.
-     */
-    toolbar: (trigger: ReactNode) => ReactElement;
-    /** Put above the groups on a phone, where the toolbar has no room: the sort. */
-    phoneExtra?: ReactNode;
-};
-
-/**
- * The Customers list's mega filter: every filter in one panel, grouped. From
- * md it opens under the toolbar at the toolbar's width, the groups on a rail
- * with how many of each are set, one group shown at a time. On a phone it is
- * a full-height sheet with the groups as sections. Each change applies at
- * once, as before; the footer says how many customers match, and closes it.
- */
-export function CustomerMegaFilter({
-    open,
-    onOpenChange,
-    filters,
-    onChange,
-    onClearFilters,
-    campaigns = [],
-    total,
-    trigger,
-    toolbar,
-    phoneExtra,
-}: MegaFilterProps) {
-    const isMobile = useIsMobile();
-    const [group, setGroup] = useState<CustomerFilterGroupId>(() => firstActiveGroup(filters));
-    const set = MEGA_FILTER_KEYS.filter((k) => isCustomerFilterActive(filters, k)).length;
-
-    const actions = (
-        <>
-            <Button type="button" variant="ghost" onClick={onClearFilters} disabled={set === 0}>
-                Clear filters
-            </Button>
-            <Button type="button" onClick={() => onOpenChange(false)}>
-                {total == null ? (
-                    <>
-                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                        Counting
-                    </>
-                ) : (
-                    showCustomersLabel(total)
-                )}
-            </Button>
-        </>
-    );
-
-    if (isMobile) {
-        return (
-            <Sheet open={open} onOpenChange={onOpenChange}>
-                {toolbar(<SheetTrigger asChild>{trigger}</SheetTrigger>)}
-                <SheetContent side="bottom" mobilePreset="full" className="h-[100svh] gap-0 overflow-hidden p-0">
-                    <SheetHeader className="shrink-0 border-b px-4 py-3">
-                        <SheetTitle>Filters</SheetTitle>
-                        <SheetDescription className="sr-only">
-                            Choose which customers the list shows. Each change applies at once.
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="min-h-0 flex-1 overflow-y-auto">
-                        {phoneExtra && <div className="border-b px-4 py-4">{phoneExtra}</div>}
-                        <MegaFilterSections filters={filters} onChange={onChange} campaigns={campaigns} />
-                    </div>
-                    {/* SheetFooter keeps the actions clear of the sheet's pinned close button. */}
-                    <SheetFooter className="mt-0 shrink-0 flex-row items-center justify-between gap-3 border-t py-3">
-                        {actions}
-                    </SheetFooter>
-                </SheetContent>
-            </Sheet>
-        );
-    }
-
-    return (
-        <Popover
-            open={open}
-            onOpenChange={(next) => {
-                if (next) setGroup(firstActiveGroup(filters));
-                onOpenChange(next);
-            }}
-        >
-            <PopoverAnchor asChild>{toolbar(<PopoverTrigger asChild>{trigger}</PopoverTrigger>)}</PopoverAnchor>
-            <PopoverContent
-                align="start"
-                sideOffset={8}
-                collisionPadding={16}
-                aria-label="Filters"
-                className="flex h-[min(38rem,var(--radix-popover-content-available-height))] w-(--radix-popover-trigger-width) max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl p-0 shadow-lg"
-            >
-                <MegaFilterRail
-                    group={group}
-                    onGroup={setGroup}
-                    filters={filters}
-                    onChange={onChange}
-                    campaigns={campaigns}
-                />
-                <div className="flex shrink-0 items-center justify-between gap-3 border-t px-5 py-3">{actions}</div>
-            </PopoverContent>
-        </Popover>
-    );
-}
-
-/** From md: the groups on a rail, one shown at a time. */
-function MegaFilterRail({
-    group,
-    onGroup,
-    filters,
-    onChange,
-    campaigns,
-}: {
-    group: CustomerFilterGroupId;
-    onGroup: (group: CustomerFilterGroupId) => void;
-    filters: CustomerListFilters;
-    onChange: (patch: Partial<CustomerListFilters>) => void;
-    campaigns: readonly CampaignFilterOption[];
-}) {
-    const id = useId();
-    const current = CUSTOMER_FILTER_GROUPS.find((g) => g.id === group) ?? CUSTOMER_FILTER_GROUPS[0]!;
-
-    // A vertical tablist: up and down move between groups, Home and End jump.
-    const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-        const at = CUSTOMER_FILTER_GROUPS.findIndex((g) => g.id === group);
-        const last = CUSTOMER_FILTER_GROUPS.length - 1;
-        const to =
-            e.key === "ArrowDown" ? (at === last ? 0 : at + 1)
-            : e.key === "ArrowUp" ? (at === 0 ? last : at - 1)
-            : e.key === "Home" ? 0
-            : e.key === "End" ? last
-            : null;
-        if (to == null) return;
-        e.preventDefault();
-        const next = CUSTOMER_FILTER_GROUPS[to]!.id;
-        onGroup(next);
-        document.getElementById(`${id}-tab-${next}`)?.focus();
-    };
-
-    return (
-        <div className="flex min-h-0 flex-1">
-            <div
-                role="tablist"
-                aria-orientation="vertical"
-                aria-label="Filter groups"
-                onKeyDown={onKeyDown}
-                className="flex w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r bg-muted/40 p-2"
-            >
-                {CUSTOMER_FILTER_GROUPS.map((g) => {
-                    const n = groupFilterCount(filters, g);
-                    const selected = g.id === group;
-                    return (
-                        <button
-                            key={g.id}
-                            type="button"
-                            role="tab"
-                            id={`${id}-tab-${g.id}`}
-                            aria-selected={selected}
-                            aria-controls={`${id}-panel`}
-                            tabIndex={selected ? 0 : -1}
-                            onClick={() => onGroup(g.id)}
-                            className={cn(
-                                "flex w-full items-start gap-2 rounded-lg px-3 py-2.5 text-left transition-colors outline-none hover:bg-background focus-visible:ring-[3px] focus-visible:ring-ring/50 active:bg-press",
-                                selected && "bg-background shadow-xs",
-                            )}
-                        >
-                            <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-medium">{g.label}</span>
-                                <span className="block text-xs text-muted-foreground">{g.blurb}</span>
-                            </span>
-                            {n > 0 && (
-                                <Badge className="mt-0.5 h-5 min-w-5 shrink-0 rounded-full px-1.5 text-xs" aria-label={`${n} set`}>
-                                    {n}
-                                </Badge>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-            <div
-                role="tabpanel"
-                id={`${id}-panel`}
-                aria-labelledby={`${id}-tab-${current.id}`}
-                className="@container min-w-0 flex-1 overflow-y-auto p-5"
-            >
-                <CustomerFilterGroup key={current.id} group={current.id} filters={filters} onChange={onChange} campaigns={campaigns} />
-            </div>
-        </div>
-    );
-}
-
-/** On a phone: every group, a section each, opened where a filter is set. */
-export function MegaFilterSections({
-    filters,
-    onChange,
-    campaigns = [],
-}: {
-    filters: CustomerListFilters;
-    onChange: (patch: Partial<CustomerListFilters>) => void;
-    campaigns?: readonly CampaignFilterOption[];
-}) {
-    const [openGroups, setOpenGroups] = useState<string[]>(() => {
-        const set = CUSTOMER_FILTER_GROUPS.filter((g) => groupFilterCount(filters, g) > 0).map((g) => g.id);
-        return set.length ? set : ["stage"];
-    });
-    return (
-        <Accordion type="multiple" value={openGroups} onValueChange={setOpenGroups} className="px-4">
-            {CUSTOMER_FILTER_GROUPS.map((g) => {
-                const n = groupFilterCount(filters, g);
-                return (
-                    <AccordionItem key={g.id} value={g.id}>
-                        <AccordionTrigger className="items-center py-3.5 hover:no-underline">
-                            <span className="flex min-w-0 flex-1 items-center gap-2">
-                                <span className="min-w-0">
-                                    <span className="block">{g.label}</span>
-                                    <span className="block text-xs font-normal text-muted-foreground">{g.blurb}</span>
-                                </span>
-                                {n > 0 && (
-                                    <Badge className="h-5 min-w-5 shrink-0 rounded-full px-1.5 text-xs" aria-label={`${n} set`}>
-                                        {n}
-                                    </Badge>
-                                )}
-                            </span>
-                        </AccordionTrigger>
-                        <AccordionContent className="@container pb-5">
-                            <CustomerFilterGroup group={g.id} filters={filters} onChange={onChange} campaigns={campaigns} />
-                        </AccordionContent>
-                    </AccordionItem>
-                );
-            })}
-        </Accordion>
-    );
 }
 
 /**
@@ -1127,7 +907,8 @@ export function CustomerFilterSummary({
     /** With *Ships to*: how many more ship to an unknown country (`listAdminCustomers`). */
     shipsToUnknown?: number | null;
     onClear: (key: CustomerFilterKey) => void;
-    onClearAll: () => void;
+    /** *Clear all* after the chips; leave it out where the page has its own. */
+    onClearAll?: () => void;
 }) {
     const [noteOpen, setNoteOpen] = useState(true);
     const campaignNames = new Map(campaigns.map((c) => [c.id, c.name]));
@@ -1166,9 +947,11 @@ export function CustomerFilterSummary({
                             </button>
                         </Badge>
                     ))}
-                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={onClearAll}>
-                        Clear all
-                    </Button>
+                    {onClearAll && (
+                        <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={onClearAll}>
+                            Clear all
+                        </Button>
+                    )}
                 </div>
             )}
             {unknownNote && <p className="text-sm text-muted-foreground">{unknownNote}</p>}

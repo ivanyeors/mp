@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
-const { CUSTOMER_FILTER_GROUPS, MEGA_FILTER_KEYS, firstActiveGroup, groupFilterCount, showCustomersLabel } = await import(
+const { CUSTOMER_FILTER_GROUPS, MEGA_FILTER_KEYS, groupFilterCount, showCustomersLabel } = await import(
   "../customer-filters-panel"
 );
 
@@ -27,18 +27,12 @@ describe("the mega filter's groups", () => {
     expect(CUSTOMER_FILTER_GROUPS.map((g) => g.label)).toEqual(["Stage", "Purchases", "Reach", "Account", "Reviews"]);
   });
 
-  it("count what is set in each, for the rail's badges", () => {
+  it("count what is set in each, for the index and each section", () => {
     const filters = filtersFor("stage=at-risk&ships_to=sg&emailed=over:30&consent=subscribed&mobile=missing");
     const counts = Object.fromEntries(CUSTOMER_FILTER_GROUPS.map((g) => [g.id, groupFilterCount(filters, g)]));
     expect(counts).toEqual({ stage: 1, purchases: 0, reach: 3, account: 1, reviews: 0 });
-  });
-
-  it("open on the first group with a filter set, else Stage", () => {
-    expect(firstActiveGroup(filtersFor(""))).toBe("stage");
-    expect(firstActiveGroup(filtersFor("rating=5"))).toBe("reviews");
-    expect(firstActiveGroup(filtersFor("rating=5&bought=premium"))).toBe("purchases");
     // The search box is not the mega filter's.
-    expect(firstActiveGroup(filtersFor("search=tan"))).toBe("stage");
+    expect(CUSTOMER_FILTER_GROUPS.map((g) => groupFilterCount(filtersFor("search=tan"), g))).toEqual([0, 0, 0, 0, 0]);
   });
 
   it("say how many customers the footer's button shows", () => {

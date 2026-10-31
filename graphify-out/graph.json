@@ -244166,6 +244166,18 @@
       "source_location": "L1"
     },
     {
+      "id": "dataflow_page_settings_customers_filters",
+      "label": "/settings/customers/filters",
+      "_origin": "dataflow",
+      "community": 389,
+      "community_name": "email-campaigns/rules.ts",
+      "file_type": "code",
+      "_dataflow": "page",
+      "norm_label": "/settings/customers/filters",
+      "source_file": "app/[lang]/settings/customers/filters/page.tsx",
+      "source_location": "L1"
+    },
+    {
       "id": "dataflow_page_settings_customers_id",
       "label": "/settings/customers/[id]",
       "_origin": "dataflow",
@@ -781813,6 +781825,54 @@
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/customers/page.tsx",
       "source_location": "L8",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "dataflow_page_settings_customers_filters",
+      "target": "dataflow_endpoint_api_shop_customers",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/[lang]/settings/customers/filters/filters-page-client.tsx",
+      "source_location": "L93",
+      "weight": 1.0,
+      "context": "GET"
+    },
+    {
+      "source": "dataflow_page_settings_customers_filters",
+      "target": "lib_auth_admin_requireadminpage",
+      "relation": "loads",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/[lang]/settings/customers/filters/page.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "dataflow_page_settings_customers_filters",
+      "target": "lib_ecommerce_admin_customers_listadmincustomers",
+      "relation": "loads",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/[lang]/settings/customers/filters/page.tsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "dataflow_page_settings_customers_filters",
+      "target": "lib_email_campaigns_store_listcampaignfilteroptions",
+      "relation": "loads",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/[lang]/settings/customers/filters/page.tsx",
+      "source_location": "L6",
       "weight": 1.0,
       "context": "import"
     },
