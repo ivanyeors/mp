@@ -32,7 +32,11 @@ assert.match(right, /ModeToggle/);
 assert.doesNotMatch(right, /ProfileMenu/);
 // The compact pill is just the logo; booking and chat moved to the dock.
 const compact = header.slice(0, expandedStart);
-assert.match(compact, /src=\{LOGO_INV_SRC\}/);
+// The same dark-blue logo as the expanded header, on a white pill: the site has
+// no light-blue logo for dark backgrounds.
+assert.match(compact, /src=\{LOGO_SRC\}/);
+assert.match(compact, /bg-white/);
+assert.doesNotMatch(header, /LOGO_INV_SRC/);
 assert.doesNotMatch(header, /openBookAppointment|SUPPORT_WHATSAPP_URL/);
 assert.match(dock, /openBookAppointment/);
 assert.match(dock, /openSupportChat/);
