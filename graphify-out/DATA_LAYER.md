@@ -1433,6 +1433,11 @@ Defined in supabase/migrations/20261031032017_points_never_expire.sql:132
 - Read by:
   - `readPointsSummary()` [select] — lib/points/server.ts:186
 
+### admin_returning_customer_cohorts
+Defined in supabase/migrations/20261101150000_returning_customer_cohorts.sql:25
+- Called by:
+  - `getReturningCustomers()` — lib/crm/returning-customers-server.ts:11
+
 ### claim_bonus_window_end
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:29
 - Called by:
@@ -2557,7 +2562,7 @@ app/[lang]/settings/costings/services/page.tsx
 ### /settings/customers
 app/[lang]/settings/customers/page.tsx
 - Endpoints: `/api/admin/working-as [POST]`, `/api/settings/customers/aftercare [GET,PUT]`, `/api/settings/customers/followups [GET]`, `/api/settings/customers/google-reviews [GET]`, `/api/settings/customers/segments`, `/api/settings/customers/telegram-updates [GET,PUT]`, `/api/settings/customers/telegram-updates/test [POST]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id]/followups/[followupId]`
-- Loads: `getLifecycleSummary()`, `getSiteSettings()`, `listAdminCustomers()`, `listCampaignFilterOptions()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
+- Loads: `getLifecycleSummary()`, `getReturningCustomers()`, `getSiteSettings()`, `listAdminCustomers()`, `listCampaignFilterOptions()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_emails`, `customer_followups`, `customer_review_requests`, `customer_segments`, `customer_whatsapp`, `customers`, `mp_staff`, `site_settings`
 - Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `customer_preference_events`, `customer_purchase_lines`, `email_campaigns`, `email_template_copy`, `order_items`, `orders`, `pillow_products`, `readjustment_bookings`, `service_prices`, `whatsapp_inbound`
 
