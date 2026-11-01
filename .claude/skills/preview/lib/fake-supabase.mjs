@@ -254,6 +254,8 @@ async function rest(req, res, url, path) {
       return answer(req, res, rows, { total, offset });
     }
     if (req.method === "HEAD") return send(res, 200, undefined);
+    // PostgREST answers a scalar as JSON, so a text result arrives quoted.
+    if (typeof result === "string") return send(res, 200, JSON.stringify(result), { "content-type": "application/json; charset=utf-8" });
     return send(res, 200, result ?? null);
   }
 

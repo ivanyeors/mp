@@ -82,6 +82,16 @@ ticks *Include unengaged*. Unengaged is never consent: the Customer stays
 `subscribed`, and no consent event is written. An **Audience** or a
 **Segment** only narrows; neither ever reaches someone the claim refuses.
 
+## Why they unsubscribe
+
+After an unsubscribe has taken effect, the unsubscribe page and the account ask
+*Mind telling us why?*, and Staff may record what a customer said
+(PRD-crm-retention-loop slice 11). `record_unsubscribe_reason()`
+(`20261101140000`) stores one answer per unsubscribe in
+`customer_unsubscribe_reasons`, keyed by the consent event it answers, only
+while the Customer is unsubscribed, and never after a spam complaint. It reads
+consent and never writes it.
+
 ## Tests
 
 - `supabase/tests/customer-migration/assert-07-marketing-consent.sql`,

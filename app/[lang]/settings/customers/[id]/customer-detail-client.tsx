@@ -62,6 +62,7 @@ import { CustomerFollowUpsCard } from "./customer-followups-card";
 import { CustomerReviewsCard } from "./customer-reviews-card";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
+import type { CustomerUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
 import { LifecycleStageBadge, UNENGAGED_TITLE, lifecycleNote } from "../lifecycle-stage-badge";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -137,6 +138,8 @@ export type CustomerDetailInitialData = {
     contact?: ContactFactsResult;
     /** The Lifecycle stage (PRD-crm-retention-loop slice 03); null when it could not be read. */
     lifecycle?: AdminCustomerLifecycle | null;
+    /** Why they unsubscribed, when they said (slice 11); null otherwise. */
+    unsubscribeReason?: CustomerUnsubscribeReason | null;
     /** Fitting records from the old Google Form (ADR 0042); null when they could not be read. */
     fittings?: CustomerFittingsResult;
 };
@@ -380,7 +383,7 @@ export function CustomerDetailClient({
         [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
         customer.email;
 
-    const note = lifecycle ? lifecycleNote(lifecycle) : null;
+    const note = lifecycle ? lifecycleNote(lifecycle, { unsubscribeReason: initialData?.unsubscribeReason?.reason ?? null }) : null;
 
     // Stats and columns follow the width the page has, not the window (a
     // container query), so a collapsed sidebar counts.

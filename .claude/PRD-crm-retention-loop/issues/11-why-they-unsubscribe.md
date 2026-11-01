@@ -2,7 +2,7 @@
 
 **Issue:** [#352](https://github.com/ivanyeors/mp/issues/352)
 **Type:** AFK, then HITL (the owner on the answer wording)
-**Status:** not started
+**Status:** **built** (2026-11-01); the answer wording awaits the owner
 **Blocked by:** 03 (the *Lost* stage)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
@@ -48,10 +48,36 @@ discount or asks them to stay.
   365 days, with the latest typed answers (Staff only).
 - **`CONTEXT.md`**: **Unsubscribe reason**.
 
+## As built (2026-11-01)
+
+- **Migration** `20261101140000_unsubscribe_reasons.sql`: `customer_unsubscribe_reasons`
+  (server-only; unique on the consent event it answers; words only with *Other*, up to 500
+  characters) and `record_unsubscribe_reason(customer, reason, text)`, which records an answer
+  for the Customer's latest consent change only while they are unsubscribed and that change was
+  the link, their account or Staff. It answers `recorded`, or why not (`already`,
+  `not_unsubscribed`, `complaint`, `not_asked`, `not_found`), and never writes consent.
+- **The unsubscribe page** asks once they are unsubscribed, when their latest unsubscribe has no
+  answer: one tap, or *Other* and an optional line; then a thank-you. It posts to
+  `POST /api/email/unsubscribe/reason` with the same signed link (`u`, `t`, a campaign's `s`):
+  JSON only, zod, 10 an hour per address, 409 when there is nothing to answer.
+- **The account**: turning *Email me news and offers* off asks the same question
+  (`answerMyUnsubscribeReason`, the session's Customer only).
+- **Staff**: the Marketing email card's *Unsubscribe* dialog has an optional *Why did they ask?*;
+  the support route records it after the unsubscribe, and a failure is logged, never an error.
+  The card's history shows each answer under the unsubscribe it answers.
+- **The Customer page**: *Lost · Unsubscribed 7 Oct 2026 · Too many emails*.
+- **Analytics**: *Why people unsubscribe* beside *Why people leave*: unsubscribes by how
+  (link, account, Staff, spam report), how many told us why, the reasons, and the latest typed
+  answers, for 30, 90 and 365 days.
+- **Tests:** `supabase/tests/crm/assert-11-unsubscribe-reasons.sql`; the route, the account
+  action, the support route, and the reasons module (`lib/marketing-consent/__tests__`).
+- **Owner:** the six answers are the draft above; change their words in
+  `lib/marketing-consent/unsubscribe-reasons.ts` (the keys stay).
+
 ## Acceptance criteria
 
-- [ ] An unsubscribe takes effect whether or not the question is answered, and before it is
+- [x] An unsubscribe takes effect whether or not the question is answered, and before it is
   shown.
-- [ ] A one-click unsubscribe is honoured and asks nothing.
-- [ ] An answer is stored only for a Customer who is unsubscribed, at most once per unsubscribe.
-- [ ] No answer offers a discount.
+- [x] A one-click unsubscribe is honoured and asks nothing.
+- [x] An answer is stored only for a Customer who is unsubscribed, at most once per unsubscribe.
+- [x] No answer offers a discount.

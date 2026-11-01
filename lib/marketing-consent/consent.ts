@@ -23,6 +23,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readReasonsForEvents, type CustomerUnsubscribeReason } from "./unsubscribe-reasons-server";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import {
   isConsentSource,
@@ -139,15 +140,17 @@ export async function readMarketingEmailState(
   return marketingEmailState(data.marketing_email);
 }
 
-type EventRow = { from_state: string; to_state: string; source: string; created_at: string };
+type EventRow = { id: number; from_state: string; to_state: string; source: string; created_at: string };
 
-function toEvent(row: EventRow): ConsentEvent | null {
+function toEvent(row: EventRow, reasons: ReadonlyMap<number, CustomerUnsubscribeReason>): ConsentEvent | null {
   if (!isConsentSource(row.source)) return null;
+  const reason = reasons.get(Number(row.id));
   return {
     fromState: marketingEmailState(row.from_state),
     toState: marketingEmailState(row.to_state),
     source: row.source,
     createdAt: row.created_at,
+    ...(reason ? { reason: { reason: reason.reason, text: reason.text } } : {}),
   };
 }
 
@@ -166,16 +169,22 @@ export async function readMarketingConsentView(
 
   const { data: events, error: eventsError } = await admin
     .from("customer_consent_events")
-    .select("from_state, to_state, source, created_at")
+    .select("id, from_state, to_state, source, created_at")
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false })
     .limit(HISTORY_LIMIT);
   if (eventsError) throw new Error(eventsError.message);
+  const rows = (events ?? []) as EventRow[];
+  // PRD-crm-retention-loop slice 11: why they unsubscribed, beside the unsubscribe it answers.
+  const reasons = await readReasonsForEvents(
+    admin,
+    rows.filter((r) => r.to_state === "unsubscribed").map((r) => Number(r.id)),
+  );
 
   return {
     state: marketingEmailState(customer.marketing_email),
     source: isConsentSource(customer.marketing_email_source) ? customer.marketing_email_source : null,
     updatedAt: (customer.marketing_email_updated_at as string | null) ?? null,
-    history: ((events ?? []) as EventRow[]).map(toEvent).filter((e): e is ConsentEvent => e !== null),
+    history: rows.map((row) => toEvent(row, reasons)).filter((e): e is ConsentEvent => e !== null),
   };
 }

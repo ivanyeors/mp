@@ -7,6 +7,9 @@ import { readMarketingEmailState } from "@/lib/marketing-consent/consent";
 import { UNSUBSCRIBE_ROUTE, verifyUnsubscribeLink } from "@/lib/marketing-consent/unsubscribe";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 import { Button } from "@/components/ui/button";
+import { UnsubscribeLinkReasonQuestion } from "@/components/marketing/unsubscribe-reason-question";
+import { readUnsubscribeQuestion } from "@/lib/marketing-consent/unsubscribe-reasons-server";
+import { unsubscribeAskOrder } from "@/lib/marketing-consent/unsubscribe-reasons";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +26,10 @@ export const metadata: Metadata = {
  * (PRD-shopify-customer-migration slice 07). Opening it changes nothing: mail
  * scanners prefetch links. The one button POSTs to `/api/email/unsubscribe`,
  * which unsubscribes and sends the browser back here to say so.
+ *
+ * Once they are unsubscribed it asks, optionally, *Mind telling us why?*
+ * (PRD-crm-retention-loop slice 11): after the unsubscribe, never before it,
+ * once per unsubscribe, and never after a spam complaint.
  */
 export default async function UnsubscribePage({
   params,
@@ -39,12 +46,17 @@ export default async function UnsubscribePage({
   const s = typeof query.s === "string" ? query.s : null;
 
   let state: MarketingEmailState | "invalid" | "error" = "invalid";
+  let ask = false;
   const link = verifyUnsubscribeLink(u, t, s);
   if (link) {
     // A Customer since deleted is on no list.
     state = await readMarketingEmailState(supabaseAdmin(), link.customerId)
       .then((s) => s ?? "unsubscribed")
       .catch(() => "error" as const);
+    // The question is a nicety: a read that fails just leaves it out.
+    if (state === "unsubscribed") {
+      ask = (await readUnsubscribeQuestion(supabaseAdmin(), link.customerId).catch(() => null)) === "ask";
+    }
   }
 
   const accountHref = withLocale("/account", locale);
@@ -67,6 +79,7 @@ export default async function UnsubscribePage({
             </Link>
             .
           </p>
+          {ask && u && t ? <UnsubscribeLinkReasonQuestion order={unsubscribeAskOrder()} u={u} t={t} s={s} /> : null}
         </>
       ) : state === "subscribed" || state === "not_subscribed" ? (
         <>

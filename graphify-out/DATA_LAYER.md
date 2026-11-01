@@ -435,7 +435,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [insert] — app/api/shop/customers/route.ts:44
   - `findOrCreateCustomer()` [insert] — lib/ecommerce/customers.ts:24
   - `linkCustomerToAuthUser()` [insert,select,update] — lib/auth/customer-identity.ts:82
-  - `setMyAftercarePreference()` [update] — app/[lang]/account/actions.ts:60
+  - `setMyAftercarePreference()` [update] — app/[lang]/account/actions.ts:61
   - `touchAccountProviders()` [update] — lib/auth/customer-identity.ts:242
   - `touchCustomerLastSeen()` [update] — lib/auth/customer-identity.ts:185
   - `updateCustomerStats()` [update] — lib/ecommerce/customers.ts:82
@@ -459,8 +459,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:299
   - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:228
   - `readAftercareView()` [select] — lib/aftercare/preferences.ts:149
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:159
-  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:132
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:162
+  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:133
   - `readProfileAftercare()` [select] — lib/aftercare/preferences.ts:203
   - `readWhatsAppGate()` [select] — lib/aftercare/preferences.ts:109
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:382
@@ -1491,7 +1491,8 @@ References: `customers`
 Defined in supabase/migrations/20261020120000_marketing_consent.sql:73
 References: `customer_campaign_sends`, `customers`
 - Read by:
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:167
+  - `readLatestUnsubscribe()` [select] — lib/marketing-consent/unsubscribe-reasons-server.ts:76
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:170
   - `sources/consent.ts` [select] — lib/crm/timeline/sources/consent.ts:41
 
 ### customer_emails
@@ -1592,6 +1593,13 @@ Changed from pages: `/settings/customers`
   - `assertNameFree()` [select] — lib/crm/segments.ts:123
   - `getSegment()` [select] — lib/crm/segments.ts:106
   - `listSegments()` [select] — lib/crm/segments.ts:94
+
+### customer_unsubscribe_reasons
+Defined in supabase/migrations/20261101140000_unsubscribe_reasons.sql:32
+References: `customer_consent_events`, `customers`
+- Read by:
+  - `readLatestUnsubscribe()` [select] — lib/marketing-consent/unsubscribe-reasons-server.ts:87
+  - `readReasonsForEvents()` [select] — lib/marketing-consent/unsubscribe-reasons-server.ts:125
 
 ### decrement_coupon_usage
 Defined in supabase/migrations/20261025130000_coupon_usage_decrement.sql:13
@@ -1827,6 +1835,11 @@ Defined in supabase/migrations/20261020124000_customer_review_requests.sql:65
 - Called by:
   - `GET()` — app/r/review/route.ts:32
 
+### record_unsubscribe_reason
+Defined in supabase/migrations/20261101140000_unsubscribe_reasons.sql:62
+- Called by:
+  - `recordUnsubscribeReason()` — lib/marketing-consent/unsubscribe-reasons-server.ts:44
+
 ### reject_google_review_match
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:283
 - Called by:
@@ -1870,7 +1883,7 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
 ### set_marketing_email
 Defined in supabase/migrations/20261101031444_consent_sign_up.sql:44
 - Called by:
-  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:64
+  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:65
 
 ### subscribe_migrated_customers
 Defined in supabase/migrations/20261031144524_consent_by_default.sql:159
@@ -2299,8 +2312,8 @@ app/[lang]/page.tsx
 
 ### /account
 app/[lang]/account/page.tsx
-- Server actions: `setMyAftercarePreference()`, `setMyMarketingEmail()`
-- Endpoints: `/auth/signout`
+- Server actions: `answerMyUnsubscribeReason()`, `setMyAftercarePreference()`, `setMyMarketingEmail()`
+- Endpoints: `/api/email/unsubscribe/reason [POST]`, `/auth/signout`
 - Loads: `isPartnerCustomer()`, `linkCustomerToAuthUser()`, `listOwnFittings()`, `readMarketingEmailState()`, `readMilestoneStanding()`, `readPendingOrders()`, `readPointsBalance()`, `readPointsSettings()`, `readProfileAftercare()`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
 - Reads, through the same: `customer_fittings`, `email_template_copy`, `mp_staff`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `site_settings`
@@ -2467,7 +2480,7 @@ app/[lang]/results/[id]/page.tsx
 
 ### /settings/analytics
 app/[lang]/settings/analytics/page.tsx
-- Server actions: `addTargetQuery()`, `createSeoAnnotation()`, `deleteSeoAnnotation()`, `getAiAnswers()`, `getChannelMix()`, `getCrawlerActivity()`, `getDropOffReasons()`, `getInventoryMovementWaterfall()`, `getMpConfigMetricsBreakdown()`, `getProspectJourneyNodeDetails()`, `getProspectJourneyTransitions()`, `getSalesReport()`, `getSearchQueries()`, `getSearchVisibility()`, `getSeoAnnotations()`, `importAiReports()`, `removeTargetQuery()`
+- Server actions: `addTargetQuery()`, `createSeoAnnotation()`, `deleteSeoAnnotation()`, `getAiAnswers()`, `getChannelMix()`, `getCrawlerActivity()`, `getDropOffReasons()`, `getInventoryMovementWaterfall()`, `getMpConfigMetricsBreakdown()`, `getProspectJourneyNodeDetails()`, `getProspectJourneyTransitions()`, `getSalesReport()`, `getSearchQueries()`, `getSearchVisibility()`, `getSeoAnnotations()`, `getUnsubscribeReasons()`, `importAiReports()`, `removeTargetQuery()`
 - Loads: `requireAdminPage()`
 - Reads: `bom_template_lines`, `bom_templates`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`, `seo_annotations`, `seo_daily_metrics`, `seo_target_queries`
@@ -2548,9 +2561,9 @@ app/[lang]/settings/customers/page.tsx
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
 - Endpoints: `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
-- Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerFittings()`, `listCustomerNotes()`, `readContactFacts()`, `requireAdminPage()`
+- Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerFittings()`, `listCustomerNotes()`, `readContactFacts()`, `readCustomerUnsubscribeReason()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customer_followups`, `customer_notes`, `customers`, `inventory_transactions`, `mp_staff`, `order_items`, `order_timeline`, `orders`, `product_variants`
-- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `customer_consent_events`, `customer_fittings`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_whatsapp`, `item_prices`, `migrated_customers`, `mp_config_responses`, `order_margins`, `pillow_products`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
+- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `customer_consent_events`, `customer_fittings`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_unsubscribe_reasons`, `customer_whatsapp`, `item_prices`, `migrated_customers`, `mp_config_responses`, `order_margins`, `pillow_products`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
 
 ### /settings/customers/filters
 app/[lang]/settings/customers/filters/page.tsx
@@ -2867,8 +2880,9 @@ app/[lang]/support/page.tsx
 
 ### /unsubscribe
 app/[lang]/unsubscribe/page.tsx
-- Loads: `readMarketingEmailState()`
-- Reads, through the same: `customers`
+- Endpoints: `/api/email/unsubscribe/reason [POST]`
+- Loads: `readMarketingEmailState()`, `readUnsubscribeQuestion()`
+- Reads, through the same: `customer_consent_events`, `customer_unsubscribe_reasons`, `customers`
 
 ## Unresolved
 

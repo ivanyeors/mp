@@ -39,6 +39,7 @@ const ProductConfigurationCard = dynamic(() => import("./ProductConfigurationCar
 const ProspectJourneyCard = dynamic(() => import("./ProspectJourneyCard").then((m) => m.ProspectJourneyCard), { ssr: false, loading: CardSkeleton });
 const SearchVisibilityCard = dynamic(() => import("./SearchVisibilityCard").then((m) => m.SearchVisibilityCard), { ssr: false, loading: CardSkeleton });
 const DropOffReasonsCard = dynamic(() => import("./DropOffReasonsCard").then((m) => m.DropOffReasonsCard), { ssr: false, loading: CardSkeleton });
+const UnsubscribeReasonsCard = dynamic(() => import("./UnsubscribeReasonsCard").then((m) => m.UnsubscribeReasonsCard), { ssr: false, loading: CardSkeleton });
 const InventoryMovementWaterfallVisx = dynamic(() => import("./InventoryMovementWaterfallVisx").then((m) => m.InventoryMovementWaterfallVisx), { ssr: false });
 const MpConfigMetricsStackedBarVisx = dynamic(() => import("./MpConfigMetricsStackedBarVisx").then((m) => m.MpConfigMetricsStackedBarVisx), { ssr: false });
 
@@ -298,6 +299,8 @@ function CustomersTab({ period }: { period: Period }) {
       </Card>
 
       <DropOffReasonsCard />
+      {/* PRD-crm-retention-loop slice 11: beside why people leave, why they unsubscribe. */}
+      <UnsubscribeReasonsCard />
     </div>
   );
 }

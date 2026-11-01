@@ -71,7 +71,11 @@ session's UI work.
   catalog's; every order, quantity, payment, customer and answer is invented.
 - **Nothing real is reachable.** The app's keys are withheld from the dev
   server (it is started without them, and any in an `.env` file are blanked),
-  so Stripe, email, Google, Meta and the rest see no credentials. Storage
+  so Stripe, email, Google, Meta and the rest see no credentials. The one
+  stand-in secret is `UNSUBSCRIBE_SECRET`, a made-up value, so an unsubscribe
+  link signed with it opens the real unsubscribe page
+  (`/unsubscribe?u=<customer id>&t=<token>`; the token is the base64url
+  HMAC-SHA256 of the lower-case id under that value). Storage
   images come back as grey squares. Realtime is off.
 
 ## When the fake database has nothing

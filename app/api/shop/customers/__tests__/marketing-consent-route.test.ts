@@ -13,6 +13,7 @@ const h = vi.hoisted(() => ({
   db: {} as AftercareFakeDb,
   identity: null as { id: string; email: string } | null,
   audit: vi.fn(),
+  reasons: [] as Record<string, unknown>[],
 }));
 
 vi.mock("@/lib/auth/user", () => ({
@@ -22,7 +23,17 @@ vi.mock("@/lib/auth/user", () => ({
 vi.mock("@/lib/supabase/server", async () => {
   const { fakeAftercareDb } = await import("@/lib/aftercare/__tests__/fake-db");
   const { setMarketingEmailRpc } = await import("@/lib/marketing-consent/__tests__/fake-consent");
-  return { supabaseAdmin: () => fakeAftercareDb(h.db, { set_marketing_email: setMarketingEmailRpc }) };
+  return {
+    supabaseAdmin: () =>
+      fakeAftercareDb(h.db, {
+        set_marketing_email: setMarketingEmailRpc,
+        // PRD-crm-retention-loop slice 11: the reason Staff record, after the unsubscribe.
+        record_unsubscribe_reason: (args) => {
+          h.reasons.push(args);
+          return { data: "recorded", error: null };
+        },
+      }),
+  };
 });
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 vi.mock("@/lib/staff/working-as", () => ({ getWorkingAs: () => Promise.resolve(null) }));
@@ -53,6 +64,7 @@ const post = (body: unknown) =>
 
 beforeEach(() => {
   h.audit.mockReset();
+  h.reasons = [];
   h.db = {
     admin_roles: [
       role("owner", [], true),
@@ -129,6 +141,19 @@ describe.each(["crm-editor", "owner"])("a role with customers-edit (%s)", (roleI
     expect(h.audit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "customer.marketing_unsubscribe", entityType: "customer", entityId: "c1" }),
     );
+  });
+
+  it("records why they asked, when Staff say, after the unsubscribe (slice 11)", async () => {
+    const res = await post({ action: "unsubscribe", reason: "other", text: " Moving overseas " });
+    expect(await res.json()).toMatchObject({ ok: true, changed: true, view: { state: "unsubscribed" } });
+    expect(h.reasons).toEqual([{ p_customer_id: "c1", p_reason: "other", p_text: "Moving overseas" }]);
+    expect(h.audit).toHaveBeenCalledWith(expect.objectContaining({ after: expect.objectContaining({ reason: "other" }) }));
+    // No reason given: none recorded; an unknown one is refused before anything changes.
+    expect((await post({ action: "unsubscribe" })).status).toBe(200);
+    expect(h.reasons).toHaveLength(1);
+    h.db.customers[0]!.marketing_email = "subscribed";
+    expect((await post({ action: "unsubscribe", reason: "discount" })).status).toBe(400);
+    expect(h.db.customers[0]!.marketing_email).toBe("subscribed");
   });
 
   it("writes nothing for someone already unsubscribed", async () => {

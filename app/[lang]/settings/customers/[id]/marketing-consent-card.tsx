@@ -13,7 +13,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
+import {
+    UNSUBSCRIBE_REASONS,
+    UNSUBSCRIBE_REASON_LABEL,
+    UNSUBSCRIBE_TEXT_MAX,
+    type UnsubscribeReason,
+} from "@/lib/marketing-consent/unsubscribe-reasons";
 import {
     CONSENT_SOURCE_LABEL,
     MARKETING_EMAIL_STATE_LABEL,
@@ -58,6 +67,9 @@ export function MarketingConsentCard({
     const [confirming, setConfirming] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    // Slice 11: why the customer asked, when they said. Optional.
+    const [reason, setReason] = useState<UnsubscribeReason | "">("");
+    const [reasonText, setReasonText] = useState("");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -92,7 +104,10 @@ export function MarketingConsentCard({
             const res = await fetch(`/api/shop/customers/${customerId}/marketing-consent`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "unsubscribe" }),
+                body: JSON.stringify({
+                    action: "unsubscribe",
+                    ...(reason ? { reason, ...(reason === "other" && reasonText.trim() ? { text: reasonText.trim() } : {}) } : {}),
+                }),
             });
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) {
@@ -164,6 +179,12 @@ export function MarketingConsentCard({
                                             <span className="text-muted-foreground">
                                                 · {CONSENT_SOURCE_LABEL[e.source]} · {formatAdminDateMY(e.createdAt)}
                                             </span>
+                                            {e.reason ? (
+                                                <span className="block text-muted-foreground">
+                                                    Why: {UNSUBSCRIBE_REASON_LABEL[e.reason.reason]}
+                                                    {e.reason.text ? <> &ldquo;{e.reason.text}&rdquo;</> : null}
+                                                </span>
+                                            ) : null}
                                         </li>
                                     ))}
                                 </ul>
@@ -183,6 +204,32 @@ export function MarketingConsentCard({
                             from their account. Order, Result and aftercare emails continue.
                         </DialogDescription>
                     </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="unsubscribe-reason">Why did they ask? (optional)</Label>
+                        <Select value={reason || "none"} onValueChange={(v) => setReason(v === "none" ? "" : (v as UnsubscribeReason))}>
+                            <SelectTrigger id="unsubscribe-reason" className="w-full">
+                                <SelectValue placeholder="They didn't say" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">They didn&apos;t say</SelectItem>
+                                {UNSUBSCRIBE_REASONS.map((r) => (
+                                    <SelectItem key={r} value={r}>
+                                        {UNSUBSCRIBE_REASON_LABEL[r]}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {reason === "other" ? (
+                            <Textarea
+                                aria-label="What they said"
+                                rows={2}
+                                maxLength={UNSUBSCRIBE_TEXT_MAX}
+                                value={reasonText}
+                                onChange={(e) => setReasonText(e.target.value)}
+                                placeholder="What they said, in a line"
+                            />
+                        ) : null}
+                    </div>
                     {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setConfirming(false)} disabled={saving}>

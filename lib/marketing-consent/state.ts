@@ -1,3 +1,4 @@
+import type { UnsubscribeReason } from "./unsubscribe-reasons";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 
 /**
@@ -96,6 +97,8 @@ export interface ConsentEvent {
   source: ConsentSource;
   /** When the change took effect; the export day for a Shopify one. */
   createdAt: string;
+  /** An unsubscribe's answer to *Mind telling us why?* (PRD-crm-retention-loop slice 11), when given. */
+  reason?: { reason: UnsubscribeReason; text: string | null };
 }
 
 /** What the Customer page shows: the state, its provenance, and every change. */

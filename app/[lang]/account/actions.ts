@@ -13,6 +13,7 @@ import {
 } from "@/lib/aftercare/state";
 import { readMarketingEmailState, setMarketingEmail } from "@/lib/marketing-consent/consent";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
+import { UnsubscribeAnswerSchema, recordUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
 
 /**
  * The customer's own Aftercare switches, in their Profile (PRD customer-crm
@@ -114,4 +115,24 @@ export async function setMyMarketingEmail(input: unknown): Promise<MarketingEmai
   const state = await readMarketingEmailState(admin, customerId).catch(() => null);
   revalidatePath("/[lang]/account", "page");
   return { ok: true, state: state ?? to };
+}
+
+/**
+ * *Mind telling us why?* after the toggle is turned off (PRD-crm-retention-loop
+ * slice 11): one optional answer for the signed-in Customer's latest
+ * unsubscribe. It never changes consent; the toggle did that already. With
+ * nothing to answer (subscribed again since, or already answered) it is still
+ * a thank-you, not an error.
+ */
+export async function answerMyUnsubscribeReason(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+  const parsed = UnsubscribeAnswerSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Choose one of the answers." };
+  const customerId = await getCurrentCustomerId();
+  if (!customerId) return { ok: false, error: "You must be signed in." };
+  try {
+    await recordUnsubscribeReason(supabaseAdmin(), customerId, parsed.data);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not send that. Please try again." };
+  }
 }

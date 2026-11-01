@@ -7,6 +7,7 @@ import {
     type LifecycleStage,
 } from "@/lib/crm/lifecycle-stage";
 import { UNENGAGED_RULE } from "@/lib/crm/engagement";
+import { UNSUBSCRIBE_REASON_LABEL, type UnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { cn } from "@/lib/utils";
 
@@ -57,13 +58,22 @@ export const UNENGAGED_NOTE = "Unengaged";
 export const UNENGAGED_TITLE = `${UNENGAGED_RULE}. Campaigns leave them out unless one includes the Unengaged; they stay subscribed.`;
 
 /**
- * The line under the stage: when a *Lost* Customer unsubscribed; otherwise
+ * The line under the stage: when a *Lost* Customer unsubscribed, and why
+ * when they said (on the Customer page, which reads it); otherwise
  * the sub-status (*Repeat purchases*, *Lapsed*, *Delivered*…), whether a
  * buyer has no dates yet, and whether they are Unengaged.
  */
-export function lifecycleNote(customer: NoteFacts): string | null {
+export function lifecycleNote(
+    customer: NoteFacts,
+    { unsubscribeReason = null }: { unsubscribeReason?: UnsubscribeReason | null } = {},
+): string | null {
     if (customer.lifecycle_stage === "lost") {
-        return customer.marketing_email_updated_at ? `Unsubscribed ${formatAdminDateMY(customer.marketing_email_updated_at)}` : null;
+        // PRD-crm-retention-loop slice 11: why, when they said.
+        const parts = [
+            customer.marketing_email_updated_at ? `Unsubscribed ${formatAdminDateMY(customer.marketing_email_updated_at)}` : null,
+            unsubscribeReason ? UNSUBSCRIBE_REASON_LABEL[unsubscribeReason] : null,
+        ].filter(Boolean);
+        return parts.length ? parts.join(" · ") : null;
     }
     const parts = [
         customer.lifecycle_detail ? LIFECYCLE_DETAIL_LABEL[customer.lifecycle_detail] : null,
