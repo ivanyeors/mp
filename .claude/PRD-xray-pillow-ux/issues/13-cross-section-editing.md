@@ -24,7 +24,7 @@ Ivan's brief (16-10-2026): the Left / Center / Right cut should let Staff drag, 
 
 ## Puffy pouches
 
-`puffyPath` draws a stuffed cushion inside the slab's box: rounded ends, a crowned top, all cubic with matching tangents (no kinks, no rects). Stacked pouches still sum to the column's loft. A vertical shade and a soft drop shadow give the volume (round 2 dropped the sheen stroke along the crown — it read as a shiny highlight). The cushion flattens with `puff` = drawn ÷ relaxed thickness, so a pouch that settled into an empty neighbour, or is squeezed to close, looks pressed. The Neck support roll gets a radial shade; the Mbolster end-on slab uses the same cushion.
+`puffyPath` draws a stuffed cushion inside the slab's box: rounded ends, a crowned top, all cubic with matching tangents (no kinks, no rects). Stacked pouches still sum to the column's loft. A vertical shade gives the volume (round 2 dropped the sheen stroke along the crown — it read as a shiny highlight; 2026-11-01 dropped the drop shadow, resting and held, so the side view draws its pouches flat like the top view). The cushion flattens with `puff` = drawn ÷ relaxed thickness, so a pouch that settled into an empty neighbour, or is squeezed to close, looks pressed. The Neck support roll gets a radial shade; the Mbolster end-on slab uses the same cushion.
 
 ## Round 2 (Ivan, 17-10-2026): inside the pillow, never squashed, no rubber band
 

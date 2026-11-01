@@ -295,7 +295,7 @@ type SlabHitProps = React.SVGProps<SVGGElement> & { [attr: `data-${string}`]: st
 /** solid: committed · lifted: picked up, its place still shown · landing: where a held pouch will land. */
 type SlabMode = "solid" | "lifted" | "landing";
 
-type SvgIds = { hatch: string; shade: string; rollShade: string; shadow: string; ghostShadow: string };
+type SvgIds = { hatch: string; shade: string; rollShade: string };
 
 function slabOutline(box: SlabBox, roll: boolean, puff: number, shaping?: PouchShaping): string {
   return roll ? rollPath(box) : pouchPath(box, puff, shaping);
@@ -303,7 +303,7 @@ function slabOutline(box: SlabBox, roll: boolean, puff: number, shaping?: PouchS
 
 /**
  * One filling, side-on: a cushion in its family colour, shaded for volume,
- * with a soft shadow, hatched when compressed or when it cannot close;
+ * hatched when compressed or when it cannot close;
  * pressed into the case and sagging where nothing holds it up (`shaping`).
  * When its box changes it eases there (attribute writes in rAF,
  * interruptible) instead of jumping, unless the viewer asked for reduced
@@ -399,7 +399,6 @@ function PuffySlab({
       data-piece={pieceKey}
       data-slab-mode={mode === "solid" ? undefined : mode}
       opacity={mode === "lifted" ? 0.28 : 1}
-      filter={mode === "solid" ? `url(#${ids.shadow})` : undefined}
       {...hit}
       ref={groupEl}
     >
@@ -505,7 +504,7 @@ export function CrossSectionSvg({
   const { L, ky, profile } = f;
   const { width } = L;
   const height = f.height;
-  const ids: SvgIds = { hatch: `${uid}-hatch`, shade: `${uid}-shade`, rollShade: `${uid}-roll`, shadow: `${uid}-shadow`, ghostShadow: `${uid}-ghost` };
+  const ids: SvgIds = { hatch: `${uid}-hatch`, shade: `${uid}-shade`, rollShade: `${uid}-roll` };
   const shellId = `${uid}-shell`;
   const transform = profileTransform(profile, f.x0, f.drawW, f.baseline);
   const shell = transformAttr(transform);
@@ -593,12 +592,6 @@ export function CrossSectionSvg({
           <stop offset="0.45" stopColor="white" stopOpacity={0.04} />
           <stop offset="1" stopColor="black" stopOpacity={0.32} />
         </radialGradient>
-        <filter id={ids.shadow} x="-10%" y="-25%" width="120%" height="170%">
-          <feDropShadow dx="0" dy="1.2" stdDeviation="1.2" floodColor="#020617" floodOpacity={0.45} />
-        </filter>
-        <filter id={ids.ghostShadow} x="-25%" y="-50%" width="150%" height="250%">
-          <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#020617" floodOpacity={0.5} />
-        </filter>
         <clipPath id={shellId}>
           {clothD ? <path d={clothD} /> : <path d={profile.d} transform={shell} />}
         </clipPath>
@@ -657,7 +650,7 @@ export function CrossSectionSvg({
       {/* The held pouch, under the pointer, over everything (even the tabs above the cut). */}
       {drag && (
         <g ref={editor?.ghostRef} transform={`translate(${r1(drag.ghost.at.x)} ${r1(drag.ghost.at.y)})`} pointerEvents="none" data-xray-slab-ghost>
-          <g transform={drag.overTab ? "translate(0 18) scale(0.5)" : "scale(1.04)"} opacity={drag.overTab ? 0.6 : 1} filter={`url(#${ids.ghostShadow})`}>
+          <g transform={drag.overTab ? "translate(0 18) scale(0.5)" : "scale(1.04)"} opacity={drag.overTab ? 0.6 : 1}>
             {(() => {
               const g = drag.ghost;
               const box = { x: -g.w / 2, y: -g.h / 2, w: g.w, h: g.h };
