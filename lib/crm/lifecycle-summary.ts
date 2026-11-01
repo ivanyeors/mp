@@ -11,7 +11,7 @@ import { shareLabel } from "@/lib/format/share";
  * The Customer lifecycle chart on the Customers page (owner, 2026-10-31):
  * every Customer in their **Lifecycle stage** now, each stage's bar split by
  * its sub-status, drawn against all Customers. Counted by
- * `admin_customer_lifecycle_counts` (20261031140000) from the Customer
+ * `admin_customer_lifecycle_counts` (20261101020836) from the Customer
  * overview, so a stage's count is what the list's *Stage* filter returns.
  *
  * Pure: the chart and its tests read the counts through `lifecycleSummary`;

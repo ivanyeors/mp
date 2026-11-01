@@ -1393,12 +1393,12 @@ Defined in supabase/migrations/20261021120000_points_ledger.sql:261
   - `adjustPoints()` — lib/points/server.ts:161
 
 ### admin_customer_lifecycle_counts
-Defined in supabase/migrations/20261031140000_customer_lifecycle_counts.sql:22
+Defined in supabase/migrations/20261101020836_customer_lifecycle_counts.sql:22
 - Called by:
   - `getLifecycleSummary()` — lib/crm/lifecycle-summary-server.ts:11
 
 ### admin_customer_migration_summary
-Defined in supabase/migrations/20261031120000_migration_journey_stages.sql:40
+Defined in supabase/migrations/20261101020824_migration_journey_stages.sql:40
 - Read by:
   - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:133
 

@@ -5,7 +5,7 @@ import type { MigrationSummary } from "./overview";
  * The Shopify migration as one journey (owner, 2026-10-31): every Migrated
  * customer sits at exactly one **Journey stage**, the furthest they have
  * reached, counted by `admin_customer_migration_summary`
- * (20261031120000_migration_journey_stages.sql). The Migration card draws it
+ * (20261101020824_migration_journey_stages.sql). The Migration card draws it
  * as a funnel: each stage's bar is everyone who reached it, split into who is
  * there now and who went further.
  *

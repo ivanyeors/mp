@@ -106014,29 +106014,29 @@
       "source_location": "L129"
     },
     {
-      "id": "supabase_migrations_20261031140000_customer_lifecycle_counts",
-      "label": "20261031140000_customer_lifecycle_counts.sql",
+      "id": "supabase_migrations_20261101020836_customer_lifecycle_counts",
+      "label": "20261101020836_customer_lifecycle_counts.sql",
       "_origin": "ast",
       "community": 1053,
       "community_name": "public.admin_customer_lifecycle_counts",
       "file_type": "code",
-      "norm_label": "20261031140000_customer_lifecycle_counts.sql",
-      "source_file": "supabase/migrations/20261031140000_customer_lifecycle_counts.sql",
+      "norm_label": "20261101020836_customer_lifecycle_counts.sql",
+      "source_file": "supabase/migrations/20261101020836_customer_lifecycle_counts.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20261031140000_customer_lifecycle_counts_public_admin_customer_lifecycle_counts",
+      "id": "supabase_migrations_20261101020836_customer_lifecycle_counts_public_admin_customer_lifecycle_counts",
       "label": "public.admin_customer_lifecycle_counts()",
       "_origin": "ast",
       "community": 1053,
       "community_name": "public.admin_customer_lifecycle_counts",
       "file_type": "code",
       "norm_label": "public.admin_customer_lifecycle_counts()",
-      "source_file": "supabase/migrations/20261031140000_customer_lifecycle_counts.sql",
+      "source_file": "supabase/migrations/20261101020836_customer_lifecycle_counts.sql",
       "source_location": "L22"
     },
     {
-      "id": "supabase_migrations_20261031140000_customer_lifecycle_counts_sql_public_admin_customer_overview",
+      "id": "supabase_migrations_20261101020836_customer_lifecycle_counts_sql_public_admin_customer_overview",
       "label": "public.admin_customer_overview",
       "_origin": "ast",
       "community": 1053,
@@ -203673,29 +203673,29 @@
       "source_location": "L801"
     },
     {
-      "id": "supabase_migrations_20261031120000_migration_journey_stages",
-      "label": "20261031120000_migration_journey_stages.sql",
+      "id": "supabase_migrations_20261101020824_migration_journey_stages",
+      "label": "20261101020824_migration_journey_stages.sql",
       "_origin": "ast",
       "community": 681,
       "community_name": "public.admin_customer_migration_summary",
       "file_type": "code",
-      "norm_label": "20261031120000_migration_journey_stages.sql",
-      "source_file": "supabase/migrations/20261031120000_migration_journey_stages.sql",
+      "norm_label": "20261101020824_migration_journey_stages.sql",
+      "source_file": "supabase/migrations/20261101020824_migration_journey_stages.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20261031120000_migration_journey_stages_public_admin_customer_migration_summary",
+      "id": "supabase_migrations_20261101020824_migration_journey_stages_public_admin_customer_migration_summary",
       "label": "public.admin_customer_migration_summary",
       "_origin": "ast",
       "community": 681,
       "community_name": "public.admin_customer_migration_summary",
       "file_type": "code",
       "norm_label": "public.admin_customer_migration_summary",
-      "source_file": "supabase/migrations/20261031120000_migration_journey_stages.sql",
+      "source_file": "supabase/migrations/20261101020824_migration_journey_stages.sql",
       "source_location": "L40"
     },
     {
-      "id": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_admin_customer_overview",
+      "id": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_admin_customer_overview",
       "label": "public.admin_customer_overview",
       "_origin": "ast",
       "community": 681,
@@ -203706,7 +203706,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_customer_campaign_sends",
+      "id": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_customer_campaign_sends",
       "label": "public.customer_campaign_sends",
       "_origin": "ast",
       "community": 681,
@@ -203717,7 +203717,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_customer_import_batches",
+      "id": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_customer_import_batches",
       "label": "public.customer_import_batches",
       "_origin": "ast",
       "community": 681,
@@ -203728,7 +203728,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_migrated_customers",
+      "id": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_migrated_customers",
       "label": "public.migrated_customers",
       "_origin": "ast",
       "community": 681,
@@ -203739,7 +203739,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_orders",
+      "id": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_orders",
       "label": "public.orders",
       "_origin": "ast",
       "community": 681,
@@ -235201,6 +235201,42 @@
       "type": "external"
     },
     {
+      "id": "app_lang_settings_customers_lifecycle_card",
+      "label": "app_lang_settings_customers_lifecycle_card",
+      "_origin": "semantic",
+      "community": 188,
+      "community_name": "lifecycle-stage.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "app_lang_settings_customers_lifecycle_card",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "app_lang_settings_customers_lifecycle_card_lifecyclebarparts",
+      "label": "app_lang_settings_customers_lifecycle_card_lifecyclebarparts",
+      "_origin": "semantic",
+      "community": 188,
+      "community_name": "lifecycle-stage.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "app_lang_settings_customers_lifecycle_card_lifecyclebarparts",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "app_lang_settings_customers_lifecycle_card_lifecyclerowsummary",
+      "label": "app_lang_settings_customers_lifecycle_card_lifecyclerowsummary",
+      "_origin": "semantic",
+      "community": 188,
+      "community_name": "lifecycle-stage.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "app_lang_settings_customers_lifecycle_card_lifecyclerowsummary",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "cv2",
       "label": "cv2",
       "_origin": "semantic",
@@ -236829,39 +236865,6 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "components_block_editor_use_editor_history",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "app_lang_settings_customers_lifecycle_card",
-      "label": "app_lang_settings_customers_lifecycle_card",
-      "community": 188,
-      "community_name": "lifecycle-stage.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "app_lang_settings_customers_lifecycle_card",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "app_lang_settings_customers_lifecycle_card_lifecyclebarparts",
-      "label": "app_lang_settings_customers_lifecycle_card_lifecyclebarparts",
-      "community": 188,
-      "community_name": "lifecycle-stage.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "app_lang_settings_customers_lifecycle_card_lifecyclebarparts",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "app_lang_settings_customers_lifecycle_card_lifecyclerowsummary",
-      "label": "app_lang_settings_customers_lifecycle_card_lifecyclerowsummary",
-      "community": 188,
-      "community_name": "lifecycle-stage.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "app_lang_settings_customers_lifecycle_card_lifecyclerowsummary",
       "source_file": "",
       "type": "external"
     },
@@ -714502,24 +714505,24 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261031120000_migration_journey_stages",
-      "target": "supabase_migrations_20261031120000_migration_journey_stages_public_admin_customer_migration_summary",
+      "source": "supabase_migrations_20261101020824_migration_journey_stages",
+      "target": "supabase_migrations_20261101020824_migration_journey_stages_public_admin_customer_migration_summary",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261031120000_migration_journey_stages.sql",
+      "source_file": "supabase/migrations/20261101020824_migration_journey_stages.sql",
       "source_location": "L40",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261031140000_customer_lifecycle_counts",
-      "target": "supabase_migrations_20261031140000_customer_lifecycle_counts_public_admin_customer_lifecycle_counts",
+      "source": "supabase_migrations_20261101020836_customer_lifecycle_counts",
+      "target": "supabase_migrations_20261101020836_customer_lifecycle_counts_public_admin_customer_lifecycle_counts",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261031140000_customer_lifecycle_counts.sql",
+      "source_file": "supabase/migrations/20261101020836_customer_lifecycle_counts.sql",
       "source_location": "L22",
       "weight": 1.0
     },
@@ -730289,68 +730292,68 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261031120000_migration_journey_stages_public_admin_customer_migration_summary",
-      "target": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_customer_campaign_sends",
+      "source": "supabase_migrations_20261101020824_migration_journey_stages_public_admin_customer_migration_summary",
+      "target": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_customer_campaign_sends",
       "relation": "reads_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261031120000_migration_journey_stages.sql",
+      "source_file": "supabase/migrations/20261101020824_migration_journey_stages.sql",
       "source_location": "L105",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261031120000_migration_journey_stages_public_admin_customer_migration_summary",
-      "target": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_admin_customer_overview",
+      "source": "supabase_migrations_20261101020824_migration_journey_stages_public_admin_customer_migration_summary",
+      "target": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261031120000_migration_journey_stages.sql",
+      "source_file": "supabase/migrations/20261101020824_migration_journey_stages.sql",
       "source_location": "L108",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261031120000_migration_journey_stages_public_admin_customer_migration_summary",
-      "target": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_customer_import_batches",
+      "source": "supabase_migrations_20261101020824_migration_journey_stages_public_admin_customer_migration_summary",
+      "target": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_customer_import_batches",
       "relation": "reads_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261031120000_migration_journey_stages.sql",
+      "source_file": "supabase/migrations/20261101020824_migration_journey_stages.sql",
       "source_location": "L49",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261031120000_migration_journey_stages_public_admin_customer_migration_summary",
-      "target": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_orders",
+      "source": "supabase_migrations_20261101020824_migration_journey_stages_public_admin_customer_migration_summary",
+      "target": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_orders",
       "relation": "reads_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261031120000_migration_journey_stages.sql",
+      "source_file": "supabase/migrations/20261101020824_migration_journey_stages.sql",
       "source_location": "L64",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261031120000_migration_journey_stages_public_admin_customer_migration_summary",
-      "target": "supabase_migrations_20261031120000_migration_journey_stages_sql_public_migrated_customers",
+      "source": "supabase_migrations_20261101020824_migration_journey_stages_public_admin_customer_migration_summary",
+      "target": "supabase_migrations_20261101020824_migration_journey_stages_sql_public_migrated_customers",
       "relation": "reads_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261031120000_migration_journey_stages.sql",
+      "source_file": "supabase/migrations/20261101020824_migration_journey_stages.sql",
       "source_location": "L75",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261031140000_customer_lifecycle_counts_public_admin_customer_lifecycle_counts",
-      "target": "supabase_migrations_20261031140000_customer_lifecycle_counts_sql_public_admin_customer_overview",
+      "source": "supabase_migrations_20261101020836_customer_lifecycle_counts_public_admin_customer_lifecycle_counts",
+      "target": "supabase_migrations_20261101020836_customer_lifecycle_counts_sql_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261031140000_customer_lifecycle_counts.sql",
+      "source_file": "supabase/migrations/20261101020836_customer_lifecycle_counts.sql",
       "source_location": "L32",
       "weight": 1.0
     },
@@ -777283,7 +777286,7 @@
     },
     {
       "source": "lib_crm_lifecycle_summary_server_getlifecyclesummary",
-      "target": "supabase_migrations_20261031140000_customer_lifecycle_counts_public_admin_customer_lifecycle_counts",
+      "target": "supabase_migrations_20261101020836_customer_lifecycle_counts_public_admin_customer_lifecycle_counts",
       "relation": "calls_rpc",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -777883,7 +777886,7 @@
     },
     {
       "source": "lib_customer_migration_overview_getmigrationsummary",
-      "target": "supabase_migrations_20261031120000_migration_journey_stages_public_admin_customer_migration_summary",
+      "target": "supabase_migrations_20261101020824_migration_journey_stages_public_admin_customer_migration_summary",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -785121,5 +785124,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "abb04eb5a573cfc148fc49311b7b50a6be9f13c9"
+  "built_at_commit": "e0fcab99d8111e292e6a6d74e946b077fdaf9075"
 }

@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { lifecycleSummary, type LifecycleCountRow, type LifecycleSummary } from "@/lib/crm/lifecycle-summary";
 
 /**
- * The Customer lifecycle chart's counts (20261031140000), with the service
+ * The Customer lifecycle chart's counts (20261101020836), with the service
  * role; the caller has checked `customers`. Null when the read failed: the
  * chart is then left out and the Customers list still renders.
  */

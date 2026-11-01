@@ -75,7 +75,7 @@ export interface MigrationSummary {
   emailsComplained: number;
   /**
    * Where each of `imported` is now: their furthest **Journey stage**, and of
-   * those, the ones no campaign email can reach (20261031120000). The stages
+   * those, the ones no campaign email can reach (20261101020824). The stages
    * sum to `imported`; `unreachable` is 0 from *Signed up* on.
    */
   stages: Record<JourneyStage, JourneyStageCount>;
