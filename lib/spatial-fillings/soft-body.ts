@@ -45,6 +45,12 @@ export type SoftPiece = {
   areaMin?: number;
   /** Its cell cannot close: it may poke through the case. */
   over?: boolean;
+  /**
+   * Placed by hand (a fine nudge): held firmly where it starts — front ↔ back,
+   * and up ↔ down where `tetherY` holds anything — so its neighbours make
+   * room instead of pushing it back.
+   */
+  held?: boolean;
 };
 
 export type SolverOptions = {
@@ -86,6 +92,9 @@ export type SolverOptions = {
   /** The case does not move at all (the top-down x-ray's walls); the cut's is cloth. */
   rigidCase: boolean;
 };
+
+/** The tether on a piece placed by hand: firm enough that its neighbours, on the loose tether, give way. */
+export const HELD_TETHER = 0.5;
 
 export const SOLVER_DEFAULTS: SolverOptions = {
   steps: 24,
@@ -251,6 +260,9 @@ type Body = {
   ly: Float64Array;
   cx0: number;
   cy0: number;
+  /** How firmly it is held to (cx0, cy0) each way: the tether, or HELD_TETHER for a piece placed by hand. */
+  tx: number;
+  ty: number;
   seedArea: number;
   target: number;
   areaMin: number;
@@ -281,7 +293,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
 
   // Every ring runs the same way round; a piece's rest ring follows its start ring.
   const rings = [
-    { id: "case", kind: "case" as const, pts: full as readonly Pt[], restPts: null as readonly Pt[] | null, areaTarget: undefined as number | undefined, areaMin: 0, over: false },
+    { id: "case", kind: "case" as const, pts: full as readonly Pt[], restPts: null as readonly Pt[] | null, areaTarget: undefined as number | undefined, areaMin: 0, over: false, held: false },
     ...pieces.map((p) => {
       const flip = signedArea(p.ring) < 0;
       const or = (r: readonly Pt[]) => (flip ? r.slice().reverse() : r);
@@ -293,6 +305,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
         areaTarget: p.areaTarget,
         areaMin: p.areaMin ?? 0,
         over: !!p.over,
+        held: !!p.held,
       };
     }),
   ];
@@ -359,6 +372,8 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       ly,
       cx0: cx,
       cy0: cy,
+      tx: r.held ? Math.max(tether, HELD_TETHER) : tether,
+      ty: r.held && tetherY ? Math.max(tetherY, HELD_TETHER) : tetherY,
       seedArea: a0,
       target,
       areaMin: r.areaMin || (r.kind === "roll" ? target * rollFloor : 0),
@@ -480,10 +495,10 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       X[i] += (cx + m00 * b.qx[k] + m01 * b.qy[k] - X[i]) * stiff;
       Y[i] += (cy + m10 * b.qx[k] + m11 * b.qy[k] - Y[i]) * stiff;
     }
-    const dx = (b.cx0 - cx) * tether;
+    const dx = (b.cx0 - cx) * b.tx;
     for (let k = 0; k < b.n; k++) X[b.start + k] += dx;
-    if (tetherY) {
-      const dy = (b.cy0 - cy) * tetherY;
+    if (b.ty) {
+      const dy = (b.cy0 - cy) * b.ty;
       for (let k = 0; k < b.n; k++) Y[b.start + k] += dy;
     }
   }

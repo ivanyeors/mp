@@ -100,6 +100,8 @@ type Seed = {
   areaTarget: number;
   areaMin: number;
   over: boolean;
+  /** Nudged front ↔ back by hand: the settle holds it where it was put. */
+  held?: boolean;
   ring?: Pt[];
   flat?: boolean;
   bottom?: number;
@@ -324,6 +326,7 @@ export function softCutScene(input: SoftCutInput): {
       areaTarget: roll ? Math.PI * (relaxed / 2) ** 2 : areaTarget,
       areaMin: (s?.minThicknessMm ?? relaxedMm) * f.ky * lengthMm * f.kx,
       over: piece.status === "over",
+      held: piece.nudged === true,
     };
   });
 
@@ -351,7 +354,7 @@ export function softCutScene(input: SoftCutInput): {
     const r = room.get(c)!;
     squeeze.set(c, want > r ? Math.max((r - firm) / Math.max(want - firm, 1), 0.3) : 1);
   }
-  const softPieces: SoftPiece[] = stacked.map((s) => {
+  const shaped: SoftPiece[] = stacked.map((s) => {
     if (s.kind === "roll") {
       // It remembers round, or, squeezed, the stadium its share of the room leaves it, and that much foam.
       const t = s.relaxed - s.give * (1 - (squeeze.get(s.col) ?? 1));
@@ -373,6 +376,8 @@ export function softCutScene(input: SoftCutInput): {
     const rest = s.flat ? cushion : pairedWith(cushion, s.ring!);
     return { id: s.id, ring: s.ring!, rest, kind: "pouch", areaTarget: target, areaMin: s.areaMin, over: s.over };
   });
+  // A pouch nudged by hand stays where it was put; its neighbours make room.
+  const softPieces = shaped.map((p, i) => (stacked[i].held ? { ...p, held: true } : p));
   return {
     pieces: softPieces,
     frame: { outline: casePolygon, baseline: f.baseline, width: f.width, height: f.height + 40 },
@@ -427,7 +432,7 @@ function shapesOf(scene: ReturnType<typeof softCutScene>, sim: SoftSettle, input
 export function softCutKey(input: SoftCutInput): string {
   const { fit, section, frame: f, settings } = input;
   const r = (n: number) => Math.round(n * 100) / 100;
-  const pieces = fit.sections[section].pieces.map((p) => `${p.key}:${p.itemId}:${p.depth}:${r(p.startMm)}:${r(p.endMm)}:${r(p.thicknessMm)}:${p.status}:${input.isRoll(p.itemId) ? 1 : 0}`);
+  const pieces = fit.sections[section].pieces.map((p) => `${p.key}:${p.itemId}:${p.depth}:${r(p.startMm)}:${r(p.endMm)}:${r(p.thicknessMm)}:${p.status}:${input.isRoll(p.itemId) ? 1 : 0}${p.nudged ? ":held" : ""}`);
   const settled = fit.settle.pieces.filter((p) => p.section === section).map((p) => `${p.key}:${r(p.thicknessMm)}:${r(p.minThicknessMm)}:${r(p.alongMm)}:${r(p.settledThicknessMm)}`);
   const outline = input.casePolygon;
   return [

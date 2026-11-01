@@ -121,6 +121,9 @@ export function stageRegions(stage: StageGeometry): StageRegions {
 export type PieceView = "authored" | "settled";
 
 /** The conformed outlines with each soft one in its place, where the soft body drew one. */
+/** A pouch off its home corner was nudged by hand: the soft settle keeps it where it was put. */
+const isNudged = (p: PieceLayout) => p.x !== p.home.x || p.y !== p.home.y;
+
 function withSoft(conformed: Map<string, string>, soft: ReadonlyMap<string, string> | null): Map<string, string> {
   if (!soft) return conformed;
   const out = new Map(conformed);
@@ -832,7 +835,7 @@ export function XrayPillow({
           region,
           pieces: list
             .filter((p) => p.depth === depth)
-            .map((p) => ({ key: p.key, d: settledConformed.get(p.key)!, rect: p.settled, shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape })),
+            .map((p) => ({ key: p.key, d: settledConformed.get(p.key)!, rect: p.settled, shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape, held: isNudged(p) })),
         });
       }
     }
@@ -850,7 +853,7 @@ export function XrayPillow({
           region,
           pieces: list
             .filter((p) => p.depth === depth)
-            .map((p) => ({ key: p.key, d: authoredConformed.get(p.key)!, rect: p, shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape })),
+            .map((p) => ({ key: p.key, d: authoredConformed.get(p.key)!, rect: p, shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape, held: isNudged(p) })),
         });
       }
     }

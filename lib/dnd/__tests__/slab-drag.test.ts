@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { cellLayers } from "@/lib/configurator/staff-assist";
-import { applySlabDrop, cellBands, describeSlabTarget, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
+import { applySlabDrop, cellBands, describeSlabTarget, nudgeSlab, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
 import type { PillowPlacement, Section, SubSection } from "@/lib/spatial-fillings/core";
 import { alongSlabs } from "@/lib/spatial-fillings/cross-section";
-import { GENERIC_POUCH, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { GENERIC_POUCH, PILLOW_DIMENSIONS, resolveDims, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
 
 const at = (section: Section, subSection: SubSection, slot: number, itemId: number, row?: number): PillowPlacement => ({
@@ -149,5 +149,74 @@ describe("describeSlabTarget", () => {
     expect(describeSlabTarget({ kind: "cell", ...middle }, 0)).toBe("into the empty center middle");
     expect(describeSlabTarget({ kind: "cell", section: "left", subSection: "back" }, 1, "center")).toBe("to the left Section, back");
     expect(slabTargetKey({ kind: "gap", ...middle, gap: 1 })).not.toBe(slabTargetKey({ kind: "layer", ...middle, depth: 1 }));
+  });
+});
+
+describe("placing a pouch exactly (the cut's fine nudge)", () => {
+  // Real dimensions: a 6D is as long as its column; the Neck support roll leaves room in it.
+  const ITEMS: Record<number, { name: string; category?: string }> = {
+    1: { name: "6D (S)" },
+    4: { name: "Cervical Neck Support (M)", category: "accessories" },
+  };
+  const dims = new Map<number, ResolvedDims>(Object.entries(ITEMS).map(([id, it]) => [Number(id), resolveDims({ name: it.name, category: it.category ?? "filling" })]));
+  const ctxAt = (size: PillowSize) => ({ size, dims });
+  const drawnOf = (placements: PillowPlacement[], key: string, size: PillowSize = "M") => {
+    const fit = fitPillow(placements, ctxAt(size));
+    const p = fit.sections.center.pieces.find((q) => q.key === key)!;
+    return { fit, centre: (p.startMm + p.endMm) / 2, cell: fit.settle.cellLengthMm, p };
+  };
+  // Front: a 6D. Middle: a 6D over the roll. Back: two 6Ds.
+  const mix = [at("center", "front", 1, 1, 0), at("center", "middle", 1, 1, 0), at("center", "middle", 2, 4, 1), at("center", "back", 1, 1, 0), at("center", "back", 2, 1, 1)];
+  const roll = { section: "center", subSection: "middle", slot: 2 } as const;
+
+  it("drops a pouch centred where it was let go, in its own Layer, to the millimetre", () => {
+    const before = drawnOf(mix, "center/middle/2");
+    for (const mm of [15, -15, 4]) {
+      const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, before.centre + mm, before.fit, ctxAt("M"));
+      if (!r?.ok) throw new Error("expected a placement");
+      expect(r.within).toBe(true);
+      expect(r.placements.find((p) => p.slot === 2 && p.subSection === "middle")!.offsetYMm).toBe(mm);
+      expect(drawnOf(r.placements, "center/middle/2").centre - before.centre).toBeCloseTo(mm, 0);
+    }
+  });
+
+  it("never stands a pouch in another column: dropped past its room, it stops at the column's edge", () => {
+    const before = drawnOf(mix, "center/middle/2");
+    const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, before.centre + 200, before.fit, ctxAt("M"));
+    if (!r?.ok) throw new Error("expected a placement");
+    const after = drawnOf(r.placements, "center/middle/2");
+    expect(after.p.endMm).toBeCloseTo(2 * after.cell, 0);
+    // A 6D fills its column between full neighbours: there is nowhere to put it but where it is.
+    const full = drawnOf(mix, "center/middle/1");
+    expect(placeSlabDrop(mix, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, full.centre + 30, full.fit, ctxAt("M"))).toBeNull();
+    expect(nudgeSlab(mix, { ...middle, slot: 1 }, 5, full.fit)).toBeNull();
+  });
+
+  it("dropped in another column, it moves there and lands where it was let go", () => {
+    const open = [at("center", "front", 1, 1, 0), at("center", "middle", 1, 4, 0)];
+    const before = drawnOf(open, "center/middle/1");
+    const r = placeSlabDrop(open, { ...middle, slot: 1 }, { kind: "cell", section: "center", subSection: "back" }, 2.5 * before.cell - 10, before.fit, ctxAt("M"));
+    if (!r?.ok) throw new Error("expected a move");
+    expect(r.within).toBe(false);
+    expect(r.ref.subSection).toBe("back");
+    expect(drawnOf(r.placements, "center/back/1").centre).toBeCloseTo(2.5 * before.cell - 10, 0);
+  });
+
+  it("Alt + ← / → slides it 5 mm within its columns, and stores the offset in Size M millimetres", () => {
+    for (const size of ["M", "XL"] as PillowSize[]) {
+      const before = drawnOf(mix, "center/middle/2", size);
+      const r = nudgeSlab(mix, roll, 5, before.fit);
+      if (!r?.ok) throw new Error("expected a nudge");
+      // Offsets are whole Size M millimetres, so a step lands within a millimetre at other Sizes.
+      expect(Math.abs(drawnOf(r.placements, "center/middle/2", size).centre - before.centre - 5)).toBeLessThan(1);
+      const stored = r.placements.find((p) => p.slot === 2 && p.subSection === "middle")!.offsetYMm!;
+      expect(Number.isInteger(stored)).toBe(true);
+      expect(Math.abs(stored - 5 / sizeFactors(PILLOW_DIMENSIONS[size]).along)).toBeLessThan(1);
+    }
+    // At its column's front edge it has no room further front.
+    const edge = drawnOf(mix, "center/middle/2");
+    const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, edge.centre - 200, edge.fit, ctxAt("M"));
+    if (!r?.ok) throw new Error("expected a placement");
+    expect(nudgeSlab(r.placements, roll, -5, fitPillow(r.placements, ctxAt("M")))).toBeNull();
   });
 });

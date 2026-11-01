@@ -9132,9 +9132,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/08-fine-nudge-persisted-offsets.md": {
-    "mtime": 1793431614.1874588,
-    "seen": 1793536443.4091096,
-    "ast_hash": "08de1f4774c137c07aca25bf0041c1e9",
+    "mtime": 1793544520.667067,
+    "seen": 1793544632.9606965,
+    "ast_hash": "207c11440952005312e20426dd31b7fd",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/09-mbolster-parity.md": {
@@ -9348,9 +9348,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/fit.ts": {
-    "mtime": 1793536328.9414434,
-    "seen": 1793536443.4063902,
-    "ast_hash": "f81814a5f7e073fc85142732c004db7b",
+    "mtime": 1793542992.4623032,
+    "seen": 1793544632.957635,
+    "ast_hash": "b89a434ee4e326ef7578e8d6a80e72b3",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/settle.test.ts": {
@@ -9360,9 +9360,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/settle.ts": {
-    "mtime": 1793431614.6036155,
-    "seen": 1793536443.4064,
-    "ast_hash": "b2edf96a5fec65242b67e7f7c998735a",
+    "mtime": 1793543750.7335262,
+    "seen": 1793544632.9576423,
+    "ast_hash": "e9da0a5fa27418e6164c22544d65f9d3",
     "semantic_hash": ""
   },
   "lib/configurator/__tests__/move-piece.test.ts": {
@@ -12096,15 +12096,15 @@
     "semantic_hash": ""
   },
   "lib/dnd/__tests__/slab-drag.test.ts": {
-    "mtime": 1793431614.5632656,
-    "seen": 1793536443.4045732,
-    "ast_hash": "816fdadd086d8846153e279c3d5a1cd7",
+    "mtime": 1793543985.6979055,
+    "seen": 1793544632.9557452,
+    "ast_hash": "4408a2b69b1a0ff030dd63faf4718d29",
     "semantic_hash": ""
   },
   "lib/dnd/slab-drag.ts": {
-    "mtime": 1793431614.5632656,
-    "seen": 1793536443.4045827,
-    "ast_hash": "0ae5d30930675d6463986c048e55b863",
+    "mtime": 1793544046.1369414,
+    "seen": 1793544632.9557817,
+    "ast_hash": "93ab55b59a1db55651ace338c53cb472",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/13-cross-section-editing.md": {
@@ -12252,9 +12252,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/soft-body.ts": {
-    "mtime": 1793538572.7301106,
-    "seen": 1793538825.407879,
-    "ast_hash": "c9e4005f283a05d022747984429aab34",
+    "mtime": 1793542984.034178,
+    "seen": 1793544632.9576519,
+    "ast_hash": "ce7b122034b021d1a586eb1da039b464",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-soft-cut/xray-soft-cut-prd.md": {
@@ -12264,9 +12264,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0025-soft-cut-display-physics.md": {
-    "mtime": 1793538651.9722579,
-    "seen": 1793538825.4115975,
-    "ast_hash": "f53058a038779852a6c8a9d31ba0a123",
+    "mtime": 1793544520.6656246,
+    "seen": 1793544632.960927,
+    "ast_hash": "d4d36eee78cea81a4f100bfd365abc20",
     "semantic_hash": ""
   },
   "lib/appointments/remind.ts": {

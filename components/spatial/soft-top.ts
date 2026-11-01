@@ -60,8 +60,12 @@ const SYNC_PLANES = 2;
 const FRAME_BUDGET_MS = 8;
 const STEP_CHUNK = 2;
 
-/** One piece of a plane: its conformed outline (where it starts), the rect the layout gave it, and its shape. */
-export type SoftTopPiece = { key: string; d: string; rect: PieceRect; shape: ShapeId };
+/**
+ * One piece of a plane: its conformed outline (where it starts), the rect the
+ * layout gave it, its shape, and whether it was nudged by hand (`held`: the
+ * settle keeps it where it was put, its neighbours make room).
+ */
+export type SoftTopPiece = { key: string; d: string; rect: PieceRect; shape: ShapeId; held?: boolean };
 
 /** One Layer of one Section (or, in the dive, of one cell): the pieces that press on each other, and the walls round them. */
 export type SoftTopPlane = { id: string; region: readonly Pt[]; pieces: readonly SoftTopPiece[] };
@@ -137,12 +141,12 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
       if (p.shape === "pill") {
         // The firm roll: it remembers the pill it was drawn as, at the footprint it has.
         const rest = pairedWith(scaledTo(pouchOutline(p.rect, 10, "pill") as Pt[], area), ring);
-        return { id: p.key, ring, rest, kind: "roll", areaTarget: area };
+        return { id: p.key, ring, rest, kind: "roll", areaTarget: area, ...(p.held ? { held: true } : {}) };
       }
       // A pouch remembers the codebase's own footprint at the volume it holds.
       const target = area * volume * squeeze;
       const rest = pairedWith(scaledTo(pouchOutline(p.rect, 5, "pouch") as Pt[], target), ring);
-      return { id: p.key, ring, rest, kind: "pouch", areaTarget: target, areaMin: Math.min(area * AREA_FLOOR, target) };
+      return { id: p.key, ring, rest, kind: "pouch", areaTarget: target, areaMin: Math.min(area * AREA_FLOOR, target), ...(p.held ? { held: true } : {}) };
     });
 }
 
@@ -164,7 +168,7 @@ const planeKey = (plane: SoftTopPlane, settings: SoftBodySettings, view: { width
     view.width,
     view.height,
     JSON.stringify(settings),
-    plane.pieces.map((p) => `${p.key}:${p.shape}:${p.rect.x},${p.rect.y},${p.rect.w},${p.rect.h}:${p.d}`).join("|"),
+    plane.pieces.map((p) => `${p.key}:${p.shape}:${p.rect.x},${p.rect.y},${p.rect.w},${p.rect.h}:${p.held ? 1 : 0}:${p.d}`).join("|"),
   ].join("#");
 
 const settledCache = new Map<string, ReadonlyMap<string, Pt[]>>();

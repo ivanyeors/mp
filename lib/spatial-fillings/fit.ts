@@ -141,6 +141,8 @@ export type SectionPieceFit = {
   /** Settled × the tightest squeeze of the columns it spans, mm. */
   thicknessMm: number;
   status: FitStatus;
+  /** Nudged front ↔ back by hand (a fine offset): the soft cut holds it where it was put. */
+  nudged?: true;
 };
 
 export type SectionFit = {
@@ -528,6 +530,7 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
           endMm: s.endMm,
           thicknessMm: r1(s.settledThicknessMm * ratio),
           status: spanned.some((st) => st?.fit.status === "over") ? "over" : ratio < 1 - 1e-6 ? "compressed" : "ok",
+          ...(s.nudged ? { nudged: true as const } : {}),
         };
       }),
       status: sectionStatus,

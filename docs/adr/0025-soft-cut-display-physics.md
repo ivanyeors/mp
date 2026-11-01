@@ -100,6 +100,29 @@ Settings (`components/spatial/soft-top.ts`):
 - **What reads differently.** A top **Layer** spreads to the walls, so a wider piece under it no
   longer peeks out at the sides (Neck mix: the Neck M roll in the centre).
 
+## Amendment: a nudged pouch stays where it was put (1-11-2026)
+
+Ivan: both views must still allow small, precise placement, the fillings still separated by
+their columns. Measured first: where a pouch had room, both soft settles followed a nudge to the
+millimetre; in a full cell its neighbours pushed it about half way back (the top view showed
+20 mm as 11–15 mm, the cut as ~10 mm, and the cut shrank the pouch instead of moving it).
+
+- **Held, not pushed back.** A piece nudged by hand (a non-zero fine offset; front ↔ back in the
+  cut, either way from above) is `held`: its tether is `HELD_TETHER` (0.5) instead of the loose
+  0.05, so its neighbours make room. Contacts still resolve after the tether in every substep,
+  so it never runs into them. Un-nudged pieces are untouched: the 420 cut scenes and 42 top-view
+  scenes hash identically before and after.
+- **It slides within its columns.** The settle used to cut a nudged pouch to the columns it
+  spans, so pushing it at an occupied neighbour shortened it. A nudged pouch now keeps its length
+  and stops at its columns' edge (`extentIn` in `settle.ts`): it moves exactly as far as its own
+  columns have room and never stands in an occupied neighbour's column. A pouch as long as its
+  column, between full neighbours, has no room front ↔ back; it can still be nudged across from
+  above.
+- **The cut places too.** A drop on the cut lands centred where it was let go — in its own
+  Layer, another Layer or another column — as far as its columns have room
+  (`placeSlabDrop`); Alt + ← / → slides it 5 mm (`nudgeSlab`), saying so when it has no room.
+  Both write the same `offset_y_mm` the top view writes, in Size M mm.
+
 ## Consequences
 
 - A static or server render (and every `renderToStaticMarkup` test) draws the rounded slabs; the

@@ -62,6 +62,8 @@ export type PieceSettle = {
   spreadBackMm: number;
   /** Its relaxed extent along the Section (front ↔ back), mm. */
   alongMm: number;
+  /** Nudged front ↔ back by hand (a fine offset): the soft cut holds it where it was put. */
+  nudged?: true;
   /** Where the settled pouch starts and ends, mm from the Section's front, cut to the columns it spans. */
   startMm: number;
   endMm: number;
@@ -294,10 +296,7 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
       const settledLength = len + front + back;
       const cellsFront = front > 0 ? Math.ceil(front / cellLen - EPS) : 0;
       const cellsBack = back > 0 ? Math.ceil(back / cellLen - EPS) : 0;
-      const authored = Math.min(
-        Math.max(w.col * cellLen + (cellLen - len) / 2 + (w.p.offsetYMm ?? 0) * alongScale, 0),
-        SUB_SECTIONS.length * cellLen - len,
-      );
+      const authored = authoredStartMm(w.col, cellLen, along, (w.p.offsetYMm ?? 0) * alongScale);
       // A spread fills the pouch's own cell first: it stands in a neighbour's column only once it reaches it.
       const colOf = (mm: number) => Math.min(Math.max(Math.floor(mm / cellLen), 0), SUB_SECTIONS.length - 1);
       const spanFrom = Math.max(w.col - cellsFront, 0, Math.min(w.col, colOf(authored - front + SEAM_MM)));
@@ -314,8 +313,8 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
         spreadFrontMm: r1(front),
         spreadBackMm: r1(back),
         alongMm: r1(along),
-        startMm: r1(Math.max(authored - front, spanFrom * cellLen)),
-        endMm: r1(Math.min(authored + len + back, (spanTo + 1) * cellLen)),
+        ...(w.p.offsetYMm ? { nudged: true as const } : {}),
+        ...extentIn(authored - front, authored + len + back, spanFrom * cellLen, (spanTo + 1) * cellLen, Boolean(w.p.offsetYMm)),
         settledLengthMm: r1(settledLength),
         thicknessMm: r1(w.dims.thicknessMm),
         minThicknessMm: r1(Math.min(w.dims.minThicknessMm, w.dims.thicknessMm)),
@@ -324,6 +323,29 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
     }
   }
   return { size: pillow.size, active, cellLengthMm: r1(cellLen), pieces };
+}
+
+/**
+ * Where a pouch's authored extent starts, mm from its Section's front: cut to
+ * one cell's length, centred in its cell (`col`), moved by its fine offset
+ * (`offsetMm`, this Size's mm), kept in the Section.
+ */
+export function authoredStartMm(col: number, cellLen: number, alongMm: number, offsetMm: number): number {
+  const len = Math.min(alongMm, cellLen);
+  return Math.min(Math.max(col * cellLen + (cellLen - len) / 2 + offsetMm, 0), SUB_SECTIONS.length * cellLen - len);
+}
+
+/**
+ * A settled pouch's extent, mm, cut to the columns it spans. A pouch nudged
+ * by hand slides instead: it keeps its length and stops at its columns'
+ * edge, so a nudge moves it exactly as far as its own columns have room and
+ * never stands it in an occupied neighbour's column.
+ */
+function extentIn(from: number, to: number, lo: number, hi: number, nudged: boolean): { startMm: number; endMm: number } {
+  if (!nudged) return { startMm: r1(Math.max(from, lo)), endMm: r1(Math.min(to, hi)) };
+  const len = Math.min(to - from, hi - lo);
+  const start = Math.min(Math.max(from, lo), hi - len);
+  return { startMm: r1(start), endMm: r1(start + len) };
 }
 
 /** Column index helpers for readers that walk a settled span. */

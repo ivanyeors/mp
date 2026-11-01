@@ -29,7 +29,8 @@ import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cellLayers, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
-import { applySlabDrop, cellBands, describeSlabTarget, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
+import { applySlabDrop, asMove, cellBands, describeSlabTarget, nudgeSlab, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget, type SlabPlaceResult } from "@/lib/dnd/slab-drag";
+import { nudgeKeyFor } from "@/lib/configurator/move-keys";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { SECTIONS, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -921,7 +922,7 @@ export function XrayCrossSection({
    * another Section, and Undo is the x-ray's — an inverse applied only while
    * the move is still the last thing that happened (one toast id for both views).
    */
-  const commit = (before: PillowPlacement[], r: Extract<MoveResult, { ok: true }>, source: PieceRef & { itemId: number }) => {
+  const commit = (before: PillowPlacement[], r: Extract<MoveResult, { ok: true }>, source: PieceRef & { itemId: number }, within = false) => {
     if (!onPlacementsChange) return;
     onPlacementsChange(r.placements);
     const nextKey = keyOf(r.ref);
@@ -929,7 +930,9 @@ export function XrayCrossSection({
     pendingFocus.current = nextKey;
     if (r.ref.section !== cut.section) onCutChange?.({ section: r.ref.section });
     const layer = cellLayers(r.placements, r.ref).findIndex((l) => l.some((p) => p.slot === r.ref.slot));
-    toast.success(`Moved ${labelOf(source.itemId)} to ${r.ref.section} ${r.ref.subSection}, layer ${layer + 1}`, {
+    // A nudge reads as the top view's: within its cell.
+    const where = within ? `within ${r.ref.section} ${r.ref.subSection}` : `to ${r.ref.section} ${r.ref.subSection}, layer ${layer + 1}`;
+    toast.success(`Moved ${labelOf(source.itemId)} ${where}`, {
       id: "xray-move",
       action: {
         label: "Undo",
@@ -953,7 +956,7 @@ export function XrayCrossSection({
     return {
       tabIndex: 0,
       role: "button",
-      "aria-label": `${label || labelOf(slab.itemId)}, ${where}. Drag, or use arrow keys to move.`,
+      "aria-label": `${label || labelOf(slab.itemId)}, ${where}. Drag, or use arrow keys to move; Alt + left / right nudges it.`,
       "data-slab-hit": "",
       "data-slab-key": slab.key,
       style: { cursor: "grab", outline: "none", touchAction: "none" },
@@ -987,7 +990,21 @@ export function XrayCrossSection({
         };
       },
       onKeyDown: (e) => {
-        if (!placements || e.altKey || e.ctrlKey || e.metaKey) return;
+        if (!placements || e.ctrlKey || e.metaKey) return;
+        if (e.altKey) {
+          // Alt + ← / →: the top view's fine nudge, side-on — a few mm toward the front / back, within its columns.
+          const step = nudgeKeyFor(e);
+          if (!step?.xMm) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const n = nudgeSlab(placements, ref, step.xMm, fit);
+          if (!n) {
+            toast(`No room to nudge ${labelOf(slab.itemId)} further ${step.xMm < 0 ? "to the front" : "to the back"}`, { id: "xray-move" });
+            return;
+          }
+          if (n.ok) commit(placements, n, source, true);
+          return;
+        }
         let r: MoveResult | null = null;
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           const dir = e.key === "ArrowLeft" ? -1 : 1;
@@ -1051,13 +1068,18 @@ export function XrayCrossSection({
         return;
       }
       if (!hold.target || !placements) return;
-      const r = applySlabDrop(placements, hold.source, hold.target);
+      // Dropped on the cut, the pouch lands centred where it was let go (as its columns have room); on a Section tab, at home there.
+      const v = toView(e.clientX, e.clientY);
+      const r: SlabPlaceResult | null =
+        hold.target.section === cut.section
+          ? placeSlabDrop(placements, hold.source, hold.target, (v.x - frame.x0) / frame.kx, fit, { size: fit.size, dims: itemDims, loftAllowance: fit.loftAllowance })
+          : asMove(applySlabDrop(placements, hold.source, hold.target));
       if (!r) return;
       if (!r.ok) {
         toast.error(r.error); // cap feedback, the add's path
         return;
       }
-      commit(placements, r, hold.source);
+      commit(placements, r, hold.source, r.within);
     },
     onPointerCancel: (e) => {
       if (holdRef.current?.pointerId === e.pointerId) endHold();
@@ -1125,8 +1147,8 @@ export function XrayCrossSection({
     return {
       tone: "muted" as const,
       text: isMobile
-        ? "Drag a filling to another column or layer; hold it on a tab to open that Section."
-        : "Drag a filling to another column or layer, or hold it on a Section tab. Keys: ← → front / back · ↑ ↓ layer · Shift ← → Section.",
+        ? "Drag a filling and it lands where you let go; hold it on a tab to open that Section."
+        : "Drag a filling and it lands where you let go — in its column, another column or layer — or hold it on a Section tab. Keys: ← → front / back · Alt ← → nudge · ↑ ↓ layer · Shift ← → Section.",
     };
   })();
 

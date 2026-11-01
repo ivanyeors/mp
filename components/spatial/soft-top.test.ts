@@ -98,6 +98,38 @@ describe("soft top view", () => {
     expect(softTopPieces(under, { ...SOFT_BODY_DEFAULTS, volumePct: 170 })[0].areaTarget).toBe(roll.areaTarget);
   });
 
+  it("keeps a pouch nudged by hand where it was put: its neighbours make room", () => {
+    // Type 11's middle top 6D shares its Layer with the front and back pouches; nudged, it is held, they give.
+    const centreOf = (offset: { offsetXMm?: number; offsetYMm?: number }) => {
+      const placements: PillowPlacement[] = SUB_SECTIONS.flatMap((subSection) =>
+        RECIPES["11"][subSection].map((itemId, row) => ({ section: "center" as const, subSection, slot: row + 1, itemId, row, ...(subSection === "middle" && row === 0 ? offset : {}) })),
+      );
+      const stage = stageGeometry("M");
+      const fit = fitPillow(placements, { size: "M", dims: DIMS });
+      const pieces = layoutPlacements(placements, { stage, dims: DIMS, fit });
+      const regions = stageRegions(stage);
+      const list = pieces.filter((p) => p.depth === 0);
+      const plane: SoftTopPlane = {
+        id: "settled/center/0",
+        region: sectionRegion(stage, "center"),
+        pieces: list.map((p) => ({
+          key: p.key,
+          d: conformPouchPath(p.settled, [regions.sil, regions.sections.center], shapeOf(p.itemId)),
+          rect: p.settled,
+          shape: shapeOf(p.itemId),
+          held: p.x !== p.home.x || p.y !== p.home.y,
+        })),
+      };
+      const ring = settleTop([plane], SOFT_BODY_DEFAULTS, XRAY_VIEW).get("center/middle/1")!;
+      return [ring.reduce((a, q) => a + q[0], 0) / ring.length / stage.k, ring.reduce((a, q) => a + q[1], 0) / ring.length / stage.k];
+    };
+    const home = centreOf({});
+    const back = centreOf({ offsetYMm: 20 });
+    const left = centreOf({ offsetXMm: -20 });
+    expect(back[1] - home[1]).toBeGreaterThan(15);
+    expect(left[0] - home[0]).toBeLessThan(-15);
+  });
+
   it("is deterministic: the same recipe settles to the same outlines", () => {
     const planes = planesOf(RECIPES["11"], "M", ["center"]);
     const run = () => {
