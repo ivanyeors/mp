@@ -2,37 +2,17 @@
 
 /**
  * Fit feedback shared by the three editing surfaces (X-ray pillow UX slice 04,
- * ADR 0019): a banner listing the cells that cannot close even fully
- * compressed, and the one confirm a save or a hold asks when such a cell is
- * present. Advisory, never blocking — the same posture as the Spatially
- * authored warning. Both read the host's fit object; nothing is recomputed.
+ * ADR 0019): the one confirm a save or a hold asks when a cell cannot close
+ * even fully compressed. Advisory, never blocking — the same posture as the
+ * Spatially authored warning. It reads the host's fit object; nothing is
+ * recomputed.
+ *
+ * There is no banner above the x-ray any more (Ivan, 1-11-2026): a cell that
+ * cannot close shows on the pillow itself — its pieces tinted red in the
+ * x-ray and the cut, a red dot on its Section tab — and in this confirm.
  */
 
 import { bolsterFitMessage, fitMessage, overCells, type BolsterFit, type PillowFit } from "@/lib/spatial-fillings/fit";
-
-export function FitBanner({ fit, className }: { fit: PillowFit; className?: string }) {
-  const over = overCells(fit);
-  if (over.length === 0) return null;
-  return (
-    <div
-      role="alert"
-      data-xray-fit-banner
-      className={`rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm ${className ?? ""}`}
-    >
-      <div className="font-medium">
-        {over.length === 1 ? "One cell cannot close" : `${over.length} cells cannot close`} at Size {fit.size}.
-      </div>
-      <ul className="mt-1 list-inside list-disc text-muted-foreground">
-        {over.map((c) => (
-          <li key={`${c.section}/${c.subSection}`}>{fitMessage(c, fit.size)}</li>
-        ))}
-      </ul>
-      <p className="mt-1 text-muted-foreground">
-        Remove or swap a piece, or pick a larger Size. Saving is still allowed.
-      </p>
-    </div>
-  );
-}
 
 /**
  * One confirm, never a block: true when the save may go ahead. `action` is the

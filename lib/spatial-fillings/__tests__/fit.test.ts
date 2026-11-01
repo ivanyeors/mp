@@ -172,6 +172,20 @@ describe("fitMessage", () => {
     expect(fitMessage(wide, "M")).toBe("left · front layer 1: 2 pieces need 402 mm relaxed, 362 mm fully squeezed; the left Section is 223 mm wide");
     expect(fitMessage(fitCell("right", "back", [[piece(1, {})]], 260, 200), "M")).toBe("right · back: fits");
   });
+
+  it("names the Layer that cannot close, not the stack that only compresses", () => {
+    // Two Layers, the top one too wide even squeezed; the stack needs 80 mm, fully compressed 50, of 60.
+    const layers = [
+      [piece(1, { widthMm: 200, minWidthMm: 180, thicknessMm: 40, minThicknessMm: 25 }), piece(2, { widthMm: 200, minWidthMm: 180, thicknessMm: 40, minThicknessMm: 25 })],
+      [piece(3, { thicknessMm: 40, minThicknessMm: 25 })],
+    ];
+    const cell = fitCell("center", "middle", layers, 223, 60);
+    expect(cell.status).toBe("over");
+    expect(fitMessage(cell, "M")).toBe("center · middle layer 1: 2 pieces need 402 mm relaxed, 362 mm fully squeezed; the center Section is 223 mm wide");
+    // A stack that cannot close outranks a Layer that only squeezes.
+    const tall = fitCell("center", "middle", [[piece(1, { widthMm: 130, minWidthMm: 100 }), piece(2, { widthMm: 130, minWidthMm: 100 })], [piece(3, {})]], 223, 10);
+    expect(fitMessage(tall, "M")).toMatch(/^center · middle: 2 layers need/);
+  });
 });
 
 describe("layout reads the fit", () => {

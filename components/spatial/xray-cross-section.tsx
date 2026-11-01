@@ -55,12 +55,17 @@ export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
 
 /**
  * Text and spacing for the two layouts. The drawing scales to its container,
- * so at a phone's ~330 px the 664-unit view halves every label — the 9-unit
- * "max … mm" drew at 4–5 px (slice 10's 360 px check). Phones draw a narrower
- * view with larger type instead, ~10–13 px on screen, and put the status on a
- * line of its own so it fits a narrow column. The pillow itself is never
- * squashed to fit either one: its outline keeps the designer's proportions
- * (`cutFrame`), so a phone shows the same shape smaller.
+ * so at a phone's ~330 px the 664-unit view halves every label (slice 10's
+ * 360 px check). Phones draw a narrower view with larger type instead, ~10–13
+ * px on screen, and the Mbolster puts its status on a line of its own so it
+ * fits a narrow column. The pillow itself is never squashed to fit either one:
+ * its outline keeps the designer's proportions (`cutFrame`), so a phone shows
+ * the same shape smaller.
+ *
+ * The pillow cut names its columns (front, middle, back) and nothing else: no
+ * loft budget, no mm, no status word (Ivan, 1-11-2026). The pouches carry the
+ * fit — hatched when compressed, red when they cannot close — and the Section
+ * tab's dot names the Section's.
  */
 type CutLayout = {
   width: number;
@@ -68,21 +73,26 @@ type CutLayout = {
   height: number;
   /** The tallest the outline draws, view units: a tall profile draws narrower instead of taller. */
   maxShellH: number;
+  /** The Mbolster's room above and below its circle. */
   padTop: number;
   padBottom: number;
+  /** The pillow cut's room above its outline, and below it for the column names. */
+  cutPadTop: number;
+  cutPadBottom: number;
+  /** The Mbolster's "Ø … mm". */
   maxFont: number;
   labelFont: number;
   valueFont: number;
   labelDy: number;
   valueDy: number;
-  /** The status ("compressed" / "cannot close") on its own line, at this offset; inline when null. */
+  /** The Mbolster's status ("compressed" / "cannot fit") on its own line, at this offset; inline when null. */
   statusDy: number | null;
   /** A pouch's own label: the largest it draws, and the smallest worth drawing (else it is left off). */
   pieceFont: number;
   minPieceFont: number;
 };
-const LAYOUT: CutLayout = { ...CROSS_SECTION_VIEW, maxShellH: 200, padTop: 22, padBottom: 30, maxFont: 9, labelFont: 11, valueFont: 10, labelDy: 13, valueDy: 25, statusDy: null, pieceFont: 10, minPieceFont: 7 };
-const COMPACT_LAYOUT: CutLayout = { width: 380, height: 250, maxShellH: 170, padTop: 26, padBottom: 54, maxFont: 12, labelFont: 15, valueFont: 14, labelDy: 17, valueDy: 33, statusDy: 49, pieceFont: 13, minPieceFont: 9 };
+const LAYOUT: CutLayout = { ...CROSS_SECTION_VIEW, maxShellH: 200, padTop: 22, padBottom: 30, cutPadTop: 8, cutPadBottom: 18, maxFont: 9, labelFont: 11, valueFont: 10, labelDy: 13, valueDy: 25, statusDy: null, pieceFont: 10, minPieceFont: 7 };
+const COMPACT_LAYOUT: CutLayout = { width: 380, height: 250, maxShellH: 170, padTop: 26, padBottom: 54, cutPadTop: 10, cutPadBottom: 24, maxFont: 12, labelFont: 15, valueFont: 14, labelDy: 17, valueDy: 33, statusDy: 49, pieceFont: 13, minPieceFont: 9 };
 
 const PAD_X = 8;
 /** How far inside the outline every pouch stays, view units: the case's own cloth, so a pouch reads as inside it. */
@@ -92,7 +102,6 @@ const FLOOR = SHELL_MARGIN + 1;
 /** The inset at each end of a piece, so two pouches that meet still read as two. */
 const SLAB_GAP = 2;
 const OVER = "#ef4444";
-const COMPRESSED = "#f59e0b";
 const DROP = "#38bdf8";
 /** How long a held pouch rests on a Section tab before the cut opens that Section. */
 const SPRING_MS = 450;
@@ -118,7 +127,7 @@ function refOf(key: string): PieceRef {
 }
 const keyOf = (ref: PieceRef) => `${ref.section}/${ref.subSection}/${ref.slot}`;
 
-/** "compressed" / "cannot close" after a separator, or nothing when the column fits. */
+/** "compressed" / "cannot close" after a separator, or nothing when the column fits: the drag readout's. */
 const statusSuffix = (status: string, sep: string) =>
   status === "compressed" ? `${sep}compressed` : status === "over" ? `${sep}cannot close` : "";
 
@@ -225,8 +234,8 @@ function cutFrame(compact: boolean, profile: Profile, profileMm: number, tallest
   const ky = Math.max(shellH - FLOOR - SHELL_MARGIN, 1) / Math.max(profileMm, 1);
   const kx = drawW / (cellLengthMm * SUB_SECTIONS.length || 1);
   const content = Math.max(shellH, FLOOR + tallest * ky + 4);
-  const baseline = L.padTop + content;
-  return { L, profile, x0, drawW, shellH, baseline, floor: baseline - FLOOR, ky, kx, colW: cellLengthMm * kx, height: baseline + L.padBottom };
+  const baseline = L.cutPadTop + content;
+  return { L, profile, x0, drawW, shellH, baseline, floor: baseline - FLOOR, ky, kx, colW: cellLengthMm * kx, height: baseline + L.cutPadBottom };
 }
 
 /** The frame a cut of this fit draws in; `tallest` pins the view's height (a drag holds the committed one). */
@@ -507,7 +516,6 @@ export function CrossSectionSvg({
   const soft = useSoftCut(softBody.enabled ? softInputOf(fit, cut, f, polygon, itemSubtypes, softBody) : null, softBody.animate && !drag, softReplay);
   const clothD = soft ? smoothClosedPath(soft.case) : null;
   const labelOf = (itemId: number) => pieceLabelLines(itemSubtypes.get(itemId) ?? null, itemSizes?.get(itemId) ?? null).join(" ");
-  const maxLoft = columns[0]?.maxLoftMm ?? 0;
   const dropX0 = drag?.column ? f.x0 + SUB_SECTIONS.indexOf(drag.column) * f.colW : null;
   const toneColor = drag?.tone === "over" || drag?.tone === "refused" ? OVER : DROP;
   const top = f.baseline - f.shellH;
@@ -635,44 +643,14 @@ export function CrossSectionSvg({
       )}
       {/* A stack that cannot close, through the case. */}
       {slabs.filter((s) => s.over).map((s) => s.el)}
-      {/* The loft line per column, its mm once (one budget per Section). */}
+      {/* The column names, and nothing else: the pouches carry the fit. */}
       {columns.map((col, i) => {
-        const x0 = f.x0 + i * f.colW;
-        const loftY = f.floor - col.maxLoftMm * ky;
-        return (
-          <path
-            key={col.key}
-            d={`M${r1(x0)} ${r1(loftY)} L${r1(x0 + f.colW)} ${r1(loftY)}`}
-            fill="none"
-            stroke={col.status === "over" ? OVER : XRAY_SHELL_VAR}
-            strokeWidth={1}
-            strokeDasharray="6 4"
-            vectorEffect="non-scaling-stroke"
-          />
-        );
-      })}
-      <text x={r1(f.x0 + f.drawW - 2)} y={r1(f.floor - maxLoft * ky - 3)} textAnchor="end" fontSize={L.maxFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
-        max {Math.round(maxLoft)} mm
-      </text>
-      {columns.map((col, i) => {
-        const x0 = f.x0 + i * f.colW;
-        const cx = x0 + f.colW / 2;
-        const tone = col.status === "over" ? OVER : col.status === "compressed" ? COMPRESSED : XRAY_SHELL_VAR;
+        const cx = f.x0 + i * f.colW + f.colW / 2;
         return (
           <g key={col.key} data-column={col.key} data-status={col.status}>
             <text x={r1(cx)} y={r1(f.baseline + L.labelDy)} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={drag?.column === col.key ? toneColor : XRAY_SHELL_VAR} className="select-none capitalize">
               {col.label}
             </text>
-            <text x={r1(cx)} y={r1(f.baseline + L.valueDy)} textAnchor="middle" fontSize={L.valueFont} fill={col.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
-              {col.slabs.length === 0
-                ? "empty"
-                : `${Math.round(col.loftMm)} mm${L.statusDy === null ? statusSuffix(col.status, " · ") : ""}`}
-            </text>
-            {L.statusDy !== null && col.slabs.length > 0 && col.status !== "ok" && (
-              <text x={r1(cx)} y={r1(f.baseline + L.statusDy)} textAnchor="middle" fontSize={L.valueFont} fill={tone} className="select-none">
-                {statusSuffix(col.status, "")}
-              </text>
-            )}
           </g>
         );
       })}

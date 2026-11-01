@@ -94,18 +94,19 @@ assert.ok(!itemMaps.includes("xray-pillow"), "the fit hook never imports the ren
 assert.ok(frame.includes("pillowSize"), "the frame passes the Size through");
 
 // Slice 04 (ADR 0019): every editing surface computes the fit once, hands it to
-// the x-ray, shows the banner for cells that cannot close, and confirms — never
-// blocks — the save or hold that carries one. Same posture as Spatially authored.
+// the x-ray, and confirms — never blocks — the save or hold that carries a cell
+// that cannot close. Same posture as Spatially authored. No surface shows a
+// banner for it (1-11-2026): the pieces' red tint and the Section tab's dot do.
 for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   const src = readFileSync(path, "utf8");
   assert.ok(/\bfit=\{/.test(src), `${surface} hands its own fit to the x-ray`);
-  assert.ok(src.includes("<FitBanner"), `${surface} shows the over-cells banner`);
+  assert.ok(!src.includes("<FitBanner"), `${surface} shows no over-cells banner`);
   assert.ok(src.includes("confirmSaveWithOverCells("), `${surface} confirms a save/hold with an over cell`);
   assert.ok(!/confirmSaveWithOverCells\([^)]*\)\s*\)\s*throw/.test(src), `${surface} never blocks on the fit`);
 }
 const banner = readFileSync("components/spatial/xray-fit-banner.tsx", "utf8");
 assert.ok(banner.includes("window.confirm("), "the confirm is one native confirm, not a modal flow");
-assert.ok(banner.includes("overCells(fit)"), "banner and confirm read the fit's over cells — nothing recomputed");
+assert.ok(banner.includes("overCells(fit)"), "the confirm reads the fit's over cells — nothing recomputed");
 const scope = readFileSync("components/settings/filling-template-scope.tsx", "utf8");
 assert.ok(scope.includes("fitBySize"), "the Size membership chips carry a fit dot per member Size");
 const configure = readFileSync(EDITING_SURFACES["Configure → Filling Template"].path, "utf8");

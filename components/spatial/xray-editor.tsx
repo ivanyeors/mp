@@ -16,8 +16,8 @@
  * Dimensions (slice 02 / ADR 0019) come the same way: the dimension override
  * rows ride beside the colour rows and are folded over the code registry here.
  *
- * The physical fit (slice 03/04): a host that shows the banner, the save
- * confirm or the cross-section computes it once with `usePillowFit`
+ * The physical fit (slice 03/04): a host that asks the save confirm or shows
+ * the cross-section computes it once with `usePillowFit`
  * (use-pillow-fit.ts) and hands the same object to this frame, so the x-ray,
  * the gauges and the cross-section can never disagree. A host that needs none
  * of those omits it and the x-ray computes its own.

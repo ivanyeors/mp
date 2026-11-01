@@ -47,7 +47,7 @@ import {
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
-import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
 import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { useBolsterFit, useCut, useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
@@ -1871,7 +1871,7 @@ function FillingConfigPanel({
     [items, templateKey, kind],
   );
   // Slice 04: the physical fit of the recipe at this card's Size — one object
-  // for the x-ray, the banner, the save confirm and the cross-section — and
+  // for the x-ray, the save confirm and the cross-section — and
   // its status at every Size it is shared with, for the membership chips.
   const fit = usePillowFit(placements, templateKey, gridItems, dimensionOverrides);
   const fitBySize = useFitAtSizes(placements, scopeKeys, gridItems, dimensionOverrides);
@@ -2170,7 +2170,6 @@ function FillingConfigPanel({
                   </p>
                 </div>
               )}
-              <FitBanner fit={fit} className="mb-3" />
               <XrayEditor
                 placements={placements}
                 onPlacementsChange={setPlacements}

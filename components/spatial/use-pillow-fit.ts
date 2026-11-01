@@ -38,7 +38,7 @@ export function useItemMaps(items: FillingItem[] | undefined, dimensionOverrides
   return { itemSubtypes, itemSizes, itemDims, loftAllowance: registry.loftAllowance };
 }
 
-/** The fit of a recipe at a Size — computed once per change, shared by the x-ray, the banner, the confirm and the cross-section. */
+/** The fit of a recipe at a Size — computed once per change, shared by the x-ray, the confirm and the cross-section. */
 export function usePillowFit(
   placements: PillowPlacement[],
   pillowSize: string | null | undefined,

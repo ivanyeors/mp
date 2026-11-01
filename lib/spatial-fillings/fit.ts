@@ -586,16 +586,18 @@ export function wouldFit(
 /**
  * `"center · middle: 3 layers need 95 mm relaxed, 70 mm fully compressed; Size M holds 60 mm"`
  * for a loft problem; the same shape per Layer for a width problem; `fits` otherwise.
+ * The worse problem speaks: a Layer too wide to close outranks a stack that
+ * only compresses, so a cell that cannot close never reads as one that fits.
  */
 export function fitMessage(cell: CellFit, size: string): string {
   const where = cellWhere(cell);
   const loftStatus = cell.relaxedLoftMm <= cell.maxLoftMm ? "ok" : cell.minLoftMm <= cell.maxLoftMm ? "compressed" : "over";
+  const layer = cell.layers.find((l) => l.status === "over") ?? cell.layers.find((l) => l.status !== "ok");
+  if (layer && worstStatus(loftStatus, layer.status) !== loftStatus) return layerFitMessage(cell, layer);
   if (loftStatus !== "ok") {
     const n = cell.loftLayers;
     return `${where}: ${n} ${n === 1 ? "layer needs" : "layers need"} ${Math.round(cell.relaxedLoftMm)} mm relaxed, ${Math.round(cell.minLoftMm)} mm fully compressed; Size ${size} holds ${Math.round(cell.maxLoftMm)} mm`;
   }
-  const layer = cell.layers.find((l) => l.status !== "ok");
-  if (layer) return layerFitMessage(cell, layer);
   return `${where}: fits`;
 }
 
@@ -637,7 +639,7 @@ export function pieceFitStatus(fit: PillowFit, piece: { section: Section; subSec
   return { status, widthRatio, thicknessRatio };
 }
 
-/** The cells that cannot close even fully compressed — the banner and the save confirm list these. */
+/** The cells that cannot close even fully compressed — the save confirm lists these. */
 export function overCells(fit: PillowFit): CellFit[] {
   return fit.cells.filter((c) => c.status === "over");
 }

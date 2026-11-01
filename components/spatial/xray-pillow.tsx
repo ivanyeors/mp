@@ -135,7 +135,7 @@ const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
 // Fit status paint (slice 04): red when a cell cannot close — the piece tint,
 // the drop refusal and the cross-section share it. (The amber / red cell
 // rings went with Ivan's 26-9-2026 review: no seams on the pillow but the two
-// dividers; the gauge, the banner and the tint carry the status.)
+// dividers; the gauge and the tint carry the status.)
 const RING_OVER = "#ef4444";
 const RELAXED_PIECE: PieceFitStatus = { status: "ok", widthRatio: 1, thicknessRatio: 1 };
 /** A pouch drag in flight (slice 07). */
