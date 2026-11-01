@@ -387,7 +387,7 @@ _Avoid_: "registered", "member" (a **Member** is **Staff**) or "active" for this
 ## Google Form fittings (ADR 0039)
 
 **Fitting record**:
-One in-store fitting from before this platform, as the old Google Form recorded it, linked to a **Customer** (`customer_fittings`). It keeps every answer the form had: the four measurements in inches (A shoulder length, B neck to back, C head to back, D neck length), the recommended pillow size, the configuration type (e.g. `T12`) and profile side (e.g. `M-LN`), the sleep and health answers, who serviced them (a **Staff profile** when the name matches one), notes, and the Drive photos, previewed on the Customer page and never copied. Readable by the service role only, and shown to **Staff** holding `customers`.
+One in-store fitting from before this platform, as the old Google Form recorded it, linked to a **Customer** (`customer_fittings`). It keeps every answer the form had: the four measurements in inches (A shoulder length, B neck to back, C head to back, D neck length), the recommended pillow size, the configuration type (e.g. `T12`) and profile side (e.g. `M-LN`), the sleep and health answers, who serviced them (a **Staff profile** when the name matches one), notes, and the Drive photos, previewed on the Customer page and never copied. Readable by the service role only. Shown to **Staff** holding `customers`, and to the **Customer** on their own Profile in the same card, without the Drive photos (ADR 0039 h).
 _Avoid_: calling it a **Result** (it never had a hold, a build or a payment), an **Order** or a **Purchase**; writing its answers onto `customers` (the customer can read that row); "measurement" alone (a **Measurement service** is the fee)
 
 **Fitting import**:

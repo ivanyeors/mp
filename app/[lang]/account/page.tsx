@@ -7,6 +7,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { readProfileAftercare } from "@/lib/aftercare/preferences";
 import { AccountSecurity } from "@/components/auth/account-security";
 import { PointsCard, PointsComingSoonCard } from "@/components/account/points-card";
+import { OwnFittingsCard } from "@/components/account/fittings-card";
+import { listOwnFittings } from "@/lib/fitting-import/records";
 import { isPartnerCustomer, readMilestoneStanding, readPendingOrders, readPointsBalance, readPointsSettings } from "@/lib/points/server";
 import { profilePointsView } from "@/lib/points/settings";
 import { AftercarePreferences } from "./aftercare-preferences";
@@ -79,11 +81,13 @@ export default async function AccountProfilePage({
   // Points (PRD-loyalty-points slice 02) are read after linkCustomerToAuthUser,
   // whose Claim may have just granted the Claim bonus. A failed read only
   // hides the card. Marketing consent (migration slice 07) is read the same
-  // way as the aftercare switches.
-  const [aftercare, marketingEmail, points] = await Promise.all([
+  // way as the aftercare switches. Fitting records (ADR 0039 h) are the
+  // session's own, without their Drive files; a failed read hides the card.
+  const [aftercare, marketingEmail, points, fittings] = await Promise.all([
     readProfileAftercare(admin, customer.id).catch(() => null),
     readMarketingEmailState(admin, customer.id).catch(() => null),
     readOwnPoints(admin, customer.id),
+    listOwnFittings(customer.id).catch(() => null),
   ]);
 
   return (
@@ -125,6 +129,8 @@ export default async function AccountProfilePage({
           termsHref={withLocale("/points", locale)}
         />
       ) : null}
+
+      {fittings?.length ? <OwnFittingsCard fittings={fittings} /> : null}
 
       <AccountSecurity googleLinked={googleLinked} />
 

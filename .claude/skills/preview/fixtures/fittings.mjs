@@ -1,11 +1,17 @@
 // Google Form fittings (ADR 0039): Mei (points.mjs) has two in-store
 // fittings from the old form, so her page shows the Fitting history card:
 // /settings/customers/00000000-0000-4000-8000-0000000000c7. Customers →
-// Import fittings shows one applied import and one undone. Every name,
-// measurement, answer and Drive id is made up; Drive is unreachable in the
-// preview, so the photo tiles show their "Open in Drive" fallback.
+// Import fittings shows one applied import and one undone. The signed-in
+// preview customer (Jamie, reviews.mjs) has one too, so /account shows the
+// Profile's Fitting history: its Drive file and the Drive link kept as an
+// other answer must not show there (ADR 0039 h). Every name, measurement,
+// answer and Drive id is made up; Drive is unreachable in the preview, so the
+// photo tiles show their "Open in Drive" fallback.
 
 import { POINTS_CUSTOMER } from "./points.mjs";
+
+/** The preview Owner's own Customer row (reviews.mjs). */
+const OWN_CUSTOMER = "cust-preview-owner";
 
 const SOPHIE = "00000000-0000-4000-8000-0000000000a5";
 const BATCH = "00000000-0000-4000-8000-0000000000b9";
@@ -57,6 +63,19 @@ export default function fittings({ now }) {
           referred_by: "Dr Lee", serviced_by: "Ray", serviced_by_staff_id: null, notes: null,
           drive_files: [file("back_photo", 2)],
           other_answers: { "D) Neck length Measurements (Inches)": "not taken", "Did you have acid reflux?": "Sometimes" },
+        },
+        {
+          id: "00000000-0000-4000-8000-0000000000e3", customer_id: OWN_CUSTOMER, batch_id: BATCH, source: "google_form",
+          source_key: "3".repeat(64), created_customer: false, matched_by: "email", fitted_at: ago(240), imported_at: ago(1),
+          name_on_form: "Jamie Lim", email_on_form: "owner@preview.local", mobile_on_form: "9123 0042",
+          shoulder_length_in: 19, neck_to_back_in: 3, head_to_back_in: 0.5, neck_length_in: 4,
+          recommended_size: "L", configuration_type: "T12", profile_side: "L-MN", sleeper_type: "Back sleeper",
+          sleep_symptoms: ["Neck pain", "Headaches"], blood_pressure: "Normal", acid_reflux: false, ear_discomfort_side_sleep: false,
+          bed_firmness: "Firm", uses_bolster: true, age_group: "40-44", gender: "Male", discovery_source: "Friend",
+          referred_by: "Mei Tan", serviced_by: "Sophie", serviced_by_staff_id: SOPHIE,
+          notes: "Sleeps mostly on the back. Lower the neck by half a notch at the next visit.",
+          drive_files: [file("back_photo", 3), file("side_photo", 3)],
+          other_answers: { "Upload a photo of your mattress": "https://drive.google.com/open?id=1previewmattressxxxxxxxx", "Pillow height today": "Two fingers" },
         },
       ],
     },

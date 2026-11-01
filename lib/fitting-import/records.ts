@@ -1,11 +1,13 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { DRIVE_SLOTS, type DriveSlot } from "./google-form-csv";
-import type { FittingFileView, FittingRecordView } from "./view";
+import { toOwnFittingView } from "./own-view";
+import type { FittingAnswersView, FittingFileView, FittingRecordView } from "./view";
 
 /**
  * Reading Fitting records (ADR 0039), server-only. `customer_fittings` is the
  * service role's alone; the Customer page and the timeline call these after
- * checking `customers`.
+ * checking `customers`, and the Profile calls `listOwnFittings` with the
+ * session's own Customer.
  */
 
 const COLUMNS =
@@ -131,6 +133,15 @@ export async function listCustomerFittings(customerId: string): Promise<FittingR
     : { data: [] as { id: string; name: string }[] };
   const names = new Map(((staff.data ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
   return rows.map((r) => toFittingView(r, names));
+}
+
+/**
+ * The signed-in customer's own Fitting records for their Profile (ADR 0039 h),
+ * newest first: every answer, no Drive file. Keyed by the Customer the session
+ * is linked to, never by anything the request names. Throws on a read error.
+ */
+export async function listOwnFittings(customerId: string): Promise<FittingAnswersView[]> {
+  return (await listCustomerFittings(customerId)).map(toOwnFittingView);
 }
 
 /**

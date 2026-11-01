@@ -904,7 +904,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
   - `isPickableStaffProfile()` [select] — lib/staff/admin.ts:281
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:40
   - `listAssignableProfiles()` [select] — lib/crm/followups.ts:159
-  - `listCustomerFittings()` [select] — lib/fitting-import/records.ts:130
+  - `listCustomerFittings()` [select] — lib/fitting-import/records.ts:132
   - `listStaffProfiles()` [select] — lib/staff/admin.ts:58
   - `loadFittingImportHistory()` [select] — app/[lang]/settings/customers/import-fittings/history.ts:32
   - `loadImportHistory()` [select] — app/[lang]/settings/customers/import/history.ts:33
@@ -1502,9 +1502,9 @@ Changed from pages: `/account`, `/account/addresses`, `/account/orders`, `/accou
 Defined in supabase/migrations/20261031120000_customer_fittings.sql:76
 References: `customers`, `fitting_import_batches`, `mp_staff`
 - Read by:
-  - `fittingDriveFileId()` [select] — lib/fitting-import/records.ts:142
+  - `fittingDriveFileId()` [select] — lib/fitting-import/records.ts:153
   - `fittings.ts` [select] — lib/crm/timeline/sources/fittings.ts:29
-  - `listCustomerFittings()` [select] — lib/fitting-import/records.ts:119
+  - `listCustomerFittings()` [select] — lib/fitting-import/records.ts:121
 
 ### customer_followups
 Defined in supabase/migrations/20261020132000_customer_followups.sql:27
@@ -2272,9 +2272,9 @@ app/[lang]/page.tsx
 app/[lang]/account/page.tsx
 - Server actions: `setMyAftercarePreference()`, `setMyMarketingEmail()`
 - Endpoints: `/auth/signout`
-- Loads: `isPartnerCustomer()`, `linkCustomerToAuthUser()`, `readMarketingEmailState()`, `readMilestoneStanding()`, `readPendingOrders()`, `readPointsBalance()`, `readPointsSettings()`, `readProfileAftercare()`
+- Loads: `isPartnerCustomer()`, `linkCustomerToAuthUser()`, `listOwnFittings()`, `readMarketingEmailState()`, `readMilestoneStanding()`, `readPendingOrders()`, `readPointsBalance()`, `readPointsSettings()`, `readProfileAftercare()`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
-- Reads, through the same: `email_template_copy`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `site_settings`
+- Reads, through the same: `customer_fittings`, `email_template_copy`, `mp_staff`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `site_settings`
 
 ### /account/addresses
 app/[lang]/account/addresses/page.tsx

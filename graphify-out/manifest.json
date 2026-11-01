@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793462050.1055984,
-    "seen": 1793463670.4287858,
-    "ast_hash": "784f96c900fb2d8ea4a8b86676de30e6",
+    "mtime": 1793500554.4481893,
+    "seen": 1793500763.5884385,
+    "ast_hash": "feee91b0a0219ca8a378bd145f8ef34a",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -16746,9 +16746,9 @@
     "semantic_hash": ""
   },
   "docs/adr/README.md": {
-    "mtime": 1793462040.887576,
-    "seen": 1793463670.428906,
-    "ast_hash": "c85bdc9c407ed605e96718553c4ffcf7",
+    "mtime": 1793500554.4462202,
+    "seen": 1793500763.5885308,
+    "ast_hash": "7f9c156371da99ed2c34879421336134",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/shop.mjs": {
@@ -16926,9 +16926,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/fittings.mjs": {
-    "mtime": 1793463418.3765583,
-    "seen": 1793463670.425101,
-    "ast_hash": "a02e6852855d48cc63860a922a3e2289",
+    "mtime": 1793500426.906548,
+    "seen": 1793500763.5839427,
+    "ast_hash": "b73e1a601e85468fc248eb907f616aab",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/import-fittings/actions.ts": {
@@ -17022,9 +17022,9 @@
     "semantic_hash": ""
   },
   "lib/fitting-import/records.ts": {
-    "mtime": 1793462940.88853,
-    "seen": 1793463670.426739,
-    "ast_hash": "dcb6c00daac7fbd00c27b2b98b6849bf",
+    "mtime": 1793500095.32225,
+    "seen": 1793500763.5860047,
+    "ast_hash": "768050bf3336a767c1e73a97fa0b46cb",
     "semantic_hash": ""
   },
   "lib/fitting-import/rows.ts": {
@@ -17034,9 +17034,9 @@
     "semantic_hash": ""
   },
   "lib/fitting-import/view.ts": {
-    "mtime": 1793462922.4085288,
-    "seen": 1793463670.4267402,
-    "ast_hash": "62355fe0b352db05e4299271c7601894",
+    "mtime": 1793500082.550702,
+    "seen": 1793500763.5860076,
+    "ast_hash": "f03151246c06cb539b03278f28e7f3b6",
     "semantic_hash": ""
   },
   "scripts/check-fitting-import-sql.sh": {
@@ -17088,9 +17088,21 @@
     "semantic_hash": ""
   },
   "docs/adr/0039-google-form-fitting-records.md": {
-    "mtime": 1793462038.2444763,
-    "seen": 1793463670.4289045,
-    "ast_hash": "a9f4ae7fcb33642c88b22074e2f0b9cf",
+    "mtime": 1793500554.4455397,
+    "seen": 1793500763.5885289,
+    "ast_hash": "0458007cef11f1a46faeec71eeba6935",
+    "semantic_hash": ""
+  },
+  "lib/fitting-import/__tests__/own-fittings.test.ts": {
+    "mtime": 1793500401.1719723,
+    "seen": 1793500763.5859873,
+    "ast_hash": "539bd63753136e09623ca1cebfe2318d",
+    "semantic_hash": ""
+  },
+  "lib/fitting-import/own-view.ts": {
+    "mtime": 1793500088.177672,
+    "seen": 1793500763.5860002,
+    "ast_hash": "d60951381594700a0970814727c855b9",
     "semantic_hash": ""
   }
 }

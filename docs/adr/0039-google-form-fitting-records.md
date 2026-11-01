@@ -1,6 +1,7 @@
-# Google Form fittings are imported as Staff-only Fitting records on the Customer
+# Google Form fittings are imported as Fitting records on the Customer
 
-Status: Accepted (owner, 2026-10-31)
+Status: Accepted (owner, 2026-10-31). Amended (owner, 2026-11-01): the customer sees their own
+Fitting records on their Profile, without the Drive photos (h).
 
 Before this platform, every in-store fitting was typed into a Google Form: the customer's name,
 mobile and email, the four measurements (A to D, in inches), the recommended pillow size, the
@@ -15,9 +16,10 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
 
 ## Context
 
-- **A customer can read every column of their own `customers` row**
-  (`0037_customer_auth.sql:15-18`). Blood pressure, acid reflux and sleep symptoms are health
-  answers written for Staff. They cannot go there.
+- **A customer can read every column of their own `customers` row** from the browser
+  (`0037_customer_auth.sql:15-18`). A record also holds what is not theirs to read: the Drive
+  file ids of the form owner's folder, and how the import found them. So the answers cannot go
+  there; the customer gets only what the server picks for them (h).
 - **A Result is a money object.** `mp_config_responses` drives the Results queue, the SLA cron,
   holds, Accept, analytics and the customer's own Results list. A historical form row has no hold,
   no build and no payment, and would show up in all of those.
@@ -31,7 +33,7 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
 
 ## Decisions
 
-- **(a) One Fitting record per form row, in `customer_fittings`, Staff-only.** RLS on, no policy,
+- **(a) One Fitting record per form row, in `customer_fittings`, read by the service role only.** RLS on, no policy,
   no grant to `anon` or `authenticated`, as `migrated_customers`. It keeps every answer the form
   had: the measurements in inches as recorded, size, configuration type, profile side, sleeper
   type, symptoms, health and bed answers, age group, gender, how they heard of us, who referred
@@ -61,6 +63,14 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   so and links to Drive instead.
 - **(g) Seen by whoever holds `customers`**, on the Customer page (Fitting history) and as one
   entry on the **Customer timeline** at the fitting's own time.
+- **(h) The customer sees their own Fitting records on their Profile** (owner, 2026-11-01), in
+  the same Fitting history card: the measurements, every answer (health answers included: they
+  are the customer's own), who serviced them, the notes and the other answers. Not the Drive
+  files. The Profile reads the records with the service role, by the **Customer** the session is
+  linked to and never by anything the request names, and copies them field by field into a view
+  with no Drive file, nothing about how the import found the Customer (match, contact as typed),
+  and no other answer that is an upload question's cell or a Google file link. None of it
+  reaches the browser. The photo route stays Staff-only.
 
 ## Considered options
 
@@ -71,6 +81,10 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
 - **Fields on `customers`** — rejected. The customer can read their own row.
 - **Creating phone-only Customers** — rejected. It touches sign-in, checkout, campaigns and every
   reader that assumes an email, and such a Customer could never sign in.
+- **Keeping the records from the customer** — the first version (2026-10-31). Reversed by the
+  owner: the customer should see what they told us at each fitting (h).
+- **Showing the customer their photos too** — rejected by the owner. The files live in the form
+  owner's Drive, and the route that previews them is for Staff.
 - **Copying the photos into Storage** — rejected for now. Previews from Drive need no storage, no
   copy to keep in step and no second home for the photos. Copying stays possible later from the
   stored file ids.
@@ -80,6 +94,8 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
 - Glossary: **Fitting record** and **Fitting import** in `CONTEXT.md`.
 - The Shopify import's undo reads every foreign key to `customers`, so a Shopify-created
   Customer who has a Fitting record is kept on that undo, as it should be.
+- A row with no email attaches by mobile (c). When a family shares one number, the account holder
+  sees the other person's fitting on their Profile. Today Staff can only undo the whole import.
 - The preview of a photo depends on the platform's Google account being able to read the form's
   upload folder. Sharing that folder with it is the owner's one-time setup.
 - The form's timestamp has no time zone. It is read as Singapore time (UTC+8, no daylight
