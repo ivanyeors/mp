@@ -3234,6 +3234,8 @@ export function MpConfigClient({
                           // Staff: the dived Section's controls render in the stage's Section
                           // editor dock, off the pillow art (phones keep their own dock).
                           controlsSlot={staffAssist ? (wideStage ? sideSlot : inlineSlot) : undefined}
+                          // The soft body the cut below draws with: one Settings value for both views.
+                          softBody={staffAssist ? assistSoftBody : guestSoftBody}
                           className="absolute inset-0"
                         />
                       )}

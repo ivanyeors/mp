@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793535559.6707244,
-    "seen": 1793536443.4091997,
-    "ast_hash": "f27adcbfaf9b44d7cdc0d2d398d9ba21",
+    "mtime": 1793538651.9747772,
+    "seen": 1793538825.4114707,
+    "ast_hash": "45b207f2778ddba7048fea118b04d700",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -12252,21 +12252,21 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/soft-body.ts": {
-    "mtime": 1793431614.6036155,
-    "seen": 1793536443.4064112,
-    "ast_hash": "54049014912875af1026d994375b082f",
+    "mtime": 1793538572.7301106,
+    "seen": 1793538825.407879,
+    "ast_hash": "c9e4005f283a05d022747984429aab34",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-soft-cut/xray-soft-cut-prd.md": {
-    "mtime": 1793431614.1883729,
-    "seen": 1793536443.4091275,
-    "ast_hash": "7c3265419961dafa1930c70c89af55b0",
+    "mtime": 1793538651.9734263,
+    "seen": 1793538825.4113793,
+    "ast_hash": "7a3eaa9d45e6307b6cec215edc1a2604",
     "semantic_hash": ""
   },
   "docs/adr/0025-soft-cut-display-physics.md": {
-    "mtime": 1793431614.2860296,
-    "seen": 1793536443.4093063,
-    "ast_hash": "390426d3edf0fc530e441f7a848a9f77",
+    "mtime": 1793538651.9722579,
+    "seen": 1793538825.4115975,
+    "ast_hash": "f53058a038779852a6c8a9d31ba0a123",
     "semantic_hash": ""
   },
   "lib/appointments/remind.ts": {

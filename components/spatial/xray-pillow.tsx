@@ -85,7 +85,9 @@ import {
 import { layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import { PILLOW_DIMENSIONS, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
+import { cellRegion, sectionRegion, useSoftTopPaths, type SoftTopPlane } from "./soft-top";
 
 // Shell regions pouches deform against: the silhouette (wide seam), each
 // cell's boundary (thin seam, matching the pouch-to-pouch gap) for the
@@ -117,6 +119,14 @@ export function stageRegions(stage: StageGeometry): StageRegions {
 
 /** The two views of one recipe (slice 11): the cells as authored, or where the fill settles. */
 export type PieceView = "authored" | "settled";
+
+/** The conformed outlines with each soft one in its place, where the soft body drew one. */
+function withSoft(conformed: Map<string, string>, soft: ReadonlyMap<string, string> | null): Map<string, string> {
+  if (!soft) return conformed;
+  const out = new Map(conformed);
+  for (const [key, d] of soft) if (out.has(key) && d) out.set(key, d);
+  return out;
+}
 
 /** A piece whose settled rect differs from its authored one — the dive draws its settled outline as a ghost. */
 const isSpread = (p: PieceLayout) => p.settled.y !== p.y || p.settled.h !== p.h;
@@ -310,7 +320,15 @@ export function MorphPiece({
       };
       raf = requestAnimationFrame(tick);
     }
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      // A new outline mid-flip (the soft body arriving) cuts the flip short: a crossfade must not leave the piece faded.
+      if (morph.crossfade) {
+        el.setAttribute("fill-opacity", "0.9");
+        el.removeAttribute("stroke-opacity");
+        setSettleGhost(null);
+      }
+    };
   }, [view, d]);
 
   const paint = {
@@ -582,6 +600,7 @@ export function XrayPillow({
   items,
   onPlacementsChange,
   controlsSlot,
+  softBody = SOFT_BODY_DEFAULTS,
   className,
 }: {
   placements: PillowPlacement[];
@@ -605,6 +624,8 @@ export function XrayPillow({
   onPlacementsChange?: (next: PillowPlacement[]) => void;
   /** Desktop: render the dive controls into this element instead of over the pillow art. */
   controlsSlot?: HTMLElement | null;
+  /** The soft body's Settings (ADR 0025), the cross-section's own: pouches settle as soft bodies; off draws the conformed outlines. */
+  softBody?: SoftBodySettings;
   className?: string;
 }) {
   const uid = useId();
@@ -767,9 +788,10 @@ export function XrayPillow({
   /**
    * piece key → outline at its SETTLED rect, conformed to silhouette ∩ Section
    * (only the Section walls are walls): the default view everywhere, computed
-   * once per geometry change.
+   * once per geometry change. Where the soft body settles from, and what
+   * draws without it.
    */
-  const settledPaths = useMemo(() => {
+  const settledConformed = useMemo(() => {
     const paths = new Map<string, string>();
     const { sil: SIL_REGION, sections: SECTION_REGIONS } = stageRegions(stage);
     for (const [section, list] of piecesBySection) {
@@ -786,7 +808,7 @@ export function XrayPillow({
    * the dived Section only, whose crisp cells the drop targets and chips refer
    * to. Empty when nothing is dived, so a read-only x-ray never pays for it.
    */
-  const authoredPaths = useMemo(() => {
+  const authoredConformed = useMemo(() => {
     const paths = new Map<string, string>();
     if (!dived) return paths;
     const { sil: SIL_REGION, sections: SECTION_REGIONS } = stageRegions(stage);
@@ -800,6 +822,52 @@ export function XrayPillow({
     }
     return paths;
   }, [piecesByCell, itemSubtypes, stage, dived]);
+
+  /**
+   * The soft body, as the cross-section draws it (ADR 0025; soft-top.ts): one
+   * plane per Layer of each Section, pressed into silhouette ∩ Section — in
+   * the dive, per Layer of each cell, into silhouette ∩ cell — settled from
+   * the conformed outlines. Every map below reads the soft outline where there
+   * is one, so drawing, labels, hit areas and the drag ghost all follow it.
+   */
+  const settledPlanes = useMemo(() => {
+    const planes: SoftTopPlane[] = [];
+    for (const [section, list] of piecesBySection) {
+      const region = sectionRegion(stage, section);
+      for (const depth of [...new Set(list.map((p) => p.depth))]) {
+        planes.push({
+          id: `settled/${section}/${depth}`,
+          region,
+          pieces: list
+            .filter((p) => p.depth === depth)
+            .map((p) => ({ key: p.key, d: settledConformed.get(p.key)!, rect: p.settled, shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape })),
+        });
+      }
+    }
+    return planes;
+  }, [piecesBySection, settledConformed, itemSubtypes, stage]);
+  const authoredPlanes = useMemo(() => {
+    if (!dived) return null;
+    const planes: SoftTopPlane[] = [];
+    for (const [cell, list] of piecesByCell) {
+      if (!cell.startsWith(`${dived}/`)) continue;
+      const region = cellRegion(stage, cell);
+      for (const depth of [...new Set(list.map((p) => p.depth))]) {
+        planes.push({
+          id: `authored/${cell}/${depth}`,
+          region,
+          pieces: list
+            .filter((p) => p.depth === depth)
+            .map((p) => ({ key: p.key, d: authoredConformed.get(p.key)!, rect: p, shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape })),
+        });
+      }
+    }
+    return planes;
+  }, [dived, piecesByCell, authoredConformed, itemSubtypes, stage]);
+  const softSettled = useSoftTopPaths(settledPlanes, softBody, XRAY_VIEW);
+  const softAuthored = useSoftTopPaths(authoredPlanes, softBody, XRAY_VIEW);
+  const settledPaths = useMemo(() => withSoft(settledConformed, softSettled), [settledConformed, softSettled]);
+  const authoredPaths = useMemo(() => withSoft(authoredConformed, softAuthored), [authoredConformed, softAuthored]);
 
   // Labels sit on the drawn body (the conformed outline's centroid), not on
   // the rect's centre — a compartment-filling pouch is cut by the notch.

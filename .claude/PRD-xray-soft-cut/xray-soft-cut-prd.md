@@ -180,7 +180,9 @@ The existing static-markup tests of the cut still describe the first render, whi
    The preview proved it; the app style ships.
 
 ## Out of Scope
-- The Bolster cut, the top-down x-ray, and any change to the fit, settle, pack list or fingerprint.
+- The Bolster cut, and any change to the fit, settle, pack list or fingerprint. (The top-down
+  x-ray was out of scope here; it settles with the same solver and Settings since 1-11-2026 —
+  ADR 0025's amendment.)
 - Hit-testing against the soft outlines; it still uses the fit's bands.
 - A web worker. The settle is cheap enough on the main thread and is split across frames when it
   animates.

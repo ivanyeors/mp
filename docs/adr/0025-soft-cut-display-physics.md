@@ -72,6 +72,34 @@ that does this. This record admits it, as a display layer only.
 - **WebGL / canvas** — rejected. SVG keeps the cut's hit-testing, focus, labels, theme variables
   and static server render.
 
+## Amendment: the top-down x-ray settles too (1-11-2026)
+
+Ivan: the top view should use the soft body as the side view does, with the side view's
+configuration left as it is. The x-ray now draws its pouches with the same solver and the same
+Settings (`components/spatial/soft-top.ts`):
+
+- **Same feature, seen from above.** Each **Layer** of a **Section** is one plane, settled on its
+  own: pieces of a **Layer** press on each other, a **Layer** under them does not push them aside.
+  The walls are silhouette ∩ **Section** (in the dive, silhouette ∩ cell). Rigidity, Neck
+  firmness, pouch volume, smoothing, space between pieces, settle length, animate and on/off all
+  apply; empty case height is the cut's alone (seen from above the case has no height to slump).
+- **Three solver options, off by default.** No gravity (it points into the screen), a rigid case
+  (`rigidCase`: the sewn walls do not move) and a tether up ↔ down as well as front ↔ back
+  (`tetherY`). The cut passes none of them, and its output is byte-identical before and after
+  (420 recipe × Size × Section × layout × Settings scenes hashed). The signed-distance grid is
+  built on first use, which a rigid case never reaches.
+- **The layout still decides where.** Rects, **Layers** and squeezed widths are
+  `layoutPlacements`'; the soft settle starts from the conformed outlines and decides only shape.
+  A pouch remembers the codebase footprint (`pouchOutline`) at its volume; a plane holding more
+  than its room is squeezed pro rata first; a **Neck support** is the firm roll, its footprint the
+  pill. Hit areas, labels, the selection ring and the drag ghost read the soft outlines.
+- **Cost.** A plane is 15–45 ms, a pillow up to ~10 planes. The first two unsettled planes settle
+  in render (an edit's, so it never flickers); the rest settle a few steps per frame and arrive
+  together — the solver's split invariance makes that the same picture. Cached per plane, so a
+  change in one **Section** settles that **Section**'s planes alone.
+- **What reads differently.** A top **Layer** spreads to the walls, so a wider piece under it no
+  longer peeks out at the sides (Neck mix: the Neck M roll in the centre).
+
 ## Consequences
 
 - A static or server render (and every `renderToStaticMarkup` test) draws the rounded slabs; the

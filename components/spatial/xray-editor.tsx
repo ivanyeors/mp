@@ -26,7 +26,7 @@
  * so the three surfaces cannot drift.
  */
 
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import { XrayBolster } from "./xray-bolster";
 import { XrayPillow } from "./xray-pillow";
@@ -36,6 +36,7 @@ import { XRAY_THEME } from "./xray-theme";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { pillowDimensions, type PillowSize } from "@/lib/spatial-fillings/dimensions";
+import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import type { BolsterFit, PillowFit } from "@/lib/spatial-fillings/fit";
 import type { Section } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
@@ -102,6 +103,8 @@ export function XrayEditor({
   className?: string;
 }) {
   const { itemSubtypes, itemSizes, itemDims, loftAllowance } = useItemMaps(items, dimensionOverrides);
+  // The soft body from the same payload the host's cross-section reads it from: one Settings value for both views.
+  const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
   const size: PillowSize = pillowDimensions(pillowSize).dims.size;
   return (
     <XrayFrame colorOverrides={colorOverrides} className={className}>
@@ -117,6 +120,7 @@ export function XrayEditor({
         items={items}
         onPlacementsChange={onPlacementsChange}
         controlsSlot={controlsSlot}
+        softBody={softBody}
         className="absolute inset-0"
       />
     </XrayFrame>
