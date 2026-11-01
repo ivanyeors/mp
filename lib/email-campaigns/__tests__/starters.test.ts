@@ -80,14 +80,24 @@ describe("every Starter", () => {
   });
 
   it("is named as the slice names it, once each, and none is the blank email's thumbnail", () => {
-    expect(STARTERS.map((s) => s.label)).toEqual(["Product launch", "Care tips", "Event or fitting day", "A short note", "New website: sign in for points"]);
+    expect(STARTERS.map((s) => s.label)).toEqual([
+      "Product launch",
+      "Care tips",
+      "Event or fitting day",
+      "A short note",
+      "New website: sign in for points",
+      "Second purchase",
+      "Thank you",
+      "We miss you",
+      "Welcome back",
+    ]);
     const ids = STARTERS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).not.toContain(BLANK_PREVIEW);
     expect(starterById("care_tips")?.label).toBe("Care tips");
     expect(starterById("nope")).toBeNull();
-    // The CRM's Playbooks join here when their words are approved (PRD-crm-retention-loop slice 07).
-    expect(PLAYBOOK_STARTERS).toEqual([]);
+    // The CRM's Playbooks join after the invitation, their words approved (PRD-crm-retention-loop slice 07, 2026-11-01).
+    expect(PLAYBOOK_STARTERS.map((s) => s.label)).toEqual(["Second purchase", "Thank you", "We miss you", "Welcome back"]);
   });
 
   it("is new blocks every time it is used: fresh ids, nothing shared with the last", () => {

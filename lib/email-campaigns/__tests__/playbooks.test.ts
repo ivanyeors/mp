@@ -86,4 +86,8 @@ describe("the Playbooks", () => {
     for (const p of PLAYBOOK_DRAFTS) expect(STARTERS.includes(p)).toBe(APPROVED_PLAYBOOKS.has(p.id));
     expect([...APPROVED_PLAYBOOKS].every((id) => PLAYBOOK_DRAFTS.some((p) => p.id === id))).toBe(true);
   });
+
+  it("are all four approved by the owner (2026-11-01)", () => {
+    expect([...APPROVED_PLAYBOOKS].sort()).toEqual(PLAYBOOK_DRAFTS.map((p) => p.id).sort());
+  });
 });

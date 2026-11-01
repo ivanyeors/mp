@@ -25052,7 +25052,7 @@
       "file_type": "code",
       "norm_label": "starteraudience",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L295"
+      "source_location": "L303"
     },
     {
       "id": "lib_email_campaigns_tests_rules_test_case",
@@ -28731,7 +28731,7 @@
       "file_type": "code",
       "norm_label": "audienced",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L285"
+      "source_location": "L293"
     },
     {
       "id": "lib_email_campaigns_store_campaignlistitem",
@@ -92414,7 +92414,7 @@
       "file_type": "code",
       "norm_label": "emailsaysnothing()",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L281"
+      "source_location": "L289"
     },
     {
       "id": "lib_email_campaigns_starters_go",
@@ -92462,7 +92462,7 @@
       "file_type": "code",
       "norm_label": "startedfrom()",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L316"
+      "source_location": "L324"
     },
     {
       "id": "lib_email_campaigns_starters_starterbyid",
@@ -92474,7 +92474,7 @@
       "file_type": "code",
       "norm_label": "starterbyid()",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L258"
+      "source_location": "L266"
     },
     {
       "id": "lib_email_campaigns_starters_startercontent",
@@ -92486,7 +92486,7 @@
       "file_type": "code",
       "norm_label": "startercontent()",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L261"
+      "source_location": "L269"
     },
     {
       "id": "lib_email_campaigns_starters_starterdraft",
@@ -92498,7 +92498,7 @@
       "file_type": "code",
       "norm_label": "starterdraft()",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L266"
+      "source_location": "L274"
     },
     {
       "id": "lib_email_campaigns_starters_text",
@@ -109433,57 +109433,13 @@
       "source_location": "L15"
     },
     {
-      "id": "supabase_migrations_20261101150000_returning_customer_cohorts",
-      "label": "20261101150000_returning_customer_cohorts.sql",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_email_campaigns",
+      "label": "public.email_campaigns",
       "_origin": "ast",
       "community": 1053,
-      "community_name": "public.admin_returning_customer_cohorts",
+      "community_name": "public.email_campaigns",
       "file_type": "code",
-      "norm_label": "20261101150000_returning_customer_cohorts.sql",
-      "source_file": "supabase/migrations/20261101150000_returning_customer_cohorts.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_20261101150000_returning_customer_cohorts_public_admin_returning_customer_cohorts",
-      "label": "public.admin_returning_customer_cohorts()",
-      "_origin": "ast",
-      "community": 1053,
-      "community_name": "public.admin_returning_customer_cohorts",
-      "file_type": "code",
-      "norm_label": "public.admin_returning_customer_cohorts()",
-      "source_file": "supabase/migrations/20261101150000_returning_customer_cohorts.sql",
-      "source_location": "L25"
-    },
-    {
-      "id": "supabase_migrations_20261101150000_returning_customer_cohorts_sql_public_order_items",
-      "label": "public.order_items",
-      "_origin": "ast",
-      "community": 1053,
-      "community_name": "public.admin_returning_customer_cohorts",
-      "file_type": "code",
-      "norm_label": "public.order_items",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "supabase_migrations_20261101150000_returning_customer_cohorts_sql_public_orders",
-      "label": "public.orders",
-      "_origin": "ast",
-      "community": 1053,
-      "community_name": "public.admin_returning_customer_cohorts",
-      "file_type": "code",
-      "norm_label": "public.orders",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "supabase_migrations_20261101150000_returning_customer_cohorts_sql_public_readjustment_bookings",
-      "label": "public.readjustment_bookings",
-      "_origin": "ast",
-      "community": 1053,
-      "community_name": "public.admin_returning_customer_cohorts",
-      "file_type": "code",
-      "norm_label": "public.readjustment_bookings",
+      "norm_label": "public.email_campaigns",
       "source_file": "",
       "source_location": ""
     },
@@ -121393,7 +121349,7 @@
       "file_type": "code",
       "norm_label": "starters",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L252"
+      "source_location": "L260"
     },
     {
       "id": "lib_email_tests_dark_mode_test",
@@ -125206,62 +125162,62 @@
       "source_location": "L140"
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged",
-      "label": "20261101130000_campaign_unengaged.sql",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged",
+      "label": "20261101081436_campaign_unengaged.sql",
       "_origin": "ast",
       "community": 144,
       "community_name": "public.admin_customer_overview",
       "file_type": "code",
-      "norm_label": "20261101130000_campaign_unengaged.sql",
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
+      "norm_label": "20261101081436_campaign_unengaged.sql",
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "label": "public.admin_customer_overview",
       "_origin": "ast",
       "community": 144,
       "community_name": "public.admin_customer_overview",
       "file_type": "code",
       "norm_label": "public.admin_customer_overview",
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
       "source_location": "L81"
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_public_customer_unengaged",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_public_customer_unengaged",
       "label": "public.customer_unengaged()",
       "_origin": "ast",
       "community": 144,
       "community_name": "public.admin_customer_overview",
       "file_type": "code",
       "norm_label": "public.customer_unengaged()",
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
       "source_location": "L49"
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_public_email_campaigns_guard",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_public_email_campaigns_guard",
       "label": "public.email_campaigns_guard()",
       "_origin": "ast",
       "community": 144,
       "community_name": "public.admin_customer_overview",
       "file_type": "code",
       "norm_label": "public.email_campaigns_guard()",
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
       "source_location": "L378"
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_public_marketing_campaign_blocker",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_public_marketing_campaign_blocker",
       "label": "public.marketing_campaign_blocker()",
       "_origin": "ast",
       "community": 144,
       "community_name": "public.admin_customer_overview",
       "file_type": "code",
       "norm_label": "public.marketing_campaign_blocker()",
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
       "source_location": "L412"
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_customer_campaign_sends",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_customer_campaign_sends",
       "label": "customer_campaign_sends",
       "_origin": "ast",
       "community": 144,
@@ -125272,7 +125228,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_email_campaigns",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_email_campaigns",
       "label": "email_campaigns",
       "_origin": "ast",
       "community": 144,
@@ -125283,7 +125239,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_migrated_customers",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_migrated_customers",
       "label": "migrated_customers",
       "_origin": "ast",
       "community": 144,
@@ -125294,7 +125250,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_addresses",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_addresses",
       "label": "public.customer_addresses",
       "_origin": "ast",
       "community": 144,
@@ -125305,7 +125261,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_campaign_sends",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_campaign_sends",
       "label": "public.customer_campaign_sends",
       "_origin": "ast",
       "community": 144,
@@ -125316,7 +125272,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_claim_links",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_claim_links",
       "label": "public.customer_claim_links",
       "_origin": "ast",
       "community": 144,
@@ -125327,7 +125283,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_emails",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_emails",
       "label": "public.customer_emails",
       "_origin": "ast",
       "community": 144,
@@ -125338,7 +125294,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_followups",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_followups",
       "label": "public.customer_followups",
       "_origin": "ast",
       "community": 144,
@@ -125349,7 +125305,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_google_reviews",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_google_reviews",
       "label": "public.customer_google_reviews",
       "_origin": "ast",
       "community": 144,
@@ -125360,7 +125316,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_purchase_lines",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_purchase_lines",
       "label": "public.customer_purchase_lines",
       "_origin": "ast",
       "community": 144,
@@ -125371,7 +125327,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_review_requests",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_review_requests",
       "label": "public.customer_review_requests",
       "_origin": "ast",
       "community": 144,
@@ -125382,7 +125338,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_whatsapp",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_whatsapp",
       "label": "public.customer_whatsapp",
       "_origin": "ast",
       "community": 144,
@@ -125393,7 +125349,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customers",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customers",
       "label": "public.customers",
       "_origin": "ast",
       "community": 144,
@@ -125404,7 +125360,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_google_reviews",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_google_reviews",
       "label": "public.google_reviews",
       "_origin": "ast",
       "community": 144,
@@ -125415,7 +125371,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_migrated_customers",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_migrated_customers",
       "label": "public.migrated_customers",
       "_origin": "ast",
       "community": 144,
@@ -125426,7 +125382,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_order_items",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_order_items",
       "label": "public.order_items",
       "_origin": "ast",
       "community": 144,
@@ -125437,7 +125393,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_orders",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_orders",
       "label": "public.orders",
       "_origin": "ast",
       "community": 144,
@@ -125448,7 +125404,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_points_ledger",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_points_ledger",
       "label": "public.points_ledger",
       "_origin": "ast",
       "community": 144,
@@ -125459,7 +125415,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_product_reviews",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_product_reviews",
       "label": "public.product_reviews",
       "_origin": "ast",
       "community": 144,
@@ -125470,7 +125426,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_readjustment_bookings",
+      "id": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_readjustment_bookings",
       "label": "public.readjustment_bookings",
       "_origin": "ast",
       "community": 144,
@@ -218003,7 +217959,7 @@
       "file_type": "code",
       "norm_label": "approved_playbooks",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L246"
+      "source_location": "L248"
     },
     {
       "id": "lib_email_campaigns_starters_blank_preview",
@@ -218014,7 +217970,7 @@
       "file_type": "code",
       "norm_label": "blank_preview",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L255"
+      "source_location": "L263"
     },
     {
       "id": "lib_email_campaigns_starters_invitation_starter",
@@ -218047,7 +218003,7 @@
       "file_type": "code",
       "norm_label": "playbook_drafts",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L153"
+      "source_location": "L154"
     },
     {
       "id": "lib_email_campaigns_starters_playbook_starters",
@@ -218058,7 +218014,7 @@
       "file_type": "code",
       "norm_label": "playbook_starters",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L249"
+      "source_location": "L257"
     },
     {
       "id": "lib_email_campaigns_tests_clear_all_test",
@@ -239161,7 +239117,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-crm-retention-loop/issues/07-stage-playbooks.md",
-      "source_location": "L62"
+      "source_location": "L65"
     },
     {
       "id": "claude_prd_crm_retention_loop_issues_07_stage_playbooks_as_built_2026_11_01",
@@ -244156,73 +244112,73 @@
       "source_location": "L1"
     },
     {
-      "id": "supabase_migrations_20261101140000_unsubscribe_reasons",
-      "label": "20261101140000_unsubscribe_reasons.sql",
+      "id": "supabase_migrations_20261101081458_unsubscribe_reasons",
+      "label": "20261101081458_unsubscribe_reasons.sql",
       "_origin": "ast",
       "community": 970,
       "community_name": "public.customer_unsubscribe_reasons",
       "file_type": "code",
-      "norm_label": "20261101140000_unsubscribe_reasons.sql",
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
+      "norm_label": "20261101081458_unsubscribe_reasons.sql",
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_created_at_idx",
+      "id": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_created_at_idx",
       "label": "customer_unsubscribe_reasons_created_at_idx",
       "_origin": "ast",
       "community": 970,
       "community_name": "public.customer_unsubscribe_reasons",
       "file_type": "code",
       "norm_label": "customer_unsubscribe_reasons_created_at_idx",
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
       "source_location": "L49"
     },
     {
-      "id": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_customer_idx",
+      "id": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_customer_idx",
       "label": "customer_unsubscribe_reasons_customer_idx",
       "_origin": "ast",
       "community": 970,
       "community_name": "public.customer_unsubscribe_reasons",
       "file_type": "code",
       "norm_label": "customer_unsubscribe_reasons_customer_idx",
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
       "source_location": "L47"
     },
     {
-      "id": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_event_key",
+      "id": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_event_key",
       "label": "customer_unsubscribe_reasons_event_key",
       "_origin": "ast",
       "community": 970,
       "community_name": "public.customer_unsubscribe_reasons",
       "file_type": "code",
       "norm_label": "customer_unsubscribe_reasons_event_key",
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
       "source_location": "L45"
     },
     {
-      "id": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "id": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
       "label": "public.customer_unsubscribe_reasons",
       "_origin": "ast",
       "community": 970,
       "community_name": "public.customer_unsubscribe_reasons",
       "file_type": "code",
       "norm_label": "public.customer_unsubscribe_reasons",
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
       "source_location": "L32"
     },
     {
-      "id": "supabase_migrations_20261101140000_unsubscribe_reasons_public_record_unsubscribe_reason",
+      "id": "supabase_migrations_20261101081458_unsubscribe_reasons_public_record_unsubscribe_reason",
       "label": "public.record_unsubscribe_reason()",
       "_origin": "ast",
       "community": 970,
       "community_name": "public.customer_unsubscribe_reasons",
       "file_type": "code",
       "norm_label": "public.record_unsubscribe_reason()",
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
       "source_location": "L62"
     },
     {
-      "id": "supabase_migrations_20261101140000_unsubscribe_reasons_sql_public_customer_consent_events",
+      "id": "supabase_migrations_20261101081458_unsubscribe_reasons_sql_public_customer_consent_events",
       "label": "public.customer_consent_events",
       "_origin": "ast",
       "community": 970,
@@ -244233,7 +244189,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101140000_unsubscribe_reasons_sql_public_customers",
+      "id": "supabase_migrations_20261101081458_unsubscribe_reasons_sql_public_customers",
       "label": "public.customers",
       "_origin": "ast",
       "community": 970,
@@ -244244,13 +244200,57 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_email_campaigns",
-      "label": "public.email_campaigns",
+      "id": "supabase_migrations_20261101081512_returning_customer_cohorts",
+      "label": "20261101081512_returning_customer_cohorts.sql",
       "_origin": "ast",
       "community": 971,
-      "community_name": "public.email_campaigns",
+      "community_name": "public.admin_returning_customer_cohorts",
       "file_type": "code",
-      "norm_label": "public.email_campaigns",
+      "norm_label": "20261101081512_returning_customer_cohorts.sql",
+      "source_file": "supabase/migrations/20261101081512_returning_customer_cohorts.sql",
+      "source_location": null
+    },
+    {
+      "id": "supabase_migrations_20261101081512_returning_customer_cohorts_public_admin_returning_customer_cohorts",
+      "label": "public.admin_returning_customer_cohorts()",
+      "_origin": "ast",
+      "community": 971,
+      "community_name": "public.admin_returning_customer_cohorts",
+      "file_type": "code",
+      "norm_label": "public.admin_returning_customer_cohorts()",
+      "source_file": "supabase/migrations/20261101081512_returning_customer_cohorts.sql",
+      "source_location": "L25"
+    },
+    {
+      "id": "supabase_migrations_20261101081512_returning_customer_cohorts_sql_public_order_items",
+      "label": "public.order_items",
+      "_origin": "ast",
+      "community": 971,
+      "community_name": "public.admin_returning_customer_cohorts",
+      "file_type": "code",
+      "norm_label": "public.order_items",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "supabase_migrations_20261101081512_returning_customer_cohorts_sql_public_orders",
+      "label": "public.orders",
+      "_origin": "ast",
+      "community": 971,
+      "community_name": "public.admin_returning_customer_cohorts",
+      "file_type": "code",
+      "norm_label": "public.orders",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "supabase_migrations_20261101081512_returning_customer_cohorts_sql_public_readjustment_bookings",
+      "label": "public.readjustment_bookings",
+      "_origin": "ast",
+      "community": 971,
+      "community_name": "public.admin_returning_customer_cohorts",
+      "file_type": "code",
+      "norm_label": "public.readjustment_bookings",
       "source_file": "",
       "source_location": ""
     },
@@ -286926,7 +286926,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": ".claude/skills/preview/fixtures/crm.mjs",
-      "source_location": "L558",
+      "source_location": "L573",
       "weight": 1.0
     },
     {
@@ -286938,7 +286938,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": ".claude/skills/preview/fixtures/crm.mjs",
-      "source_location": "L622",
+      "source_location": "L637",
       "weight": 1.0
     },
     {
@@ -318798,7 +318798,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L270",
+      "source_location": "L278",
       "weight": 1.0
     },
     {
@@ -375425,7 +375425,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L286",
+      "source_location": "L294",
       "weight": 1.0
     },
     {
@@ -602445,7 +602445,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-crm-retention-loop/issues/07-stage-playbooks.md",
-      "source_location": "L62",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -687717,7 +687717,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L153",
+      "source_location": "L154",
       "weight": 1.0
     },
     {
@@ -687728,7 +687728,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L246",
+      "source_location": "L248",
       "weight": 1.0
     },
     {
@@ -687739,7 +687739,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L249",
+      "source_location": "L257",
       "weight": 1.0
     },
     {
@@ -687750,7 +687750,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L252",
+      "source_location": "L260",
       "weight": 1.0
     },
     {
@@ -687761,7 +687761,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L255",
+      "source_location": "L263",
       "weight": 1.0
     },
     {
@@ -687772,7 +687772,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L258",
+      "source_location": "L266",
       "weight": 1.0
     },
     {
@@ -687783,7 +687783,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L261",
+      "source_location": "L269",
       "weight": 1.0
     },
     {
@@ -687794,7 +687794,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L266",
+      "source_location": "L274",
       "weight": 1.0
     },
     {
@@ -687805,7 +687805,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L281",
+      "source_location": "L289",
       "weight": 1.0
     },
     {
@@ -687816,7 +687816,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L285",
+      "source_location": "L293",
       "weight": 1.0
     },
     {
@@ -687827,7 +687827,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L295",
+      "source_location": "L303",
       "weight": 1.0
     },
     {
@@ -687838,7 +687838,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/email-campaigns/starters.ts",
-      "source_location": "L316",
+      "source_location": "L324",
       "weight": 1.0
     },
     {
@@ -751521,6 +751521,116 @@
       "weight": 1.0
     },
     {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_email_campaigns_guard",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L378",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_marketing_campaign_blocker",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L412",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_customer_unengaged",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L49",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L81",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_event_key",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L45",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_customer_idx",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_created_at_idx",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L49",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_public_record_unsubscribe_reason",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L62",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081512_returning_customer_cohorts",
+      "target": "supabase_migrations_20261101081512_returning_customer_cohorts_public_admin_returning_customer_cohorts",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081512_returning_customer_cohorts.sql",
+      "source_location": "L25",
+      "weight": 1.0
+    },
+    {
       "source": "supabase_migrations_20261101100000_customer_fittings",
       "target": "supabase_migrations_20261101100000_customer_fittings_customer_fittings_customer_idx",
       "relation": "contains",
@@ -751683,116 +751793,6 @@
       "confidence_score": 1.0,
       "source_file": "supabase/migrations/20261101100000_customer_fittings.sql",
       "source_location": "L86",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_email_campaigns_guard",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L378",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_marketing_campaign_blocker",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L412",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_customer_unengaged",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L49",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L81",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L32",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_event_key",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L45",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_customer_idx",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L47",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_created_at_idx",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L49",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_public_record_unsubscribe_reason",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L62",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101150000_returning_customer_cohorts",
-      "target": "supabase_migrations_20261101150000_returning_customer_cohorts_public_admin_returning_customer_cohorts",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101150000_returning_customer_cohorts.sql",
-      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -759085,6 +759085,39 @@
       "weight": 1.0
     },
     {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_created_at_idx",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "relation": "indexes",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L49",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_customer_idx",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "relation": "indexes",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons_customer_unsubscribe_reasons_event_key",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "relation": "indexes",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L45",
+      "weight": 1.0
+    },
+    {
       "source": "supabase_migrations_20261101100000_customer_fittings_customer_fittings_batch_idx",
       "target": "supabase_migrations_20261101100000_customer_fittings_public_customer_fittings",
       "relation": "indexes",
@@ -759115,39 +759148,6 @@
       "confidence_score": 1.0,
       "source_file": "supabase/migrations/20261101100000_customer_fittings.sql",
       "source_location": "L82",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_created_at_idx",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
-      "relation": "indexes",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L49",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_customer_idx",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
-      "relation": "indexes",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L47",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons_customer_unsubscribe_reasons_event_key",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
-      "relation": "indexes",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -769051,6 +769051,292 @@
       "weight": 1.0
     },
     {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_claim_links",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L107",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customers",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L205",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_migrated_customers",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L206",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_points_ledger",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L213",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_followups",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L218",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_purchase_lines",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L248",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_readjustment_bookings",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L256",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_emails",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L265",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_whatsapp",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L272",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_review_requests",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L281",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_google_reviews",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L287",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_google_reviews",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L288",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_product_reviews",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L295",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_order_items",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L311",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_orders",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L319",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_addresses",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L330",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_public_customer_campaign_sends",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L356",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_marketing_campaign_blocker",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L440",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_marketing_campaign_blocker",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_email_campaigns",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L445",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_marketing_campaign_blocker",
+      "target": "lib_crm_tests_segments_test_customers",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L446",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_marketing_campaign_blocker",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_migrated_customers",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L447",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081436_campaign_unengaged_public_marketing_campaign_blocker",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_sql_customer_campaign_sends",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081436_campaign_unengaged.sql",
+      "source_location": "L448",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons_public_record_unsubscribe_reason",
+      "target": "lib_crm_tests_segments_test_customers",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L79",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081512_returning_customer_cohorts_public_admin_returning_customer_cohorts",
+      "target": "supabase_migrations_20261101081512_returning_customer_cohorts_sql_public_orders",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081512_returning_customer_cohorts.sql",
+      "source_location": "L33",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081512_returning_customer_cohorts_public_admin_returning_customer_cohorts",
+      "target": "supabase_migrations_20261101081512_returning_customer_cohorts_sql_public_order_items",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081512_returning_customer_cohorts.sql",
+      "source_location": "L37",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081512_returning_customer_cohorts_public_admin_returning_customer_cohorts",
+      "target": "supabase_migrations_20261101081512_returning_customer_cohorts_sql_public_readjustment_bookings",
+      "relation": "reads_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081512_returning_customer_cohorts.sql",
+      "source_location": "L53",
+      "weight": 1.0
+    },
+    {
       "source": "supabase_migrations_20261101100000_customer_fittings_public_fitting_import_preview_matches",
       "target": "lib_crm_tests_segments_test_customers",
       "relation": "reads_from",
@@ -769180,292 +769466,6 @@
       "confidence_score": 1.0,
       "source_file": "supabase/migrations/20261101100000_customer_fittings.sql",
       "source_location": "L732",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_claim_links",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L107",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customers",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L205",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_migrated_customers",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L206",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_points_ledger",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L213",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_followups",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L218",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_purchase_lines",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L248",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_readjustment_bookings",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L256",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_emails",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L265",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_whatsapp",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L272",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_review_requests",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L281",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_google_reviews",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L287",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_google_reviews",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L288",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_product_reviews",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L295",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_order_items",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L311",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_orders",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L319",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_addresses",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L330",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_public_customer_campaign_sends",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L356",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_marketing_campaign_blocker",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L440",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_marketing_campaign_blocker",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_email_campaigns",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L445",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_marketing_campaign_blocker",
-      "target": "lib_crm_tests_segments_test_customers",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L446",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_marketing_campaign_blocker",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_migrated_customers",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L447",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101130000_campaign_unengaged_public_marketing_campaign_blocker",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_sql_customer_campaign_sends",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101130000_campaign_unengaged.sql",
-      "source_location": "L448",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons_public_record_unsubscribe_reason",
-      "target": "lib_crm_tests_segments_test_customers",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L79",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101150000_returning_customer_cohorts_public_admin_returning_customer_cohorts",
-      "target": "supabase_migrations_20261101150000_returning_customer_cohorts_sql_public_orders",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101150000_returning_customer_cohorts.sql",
-      "source_location": "L33",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101150000_returning_customer_cohorts_public_admin_returning_customer_cohorts",
-      "target": "supabase_migrations_20261101150000_returning_customer_cohorts_sql_public_order_items",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101150000_returning_customer_cohorts.sql",
-      "source_location": "L37",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101150000_returning_customer_cohorts_public_admin_returning_customer_cohorts",
-      "target": "supabase_migrations_20261101150000_returning_customer_cohorts_sql_public_readjustment_bookings",
-      "relation": "reads_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101150000_returning_customer_cohorts.sql",
-      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -773330,6 +773330,28 @@
       "weight": 1.0
     },
     {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_sql_public_customer_consent_events",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_sql_public_customers",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
       "source": "supabase_migrations_20261101100000_customer_fittings_public_customer_fittings",
       "target": "supabase_migrations_20261101100000_customer_fittings_public_fitting_import_batches",
       "relation": "references",
@@ -773415,28 +773437,6 @@
       "confidence_score": 1.0,
       "source_file": "supabase/migrations/20261101100000_customer_fittings.sql",
       "source_location": "L53",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_sql_public_customer_consent_events",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L32",
-      "weight": 1.0
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_sql_public_customers",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -818203,7 +818203,7 @@
     },
     {
       "source": "lib_crm_google_review_match_server_countlinkedreviewsofasked",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -818323,7 +818323,7 @@
     },
     {
       "source": "lib_crm_next_step_server_readnextstepfacts",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -818383,7 +818383,7 @@
     },
     {
       "source": "lib_crm_returning_customers_server_getreturningcustomers",
-      "target": "supabase_migrations_20261101150000_returning_customer_cohorts_public_admin_returning_customer_cohorts",
+      "target": "supabase_migrations_20261101081512_returning_customer_cohorts_public_admin_returning_customer_cohorts",
       "relation": "calls_rpc",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -818419,7 +818419,7 @@
     },
     {
       "source": "lib_crm_segments_countcustomers",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -818467,7 +818467,7 @@
     },
     {
       "source": "lib_crm_segments_resolvesegment",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -818515,7 +818515,7 @@
     },
     {
       "source": "lib_crm_telegram_update_sources_countsignups",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -818935,7 +818935,7 @@
     },
     {
       "source": "lib_customer_migration_overview_getmigratedcustomer",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -819018,7 +819018,7 @@
     },
     {
       "source": "lib_ecommerce_admin_customers_countshipstounknown",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -819042,7 +819042,7 @@
     },
     {
       "source": "lib_ecommerce_admin_customers_getadmincustomerlifecycle",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -819054,7 +819054,7 @@
     },
     {
       "source": "lib_ecommerce_admin_customers_listadmincustomers",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -820708,7 +820708,7 @@
     },
     {
       "source": "lib_email_campaigns_store_readrecipientfacts",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -820720,7 +820720,7 @@
     },
     {
       "source": "lib_email_campaigns_store_readunengagedids",
-      "target": "supabase_migrations_20261101130000_campaign_unengaged_public_admin_customer_overview",
+      "target": "supabase_migrations_20261101081436_campaign_unengaged_public_admin_customer_overview",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -821390,7 +821390,7 @@
     },
     {
       "source": "lib_marketing_consent_unsubscribe_reasons_server_readlatestunsubscribe",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -821402,7 +821402,7 @@
     },
     {
       "source": "lib_marketing_consent_unsubscribe_reasons_server_readreasonsforevents",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -821414,7 +821414,7 @@
     },
     {
       "source": "lib_marketing_consent_unsubscribe_reasons_server_recordunsubscribereason",
-      "target": "supabase_migrations_20261101140000_unsubscribe_reasons_public_record_unsubscribe_reason",
+      "target": "supabase_migrations_20261101081458_unsubscribe_reasons_public_record_unsubscribe_reason",
       "relation": "calls_rpc",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -826458,6 +826458,30 @@
       "context": "foreign_key"
     },
     {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "target": "supabase_migrations_0028_ecommerce_customers",
+      "relation": "references",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L34",
+      "weight": 1.0,
+      "context": "foreign_key"
+    },
+    {
+      "source": "supabase_migrations_20261101081458_unsubscribe_reasons_public_customer_unsubscribe_reasons",
+      "target": "supabase_migrations_20261020120000_marketing_consent_public_customer_consent_events",
+      "relation": "references",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/migrations/20261101081458_unsubscribe_reasons.sql",
+      "source_location": "L35",
+      "weight": 1.0,
+      "context": "foreign_key"
+    },
+    {
       "source": "supabase_migrations_20261101100000_customer_fittings_public_customer_fittings",
       "target": "supabase_migrations_0025_staff_management_mp_staff",
       "relation": "references",
@@ -826492,32 +826516,8 @@
       "source_location": "L72",
       "weight": 1.0,
       "context": "foreign_key"
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
-      "target": "supabase_migrations_0028_ecommerce_customers",
-      "relation": "references",
-      "_origin": "dataflow",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L34",
-      "weight": 1.0,
-      "context": "foreign_key"
-    },
-    {
-      "source": "supabase_migrations_20261101140000_unsubscribe_reasons_public_customer_unsubscribe_reasons",
-      "target": "supabase_migrations_20261020120000_marketing_consent_public_customer_consent_events",
-      "relation": "references",
-      "_origin": "dataflow",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261101140000_unsubscribe_reasons.sql",
-      "source_location": "L35",
-      "weight": 1.0,
-      "context": "foreign_key"
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "079a851c36257a4521718f8d3cb2f8e720eb61dc"
+  "built_at_commit": "4851f249c409c08d522b15afc7b5e169e25a4c32"
 }

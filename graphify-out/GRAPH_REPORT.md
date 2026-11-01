@@ -1,7 +1,7 @@
-# Graph Report - mp  (2026-11-01)
+# Graph Report - mp
 
 ## Corpus Check
-- 2766 files · ~6,929,828 words
+- 2766 files · ~6,929,997 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 26 file(s) not represented in the graph (top: .glb 12, (none) 6, .obj 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `079a851c`
+- Built from commit: `4851f249`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -863,6 +863,7 @@
 - Article: Macquarie Chiropractic X Mpillow Collaboration
 - ecommerce.ts
 - public.customer_unsubscribe_reasons
+- public.admin_returning_customer_cohorts
 - Homepage
 - Slice 09 — Blog content audit + consolidation map
 - Slice 10 — Execute consolidation — merges, 301s, prunes, E-E-A-T
@@ -918,7 +919,6 @@
 - delete-guard.test.ts
 - 20260710150000_faq_page.sql
 - 09 — Shopify-era order history, settled once, for the same lifecycle
-- public.admin_returning_customer_cohorts
 - callback/__tests__/route.test.ts
 - Slice 02 — Appointment RSVP status in admin calendar
 - brand-logo.ts

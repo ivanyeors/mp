@@ -4,7 +4,7 @@
  * first Purchase was in a month, the share who came back within 12 months for
  * an attended re-adjustment or a second Purchase (lifecycle-and-metrics.md).
  *
- * Pure: `admin_returning_customer_cohorts()` (20261101150000) counts, and this
+ * Pure: `admin_returning_customer_cohorts()` (20261101081512) counts, and this
  * decides what may be shown as a rate. A cohort whose 12 months are not over
  * for all of it is *still open*: its counts show, never a rate, so a young
  * month never reads as a bad one. Under {@link MIN_RATE_BASE} people, counts

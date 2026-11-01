@@ -16,7 +16,7 @@ import { UnsubscribeAnswerSchema, summariseUnsubscribes } from "../unsubscribe-r
  * name the same keys and outcomes.
  */
 
-const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261101140000_unsubscribe_reasons.sql"), "utf8");
+const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261101081458_unsubscribe_reasons.sql"), "utf8");
 
 describe("the answers", () => {
   it("are the table's, every one labelled and pointing somewhere", () => {

@@ -1,5 +1,5 @@
 -- PRD-crm-retention-loop slice 11: why they unsubscribe, asserted against
--- real Postgres (20261101140000_unsubscribe_reasons.sql).
+-- real Postgres (20261101081458_unsubscribe_reasons.sql).
 --
 -- Run from the repository root against a database with every migration
 -- applied (a throwaway local one, never production). It prints one line,

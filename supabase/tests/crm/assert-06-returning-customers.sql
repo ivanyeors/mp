@@ -1,5 +1,5 @@
 -- PRD-crm-retention-loop slice 06: the Returning customer rate's counts,
--- asserted against real Postgres (20261101150000_returning_customer_cohorts.sql).
+-- asserted against real Postgres (20261101081512_returning_customer_cohorts.sql).
 --
 -- Run from the repository root against a database with every migration
 -- applied (a throwaway local one, never production). It prints one line,

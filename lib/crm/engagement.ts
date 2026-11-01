@@ -20,7 +20,7 @@ import type { LifecycleDetail, LifecycleStage } from "@/lib/crm/lifecycle-stage"
  * leave the Unengaged out unless one ticks *Include unengaged* (a win-back).
  *
  * The overview computes it in SQL, `customer_unengaged` (migration
- * 20261101130000), as `admin_customer_overview.unengaged`; the Customers list's
+ * 20261101081436), as `admin_customer_overview.unengaged`; the Customers list's
  * *Engagement* filter and the campaign rule both read that column. This is its
  * twin: lib/crm/__tests__/engagement-sql.test.ts holds the constants equal,
  * and campaign-rule-cases.json the answers.

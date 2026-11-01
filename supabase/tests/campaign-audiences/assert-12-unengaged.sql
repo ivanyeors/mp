@@ -1,5 +1,5 @@
 -- Slice 12 (PRD-campaign-audiences): engaged and unengaged, asserted against
--- real Postgres (20261101130000_campaign_unengaged.sql). The rule's cases are
+-- real Postgres (20261101081436_campaign_unengaged.sql). The rule's cases are
 -- in campaign-rule-cases.json (assert-01-email-campaigns.sql); this checks
 -- what they do not: the grants, the overview's column and the list filter, the
 -- claim leaving no ledger row, the lock, and that a click or a purchase ends it.

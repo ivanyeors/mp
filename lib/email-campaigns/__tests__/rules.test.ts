@@ -112,7 +112,7 @@ const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021
 /** The rule's latest definition: the rest period's (PRD-campaign-audiences slice 07). */
 const RULE_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031144935_campaign_rest_period.sql"), "utf8");
 /** The rule's latest definition: slice 12 added `unengaged`. */
-const BLOCKER_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261101130000_campaign_unengaged.sql"), "utf8");
+const BLOCKER_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261101081436_campaign_unengaged.sql"), "utf8");
 
 const NOW = new Date("2026-10-31T04:00:00.000Z");
 

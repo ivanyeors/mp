@@ -9,7 +9,7 @@
  *
  * `composedCampaignBlocker` is the rule the plan uses.
  * `marketing_campaign_blocker()` (20261021100000, with the rest period since
- * 20261031144935 and the Unengaged since 20261101130000) is the same rule in SQL,
+ * 20261031144935 and the Unengaged since 20261101081436) is the same rule in SQL,
  * which `claim_marketing_campaign_send()` re-runs at the moment of each send,
  * so the SQL decides. supabase/tests/email-marketing/campaign-rule-cases.json
  * holds the two equal.

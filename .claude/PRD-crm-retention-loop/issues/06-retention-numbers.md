@@ -38,7 +38,7 @@ How:
 
 ## As built so far (2026-11-01): the headline
 
-- `admin_returning_customer_cohorts()` (migration `20261101150000`), server-only: by
+- `admin_returning_customer_cohorts()` (migration `20261101081512`), server-only: by
   first-purchase month (Singapore), the first-time customers, and how many came back within 12
   months for an attended re-adjustment, for a second Purchase, and either. A Purchase is what the
   Customer overview counts (a goods line on a counted Order), so a refunded Order or a

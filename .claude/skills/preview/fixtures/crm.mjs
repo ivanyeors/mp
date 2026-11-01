@@ -270,6 +270,21 @@ export default function crm({ now }) {
           updated_at: ago(3),
           archived_at: null,
         },
+        // The four stage Segments the Playbooks open, by name (PRD-crm-retention-loop slice 07).
+        ...[
+          ["New · delivered over 60 days ago", { stage: "new", delivered: "over:60" }],
+          ["Loyal", { stage: "loyal" }],
+          ["At risk · 12 to 24 months", { stage: "at-risk", last_order: "within:24" }],
+          ["At risk · Lapsed", { stage: "at-risk:lapsed" }],
+        ].map(([name, filters], i) => ({
+          id: `00000000-0000-4000-8000-00000000c0${i + 10}`,
+          name,
+          filters,
+          filters_version: 2,
+          created_at: ago(1),
+          updated_at: ago(1),
+          archived_at: null,
+        })),
       ],
       email_campaigns: [
         {
@@ -688,7 +703,7 @@ export default function crm({ now }) {
         }),
     },
     rpc: {
-      // 20261101140000_unsubscribe_reasons.sql: an answer for the latest unsubscribe, once.
+      // 20261101081458_unsubscribe_reasons.sql: an answer for the latest unsubscribe, once.
       record_unsubscribe_reason: ({ p_customer_id, p_reason, p_text = null }, { tables }) => {
         const c = (tables.customers ?? []).find((x) => x.id === p_customer_id);
         if (!c) return "not_found";

@@ -77,7 +77,7 @@ each send (ADR 0040): consent, suppression (a bounce or a spam report), the
 **Rest period** (7 days between marketing emails, at most 4 in 30, points-expiry
 reminders included; `20261031144935`), and the sunset rule: an **Unengaged**
 Customer (clicked none of their last 6 campaigns, and *At risk · Lapsed* or a
-*Lead* for over 12 months; `20261101130000`) is left out unless the campaign
+*Lead* for over 12 months; `20261101081436`) is left out unless the campaign
 ticks *Include unengaged*. Unengaged is never consent: the Customer stays
 `subscribed`, and no consent event is written. An **Audience** or a
 **Segment** only narrows; neither ever reaches someone the claim refuses.
@@ -87,7 +87,7 @@ ticks *Include unengaged*. Unengaged is never consent: the Customer stays
 After an unsubscribe has taken effect, the unsubscribe page and the account ask
 *Mind telling us why?*, and Staff may record what a customer said
 (PRD-crm-retention-loop slice 11). `record_unsubscribe_reason()`
-(`20261101140000`) stores one answer per unsubscribe in
+(`20261101081458`) stores one answer per unsubscribe in
 `customer_unsubscribe_reasons`, keyed by the consent event it answers, only
 while the Customer is unsubscribed, and never after a spam complaint. It reads
 consent and never writes it.

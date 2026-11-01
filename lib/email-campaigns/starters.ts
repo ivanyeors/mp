@@ -147,8 +147,9 @@ const go = (id: () => string, label: string, target: Of<"buttons">["buttons"][nu
  * rating, or carries an aftercare message, and the two that speak of points
  * wait for points to be live, as every campaign that mentions them does.
  *
- * Drafts until the owner approves their words: only those in
- * `APPROVED_PLAYBOOKS` are offered (`PLAYBOOK_STARTERS`).
+ * Offered once the owner approves their words: only those in
+ * `APPROVED_PLAYBOOKS` are (`PLAYBOOK_STARTERS`). All four were approved on
+ * 2026-11-01.
  */
 export const PLAYBOOK_DRAFTS: readonly Starter[] = [
   {
@@ -241,9 +242,16 @@ export const PLAYBOOK_DRAFTS: readonly Starter[] = [
 /**
  * The Playbooks the owner has approved, by id: only these are offered. Add an
  * id once the owner has read its words (PRD-crm-retention-loop slice 07,
- * acceptance criteria).
+ * acceptance criteria). A change to an approved Playbook's words goes back to
+ * the owner first.
  */
-export const APPROVED_PLAYBOOKS: ReadonlySet<string> = new Set<string>([]);
+export const APPROVED_PLAYBOOKS: ReadonlySet<string> = new Set<string>([
+  // Owner, 2026-11-01.
+  "playbook_second_purchase",
+  "playbook_thank_you",
+  "playbook_we_miss_you",
+  "playbook_welcome_back",
+]);
 
 /** The Playbooks offered: the approved drafts, listed after the invitation by the Start panel and the palette. */
 export const PLAYBOOK_STARTERS: readonly Starter[] = PLAYBOOK_DRAFTS.filter((p) => APPROVED_PLAYBOOKS.has(p.id));

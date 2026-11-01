@@ -1403,7 +1403,7 @@ Defined in supabase/migrations/20261101020836_customer_lifecycle_counts.sql:22
   - `getLifecycleSummary()` — lib/crm/lifecycle-summary-server.ts:11
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261101130000_campaign_unengaged.sql:81
+Defined in supabase/migrations/20261101081436_campaign_unengaged.sql:81
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
@@ -1434,7 +1434,7 @@ Defined in supabase/migrations/20261031032017_points_never_expire.sql:132
   - `readPointsSummary()` [select] — lib/points/server.ts:186
 
 ### admin_returning_customer_cohorts
-Defined in supabase/migrations/20261101150000_returning_customer_cohorts.sql:25
+Defined in supabase/migrations/20261101081512_returning_customer_cohorts.sql:25
 - Called by:
   - `getReturningCustomers()` — lib/crm/returning-customers-server.ts:11
 
@@ -1602,7 +1602,7 @@ Changed from pages: `/settings/customers`
   - `listSegments()` [select] — lib/crm/segments.ts:94
 
 ### customer_unsubscribe_reasons
-Defined in supabase/migrations/20261101140000_unsubscribe_reasons.sql:32
+Defined in supabase/migrations/20261101081458_unsubscribe_reasons.sql:32
 References: `customer_consent_events`, `customers`
 - Read by:
   - `readLatestUnsubscribe()` [select] — lib/marketing-consent/unsubscribe-reasons-server.ts:87
@@ -1843,7 +1843,7 @@ Defined in supabase/migrations/20261020124000_customer_review_requests.sql:65
   - `GET()` — app/r/review/route.ts:32
 
 ### record_unsubscribe_reason
-Defined in supabase/migrations/20261101140000_unsubscribe_reasons.sql:62
+Defined in supabase/migrations/20261101081458_unsubscribe_reasons.sql:62
 - Called by:
   - `recordUnsubscribeReason()` — lib/marketing-consent/unsubscribe-reasons-server.ts:44
 

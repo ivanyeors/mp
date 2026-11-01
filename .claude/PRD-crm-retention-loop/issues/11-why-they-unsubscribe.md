@@ -2,7 +2,7 @@
 
 **Issue:** [#352](https://github.com/ivanyeors/mp/issues/352)
 **Type:** AFK, then HITL (the owner on the answer wording)
-**Status:** **built** (2026-11-01); the answer wording awaits the owner
+**Status:** **built** (2026-11-01); the owner approved the answer wording (2026-11-01)
 **Blocked by:** 03 (the *Lost* stage)
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`
 
@@ -50,7 +50,7 @@ discount or asks them to stay.
 
 ## As built (2026-11-01)
 
-- **Migration** `20261101140000_unsubscribe_reasons.sql`: `customer_unsubscribe_reasons`
+- **Migration** `20261101081458_unsubscribe_reasons.sql`: `customer_unsubscribe_reasons`
   (server-only; unique on the consent event it answers; words only with *Other*, up to 500
   characters) and `record_unsubscribe_reason(customer, reason, text)`, which records an answer
   for the Customer's latest consent change only while they are unsubscribed and that change was

@@ -46,7 +46,7 @@ settings.
 
 ## As built (2026-11-01)
 
-- **Migration** `20261101130000_campaign_unengaged.sql`:
+- **Migration** `20261101081436_campaign_unengaged.sql`:
   - `customer_unengaged(stage, detail, since, sent, clicked, now)`: the rule, once. *Since* is
     `customers.created_at`: an imported Customer's is the import, as the Shopify export carries
     no sign-up date, so an imported Lead cannot be Unengaged before 12 months after the import.

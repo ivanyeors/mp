@@ -10,7 +10,7 @@
  * ./unsubscribe-reasons-server.
  *
  * The answers are the owner's draft (slice 11, "Answers"); the table's check
- * (20261101140000_unsubscribe_reasons.sql) lists the same keys.
+ * (20261101081458_unsubscribe_reasons.sql) lists the same keys.
  */
 
 export const UNSUBSCRIBE_REASONS = [

@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK, then HITL (owner approves the words)
-**Status:** **built** as drafts (2026-11-01); offered once the owner approves each one's words
+**Status:** **built and approved** (2026-11-01): the owner approved all four; offered in *New campaign*'s Start panel and the Starters tab
 **Blocked by:** 02, 03
 **Labels:** `enhancement`, `needs-triage`, `P3`, `area:admin`, `area:email`
 
@@ -41,10 +41,13 @@ Segment.
   discount, asks for a review or rating, or carries an aftercare message; *Thank you* and *We miss
   you* speak of points, so they wait for points to be live, as every campaign that does. Points
   never expire (2026-10-31), so *We miss you* says so instead of an expiry date.
-- **The approval gate:** `APPROVED_PLAYBOOKS` (empty). Only an approved draft is in
+- **The approval gate:** `APPROVED_PLAYBOOKS`. Only an approved draft is in
   `PLAYBOOK_STARTERS`, and so in the Start panel and the palette. Approving one is adding its id.
+  The owner approved all four on 2026-11-01; a change to an approved Playbook's words goes back
+  to the owner first.
 - **Audiences:** each names its stage's Segment and the Customers query that saves it, so Staff
-  save it once under that name and the Playbook finds it:
+  save it once under that name and the Playbook finds it. All four were saved in production on
+  2026-11-01, at the owner's request:
 
   | Playbook | Segment name | Customers query |
   |---|---|---|
@@ -63,5 +66,4 @@ Segment.
 
 - [x] No playbook mentions a review, a rating or an aftercare message.
 - [x] Only `subscribed` Customers receive any of them (checked at send, as today).
-- [ ] The owner has approved each playbook's words before it is offered. The gate is built; the
-  approval is the owner's.
+- [x] The owner has approved each playbook's words before it is offered (all four, 2026-11-01).

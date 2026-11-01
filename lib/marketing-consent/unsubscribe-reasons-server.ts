@@ -12,7 +12,7 @@ import {
 /**
  * Unsubscribe reasons on the server (PRD-crm-retention-loop slice 11): the
  * answer's schema, recording it through `record_unsubscribe_reason()`
- * (20261101140000), and the reads for the unsubscribe page, the Customer page
+ * (20261101081458), and the reads for the unsubscribe page, the Customer page
  * and Analytics. Every read and write is the service role's: the table is
  * server-only.
  */
