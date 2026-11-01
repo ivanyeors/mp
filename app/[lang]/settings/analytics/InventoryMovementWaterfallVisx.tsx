@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, type CSSProperties } from "react";
-import { ParentSize } from "@visx/responsive";
+import { ChartWidth } from "./ChartWidth";
 import { Group } from "@visx/group";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { AxisBottom } from "@visx/axis";
@@ -395,7 +395,7 @@ export function InventoryMovementWaterfallVisx({
     <div className="w-full overflow-x-auto">
       {/* Phones draw it at the card's width (the chart has a narrow layout under 420px). */}
       <div className="md:min-w-[440px]">
-        <ParentSize>
+        <ChartWidth>
           {({ width }) =>
             width < 10 ? null : (
               <Chart
@@ -407,7 +407,7 @@ export function InventoryMovementWaterfallVisx({
               />
             )
           }
-        </ParentSize>
+        </ChartWidth>
       </div>
     </div>
   );
