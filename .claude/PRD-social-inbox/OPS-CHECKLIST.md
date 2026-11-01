@@ -184,7 +184,20 @@ names for a new app, and the messaging permissions are added once the review pas
 5. **Business Messaging access review** (the slow part) — once the app from step 1 is approved, as
    the form wants its App ID. Fill in the
    [intake form](https://bytedance.sg.larkoffice.com/share/base/form/shrlg7vFArGhg9V20neYCEwIKrb)
-   linked from [Access to Business Messaging API](https://business-api.tiktok.com/portal/docs?id=1832184145137922).
+   linked from [Access to Business Messaging API](https://business-api.tiktok.com/portal/docs?id=1832184145137922):
+   - **Developer Company**: `Mellow Life Pte Ltd (Mpillow)`
+   - **Company Legal Entity Name**: exactly as on the ACRA business profile, punctuation included
+   - **Headquarters Location**: `Singapore, Singapore`
+   - **Website URL**: `https://www.mpillow.com`, the same site as the approved developer profile
+   - **Contact Person's Name / Email**: the person who will answer the questionnaire, with their
+     full legal name and their own `@mpillow.com` address. TikTok asks for an individual's address,
+     not a shared inbox.
+   - **TikTok Representative's Email**: leave empty
+   - **Application**: *This is my first time applying for Business Messaging API access.*
+   - **Developer App ID**: My Apps → Mpillow Inbox → App ID
+   - **Managed Business Account Regions**: **APAC** only. The region is where the business account
+     signed up, and @thempillow is in Singapore.
+
    Within about 10 working days TikTok emails the contact person a *"TikTok/ByteDance Third-Party
    Due Diligence Questionnaire"* (data security & privacy review); the assessment normally takes
    2–4 weeks after that. Answer it fully and quickly, attaching any security documents you have,
@@ -204,7 +217,11 @@ TIKTOK_APP_ID=<App Detail → Basic Information → App ID>
 TIKTOK_APP_SECRET=<App Detail → Basic Information → Secret>
 ```
 
-Add to Vercel (and `.env.local`), **redeploy**.
+Add to Vercel (and `.env.local`), **redeploy**. The **Connect TikTok** button appears as soon as these
+are set, but it only works after step 2.6. Before that, TikTok's sign-in returns an error.
+
+The app's **Advertiser authorization URL** is for signing in ad accounts, which we don't use. Leave
+it as it is.
 
 ### 4. Connect the account
 
