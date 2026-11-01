@@ -277,7 +277,7 @@ export function LifecycleChart({
 
 /**
  * The card above the Customers list, with `customers`. Phones open on a
- * one-line summary, as the Migration card does; the chart is a tap away.
+ * one-line summary; the chart is a tap away.
  */
 export function LifecycleCard({
     summary,

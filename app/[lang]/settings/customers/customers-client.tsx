@@ -54,7 +54,6 @@ import {
     type MobileFilter,
     type SourceFilter,
 } from "@/lib/crm/customer-filters";
-import type { MigrationSummary } from "@/lib/customer-migration/overview";
 import type { LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import type { LifecycleSummary } from "@/lib/crm/lifecycle-summary";
 import { reviewFacts } from "@/lib/crm/reviews";
@@ -67,7 +66,6 @@ import {
 import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
 import { LifecycleStageBadge, LifecycleStageCell, lifecycleNote } from "./lifecycle-stage-badge";
 import { LifecycleCard } from "./lifecycle-card";
-import { MigrationCard } from "./migration-card";
 import { SegmentsRow } from "./segments-row";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -220,7 +218,6 @@ export function CustomersClient({
     initialData,
     initialFilters,
     ignoredFilters = [],
-    migration = null,
     lifecycle = null,
     initialSegments,
     canEdit = false,
@@ -231,8 +228,6 @@ export function CustomersClient({
     initialFilters?: Partial<CustomerListFilters>;
     /** URL parameters the page dropped as invalid; the list says so. */
     ignoredFilters?: readonly CustomerFilterParam[];
-    /** The Migration card's numbers, or null when they could not be read. */
-    migration?: MigrationSummary | null;
     /** The Customer lifecycle chart's counts, or null when they could not be read. */
     lifecycle?: LifecycleSummary | null;
     /** The Segments row (CRM slice 05), read by the page; undefined and the row fetches them. */
@@ -334,13 +329,6 @@ export function CustomersClient({
         setSegmentId(segment.id);
         applyFilters((f) => ({ ...f, ...chosenSegmentFilters(segment.params) }));
     };
-
-    // The Migration card's link: from Shopify, not signed up yet.
-    const showNotSignedUp = () => changeFilters({ account: "no-account", source: "shopify" });
-    const notSignedUpHref = `${to("/settings/customers")}?${customerFilterParams({
-        account: "no-account",
-        source: "shopify",
-    }).toString()}`;
 
     // The Customer lifecycle chart: a stage's row lists that stage alone, and
     // choosing it again lists everyone. The list keeps its other filters.
@@ -478,13 +466,6 @@ export function CustomersClient({
                     activeStage={activeStage}
                     stageHref={stageHref}
                     onChooseStage={chooseStage}
-                />
-            )}
-            {migration && (
-                <MigrationCard
-                    summary={migration}
-                    notSignedUpHref={notSignedUpHref}
-                    onShowNotSignedUp={showNotSignedUp}
                 />
             )}
 

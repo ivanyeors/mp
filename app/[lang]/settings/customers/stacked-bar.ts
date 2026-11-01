@@ -1,9 +1,8 @@
 import type { CSSProperties } from "react";
 
 /**
- * Where one part of a stacked bar sits, in CSS, for the Customers page's
- * charts (the Customer lifecycle and the Shopify migration). `from` and `to`
- * are fractions of the bar's whole.
+ * Where one part of a stacked bar sits, in CSS, for the Customer lifecycle
+ * chart. `from` and `to` are fractions of the bar's whole.
  *
  * A 2px gap in the card's colour follows every part but the last. A part
  * never draws thinner than 2px, so one customer still shows; it pushes the

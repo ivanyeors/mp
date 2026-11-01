@@ -1,22 +1,24 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type { JourneyStage, JourneyStageCount } from "./journey";
 
 /**
  * What the Admin Panel shows about the Shopify import (migration slice 12):
- * the Migration card on the Customers page, and the From Shopify card on a
- * Migrated customer's detail page. Both read `migrated_customers` and the
- * Import batch rows, whatever created them, with the service role; the
- * caller has checked `customers`.
+ * the From Shopify card on a Migrated customer's detail page. It reads
+ * `migrated_customers` and the Import batch rows, whatever created them, with
+ * the service role; the caller has checked `customers`.
  */
 
-// ─── The Migration card ──────────────────────────────────────────────────────
+// ─── The migration summary ───────────────────────────────────────────────────
 
 /**
  * Every column of `admin_customer_migration_summary`, in the view's order.
  * Slices 06 and 08 appended their funnel columns (*Emailed*, *Clicked*); the
  * Claim bonus and what points did replaced the voucher's in
  * PRD-loyalty-points slice 06; the Journey stages came last (2026-10-31).
- * The view test keeps the two equal.
+ *
+ * Nothing reads the view since the Migration card left the Customers page
+ * (owner, 2026-11-01; the Customer lifecycle chart replaced it). It stays in
+ * the database until a migration drops it, so the view test keeps the two
+ * equal, and a rebuild of the overview still recreates it.
  */
 export const MIGRATION_SUMMARY_COLUMNS = [
   "imported",
@@ -44,102 +46,10 @@ export const MIGRATION_SUMMARY_COLUMNS = [
   "stage_ordered",
 ] as const;
 
-export interface MigrationSummary {
-  /** Migrated customers. */
-  imported: number;
-  /** Of those, created by the import. */
-  created: number;
-  /** Of those, matched to (merged into) an existing Customer. */
-  matched: number;
-  /** Of `imported`, the ones with an account now. */
-  signedUp: number;
-  /** Of `signedUp`, the ones whose login predates their import. */
-  signedUpBeforeImport: number;
-  /** Import batches ever applied. The card shows from the first one. */
-  batchesApplied: number;
-  /** Of `imported`, the ones who opened a **Claim link** (slice 06). */
-  clicked: number;
-  /** Of `imported`, the ones granted the **Claim bonus**. */
-  claimBonuses: number;
-  /** **Points** they spent on paid **Orders**. */
-  migratedPointsSpent: number;
-  /** Their paid **Orders** that used points. */
-  pointsOrders: number;
-  /** Those Orders' total, SGD. */
-  pointsRevenue: number;
-  /** Of `imported`, the ones a campaign email reached the provider for (slice 08). */
-  emailed: number;
-  /** Of `imported`, the ones with a hard bounce: left out of later waves. */
-  emailsBounced: number;
-  /** Of `imported`, the ones who marked one as spam: unsubscribed. */
-  emailsComplained: number;
-  /**
-   * Where each of `imported` is now: their furthest **Journey stage**, and of
-   * those, the ones no campaign email can reach (20261101020824). The stages
-   * sum to `imported`; `unreachable` is 0 from *Signed up* on.
-   */
-  stages: Record<JourneyStage, JourneyStageCount>;
-}
-
 const count = (v: unknown): number => {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
 };
-
-/** The view's one row as the card reads it. Counts may arrive as strings (bigint). */
-export function migrationSummaryFromRow(row: Partial<Record<(typeof MIGRATION_SUMMARY_COLUMNS)[number], unknown>> | null): MigrationSummary {
-  return {
-    imported: count(row?.imported),
-    created: count(row?.imported_created),
-    matched: count(row?.imported_matched),
-    signedUp: count(row?.signed_up),
-    signedUpBeforeImport: count(row?.signed_up_before_import),
-    batchesApplied: count(row?.batches_applied),
-    clicked: count(row?.clicked),
-    claimBonuses: count(row?.claim_bonuses),
-    migratedPointsSpent: count(row?.migrated_points_spent),
-    pointsOrders: count(row?.points_orders),
-    pointsRevenue: count(row?.points_revenue),
-    emailed: count(row?.emailed),
-    emailsBounced: count(row?.emails_bounced),
-    emailsComplained: count(row?.emails_complained),
-    stages: {
-      imported: { here: count(row?.stage_imported), unreachable: count(row?.stage_imported_unreachable) },
-      emailed: { here: count(row?.stage_emailed), unreachable: count(row?.stage_emailed_unreachable) },
-      clicked: { here: count(row?.stage_clicked), unreachable: count(row?.stage_clicked_unreachable) },
-      signed_up: { here: count(row?.stage_signed_up), unreachable: 0 },
-      claim_bonus: { here: count(row?.stage_claim_bonus), unreachable: 0 },
-      ordered: { here: count(row?.stage_ordered), unreachable: 0 },
-    },
-  };
-}
-
-/** The share of imported Customers who have signed up, as a whole percent. */
-export function signedUpPercent(summary: Pick<MigrationSummary, "imported" | "signedUp">): number {
-  return percentOf(summary.signedUp, summary.imported);
-}
-
-/** `part` of `whole` as a whole percent; 0 when `whole` is 0. */
-export function percentOf(part: number, whole: number): number {
-  return whole > 0 ? Math.round((part / whole) * 100) : 0;
-}
-
-/**
- * The card's numbers, or null when the read failed: the card is then left out
- * and the Customers list still renders.
- */
-export async function getMigrationSummary(): Promise<MigrationSummary | null> {
-  try {
-    const { data, error } = await supabaseAdmin()
-      .from("admin_customer_migration_summary")
-      .select(MIGRATION_SUMMARY_COLUMNS.join(", "))
-      .maybeSingle();
-    if (error) return null;
-    return migrationSummaryFromRow(data as Record<string, unknown> | null);
-  } catch {
-    return null;
-  }
-}
 
 // ─── The From Shopify card ───────────────────────────────────────────────────
 

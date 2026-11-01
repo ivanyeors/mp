@@ -3,12 +3,13 @@ import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
-import type { MigrationSummary, MigratedCustomerFacts } from "@/lib/customer-migration/overview";
+import type { MigratedCustomerFacts } from "@/lib/customer-migration/overview";
 
 /**
  * Account status on every Customer, and the Shopify migration surfaces
- * (migration slice 12): the list's Account column, Shopify badge and Migration
- * card, and the detail page's Account and From Shopify cards.
+ * (migration slice 12): the list's Account column and Shopify badge, and the
+ * detail page's Account and From Shopify cards. The Migration card left the
+ * list on 2026-11-01.
  */
 
 vi.mock("next/navigation", () => ({
@@ -18,7 +19,6 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
-const { MigrationCard, journeyNotes } = await import("../migration-card");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
 
 const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
@@ -72,38 +72,8 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   ...over,
 });
 
-const summary: MigrationSummary = {
-  imported: 1200,
-  created: 900,
-  matched: 300,
-  signedUp: 150,
-  signedUpBeforeImport: 40,
-  batchesApplied: 1,
-  clicked: 300,
-  claimBonuses: 120,
-  migratedPointsSpent: 30000,
-  pointsOrders: 31,
-  pointsRevenue: 4250.5,
-  emailed: 960,
-  emailsBounced: 12,
-  emailsComplained: 1,
-  stages: {
-    imported: { here: 230, unreachable: 20 },
-    emailed: { here: 660, unreachable: 12 },
-    clicked: { here: 160, unreachable: 1 },
-    signed_up: { here: 30, unreachable: 0 },
-    claim_bonus: { here: 95, unreachable: 0 },
-    ordered: { here: 25, unreachable: 0 },
-  },
-};
-
-const list = (rows: CustomerOverviewRow[], migration: MigrationSummary | null = null) =>
-  renderToString(
-    <CustomersClient
-      initialData={{ customers: { ok: true, rows, total: rows.length, page: 1, limit: 20 } }}
-      migration={migration}
-    />,
-  );
+const list = (rows: CustomerOverviewRow[]) =>
+  renderToString(<CustomersClient initialData={{ customers: { ok: true, rows, total: rows.length, page: 1, limit: 20 } }} />);
 
 describe("Customers list", () => {
   it("shows Signed up with the date, or a muted No account", () => {
@@ -147,45 +117,8 @@ describe("Customers list", () => {
     expect(html).toContain("No customers match these filters.");
   });
 
-  it("shows the Migration card once a batch is applied, and not before", () => {
-    expect(list([], summary)).toContain("Shopify migration");
-    expect(list([], { ...summary, batchesApplied: 0 })).not.toContain("Shopify migration");
-    expect(list([], null)).not.toContain("Shopify migration");
-  });
-});
-
-describe("Migration card", () => {
-  it("draws the journey, one row a stage, with who reached it and who is here now", () => {
-    const html = renderToString(
-      <MigrationCard summary={summary} notSignedUpHref="/en-US/settings/customers" onShowNotSignedUp={() => {}} />,
-    );
-    for (const stage of ["imported", "emailed", "clicked", "signed_up", "claim_bonus", "ordered"]) {
-      expect(html).toContain(`data-stage="${stage}"`);
-    }
-    // Emailed: 970 reached (660 + 160 + 30 + 95 + 25), 81% of imported; 660 here, 12 of them out of reach.
-    expect(html).toContain("Emailed: 970 reached, 81% of imported. 660 here now, 12 of them can&#x27;t be emailed; 310 went further.");
-    expect(html).toContain("Clicked: 310 reached, 26% of imported, 32% of emailed.");
-    expect(html).toContain("Where each of the 1,200 customers imported from Shopify is now.");
-  });
-
-  it("puts created and matched, and the accounts that predate the import, in the stages' tooltips", () => {
-    expect(journeyNotes(summary)).toEqual({
-      imported: "Created 900, matched 300.",
-      emailed: "12 bounced, 1 marked as spam.",
-      signed_up: "40 already had an account before import.",
-    });
-    expect(journeyNotes({ ...summary, emailsBounced: 0, emailsComplained: 0, signedUpBeforeImport: 0 })).toEqual({
-      imported: "Created 900, matched 300.",
-    });
-  });
-
-  it("links to the list of those from Shopify not signed up yet", () => {
-    const html = renderToString(
-      <MigrationCard summary={summary} notSignedUpHref="/en-US/settings/customers?account=no-account&amp;source=shopify" onShowNotSignedUp={() => {}} />,
-    );
-    expect(html).toContain("1,050");
-    expect(html).toContain("from Shopify not signed up yet");
-    expect(html).toContain("account=no-account");
+  it("has no Shopify migration card: the Customer lifecycle chart replaced it (owner, 2026-11-01)", () => {
+    expect(list([])).not.toContain("Shopify migration");
   });
 });
 

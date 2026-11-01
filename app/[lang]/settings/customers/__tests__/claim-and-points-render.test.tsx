@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
-import type { MigrationSummary, MigratedCustomerFacts } from "@/lib/customer-migration/overview";
+import type { MigratedCustomerFacts } from "@/lib/customer-migration/overview";
 
 /**
  * What the Claim link and the Claim bonus add to the Customers page
  * (migration slice 06; PRD-loyalty-points slice 06, which retired the
- * Welcome-back voucher): the Migration card's Clicked, Claim bonus, Points
- * spent and Revenue; the list's Points filter; and the From Shopify card's
- * first click and Claim bonus.
+ * Welcome-back voucher): the list's Points filter, and the From Shopify
+ * card's first click and Claim bonus. (The Migration card, with Points spent
+ * and Revenue, left the page on 2026-11-01.)
  */
 
 vi.mock("next/navigation", () => ({
@@ -18,55 +18,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
-const { migrationFigures } = await import("../migration-card");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
-
-const summary: MigrationSummary = {
-  imported: 1200,
-  created: 900,
-  matched: 300,
-  signedUp: 150,
-  signedUpBeforeImport: 40,
-  batchesApplied: 1,
-  clicked: 300,
-  claimBonuses: 120,
-  migratedPointsSpent: 31000,
-  pointsOrders: 31,
-  pointsRevenue: 4250.5,
-  emailed: 960,
-  emailsBounced: 12,
-  emailsComplained: 1,
-  stages: {
-    imported: { here: 230, unreachable: 20 },
-    emailed: { here: 660, unreachable: 12 },
-    clicked: { here: 160, unreachable: 1 },
-    signed_up: { here: 30, unreachable: 0 },
-    claim_bonus: { here: 95, unreachable: 0 },
-    ordered: { here: 25, unreachable: 0 },
-  },
-};
-
-describe("Migration card", () => {
-  it("adds the points spent and the Revenue of their paid orders under the journey", () => {
-    const figures = migrationFigures(summary);
-    expect(figures.map((f) => f.label)).toEqual(["Points spent", "Revenue"]);
-    const figure = (label: string) => figures.find((f) => f.label === label)!;
-    // A balance is always shown in points and dollars (ADR 0030 (b)).
-    expect(figure("Points spent")).toEqual({ label: "Points spent", value: "31,000 points (S$310.00)", detail: "on 31 paid orders" });
-    expect(figure("Revenue").value).toMatch(/4,250\.50$/);
-    expect(figure("Revenue").detail).toBe("from 31 paid orders that used points");
-  });
-
-  it("reads one paid order in the singular", () => {
-    const figures = migrationFigures({ ...summary, pointsOrders: 1 });
-    expect(figures.find((f) => f.label === "Points spent")!.detail).toBe("on 1 paid order");
-    expect(figures.find((f) => f.label === "Revenue")!.detail).toBe("from 1 paid order that used points");
-  });
-
-  it("says nothing of a voucher", () => {
-    expect(JSON.stringify(migrationFigures(summary))).not.toMatch(/voucher/i);
-  });
-});
 
 describe("Customers list: Points filter", () => {
   it("offers Has points and No points, with the URL's value", () => {

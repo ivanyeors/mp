@@ -11,7 +11,7 @@ import { MIGRATION_SUMMARY_COLUMNS } from "@/lib/customer-migration/overview";
  * `create or replace view` in the same migration (PRD-crm-retention-loop
  * slice 03's `lifecycle_delivery` → `lifecycle_detail`). Removing a column is
  * a rebuild: `drop view` and `create view` in one migration
- * (PRD-loyalty-points slice 06), which also recreates the Migration card's
+ * (PRD-loyalty-points slice 06), which also recreates the migration
  * summary, the view that reads the overview. This keeps the
  * two equal, and keeps the view server-only: security_invoker, no `*`, and no
  * grant to anon or authenticated.

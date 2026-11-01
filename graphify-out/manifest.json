@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793463608.9192266,
-    "seen": 1793463676.6531823,
-    "ast_hash": "5ac58692be3f422115f6b102719ee9d4",
+    "mtime": 1793499186.5105658,
+    "seen": 1793499328.8941677,
+    "ast_hash": "09aaa1c3b7ce92632524acf1a9e17a2c",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -13080,9 +13080,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/customer-overview-view.test.ts": {
-    "mtime": 1793412618.9183667,
-    "seen": 1793462516.6161976,
-    "ast_hash": "c6e3bf713390e509127a5c6e9915bd8f",
+    "mtime": 1793499190.0858138,
+    "seen": 1793499328.890279,
+    "ast_hash": "beb1358ccf317755f563994c86911dac",
     "semantic_hash": ""
   },
   "lib/crm/customer-filters.ts": {
@@ -13098,15 +13098,15 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/overview.test.ts": {
-    "mtime": 1793462029.5436385,
-    "seen": 1793462516.616365,
-    "ast_hash": "92571fa1c9d358f79760742b9a2ddad5",
+    "mtime": 1793499167.0511818,
+    "seen": 1793499328.890441,
+    "ast_hash": "3566abec1e99c02e78736deb2d19aff8",
     "semantic_hash": ""
   },
   "lib/customer-migration/overview.ts": {
-    "mtime": 1793498990.216902,
-    "seen": 1793499077.3096676,
-    "ast_hash": "49a7524cf1390d612f1be27b46f69594",
+    "mtime": 1793499161.3959901,
+    "seen": 1793499328.8904715,
+    "ast_hash": "a7dc143c911de01627c9eef96d220f0b",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020111000_customer_account_status_and_overview.sql": {
@@ -16925,24 +16925,6 @@
     "ast_hash": "228dbe7417373c78a097b646a9368a16",
     "semantic_hash": ""
   },
-  ".claude/skills/preview/fixtures/customer-migration.mjs": {
-    "mtime": 1793462140.966132,
-    "seen": 1793462516.6145728,
-    "ast_hash": "7b4625d6fbc56aa032f892524e07cef1",
-    "semantic_hash": ""
-  },
-  "lib/customer-migration/__tests__/journey.test.ts": {
-    "mtime": 1793463608.9205198,
-    "seen": 1793463676.6502697,
-    "ast_hash": "906b3ab2875da202da229ad5632f0f13",
-    "semantic_hash": ""
-  },
-  "lib/customer-migration/journey.ts": {
-    "mtime": 1793498990.216335,
-    "seen": 1793499077.3096657,
-    "ast_hash": "80a24c1316df7e0f153dc2b5ab293e0a",
-    "semantic_hash": ""
-  },
   ".claude/skills/preview/fixtures/customer-lifecycle.mjs": {
     "mtime": 1793463427.8142083,
     "seen": 1793463676.6490102,
@@ -16950,9 +16932,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/stacked-bar.ts": {
-    "mtime": 1793463320.826202,
-    "seen": 1793463676.6491559,
-    "ast_hash": "b497b7f0a43da0f1a9ea8204cac23550",
+    "mtime": 1793499186.5081496,
+    "seen": 1793499328.8889332,
+    "ast_hash": "4bdbc7b781d2f44948ce3f841021d740",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/lifecycle-counts-sql.test.ts": {
@@ -16986,9 +16968,9 @@
     "semantic_hash": ""
   },
   "lib/format/share.ts": {
-    "mtime": 1793463250.6191487,
-    "seen": 1793463676.650631,
-    "ast_hash": "6f39baf122a8d5b3d49b2dfd648e8050",
+    "mtime": 1793499186.5087566,
+    "seen": 1793499328.890981,
+    "ast_hash": "521b562a2599955a0fca0fb1f3eba149",
     "semantic_hash": ""
   },
   "supabase/migrations/20261101020824_migration_journey_stages.sql": {
