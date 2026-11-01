@@ -1,10 +1,10 @@
-// Google Form fittings (ADR 0039): Mei (points.mjs) has two in-store
+// Google Form fittings (ADR 0042): Mei (points.mjs) has two in-store
 // fittings from the old form, so her page shows the Fitting history card:
 // /settings/customers/00000000-0000-4000-8000-0000000000c7. Customers →
 // Import fittings shows one applied import and one undone. The signed-in
 // preview customer (Jamie, reviews.mjs) has one too, so /account shows the
 // Profile's Fitting history: its Drive file and the Drive link kept as an
-// other answer must not show there (ADR 0039 h). Every name, measurement,
+// other answer must not show there (ADR 0042 h). Every name, measurement,
 // answer and Drive id is made up; Drive is unreachable in the preview, so the
 // photo tiles show their "Open in Drive" fallback.
 

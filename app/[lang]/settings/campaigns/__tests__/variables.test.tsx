@@ -116,6 +116,7 @@ describe("the demo", () => {
       "First name",
       "Last name",
       "Points balance",
+      "Your pillow",
     ]);
 
     // First name, dragged to the start of the subject.
@@ -187,12 +188,12 @@ describe("the keyboard's ways", () => {
     await settle();
     const list = document.getElementById(subject.view.dom.getAttribute("aria-controls")!)!;
     expect(list.getAttribute("role")).toBe("listbox");
-    expect([...list.querySelectorAll('[role="option"]')].map((o) => o.querySelector("span")?.textContent)).toEqual(["First name", "Last name", "Points balance"]);
+    expect([...list.querySelectorAll('[role="option"]')].map((o) => o.querySelector("span")?.textContent)).toEqual(["First name", "Last name", "Points balance", "Your pillow"]);
     expect(subject.view.dom.getAttribute("aria-activedescendant")).toBe(`${list.id}-0`);
 
     press("ArrowDown", {}, subject.view.dom);
     expect(subject.view.dom.getAttribute("aria-activedescendant")).toBe(`${list.id}-1`);
-    expect(said()).toContain("Last name, 2 of 3");
+    expect(said()).toContain("Last name, 2 of 4");
     press("Enter", {}, subject.view.dom);
     await settle();
     expect(wordsOf("c-subject")).toBe("Hello Last name");

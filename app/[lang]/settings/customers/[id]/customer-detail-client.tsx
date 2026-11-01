@@ -137,7 +137,7 @@ export type CustomerDetailInitialData = {
     contact?: ContactFactsResult;
     /** The Lifecycle stage (PRD-crm-retention-loop slice 03); null when it could not be read. */
     lifecycle?: AdminCustomerLifecycle | null;
-    /** Fitting records from the old Google Form (ADR 0039); null when they could not be read. */
+    /** Fitting records from the old Google Form (ADR 0042); null when they could not be read. */
     fittings?: CustomerFittingsResult;
 };
 
@@ -910,7 +910,7 @@ export function CustomerDetailClient({
                         </CardContent>
                     </Card>
 
-                    {/* Fitting history (ADR 0039): in-store fittings from the old Google Form, with their Drive photos */}
+                    {/* Fitting history (ADR 0042): in-store fittings from the old Google Form, with their Drive photos */}
                     <CustomerFittingsCard customerId={customer.id} fittings={initialData?.fittings} />
 
                     {/* Follow-ups (CRM 06): dated to-dos, each assigned to a Staff profile */}

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { ArrowUp, ChevronRight, History, Loader2, Plus, RotateCcw, Sparkles, X } from "lucide-react";
 import type { ChatSummary } from "@/lib/support/chat";
+import { LOGO_SRC } from "@/lib/brand-logo";
 import { cn } from "@/lib/utils";
 import type { ActiveChat, PendingMessage } from "./use-support-chat";
 
@@ -48,15 +49,19 @@ export function Aurora() {
   );
 }
 
-/** The mpillow mark in a glass ring, with an optional "here" dot. */
+/**
+ * The mpillow mark on a white disc, with an optional "here" dot. The disc is
+ * white because the logo is the brand's dark blue everywhere on the site; on
+ * the navy chat it would not show otherwise.
+ */
 export function BrandAvatar({ size = 40, live = false }: { size?: number; live?: boolean }) {
   return (
     <span
-      className="relative inline-flex shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur"
-      style={{ width: size, height: size, boxShadow: NAVY_GLOW }}
+      className="relative inline-flex shrink-0 items-center justify-center rounded-full border border-white/40 bg-white"
+      style={{ width: size, height: size, boxShadow: "0 0 0 3px rgba(165, 216, 255, 0.18)" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- a 40px mark, not worth next/image's loader */}
-      <img src="/mpillow_logo_2026-inv.png" alt="" className="h-[62%] w-[62%] object-contain" />
+      <img src={LOGO_SRC} alt="" className="h-[68%] w-[68%] object-contain" />
       {live ? (
         <span className="absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-[#001736]">
           <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] motion-safe:animate-pulse" />

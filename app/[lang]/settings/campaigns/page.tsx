@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { keepSendingStatus } from "@/lib/email-campaigns/keep-sending";
 import { CAMPAIGN_AUDIENCE_LABEL } from "@/lib/email-campaigns/rules";
+import { RESULT_WINDOW_DAYS, formatSgd } from "@/lib/email-campaigns/results";
 import { readSendingStatus, type SendingStatus } from "@/lib/email-campaigns/sender";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
 import { listCampaigns, type CampaignListItem } from "@/lib/email-campaigns/store";
@@ -26,6 +28,17 @@ function statusOf({ campaign, stats }: CampaignListItem): { label: string; varia
     if (!campaign.lockedAt) return { label: "Draft", variant: "outline" };
     if (stats.handed === 0) return { label: "Started", variant: "secondary" };
     return { label: `Sent to ${stats.handed.toLocaleString("en-SG")}`, variant: "default" };
+}
+
+/** Kept sending (PRD-campaign-audiences slice 10): a badge beside the status, or nothing. */
+function KeepSendingBadge({ item }: { item: CampaignListItem }) {
+    const kept = keepSendingStatus(item.campaign.keepSending);
+    if (!kept) return null;
+    return (
+        <Badge variant="outline" className={kept.tone === "paused" ? "border-amber-500 text-amber-700 dark:text-amber-400" : undefined}>
+            {kept.label}
+        </Badge>
+    );
 }
 
 /**
@@ -78,7 +91,11 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                 </Button>
             </div>
 
-            <SendingStatusCard status={status} origin={setup.origin} />
+            <SendingStatusCard
+                status={status}
+                origin={setup.origin}
+                keptSending={items.filter((i) => i.campaign.keepSending?.on && !i.campaign.keepSending.pausedAt).length}
+            />
 
             {error ? (
                 <p role="alert" className="text-sm text-destructive">
@@ -108,9 +125,11 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                     <span className="block break-words text-xs text-muted-foreground">{item.campaign.subject}</span>
                                     <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                                         <Badge variant={status.variant}>{status.label}</Badge>
+                                        <KeepSendingBadge item={item} />
                                         {item.campaign.lockedAt ? (
                                             <span className="tabular-nums">
-                                                Bounced {item.stats.bounced} · spam {item.stats.complained}
+                                                Clicked {item.stats.clicked} · bought {item.stats.bought} · unsubscribed{" "}
+                                                {item.stats.unsubscribed} · bounced {item.stats.bounced} · spam {item.stats.complained}
                                             </span>
                                         ) : null}
                                     </span>
@@ -126,6 +145,11 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                         <TableHead>Campaign</TableHead>
                                         <TableHead className="hidden md:table-cell">Audience</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead className="hidden text-right sm:table-cell">Clicked</TableHead>
+                                        <TableHead className="hidden text-right sm:table-cell">
+                                            Bought in {RESULT_WINDOW_DAYS} days
+                                        </TableHead>
+                                        <TableHead className="hidden text-right sm:table-cell">Unsubscribed</TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Bounced</TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Spam</TableHead>
                                         <TableHead className="hidden text-right lg:table-cell">Sign-in clicks</TableHead>
@@ -150,7 +174,23 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                                     {CAMPAIGN_AUDIENCE_LABEL[item.campaign.audience]}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant={status.variant}>{status.label}</Badge>
+                                                    <span className="flex flex-wrap items-center gap-1.5">
+                                                        <Badge variant={status.variant}>{status.label}</Badge>
+                                                        <KeepSendingBadge item={item} />
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {item.stats.clicked}
+                                                </TableCell>
+                                                {/* PRD-campaign-audiences slice 11: people sent it who bought within 30 days. */}
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {item.stats.bought}
+                                                    {item.stats.bought ? (
+                                                        <span className="block text-xs text-muted-foreground">{formatSgd(item.stats.boughtTotal)}</span>
+                                                    ) : null}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {item.stats.unsubscribed}
                                                 </TableCell>
                                                 <TableCell className="hidden text-right tabular-nums sm:table-cell">
                                                     {item.stats.bounced}

@@ -1,6 +1,6 @@
 /**
  * A Fitting record as the Customer page and the customer's own Profile show it
- * (ADR 0039). Type-only and pure, so the browser shares it with the server
+ * (ADR 0042). Type-only and pure, so the browser shares it with the server
  * reader (`records.ts`).
  */
 import type { DriveSlot } from "./google-form-csv";
@@ -15,7 +15,7 @@ export type FittingFileView = {
 
 /**
  * What was recorded at one fitting: the part both Staff and the customer see
- * (ADR 0039 h). No Drive file, and nothing about how the import found the
+ * (ADR 0042 h). No Drive file, and nothing about how the import found the
  * Customer.
  */
 export type FittingAnswersView = {

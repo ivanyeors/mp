@@ -13,7 +13,7 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
  * migration 06 the Claim links a campaign email carried, by first click,
  * since CRM 06 follow-ups (added, done), since CRM 12 a Linked Google review
  * at its own date, since migration 08 the campaign emails sent, bounced
- * and complained about, and since ADR 0039 an in-store fitting from the old
+ * and complained about, and since ADR 0042 an in-store fitting from the old
  * Google Form.
  */
 
@@ -224,7 +224,7 @@ beforeEach(() => {
       { id: "cs-3", customer_id: MEI, template: "migration_service_notice", wave: "n1", status: "failed", provider_message_id: null, sent_at: t("06-13T00:00"), bounced_at: null, complained_at: null },
       { id: "cs-k", customer_id: KIM, template: "migration_announcement", wave: "w1", status: "complained", provider_message_id: "re_k", sent_at: t("06-10T00:06"), bounced_at: null, complained_at: t("06-10T09:00") },
     ],
-    // ADR 0039: Mei's fitting from the old Google Form; Kim's is Kim's alone.
+    // ADR 0042: Mei's fitting from the old Google Form; Kim's is Kim's alone.
     customer_fittings: [
       { id: FITTING, customer_id: MEI, fitted_at: t("08-10T03:00"), recommended_size: "M", configuration_type: "T12", profile_side: "M-LN", serviced_by: "Sophie" },
       { id: "fit-kim", customer_id: KIM, fitted_at: t("08-11T03:00"), recommended_size: "S", configuration_type: null, profile_side: null, serviced_by: null },
@@ -333,7 +333,7 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     });
     expect(JSON.stringify(byId.get(`google_review.written:${G_REVIEW}`))).not.toContain("Slept");
     expect(byId.get(`note.added:${NOTE}`)).toMatchObject({ summary: "Note by Jess", detail: "Prefers a firm fill." });
-    // ADR 0039: the form's codes and who serviced them; measurements and health answers stay on the card.
+    // ADR 0042: the form's codes and who serviced them; measurements and health answers stay on the card.
     expect(byId.get(`fitting.recorded:${FITTING}`)).toMatchObject({
       summary: "In-store fitting: Mpillow M · T12 · M-LN (serviced by Sophie)",
       group: "fittings",

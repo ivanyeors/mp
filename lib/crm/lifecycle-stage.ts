@@ -92,6 +92,16 @@ export const LIFECYCLE_DETAIL_LABEL: Record<LifecycleDetail, string> = {
   lapsed: "Lapsed",
 };
 
+/** Each sub-status's rule, as the Stage filter shows it under its label. */
+export const LIFECYCLE_DETAIL_RULE: Record<LifecycleDetail, string> = {
+  awaiting_delivery: "Their purchase is on its way",
+  delivered: `Delivered under ${SETTLED_AFTER_DAYS} days ago`,
+  settled: `Delivered ${SETTLED_AFTER_DAYS} days ago or more`,
+  repeat_purchases: `${LOYAL_FROM_PURCHASES} or more purchases`,
+  bookings: "An attended re-adjustment booking",
+  lapsed: `Over ${LAPSED_AFTER_MONTHS} months`,
+};
+
 /** What the stage is read from, as the overview's columns hold it. */
 export interface LifecycleFacts {
   /** Purchases here, plus the Shopify-era count until slice 09. */

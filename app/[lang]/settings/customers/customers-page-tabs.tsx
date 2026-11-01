@@ -45,7 +45,7 @@ export function CustomersPageTabs({
   aftercare?: AftercareCardData;
   /** Import from Shopify, when the role holds `customer-import` (migration slice 02). */
   importHref?: string;
-  /** Import fittings from the Google Form, under the same permission (ADR 0039). */
+  /** Import fittings from the Google Form, under the same permission (ADR 0042). */
   importFittingsHref?: string;
   /** The Follow-ups tab's list from `?scope=`. */
   followUpScope?: FollowUpScope;

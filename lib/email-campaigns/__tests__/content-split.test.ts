@@ -87,7 +87,7 @@ describe("an image + text block", () => {
   });
 
   it("holds its words to words: no tags, only Variables in braces, the heading's limit", () => {
-    const unknown = (name: string) => `{${name}} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.`;
+    const unknown = (name: string) => `{${name}} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.`;
     expect(issues(one(split({ heading: "x".repeat(121) })))).toEqual([["blocks.0.heading", "At most 120 characters."]]);
     // Its heading takes Variables as a heading block's does (slice 13).
     expect(issues(one(split({ heading: "For {first_name}" })))).toEqual([]);

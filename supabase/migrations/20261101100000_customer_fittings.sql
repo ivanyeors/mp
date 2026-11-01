@@ -1,4 +1,4 @@
--- Google Form fittings: the Fitting record and the Fitting import (ADR 0039).
+-- Google Form fittings: the Fitting record and the Fitting import (ADR 0042).
 --
 -- customer_fittings: one in-store fitting from before this platform, as the
 -- old Google Form recorded it, linked to a Customer. Every answer the form had
@@ -30,10 +30,20 @@
 --    Removes the batch's Fitting records, and the Customers it created that
 --    nobody has signed in to or referenced since.
 --
--- Matching (ADR 0039 c): a usable email attaches to the Customer holding it,
--- or creates one, with no login. No email: the one Customer whose mobile is the
--- same number, or a skip. A phone-only Customer is never created. A match
--- fills only a null name or phone.
+-- Matching (ADR 0042 c): one person, one Customer. A customer comes back, and
+-- each visit is another form row with its own measurements; every one of them
+-- is its own Fitting record on the same Customer.
+--  1. already_imported: a Fitting record has this row's key.
+--  2. A usable email: the Customer holding it (matched_email); else the one
+--     Customer with this mobile and this name, the same person under another
+--     email (matched_phone); else a new Customer with no login (created).
+--  3. No email, a usable mobile: the one Customer with it, or the one of
+--     several with this name (matched_phone); else a skip.
+-- The browser sends every row with a usable email first (`importOrder`,
+-- lib/fitting-import/google-form-csv.ts), so a visit noted with only a mobile
+-- finds the Customer another visit's email creates. Names compare as
+-- fitting_name_key reads them. A phone-only Customer is never created. A
+-- match fills only a null name or phone.
 --
 -- Every function is executable by the service role only. Idempotent.
 
@@ -78,7 +88,7 @@ create table if not exists public.customer_fittings (
   customer_id           uuid not null references public.customers(id) on delete cascade,
   batch_id              uuid not null references public.fitting_import_batches(id),
   source                text not null default 'google_form' check (source in ('google_form')),
-  -- sha256 of the row's own key: its timestamp, contact and name (ADR 0039 d).
+  -- sha256 of the row's own key: its timestamp, contact and name (ADR 0042 d).
   source_key            text not null check (source_key ~ '^[0-9a-f]{64}$'),
   -- The import created the Customer for this row (Undo may remove it).
   created_customer      boolean not null,
@@ -134,9 +144,9 @@ revoke all on public.fitting_import_batches from anon, authenticated;
 revoke all on public.customer_fittings from anon, authenticated;
 
 comment on table public.customer_fittings is
-  'Fitting records: in-store fittings from the old Google Form, Staff-only (ADR 0039).';
+  'Fitting records: in-store fittings from the old Google Form, Staff-only (ADR 0042).';
 comment on table public.fitting_import_batches is
-  'Fitting imports: one row per Google Form CSV import that writes (ADR 0039).';
+  'Fitting imports: one row per Google Form CSV import that writes (ADR 0042).';
 
 -- ------------------------------------------------------------------
 -- 2. Helpers
@@ -217,13 +227,41 @@ alter table public.fitting_import_batches
     )
   );
 
+-- A name as two records of one person are compared (ADR 0042 c), the twin of
+-- nameKey in lib/fitting-import/google-form-csv.ts: lowercase, every run of
+-- whitespace one space, no ends; null when empty. The whitespace is what
+-- JavaScript's \s matches, spelt out, as phone_e164 spells out its own.
+create or replace function public.fitting_name_key(p_name text)
+returns text
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  select nullif(
+    pg_catalog.lower(pg_catalog.btrim(pg_catalog.regexp_replace(
+      coalesce(p_name, ''),
+      '[\u0009-\u000D\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+',
+      ' ',
+      'g'
+    ))),
+    ''
+  )
+$$;
+
+revoke execute on function public.fitting_name_key(text) from public, anon, authenticated;
+grant execute on function public.fitting_name_key(text) to service_role;
+
 -- ------------------------------------------------------------------
 -- 3. The preview's read
 -- ------------------------------------------------------------------
 -- One row per match. `match` = 'email': a Customer holds that lower(email).
 -- 'phone': a Customer whose mobile is that E.164 number (several rows when
--- several do). 'key': that row key is already imported. Reads only.
-create or replace function public.fitting_import_preview_matches(
+-- several do), with `name_key`, that Customer's name as fitting_name_key reads
+-- it. 'key': that row key is already imported. Reads only. Dropped first, so
+-- an earlier shape of it never blocks this one.
+drop function if exists public.fitting_import_preview_matches(text[], text[], text[]);
+create function public.fitting_import_preview_matches(
   p_emails text[],
   p_phones text[],
   p_keys text[]
@@ -233,7 +271,8 @@ returns table (
   key text,
   customer_id uuid,
   has_name boolean,
-  has_phone boolean
+  has_phone boolean,
+  name_key text
 )
 language sql
 stable
@@ -242,19 +281,21 @@ set search_path = public
 as $$
   select 'email', lower(c.email), c.id,
          c.first_name is not null or c.last_name is not null,
-         c.phone is not null
+         c.phone is not null,
+         null::text
     from customers c
    where lower(c.email) = any(coalesce(p_emails, '{}'))
   union all
   select 'phone', public.phone_e164(c.phone), c.id,
          c.first_name is not null or c.last_name is not null,
-         true
+         true,
+         public.fitting_name_key(concat_ws(' ', c.first_name, c.last_name))
     from customers c
    where cardinality(coalesce(p_phones, '{}')) > 0
      and c.phone is not null
      and public.phone_e164(c.phone) = any(p_phones)
   union all
-  select 'key', k.key, f.customer_id, null, null
+  select 'key', k.key, f.customer_id, null, null, null
     from unnest(coalesce(p_keys, '{}')) as k(key)
     join customer_fittings f
       on f.source = 'google_form' and f.source_key = public.fitting_source_key(k.key);
@@ -266,7 +307,7 @@ grant execute on function public.fitting_import_preview_matches(text[], text[], 
 -- ------------------------------------------------------------------
 -- 4. import_fitting_rows
 -- ------------------------------------------------------------------
--- `p_rows` is a JSON array of rows in file order, starting at `p_start_index`:
+-- `p_rows` is a JSON array of rows in import order, starting at `p_start_index`:
 --   { "i": n, "skip": reason }   decided before the database: no readable
 --                                timestamp, no usable email or mobile, or the
 --                                same row twice in the file;
@@ -278,6 +319,7 @@ grant execute on function public.fitting_import_preview_matches(text[], text[], 
 -- Returns { status: 'applied', rows_done, outcomes: [{ i, outcome, reason? }] },
 -- or { status: 'refused', reason, rows_done } with nothing written. Neither
 -- carries PII.
+-- Rules as at the top of this file.
 create or replace function public.import_fitting_rows(
   p_batch_id uuid,
   p_start_index int,
@@ -299,6 +341,9 @@ declare
   v_email      text;
   v_phone      text;
   v_name       text;
+  v_name_key   text;
+  v_named      int;
+  v_named_id   uuid;
   v_customer   uuid;
   v_matches    int;
   v_matched_by text;
@@ -348,7 +393,7 @@ begin
   loop
     v_i := (r.e->>'i')::int;
     if v_i is distinct from p_start_index + r.k then
-      raise exception 'rows must run in file order from row %', p_start_index using errcode = '22023';
+      raise exception 'rows must run in import order from row %', p_start_index using errcode = '22023';
     end if;
     v_outcome := null;
     v_reason := r.e->>'skip';
@@ -378,37 +423,62 @@ begin
         raise exception 'row %: the mobile must be E.164', v_i using errcode = '22023';
       end if;
       v_name := nullif(btrim(r.e->>'name'), '');
+      v_name_key := public.fitting_name_key(v_name);
       v_key := public.fitting_source_key(v_key);
 
       if exists (select 1 from public.customer_fittings f where f.source = 'google_form' and f.source_key = v_key) then
         -- 1: this form row is already a Fitting record.
         v_outcome := 'already_imported';
       elsif v_email is not null then
-        -- 2: the Customer holding the email, or a new one. A checkout or
-        -- sign-in may have made the row since; then the insert does nothing.
-        v_matched_by := 'email';
+        -- 2: the Customer holding the email.
         select c.id into v_customer from public.customers c where lower(c.email) = v_email;
-        if v_customer is null then
-          insert into public.customers (email, first_name, phone, locale)
-          values (v_email, v_name, v_phone, 'en-US')
-          on conflict ((lower(email))) do nothing
-          returning id into v_customer;
-          if v_customer is not null then
-            v_outcome := 'created';
-          else
-            select c.id into v_customer from public.customers c where lower(c.email) = v_email;
+        if v_customer is not null then
+          v_matched_by := 'email';
+          v_outcome := 'matched_email';
+        else
+          -- 2b: the same person under another email: the one Customer with
+          -- this mobile and this name.
+          if v_phone is not null and v_name_key is not null then
+            select count(*), min(c.id::text)::uuid into v_named, v_named_id
+              from public.customers c
+             where c.phone is not null and public.phone_e164(c.phone) = v_phone
+               and public.fitting_name_key(concat_ws(' ', c.first_name, c.last_name)) = v_name_key;
+            if v_named = 1 then
+              v_customer := v_named_id;
+              v_matched_by := 'phone';
+              v_outcome := 'matched_phone';
+            end if;
+          end if;
+          if v_customer is null then
+            -- 2c: a new Customer. A checkout or sign-in may have made the row
+            -- since; then the insert does nothing and the row matches it.
+            v_matched_by := 'email';
+            insert into public.customers (email, first_name, phone, locale)
+            values (v_email, v_name, v_phone, 'en-US')
+            on conflict ((lower(email))) do nothing
+            returning id into v_customer;
+            if v_customer is not null then
+              v_outcome := 'created';
+            else
+              select c.id into v_customer from public.customers c where lower(c.email) = v_email;
+              v_outcome := 'matched_email';
+            end if;
           end if;
         end if;
-        if v_outcome is null then
-          v_outcome := 'matched_email';
-        end if;
       elsif v_phone is not null then
-        -- 3: no email. The one Customer with this mobile, or a skip.
+        -- 3: no email. The one Customer with this mobile; when several share
+        -- it, the one of them with this name; otherwise a skip.
         v_matched_by := 'phone';
-        select count(*), min(c.id::text)::uuid into v_matches, v_customer
+        select count(*), min(c.id::text)::uuid,
+               count(*) filter (where public.fitting_name_key(concat_ws(' ', c.first_name, c.last_name)) = v_name_key),
+               min(c.id::text) filter (where public.fitting_name_key(concat_ws(' ', c.first_name, c.last_name)) = v_name_key)::uuid
+          into v_matches, v_customer, v_named, v_named_id
           from public.customers c
          where c.phone is not null and public.phone_e164(c.phone) = v_phone;
         if v_matches = 1 then
+          v_outcome := 'matched_phone';
+        elsif v_matches > 1 and v_named = 1 then
+          v_customer := v_named_id;
           v_outcome := 'matched_phone';
         else
           v_outcome := 'skip';

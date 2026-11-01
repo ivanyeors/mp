@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { fittingLabel, inches, yesNo, type FittingAnswersView } from "@/lib/fitting-import/view";
 
 /**
- * Fitting history (ADR 0039): each in-store fitting the old Google Form
+ * Fitting history (ADR 0042): each in-store fitting the old Google Form
  * recorded, newest first and open, older ones folded. One person often came
  * more than once, and each visit is its own record with its own
  * measurements: with more than one, the newest is marked Latest and each

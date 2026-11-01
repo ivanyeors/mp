@@ -1,7 +1,7 @@
 /**
  * The owner's Google Form export of in-store fittings (Google Sheets → File →
  * Download → CSV, or Forms → Responses → Download), read in the browser and
- * read again on the server (ADR 0039).
+ * read again on the server (ADR 0042).
  *
  * Pure: no Node or Supabase imports, so the Admin Panel page and the server
  * actions run the same code.
@@ -181,7 +181,7 @@ export function parseFittingFormCsv(text: string): ParsedFittingForm {
 }
 
 /**
- * The order a file's rows are previewed and imported in (ADR 0039 c): every
+ * The order a file's rows are previewed and imported in (ADR 0042 c): every
  * row with a usable email first, then the rest, each kept in file order. One
  * person's visits are often a mix, a visit noted with only a mobile and
  * another with an email too; this way the mobile-only visit finds the
@@ -340,7 +340,7 @@ export type FittingColumns = {
 };
 
 export type NormalisedFitting = {
-  /** The row's identity across exports (ADR 0039 d): its time and contact. */
+  /** The row's identity across exports (ADR 0042 d): its time and contact. */
   key: string;
   /** Lowercased, or null when the form has no usable one. */
   email: string | null;
@@ -364,14 +364,14 @@ export function usableEmail(cell: string | undefined): string | null {
 }
 
 /**
- * A name as two records of one person are compared (ADR 0039 c): lowercase,
+ * A name as two records of one person are compared (ADR 0042 c): lowercase,
  * single spaces, no ends. `public.fitting_name_key` is the SQL twin.
  */
 export function nameKey(name: string | null | undefined): string | null {
   const k = (name ?? "").replace(/\s+/g, " ").trim().toLowerCase();
   return k || null;
 }
-/** The columns' CHECK limits (20261031120000_customer_fittings.sql). */
+/** The columns' CHECK limits (20261101100000_customer_fittings.sql). */
 const LIMITS = { name: 200, short: 40, code: 80, text: 200, notes: 5000 } as const;
 const MAX_MEASUREMENT_IN = 99;
 const MAX_SYMPTOMS = 30;

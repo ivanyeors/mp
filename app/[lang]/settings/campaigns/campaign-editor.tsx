@@ -16,6 +16,7 @@ import {
     Redo2,
     Send,
     Undo2,
+    X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AiButton } from "@/components/block-editor/ai-button";
@@ -82,6 +83,7 @@ import {
     CAMPAIGN_BLOCKER_TEXT,
     CAMPAIGN_LIMITS,
     CAMPAIGN_PLACEHOLDERS,
+    MAX_EXCLUDED_SEGMENTS,
     MAX_TEST_RECIPIENTS,
     MAX_WAVE_SIZE,
     variablesInEmail,
@@ -93,10 +95,11 @@ import {
 import { emailSaysNothing, STARTERS, startedFrom, starterAudience, type Starter } from "@/lib/email-campaigns/starters";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
+import type { CampaignResults } from "@/lib/email-campaigns/results";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
-import { defaultWaveSize, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
+import { defaultWaveSize, fitSummary, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
-import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
+import { formatAdminDateMY, formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { cn } from "@/lib/utils";
@@ -129,6 +132,9 @@ import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./sen
 import { CheckList, StatusIcon } from "./send-parts";
 import { StarterThumbnail } from "./starter-thumbnail";
 import { WaveTable } from "./wave-table";
+import { KeepSendingCard } from "./keep-sending-card";
+import { CampaignResultsPanel } from "./results-panel";
+import { keepSendingBlocker } from "@/lib/email-campaigns/keep-sending";
 
 /** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
 export type SegmentOption = { id: string; name: string; customersHref?: string | null };
@@ -248,6 +254,8 @@ export function CampaignEditor({
     staffEmail,
     pointsLive = false,
     ai = AI_OFF,
+    keptToday = 0,
+    results = null,
 }: {
     /** Null for a new one. */
     campaign: Campaign | null;
@@ -262,6 +270,10 @@ export function CampaignEditor({
     pointsLive?: boolean;
     /** AI writing on, and Claude set up (slice 09): off shows no ✨ at all. */
     ai?: AiWritingAvailability;
+    /** Emails the daily job's Wave sent today (PRD-campaign-audiences slice 10). */
+    keptToday?: number;
+    /** A started campaign's results by stage (slice 11); null when not read. */
+    results?: CampaignResults | null;
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
@@ -275,9 +287,10 @@ export function CampaignEditor({
         greeting: initial.greeting,
         audience: initial.audience,
         segmentId: initial.segmentId ?? "",
+        excludeSegmentIds: initial.excludeSegmentIds ?? [],
     }));
     const draft = history.value;
-    const { name, subject, preheader, body, content, greeting, audience, segmentId } = draft;
+    const { name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds } = draft;
     const { choice: buttonChoice, label: buttonLabel, url: buttonUrl } = draft.button;
     const edit = (patch: Partial<EditorDraft>, burst?: string) => history.set((e) => ({ ...e, ...patch }), { burst });
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
@@ -292,7 +305,15 @@ export function CampaignEditor({
     const editChinese = (edit: (c: CampaignContent) => CampaignContent, burst?: string) => history.set((e) => (e.content ? { ...e, content: edit(e.content) } : e), { burst });
 
     const setAudience = (v: CampaignAudience) => edit({ audience: v });
-    const setSegmentId = (v: string) => edit({ segmentId: v });
+    // The Segment it is sent to is never one it leaves out (slice 06).
+    const setSegmentId = (v: string) => edit({ segmentId: v, excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
+    const leaveOut = (v: string) => edit({ excludeSegmentIds: [...excludeSegmentIds, v].slice(0, MAX_EXCLUDED_SEGMENTS) });
+    const keepIn = (v: string) => edit({ excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
+    const segmentName = (id: string) => segments.find((s) => s.id === id)?.name ?? "(archived Segment)";
+    // What *Leave out* can still add: not the Segment it is sent to, nor one already left out.
+    const leaveOutChoices = segments.filter(
+        (s) => !excludeSegmentIds.includes(s.id) && !(audience === "segment" && s.id === segmentId),
+    );
     // The chosen Segment's Customers list (PRD-crm-retention-loop slice 02).
     const chosenSegmentHref = segments.find((s) => s.id === segmentId)?.customersHref ?? null;
     // What the email says, as Clear all and Undo see it.
@@ -312,12 +333,13 @@ export function CampaignEditor({
             greeting,
             audience,
             segmentId: audience === "segment" ? segmentId || null : null,
+            excludeSegmentIds,
             button:
                 content || buttonChoice === "none"
                     ? null
                     : { target: buttonChoice, label: buttonLabel, url: buttonChoice === "url" ? buttonUrl : null },
         }),
-        [name, subject, preheader, body, content, greeting, audience, segmentId, buttonChoice, buttonLabel, buttonUrl],
+        [name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds, buttonChoice, buttonLabel, buttonUrl],
     );
     const inputKey = JSON.stringify(input);
     const [savedKey, setSavedKey] = useState(inputKey);
@@ -381,7 +403,7 @@ export function CampaignEditor({
     }, [campaign, input, locale, router]);
 
     // ── Write: tabs, selection, panes ──────────────────────────────────────
-    const [tab, setTab] = useState<"write" | "send">("write");
+    const [tab, setTab] = useState<"write" | "send" | "results">("write");
     const [selected, setSelected] = useState<string | null>(null);
     const [pane, setPane] = useState<"write" | "preview">("write");
     const [addOpen, setAddOpen] = useState(false);
@@ -468,6 +490,10 @@ export function CampaignEditor({
         };
     }, [campaignId, readChecks, saves]);
     const pauseFailing = checks?.some((c) => c.key === "pause" && !c.ok) ?? false;
+    // The checked wave's plan (see *Waves* below). Its fit checks (PRD-campaign-audiences slice 09) are advice
+    // about who it goes to, listed with the email's own until the plan is checked again.
+    const [plan, setPlan] = useState<Extract<WaveAnswer, { ok: true }> | null>(null);
+    const advice = useMemo(() => [...(readiness?.advice ?? []), ...(plan?.fit ?? [])], [readiness, plan]);
 
     // What the email's checks say of each block, beside it: only while the block is as it was saved, and checked.
     // In 中文 (slice 17), the 中文 version's, while its words are as saved; its badges already say what isn't translated.
@@ -481,14 +507,14 @@ export function CampaignEditor({
         const now = asSaved(content);
         // A block marked *Drafted with AI* when saved, and kept since, says so no more. In 中文, its 中文 words' mark.
         const marked = new Set(inChinese ? chineseAiDrafted(content) : (content.aiDrafted ?? []));
-        for (const c of [...readiness.checks.filter(isEmailCheck).filter((c) => !c.ok && c.key !== "chinese"), ...readiness.advice]) {
+        for (const c of [...readiness.checks.filter(isEmailCheck).filter((c) => !c.ok && c.key !== "chinese"), ...advice]) {
             for (const i of c.issues) {
                 if ((i.language ?? DEFAULT_LOCALE) !== language || (c.key === "ai_drafted" && !marked.has(i.blockId ?? ""))) continue;
                 if (i.blockId && saved.has(i.blockId) && saved.get(i.blockId) === now.get(i.blockId)) (out[i.blockId] ??= []).push(i.what);
             }
         }
         return out;
-    }, [readiness, content, savedContent, inChinese]);
+    }, [readiness, advice, content, savedContent, inChinese]);
 
     // ── Test ───────────────────────────────────────────────────────────────
     const [testTo, setTestTo] = useState(staffEmail);
@@ -527,7 +553,6 @@ export function CampaignEditor({
     const size = Math.min(sizeInput ?? defaultWaveSize(allowance, firstWave, MAX_WAVE_SIZE), maxSize);
     const [retryFailed, setRetryFailed] = useState(false);
     const [resume, setResume] = useState(false);
-    const [plan, setPlan] = useState<Extract<WaveAnswer, { ok: true }> | null>(null);
     const [planError, setPlanError] = useState<string | null>(null);
     const [planning, setPlanning] = useState(false);
     const [progress, setProgress] = useState<WaveProgress | null>(null);
@@ -563,7 +588,8 @@ export function CampaignEditor({
     /** How many the checked plan sends now: the eligible, less who waits for later waves. */
     const planned = plan ? plan.plan.eligible - plan.waiting : 0;
     // Who gets which language (slice 17), from the saved campaign the plan is of.
-    const languageLine = plan
+    // Readers of Chinese with no 中文 version are a fit check's (slice 09), which says what would fix it.
+    const languageLine = plan && !plan.fit.some((c) => c.key === "fit_chinese")
         ? languageSummary({
               eligible: plan.plan.eligible,
               eligibleChinese: plan.plan.eligibleChinese,
@@ -572,6 +598,11 @@ export function CampaignEditor({
               hasChinese: Boolean(chineseVersionOf(campaign?.content)),
           })
         : null;
+    // Who it goes to, in words: the confirmation's and Keep sending's.
+    const audienceWords =
+        CAMPAIGN_AUDIENCE_LABEL[audience] +
+        (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : "") +
+        (excludeSegmentIds.length ? `, leaving out ${excludeSegmentIds.map((x) => `“${segmentName(x)}”`).join(", ")}` : "");
     const confirmation: SendConfirmation | null = plan
         ? {
               count: planned,
@@ -579,7 +610,7 @@ export function CampaignEditor({
               subject,
               from: plan.readiness.sender.from,
               replyTo: plan.readiness.sender.replyTo,
-              audience: CAMPAIGN_AUDIENCE_LABEL[audience] + (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : ""),
+              audience: audienceWords,
               firstWave,
           }
         : null;
@@ -1012,6 +1043,57 @@ export function CampaignEditor({
                         </Field>
                     ) : null}
                 </div>
+                {/* Slice 06 (PRD-campaign-audiences): Segments whose Customers this campaign leaves out, with any audience. */}
+                <Field
+                    label="Leave out people in…"
+                    htmlFor="c-leave-out"
+                    error={fieldErrors.excludeSegmentIds}
+                    hint={
+                        segments.length
+                            ? `Up to ${MAX_EXCLUDED_SEGMENTS} Segments, read again at every wave: someone in one is not sent this campaign.`
+                            : "No segments yet. Save one from the filters on the Customers list."
+                    }
+                >
+                    <div className="space-y-2">
+                        {excludeSegmentIds.length ? (
+                            <ul className="flex flex-wrap gap-2" aria-label="Segments left out">
+                                {excludeSegmentIds.map((x) => (
+                                    <li key={x}>
+                                        <Badge variant="secondary" className="max-w-full gap-1 py-0.5 pr-0.5 font-normal">
+                                            <span className="truncate">{segmentName(x)}</span>
+                                            {locked ? null : (
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Stop leaving out ${segmentName(x)}`}
+                                                    onClick={() => keepIn(x)}
+                                                    className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors after:absolute after:-inset-3 after:content-[''] hover:bg-muted-foreground/20 active:bg-press"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                        </Badge>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                        {locked || excludeSegmentIds.length >= MAX_EXCLUDED_SEGMENTS ? null : (
+                            // Keyed by the list, so it reads its placeholder again after each choice.
+                            <Select key={excludeSegmentIds.join(",")} value="" onValueChange={leaveOut}>
+                                <SelectTrigger id="c-leave-out" className="w-full justify-between sm:w-1/2" disabled={!leaveOutChoices.length}>
+                                    <SelectValue placeholder={excludeSegmentIds.length ? "Leave out another Segment" : "Nobody: choose a Segment"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {leaveOutChoices.map((s) => (
+                                        <SelectItem key={s.id} value={s.id}>
+                                            {s.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                        {locked && !excludeSegmentIds.length ? <p className="text-sm text-muted-foreground">Nobody.</p> : null}
+                    </div>
+                </Field>
                 <p className="text-sm">
                     <span className="font-medium">From</span>{" "}
                     <span className="break-words text-muted-foreground">
@@ -1418,10 +1500,12 @@ export function CampaignEditor({
                 </div>
             ) : null}
 
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "write" | "send")}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "write" | "send" | "results")}>
                 <TabsList>
                     <TabsTrigger value="write">Write</TabsTrigger>
                     <TabsTrigger value="send">Send</TabsTrigger>
+                    {/* PRD-campaign-audiences slice 11: once a wave has gone. */}
+                    {locked ? <TabsTrigger value="results">Results</TabsTrigger> : null}
                 </TabsList>
 
                 {/* Both tabs stay mounted: a wave keeps sending, and the email keeps its history, while the other is open. */}
@@ -1586,7 +1670,7 @@ export function CampaignEditor({
                                     <CardDescription>Nothing is sent, not even a test, until these pass.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {checks ? <CheckList checks={checks} advice={readiness?.advice} /> : <Loader2 className="h-4 w-4 animate-spin" />}
+                                    {checks ? <CheckList checks={checks} advice={advice} /> : <Loader2 className="h-4 w-4 animate-spin" />}
                                 </CardContent>
                             </Card>
                         </div>
@@ -1611,14 +1695,15 @@ export function CampaignEditor({
                                 </div>
                                 {stats ? (
                                     <CardDescription>
-                                        Sent {n(stats.handed)}, bounced {n(stats.bounced)}, marked as spam {n(stats.complained)}, failed{" "}
-                                        {n(stats.failed)}, sign-in link opened {n(stats.linkClicks)}
+                                        Sent {n(stats.handed)}, clicked {n(stats.clicked)}, unsubscribed {n(stats.unsubscribed)}, bounced{" "}
+                                        {n(stats.bounced)}, marked as spam {n(stats.complained)}, failed {n(stats.failed)}, sign-in link opened{" "}
+                                        {n(stats.linkClicks)}
                                     </CardDescription>
                                 ) : null}
                             </CardHeader>
                             <CardContent className="flex flex-col gap-5">
                                 <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
-                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice: readiness?.advice, allowance, resume }).map((step) => (
+                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice, allowance, resume }).map((step) => (
                                         <li key={step.key} className={cn("flex items-start gap-2 text-sm", step.items && "sm:col-span-2")}>
                                             <StatusIcon ok={step.done} advisory={step.advisory} />
                                             <span className="min-w-0">
@@ -1714,16 +1799,38 @@ export function CampaignEditor({
                                             audience can get it ({n(plan.plan.eligibleBuyers)} have ordered before; they go first).
                                             {plan.plan.alreadySent ? ` ${n(plan.plan.alreadySent)} already have it.` : ""}
                                         </p>
-                                        {Object.keys(plan.plan.excluded).length ? (
+                                        {/* PRD-campaign-audiences slice 11: the holdout's share of this wave. */}
+                                        {plan.plan.heldOut ? (
+                                            <p className="text-muted-foreground">
+                                                The holdout keeps {n(plan.plan.heldOut)} of this wave back to measure the campaign: they are
+                                                recorded and never sent it.
+                                            </p>
+                                        ) : null}
+                                        {Object.keys(plan.plan.excluded).length || plan.leftOutBySegment.length ? (
                                             <ul className="list-inside list-disc text-muted-foreground">
+                                                {/* Slice 06: who each left-out Segment took away, before the rule. */}
+                                                {plan.leftOutBySegment.map((x) => (
+                                                    <li key={x.segmentId}>
+                                                        {n(x.count)} left out: in “{x.name}”
+                                                    </li>
+                                                ))}
                                                 {Object.entries(plan.plan.excluded).map(([why, count]) => (
                                                     <li key={why}>
                                                         {n(count ?? 0)} left out: {CAMPAIGN_BLOCKER_TEXT[why as keyof typeof CAMPAIGN_BLOCKER_TEXT] ?? why}
+                                                        {/* Slice 07: rested, not failed; a later wave reaches them. */}
+                                                        {why === "resting" && plan.plan.restingUntil
+                                                            ? `; the first can get it from ${formatAdminDateMY(plan.plan.restingUntil)}`
+                                                            : ""}
                                                     </li>
                                                 ))}
                                             </ul>
                                         ) : null}
                                         {languageLine ? <p>{languageLine}</p> : null}
+                                        {plan.fit.length ? (
+                                            <p className="text-muted-foreground">
+                                                {fitSummary(plan.fit.length)}
+                                            </p>
+                                        ) : null}
                                         {plan.plan.eligible > 0 ? (
                                             <p className="font-medium">
                                                 {waitingSummary({
@@ -1795,7 +1902,26 @@ export function CampaignEditor({
                             </CardContent>
                         </Card>
                     ) : null}
+
+                    {/* PRD-campaign-audiences slice 10: a started campaign may keep sending by itself. */}
+                    {campaign && locked ? (
+                        <KeepSendingCard
+                            campaignId={campaign.id}
+                            initial={campaign.keepSending}
+                            blocker={keepSendingBlocker(campaign, stats?.handed ?? 0)}
+                            audience={audienceWords}
+                            today={keptToday}
+                            handed={stats?.handed ?? 0}
+                            className="max-md:order-1"
+                        />
+                    ) : null}
                 </TabsContent>
+
+                {locked ? (
+                    <TabsContent value="results">
+                        <CampaignResultsPanel stats={stats} results={results} />
+                    </TabsContent>
+                ) : null}
             </Tabs>
 
             <SendConfirmDialog open={confirmOpen} onOpenChange={setConfirmOpen} details={confirmation} onConfirm={startWave} />

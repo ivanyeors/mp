@@ -1,14 +1,14 @@
 /**
  * What a Fitting import would do with each row of the Google Form export
- * (ADR 0039 c, d).
+ * (ADR 0042 c, d).
  *
  * Pure: the Admin Panel preview runs it on the server against live rows, and
  * vitest runs it against fixtures. The preview is a forecast;
- * `import_fitting_rows` (20261031120000_customer_fittings.sql) re-decides
+ * `import_fitting_rows` (20261101100000_customer_fittings.sql) re-decides
  * every row when it writes, and is the authority.
  *
  * One person's fittings all go to one Customer, however many there are
- * (ADR 0039 c). Plan rules, in order, as the SQL function has them:
+ * (ADR 0042 c). Plan rules, in order, as the SQL function has them:
  *  1. `already_imported`: a Fitting record already has this row's key.
  *  2. A usable email: `matched_email` when a Customer holds it. Otherwise
  *     the same person under another email: `matched_phone` when exactly one

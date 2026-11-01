@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 import { nameKey } from "@/lib/fitting-import/google-form-csv";
 
 /**
- * One person's fittings go to one Customer (ADR 0039 c): a row under another
+ * One person's fittings go to one Customer (ADR 0042 c): a row under another
  * email, or with none on a shared mobile, is that person's when the mobile
  * and the name agree. The preview compares names with `nameKey`;
  * `import_fitting_rows` compares them with `public.fitting_name_key`
- * (20261101100000_fitting_import_one_person.sql). Both must read every name
+ * (20261101100000_customer_fittings.sql). Both must read every name
  * the same, or the preview would forecast a match the import does not make.
  *
  * Each name is decided by the TypeScript into name-cases.json;

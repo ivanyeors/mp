@@ -61,11 +61,39 @@ Each file keeps two Go placeholders that Supabase substitutes at send time.
 They must stay literal — do not URL-encode or escape them:
 
 - `{{ .Token }}` — the 6-digit code the login form's "Verify code" step accepts.
-- `{{ .ConfirmationURL }}` — the magic link (→ `/auth/callback`).
+- `{{ .ConfirmationURL }}` — Supabase's own link (→ `/auth/callback`), in the
+  templates other than the two below.
+- **Magic Link** and **Confirm signup** link to our own page instead:
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}`.
 
 Both are present in every template so the code and the link always travel
 together — except **Reauthentication**, which Supabase renders without a
 `{{ .ConfirmationURL }}`; that one is code-only and carries no button.
+
+### Why the sign-in emails link to `/auth/confirm` (PRD-campaign-audiences slice 03)
+
+Sign in is also the sign-up: the Customer tab and the footer's "Get our
+emails" send these two emails, and the click is what proves the address,
+makes the account and records any marketing consent. `{{ .ConfirmationURL }}`
+had two faults for that:
+
+- **Mail filters spend it.** Corporate filters (Outlook Safe Links and the
+  like) open every link to check it. Supabase's link verifies on open, so the
+  filter uses up the one-time token, and the person's click — and the code in
+  the same email — then fail as expired.
+- **It only works in the browser that asked.** The PKCE link needs a verifier
+  cookie from the browser where the email was typed, so opening it on a phone
+  fails.
+
+`/auth/confirm` (app/auth/confirm/page.tsx) spends nothing when opened. It
+shows one button; pressing it verifies `token_hash` on the server, on any
+device, then finishes the sign-in as the callback does (`completeSignIn`).
+`{{ .RedirectTo }}` is the return address the form asked for
+(`/auth/callback?next=…&as=…&consent=…&lang=…`); the page reads who is
+signing in, where to and any consent from it, escaped or not.
+
+Until the two new files are pasted into the dashboard, the old templates keep
+working through `/auth/callback`, which reads the same return address.
 
 **Change Email Address** additionally uses `{{ .Email }}` (the current address)
 and `{{ .NewEmail }}`. With "Secure email change" on — Supabase's default — the

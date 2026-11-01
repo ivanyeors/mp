@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PURCHASE_CLASSES } from "@/lib/crm/customer-overview";
-import { boughtClasses, isCountedOrder, purchaseClass, purchaseLine } from "@/lib/crm/purchase-lines";
+import { boughtClasses, isCountedOrder, pillowSizes, purchaseClass, purchaseLine } from "@/lib/crm/purchase-lines";
 import { NOT_A_PURCHASE } from "@/lib/readjustment/purchases";
 import {
   BOUGHT,
@@ -10,6 +10,7 @@ import {
   LINES,
   ORDERS,
   ORDER_STATUSES,
+  SIZES,
   TEST_PILLOW_IDS,
   lineRow,
 } from "./purchase-lines-fixture";
@@ -57,8 +58,10 @@ describe("isCountedOrder", () => {
     // Both views write the list out; it must be NOT_A_PURCHASE, in either.
     const dir = new URL("../../../supabase/migrations/", import.meta.url);
     // By name, not timestamp: the overview's file moves to stay the latest definition.
-    const files = readdirSync(dir).filter((f) => /_(customer_purchase_lines|customer_overview_crm_columns)\.sql$/.test(f));
-    expect(files).toHaveLength(2);
+    const files = readdirSync(dir).filter((f) =>
+      /_(customer_purchase_lines|customer_overview_crm_columns|customer_overview_purchase_filters)\.sql$/.test(f),
+    );
+    expect(files).toHaveLength(3);
     for (const file of files) {
       const sql = readFileSync(new URL(file, dir), "utf8").replace(/--.*$/gm, "");
       const lists = [...sql.matchAll(/status not in \(([^)]*)\)/g)].map(([, l]) => l.replace(/[\s']/g, "").split(",").sort());
@@ -72,24 +75,55 @@ describe("boughtClasses", () => {
   it("names each class once, in PURCHASE_CLASSES order", () => {
     expect(
       boughtClasses([
-        { product_type: "accessory", tier: null },
-        { product_type: "bolster", tier: null },
-        { product_type: "pillow", tier: "premium" },
-        { product_type: "pillow", tier: "basic" },
-        { product_type: "pillow", tier: "premium" },
+        { product_type: "accessory", tier: null, size: null },
+        { product_type: "bolster", tier: null, size: null },
+        { product_type: "pillow", tier: "premium", size: "M" },
+        { product_type: "pillow", tier: "basic", size: null },
+        { product_type: "pillow", tier: "premium", size: "L" },
       ]),
     ).toEqual([...PURCHASE_CLASSES]);
   });
 
   it("adds nothing for a pillow of no known Tier", () => {
-    expect(purchaseClass({ product_type: "pillow", tier: null })).toBeNull();
-    expect(boughtClasses([{ product_type: "pillow", tier: null }])).toEqual([]);
+    expect(purchaseClass({ product_type: "pillow", tier: null, size: "M" })).toBeNull();
+    expect(boughtClasses([{ product_type: "pillow", tier: null, size: "M" }])).toEqual([]);
   });
 
   it("gives each fixture Customer the `bought` the fixture declares", () => {
     for (const [name, c] of Object.entries(CUSTOMERS) as [keyof typeof CUSTOMERS, (typeof CUSTOMERS)[keyof typeof CUSTOMERS]][]) {
       const theirs = LINES.filter((l) => orderById.get(l.order_id)!.customer_id === c.id).map(listed);
       expect(boughtClasses(theirs.filter((l) => l !== null)), name).toEqual(BOUGHT[name]);
+    }
+  });
+});
+
+describe("pillowSizes (PRD-campaign-audiences slice 04)", () => {
+  it("names each pillow size once, XS to XL, trimmed and upper-cased", () => {
+    expect(
+      pillowSizes([
+        { product_type: "pillow", tier: "premium", size: "XL" },
+        { product_type: "pillow", tier: null, size: " s " },
+        { product_type: "pillow", tier: "basic", size: "XL" },
+        { product_type: "pillow", tier: "basic", size: "m" },
+      ]),
+    ).toEqual(["S", "M", "XL"]);
+  });
+
+  it("reads pillows only, and no size that is not one", () => {
+    expect(
+      pillowSizes([
+        { product_type: "bolster", tier: null, size: "M" },
+        { product_type: "accessory", tier: null, size: "L" },
+        { product_type: "pillow", tier: "premium", size: null },
+        { product_type: "pillow", tier: "premium", size: "XXL" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("gives each fixture Customer the `pillow_sizes` the fixture declares", () => {
+    for (const [name, c] of Object.entries(CUSTOMERS) as [keyof typeof CUSTOMERS, (typeof CUSTOMERS)[keyof typeof CUSTOMERS]][]) {
+      const theirs = LINES.filter((l) => orderById.get(l.order_id)!.customer_id === c.id).map(listed);
+      expect(pillowSizes(theirs.filter((l) => l !== null)), name).toEqual(SIZES[name]);
     }
   });
 });

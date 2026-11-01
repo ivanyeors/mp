@@ -45,7 +45,7 @@ export const TIMELINE_ADAPTERS: readonly TimelineAdapter[] = [
   ordersAdapter,
   orderEmailsAdapter,
   resultsAdapter,
-  // ADR 0039: an in-store fitting from the old Google Form, at its own date.
+  // ADR 0042: an in-store fitting from the old Google Form, at its own date.
   fittingsAdapter,
   readjustmentsAdapter,
   returnsAdapter,

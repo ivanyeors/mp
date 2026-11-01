@@ -24,7 +24,7 @@ import {
 import { readUndoCounts, type UndoCounts } from "@/lib/fitting-import/batches";
 
 /**
- * Customers → Import fittings (ADR 0039).
+ * Customers → Import fittings (ADR 0042).
  *
  * Every action checks `customer-import`, as the Shopify import does: the
  * import creates Customers, and Manager and Staff hold `customers`. The
@@ -34,7 +34,7 @@ import { readUndoCounts, type UndoCounts } from "@/lib/fitting-import/batches";
  * already holds the rows, and looks each one up by its index.
  *
  * Writes go through SQL functions only, each one transaction, executable by
- * the service role alone (20261031120000_customer_fittings.sql). The one
+ * the service role alone (20261101100000_customer_fittings.sql). The one
  * insert here is the batch itself.
  */
 

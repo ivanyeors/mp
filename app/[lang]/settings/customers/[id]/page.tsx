@@ -22,7 +22,7 @@ export const runtime = "nodejs";
  * Shopify import holds for them (the From Shopify card, migration slice 12).
  * The **Lifecycle stage** (PRD-crm-retention-loop slice 03) is read from the
  * overview, and a failed read only leaves it out. So are the Customer's
- * **Fitting records** (ADR 0039), whose card says when they could not be read.
+ * **Fitting records** (ADR 0042), whose card says when they could not be read.
  * The Contact and sign-in card (CRM slice 11) reads the customer row itself;
  * what is matched by phone (WhatsApp, the other numbers seen) is read here
  * once the row's number is known. The orders

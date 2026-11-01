@@ -1,4 +1,4 @@
--- ADR 0039 c: one person, many fittings. Every visit lands on the same
+-- ADR 0042 c: one person, many fittings. Every visit lands on the same
 -- Customer as its own Fitting record: under another email when the mobile and
 -- the name agree, with no email on a mobile several Customers share when one
 -- of them has the name, and with no email after the visit whose email creates

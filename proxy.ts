@@ -2,6 +2,7 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 import { classifyCrawler, recordCrawlerHit } from "@/lib/analytics/ai-crawlers";
 import { isCrossSiteWrite } from "@/lib/auth/cross-site";
 import { blogSlugFate } from "@/lib/blog-redirects";
+import { recordCampaignClick, stripClickToken } from "@/lib/email-campaigns/click";
 import { FONT_STACK } from "@/lib/font-stack";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -99,6 +100,23 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     pathname.includes(".")
   ) {
     return NextResponse.next();
+  }
+
+  // A campaign email's link (PRD-campaign-audiences slice 08): take the click
+  // token off before anything renders, so it never reaches analytics, a
+  // shared link or a screenshot, and count the click after the response. Only
+  // a person's GET counts: a HEAD, or a known crawler, is redirected and not
+  // counted, and the SQL skips a click within 10 seconds of the send. The
+  // token is never logged and identifies nobody.
+  const clicked = stripClickToken(request.nextUrl);
+  if (clicked) {
+    if (request.method === "GET" && !crawler && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      event.waitUntil(recordCampaignClick(supabaseAdmin(), clicked.token));
+    }
+    const res = NextResponse.redirect(clicked.cleanUrl, 302);
+    res.headers.set("Cache-Control", "no-store");
+    res.headers.set("Referrer-Policy", "no-referrer");
+    return res;
   }
 
   const pathLocale = getLocaleFromPathname(pathname);

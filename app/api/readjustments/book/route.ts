@@ -3,6 +3,7 @@ import { tooManyRequests } from "@/lib/rate-limit";
 
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
 import { languagePreferenceNotes } from "@/lib/appointments/language";
+import { recordBoxConsent } from "@/lib/marketing-consent/consent";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 import { isFreeVisit } from "@/lib/readjustment/eligibility";
 import {
@@ -58,6 +59,9 @@ export async function POST(req: Request) {
     );
   }
   const seq = quote.complimentary ? quote.seq : null;
+  // The marketing email box (ADR 0039), once the visit stands: for the
+  // signed-in Customer. Never stops the booking.
+  const recordConsent = () => recordBoxConsent(admin, customer.id, body.marketing_email === true, "appointment");
 
   try {
     if (!(await isSlotFree(slot.startIso, slot.endIso))) {
@@ -133,6 +137,7 @@ export async function POST(req: Request) {
           `[readjustments/book] ${booking.id} booked as ${eventId}, but a follow-up step failed:`,
           e instanceof Error ? e.message : e,
         );
+        await recordConsent();
         return NextResponse.json({ ok: true, bookingId: booking.id, eventId });
       }
       // Nothing is on the calendar: give the free visit back.
@@ -143,6 +148,7 @@ export async function POST(req: Request) {
       throw e;
     }
 
+    await recordConsent();
     return NextResponse.json({ ok: true, bookingId: booking.id, eventId });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Booking failed" }, { status: 502 });

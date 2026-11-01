@@ -2,7 +2,7 @@ import { DRIVE_FIELDS, FORM_COLUMNS } from "./google-form-csv";
 import type { FittingAnswersView } from "./view";
 
 /*
- * The customer's own copy of their Fitting records (ADR 0039 h), made on the
+ * The customer's own copy of their Fitting records (ADR 0042 h), made on the
  * server before anything reaches their browser. Pure.
  */
 
@@ -11,7 +11,7 @@ const DRIVE_HEADERS: ReadonlySet<string> = new Set(DRIVE_FIELDS.flatMap((f) => F
 const GOOGLE_FILE_LINK = /\b(?:drive|docs)\.google\.com\b|\bgoo\.gl\b/i;
 
 /**
- * The customer's own copy of a Fitting record (ADR 0039 h): every answer, and
+ * The customer's own copy of a Fitting record (ADR 0042 h): every answer, and
  * none of the Drive files. Picked field by field, so a field added to the Staff
  * view never reaches the customer by default. An unreadable upload cell, or a
  * newer form's upload question the import does not know, is a Drive link kept

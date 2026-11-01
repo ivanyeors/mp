@@ -39,7 +39,7 @@ export function psqlJson<T>(results: Map<string, string>, name: string): T {
 /**
  * `applyCustomerFilters`'s calls as a SQL `where`, the way PostgREST reads
  * them: like/ilike rewrite every `*` to `%`, `ov` is `&&`, `in` is `in`,
- * `is` / `not.is`.
+ * `is` / `not.is`, and `not.cs` / `not.ov` negate `@>` / `&&`.
  */
 export class SqlFilter implements CustomerListQuery {
   readonly where: string[] = [];
@@ -59,6 +59,10 @@ export class SqlFilter implements CustomerListQuery {
     this.where.push(`${column} = ${sqlLiteral(value)}`);
     return this;
   }
+  neq(column: string, value: string) {
+    this.where.push(`${column} <> ${sqlLiteral(value)}`);
+    return this;
+  }
   in(column: string, values: readonly string[]) {
     this.where.push(`${column} in (${values.map(sqlLiteral).join(", ")})`);
     return this;
@@ -67,8 +71,12 @@ export class SqlFilter implements CustomerListQuery {
     this.where.push(`${column} is null`);
     return this;
   }
-  not(column: string, operator: "is" | "cs", value: string | null) {
-    this.where.push(operator === "is" ? `${column} is not null` : `not (${column} @> ${sqlLiteral(String(value))}::text[])`);
+  not(column: string, operator: "is" | "cs" | "ov", value: string | null) {
+    this.where.push(
+      operator === "is"
+        ? `${column} is not null`
+        : `not (${column} ${operator === "cs" ? "@>" : "&&"} ${sqlLiteral(String(value))}::text[])`,
+    );
     return this;
   }
   gt(column: string, value: string | number) {
@@ -83,7 +91,7 @@ export class SqlFilter implements CustomerListQuery {
     this.where.push(`${column} < ${sqlLiteral(value)}`);
     return this;
   }
-  lte(column: string, value: number) {
+  lte(column: string, value: string | number) {
     this.where.push(`${column} <= ${sqlLiteral(value)}`);
     return this;
   }

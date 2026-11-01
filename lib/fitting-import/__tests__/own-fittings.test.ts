@@ -4,7 +4,7 @@ import { toOwnFittingView } from "../own-view";
 import type { FittingRecordView } from "../view";
 
 /**
- * ADR 0039 h: the customer sees their own Fitting records on their Profile,
+ * ADR 0042 h: the customer sees their own Fitting records on their Profile,
  * every answer and none of the Drive files. Every name, number and Drive id
  * here is made up.
  */

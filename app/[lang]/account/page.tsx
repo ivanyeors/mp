@@ -81,7 +81,7 @@ export default async function AccountProfilePage({
   // Points (PRD-loyalty-points slice 02) are read after linkCustomerToAuthUser,
   // whose Claim may have just granted the Claim bonus. A failed read only
   // hides the card. Marketing consent (migration slice 07) is read the same
-  // way as the aftercare switches. Fitting records (ADR 0039 h) are the
+  // way as the aftercare switches. Fitting records (ADR 0042 h) are the
   // session's own, without their Drive files; a failed read hides the card.
   const [aftercare, marketingEmail, points, fittings] = await Promise.all([
     readProfileAftercare(admin, customer.id).catch(() => null),

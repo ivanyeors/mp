@@ -1,4 +1,4 @@
--- ADR 0039: import_fitting_rows takes the payload the server action builds
+-- ADR 0042: import_fitting_rows takes the payload the server action builds
 -- (cases.json, written by lib/fitting-import/__tests__/sql-agreement.test.ts)
 -- and decides every row as the preview forecast it, against an empty
 -- database, keeping every typed answer. Everything is rolled back.

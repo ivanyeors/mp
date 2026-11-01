@@ -4,7 +4,7 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { withLocale } from "@/lib/i18n/routing";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { readMarketingEmailState } from "@/lib/marketing-consent/consent";
-import { UNSUBSCRIBE_ROUTE, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
+import { UNSUBSCRIBE_ROUTE, verifyUnsubscribeLink } from "@/lib/marketing-consent/unsubscribe";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 import { Button } from "@/components/ui/button";
 
@@ -35,11 +35,14 @@ export default async function UnsubscribePage({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const u = typeof query.u === "string" ? query.u : null;
   const t = typeof query.t === "string" ? query.t : null;
+  // The campaign send the link names (PRD-campaign-audiences slice 08), passed on with the button.
+  const s = typeof query.s === "string" ? query.s : null;
 
   let state: MarketingEmailState | "invalid" | "error" = "invalid";
-  if (verifyUnsubscribeToken(u, t)) {
+  const link = verifyUnsubscribeLink(u, t, s);
+  if (link) {
     // A Customer since deleted is on no list.
-    state = await readMarketingEmailState(supabaseAdmin(), u)
+    state = await readMarketingEmailState(supabaseAdmin(), link.customerId)
       .then((s) => s ?? "unsubscribed")
       .catch(() => "error" as const);
   }
@@ -75,6 +78,7 @@ export default async function UnsubscribePage({
           <form method="post" action={UNSUBSCRIBE_ROUTE}>
             <input type="hidden" name="u" value={u ?? ""} />
             <input type="hidden" name="t" value={t ?? ""} />
+            {s ? <input type="hidden" name="s" value={s} /> : null}
             <input type="hidden" name="lang" value={locale} />
             <input type="hidden" name="via" value="page" />
             <Button type="submit" className="w-full sm:w-auto">

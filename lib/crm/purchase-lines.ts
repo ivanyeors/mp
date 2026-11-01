@@ -1,4 +1,4 @@
-import { PURCHASE_CLASSES, type PurchaseClass } from "@/lib/crm/customer-overview";
+import { PILLOW_SIZES, PURCHASE_CLASSES, type PillowSize, type PurchaseClass } from "@/lib/crm/customer-overview";
 import {
   NOT_A_PURCHASE,
   classifyOrderLine,
@@ -22,6 +22,8 @@ import {
 export interface PurchaseLine {
   product_type: "pillow" | "bolster" | "accessory";
   tier: "premium" | "basic" | null;
+  /** A pillow's size as the line holds it (PRD-campaign-audiences slice 04); null otherwise. */
+  size: string | null;
 }
 
 type PillowById = Parameters<typeof classifyOrderLine>[1];
@@ -39,8 +41,8 @@ export function isCountedOrder(order: Pick<OrderRow, "paid_at" | "status">): boo
 export function purchaseLine(line: OrderLineRow, pillowById: PillowById): PurchaseLine | null {
   if (line.kind === "service") return null;
   const c = classifyOrderLine(line, pillowById);
-  if (!c) return { product_type: "accessory", tier: null };
-  return { product_type: c.productType, tier: c.tier };
+  if (!c) return { product_type: "accessory", tier: null, size: null };
+  return { product_type: c.productType, tier: c.tier, size: c.productType === "pillow" ? c.size : null };
 }
 
 /** The class a line adds to `bought`: null for a pillow of no known Tier. */
@@ -48,6 +50,12 @@ export function purchaseClass(line: PurchaseLine): PurchaseClass | null {
   if (line.product_type === "bolster") return "mbolster";
   if (line.product_type === "accessory") return "accessory";
   return line.tier;
+}
+
+/** The overview's `pillow_sizes` for a Customer's lines: each pillow's size, trimmed and upper-cased, XS to XL. */
+export function pillowSizes(lines: readonly PurchaseLine[]): PillowSize[] {
+  const seen = new Set(lines.filter((l) => l.product_type === "pillow").map((l) => l.size?.trim().toUpperCase()));
+  return PILLOW_SIZES.filter((size) => seen.has(size));
 }
 
 /** The overview's `bought` for a Customer's lines, in `PURCHASE_CLASSES` order. */

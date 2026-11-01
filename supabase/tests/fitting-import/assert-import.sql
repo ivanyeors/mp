@@ -1,4 +1,4 @@
--- ADR 0039: a Fitting import attaches each row by email, then by mobile,
+-- ADR 0042: a Fitting import attaches each row by email, then by mobile,
 -- fills only nulls, refuses a chunk out of order, reconciles, imports the same
 -- rows again as nothing, and undo removes only what nobody has signed in to or
 -- referenced since. Everything is rolled back.

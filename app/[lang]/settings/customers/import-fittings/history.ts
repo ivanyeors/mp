@@ -10,7 +10,7 @@ import {
 const HISTORY_LIMIT = 50;
 
 /**
- * Import history for Customers → Import fittings, newest first (ADR 0039).
+ * Import history for Customers → Import fittings, newest first (ADR 0042).
  * Read by the page, which is guarded by `customer-import`; the batches hold
  * counts and who ran them, never a customer's email or name. Null when the
  * read fails, so the page says so rather than showing an empty history.

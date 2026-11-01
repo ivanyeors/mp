@@ -14,7 +14,7 @@ type FittingRow = {
 };
 
 /**
- * Fitting records (ADR 0039) on the timeline (`customers`): one entry per
+ * Fitting records (ADR 0042) on the timeline (`customers`): one entry per
  * in-store fitting the old Google Form recorded, at the form's own time. The
  * summary carries the form's codes and who serviced them; measurements and
  * health answers stay on the Fitting history card.

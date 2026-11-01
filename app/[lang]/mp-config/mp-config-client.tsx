@@ -689,6 +689,11 @@ export function MpConfigClient({
   const [checkoutCode, setCheckoutCode] = useState("");
   const [codeStatus, setCodeStatus] = useState<CheckoutCodeStatus>({ state: "idle" });
   const [holdNotes, setHoldNotes] = useState("");
+  // The marketing email box on the contact step: ticked by default (owner,
+  // 2026-10-31; ADR 0039). Sent only where the contact step was shown: a
+  // finish link and a re-configuration ask for no email, so they send false.
+  const [marketingEmail, setMarketingEmail] = useState(true);
+  const askedMarketingEmail = !resumeFinish && !staffEdit && marketingEmail;
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>(() => ({
     recipient: "",
     line1: "",
@@ -2071,6 +2076,7 @@ export function MpConfigClient({
     discoverySourceOther,
     notes: holdNotes,
     code: checkoutCode,
+    marketingEmail,
   };
 
   /**
@@ -2112,6 +2118,8 @@ export function MpConfigClient({
             token: readToken(tokenStorageKey),
             deferred: true,
             email: holdEmail.trim(),
+            // The shopper's email, typed here; never the Staff login's.
+            marketingEmail: askedMarketingEmail,
             phone: holdPhone.trim(),
             discoverySource,
             discoverySourceOther:
@@ -2349,6 +2357,8 @@ export function MpConfigClient({
         // a request, not a grant.
         ...(assisted ? { deferred: true } : {}),
         email: holdEmail.trim(),
+        // Asked once, on the anchor of a Paired build.
+        marketingEmail: askedMarketingEmail,
         phone: holdPhone.trim(),
         discoverySource,
         discoverySourceOther:
@@ -3489,6 +3499,7 @@ export function MpConfigClient({
                       }
                       if (patch.notes !== undefined) setHoldNotes(patch.notes);
                       if (patch.code !== undefined) setCheckoutCode(patch.code);
+                      if (patch.marketingEmail !== undefined) setMarketingEmail(patch.marketingEmail);
                     }}
                   />
                 )}
@@ -4915,6 +4926,7 @@ export function MpConfigClient({
                       }
                       if (patch.notes !== undefined) setHoldNotes(patch.notes);
                       if (patch.code !== undefined) setCheckoutCode(patch.code);
+                      if (patch.marketingEmail !== undefined) setMarketingEmail(patch.marketingEmail);
                     }}
                   />
                 </div>

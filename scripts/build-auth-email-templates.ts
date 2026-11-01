@@ -24,6 +24,18 @@ import { codeBlock, infoList, paragraph } from "../lib/email/components";
 
 const SENTINEL_URL = "https://auth.sentinel.invalid/confirm";
 const SENTINEL_TOKEN = "000000";
+// Not a prefix of SENTINEL_URL, so the two swaps never touch each other.
+const SENTINEL_CONFIRM_PAGE = "https://confirm-page.sentinel.invalid/";
+
+/**
+ * The scanner-safe link (PRD-campaign-audiences slice 03): our own
+ * `/auth/confirm` page, which spends the one-time token only when the person
+ * presses its button, so a mail filter opening every link cannot use it up
+ * first, and which works on any device. `{{ .RedirectTo }}` is the return
+ * address the sign-in form asked for, carrying who is signing in, where to,
+ * and any consent; the page reads it whether or not it arrives escaped.
+ */
+const CONFIRM_PAGE_URL = "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}";
 
 const OUT_DIR = join(process.cwd(), "supabase", "templates");
 
@@ -37,6 +49,8 @@ interface AuthTemplate {
   detailsHtml?: string;
   /** Omit for templates Supabase renders without {{ .ConfirmationURL }}. */
   ctaLabel?: string;
+  /** The button goes to the scanner-safe `/auth/confirm` page instead of {{ .ConfirmationURL }}. */
+  confirmPage?: boolean;
   outro: string;
 }
 
@@ -48,7 +62,9 @@ const TEMPLATES: AuthTemplate[] = [
     preheader: "Your sign-in code and link for Mpillow.",
     intro: "Use this code to sign in:",
     ctaLabel: "Or sign in with one click",
-    outro: "If you didn't request this, you can safely ignore this email.",
+    confirmPage: true,
+    outro:
+      "If you signed up for our emails, signing in confirms it. If you didn't request this, you can safely ignore this email.",
   },
   {
     file: "confirm-signup.html",
@@ -57,7 +73,9 @@ const TEMPLATES: AuthTemplate[] = [
     preheader: "Confirm your email to finish setting up your Mpillow account.",
     intro: "Use this code to confirm your email:",
     ctaLabel: "Or confirm with one click",
-    outro: "If you didn't create an Mpillow account, you can ignore this email.",
+    confirmPage: true,
+    outro:
+      "Confirming makes your Mpillow account and, if you signed up for our emails, confirms that too. If you didn't ask for this, you can ignore this email: nothing is kept.",
   },
   {
     file: "invite-user.html",
@@ -119,12 +137,14 @@ function render(t: AuthTemplate): string {
     ]
       .filter(Boolean)
       .join("\n"),
-    cta: t.ctaLabel ? { href: SENTINEL_URL, label: t.ctaLabel } : undefined,
+    cta: t.ctaLabel ? { href: t.confirmPage ? SENTINEL_CONFIRM_PAGE : SENTINEL_URL, label: t.ctaLabel } : undefined,
   });
 
   // Swap sentinels for the Go placeholders Supabase substitutes at send time.
   return (
     html
+      .split(SENTINEL_CONFIRM_PAGE)
+      .join(CONFIRM_PAGE_URL)
       .split(SENTINEL_URL)
       .join("{{ .ConfirmationURL }}")
       .split(SENTINEL_TOKEN)

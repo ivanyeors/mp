@@ -18,6 +18,18 @@ import {
   type CampaignClaimBlocker,
   type CampaignDraft,
 } from "./rules";
+import {
+  latestPillows,
+  PILLOW_LINE_COLUMNS,
+  productClasses,
+  RECIPIENT_FACT_COLUMNS,
+  recipientFactsFromRow,
+  type BoughtClass,
+  type RecipientFacts,
+} from "./fit-checks";
+import type { RecipientPillow } from "./variables";
+import { resultsFromRows, type CampaignResults } from "./results";
+import { approvedSegmentsRow, KEEP_SENDING_COLUMNS, keepSendingFromRow, keptWaveLabel, type ApprovedSegment, type KeepSending } from "./keep-sending";
 
 export { finishCampaignSend };
 
@@ -33,6 +45,22 @@ export interface CampaignStats {
   lastSentAt: string | null;
   /** Claim links its emails carried that were opened. */
   linkClicks: number;
+  /** Sends with a counted **Campaign click** on a site link (PRD-campaign-audiences slice 08). */
+  clicked: number;
+  /** Every counted click, a person's second and third included. */
+  clicks: number;
+  /** People who left from this campaign's own unsubscribe link (slice 08). */
+  unsubscribed: number;
+  /** People sent it who bought within 30 days (slice 11, results.ts). */
+  bought: number;
+  /** Of those, the ones who bought after their first click. */
+  boughtAfterClick: number;
+  /** What they bought, in S$, net of refunds. */
+  boughtTotal: number;
+  /** People sent it under 30 days ago, whose window is still open. */
+  counting: number;
+  /** People its holdout kept back: never sent it (slice 11). */
+  heldOut: number;
 }
 
 export const NO_STATS: CampaignStats = {
@@ -45,6 +73,14 @@ export const NO_STATS: CampaignStats = {
   firstSentAt: null,
   lastSentAt: null,
   linkClicks: 0,
+  clicked: 0,
+  clicks: 0,
+  unsubscribed: 0,
+  bought: 0,
+  boughtAfterClick: 0,
+  boughtTotal: 0,
+  counting: 0,
+  heldOut: 0,
 };
 
 const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -61,6 +97,14 @@ export function statsFromRow(row: Record<string, unknown>): CampaignStats {
     firstSentAt: typeof row.first_sent_at === "string" ? row.first_sent_at : null,
     lastSentAt: typeof row.last_sent_at === "string" ? row.last_sent_at : null,
     linkClicks: num(row.link_clicks),
+    clicked: num(row.clicked),
+    clicks: num(row.clicks),
+    unsubscribed: num(row.unsubscribed),
+    bought: num(row.bought),
+    boughtAfterClick: num(row.bought_after_click),
+    boughtTotal: num(row.bought_total),
+    counting: num(row.counting),
+    heldOut: num(row.held_out),
   };
 }
 
@@ -127,6 +171,49 @@ export async function listPastCampaigns(admin: SupabaseClient): Promise<PastCamp
   );
 }
 
+/** A campaign the Customers list's *Campaign* filter offers (PRD-campaign-audiences slice 05). */
+export interface CampaignFilterOption {
+  id: string;
+  name: string;
+}
+
+/** The most the *Campaign* filter lists: the latest started. */
+export const CAMPAIGN_FILTER_OPTIONS_LISTED = 100;
+
+/**
+ * Every campaign that has started sending, archived ones too, the latest
+ * started first: the ones *got it*, *clicked it* and the rest can be about.
+ * `alsoIds` adds campaigns a link names that are not among them (a draft, an
+ * older one), so its chip still reads a name. Names only, never content:
+ * the Customers page reads these with `customers`, not `campaigns`. Throws on
+ * a failed read.
+ */
+export async function listCampaignFilterOptions(
+  admin: SupabaseClient,
+  alsoIds: readonly string[] = [],
+): Promise<CampaignFilterOption[]> {
+  const started = await admin
+    .from("email_campaigns")
+    .select("id, name")
+    .not("locked_at", "is", null)
+    .order("locked_at", { ascending: false })
+    .limit(CAMPAIGN_FILTER_OPTIONS_LISTED);
+  if (started.error) throw new Error(`Could not read the campaigns: ${started.error.message}`);
+  const options = ((started.data ?? []) as Record<string, unknown>[]).flatMap((r) =>
+    typeof r.id === "string" ? [{ id: r.id, name: typeof r.name === "string" ? r.name : "" }] : [],
+  );
+  const missing = alsoIds.filter((id) => !options.some((o) => o.id === id));
+  if (!missing.length) return options;
+  const more = await admin.from("email_campaigns").select("id, name").in("id", missing);
+  if (more.error) throw new Error(`Could not read the campaigns: ${more.error.message}`);
+  return [
+    ...options,
+    ...((more.data ?? []) as Record<string, unknown>[]).flatMap((r) =>
+      typeof r.id === "string" ? [{ id: r.id, name: typeof r.name === "string" ? r.name : "" }] : [],
+    ),
+  ];
+}
+
 /** One Campaign, archived or not; null when there is none. */
 export async function getCampaign(admin: SupabaseClient, id: string): Promise<Campaign | null> {
   const { data, error } = await admin.from("email_campaigns").select(CAMPAIGN_COLUMNS).eq("id", id).maybeSingle();
@@ -184,6 +271,119 @@ export async function lockCampaign(admin: SupabaseClient, id: string): Promise<v
   if (error) throw new Error(`Could not lock the campaign: ${error.message}`);
 }
 
+// ---------------------------------------------------------------------------
+// Kept sending (PRD-campaign-audiences slice 10; 20261031155043_campaign_keep_sending.sql)
+// ---------------------------------------------------------------------------
+
+/** Every live campaign kept sending and not paused, oldest started first: the daily job's list. */
+export async function readKeptSendingCampaigns(admin: SupabaseClient): Promise<Campaign[]> {
+  const { data, error } = await admin
+    .from("email_campaigns")
+    .select(CAMPAIGN_COLUMNS)
+    .eq("keep_sending", true)
+    .is("keep_sending_paused_at", null)
+    .is("archived_at", null)
+    .order("locked_at", { ascending: true });
+  if (error) throw new Error(`Could not read the campaigns that keep sending: ${error.message}`);
+  return ((data ?? []) as unknown as Record<string, unknown>[]).flatMap((row) => {
+    const c = campaignFromRow(row);
+    return c && c.lockedAt ? [c] : [];
+  });
+}
+
+/**
+ * A person's change to keep sending: on (with the Segments' filters they
+ * approve now), off, a new cap, a pause or a resume. A live campaign only;
+ * returns the state as stored.
+ */
+export async function saveKeepSending(
+  admin: SupabaseClient,
+  id: string,
+  change:
+    | { on: true; dailyCap: number; segments: Record<string, ApprovedSegment> }
+    | { on: false }
+    | { dailyCap: number }
+    | { paused: true; at: string }
+    | { paused: false; segments: Record<string, ApprovedSegment> }
+    | { holdout: true; at: string }
+    | { holdout: false },
+): Promise<KeepSending> {
+  const row =
+    "on" in change
+      ? change.on
+        ? {
+            keep_sending: true,
+            keep_sending_daily_cap: change.dailyCap,
+            keep_sending_paused_at: null,
+            keep_sending_paused_reason: null,
+            keep_sending_segments: approvedSegmentsRow(change.segments),
+          }
+        : // Off ends the holdout too: only a campaign that keeps sending holds out. Its held-out rows stay.
+          { keep_sending: false, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null, holdout_at: null }
+      : "holdout" in change
+        ? { holdout_at: change.holdout ? change.at : null }
+      : "paused" in change
+        ? change.paused
+          ? { keep_sending_paused_at: change.at, keep_sending_paused_reason: null }
+          : { keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: approvedSegmentsRow(change.segments) }
+        : { keep_sending_daily_cap: change.dailyCap };
+  const { data, error } = await admin
+    .from("email_campaigns")
+    .update(row)
+    .eq("id", id)
+    .is("archived_at", null)
+    .select(KEEP_SENDING_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(`Could not save keep sending: ${error.message}`);
+  if (!data) throw new Error("That campaign does not exist.");
+  return keepSendingFromRow(data as unknown as Record<string, unknown>);
+}
+
+/** The daily job pauses a campaign, saying why; a no-op for one a person paused or turned off meanwhile. */
+export async function pauseKeptSending(admin: SupabaseClient, id: string, reason: string, at: Date): Promise<void> {
+  const { error } = await admin
+    .from("email_campaigns")
+    .update({ keep_sending_paused_at: at.toISOString(), keep_sending_paused_reason: reason.slice(0, 500) })
+    .eq("id", id)
+    .eq("keep_sending", true)
+    .is("keep_sending_paused_at", null);
+  if (error) throw new Error(`Could not pause the campaign: ${error.message}`);
+}
+
+/**
+ * How many sends one Wave of a campaign has claimed, whatever became of them:
+ * the day's cap counts them all. People held out got no email and are not
+ * counted (slice 11).
+ */
+export async function countWaveClaims(admin: SupabaseClient, campaignId: string, wave: string): Promise<number> {
+  const { count, error } = await admin
+    .from("customer_campaign_sends")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_id", campaignId)
+    .eq("wave", wave)
+    .neq("status", "held_out");
+  if (error) throw new Error(`Could not count today's sends: ${error.message}`);
+  return count ?? 0;
+}
+
+/** One campaign's results by stage, and its holdout beside the people sent (slice 11). Throws on a failed read. */
+export async function readCampaignResults(admin: SupabaseClient, id: string): Promise<CampaignResults> {
+  const { data, error } = await admin.from("email_campaign_stage_results").select("*").eq("campaign_id", id);
+  if (error) throw new Error(`Could not read the campaign's results: ${error.message}`);
+  return resultsFromRows((data ?? []) as Record<string, unknown>[]);
+}
+
+/** Today's kept-sending emails the provider took, across campaigns: the Sending card's line. */
+export async function readKeptToday(admin: SupabaseClient, now: Date): Promise<number> {
+  const { count, error } = await admin
+    .from("customer_campaign_sends")
+    .select("id", { count: "exact", head: true })
+    .eq("wave", keptWaveLabel(now))
+    .in("status", ["sent", "bounced", "complained"]);
+  if (error) throw new Error(`Could not count today's kept-sending emails: ${error.message}`);
+  return count ?? 0;
+}
+
 /** PostgREST returns at most this many rows a request, so reads page. */
 const PAGE = 1000;
 /** Ids per `in (...)` filter, to keep the URL short. */
@@ -235,6 +435,70 @@ export async function readCampaignCandidates(
     }
   }
   return out;
+}
+
+/**
+ * Each customer's latest pillow, for *Your pillow* (PRD-campaign-audiences
+ * slice 09): their pillow purchase lines, the latest of them. One with no
+ * pillow line here is left out, and reads the fallback.
+ */
+export async function readLatestPillows(admin: SupabaseClient, customerIds: readonly string[]): Promise<Map<string, RecipientPillow>> {
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; i < customerIds.length; i += ID_CHUNK) {
+    const ids = customerIds.slice(i, i + ID_CHUNK);
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await admin
+        .from("customer_purchase_lines")
+        .select(PILLOW_LINE_COLUMNS)
+        .eq("product_type", "pillow")
+        .in("customer_id", ids)
+        .order("order_item_id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw new Error(`Could not read their pillows: ${error.message}`);
+      const page = (data ?? []) as Record<string, unknown>[];
+      rows.push(...page);
+      if (page.length < PAGE) break;
+    }
+  }
+  return latestPillows(rows);
+}
+
+/**
+ * What the fit checks know of each planned recipient (slice 09), in the
+ * order asked: the Customer overview's facts (`RECIPIENT_FACT_COLUMNS`: no
+ * review, rating or note) and their latest pillow. One not in the overview
+ * is left out.
+ */
+export async function readRecipientFacts(admin: SupabaseClient, customerIds: readonly string[]): Promise<RecipientFacts[]> {
+  const rows = new Map<string, Record<string, unknown>>();
+  for (let i = 0; i < customerIds.length; i += ID_CHUNK) {
+    const ids = customerIds.slice(i, i + ID_CHUNK);
+    const { data, error } = await admin.from("admin_customer_overview").select(RECIPIENT_FACT_COLUMNS).in("id", ids);
+    if (error) throw new Error(`Could not read who it goes to: ${error.message}`);
+    for (const row of (data ?? []) as unknown as Record<string, unknown>[]) rows.set(String(row.id), row);
+  }
+  const pillows = await readLatestPillows(admin, customerIds);
+  return customerIds.flatMap((id) => {
+    const row = rows.get(id);
+    const facts = row ? recipientFactsFromRow(row, pillows.get(id) ?? null) : null;
+    return facts ? [facts] : [];
+  });
+}
+
+/** What buying each product makes you (slice 09), as the purchase lines classify it. Products that no longer exist are left out. */
+export async function readProductClasses(admin: SupabaseClient, productIds: readonly string[]): Promise<Record<string, BoughtClass[]>> {
+  if (!productIds.length) return {};
+  const { data, error } = await admin.from("products").select("id, product_type, product_variants(pillow_product_id)").in("id", [...productIds]);
+  if (error) throw new Error(`Could not read the products: ${error.message}`);
+  const rows = (data ?? []) as unknown as { id: string; product_type: string | null; product_variants: { pillow_product_id: number | string | null }[] | null }[];
+  const pillowIds = [...new Set(rows.flatMap((r) => (r.product_variants ?? []).flatMap((v) => (v.pillow_product_id == null ? [] : [String(v.pillow_product_id)]))))];
+  const kinds = new Map<string, string>();
+  if (pillowIds.length) {
+    const { data: pillows, error: pillowError } = await admin.from("pillow_products").select("id, kind").in("id", pillowIds);
+    if (pillowError) throw new Error(`Could not read the pillow products: ${pillowError.message}`);
+    for (const p of (pillows ?? []) as { id: number | string; kind: string | null }[]) if (p.kind) kinds.set(String(p.id), p.kind);
+  }
+  return productClasses(rows, kinds);
 }
 
 /** Every wave of every campaign email, for the pause rule, and this Campaign's own. */

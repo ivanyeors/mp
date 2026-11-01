@@ -1,5 +1,5 @@
 /**
- * Fitting imports as the Admin Panel lists them (ADR 0039 e). Pure: the page
+ * Fitting imports as the Admin Panel lists them (ADR 0042 e). Pure: the page
  * reads `fitting_import_batches` on the server and hands these views to the
  * browser. A batch holds counts and who ran it, never a customer's email or
  * name.

@@ -271,8 +271,8 @@ The customer's Google Calendar invite response on an **Appointment** event — `
 _Avoid_: **Result** Accept/Decline (shopper accepting the *build* → capture → **Order**, `cursor/accept-decline-capture-order`); "pillow status" (it is a status **pill**); recoloring the whole event by RSVP (the **type** color — customisation/re-adjustment — must survive; RSVP is a second, additive channel).
 
 **Sign in**:
-The unified authentication entry at `/account/login`. Guests start here; role (**Staff** vs **Customer**) is decided after the session exists, not by picking a separate staff login URL.
-_Avoid_: “Staff sign in” as a separate customer-facing door; splitting shopper and staff onto different auth pages for v1
+The one authentication page, `/account/login`, with two tabs (ADR 0041). **Customer**, the default: signing in and signing up are one step (Google, or an emailed link and 6-digit code; no password), and the first sign-in makes the **Customer** at once, with a box, ticked by default, that records `sign_in` **Marketing consent**. **Staff**: for the **Admin Panel** only; it never makes a Customer or records consent, and an email not on the team is signed out again. An Admin Panel destination opens the Staff tab. The **Partner Hub** keeps its own single form. Which tab was used decides what the sign-in does, not who the person is.
+_Avoid_: a separate sign-up page or a second confirm email (the link or code is the confirmation); a separate Staff login URL (it is a tab on the same page); "magic link" in customer-facing copy ("sign-in link")
 
 **Admin Panel**:
 The staff back office under `/settings`. User-facing name for that surface.
@@ -331,7 +331,7 @@ A **Customisation session** a **Staff** member originates with an **Assist link*
 _Avoid_: **Staff assist mode** (a shared in-store device with **Staff** at the controls and extra editors on the preview, gated on the `results` permission — the assisted customer is not **Staff**, is not in the room, and sees none of that chrome); **Partner-assisted customisation** (the partner's device, launched from **Partner Hub**, an **Authorization hold** taken up front, a **Referral** stamped for **Commission**); "staff assist" as shorthand for this in commit messages, code, or copy — it names the other thing; calling the unpaid submission an **Order**
 
 **Customer**:
-A shopper's record (`customers` row), created at checkout, at **Sign in**, or by the Shopify import. It **has an account** once a **Sign in** is bound to it (`auth_user_id`). Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
+A shopper's record (`customers` row), created at checkout, at **Sign in**, by the Shopify import, when someone leaves the marketing email box ticked on a customisation's contact step or a booking (PRD-campaign-audiences slice 02), or at the first **Sign in** on the Customer tab, which is also the sign-up (slice 03; owner decision 6; ADR 0041). One created by a box or the sign-up who has bought nothing is a *Lead*. It **has an account** once a **Sign in** is bound to it (`auth_user_id`). Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
 _Avoid_: conflating with **Customer preference** (cover/case choices only)
 
 **Order**:
@@ -373,8 +373,12 @@ The per-customer link in a campaign email, `/account/welcome?c=<token>`. The tok
 _Avoid_: "magic link" — a Claim link never signs anyone in; proof of the email is always the **Sign in** itself
 
 **Marketing consent**:
-Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its source and timestamp. Every change is appended to `customer_consent_events`.
-_Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked"
+Whether a **Customer** agreed to marketing email, stored as `subscribed | not_subscribed | unsubscribed` with its **Consent source** and timestamp. Every change is appended to `customer_consent_events`. Two defaults subscribe someone nobody has asked, and never anyone who unsubscribed (owner, 2026-10-31; ADR 0039): every **Migrated customer** not on Shopify's unsubscribed list, and anyone who leaves the box ticked where they give their email (checkout, a customisation's contact step, a booking, **Sign in**), or signs up in the footer.
+_Avoid_: inferring consent from having an account, a past **Order**, or a **Claim**; treating Shopify's "no" as `unsubscribed` — it may mean "never asked", which is why Shopify's unsubscribed list is exported separately
+
+**Consent source**:
+What set a **Customer**'s **Marketing consent**, stored with it and on each event: `shopify_import` (the export's *yes*), `import_default` (subscribed because they were imported), `shopify_unsubscribed` (on Shopify's unsubscribed list), `checkout` (the box at checkout, ticked by default), `customisation` (the same box on a customisation's contact step: Mpillow, Basic, Mbolster, a Paired build's Mpillow, an Assisted customisation), `appointment` (the same box on booking a customisation or a re-adjustment), `sign_in` (the same box on **Sign in**'s Customer tab), `newsletter` (*Get our emails* in the site footer, confirmed by the sign-in link or code), `account` (the customer, from their Profile), `unsubscribe_link`, `complaint`, `support` (Staff, at the customer's request, unsubscribe only). Only `account` re-subscribes someone who unsubscribed.
+_Avoid_: "list" or "signup source"; reading `import_default`, `checkout`, `customisation`, `appointment` or `sign_in` as the customer's own choice
 
 **Import batch**:
 One import that wrote to the database, run from **Admin Panel** → Customers → Import from Shopify. It records the file's name and SHA-256, the counts by outcome, the **Staff** who ran it, and when. It is the unit of reconciliation, of resume, and of undo.
@@ -384,14 +388,14 @@ _Avoid_: "upload" — the file itself is never uploaded or stored; the browser r
 Whether a **Customer** row is bound to a login: *Signed up* (since `account_linked_at`) or *No account*. It is derived from `auth_user_id` in the Customer overview (`admin_customer_overview`), never stored as text. It applies to every **Customer**, not only Migrated ones. For a **Migrated customer**, *Signed up* and **Claimed** usually coincide. They differ when the person already had an account before the import: that Customer is *Signed up* at once, and is **Claimed** at their next **Sign in**.
 _Avoid_: "registered", "member" (a **Member** is **Staff**) or "active" for this; reading *Signed up* as **Claimed**
 
-## Google Form fittings (ADR 0039)
+## Google Form fittings (ADR 0042)
 
 **Fitting record**:
-One in-store fitting from before this platform, as the old Google Form recorded it, linked to a **Customer** (`customer_fittings`). It keeps every answer the form had: the four measurements in inches (A shoulder length, B neck to back, C head to back, D neck length), the recommended pillow size, the configuration type (e.g. `T12`) and profile side (e.g. `M-LN`), the sleep and health answers, who serviced them (a **Staff profile** when the name matches one), notes, and the Drive photos, previewed on the Customer page and never copied. Readable by the service role only. Shown to **Staff** holding `customers`, and to the **Customer** on their own Profile in the same card, without the Drive photos (ADR 0039 h).
+One in-store fitting from before this platform, as the old Google Form recorded it, linked to a **Customer** (`customer_fittings`). It keeps every answer the form had: the four measurements in inches (A shoulder length, B neck to back, C head to back, D neck length), the recommended pillow size, the configuration type (e.g. `T12`) and profile side (e.g. `M-LN`), the sleep and health answers, who serviced them (a **Staff profile** when the name matches one), notes, and the Drive photos, previewed on the Customer page and never copied. Readable by the service role only. Shown to **Staff** holding `customers`, and to the **Customer** on their own Profile in the same card, without the Drive photos (ADR 0042 h).
 _Avoid_: calling it a **Result** (it never had a hold, a build or a payment), an **Order** or a **Purchase**; writing its answers onto `customers` (the customer can read that row); "measurement" alone (a **Measurement service** is the fee)
 
 **Fitting import**:
-One run of **Admin Panel** → Customers → Import fittings: the owner's Google Form CSV, read in the browser and sent a chunk of rows at a time, like an **Import batch**. One person's visits all land on one **Customer**, each its own **Fitting record** (ADR 0039 c). A row attaches to the **Customer** with its email. Under an email nobody has, it attaches to the one Customer with the same mobile and name, or creates one. A row with no email attaches to the one **Customer** with its mobile, or the one of several with the same name, or is skipped and listed. Rows with an email go first, so a mobile-only visit finds the Customer another visit creates. Importing the same file twice creates nothing, and Undo removes the batch's **Fitting records** and the Customers it created that nobody has signed in to or referenced since.
+One run of **Admin Panel** → Customers → Import fittings: the owner's Google Form CSV, read in the browser and sent a chunk of rows at a time, like an **Import batch**. One person's visits all land on one **Customer**, each its own **Fitting record** (ADR 0042 c). A row attaches to the **Customer** with its email. Under an email nobody has, it attaches to the one Customer with the same mobile and name, or creates one. A row with no email attaches to the one **Customer** with its mobile, or the one of several with the same name, or is skipped and listed. Rows with an email go first, so a mobile-only visit finds the Customer another visit creates. Importing the same file twice creates nothing, and Undo removes the batch's **Fitting records** and the Customers it created that nobody has signed in to or referenced since.
 _Avoid_: "upload" (the file is never uploaded or stored); creating a phone-only **Customer**
 
 ## Rules Engine (recommendations)
@@ -506,7 +510,7 @@ A counted **Order** (paid, and not pending, cancelled, refunded or payment-faile
 _Avoid_: counting every paid **Order** as a purchase (`paid_orders` does, re-adjustment fees included)
 
 **Lifecycle stage**:
-Where a **Customer** is in the funnel *Lead > New > Loyal > At risk > Lost*, one stage at a time, some with a sub-status (PRD-crm-retention-loop slice 03; owner, 2026-10-27 and 2026-10-28). Read from their **Purchases**, their attended **Re-adjustment bookings** and their **Marketing consent**, and nothing else, checked in order: *Lost* (unsubscribed, with no **Purchase** or attended booking since), *Lead* (neither yet), *At risk* (the latest of either more than 12 calendar months ago; sub-status *Lapsed* past 24), *Loyal* (2 or more **Purchases**, sub-status *Repeat purchases*; or an attended booking, *Bookings*), *New* (1 **Purchase**; sub-status *awaiting delivery*, *delivered*, or *settled* 30 days after delivery). The cut-offs are strict, as the *Last order* filter's. A buyer whose every **Purchase** is Shopify-era has no dates yet: placed by count, never *At risk*. A Renew subscriber will be *Loyal · Subscriber*, checked first, when Renew exists. Computed by `customer_lifecycle_stage` and `customer_lifecycle_detail`, mirrored in `lib/crm/lifecycle-stage.ts`.
+Where a **Customer** is in the funnel *Lead > New > Loyal > At risk > Lost*, one stage at a time, some with a sub-status (PRD-crm-retention-loop slice 03; owner, 2026-10-27 and 2026-10-28). Read from their **Purchases**, their attended **Re-adjustment bookings** and their **Marketing consent**, and nothing else, checked in order: *Lost* (unsubscribed, with no **Purchase** or attended booking since), *Lead* (neither yet), *At risk* (the latest of either more than 12 calendar months ago; sub-status *Lapsed* past 24), *Loyal* (2 or more **Purchases**, sub-status *Repeat purchases*; or an attended booking, *Bookings*), *New* (1 **Purchase**; sub-status *awaiting delivery*, *delivered*, or *settled* 30 days after delivery). The cut-offs are strict, as the *Last order* filter's. A buyer whose every **Purchase** is Shopify-era has no dates yet: placed by count, never *At risk*. A Renew subscriber will be *Loyal · Subscriber*, checked first, when Renew exists. Computed by `customer_lifecycle_stage` and `customer_lifecycle_detail`, mirrored in `lib/crm/lifecycle-stage.ts`. Counted by stage and sub-status for the Customer lifecycle chart on the Customers page by `admin_customer_lifecycle_counts` (`lib/crm/lifecycle-summary.ts`), from the same overview, so a stage's count is what the *Stage* filter lists.
 _Avoid_: storing it, or setting it by hand (it is derived when read); moving a **Customer** by reviews, ratings, returns or notes; "churned" (say *At risk*, or *Lost* once they unsubscribe); calling an attended booking a **Visit** (a browsing session)
 
 **Follow-up**:
@@ -570,7 +574,7 @@ A ready-made layout: a list of **Email blocks** with **Placeholders** for its wo
 _Avoid_: "template" (an **Email template** is the words of a platform email; a Starter is the start of a campaign); "layout" on its own (the shell's layout is code, and nobody edits it)
 
 **Variable**:
-A value the platform fills in when an email is sent, shown to **Staff** as a chip they drag or insert into the words and written `{first_name}`. In an **Email campaign** it is a recipient's detail (*First name*, *Last name*, *Points balance* while points are live) with **fallback words** for a customer who has none, set once per campaign. In an **Email template** it is that email's own data, such as `{order_number}`.
+A value the platform fills in when an email is sent, shown to **Staff** as a chip they drag or insert into the words and written `{first_name}`. In an **Email campaign** it is a recipient's detail (*First name*, *Last name*, *Points balance* while points are live, *Your pillow*: the pillow they bought last, as the shop names it) with **fallback words** for a customer who has none, set once per campaign. In an **Email template** it is that email's own data, such as `{order_number}`.
 _Avoid_: "merge field", "merge tag"; "placeholder" (that is the hint text, a **Placeholder**)
 
 **Placeholder**:
@@ -586,8 +590,40 @@ Words Claude wrote for a campaign, from the subject and the brief **Staff** gave
 _Avoid_: "AI-generated email" (no email is generated without a person); calling the brief a prompt in the UI
 
 **Audience**:
-Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send.
-_Avoid_: reading an Audience as the people who will receive it — **Marketing consent** and suppression narrow it at every send
+Who an **Email campaign** is for: *Imported from Shopify, not signed in yet* (every unclaimed **Migrated customer**), *everyone subscribed*, or a **Segment**, minus its **Exclusions** (*Leave out people in…*, PRD-campaign-audiences slice 06). The **Rest period** and the sunset rule (**Unengaged**) narrow it at every send, as consent does. Each Segment, sent to or left out, is read again when each **Wave** is planned, and one that is archived or needs review refuses the Wave by name. Whatever the choice, only `subscribed` **Customers** receive it, and nobody whose campaign email bounced or was marked as spam. The rule is checked again in SQL at the moment of each send. A Segment chosen by what the same campaign did (*got it*, *clicked it*, *got it, didn't click*) is refused as its Audience, on Save and at every Wave: everyone in it has been sent the campaign already, so it would never send (PRD-campaign-audiences slice 05). It is for a follow-up campaign.
+_Avoid_: reading an Audience as the people who will receive it — **Marketing consent**, suppression, the **Rest period** and the sunset rule narrow it at every send
+
+**Exclusion**:
+A **Segment** whose **Customers** a campaign's **Audience** leaves out, up to three (`email_campaigns.exclude_segment_ids`). Read again with the Audience at every **Wave**; fixed with it once the first Wave is planned. It only ever narrows: someone in two counts once, against the first. The plan says how many each one left out.
+_Avoid_: "suppression list" (suppression is bounces and spam reports, for every campaign); "blocklist"; using one to reach anyone
+
+**Rest period**:
+How long after one marketing email a **Customer** receives no other, and how many they may receive in 30 days (owner, 2026-10-31: 7 days, at most 4; a points-expiry reminder counts). Checked in the claim rule, like consent. A Customer inside it is *rested*: skipped, not failed, with no ledger row, so a later **Wave** reaches them; the plan says when they are next eligible. Transactional and aftercare email never count.
+_Avoid_: "frequency cap" in UI copy; "smart sending"; reading a rested Customer as failed
+
+**Campaign click**:
+The first time someone opened a site link from one campaign send, recorded on that send (`customer_campaign_sends`) from a token in the link, then stripped from the address. It shows the link came from that email, not who is holding it: emails are forwarded and link scanners click, so counts are approximate. Never used to identify a browser or merge a **Visitor** into a **Customer**.
+_Avoid_: "open" (not recorded: there is no pixel); treating a click as proof of who clicked; rewriting links through Resend
+
+**Ships to**:
+Where a **Customer** is, as a two-letter country: their latest counted **Order**'s shipping country (a self-collect or re-adjustment **Order** is the studio's, Singapore), else their default address's, else the address they saved last (`ship_country` on the Customer overview; PRD-campaign-audiences slice 05). *Unknown* when none names one, as for a Shopify-era buyer with no **Order** here and no address. In-store fitting and re-adjustment are Singapore-only, so it decides which wording an email may use.
+_Avoid_: taking *Unknown* for Singapore, or leaving it out silently (the Customers list says how many a Singapore or overseas filter leaves out); calling it where they live (it is where we last shipped to)
+
+**Kept sending**:
+A campaign that, after a first **Wave** a person started, runs one Wave a day by itself (at 10:00, labelled *Daily, 1 Nov*) to people who have joined its **Audience** since, up to its daily cap, inside Resend's daily room less a reserve of 30, the pause rule and the **Rest period**, until paused. Its email and Audience stay as the first Wave locked them; its Segments' filters stay as a person approved them, and the daily job pauses it when one changes (PRD-campaign-audiences slice 10). Chained onto the daily job; no new cron.
+_Avoid_: "automation", "flow", "drip" (each suggests branching or content changes it does not have); reading it as a way to change an email after sending
+
+**Bought after a campaign**:
+A **Customer** sent an **Email campaign** who made a **Purchase** (never a re-adjustment fee) paid within 30 days after it was sent them; its total is net of refunds, and *after a click* when paid after their first **Campaign click** (PRD-campaign-audiences slice 11; retention metric M22). Counted on the campaign's Results tab, by the **Lifecycle stage** they had when sent (kept on the send, since the stage moves), with every rate over people sent and a dash when nobody was.
+_Avoid_: "conversions" or "revenue from email" (people buy for many reasons; only a **Holdout** measures what the email added); rates over opens
+
+**Holdout**:
+The 10% of the people a **Kept sending** campaign would send to that it keeps back while its holdout is on, chosen by a hash of the Customer id (the same people every time, and for every campaign holding out). Each is recorded on the ledger as *held out*: never sent that campaign, by the daily job or any later **Wave**, even once the holdout is off; not counted against Resend's room, the cap or the **Rest period**. Their 30-day purchase rate is set beside that of the people sent in the same weeks. Offered from 500 people sent (owner decision 5; slice 11).
+_Avoid_: "control group" in UI copy; reading a held-out Customer as unsubscribed or suppressed (they get every other campaign)
+
+**Unengaged**:
+A subscribed **Customer** the sunset rule leaves out of campaigns: an *At risk · Lapsed* customer, or a *Lead* who has been a Customer for over 12 months, who clicked none of their last 6 campaigns (owner, 2026-10-31; PRD-campaign-audiences slice 12). Nobody sent fewer than 6 is Unengaged. A Customers filter (*Engagement*), so it can be seen and saved; a campaign leaves it out unless it ticks *Include unengaged*.
+_Avoid_: reading it as a **Lifecycle stage** or as consent (they can still be emailed, and still unsubscribe); "inactive", "dormant"
 
 **Email template**:
 The words of one email the platform sends (an order confirmation, a return update, a customisation notice…): its subject, inbox preview line, heading, messages and button labels, with **Variables** such as `{order_number}`. Owner and Admin edit them on **Admin Panel** → Email templates (`email_template_copy`); the layout, the data (items, amounts, addresses, codes, links) and the footer stay in code. An unedited email sends its original words, and any failure to read an edit falls back to them.

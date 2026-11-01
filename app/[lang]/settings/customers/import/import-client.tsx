@@ -62,6 +62,8 @@ import {
     type ImportBatchView,
     type UndoCounts,
 } from "@/lib/customer-migration/batches";
+import type { DefaultConsentCounts } from "@/lib/customer-migration/default-consent";
+import { DefaultConsentCard } from "./default-consent-card";
 import {
     applyShopifyImportChunk,
     finishShopifyImport,
@@ -99,7 +101,14 @@ function downloadSkipped(rows: SkippedRow[]) {
     URL.revokeObjectURL(url);
 }
 
-export function CustomerImportClient({ history = [] }: { history?: ImportBatchView[] | null }) {
+export function CustomerImportClient({
+    history = [],
+    consent,
+}: {
+    history?: ImportBatchView[] | null;
+    /** Where the imported customers stand on marketing email; null when unread, undefined hides the card. */
+    consent?: DefaultConsentCounts | null;
+}) {
     const pathname = usePathname() ?? "/";
     const router = useRouter();
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -228,6 +237,8 @@ export function CustomerImportClient({ history = [] }: { history?: ImportBatchVi
                     onChanged={refresh}
                 />
             )}
+
+            {consent !== undefined && <DefaultConsentCard counts={consent} />}
 
             <HistoryCard history={history} busy={busy} onChanged={refresh} />
         </div>

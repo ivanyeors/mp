@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** not started
+**Status:** not started. Since 2026-10-31 the *Customer lifecycle* chart above the list (`app/[lang]/settings/customers/lifecycle-card.tsx`) shows each stage's live count, by sub-status, and choosing a stage filters the list; *Email this stage* and the chip row are still to build
 **Blocked by:** 03
 **Labels:** `enhancement`, `needs-triage`, `P3`, `area:admin`
 

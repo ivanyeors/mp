@@ -1,4 +1,4 @@
--- ADR 0039 c: one person's rows find their Customer by mobile and name.
+-- ADR 0042 c: one person's rows find their Customer by mobile and name.
 -- public.fitting_name_key must read every fixture name as nameKey does
 -- (name-cases.json, written by
 -- lib/fitting-import/__tests__/name-key-agreement.test.ts).

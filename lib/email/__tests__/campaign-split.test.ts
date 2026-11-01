@@ -35,7 +35,7 @@ const send = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> =
     preheader: null,
     content,
     greeting: false,
-    values: { first_name: "Ann", last_name: "Tan", points_balance: "1,250" },
+    values: { first_name: "Ann", last_name: "Tan", points_balance: "1,250", your_pillow: "Premium Mpillow, size M" },
     buttonHref: (b) => (b.target === "url" ? b.url! : SHOP),
     unsubscribeUrl: UNSUB,
     images: EMAIL_BLOCK_SAMPLE_IMAGES,

@@ -19,7 +19,7 @@ import {
 export type CustomerFittingsResult = FittingRecordView[] | null;
 
 /**
- * Fitting history on the Customer page (ADR 0039): the customer's Profile shows
+ * Fitting history on the Customer page (ADR 0042): the customer's Profile shows
  * the same card, and Staff also get the Drive photos and the contact the form
  * held. Shown only to Staff holding `customers`, and only when the Customer has
  * a fitting. Photos are previewed from Drive through the platform and never

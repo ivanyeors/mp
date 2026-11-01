@@ -13,12 +13,24 @@
  */
 import { fillCopy, placeholdersIn } from "@/lib/email/copy";
 
+/**
+ * The pillow a customer bought last (PRD-campaign-audiences slice 09), as
+ * their purchase lines record it (`customer_purchase_lines`): its Tier and
+ * size, either unknown for an old line.
+ */
+export interface RecipientPillow {
+  tier: "premium" | "basic" | null;
+  size: string | null;
+}
+
 /** What the sender knows of one recipient, for the Variables; null (or left out) for a detail they do not have. */
 export interface VariableRecipient {
   firstName: string | null;
   lastName?: string | null;
   /** Points available to spend; read only for an email that uses *Points balance*. */
   pointsBalance?: number | null;
+  /** Their latest pillow; read only for an email that uses *Your pillow*. */
+  pillow?: RecipientPillow | null;
 }
 
 export interface CampaignVariable {
@@ -36,12 +48,28 @@ export interface CampaignVariable {
   example?: string;
   /** Offered only while points are live (`pointsLive`); the points rule counts it as a mention. */
   needsPoints?: true;
-  /** How the sender fills it for one recipient: their detail, or null for none. */
-  value: (r: VariableRecipient) => string | null;
+  /** How the sender fills it for one recipient: their detail, or null for none; in Chinese words with `chinese`. */
+  value: (r: VariableRecipient, language: FallbackLanguage) => string | null;
 }
 
 /** A balance as an email shows it, `1,250`; none for nothing to spend. */
 const pointsWords = (n: number | null | undefined) => (n != null && n > 0 ? Math.floor(n).toLocaleString("en-SG") : null);
+
+const PILLOW_NAME: Record<NonNullable<RecipientPillow["tier"]>, string> = { premium: "Premium Mpillow", basic: "Basic Mpillow" };
+
+/**
+ * Pure — a pillow as the shop names it: *Premium Mpillow, size M*, or in a
+ * campaign's 中文 version *Premium Mpillow（尺寸 M）*; product names stay in
+ * English letters in both (lib/ai/mpillow-facts.ts). *Mpillow* when its Tier
+ * is not recorded; none for no pillow.
+ */
+export function pillowWords(pillow: RecipientPillow | null | undefined, { chinese = false }: FallbackLanguage = {}): string | null {
+  if (!pillow) return null;
+  const name = pillow.tier ? PILLOW_NAME[pillow.tier] : "Mpillow";
+  const size = pillow.size?.trim().toUpperCase();
+  if (!size) return name;
+  return chinese ? `${name}（尺寸 ${size}）` : `${name}, size ${size}`;
+}
 
 export const CAMPAIGN_VARIABLES = {
   first_name: {
@@ -70,6 +98,15 @@ export const CAMPAIGN_VARIABLES = {
     needsPoints: true,
     value: (r) => pointsWords(r.pointsBalance),
   },
+  // PRD-campaign-audiences slice 09.
+  your_pillow: {
+    label: "Your pillow",
+    description: "The pillow the customer bought last, as the shop names it: Premium Mpillow, size M.",
+    sample: "Premium Mpillow, size M",
+    fallback: "your pillow",
+    chineseFallback: "您的枕头",
+    value: (r, language) => pillowWords(r.pillow, language),
+  },
 } as const satisfies Record<string, CampaignVariable>;
 
 export type VariableKey = keyof typeof CAMPAIGN_VARIABLES;
@@ -78,7 +115,7 @@ export const VARIABLE_KEYS = Object.keys(CAMPAIGN_VARIABLES) as [VariableKey, ..
 
 export const isVariableKey = (v: string): v is VariableKey => Object.hasOwn(CAMPAIGN_VARIABLES, v);
 
-/** The catalogue entry, typed as one Variable rather than one of three literals. */
+/** The catalogue entry, typed as one Variable rather than one of its literals. */
 export const campaignVariable = (key: VariableKey): CampaignVariable => CAMPAIGN_VARIABLES[key];
 
 /** Why *Points balance* cannot be placed now: points are not live (decision 3). */
@@ -91,10 +128,15 @@ export const VARIABLE_MAX = 60;
 export type VariableFallbacks = Partial<Record<VariableKey, string>>;
 
 /** A sample customer: what *Preview as: A customer* and a test send are filled with. */
-export const SAMPLE_RECIPIENT: Required<VariableRecipient> = { firstName: "Mei Ling", lastName: "Tan", pointsBalance: 1250 };
+export const SAMPLE_RECIPIENT: Required<VariableRecipient> = {
+  firstName: "Mei Ling",
+  lastName: "Tan",
+  pointsBalance: 1250,
+  pillow: { tier: "premium", size: "M" },
+};
 
 /** A customer with none of the details: *Preview as: No details*, which shows every fallback. */
-export const NO_DETAILS: Required<VariableRecipient> = { firstName: null, lastName: null, pointsBalance: null };
+export const NO_DETAILS: Required<VariableRecipient> = { firstName: null, lastName: null, pointsBalance: null, pillow: null };
 
 /** Who the editor's preview shows the email to: {@link SAMPLE_RECIPIENT}, or {@link NO_DETAILS}. */
 export type PreviewAs = "customer" | "no_details";
@@ -132,7 +174,7 @@ export function variableFallback(key: VariableKey, fallbacks: VariableFallbacks,
 /** Pure — every Variable's words for one recipient: their own detail, else the fallback (the 中文 version's, with `chinese`). */
 export function variableValues(recipient: VariableRecipient, fallbacks: VariableFallbacks, language: FallbackLanguage = {}): Record<VariableKey, string> {
   const out = {} as Record<VariableKey, string>;
-  for (const key of VARIABLE_KEYS) out[key] = variableValue(campaignVariable(key).value(recipient)) ?? variableFallback(key, fallbacks, language);
+  for (const key of VARIABLE_KEYS) out[key] = variableValue(campaignVariable(key).value(recipient, language)) ?? variableFallback(key, fallbacks, language);
   return out;
 }
 

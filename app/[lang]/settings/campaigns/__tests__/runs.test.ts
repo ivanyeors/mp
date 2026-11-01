@@ -46,16 +46,23 @@ describe("the text block's runs", () => {
     ]);
   });
 
-  it("offer the catalogue's Variables, by label, Points balance greyed while points are not live (slice 13)", () => {
+  it("offer the catalogue's Variables, by label, Points balance greyed while points are not live (slice 13), Your pillow last (PRD-campaign-audiences slice 09)", () => {
     expect(TEXT_VARIABLES).toEqual([
       { key: "first_name", label: "First name", description: "The customer's first name.", disabledReason: null },
       { key: "last_name", label: "Last name", description: "The customer's last name.", disabledReason: null },
       { key: "points_balance", label: "Points balance", description: "The points the customer has to spend, as 1,250.", disabledReason: null },
+      {
+        key: "your_pillow",
+        label: "Your pillow",
+        description: "The pillow the customer bought last, as the shop names it: Premium Mpillow, size M.",
+        disabledReason: null,
+      },
     ]);
     expect(campaignVariables({ pointsLive: false }).map((v) => [v.key, v.disabledReason])).toEqual([
       ["first_name", null],
       ["last_name", null],
       ["points_balance", "Points aren't live yet"],
+      ["your_pillow", null],
     ]);
   });
 });

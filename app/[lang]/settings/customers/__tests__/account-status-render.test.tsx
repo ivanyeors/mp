@@ -3,12 +3,14 @@ import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
-import type { MigrationSummary, MigratedCustomerFacts } from "@/lib/customer-migration/overview";
+import type { MigratedCustomerFacts } from "@/lib/customer-migration/overview";
+import { DEFAULT_CUSTOMER_FILTERS, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
 /**
  * Account status on every Customer, and the Shopify migration surfaces
- * (migration slice 12): the list's Account column, Shopify badge and Migration
- * card, and the detail page's Account and From Shopify cards.
+ * (migration slice 12): the list's Account column and Shopify badge, and the
+ * detail page's Account and From Shopify cards. The Migration card left the
+ * list on 2026-11-01.
  */
 
 vi.mock("next/navigation", () => ({
@@ -18,8 +20,23 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
-const { MigrationCard, migrationCells } = await import("../migration-card");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
+const { CustomerFilterGroup } = await import("../customer-filters-panel");
+
+/** One group of the mega filter, as it renders inside the open panel. */
+const groupFor = (
+  group: "stage" | "purchases" | "reach" | "account" | "reviews",
+  filters: Partial<CustomerListFilters>,
+  campaigns?: { id: string; name: string }[],
+) =>
+  renderToString(
+    <CustomerFilterGroup
+      group={group}
+      filters={{ ...DEFAULT_CUSTOMER_FILTERS, ...filters }}
+      onChange={() => {}}
+      campaigns={campaigns}
+    />,
+  );
 
 const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   id: "c1",
@@ -69,33 +86,19 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   lifecycle_detail: null,
   lifecycle_undated: false,
   attended_bookings: 0,
+  pillow_sizes: [],
+  last_delivered_at: null,
+  lifecycle_statuses: ["lead"],
+  ship_country: null,
+  locale: "en-US",
+  campaigns_sent: [],
+  campaigns_clicked: [],
+  last_emailed_at: "-infinity",
   ...over,
 });
 
-const summary: MigrationSummary = {
-  imported: 1200,
-  created: 900,
-  matched: 300,
-  signedUp: 150,
-  signedUpBeforeImport: 40,
-  batchesApplied: 1,
-  clicked: 300,
-  claimBonuses: 120,
-  migratedPointsSpent: 30000,
-  pointsOrders: 31,
-  pointsRevenue: 4250.5,
-  emailed: 960,
-  emailsBounced: 12,
-  emailsComplained: 1,
-};
-
-const list = (rows: CustomerOverviewRow[], migration: MigrationSummary | null = null) =>
-  renderToString(
-    <CustomersClient
-      initialData={{ customers: { ok: true, rows, total: rows.length, page: 1, limit: 20 } }}
-      migration={migration}
-    />,
-  );
+const list = (rows: CustomerOverviewRow[]) =>
+  renderToString(<CustomersClient initialData={{ customers: { ok: true, rows, total: rows.length, page: 1, limit: 20 } }} />);
 
 describe("Customers list", () => {
   it("shows Signed up with the date, or a muted No account", () => {
@@ -129,38 +132,22 @@ describe("Customers list", () => {
         }}
       />,
     );
-    for (const label of ['aria-label="Account"', 'aria-label="Source"', 'aria-label="Email consent"', 'aria-label="Sort"']) {
-      expect(html).toContain(label);
-    }
+    // The sort stays in the toolbar; the filters are the mega filter's, and their chips.
+    expect(html).toContain('aria-label="Sort"');
+    expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>3</);
+    const account = groupFor("account", { account: "no-account", source: "shopify" });
+    for (const label of ['aria-label="Account"', 'aria-label="Source"']) expect(account).toContain(label);
+    expect(account).toContain("No account, email not verified");
+    expect(groupFor("reach", { consent: "unsubscribed" })).toContain('aria-label="Email consent"');
     expect(html).toContain("No account");
     expect(html).toContain("From Shopify");
-    expect(html).toContain("Unsubscribed");
+    expect(html).toContain("Email unsubscribed");
     expect(html).toContain("Recently signed up");
     expect(html).toContain("No customers match these filters.");
   });
 
-  it("shows the Migration card once a batch is applied, and not before", () => {
-    expect(list([], summary)).toContain("Shopify migration");
-    expect(list([], { ...summary, batchesApplied: 0 })).not.toContain("Shopify migration");
-    expect(list([], null)).not.toContain("Shopify migration");
-  });
-});
-
-describe("Migration card", () => {
-  it("reads N (created a, matched b) and s (s/N %), of which k had an account before import", () => {
-    expect(migrationCells(summary).slice(0, 2)).toEqual([
-      { label: "Imported", value: "1,200", detail: "created 900, matched 300" },
-      { label: "Signed up", value: "150 (13%)", detail: "of which 40 already had an account before import" },
-    ]);
-  });
-
-  it("links to the list of those from Shopify not signed up yet", () => {
-    const html = renderToString(
-      <MigrationCard summary={summary} notSignedUpHref="/en-US/settings/customers?account=no-account&amp;source=shopify" onShowNotSignedUp={() => {}} />,
-    );
-    expect(html).toContain("1,050");
-    expect(html).toContain("from Shopify not signed up yet");
-    expect(html).toContain("account=no-account");
+  it("has no Shopify migration card: the Customer lifecycle chart replaced it (owner, 2026-11-01)", () => {
+    expect(list([])).not.toContain("Shopify migration");
   });
 });
 

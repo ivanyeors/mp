@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { LOGO_SRC, LOGO_INV_SRC } from "@/lib/brand-logo";
+import { LOGO_SRC } from "@/lib/brand-logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Facebook, Instagram, Linkedin, Youtube } from "lucide-react";
 
+import { FooterSignUp } from "@/components/auth/footer-sign-up";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -82,40 +83,41 @@ export function MarketingFooter() {
     <footer className="w-full border-t border-border bg-muted/40 pb-[var(--mobile-bottom-clearance)] md:pb-0">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="flex flex-col gap-8">
-          <div className="max-w-md space-y-5">
-            <Link href={to("/")} className="inline-block">
-              <Image
-                src={LOGO_SRC}
-                unoptimized
-                alt="Mpillow"
-                width={80}
-                height={80}
-                className="h-16 w-16 object-contain dark:hidden"
-              />
-              <Image
-                src={LOGO_INV_SRC}
-                unoptimized
-                alt="Mpillow"
-                width={80}
-                height={80}
-                className="hidden h-16 w-16 object-contain dark:block"
-              />
-            </Link>
-            <ul className="flex flex-wrap gap-2" role="list">
-              {SOCIAL_LINKS.map(({ label, href, Icon }) => (
-                <li key={href}>
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label}
-                    className="inline-flex h-10 w-10 max-md:h-11 max-md:w-11 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
-                  >
-                    <Icon className="h-5 w-5" />
-                  </a>
-                </li>
-              ))}
-            </ul>
+          <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+            <div className="max-w-md space-y-5">
+              {/* The brand's dark-blue logo in both themes, straight on the
+                  footer: there is no light-blue logo for dark mode. */}
+              <Link href={to("/")} aria-label="Mpillow home" className="inline-flex">
+                <Image
+                  src={LOGO_SRC}
+                  unoptimized
+                  alt="Mpillow"
+                  width={80}
+                  height={80}
+                  className="h-16 w-16 object-contain"
+                />
+              </Link>
+              <ul className="flex flex-wrap gap-2" role="list">
+                {SOCIAL_LINKS.map(({ label, href, Icon }) => (
+                  <li key={href}>
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={label}
+                      className="inline-flex h-10 w-10 max-md:h-11 max-md:w-11 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+                    >
+                      <Icon className="h-5 w-5" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* The sign-up is the Customer sign-in (PRD-campaign-audiences slice 03). */}
+            <div className="w-full md:max-w-sm">
+              <FooterSignUp locale={locale} returnTo={pathname} />
+            </div>
           </div>
 
           <nav aria-label="Footer" className="space-y-3">

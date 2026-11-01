@@ -7,7 +7,7 @@ import type { FittingAnswersView } from "@/lib/fitting-import/view";
 const render = (el: React.ReactElement) => renderToString(el).replaceAll("<!-- -->", "");
 
 /**
- * Profile → Fitting history (ADR 0039 h): the customer's own answers in the
+ * Profile → Fitting history (ADR 0042 h): the customer's own answers in the
  * Staff card's layout, with no photo, preview or Drive link. Made-up data.
  */
 

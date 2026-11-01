@@ -467,6 +467,7 @@ export const enUS: Messages = {
         languageMandarin: "Mandarin",
         languageNone: "No preference",
         languageHint: "We'll try our best to assign a staff member comfortable with your selected language.",
+        marketingEmail: "Email me important updates, event invites and offers. No spam, unsubscribe anytime.",
         measurementFeeNote:
           "Measurement service: {premium} for Premium Mpillow, {basic} for Basic Mpillow, none for Mbolster — get it customised, adjusted and bring home immediately.",
       },

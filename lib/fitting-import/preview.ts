@@ -1,6 +1,6 @@
 /**
  * The Admin Panel preview of a Fitting import, end to end, apart from the
- * server action it calls (ADR 0039).
+ * server action it calls (ADR 0042).
  *
  * Pure: the page passes in the server action, so vitest drives the same flow
  * with a fake one.

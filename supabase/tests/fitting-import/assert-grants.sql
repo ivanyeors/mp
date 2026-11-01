@@ -1,4 +1,4 @@
--- ADR 0039: the Fitting import's tables and functions are the service role's
+-- ADR 0042: the Fitting import's tables and functions are the service role's
 -- alone. anon and authenticated can run none of the functions, which matters
 -- most for the SECURITY DEFINER ones: they run as their owner.
 

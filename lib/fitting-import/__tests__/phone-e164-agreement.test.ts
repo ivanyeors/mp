@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 import { normalizePhone } from "@/lib/appointments/phone";
 
 /**
- * A Fitting import row with no email is matched by mobile (ADR 0039 c). The
+ * A Fitting import row with no email is matched by mobile (ADR 0042 c). The
  * browser and the server action normalise the form's number with
  * `normalizePhone`; `import_fitting_rows` compares it with each Customer's
  * stored phone through `public.phone_e164`
- * (20261031120000_customer_fittings.sql). Both must give the same E.164 for
+ * (20261101100000_customer_fittings.sql). Both must give the same E.164 for
  * every number, or a match would be missed.
  *
  * The phones are the CRM's fixture (supabase/tests/customer-crm/phone-cases.json),

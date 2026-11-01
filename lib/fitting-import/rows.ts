@@ -1,5 +1,5 @@
 /**
- * The rows a Fitting import sends, as the server reads them back (ADR 0039 e).
+ * The rows a Fitting import sends, as the server reads them back (ADR 0042 e).
  *
  * Pure. The browser holds the file; a server action receives a chunk of rows
  * and trusts nothing in it: `readRawRow` keeps only known fields and string

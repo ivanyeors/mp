@@ -16,7 +16,7 @@ const MAX_BYTES = 30 * 1024 * 1024;
 
 /**
  * Health photos are never kept: not by the browser, not by a shared device, not
- * by a proxy (ADR 0039 f).
+ * by a proxy (ADR 0042 f).
  */
 const PRIVATE = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } as const;
 
@@ -42,7 +42,7 @@ const image = (body: Buffer, type: string) =>
  * GET /api/settings/customers/[id]/fittings/[fittingId]/files/[index]?size=thumb|full
  *
  * One file of a Fitting record, previewed from Google Drive through the
- * platform's Drive account and never copied (ADR 0039 f). Needs `customers`,
+ * platform's Drive account and never copied (ADR 0042 f). Needs `customers`,
  * as the Customer page does. The file is named by its position on that
  * Customer's Fitting record, never by a Drive id from the request, so this
  * cannot read any other Drive file.

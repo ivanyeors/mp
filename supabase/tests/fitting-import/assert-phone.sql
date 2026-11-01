@@ -1,4 +1,4 @@
--- ADR 0039 c: a row with no email is matched by mobile. public.phone_e164 must
+-- ADR 0042 c: a row with no email is matched by mobile. public.phone_e164 must
 -- give normalizePhone's E.164 for every fixture phone (phone-cases.json,
 -- written by lib/fitting-import/__tests__/phone-e164-agreement.test.ts).
 

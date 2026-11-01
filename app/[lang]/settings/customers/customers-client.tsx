@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { User, Search, Loader2, Mail, SlidersHorizontal, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -23,13 +24,6 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { EmptyState } from "@/components/settings/empty-state";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -44,17 +38,13 @@ import {
     clearCustomerFilters,
     customerFilterParams,
     isCustomerFilterActive,
-    type AccountFilter,
     type CustomerFilterKey,
     type CustomerFilterParam,
     type CustomerListFilters,
     type CustomerSort,
-    type FollowUpFilter,
-    type GoogleFilter,
-    type MobileFilter,
-    type SourceFilter,
 } from "@/lib/crm/customer-filters";
-import type { MigrationSummary } from "@/lib/customer-migration/overview";
+import { LIFECYCLE_STAGES, type LifecycleStage } from "@/lib/crm/lifecycle-stage";
+import type { LifecycleSummary } from "@/lib/crm/lifecycle-summary";
 import { reviewFacts } from "@/lib/crm/reviews";
 import {
     chosenSegmentFilters,
@@ -62,10 +52,11 @@ import {
     segmentParams,
     type CustomerSegment,
 } from "@/lib/crm/segment-rules";
-import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
+import { CustomerFilterSummary, CustomerSortSelect, MEGA_FILTER_KEYS } from "./customer-filters-panel";
 import { LifecycleStageBadge, LifecycleStageCell, lifecycleNote } from "./lifecycle-stage-badge";
-import { MigrationCard } from "./migration-card";
+import { LifecycleCard } from "./lifecycle-card";
 import { SegmentsRow } from "./segments-row";
+import type { CampaignFilterOption } from "@/lib/email-campaigns/store";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -83,6 +74,8 @@ export type CustomersListResponse = {
     total: number;
     page: number;
     limit: number;
+    /** With *Ships to* Singapore or elsewhere: how many more ship to an unknown country (slice 05). */
+    shipsToUnknown?: number | null;
 };
 
 export type CustomersInitialData = {
@@ -105,28 +98,6 @@ function formatDate(dateStr: string | null): string {
 function getCustomerName(customer: CustomerOverviewRow): string {
     return customerDisplayName(customer) ?? "—";
 }
-
-/**
- * The filters that live in the Filters panel rather than the toolbar: the
- * Lifecycle stage (PRD-crm-retention-loop slice 03), CRM slice 04's, Points (PRD-loyalty-points slice 06), migration slice 07's
- * Email consent, and CRM slice 12's reviews.
- */
-const PANEL_FILTERS: CustomerFilterKey[] = [
-    "stage",
-    "bought",
-    "last_order",
-    "readjusted",
-    "min_spend",
-    "consent",
-    "points",
-    "tags",
-    "google_review",
-    "shop_review",
-    "rating",
-];
-
-/** The toolbar's selects. On a phone they move into the Filters panel, so they count on its button there. */
-const TOOLBAR_FILTERS: CustomerFilterKey[] = ["account", "source", "google", "mobile", "followups"];
 
 /**
  * The Review column (CRM slice 12): the strongest fact first (*★5 Google*,
@@ -217,8 +188,9 @@ export function CustomersClient({
     initialData,
     initialFilters,
     ignoredFilters = [],
-    migration = null,
+    lifecycle = null,
     initialSegments,
+    campaigns = [],
     canEdit = false,
     canEmail = false,
 }: {
@@ -227,10 +199,12 @@ export function CustomersClient({
     initialFilters?: Partial<CustomerListFilters>;
     /** URL parameters the page dropped as invalid; the list says so. */
     ignoredFilters?: readonly CustomerFilterParam[];
-    /** The Migration card's numbers, or null when they could not be read. */
-    migration?: MigrationSummary | null;
+    /** The Customer lifecycle chart's counts, or null when they could not be read. */
+    lifecycle?: LifecycleSummary | null;
     /** The Segments row (CRM slice 05), read by the page; undefined and the row fetches them. */
     initialSegments?: CustomerSegment[];
+    /** The *Campaign* filter's choices (PRD-campaign-audiences slice 05), latest started first. */
+    campaigns?: readonly CampaignFilterOption[];
     /** `customers-edit`: saving, updating, renaming and archiving Segments. */
     canEdit?: boolean;
     /** `campaigns`: *Email this Segment* (PRD-crm-retention-loop slice 02). */
@@ -249,8 +223,6 @@ export function CustomersClient({
     const [filters, setFilters] = useState<CustomerListFilters>(() => ({ ...DEFAULT_CUSTOMER_FILTERS, ...initialFilters }));
     const [search, setSearch] = useState(filters.search ?? "");
     const [page, setPage] = useState(1);
-    // Open when a link arrives with a panel filter set, so it shows its controls.
-    const [panelOpen, setPanelOpen] = useState(() => PANEL_FILTERS.some((k) => isCustomerFilterActive(filters, k)));
     // The Segment chosen on this list (CRM slice 05): a Segment's own link
     // opens with it chosen, so changing a filter offers *Update {name}*.
     const [segmentId, setSegmentId] = useState<string | null>(() => {
@@ -262,6 +234,7 @@ export function CustomersClient({
     // Data state
     const [customers, setCustomers] = useState<CustomerOverviewRow[]>(initialData?.customers.rows ?? []);
     const [total, setTotal] = useState(initialData?.customers.total ?? 0);
+    const [shipsToUnknown, setShipsToUnknown] = useState<number | null>(initialData?.customers.shipsToUnknown ?? null);
     const [loading, setLoading] = useState(!initialData);
 
     // The RSC page already fetched page 1 — skip the mount fetch once.
@@ -289,8 +262,9 @@ export function CustomersClient({
     }, [search]);
 
     const filtersQuery = customerFilterParams(filters).toString();
-    const panelCount = PANEL_FILTERS.filter((k) => isCustomerFilterActive(filters, k)).length;
-    const phonePanelCount = panelCount + TOOLBAR_FILTERS.filter((k) => isCustomerFilterActive(filters, k)).length;
+    const panelCount = MEGA_FILTER_KEYS.filter((k) => isCustomerFilterActive(filters, k)).length;
+    // The filters page reads and writes the same parameters, the search and sort included.
+    const filtersHref = to(`/settings/customers/filters${filtersQuery ? `?${filtersQuery}` : ""}`);
     const filtered = CUSTOMER_FILTER_KEYS.some((k) => isCustomerFilterActive(filters, k));
 
     // Keep the address bar in step without a server round trip, so the list's
@@ -303,12 +277,7 @@ export function CustomersClient({
         if (url.href !== window.location.href) window.history.replaceState(null, "", url);
     }, [filtersQuery]);
 
-    const changeAccount = (value: string) => changeFilters({ account: value as AccountFilter });
-    const changeSource = (value: string) => changeFilters({ source: value as SourceFilter });
-    const changeGoogle = (value: string) => changeFilters({ google: value as GoogleFilter });
-    const changeMobile = (value: string) => changeFilters({ mobile: value as MobileFilter });
-    const changeFollowups = (value: string) => changeFilters({ followups: value as FollowUpFilter });
-    const changeSort = (value: string) => changeFilters({ sort: value as CustomerSort });
+    const changeSort = (sort: CustomerSort) => changeFilters({ sort });
 
     // The summary's × and Clear all. Search is also the box's text.
     const clearFilter = (key: CustomerFilterKey) => {
@@ -329,12 +298,15 @@ export function CustomersClient({
         applyFilters((f) => ({ ...f, ...chosenSegmentFilters(segment.params) }));
     };
 
-    // The Migration card's link: from Shopify, not signed up yet.
-    const showNotSignedUp = () => changeFilters({ account: "no-account", source: "shopify" });
-    const notSignedUpHref = `${to("/settings/customers")}?${customerFilterParams({
-        account: "no-account",
-        source: "shopify",
-    }).toString()}`;
+    // The Customer lifecycle chart: a stage's row lists that stage alone, and
+    // choosing it again lists everyone. The list keeps its other filters.
+    // The chart marks a whole stage only: a sub-status alone (slice 04's
+    // *New · Awaiting delivery*) is part of a row, not the row.
+    const onlyStage = filters.stage.length === 1 ? filters.stage[0]! : null;
+    const activeStage = (LIFECYCLE_STAGES as readonly string[]).includes(onlyStage ?? "") ? (onlyStage as LifecycleStage) : null;
+    const chooseStage = (stage: LifecycleStage) => changeFilters({ stage: activeStage === stage ? [] : [stage] });
+    const stageHref = (stage: LifecycleStage) =>
+        `${to("/settings/customers")}?${customerFilterParams({ stage: [stage] }).toString()}`;
 
     // Fetch customers
     const fetchCustomers = useCallback(async () => {
@@ -348,9 +320,11 @@ export function CustomersClient({
             const json = await res.json();
             setCustomers(json.rows ?? []);
             setTotal(json.total ?? 0);
+            setShipsToUnknown(typeof json.shipsToUnknown === "number" ? json.shipsToUnknown : null);
         } catch {
             setCustomers([]);
             setTotal(0);
+            setShipsToUnknown(null);
         } finally {
             setLoading(false);
         }
@@ -379,91 +353,16 @@ export function CustomersClient({
         return pages;
     };
 
-    // Rendered twice: in the toolbar from md, and at the top of the Filters
-    // panel below it, where a phone has room for them two to a row.
-    const toolbarSelects = (
-        <>
-            <Select value={filters.account} onValueChange={changeAccount}>
-                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-40" aria-label="Account">
-                    <SelectValue placeholder="Account" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All accounts</SelectItem>
-                    {/* An account is bound by the email they signed in with (CRM 11). */}
-                    <SelectItem value="signed-up">Signed up, email verified</SelectItem>
-                    <SelectItem value="no-account">No account, email not verified</SelectItem>
-                </SelectContent>
-            </Select>
-
-            <Select value={filters.source} onValueChange={changeSource}>
-                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-40" aria-label="Source">
-                    <SelectValue placeholder="Source" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All sources</SelectItem>
-                    <SelectItem value="shopify">From Shopify</SelectItem>
-                    <SelectItem value="platform">Platform</SelectItem>
-                </SelectContent>
-            </Select>
-
-            <Select value={filters.google} onValueChange={changeGoogle}>
-                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-44" aria-label="Google">
-                    <SelectValue placeholder="Google" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Any sign-in</SelectItem>
-                    <SelectItem value="linked">Google linked</SelectItem>
-                    <SelectItem value="not-linked">Google not linked</SelectItem>
-                </SelectContent>
-            </Select>
-
-            <Select value={filters.mobile} onValueChange={changeMobile}>
-                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-44" aria-label="Mobile">
-                    <SelectValue placeholder="Mobile" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Any mobile</SelectItem>
-                    <SelectItem value="on-file">Valid mobile on file</SelectItem>
-                    <SelectItem value="missing">Mobile missing</SelectItem>
-                    <SelectItem value="invalid">Mobile invalid</SelectItem>
-                </SelectContent>
-            </Select>
-
-            <Select value={filters.followups} onValueChange={changeFollowups}>
-                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-52" aria-label="Follow-ups">
-                    <SelectValue placeholder="Follow-ups" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Any follow-ups</SelectItem>
-                    <SelectItem value="open">Has an open follow-up</SelectItem>
-                </SelectContent>
-            </Select>
-
-            <Select value={filters.sort} onValueChange={changeSort}>
-                <SelectTrigger className="w-full min-w-0 sm:min-w-[12rem] sm:w-48" aria-label="Sort">
-                    <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="newest">Newest first</SelectItem>
-                    <SelectItem value="oldest">Oldest first</SelectItem>
-                    <SelectItem value="name-asc">Name A to Z</SelectItem>
-                    <SelectItem value="name-desc">Name Z to A</SelectItem>
-                    <SelectItem value="signed-up">Recently signed up</SelectItem>
-                    <SelectItem value="last-order">Last order</SelectItem>
-                    <SelectItem value="spend">Most spent</SelectItem>
-                </SelectContent>
-            </Select>
-        </>
-    );
 
     return (
         <div className="space-y-4 md:space-y-6">
             {/* The page header and tabs are CustomersPageTabs'; this is the list tab. */}
-            {migration && (
-                <MigrationCard
-                    summary={migration}
-                    notSignedUpHref={notSignedUpHref}
-                    onShowNotSignedUp={showNotSignedUp}
+            {lifecycle && (
+                <LifecycleCard
+                    summary={lifecycle}
+                    activeStage={activeStage}
+                    stageHref={stageHref}
+                    onChooseStage={chooseStage}
                 />
             )}
 
@@ -478,9 +377,9 @@ export function CustomersClient({
                 onSelect={setSegmentId}
             />
 
-            {/* Toolbar: on a phone, search and the Filters button share one row */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <div className="relative min-w-0 flex-1 sm:min-w-[200px] max-w-sm">
+            {/* Toolbar: search, the sort from md, and Filters, which opens the filters page (the mega filter). */}
+            <div className="flex items-center gap-2 sm:gap-3">
+                <div className="relative min-w-0 flex-1 md:max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
                         placeholder="Search by name or email…"
@@ -489,39 +388,25 @@ export function CustomersClient({
                         className="pl-9"
                     />
                 </div>
-
-                <div className="hidden md:contents">{toolbarSelects}</div>
-
-                <Button
-                    type="button"
-                    variant={panelOpen ? "secondary" : "outline"}
-                    className="shrink-0"
-                    aria-expanded={panelOpen}
-                    aria-controls="customer-filters-panel"
-                    onClick={() => setPanelOpen((o) => !o)}
-                >
-                    <SlidersHorizontal className="mr-1.5 h-4 w-4" />
-                    Filters
-                    {panelCount > 0 && (
-                        <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs max-md:hidden">{panelCount}</Badge>
-                    )}
-                    {phonePanelCount > 0 && (
-                        <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs md:hidden">{phonePanelCount}</Badge>
-                    )}
+                <div className="ml-auto hidden md:block">
+                    <CustomerSortSelect value={filters.sort} onChange={changeSort} />
+                </div>
+                <Button variant="outline" className="shrink-0" asChild>
+                    <Link href={filtersHref}>
+                        <SlidersHorizontal className="mr-1.5 h-4 w-4" />
+                        Filters
+                        {panelCount > 0 && (
+                            <Badge className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">{panelCount}</Badge>
+                        )}
+                    </Link>
                 </Button>
             </div>
-
-            {panelOpen && (
-                <div id="customer-filters-panel">
-                    <CustomerFiltersPanel filters={filters} onChange={changeFilters}>
-                        <div className="grid min-w-0 grid-cols-2 gap-2 sm:col-span-2 md:hidden">{toolbarSelects}</div>
-                    </CustomerFiltersPanel>
-                </div>
-            )}
 
             <CustomerFilterSummary
                 filters={filters}
                 ignored={ignoredFilters}
+                campaigns={campaigns}
+                shipsToUnknown={loading ? null : shipsToUnknown}
                 onClear={clearFilter}
                 onClearAll={clearAll}
             />

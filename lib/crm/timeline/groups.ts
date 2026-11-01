@@ -19,5 +19,5 @@ export const MARKETING_GROUP: TimelineGroup = { key: "marketing", label: "Market
 export const ACCOUNT_GROUP: TimelineGroup = { key: "account", label: "Account" };
 /** Follow-ups (CRM 06): added, and done. */
 export const FOLLOW_UPS_GROUP: TimelineGroup = { key: "followups", label: "Follow-ups" };
-/** Fitting records from the old Google Form (ADR 0039). */
+/** Fitting records from the old Google Form (ADR 0042). */
 export const FITTINGS_GROUP: TimelineGroup = { key: "fittings", label: "Fittings" };

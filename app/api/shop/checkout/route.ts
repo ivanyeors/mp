@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { findCustomerByEmail, findOrCreateCustomer } from "@/lib/ecommerce/customers";
+import { recordCheckoutConsent } from "@/lib/marketing-consent/consent";
 import { checkCoupon, findActiveCoupon } from "@/lib/ecommerce/discounts";
 import {
   CHECKOUT_CODE_MAX_LENGTH,
@@ -90,6 +91,11 @@ const CheckoutItemSchema = z.object({
 const CheckoutSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
+  /**
+   * The marketing email box, ticked by default (ADR 0039). Absent, as from a
+   * checkout tab opened before it, is unticked.
+   */
+  marketing_email: z.boolean().optional(),
   shipping_address: ShippingAddressSchema,
   shipping_method_id: z.string().uuid(),
   /**
@@ -760,6 +766,10 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+
+  // The marketing email box (ADR 0039): subscribes a Customer nobody has asked,
+  // never one who unsubscribed. Never stops the sale.
+  await recordCheckoutConsent(admin, customer.id, parsed.data.marketing_email === true);
 
   // The courier the shopper chose and what it cost us, for the label later.
   // Server-only table; a failure here must not lose the sale.

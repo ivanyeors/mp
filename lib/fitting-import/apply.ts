@@ -1,6 +1,6 @@
 /**
  * Applying a Fitting import from the Admin Panel, end to end, apart from the
- * server actions it calls (ADR 0039 e).
+ * server actions it calls (ADR 0042 e).
  *
  * Pure: the page passes the actions in, so vitest drives the same flow with
  * fakes, and the server action shares the chunk check and the row builder.
@@ -70,7 +70,7 @@ export function readApplyChunk(
   return { ok: true, startIndex, rows };
 }
 
-/** One row of `import_fitting_rows`' input (20261031120000_customer_fittings.sql). */
+/** One row of `import_fitting_rows`' input (20261101100000_customer_fittings.sql). */
 export type ImportRow =
   | { i: number; skip: SkipReason }
   | { i: number; key: string; email: string | null; phone: string | null; name: string | null; fitting: FittingColumns };

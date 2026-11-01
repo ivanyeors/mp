@@ -6,7 +6,7 @@ import { loadFittingImportHistory } from "./history";
 export const runtime = "nodejs";
 
 /**
- * Customers → Import fittings (ADR 0039). Guarded by `customer-import`, as
+ * Customers → Import fittings (ADR 0042). Guarded by `customer-import`, as
  * Import from Shopify is: it creates Customers. The page reads the Google Form
  * export in the browser, previews it, imports it in chunks, and lists every
  * import with its Undo. The file is never uploaded or stored.
