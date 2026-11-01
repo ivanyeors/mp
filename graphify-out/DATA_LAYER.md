@@ -1404,7 +1404,7 @@ Defined in supabase/migrations/20261028033330_lifecycle_stage.sql:107
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
   - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:111
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:155
+  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:116
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:45
   - `resolveSegment()` [select] — lib/crm/segments.ts:245
 
@@ -1693,7 +1693,7 @@ References: `media_assets`
 Defined in supabase/migrations/20261020100000_customer_import.sql:52
 References: `customer_addresses`, `customer_import_batches`, `customers`
 - Read by:
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:152
+  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:113
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:25
   - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:38
 

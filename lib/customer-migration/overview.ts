@@ -7,45 +7,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  * the service role; the caller has checked `customers`.
  */
 
-// ─── The migration summary ───────────────────────────────────────────────────
-
-/**
- * Every column of `admin_customer_migration_summary`, in the view's order.
- * Slices 06 and 08 appended their funnel columns (*Emailed*, *Clicked*); the
- * Claim bonus and what points did replaced the voucher's in
- * PRD-loyalty-points slice 06; the Journey stages came last (2026-10-31).
- *
- * Nothing reads the view since the Migration card left the Customers page
- * (owner, 2026-11-01; the Customer lifecycle chart replaced it). It stays in
- * the database until a migration drops it, so the view test keeps the two
- * equal, and a rebuild of the overview still recreates it.
- */
-export const MIGRATION_SUMMARY_COLUMNS = [
-  "imported",
-  "imported_created",
-  "imported_matched",
-  "signed_up",
-  "signed_up_before_import",
-  "batches_applied",
-  "clicked",
-  "claim_bonuses",
-  "migrated_points_spent",
-  "points_orders",
-  "points_revenue",
-  "emailed",
-  "emails_bounced",
-  "emails_complained",
-  "stage_imported",
-  "stage_imported_unreachable",
-  "stage_emailed",
-  "stage_emailed_unreachable",
-  "stage_clicked",
-  "stage_clicked_unreachable",
-  "stage_signed_up",
-  "stage_claim_bonus",
-  "stage_ordered",
-] as const;
-
 const count = (v: unknown): number => {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;

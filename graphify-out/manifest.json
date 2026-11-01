@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793499186.5105658,
-    "seen": 1793499328.8941677,
-    "ast_hash": "09aaa1c3b7ce92632524acf1a9e17a2c",
+    "mtime": 1793500558.4196508,
+    "seen": 1793500644.9603817,
+    "ast_hash": "c109c20b96b59a6612503f7d0417782c",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -13080,9 +13080,9 @@
     "semantic_hash": ""
   },
   "lib/crm/__tests__/customer-overview-view.test.ts": {
-    "mtime": 1793499190.0858138,
-    "seen": 1793499328.890279,
-    "ast_hash": "beb1358ccf317755f563994c86911dac",
+    "mtime": 1793500558.416875,
+    "seen": 1793500644.956287,
+    "ast_hash": "9c8ddb0823596482b225372302969251",
     "semantic_hash": ""
   },
   "lib/crm/customer-filters.ts": {
@@ -13104,9 +13104,9 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/overview.ts": {
-    "mtime": 1793499161.3959901,
-    "seen": 1793499328.8904715,
-    "ast_hash": "a7dc143c911de01627c9eef96d220f0b",
+    "mtime": 1793500558.4156828,
+    "seen": 1793500644.9565074,
+    "ast_hash": "c0c8e2a249f36a045f63fd3a447f1c74",
     "semantic_hash": ""
   },
   "supabase/migrations/20261020111000_customer_account_status_and_overview.sql": {
@@ -16983,6 +16983,12 @@
     "mtime": 1793463238.0501971,
     "seen": 1793499077.311482,
     "ast_hash": "062242ae5c336130038d8cdaab1e87d9",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261101023540_drop_customer_migration_summary.sql": {
+    "mtime": 1793500558.2219176,
+    "seen": 1793500644.9589572,
+    "ast_hash": "4a781702854bf0190151b704a0674e18",
     "semantic_hash": ""
   }
 }

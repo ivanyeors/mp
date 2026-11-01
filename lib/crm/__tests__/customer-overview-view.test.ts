@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CUSTOMER_OVERVIEW_COLUMNS } from "@/lib/crm/customer-overview";
-import { MIGRATION_SUMMARY_COLUMNS } from "@/lib/customer-migration/overview";
 
 /**
  * The Customer overview is one SQL view and one TypeScript column list
@@ -11,8 +10,8 @@ import { MIGRATION_SUMMARY_COLUMNS } from "@/lib/customer-migration/overview";
  * `create or replace view` in the same migration (PRD-crm-retention-loop
  * slice 03's `lifecycle_delivery` → `lifecycle_detail`). Removing a column is
  * a rebuild: `drop view` and `create view` in one migration
- * (PRD-loyalty-points slice 06), which also recreates the migration
- * summary, the view that reads the overview. This keeps the
+ * (PRD-loyalty-points slice 06), which until 2026-11-01 also recreated the
+ * migration summary, the one view that read the overview. This keeps the
  * two equal, and keeps the view server-only: security_invoker, no `*`, and no
  * grant to anon or authenticated.
  */
@@ -90,7 +89,6 @@ function columnNames(list: string): string[] {
 
 const VIEWS = [
   { view: "admin_customer_overview", columns: CUSTOMER_OVERVIEW_COLUMNS },
-  { view: "admin_customer_migration_summary", columns: MIGRATION_SUMMARY_COLUMNS },
 ];
 
 describe.each(VIEWS)("$view", ({ view, columns }) => {
@@ -154,10 +152,26 @@ describe.each(VIEWS)("$view", ({ view, columns }) => {
 });
 
 describe("a rebuild of the Customer overview", () => {
-  // Postgres refuses to drop a view another view reads (RESTRICT), so a
-  // migration that drops the overview must drop the summary first and create
-  // it again after the overview, in the same file.
-  const rebuilds = definitions("admin_customer_overview").filter((d) => d.rebuilt);
+  // Postgres refuses to drop a view another view reads (RESTRICT), so while
+  // the migration summary read the overview, a migration that dropped the
+  // overview had to drop the summary first and create it again after the
+  // overview, in the same file. The summary was dropped for good on
+  // 2026-11-01 (its only reader, the Migration card, had gone).
+  const SUMMARY = "admin_customer_migration_summary";
+  const summaryGone = files.find(
+    ({ sql }) =>
+      new RegExp(`drop view (?:if exists )?(?:public\\.)?${SUMMARY}\\b`, "i").test(sql) &&
+      !new RegExp(`create (?:or replace )?view (?:public\\.)?${SUMMARY}\\b`, "i").test(sql),
+  )!;
+  const all = definitions("admin_customer_overview").filter((d) => d.rebuilt);
+  const rebuilds = all.filter((d) => d.name < summaryGone.name);
+
+  it("no longer has the summary to recreate, and nothing brings it back", () => {
+    expect(summaryGone.name).toMatch(/^20261101023540_/);
+    for (const { name, sql } of files.filter((f) => f.name > summaryGone.name)) {
+      expect(sql, name).not.toMatch(new RegExp(`create (?:or replace )?view (?:public\\.)?${SUMMARY}\\b`, "i"));
+    }
+  });
 
   it("has happened (PRD-loyalty-points slice 06)", () => {
     expect(rebuilds.map((d) => d.name)).toContainEqual(expect.stringMatching(/^20261021160000_/));
@@ -173,6 +187,10 @@ describe("a rebuild of the Customer overview", () => {
     expect(overviewCreate).toBeGreaterThan(overviewDrop);
     expect(summaryCreate).toBeGreaterThan(overviewCreate);
     // RESTRICT, so a dependent this file does not know about fails the migration.
+    expect(d.sql).not.toMatch(/drop view [^;]*\bcascade\b/i);
+  });
+
+  it.each(all.map((d) => [d.name, d] as const))("never drops with cascade (%s)", (_name, d) => {
     expect(d.sql).not.toMatch(/drop view [^;]*\bcascade\b/i);
   });
 });

@@ -384,10 +384,6 @@ _Avoid_: "upload" — the file itself is never uploaded or stored; the browser r
 Whether a **Customer** row is bound to a login: *Signed up* (since `account_linked_at`) or *No account*. It is derived from `auth_user_id` in the Customer overview (`admin_customer_overview`), never stored as text. It applies to every **Customer**, not only Migrated ones. For a **Migrated customer**, *Signed up* and **Claimed** usually coincide. They differ when the person already had an account before the import: that Customer is *Signed up* at once, and is **Claimed** at their next **Sign in**.
 _Avoid_: "registered", "member" (a **Member** is **Staff**) or "active" for this; reading *Signed up* as **Claimed**
 
-**Journey stage**:
-Where a **Migrated customer** is in the migration now, one stage at a time: the furthest of *Imported > Emailed > Clicked > Signed up > Claim bonus > Ordered* they have reached (owner, 2026-10-31). Checked from the end: *Ordered* (a paid **Order** here after their import), *Claim bonus*, *Signed up* (**Account status**), *Clicked* (a **Claim link** opened), *Emailed* (a campaign email reached the provider), else *Imported*. Someone who skips a step, such as signing up without a campaign email, counts as past it. Before *Signed up*, a customer is also *can't be emailed* when unsubscribed or a campaign email of theirs bounced or was marked as spam. Counted by `admin_customer_migration_summary`. Applies to Migrated customers only. Not shown in the **Admin Panel**: the Migration card that drew it left the Customers page on 2026-11-01 (owner), for the Customer lifecycle chart.
-_Avoid_: confusing it with the **Lifecycle stage**, which places every **Customer** by their **Purchases**; reading a stage's *reached* count as how many did that step (the summary's *emailed*, *clicked*, *signed_up* and *claim_bonuses* count that)
-
 ## Rules Engine (recommendations)
 
 **Rules Engine**:
