@@ -126,8 +126,9 @@ describe("a wave's plan (slice 09)", () => {
     expect(fitSummary(r.fit.length)).toBe("Recommended: 4 things about who it goes to, listed under The email above. None holds the wave.");
     expect(fitSummary(1)).toMatch(/^Recommended: one thing about/);
     expect(fitSummary(0)).toBeNull();
-    // Their facts, read once for the wave: the overview, then their pillow lines.
+    // Who is Unengaged once for the plan (slice 12); then their facts, read once for the wave: the overview, then their pillow lines.
     expect(world.reads?.filter((t) => t === "admin_customer_overview" || t === "customer_purchase_lines")).toEqual([
+      "admin_customer_overview",
       "admin_customer_overview",
       "customer_purchase_lines",
     ]);
@@ -153,8 +154,10 @@ describe("a wave's plan (slice 09)", () => {
     const s = setup();
     const admin = s.admin as unknown as { from: (t: string) => unknown };
     const from = admin.from.bind(admin);
+    // The plan's read of who is Unengaged (slice 12) answers; the fit checks' read of their facts does not.
+    let overviewReads = 0;
     admin.from = (t: string) => {
-      if (t === "admin_customer_overview") throw new Error("Could not read who it goes to: timeout");
+      if (t === "admin_customer_overview" && ++overviewReads > 1) throw new Error("Could not read who it goes to: timeout");
       return from(t);
     };
     const r = await planWave(campaign(), { size: 10 }, s);

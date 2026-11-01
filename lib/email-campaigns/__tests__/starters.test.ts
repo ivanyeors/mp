@@ -80,14 +80,24 @@ describe("every Starter", () => {
   });
 
   it("is named as the slice names it, once each, and none is the blank email's thumbnail", () => {
-    expect(STARTERS.map((s) => s.label)).toEqual(["Product launch", "Care tips", "Event or fitting day", "A short note", "New website: sign in for points"]);
+    expect(STARTERS.map((s) => s.label)).toEqual([
+      "Product launch",
+      "Care tips",
+      "Event or fitting day",
+      "A short note",
+      "New website: sign in for points",
+      "Second purchase",
+      "Thank you",
+      "We miss you",
+      "Welcome back",
+    ]);
     const ids = STARTERS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).not.toContain(BLANK_PREVIEW);
     expect(starterById("care_tips")?.label).toBe("Care tips");
     expect(starterById("nope")).toBeNull();
-    // The CRM's Playbooks join here when their words are approved (PRD-crm-retention-loop slice 07).
-    expect(PLAYBOOK_STARTERS).toEqual([]);
+    // The CRM's Playbooks join after the invitation, their words approved (PRD-crm-retention-loop slice 07, 2026-11-01).
+    expect(PLAYBOOK_STARTERS.map((s) => s.label)).toEqual(["Second purchase", "Thank you", "We miss you", "Welcome back"]);
   });
 
   it("is new blocks every time it is used: fresh ids, nothing shared with the last", () => {
@@ -224,10 +234,13 @@ describe("starting an email from a Starter", () => {
   });
 
   it("sends a Playbook to its stage's Segment, found by name, or leaves the Segment to choose", () => {
-    const playbook: Starter = { ...LAYOUT_STARTERS[3], id: "second_purchase", audience: { audience: "segment", segment: "New" } };
+    const playbook: Starter = { ...LAYOUT_STARTERS[3], id: "second_purchase", audience: { audience: "segment", segment: "New", filters: "stage=new" } };
     expect(starterAudience(playbook, SEGMENTS)).toEqual({ audience: "segment", segmentId: SEGMENTS[0].id });
     expect(starterAudience(playbook, [])).toEqual({ audience: "segment", segmentId: "" });
     expect(starterAudience(LAYOUT_STARTERS[0], SEGMENTS)).toEqual({});
+    // A win-back reaches the Unengaged too (PRD-campaign-audiences slice 12).
+    const winBack: Starter = { ...playbook, audience: { audience: "segment", segment: "New", filters: "stage=new", includeUnengaged: true } };
+    expect(starterAudience(winBack, SEGMENTS)).toEqual({ audience: "segment", segmentId: SEGMENTS[0].id, includeUnengaged: true });
   });
 
   it("is offered while the email says nothing, whatever it is named", () => {

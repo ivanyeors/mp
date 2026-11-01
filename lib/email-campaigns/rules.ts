@@ -9,7 +9,7 @@
  *
  * `composedCampaignBlocker` is the rule the plan uses.
  * `marketing_campaign_blocker()` (20261021100000, with the rest period since
- * 20261031144935) is the same rule in SQL,
+ * 20261031144935 and the Unengaged since 20261101081436) is the same rule in SQL,
  * which `claim_marketing_campaign_send()` re-runs at the moment of each send,
  * so the SQL decides. supabase/tests/email-marketing/campaign-rule-cases.json
  * holds the two equal.
@@ -32,6 +32,7 @@ import { chineseVersionOf, chineseWords } from "./chinese-version";
 import { campaignVariable, fallbackWords, isVariableKey, type VariableKey } from "./variables";
 import { KEEP_SENDING_COLUMNS, keepSendingFromRow, type KeepSending } from "./keep-sending";
 import { inHoldout } from "./results";
+import { LEAD_UNENGAGED_AFTER_MONTHS, UNENGAGED_AFTER_CAMPAIGNS } from "@/lib/crm/engagement";
 
 export { isHttpsUrl };
 
@@ -147,6 +148,8 @@ function draftSchema({ required }: { required: boolean }) {
         .array(z.string().uuid())
         .max(MAX_EXCLUDED_SEGMENTS, `Leave out at most ${MAX_EXCLUDED_SEGMENTS} Segments.`)
         .default([]),
+      // Slice 12: send to the Unengaged too (a win-back). Off by default.
+      includeUnengaged: z.boolean().default(false),
     })
     .superRefine((d, ctx) => {
       if (d.audience === "segment" && !d.segmentId) {
@@ -256,7 +259,7 @@ export interface Campaign extends CampaignDraft {
 
 /** The one table row's columns, in its order. */
 export const CAMPAIGN_COLUMNS =
-  "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, exclude_segment_ids, " +
+  "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, exclude_segment_ids, include_unengaged, " +
   `created_at, updated_at, locked_at, archived_at, ${KEEP_SENDING_COLUMNS}, creator:mp_staff!created_by_profile_id(name)`;
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
@@ -291,6 +294,7 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
     excludeSegmentIds: Array.isArray(row.exclude_segment_ids)
       ? row.exclude_segment_ids.filter((v): v is string => typeof v === "string")
       : [],
+    includeUnengaged: row.include_unengaged === true,
     createdAt: str(row.created_at) ?? "",
     updatedAt: str(row.updated_at) ?? "",
     lockedAt: str(row.locked_at),
@@ -315,6 +319,7 @@ export function campaignRowFromDraft(d: CampaignDraft) {
     audience: d.audience,
     segment_id: d.audience === "segment" ? d.segmentId : null,
     exclude_segment_ids: d.excludeSegmentIds,
+    include_unengaged: d.includeUnengaged,
   };
 }
 
@@ -364,6 +369,13 @@ export interface CampaignCandidate {
    * 10, a campaign's holdout keeps them back (slice 11). Absent reads as none.
    */
   holdoutBucket?: number | null;
+  /**
+   * The overview's `unengaged` (slice 12, lib/crm/engagement.ts): clicked none
+   * of their last 6 campaigns, and Lapsed or a Lead for over 12 months. A
+   * campaign leaves them out unless it includes the Unengaged. Absent reads
+   * as engaged.
+   */
+  unengaged?: boolean;
 }
 
 /** Why a Customer may not receive a Campaign now, in the order the rule checks. */
@@ -376,6 +388,7 @@ export const CAMPAIGN_RULE_BLOCKERS = [
   "failed",
   "held_out",
   "already_sent",
+  "unengaged",
   "resting",
 ] as const;
 export type CampaignRuleBlocker = (typeof CAMPAIGN_RULE_BLOCKERS)[number];
@@ -392,6 +405,7 @@ export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", 
   failed: "the send failed before (use Retry failed sends)",
   held_out: "held out to measure the campaign, so never sent it",
   already_sent: "already sent this campaign",
+  unengaged: `unengaged (clicked none of their last ${UNENGAGED_AFTER_CAMPAIGNS} campaigns, and Lapsed or a Lead for over ${LEAD_UNENGAGED_AFTER_MONTHS} months)`,
   resting: `resting (emailed in the last ${REST_DAYS} days, or ${REST_MAX_PER_30_DAYS} times in ${REST_WINDOW_DAYS} days)`,
   not_failed: "nothing of theirs failed",
   unknown_campaign: "the campaign no longer exists",
@@ -428,8 +442,12 @@ export function restUntil(recent: readonly string[] | undefined, now: Date = new
  */
 export function composedCampaignBlocker(
   audience: CampaignAudience,
-  c: Pick<CampaignCandidate, "migrated" | "claimedAt" | "marketingEmail" | "suppressed" | "own" | "recentMarketing">,
-  { retryFailed = false, now = new Date() }: { retryFailed?: boolean; now?: Date } = {},
+  c: Pick<CampaignCandidate, "migrated" | "claimedAt" | "marketingEmail" | "suppressed" | "own" | "recentMarketing" | "unengaged">,
+  {
+    retryFailed = false,
+    now = new Date(),
+    includeUnengaged = false,
+  }: { retryFailed?: boolean; now?: Date; includeUnengaged?: boolean } = {},
 ): CampaignRuleBlocker | null {
   if (audience === "imported_not_signed_in") {
     if (!c.migrated) return "not_migrated";
@@ -442,6 +460,8 @@ export function composedCampaignBlocker(
   // Slice 11: the holdout, for good, before "already sent".
   if (c.own?.status === "held_out") return "held_out";
   if (c.own && c.own.status !== "failed") return "already_sent";
+  // Slice 12: the sunset rule, unless the campaign is a win-back that includes them.
+  if (c.unengaged && !includeUnengaged) return "unengaged";
   // Slice 07: last, so a plan still says "already sent" or "unsubscribed" first.
   if (restUntil(c.recentMarketing, now)) return "resting";
   return null;
@@ -503,7 +523,8 @@ export function planCampaignWave(
     retryFailed = false,
     now = new Date(),
     holdout = false,
-  }: { size: number; retryFailed?: boolean; now?: Date; holdout?: boolean },
+    includeUnengaged = false,
+  }: { size: number; retryFailed?: boolean; now?: Date; holdout?: boolean; includeUnengaged?: boolean },
 ): CampaignPlan {
   const excluded: Partial<Record<PlanExclusion, number>> = {};
   const exclude = (why: PlanExclusion) => {
@@ -516,7 +537,7 @@ export function planCampaignWave(
   for (const c of candidates) {
     if (c.own && c.own.status !== "failed" && c.own.status !== "pending" && c.own.status !== "held_out") alreadySent++;
     if (c.own?.status === "failed") failed++;
-    const blocker = composedCampaignBlocker(audience, c, { retryFailed, now });
+    const blocker = composedCampaignBlocker(audience, c, { retryFailed, now, includeUnengaged });
     if (blocker === "resting") {
       const until = restUntil(c.recentMarketing, now);
       if (until && (!restingUntil || until < restingUntil)) restingUntil = until;
@@ -687,6 +708,7 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   audience: "imported_not_signed_in",
   segmentId: null,
   excludeSegmentIds: [],
+  includeUnengaged: false,
 };
 
 /**
@@ -706,6 +728,7 @@ export const EMPTY_CAMPAIGN_DRAFT: CampaignDraft = {
   audience: "imported_not_signed_in",
   segmentId: null,
   excludeSegmentIds: [],
+  includeUnengaged: false,
 };
 
 /**

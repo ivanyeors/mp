@@ -19,6 +19,8 @@ import {
     BOUGHT_LABELS,
     CAMPAIGN_FILTER_STATES,
     CUSTOMER_SORTS,
+    ENGAGEMENT_FILTERS,
+    ENGAGEMENT_LABELS,
     LANGUAGE_FILTERS,
     LANGUAGE_LABELS,
     SHIPS_TO_FILTERS,
@@ -45,6 +47,7 @@ import {
     type CampaignFilterState,
     type DeliveredFilter,
     type EmailedFilter,
+    type EngagementFilter,
     type FollowUpFilter,
     type GoogleFilter,
     type GoogleReviewFilter,
@@ -59,6 +62,7 @@ import {
     type SourceFilter,
     type StageFilter,
 } from "@/lib/crm/customer-filters";
+import { UNENGAGED_WHO } from "@/lib/crm/engagement";
 import {
     LIFECYCLE_DETAILS,
     LIFECYCLE_DETAIL_LABEL,
@@ -162,8 +166,8 @@ export const CUSTOMER_FILTER_GROUPS: readonly {
     {
         id: "reach",
         label: "Reach",
-        blurb: "Consent, country, language and campaigns",
-        keys: ["consent", "ships_to", "language", "emailed", "campaign"],
+        blurb: "Consent, country, language, campaigns and engagement",
+        keys: ["consent", "ships_to", "language", "emailed", "campaign", "engagement"],
     },
     {
         id: "account",
@@ -624,7 +628,7 @@ export function CustomerFilterGroup({
                     </div>
                     <fieldset className="min-w-0">
                         <legend className="mb-2.5 text-sm font-medium">Campaign history</legend>
-                        <div className="grid min-w-0 gap-4 @lg:grid-cols-2">
+                        <div className="grid min-w-0 gap-4 @lg:grid-cols-2 @5xl:grid-cols-3">
                             <div className="min-w-0 space-y-2">
                                 <Label htmlFor={`${id}-campaign`}>Campaign</Label>
                                 <Select
@@ -687,6 +691,34 @@ export function CustomerFilterGroup({
                                 </Select>
                                 <p id={`${id}-campaign-state-hint`} className="text-xs text-muted-foreground">
                                     A click is a visit to the site from a link in that email.
+                                </p>
+                            </div>
+                            {/* Slice 12: the sunset rule, which campaigns leave out unless one includes them. */}
+                            <div className="min-w-0 space-y-2">
+                                <Label htmlFor={`${id}-engagement`}>Engagement</Label>
+                                <Select
+                                    value={filters.engagement ?? "any"}
+                                    onValueChange={(v) => onChange({ engagement: v === "any" ? null : (v as EngagementFilter) })}
+                                >
+                                    <SelectTrigger
+                                        id={`${id}-engagement`}
+                                        className="w-full"
+                                        aria-label="Engagement"
+                                        aria-describedby={`${id}-engagement-hint`}
+                                    >
+                                        <SelectValue placeholder="Anyone" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="any">Anyone</SelectItem>
+                                        {ENGAGEMENT_FILTERS.map((v) => (
+                                            <SelectItem key={v} value={v}>
+                                                {ENGAGEMENT_LABELS[v]}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p id={`${id}-engagement-hint`} className="text-xs text-muted-foreground">
+                                    Unengaged: they {UNENGAGED_WHO}. Campaigns leave them out unless one includes them.
                                 </p>
                             </div>
                         </div>

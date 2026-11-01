@@ -127,6 +127,8 @@ export const CUSTOMER_LIFECYCLE_COLUMNS = [
   "lifecycle_detail",
   "lifecycle_undated",
   "marketing_email_updated_at",
+  // PRD-campaign-audiences slice 12: the sunset rule, beside the stage.
+  "unengaged",
 ] as const satisfies readonly CustomerOverviewColumn[];
 
 /** The Customer's **Lifecycle stage** and what it is read from. */

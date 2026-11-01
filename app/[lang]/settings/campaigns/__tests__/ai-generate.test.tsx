@@ -52,6 +52,7 @@ const DRAFT: CampaignDraft = {
   audience: "subscribed",
   segmentId: null,
   excludeSegmentIds: [],
+  includeUnengaged: false,
 };
 const SAVED: Campaign = {
   ...DRAFT,
@@ -144,7 +145,11 @@ async function draftIt(about = "") {
   await click(await generate());
   const box = await until(() => document.getElementById("ai-about") as HTMLTextAreaElement | null);
   if (about) act(() => typeField(box, about));
+  const sent = requests.length;
   await click(button("Write the email")!);
+  // The request goes when the click's handler gets to it, which under a full run's load can be
+  // later than a fixed wait: wait for the request itself.
+  await until(() => requests.length > sent || null);
   await settle(20);
 }
 

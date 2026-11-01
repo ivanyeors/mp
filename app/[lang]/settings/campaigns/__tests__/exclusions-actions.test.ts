@@ -92,6 +92,7 @@ const campaign = (excludeSegmentIds: string[]): Campaign => ({
   audience: "subscribed",
   segmentId: null,
   excludeSegmentIds,
+  includeUnengaged: false,
   id: ID,
   createdAt: "2026-10-21T00:00:00Z",
   updatedAt: "2026-10-21T00:00:00Z",

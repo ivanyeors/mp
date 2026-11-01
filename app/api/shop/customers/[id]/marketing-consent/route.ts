@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin, requireAdminContext, type AdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { readMarketingConsentView, setMarketingEmail } from "@/lib/marketing-consent/consent";
+import { UNSUBSCRIBE_REASONS, UNSUBSCRIBE_TEXT_MAX } from "@/lib/marketing-consent/unsubscribe-reasons";
+import { UnsubscribeAnswerSchema, recordUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
 
 export const runtime = "nodejs";
 
@@ -16,9 +18,19 @@ export const runtime = "nodejs";
  * own. The one exception is a support request to stop: POST unsubscribes, with
  * source `support`, and needs `customers-edit`. There is no way here to
  * subscribe anyone.
+ *
+ * Staff may record why the customer asked (PRD-crm-retention-loop slice 11),
+ * optional, after the unsubscribe has taken effect: it never holds it up, and
+ * a failure to record it is logged, not an error.
  */
 
-const UnsubscribeSchema = z.object({ action: z.literal("unsubscribe") }).strict();
+const UnsubscribeSchema = z
+  .object({
+    action: z.literal("unsubscribe"),
+    reason: z.enum(UNSUBSCRIBE_REASONS).optional(),
+    text: z.string().max(UNSUBSCRIBE_TEXT_MAX).optional(),
+  })
+  .strict();
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers");
@@ -63,8 +75,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       action: "customer.marketing_unsubscribe",
       entityType: "customer",
       entityId: id,
-      after: { marketing_email: "unsubscribed", source: "support" },
+      after: { marketing_email: "unsubscribed", source: "support", ...(parsed.data.reason ? { reason: parsed.data.reason } : {}) },
     });
+  }
+
+  // Why they asked, when Staff say: their latest unsubscribe's answer, if it has none yet.
+  if (parsed.data.reason) {
+    const answer = UnsubscribeAnswerSchema.parse({ reason: parsed.data.reason, text: parsed.data.text });
+    await recordUnsubscribeReason(admin, id, answer).catch((e: unknown) =>
+      console.error("[marketing-consent] unsubscribe reason not recorded:", e instanceof Error ? e.message : e),
+    );
   }
 
   const view = await readMarketingConsentView(admin, id).catch(() => null);

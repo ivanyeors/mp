@@ -69,6 +69,7 @@ const LEGACY: CampaignDraft = {
   audience: "subscribed",
   segmentId: null,
   excludeSegmentIds: [],
+  includeUnengaged: false,
 };
 const CONTENT: CampaignContent = {
   v: 1,

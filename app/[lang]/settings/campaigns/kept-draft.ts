@@ -14,10 +14,16 @@ export type EditorEmail = CampaignWords & { greeting: boolean };
 
 /**
  * What the editor's history holds: the email and who it goes to, the
- * Segments it leaves out included (PRD-campaign-audiences slice 06), so one
- * Undo takes back any change to either.
+ * Segments it leaves out included (PRD-campaign-audiences slice 06), and
+ * whether it includes the Unengaged (slice 12), so one Undo takes back any
+ * change to either.
  */
-export type EditorDraft = EditorEmail & { audience: CampaignAudience; segmentId: string; excludeSegmentIds: string[] };
+export type EditorDraft = EditorEmail & {
+  audience: CampaignAudience;
+  segmentId: string;
+  excludeSegmentIds: string[];
+  includeUnengaged: boolean;
+};
 
 /** One draft's unsaved state: the email, and who it goes to. */
 export interface KeptDraft {
@@ -25,6 +31,7 @@ export interface KeptDraft {
   audience: CampaignAudience;
   segmentId: string;
   excludeSegmentIds: string[];
+  includeUnengaged: boolean;
 }
 
 const KeptSchema = z.object({
@@ -41,6 +48,8 @@ const KeptSchema = z.object({
   segmentId: z.string(),
   // A copy kept before slice 06 has none, and still reads.
   excludeSegmentIds: z.array(z.string()).default([]),
+  // Nor one kept before slice 12: it leaves the Unengaged out, as a new draft does.
+  includeUnengaged: z.boolean().default(false),
 });
 
 /** Pure — a kept copy read back, or null when it no longer fits. */
@@ -50,8 +59,8 @@ export function keptDraft(raw: unknown): KeptDraft | null {
 }
 
 /** Pure — the editor's draft as the browser keeps it. */
-export function keptOf({ audience, segmentId, excludeSegmentIds, ...email }: EditorDraft): KeptDraft {
-  return { email, audience, segmentId, excludeSegmentIds };
+export function keptOf({ audience, segmentId, excludeSegmentIds, includeUnengaged, ...email }: EditorDraft): KeptDraft {
+  return { email, audience, segmentId, excludeSegmentIds, includeUnengaged };
 }
 
 /** Pure — a kept copy as the editor's draft. */
@@ -60,6 +69,7 @@ export const draftOf = (k: KeptDraft): EditorDraft => ({
   audience: k.audience,
   segmentId: k.segmentId,
   excludeSegmentIds: k.excludeSegmentIds,
+  includeUnengaged: k.includeUnengaged,
 });
 
 /** The browser's key for one draft's copy. */

@@ -55,6 +55,8 @@ import {
 import { CustomerFilterSummary, CustomerSortSelect, MEGA_FILTER_KEYS } from "./customer-filters-panel";
 import { LifecycleStageBadge, LifecycleStageCell, lifecycleNote } from "./lifecycle-stage-badge";
 import { LifecycleCard } from "./lifecycle-card";
+import { ReturningCustomersCard } from "./returning-customers-card";
+import type { ReturningSummary } from "@/lib/crm/returning-customers";
 import { SegmentsRow } from "./segments-row";
 import type { CampaignFilterOption } from "@/lib/email-campaigns/store";
 
@@ -189,6 +191,7 @@ export function CustomersClient({
     initialFilters,
     ignoredFilters = [],
     lifecycle = null,
+    returning = null,
     initialSegments,
     campaigns = [],
     canEdit = false,
@@ -201,6 +204,8 @@ export function CustomersClient({
     ignoredFilters?: readonly CustomerFilterParam[];
     /** The Customer lifecycle chart's counts, or null when they could not be read. */
     lifecycle?: LifecycleSummary | null;
+    /** The Returning customer rate by first-purchase month (PRD-crm-retention-loop slice 06), or null. */
+    returning?: ReturningSummary | null;
     /** The Segments row (CRM slice 05), read by the page; undefined and the row fetches them. */
     initialSegments?: CustomerSegment[];
     /** The *Campaign* filter's choices (PRD-campaign-audiences slice 05), latest started first. */
@@ -365,6 +370,7 @@ export function CustomersClient({
                     onChooseStage={chooseStage}
                 />
             )}
+            {returning ? <ReturningCustomersCard summary={returning} /> : null}
 
             <SegmentsRow
                 initialSegments={initialSegments}

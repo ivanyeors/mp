@@ -122,7 +122,8 @@ export function CustomerFollowUpsCard({
     const done = data?.rows.filter((r) => r.doneAt) ?? [];
 
     return (
-        <Card>
+        // `follow-ups`: the Customer's *Next step* line scrolls here to add one (PRD-crm-retention-loop slice 05).
+        <Card id="follow-ups" className="scroll-mt-20">
             <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                     <ListTodo className="h-4 w-4" />
@@ -147,6 +148,7 @@ export function CustomerFollowUpsCard({
                         {canEdit ? (
                             <div className="space-y-2">
                                 <Input
+                                    id="followup-title"
                                     aria-label="New follow-up"
                                     placeholder="e.g. Call about her second pillow"
                                     value={title}

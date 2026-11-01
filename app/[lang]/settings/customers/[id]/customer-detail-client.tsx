@@ -62,7 +62,9 @@ import { CustomerFollowUpsCard } from "./customer-followups-card";
 import { CustomerReviewsCard } from "./customer-reviews-card";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
-import { LifecycleStageBadge, lifecycleNote } from "../lifecycle-stage-badge";
+import type { CustomerUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
+import type { NextStep } from "@/lib/crm/next-step";
+import { LifecycleStageBadge, UNENGAGED_TITLE, lifecycleNote } from "../lifecycle-stage-badge";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -137,6 +139,10 @@ export type CustomerDetailInitialData = {
     contact?: ContactFactsResult;
     /** The Lifecycle stage (PRD-crm-retention-loop slice 03); null when it could not be read. */
     lifecycle?: AdminCustomerLifecycle | null;
+    /** Why they unsubscribed, when they said (slice 11); null otherwise. */
+    unsubscribeReason?: CustomerUnsubscribeReason | null;
+    /** What to do now (PRD-crm-retention-loop slice 05); null when nothing is due or it could not be read. */
+    nextStep?: NextStep | null;
     /** Fitting records from the old Google Form (ADR 0042); null when they could not be read. */
     fittings?: CustomerFittingsResult;
 };
@@ -380,7 +386,7 @@ export function CustomerDetailClient({
         [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
         customer.email;
 
-    const note = lifecycle ? lifecycleNote(lifecycle) : null;
+    const note = lifecycle ? lifecycleNote(lifecycle, { unsubscribeReason: initialData?.unsubscribeReason?.reason ?? null }) : null;
 
     // Stats and columns follow the width the page has, not the window (a
     // container query), so a collapsed sidebar counts.
@@ -400,13 +406,44 @@ export function CustomerDetailClient({
                         {lifecycle ? (
                             <LifecycleStageBadge stage={lifecycle.lifecycle_stage} undated={lifecycle.lifecycle_undated} />
                         ) : null}
-                        {note ? <span className="text-xs text-muted-foreground">{note}</span> : null}
+                        {note ? (
+                            <span className="text-xs text-muted-foreground" title={lifecycle?.unengaged ? UNENGAGED_TITLE : undefined}>
+                                {note}
+                            </span>
+                        ) : null}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">
                         Customer since {formatDate(customer.created_at)}
                     </p>
                 </div>
             </div>
+
+            {/* PRD-crm-retention-loop slice 05: what now. Nothing due, no line. */}
+            {initialData?.nextStep ? (
+                <div
+                    role="note"
+                    aria-label="Next step"
+                    className="flex flex-col gap-2 rounded-lg border border-dashed px-4 py-3 text-sm sm:flex-row sm:items-center sm:gap-3"
+                >
+                    <p className="min-w-0 flex-1">
+                        <span className="font-medium">Next step</span>{" "}
+                        <span className="text-muted-foreground">{initialData.nextStep.text}</span>
+                    </p>
+                    {initialData.nextStep.addFollowUp && canEdit ? (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="self-start sm:self-auto"
+                            onClick={() => {
+                                document.getElementById("follow-ups")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                document.getElementById("followup-title")?.focus({ preventScroll: true });
+                            }}
+                        >
+                            Add a follow-up
+                        </Button>
+                    ) : null}
+                </div>
+            ) : null}
 
             {/* Stats: one strip across the page, so the columns below hold only cards */}
             <Card className="py-4">

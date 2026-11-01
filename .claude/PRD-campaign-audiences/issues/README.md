@@ -24,7 +24,7 @@ demoable path through the layers it touches.
 | [09](09-fit-checks-and-variables.md) | The right version: fit checks and a Variable | AFK | **built** | 04, 05 |
 | [10](10-keep-sending.md) | Keep sending: reach people as they join the Audience | AFK | **built** | 01, 07 |
 | [11](11-campaign-results.md) | Results per campaign: clicks, unsubscribes, purchases after | AFK | **built** | 08 |
-| [12](12-engaged-and-unengaged.md) | Engaged and unengaged: a simple rule from the Lifecycle stage | AFK | not started | 08 |
+| [12](12-engaged-and-unengaged.md) | Engaged and unengaged: a simple rule from the Lifecycle stage | AFK | **built** | 08 |
 | [13](13-topics-and-fewer-emails.md) | Later: topics and "fewer emails" | HITL, then AFK | specified | retention slice 11 data |
 | [14](14-signoff.md) | Sign-off: three of the plan's emails on production | HITL | not started | 02, 04, 06–09 |
 | [15](15-imported-customers-start-subscribed.md) | Imported customers start subscribed | AFK, then HITL | **built** | none |
@@ -44,7 +44,7 @@ graph TD
   s09[09 Fit checks and Variables · built]
   s10[10 Keep sending · built]
   s11[11 Results · built]
-  s12[12 Sunset rule]
+  s12[12 Sunset rule · built]
   s13[13 Topics, later]
   s14[14 Sign-off · HITL]
   s15[15 Imported customers subscribed · built]
@@ -90,4 +90,6 @@ graph TD
 6. **03, 12 and 13** last: 12 needs six campaigns' clicks, 13 needs unsubscribe reasons.
    **Done 2026-11-01:** 03, redesigned with the owner: the sign-up is the Customer sign-in, and
    Sign in has a Customer tab and a Staff tab (ADR 0041). Owner to-do: paste the two auth email
-   templates. **Next:** 12, then 13.
+   templates. **Done 2026-11-01:** 12 (the sunset rule: Unengaged on the overview, the
+   *Engagement* filter, and *Include unengaged* on a campaign). **Next:** 13, once retention
+   slice 11 has collected unsubscribe reasons.

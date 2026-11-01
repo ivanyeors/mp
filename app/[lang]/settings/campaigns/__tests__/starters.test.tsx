@@ -95,6 +95,7 @@ const DRAFT: CampaignDraft = {
   audience: "subscribed",
   segmentId: null,
   excludeSegmentIds: [],
+  includeUnengaged: false,
 };
 const SAVED: Campaign = {
   ...DRAFT,
@@ -107,14 +108,14 @@ const SAVED: Campaign = {
 };
 
 let root: Root | null = null;
-function mount(campaign: Campaign | null, draft: CampaignDraft, ai?: AiWritingAvailability) {
+function mount(campaign: Campaign | null, draft: CampaignDraft, ai?: AiWritingAvailability, segments: { id: string; name: string }[] = []) {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
   act(() =>
     root!.render(
       <>
-        <CampaignEditor campaign={campaign} draft={draft} stats={null} segments={[]} staffEmail="owner@mpillow.com" pointsLive ai={ai} />
+        <CampaignEditor campaign={campaign} draft={draft} stats={null} segments={segments} staffEmail="owner@mpillow.com" pointsLive ai={ai} />
         <Toaster />
       </>,
     ),
@@ -191,7 +192,31 @@ describe("thumbnails", () => {
       "Event or fitting day",
       "A short note",
       "New website: sign in for points",
+      // The CRM's Playbooks, approved by the owner (PRD-crm-retention-loop slice 07, 2026-11-01).
+      "Second purchase",
+      "Thank you",
+      "We miss you",
+      "Welcome back",
     ]);
+  });
+});
+
+describe("a Playbook", () => {
+  it("starts Welcome back with its words, its stage's Segment found by name, and the Unengaged included", async () => {
+    mount(null, newCampaignDraft(undefined, []), undefined, [
+      { id: "seg-loyal", name: "Loyal" },
+      { id: "seg-lapsed", name: "At risk · Lapsed" },
+    ]);
+    await until(startPanel);
+    await click(choice("A Starter")!);
+    await click(choice("Welcome back")!);
+    expect(startPanel()).toBeNull();
+    expect(document.querySelector<HTMLInputElement>("#c-name")!.value).toBe("Welcome back");
+    expect(document.getElementById("c-subject")!.textContent).toBe("Your pillow's fit can be retuned");
+    expect(audience()).toBe("A saved Segment");
+    expect(document.getElementById("c-segment")!.textContent).toBe("At risk · Lapsed");
+    // The win-back reaches the Unengaged too (PRD-campaign-audiences slice 12).
+    expect(document.querySelector("[aria-describedby='c-include-unengaged-hint']")!.getAttribute("aria-checked")).toBe("true");
   });
 });
 

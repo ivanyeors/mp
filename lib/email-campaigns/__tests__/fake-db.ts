@@ -23,7 +23,9 @@ import { inHoldout } from "../results";
  *  - for kept sending (slice 10), `email_campaigns` (`eq`, `is`, `order`);
  *  - for the holdout (slice 11), each candidate's `holdout_bucket` (the md5
  *    of their id, as `campaign_holdout_bucket`), a campaign's `holdout`, and
- *    `neq` on the ledger.
+ *    `neq` on the ledger;
+ *  - for the sunset rule (slice 12), the overview's `unengaged` and a
+ *    campaign's `includeUnengaged`.
  *
  * The claim mirrors the SQL (20261031162653): the wave check, the rule (here
  * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
@@ -49,6 +51,8 @@ export interface FakeCustomer {
   ship_country?: string | null;
   bought?: string[];
   last_purchase_at?: string | null;
+  /** The overview's `unengaged` (slice 12). */
+  unengaged?: boolean;
 }
 
 export interface FakeMigrated {
@@ -80,7 +84,7 @@ export interface FakeWorld {
   migrated: FakeMigrated[];
   sends: FakeSend[];
   /** `holdout`: its holdout is on (slice 11), so the claim holds a bucket under 10 out. */
-  campaigns: { id: string; audience: CampaignAudience; archived?: boolean; holdout?: boolean }[];
+  campaigns: { id: string; audience: CampaignAudience; archived?: boolean; holdout?: boolean; includeUnengaged?: boolean }[];
   claimLinks: { customer_id: string; token_hash: string; template: string }[];
   /** `site_settings`, by key: the points settings a Campaign that mentions points is checked against. */
   settings: Record<string, string>;
@@ -231,8 +235,9 @@ export function fakeCampaignsClient(world: FakeWorld) {
         suppressed: row.suppressed as boolean,
         own: own ? { status: own.status as "sent", wave: own.wave, sentAt: own.sent_at } : null,
         recentMarketing: row.marketing_recent as string[],
+        unengaged: world.customers.find((x) => x.id === customerId)?.unengaged === true,
       },
-      { retryFailed: retry },
+      { retryFailed: retry, includeUnengaged: campaign.includeUnengaged === true },
     );
     if (blocker) return none(blocker);
 
@@ -328,6 +333,7 @@ export function fakeCampaignsClient(world: FakeWorld) {
             bought: c.bought ?? [],
             last_purchase_at: c.last_purchase_at ?? null,
             points_available: c.points ?? 0,
+            unengaged: c.unengaged === true,
           })),
         );
       if (table === "customer_purchase_lines") return query(() => world.pillowLines ?? []);

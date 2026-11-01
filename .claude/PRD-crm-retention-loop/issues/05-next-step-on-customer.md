@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** not started
+**Status:** **built** (2026-11-01)
 **Blocked by:** 03
 **Labels:** `enhancement`, `needs-triage`, `P3`, `area:admin`
 
@@ -27,9 +27,24 @@ March. Add a follow-up?*
   7. points expiring within 3 months → *Points expire on {date}*.
 - A *Next step* line at the top of the Customer detail, above the cards.
 
+## As built (2026-11-01)
+
+- `nextStep(facts, now)` in `lib/crm/next-step.ts`, pure; `readNextStepFacts` in
+  `lib/crm/next-step-server.ts` reads the overview row, the aftercare settings, a re-adjustment
+  booked and still to come, and the earliest overdue Follow-up.
+- Steps as above, with two changes: step 5 says *only a win-back reaches them* for an
+  **Unengaged** Customer (PRD-campaign-audiences slice 12) and offers a follow-up; step 7 is gone,
+  because points never expire (ADR 0030 decision 17, 2026-10-31). The review request line reads
+  *Review request goes on 6 Nov 2026 (automatic)* only while the request is on and still within
+  its window.
+- A *Next step* line above the stats on the Customer page; *Add a follow-up* scrolls to the
+  Follow-ups card and puts the cursor in its title, for Staff who can edit.
+- **Tests:** `lib/crm/__tests__/next-step.test.ts` (each step, nothing due, the words), and the
+  line in `account-status-render.test.tsx`.
+
 ## Acceptance criteria
 
-- [ ] No step ever suggests asking for a review (the request is automatic and goes to everyone
+- [x] No step ever suggests asking for a review (the request is automatic and goes to everyone
   alike) or offers a discount.
-- [ ] The rules are pure and tested case by case.
-- [ ] A Customer with nothing due shows no line.
+- [x] The rules are pure and tested case by case.
+- [x] A Customer with nothing due shows no line.

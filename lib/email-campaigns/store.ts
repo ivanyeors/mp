@@ -422,6 +422,16 @@ export async function readCampaignCandidates(
   campaign: Pick<Campaign, "id" | "audience">,
   segmentIds?: () => AsyncIterable<string[]>,
 ): Promise<CampaignCandidate[]> {
+  const [candidates, unengaged] = await Promise.all([readAudience(admin, campaign, segmentIds), readUnengagedIds(admin)]);
+  for (const c of candidates) c.unengaged = unengaged.has(c.customerId);
+  return candidates;
+}
+
+async function readAudience(
+  admin: SupabaseClient,
+  campaign: Pick<Campaign, "id" | "audience">,
+  segmentIds?: () => AsyncIterable<string[]>,
+): Promise<CampaignCandidate[]> {
   if (campaign.audience === "imported_not_signed_in") {
     return readPaged(admin, campaign.id, (q) => q.eq("migrated", true));
   }
@@ -435,6 +445,27 @@ export async function readCampaignCandidates(
     }
   }
   return out;
+}
+
+/**
+ * Every Unengaged Customer (PRD-campaign-audiences slice 12): the overview's
+ * `unengaged`, the column the Customers list's *Engagement* filter and the
+ * claim's rule read, so the plan, the list and the send agree.
+ */
+export async function readUnengagedIds(admin: SupabaseClient): Promise<Set<string>> {
+  const out = new Set<string>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await admin
+      .from("admin_customer_overview")
+      .select("id")
+      .eq("unengaged", true)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(`Could not read who is unengaged: ${error.message}`);
+    const rows = (data ?? []) as { id: unknown }[];
+    for (const row of rows) if (typeof row.id === "string") out.add(row.id);
+    if (rows.length < PAGE) return out;
+  }
 }
 
 /**

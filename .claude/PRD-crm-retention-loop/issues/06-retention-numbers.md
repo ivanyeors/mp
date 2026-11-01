@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK
-**Status:** not started
+**Status:** **headline built** (2026-11-01); the other metrics not started
 **Blocked by:** 03
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:analytics`
 
@@ -36,9 +36,30 @@ How:
 - Each number links to the list that makes it, where one exists: *one-time buyers* opens the
   Customers list filtered to it.
 
+## As built so far (2026-11-01): the headline
+
+- `admin_returning_customer_cohorts()` (migration `20261101081512`), server-only: by
+  first-purchase month (Singapore), the first-time customers, and how many came back within 12
+  months for an attended re-adjustment, for a second Purchase, and either. A Purchase is what the
+  Customer overview counts (a goods line on a counted Order), so a refunded Order or a
+  re-adjustment fee never is. Counts only; the card writes the rates.
+- `lib/crm/returning-customers.ts` decides what may be a rate: a month whose 12 months are over
+  for all of it, with 20 or more people. A month still inside its window is *still open*: counts
+  so far, never a rate.
+- A *Returning customers* card under the lifecycle chart on Customers (`customers`): the headline
+  sentence for the latest closed month, then the closed months with their rates and the open
+  months with their counts. Purchases on this site only until slice 09 imports the Shopify-era
+  orders, and the card says so.
+- **Tests:** `supabase/tests/crm/assert-06-returning-customers.sql` (within and after 12 months,
+  attended versus booked, refunded and fee Orders, the Singapore month boundary, someone who did
+  both counted once); `lib/crm/__tests__/returning-customers.test.ts`.
+- **Still to build:** the other metrics (M9 to M25 and the funnel half on Analytics), and links
+  from a number to the list that makes it.
+
 ## Acceptance criteria
 
-- [ ] Every rate shows its counts; under 20 in a denominator, counts only.
-- [ ] Cohorts younger than the window are marked *still open*, never shown as a low rate.
+- [x] Every rate shows its counts; under 20 in a denominator, counts only. (The headline.)
+- [x] Cohorts younger than the window are marked *still open*, never shown as a low rate. (The
+  headline.)
 - [ ] Shopify-era purchases count once slice 09 has imported them, and the card says from when.
-- [ ] Nothing here decides who receives a Review request.
+- [x] Nothing here decides who receives a Review request.

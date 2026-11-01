@@ -1,6 +1,9 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage, type AdminContext } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
+import { readCustomerUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
+import { nextStep } from "@/lib/crm/next-step";
+import { readNextStepFacts } from "@/lib/crm/next-step-server";
 import { getAdminCustomer, getAdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import { listCustomerNotes } from "@/lib/crm/notes";
 import { getMigratedCustomer } from "@/lib/customer-migration/overview";
@@ -46,12 +49,18 @@ export default async function CustomerDetailPage({
 
     const ctx = await requireAdminPage("customers", locale);
 
-    const [customer, notes, migration, lifecycle, fittings] = await Promise.all([
+    const [customer, notes, migration, lifecycle, fittings, unsubscribeReason, next] = await Promise.all([
         getAdminCustomer(id),
         listCustomerNotes(id).catch(() => null),
         getMigratedCustomer(id),
         getAdminCustomerLifecycle(id).catch(() => null),
         listCustomerFittings(id).catch(() => null),
+        // PRD-crm-retention-loop slice 11: why a Lost Customer unsubscribed, beside the stage.
+        readCustomerUnsubscribeReason(supabaseAdmin(), id).catch(() => null),
+        // Slice 05: the next step, a summary that never fails the page.
+        readNextStepFacts(supabaseAdmin(), id)
+            .then((facts) => (facts ? nextStep(facts, new Date()) : null))
+            .catch(() => null),
     ]);
 
     const initialData: CustomerDetailInitialData = {
@@ -61,6 +70,8 @@ export default async function CustomerDetailPage({
         notes,
         migration,
         lifecycle,
+        unsubscribeReason,
+        nextStep: next,
         fittings,
         contact: customer.ok ? await readContact(customer.row as Customer, ctx) : undefined,
     };

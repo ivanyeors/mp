@@ -8,7 +8,9 @@
 // pillow* and offers the studio and an Mbolster, for slice 09's fit checks.
 // *November care tips* has about 600 made-up sends, each with a stage at send
 // and a seeded click and purchase, and a holdout on for six days (slice 11's
-// Results tab). Every name and email is invented.
+// Results tab). PRD-crm-retention-loop slice 11: Farid said why he left, Nadia
+// has not been asked yet, and two months of made-up unsubscribes and answers
+// fill *Why people unsubscribe*. Every name and email is invented.
 
 // `sizes` and `delivered` (days since the latest purchase arrived; null while
 // on its way) feed the purchase filters (PRD-campaign-audiences slice 04).
@@ -26,7 +28,52 @@ const PEOPLE = [
   // Slice 09's fit checks: Jun ships to Malaysia and bought 9 days ago; Kavya's country is unknown, and she has no pillow here.
   { first: "Jun", last: "Wei", stage: "new", detail: "delivered", purchases: 1, bought: ["basic"], sizes: ["M"], delivered: 3, consent: "subscribed", source: "checkout", imported: false, ship: "MY", lastBought: 9 },
   { first: "Kavya", last: "Iyer", stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, consent: "subscribed", source: "account", imported: false, ship: null },
+  // Slice 12: Lapsed and subscribed, and clicked none of her last six campaigns. Stated, not drawn
+  // from six made-up campaigns, so the campaign list stays as it was.
+  { first: "Lina", last: "Koh", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 900, consent: "subscribed", source: "shopify_import", imported: true, said: "yes", ship: "SG", unengaged: true },
+  // PRD-crm-retention-loop slice 11: left by the link a moment ago and not asked yet; her unsubscribe page asks why.
+  { first: "Nadia", last: "Lim", stage: "lost", detail: null, purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 400, consent: "unsubscribed", source: "unsubscribe_link", imported: false, ship: "SG" },
 ];
+
+/**
+ * Slice 11: made-up unsubscribes of the last 60 days, to made-up Customer ids
+ * (no Customer row: *Why people unsubscribe* counts the events), and the
+ * answers some gave. Seeded, so every run draws the same card.
+ */
+function unsubscribeSample(ago) {
+  const draw = rng(23);
+  const sources = ["unsubscribe_link", "unsubscribe_link", "unsubscribe_link", "account", "complaint", "support"];
+  const reasons = ["too_many", "too_many", "too_many", "not_relevant", "not_relevant", "have_what_i_need", "never_signed_up", "not_happy", "other"];
+  const words = ["Moving overseas next month", "Already bought one for each of us"];
+  const events = [];
+  const answers = [];
+  for (let n = 0; n < 26; n++) {
+    const days = Math.round(draw() * 58) + 1;
+    const source = sources[Math.floor(draw() * sources.length)];
+    const id = 100 + n;
+    events.push({
+      id,
+      customer_id: `00000000-0000-4000-8000-0000000e${String(n + 1).padStart(4, "0")}`,
+      channel: "email",
+      from_state: "subscribed",
+      to_state: "unsubscribed",
+      source,
+      created_at: ago(days),
+    });
+    if (source !== "complaint" && draw() < 0.6) {
+      const reason = reasons[Math.floor(draw() * reasons.length)];
+      answers.push({
+        id: `00000000-0000-4000-8000-0000000f${String(n + 1).padStart(4, "0")}`,
+        customer_id: events.at(-1).customer_id,
+        consent_event_id: id,
+        reason,
+        other_text: reason === "other" ? words[answers.length % words.length] : null,
+        created_at: ago(days - 0.01),
+      });
+    }
+  }
+  return { events, answers };
+}
 
 const BATCH = "00000000-0000-4000-8000-00000000b001";
 const SEGMENT = "00000000-0000-4000-8000-00000000c001";
@@ -141,6 +188,7 @@ export default function crm({ now }) {
   // Today's kept-sending Wave, as the daily job labels it: Singapore's date.
   const keptToday = `daily-${new Date(now.getTime() + 8 * 3_600_000).toISOString().slice(0, 10)}`;
   const results = resultSends(ago);
+  const left = unsubscribeSample(ago);
   const customers = PEOPLE.map((p, i) => ({
     id: `00000000-0000-4000-8000-0000000c0${String(i + 1).padStart(3, "0")}`,
     email: `${p.first.toLowerCase().replace(/\s/g, "")}.${p.last.toLowerCase()}@example.com`,
@@ -222,6 +270,21 @@ export default function crm({ now }) {
           updated_at: ago(3),
           archived_at: null,
         },
+        // The four stage Segments the Playbooks open, by name (PRD-crm-retention-loop slice 07).
+        ...[
+          ["New · delivered over 60 days ago", { stage: "new", delivered: "over:60" }],
+          ["Loyal", { stage: "loyal" }],
+          ["At risk · 12 to 24 months", { stage: "at-risk", last_order: "within:24" }],
+          ["At risk · Lapsed", { stage: "at-risk:lapsed" }],
+        ].map(([name, filters], i) => ({
+          id: `00000000-0000-4000-8000-00000000c0${i + 10}`,
+          name,
+          filters,
+          filters_version: 2,
+          created_at: ago(1),
+          updated_at: ago(1),
+          archived_at: null,
+        })),
       ],
       email_campaigns: [
         {
@@ -428,6 +491,30 @@ export default function crm({ now }) {
           created_at: customers[5].marketing_email_updated_at,
           campaign_send_id: "00000000-0000-4000-8000-00000000f001",
         },
+        // Slice 11: Nadia left by the link and has not said why.
+        {
+          id: 2,
+          customer_id: customers[11].id,
+          channel: "email",
+          from_state: "subscribed",
+          to_state: "unsubscribed",
+          source: "unsubscribe_link",
+          created_at: customers[11].marketing_email_updated_at,
+          campaign_send_id: null,
+        },
+        ...left.events,
+      ],
+      // Slice 11: Farid told us why when he left.
+      customer_unsubscribe_reasons: [
+        {
+          id: "00000000-0000-4000-8000-0000000f0f01",
+          customer_id: customers[5].id,
+          consent_event_id: 1,
+          reason: "too_many",
+          other_text: null,
+          created_at: customers[5].marketing_email_updated_at,
+        },
+        ...left.answers,
       ],
     },
     views: {
@@ -610,10 +697,34 @@ export default function crm({ now }) {
             campaigns_sent: [...new Set(sent.map((x) => x.campaign_id))],
             campaigns_clicked: [...new Set(sent.filter((x) => x.first_clicked_at).map((x) => x.campaign_id))],
             last_emailed_at: lastSent ?? "-infinity",
+            // Slice 12: the sunset rule's answer, stated per person above.
+            unengaged: p.unengaged === true,
           };
         }),
     },
     rpc: {
+      // 20261101081458_unsubscribe_reasons.sql: an answer for the latest unsubscribe, once.
+      record_unsubscribe_reason: ({ p_customer_id, p_reason, p_text = null }, { tables }) => {
+        const c = (tables.customers ?? []).find((x) => x.id === p_customer_id);
+        if (!c) return "not_found";
+        if (c.marketing_email !== "unsubscribed") return "not_unsubscribed";
+        const latest = (tables.customer_consent_events ?? [])
+          .filter((e) => e.customer_id === p_customer_id)
+          .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)) || b.id - a.id)[0];
+        if (!latest || latest.to_state !== "unsubscribed") return "not_unsubscribed";
+        if (latest.source === "complaint") return "complaint";
+        tables.customer_unsubscribe_reasons ??= [];
+        if (tables.customer_unsubscribe_reasons.some((r) => r.consent_event_id === latest.id)) return "already";
+        tables.customer_unsubscribe_reasons.push({
+          id: `00000000-0000-4000-8000-0000000f${String(tables.customer_unsubscribe_reasons.length + 1).padStart(4, "0")}`,
+          customer_id: p_customer_id,
+          consent_event_id: latest.id,
+          reason: p_reason,
+          other_text: p_reason === "other" ? p_text : null,
+          created_at: new Date().toISOString(),
+        });
+        return "recorded";
+      },
       // 20261031144524_consent_by_default.sql, counting only.
       subscribe_migrated_customers: ({ p_unsubscribed = [] }, { tables }) => {
         const list = new Set(p_unsubscribed.map((e) => String(e).trim().toLowerCase()).filter(Boolean));

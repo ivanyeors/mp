@@ -4,18 +4,25 @@ import { useState, useTransition } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { MARKETING_EMAIL_LABEL, type MarketingEmailState } from "@/lib/marketing-consent/state";
-import { setMyMarketingEmail } from "./actions";
+import { unsubscribeAskOrder, type UnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons";
+import { UnsubscribeReasonQuestion } from "@/components/marketing/unsubscribe-reason-question";
+import { answerMyUnsubscribeReason, setMyMarketingEmail } from "./actions";
 
 /**
  * The Profile's "Email me news and offers" toggle (PRD-shopify-customer-migration
  * slice 07): the customer's own Marketing consent. On is `subscribed`; off is
  * `unsubscribed`. A Customer nobody has asked (`not_subscribed`) sees it off.
  * Every change is recorded with source `account`.
+ *
+ * Turned off, it then asks, optionally, *Mind telling us why?*
+ * (PRD-crm-retention-loop slice 11). The unsubscribe has already happened.
  */
 export function MarketingEmailPreference({ state: initialState }: { state: MarketingEmailState }) {
   const [state, setState] = useState(initialState);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Set when they turn it off here: the question's order, drawn then.
+  const [asking, setAsking] = useState<UnsubscribeReason[] | null>(null);
 
   const toggle = (subscribed: boolean) => {
     setError(null);
@@ -26,6 +33,7 @@ export function MarketingEmailPreference({ state: initialState }: { state: Marke
         return;
       }
       setState(result.state);
+      setAsking(result.state === "unsubscribed" && !subscribed ? unsubscribeAskOrder() : null);
     });
   };
 
@@ -54,6 +62,9 @@ export function MarketingEmailPreference({ state: initialState }: { state: Marke
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
+      ) : null}
+      {asking && state === "unsubscribed" ? (
+        <UnsubscribeReasonQuestion order={asking} send={answerMyUnsubscribeReason} className="rounded-lg border p-5 sm:p-6" />
       ) : null}
     </section>
   );

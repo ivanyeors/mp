@@ -18,6 +18,8 @@ set client_min_messages = error;
 \set cases `cat supabase/tests/email-marketing/campaign-rule-cases.json`
 
 -- ---------------------------------------------------------------- cleanup
+delete from order_items where order_id in (select id from orders where order_number like 'AEC-%');
+delete from orders where order_number like 'AEC-%';
 delete from customer_campaign_sends where customer_id in (select id from customers where email like '%@assertec.test');
 delete from customer_campaign_sends where campaign_id in (select id from email_campaigns where name like 'assert-ec %');
 delete from email_campaigns where name like 'assert-ec %';
@@ -61,6 +63,9 @@ insert into email_campaigns (id, name, subject, body, audience, segment_id, butt
   ('ec0ec0ec-0000-4000-8000-0000000000c1', 'assert-ec imported',   'Your account is ready', 'Hello', 'imported_not_signed_in', null, 'Sign in', 'sign_in'),
   ('ec0ec0ec-0000-4000-8000-0000000000c2', 'assert-ec subscribed', 'News',                  'Hello', 'subscribed', null, null, null),
   ('ec0ec0ec-0000-4000-8000-0000000000c3', 'assert-ec segment',    'For some',              'Hello', 'segment', 'ec0ec0ec-0000-4000-8000-0000000000a5', null, null);
+-- Slice 12 (PRD-campaign-audiences): a win-back, which includes the Unengaged.
+insert into email_campaigns (id, name, subject, body, audience, include_unengaged) values
+  ('ec0ec0ec-0000-4000-8000-0000000000c4', 'assert-ec win-back', 'We miss you', 'Hello', 'subscribed', true);
 
 -- ------------------------------------------------------- the table's checks
 do $$
@@ -107,14 +112,17 @@ declare
   v_exp    text;
   r        jsonb;
   v_other  uuid;
+  eng      jsonb;
+  k        int;
   failures text := '';
 begin
   for c in select value from jsonb_array_elements(doc->'cases') loop
     i := i + 1;
     v_id := ('ec0ec0ec-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid;
-    v_camp := case c->>'audience'
-      when 'imported_not_signed_in' then 'ec0ec0ec-0000-4000-8000-0000000000c1'
-      when 'subscribed' then 'ec0ec0ec-0000-4000-8000-0000000000c2'
+    v_camp := case
+      when coalesce((c->>'includeUnengaged')::boolean, false) then 'ec0ec0ec-0000-4000-8000-0000000000c4'
+      when c->>'audience' = 'imported_not_signed_in' then 'ec0ec0ec-0000-4000-8000-0000000000c1'
+      when c->>'audience' = 'subscribed' then 'ec0ec0ec-0000-4000-8000-0000000000c2'
       else 'ec0ec0ec-0000-4000-8000-0000000000c3' end;
     cust := c->'customer';
     v_state := cust->>'marketing_email';
@@ -153,6 +161,33 @@ begin
                   now() - make_interval(secs => (r->>'daysAgo')::numeric * 86400));
       end case;
     end loop;
+    -- Slice 12: the stage's one purchase, the Customer's age, and their other
+    -- campaigns' sends, newest first, 40 days ago and a day earlier each.
+    if cust ? 'engagement' then
+      eng := cust->'engagement';
+      update customers
+         set created_at = now() - make_interval(months => coalesce((eng->>'customerMonths')::int, 0))
+       where id = v_id;
+      if eng->>'stage' <> 'lead' then
+        insert into orders (id, order_number, customer_id, email, status, currency, subtotal, total, shipping_address, paid_at)
+        values (v_id, 'AEC-' || i, v_id, 'case' || i || '@assertec.test', 'delivered', 'SGD', 150, 150, '{}',
+                now() - make_interval(months => case eng->>'stage' when 'new' then 2 when 'at_risk' then 18 else 30 end));
+        insert into order_items (order_id, sku, product_title, quantity, unit_price, total_price, kind)
+        values (v_id, 'P', 'Pillow', 1, 150, 150, 'goods');
+      end if;
+      k := 0;
+      for r in select value from jsonb_array_elements(coalesce(eng->'campaigns', '[]'::jsonb)) loop
+        insert into email_campaigns (name, subject, body, audience)
+        values ('assert-ec eng ' || i || '-' || k, 'S', 'B', 'subscribed') returning id into v_other;
+        insert into customer_campaign_sends (customer_id, template, campaign_id, wave, status, sent_at, first_clicked_at, clicks)
+        values (v_id, 'campaign:' || v_other::text, v_other, 'cases',
+                case when r #>> '{}' = 'held_out' then 'held_out' else 'sent' end,
+                now() - make_interval(days => 40 + k),
+                case when r #>> '{}' = 'clicked' then now() - make_interval(days => 40 + k) + interval '1 hour' end,
+                case when r #>> '{}' = 'clicked' then 1 else 0 end);
+        k := k + 1;
+      end loop;
+    end if;
     if cust ? 'own' then
       insert into customer_campaign_sends (customer_id, template, campaign_id, wave, status, bounced_at, complained_at)
       values (v_id, 'campaign:' || v_camp::text, v_camp, 'cases', cust->>'own',
@@ -175,6 +210,8 @@ begin
     'no such Customer';
 end $$;
 
+delete from order_items where order_id in (select id from orders where order_number like 'AEC-%');
+delete from orders where order_number like 'AEC-%';
 delete from customer_campaign_sends where customer_id in (select id from customers where email like 'case%@assertec.test');
 delete from customers where email like 'case%@assertec.test';
 
@@ -343,6 +380,8 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------- cleanup
+delete from order_items where order_id in (select id from orders where order_number like 'AEC-%');
+delete from orders where order_number like 'AEC-%';
 delete from customer_campaign_sends where customer_id in (select id from customers where email like '%@assertec.test');
 delete from email_campaigns where name like 'assert-ec %';
 delete from customers where email like '%@assertec.test';

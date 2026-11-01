@@ -84,6 +84,7 @@ const campaign = (over: Partial<Campaign> = {}): Campaign => ({
   audience: "segment",
   segmentId: SEGMENT,
   excludeSegmentIds: [],
+  includeUnengaged: false,
   id: ID,
   createdAt: "2026-10-21T00:00:00Z",
   updatedAt: "2026-10-21T00:00:00Z",

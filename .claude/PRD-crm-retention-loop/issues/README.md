@@ -18,13 +18,13 @@ demoable path through the layers it touches.
 | [02](02-hand-off-links.md) · [#338](https://github.com/ivanyeors/mp/issues/338) | Hand-offs: every page in the loop links to the next | AFK | **built** (`claude/crm-loop-handoffs-dropoff`) | 01 |
 | [03](03-lifecycle-stage.md) · [#339](https://github.com/ivanyeors/mp/issues/339) | A lifecycle stage on every Customer: Lead, New, Loyal, At risk, Lost | AFK | **built** (`claude/crm-loop-handoffs-dropoff`), reworked into the funnel 2026-10-28 | none (decisions 1 and 4 settled) |
 | [04](04-stage-chips.md) · [#340](https://github.com/ivanyeors/mp/issues/340) | Stage chips above the Customers list, counted live | AFK | not started | 03 |
-| [05](05-next-step-on-customer.md) · [#341](https://github.com/ivanyeors/mp/issues/341) | The next step on the Customer | AFK | not started | 03 |
-| [06](06-retention-numbers.md) · [#342](https://github.com/ivanyeors/mp/issues/342) | The scorecard: is the loop working? | AFK | not started | 03 |
-| [07](07-stage-playbooks.md) · [#343](https://github.com/ivanyeors/mp/issues/343) | Playbooks: a ready-written campaign for each stage | AFK, then HITL | not started | 02, 03 |
+| [05](05-next-step-on-customer.md) · [#341](https://github.com/ivanyeors/mp/issues/341) | The next step on the Customer | AFK | **built** | 03 |
+| [06](06-retention-numbers.md) · [#342](https://github.com/ivanyeors/mp/issues/342) | The scorecard: is the loop working? | AFK | **headline built**; the other metrics to do | 03 |
+| [07](07-stage-playbooks.md) · [#343](https://github.com/ivanyeors/mp/issues/343) | Playbooks: a ready-written campaign for each stage | AFK, then HITL | **built**; the owner approved all four (2026-11-01) | 02, 03 |
 | [08](08-signoff.md) · [#344](https://github.com/ivanyeors/mp/issues/344) | Sign-off: the owner walks the loop on production | HITL | not started | 01–07, 09, 10 |
 | [09](09-shopify-order-history.md) · [#345](https://github.com/ivanyeors/mp/issues/345) | Shopify-era order history, settled once, for the same lifecycle | AFK, then HITL | not started | owner confirms the ADR 0029 amendment |
 | [10](10-ask-why-they-left.md) · [#346](https://github.com/ivanyeors/mp/issues/346) | Ask why they left, and close the loop | part 1 AFK, part 2 HITL | **part 1 built** (`claude/crm-loop-handoffs-dropoff`) | none (part 1) |
-| [11](11-why-they-unsubscribe.md) · [#352](https://github.com/ivanyeors/mp/issues/352) | Ask why they unsubscribe, and keep it on the Lost Customer | AFK, then HITL | not started | 03 |
+| [11](11-why-they-unsubscribe.md) · [#352](https://github.com/ivanyeors/mp/issues/352) | Ask why they unsubscribe, and keep it on the Lost Customer | AFK, then HITL | **built**; the owner approved the answers (2026-11-01) | 03 |
 
 ## Dependency graph
 
@@ -76,7 +76,7 @@ graph TD
    customers are placed by count until 09 lands.
 3. **09 once the owner confirms the ADR 0029 amendment.** It gives Shopify customers their dates.
 4. **04, 05 and 06 in parallel.**
-5. **07** once its words are approved; **08** closes the build. Each Playbook is a **Starter**
+5. **07**, its words approved (2026-11-01); **08** closes the build. Each Playbook is a **Starter**
    (PRD-campaign-email-editor slice 08): an entry in `PLAYBOOK_STARTERS`
    (`lib/email-campaigns/starters.ts`) with its words (`words`) and its stage's Segment
    (`audience`, the Segment found by name). The Start panel of *New campaign* and the palette's
