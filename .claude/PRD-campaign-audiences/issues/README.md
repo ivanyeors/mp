@@ -15,7 +15,7 @@ demoable path through the layers it touches.
 |---|-------|------|--------|------------|
 | [01](01-glossary-and-adr.md) | Glossary and ADR | AFK | **built** | none |
 | [02](02-consent-where-people-give-their-email.md) | Ask for consent where people give their email | AFK, then HITL | **built** at checkout, customisation, booking; counsel to read | none |
-| [03](03-newsletter-sign-up.md) | A sign-up for people who have not bought, double opt-in | AFK | not started | 02, owner decision 6 |
+| [03](03-newsletter-sign-up.md) | The sign-up is the Customer sign-in (two tabs: Customer, Staff) | AFK | built | 02, owner decision 6 |
 | [04](04-purchase-filters.md) | Purchase filters: didn't buy, pillow size, delivered, sub-status | AFK | **built** | none |
 | [05](05-reach-filters.md) | Reach filters: ships to, language, campaign history, last emailed | AFK | **built** | 08 (clicked values only) |
 | [06](06-exclude-segments.md) | Exclude Segments from an Audience | AFK | **built** | none |
@@ -35,7 +35,7 @@ demoable path through the layers it touches.
 graph TD
   s01[01 Glossary and ADR · built]
   s02[02 Consent at checkout, customisation, booking · built]
-  s03[03 Sign-up, double opt-in]
+  s03[03 Sign-up is the sign-in · built]
   s04[04 Purchase filters · built]
   s05[05 Reach filters · built]
   s06[06 Exclusions · built]
@@ -88,4 +88,6 @@ graph TD
    one Wave a day per campaign, paused when its Segment changes), then 11 (results by stage at
    send, purchases within 30 days, and a holdout offered from 500 sent).
 6. **03, 12 and 13** last: 12 needs six campaigns' clicks, 13 needs unsubscribe reasons.
-   **Next:** 03 (the sign-up, double opt-in: 02 and owner decision 6 are done), then 12.
+   **Done 2026-11-01:** 03, redesigned with the owner: the sign-up is the Customer sign-in, and
+   Sign in has a Customer tab and a Staff tab (ADR 0041). Owner to-do: paste the two auth email
+   templates. **Next:** 12, then 13.

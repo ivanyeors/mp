@@ -1,17 +1,18 @@
 import type { AftercareFakeDb, RpcHandler } from "@/lib/aftercare/__tests__/fake-db";
 
 /**
- * set_marketing_email as 20261031144854_consent_customisation_appointment.sql defines it, for
+ * set_marketing_email as 20261101031444_consent_sign_up.sql defines it, for
  * the in-memory client (`fakeAftercareDb`): the state, its provenance and one
  * event together; nothing when unchanged; only the moves each source may make.
  * supabase/tests/customer-migration/assert-07-marketing-consent.sql and
  * supabase/tests/campaign-audiences/assert-consent-by-default.sql and
- * supabase/tests/campaign-audiences/assert-02-consent-boxes.sql assert the
+ * supabase/tests/campaign-audiences/assert-02-consent-boxes.sql and
+ * supabase/tests/campaign-audiences/assert-03-sign-up.sql assert the
  * real function against Postgres.
  */
-const SUBSCRIBERS = ["account", "shopify_import", "import_default", "checkout", "customisation", "appointment"];
+const SUBSCRIBERS = ["account", "shopify_import", "import_default", "checkout", "customisation", "appointment", "sign_in", "newsletter"];
 /** Subscribe only someone nobody has asked; skip anyone else quietly. */
-const ONLY_NOBODY_ASKED = ["shopify_import", "import_default", "checkout", "customisation", "appointment"];
+const ONLY_NOBODY_ASKED = ["shopify_import", "import_default", "checkout", "customisation", "appointment", "sign_in", "newsletter"];
 
 export const setMarketingEmailRpc: RpcHandler = (args, db: AftercareFakeDb) => {
   const to = args.p_to as string;

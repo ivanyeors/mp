@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "lib/auth/customer-identity.ts": {
-    "mtime": 1793088377.886393,
-    "seen": 1793454606.7249832,
-    "ast_hash": "15499e480f70333953c31652b4dca356",
+    "mtime": 1793501973.991132,
+    "seen": 1793503014.1045413,
+    "ast_hash": "925127cc7be004c7a9d2edf435f3fdf7",
     "semantic_hash": ""
   },
   "lib/auth/dock-chrome.check.ts": {
@@ -1182,9 +1182,9 @@
     "semantic_hash": ""
   },
   "lib/routing/is-marketing-route.ts": {
-    "mtime": 1793088377.916867,
-    "seen": 1793454606.7258754,
-    "ast_hash": "274176f21f0878a70c559c1576363615",
+    "mtime": 1793502379.9275575,
+    "seen": 1793503014.1087582,
+    "ast_hash": "8b4a9d9673449acdd67272f8988db013",
     "semantic_hash": ""
   },
   "lib/seo/answer-lede-coverage.check.ts": {
@@ -2364,9 +2364,9 @@
     "semantic_hash": ""
   },
   "app/auth/callback/route.ts": {
-    "mtime": 1793088377.7378852,
-    "seen": 1793454606.7247,
-    "ast_hash": "07a51e13dc1b3f3c7ceb2805f34d0894",
+    "mtime": 1793501973.9901066,
+    "seen": 1793503014.1041195,
+    "ast_hash": "46bde992fb26bafcd0e4f208176c06c0",
     "semantic_hash": ""
   },
   "app/auth/signout/route.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793463912.2301924,
-    "seen": 1793464163.39995,
-    "ast_hash": "e50068d09fb0b4a27db260ab423c2fbf",
+    "mtime": 1793502524.415023,
+    "seen": 1793503014.1115174,
+    "ast_hash": "cc309f4fe53c878f71edda1680309e76",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -7122,9 +7122,9 @@
     "semantic_hash": ""
   },
   "scripts/build-auth-email-templates.ts": {
-    "mtime": 1793088379.2602308,
-    "seen": 1793454606.726422,
-    "ast_hash": "6900cb35c196814e429302186d533c05",
+    "mtime": 1793501993.4862587,
+    "seen": 1793503014.1094363,
+    "ast_hash": "80d06b4c8951bc4fc5709020880f9891",
     "semantic_hash": ""
   },
   "scripts/build-email-contact-sheet.ts": {
@@ -7146,27 +7146,27 @@
     "semantic_hash": ""
   },
   "supabase/templates/README.md": {
-    "mtime": 1793088379.2922306,
-    "seen": 1793454606.7279875,
-    "ast_hash": "955f8f0e00d654dd7dbe32809d786f9b",
+    "mtime": 1793502017.520187,
+    "seen": 1793503014.1117015,
+    "ast_hash": "c04a171ac8da904a7d423721fb73d186",
     "semantic_hash": ""
   },
   "supabase/templates/confirm-signup.html": {
-    "mtime": 1793395302.5838375,
-    "seen": 1793454606.7279906,
-    "ast_hash": "56a8496e672757e74be6253231655e99",
+    "mtime": 1793502003.5654607,
+    "seen": 1793503014.1117074,
+    "ast_hash": "dd1a84aa44bb369bac84b083781b1eae",
     "semantic_hash": ""
   },
   "supabase/templates/invite-user.html": {
-    "mtime": 1793395302.5838375,
-    "seen": 1793454606.7279935,
+    "mtime": 1793502003.5654607,
+    "seen": 1793503014.1117122,
     "ast_hash": "bda62b0fe64701f0fd096cb3f6077473",
     "semantic_hash": ""
   },
   "supabase/templates/magic-link.html": {
-    "mtime": 1793395302.5838375,
-    "seen": 1793454606.7279956,
-    "ast_hash": "0dc48ca16d6cbda41cb15a8b148e3490",
+    "mtime": 1793502003.5654607,
+    "seen": 1793503014.1117163,
+    "ast_hash": "1aa1963c6181954778017903e8e6326a",
     "semantic_hash": ""
   },
   "app/api/settings/appointments/google-status/route.ts": {
@@ -7260,14 +7260,14 @@
     "semantic_hash": ""
   },
   "supabase/templates/change-email.html": {
-    "mtime": 1793395302.5838375,
-    "seen": 1793454606.7279887,
+    "mtime": 1793502003.5694606,
+    "seen": 1793503014.111704,
     "ast_hash": "9d1c017a7b9466ba6ef651133ab1b034",
     "semantic_hash": ""
   },
   "supabase/templates/reauthentication.html": {
-    "mtime": 1793395302.5878377,
-    "seen": 1793454606.7279973,
+    "mtime": 1793502003.5694606,
+    "seen": 1793503014.1117191,
     "ast_hash": "21007a33752f539daff79e8d9e74095e",
     "semantic_hash": ""
   },
@@ -13692,9 +13692,9 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/fake-consent.ts": {
-    "mtime": 1793460565.007286,
-    "seen": 1793460666.0117636,
-    "ast_hash": "ec42cb13ed228e2318fda35a491882a5",
+    "mtime": 1793502934.3400908,
+    "seen": 1793503014.1082456,
+    "ast_hash": "9489819896be223dba39c0dcaff12a07",
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/unsubscribe.test.ts": {
@@ -13710,9 +13710,9 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/state.ts": {
-    "mtime": 1793460565.0076404,
-    "seen": 1793460666.0117693,
-    "ast_hash": "e83911dc7ee181ca4ecd3c076660934b",
+    "mtime": 1793502934.3408165,
+    "seen": 1793503014.1082528,
+    "ast_hash": "3bf746405fa68b49dad09b811fc64a58",
     "semantic_hash": ""
   },
   "lib/marketing-consent/unsubscribe-route.check.ts": {
@@ -15864,9 +15864,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/lib/shoot.mjs": {
-    "mtime": 1793453584.679756,
-    "seen": 1793454606.7239163,
-    "ast_hash": "0137a4c37d6f4ad420fd87155451d339",
+    "mtime": 1793502328.4951081,
+    "seen": 1793503014.1031651,
+    "ast_hash": "b9410e5897a44d9576241ca94fe7840d",
     "semantic_hash": ""
   },
   ".claude/skills/preview/preview": {
@@ -16746,9 +16746,9 @@
     "semantic_hash": ""
   },
   "docs/adr/README.md": {
-    "mtime": 1793453634.6506755,
-    "seen": 1793454606.7279503,
-    "ast_hash": "caa69642f19b9bc15c5f2bd3b9c5f9c4",
+    "mtime": 1793502470.86945,
+    "seen": 1793503014.1116369,
+    "ast_hash": "940cb8eeea457847228b3952b2429e12",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/shop.mjs": {
@@ -17010,9 +17010,9 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/box-consent.test.ts": {
-    "mtime": 1793453627.1505115,
-    "seen": 1793454606.7254958,
-    "ast_hash": "b733ebc06538c8fb42d521cda4a183e1",
+    "mtime": 1793502081.333459,
+    "seen": 1793503014.1082401,
+    "ast_hash": "4aa7e54dea9c299f8debdd0ff72ee120",
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/checkout-consent.test.ts": {
@@ -17052,9 +17052,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/campaign-audiences-prd.md": {
-    "mtime": 1793463942.7733426,
-    "seen": 1793464163.3983986,
-    "ast_hash": "6a5525e67e90a572b3a99318180781a5",
+    "mtime": 1793502505.4597514,
+    "seen": 1793503014.1102548,
+    "ast_hash": "4411b6b18b78af8ac5c254aee7f29237",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/01-glossary-and-adr.md": {
@@ -17070,9 +17070,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/03-newsletter-sign-up.md": {
-    "mtime": 1793395762.1236172,
-    "seen": 1793454606.7269816,
-    "ast_hash": "d843c4aa0db8226c64761abcf2f6e35a",
+    "mtime": 1793502934.3418958,
+    "seen": 1793503014.110267,
+    "ast_hash": "69a21a2c286ecba3955aa990d2afcd3f",
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/04-purchase-filters.md": {
@@ -17148,9 +17148,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-campaign-audiences/issues/README.md": {
-    "mtime": 1793463942.7722306,
-    "seen": 1793464163.398631,
-    "ast_hash": "ac0bbc75a319e0b773d4446a26b07061",
+    "mtime": 1793502505.4591153,
+    "seen": 1793503014.1105826,
+    "ast_hash": "877bd254c603fc6dd01ac1d37f7dce61",
     "semantic_hash": ""
   },
   "docs/adr/0039-marketing-consent-by-default.md": {
@@ -17166,9 +17166,9 @@
     "semantic_hash": ""
   },
   "docs/data-flows/marketing-consent.md": {
-    "mtime": 1793460565.011591,
-    "seen": 1793460666.0144486,
-    "ast_hash": "345cd22dc5cf0a8dd8e431eb75a2992f",
+    "mtime": 1793502934.3414745,
+    "seen": 1793503014.1116493,
+    "ast_hash": "c93c85aa39ae567581bbe327e2c84ceb",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/__tests__/customer-filter-groups.test.ts": {
@@ -17307,6 +17307,60 @@
     "mtime": 1793464053.6782217,
     "seen": 1793464163.398282,
     "ast_hash": "0fa18a60114abc277c438720ef9c77c7",
+    "semantic_hash": ""
+  },
+  "app/auth/callback/__tests__/route.test.ts": {
+    "mtime": 1793502122.2592266,
+    "seen": 1793503014.104117,
+    "ast_hash": "89c2c1d01de4a1ed6a59e5e8c156a9a7",
+    "semantic_hash": ""
+  },
+  "lib/auth/__tests__/complete-sign-in.test.ts": {
+    "mtime": 1793502061.7454593,
+    "seen": 1793503014.1044908,
+    "ast_hash": "a51f0890165d477a00bd2d049f397202",
+    "semantic_hash": ""
+  },
+  "lib/auth/__tests__/sign-in-intent.test.ts": {
+    "mtime": 1793502046.4294598,
+    "seen": 1793503014.104525,
+    "ast_hash": "cdedb0b910ec9fd77efa14163de3125d",
+    "semantic_hash": ""
+  },
+  "lib/auth/complete-sign-in.ts": {
+    "mtime": 1793501691.201468,
+    "seen": 1793503014.1045372,
+    "ast_hash": "cad13dc65013b01960f80033e7c143e6",
+    "semantic_hash": ""
+  },
+  "lib/auth/sign-in-actions.ts": {
+    "mtime": 1793501714.0174673,
+    "seen": 1793503014.1045673,
+    "ast_hash": "5343ba67bb3113d09085e950500a713b",
+    "semantic_hash": ""
+  },
+  "lib/auth/sign-in-intent.ts": {
+    "mtime": 1793501658.2614686,
+    "seen": 1793503014.1045687,
+    "ast_hash": "6f42d7349966a4f25c64bfa99d13ba70",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261101031444_consent_sign_up.sql": {
+    "mtime": 1793501534.2654715,
+    "seen": 1793503014.1099982,
+    "ast_hash": "409ffc0a5bda90e150d9ca046aa0e8b3",
+    "semantic_hash": ""
+  },
+  "supabase/tests/campaign-audiences/assert-03-sign-up.sql": {
+    "mtime": 1793502934.3393111,
+    "seen": 1793503014.1100047,
+    "ast_hash": "70f9a30d0b4f9c8995228cad38d1e6dc",
+    "semantic_hash": ""
+  },
+  "docs/adr/0041-sign-up-is-the-customer-sign-in.md": {
+    "mtime": 1793502468.85345,
+    "seen": 1793503014.1116347,
+    "ast_hash": "bd632b925880cac72eb7f28da4ae0274",
     "semantic_hash": ""
   }
 }

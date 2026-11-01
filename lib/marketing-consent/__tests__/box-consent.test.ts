@@ -116,6 +116,11 @@ describe("the boxes' words and their provenance", () => {
     expect(describeConsent({ state: "subscribed", source: "appointment", updatedAt: at })).toBe(
       "Subscribed on 31 Oct 2026, from the box when they booked.",
     );
-    for (const source of CONSENT_BOX_SOURCES) expect(consentSourcePhrase(source)).toMatch(/^from the box /);
+    for (const source of CONSENT_BOX_SOURCES.filter((s) => s !== "newsletter")) {
+      expect(consentSourcePhrase(source)).toMatch(/^from the box /);
+    }
+    // The footer sign-up acts as a box but is a form of its own (slice 03).
+    expect(consentSourcePhrase("sign_in")).toBe("from the box when they signed in");
+    expect(consentSourcePhrase("newsletter")).toBe("from the email sign-up in the site footer");
   });
 });

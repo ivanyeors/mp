@@ -35,6 +35,8 @@ export function WelcomeView({ locale, data }: { locale: Locale; data: WelcomePag
             nextPath={welcomePath(locale, state.returnToken)}
             initialEmail={state.prefillEmail}
             submitLabel="Email me a sign-in code"
+            // Their consent came with the import (ADR 0039); this screen only signs them in.
+            consentBox={false}
           />
         </div>
       </main>

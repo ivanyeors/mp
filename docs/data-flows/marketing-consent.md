@@ -8,7 +8,7 @@ undo removes only its own events).
 
 One SQL function writes it: **`set_marketing_email(customer, to, source, at,
 campaign_send)`** (last restated in
-`20261031152709_campaign_clicks_and_unsubscribes.sql`). The last two arguments
+`20261101031444_consent_sign_up.sql`). The last two arguments
 are optional; `campaign_send` is kept on the event only when the send is that
 Customer's own, so an unsubscribe or a complaint names the campaign behind it.
 Restate it with all five arguments: a four-argument copy would sit beside it
@@ -31,16 +31,19 @@ is server-only, and the customer's own key cannot call the function.
 | `checkout` | the box at shop checkout, ticked by default | subscribe, only someone nobody has asked | `app/api/shop/checkout` → `recordCheckoutConsent()` |
 | `customisation` | the box on a customisation's contact step, ticked by default: Mpillow, Basic, Mbolster, a Paired build (once, on the Mpillow), an Assisted customisation | subscribe, only someone nobody has asked | `app/api/results/hold` → `recordBoxConsentByEmail()` |
 | `appointment` | the box on booking: a guest's customisation visit, a signed-in re-adjustment (free or paid) | subscribe, only someone nobody has asked | `app/api/appointments/book` → `recordBoxConsentByEmail()`; `app/api/readjustments/book` and `/checkout` → `recordBoxConsent()` |
-| `account` | the customer, signed in, on their Profile | either way; the only source that re-subscribes | `app/[lang]/account/actions.ts` → `setMarketingEmail()` |
+| `sign_in` | the box on **Sign in**'s Customer tab, ticked by default; recorded once the link, code or Google proves the address, never for a Staff login | subscribe, only someone nobody has asked | `completeSignIn()` (`lib/auth/complete-sign-in.ts`), from `/auth/callback`, `finishSignIn` and `/auth/confirm` (ADR 0041) |
+| `newsletter` | *Get our emails* in the site footer: the same sign-in link and code | subscribe, only someone nobody has asked; someone who unsubscribed is offered *Email me again* (`account`) | `completeSignIn()`, as above |
+| `account` | the customer, signed in, on their Profile, or *Email me again* after a footer sign-up | either way; the only source that re-subscribes | `app/[lang]/account/actions.ts` → `setMarketingEmail()` |
 | `unsubscribe_link` | the link in every campaign email; since slice 08 it names its send | unsubscribe | `app/api/email/unsubscribe` |
 | `complaint` | Resend reports a spam complaint on a campaign send, which it names | unsubscribe | `record_campaign_send_event()` (`20261031152709`), from `app/api/email/resend-webhook` |
 | `support` | Staff, at the customer's request, on the Customer page | unsubscribe only | `app/api/shop/customers/[id]/marketing-consent` |
 
 ## The boxes
 
-The four boxes (checkout, customisation, booking, and the footer sign-up once
-slice 03 builds it) share one line, `MARKETING_BOX_LABEL`, and the booking
-form's Chinese (`slides.bookAppointment.flow.marketingEmail`). Each is:
+The four boxes (checkout, customisation, booking, and **Sign in**'s Customer
+tab) share one line, `MARKETING_BOX_LABEL`, and the booking form's Chinese
+(`slides.bookAppointment.flow.marketingEmail`). The footer's *Get our emails*
+says the same in its own words. The three form boxes are:
 
 - **a boolean in the request**, absent meaning unticked, so a tab opened
   before the box sends nothing new;
@@ -55,6 +58,14 @@ form's Chinese (`slides.bookAppointment.flow.marketingEmail`). Each is:
   a `not_subscribed` Customer; anyone who unsubscribed, or chose already, is
   skipped. Unticked, it changes nothing: a customer who wants no email
   unsubscribes from the email.
+
+**The sign-up is the sign-in** (slice 03, ADR 0041). The Sign in box and the
+footer's *Get our emails* differ from the form boxes in one way: nothing is
+recorded when the form is sent. The choice rides in the sign-in link's return
+address, and `completeSignIn` records it on the person's own Customer only once
+the link, the code or Google has proven the address. A Staff sign-in, on the
+Staff tab, never makes a Customer or records consent; the Sign in box is not
+recorded for a Staff login on the Customer tab either.
 
 Not yet: a signed-in Customer who unsubscribed should see the box unticked, so
 ticking it is their own `account` choice (slice 02, still to do).
@@ -71,8 +82,11 @@ rule. An **Audience** or a
 ## Tests
 
 - `supabase/tests/customer-migration/assert-07-marketing-consent.sql`,
-  `supabase/tests/campaign-audiences/assert-consent-by-default.sql` and
-  `assert-02-consent-boxes.sql`: the function against Postgres.
+  `supabase/tests/campaign-audiences/assert-consent-by-default.sql`,
+  `assert-02-consent-boxes.sql` and `assert-03-sign-up.sql`: the function
+  against Postgres.
+- `lib/auth/__tests__/sign-in-intent.test.ts` and `complete-sign-in.test.ts`:
+  which sign-in records which consent, and that a Staff sign-in records none.
 - `lib/marketing-consent/__tests__/`: the TypeScript callers against a fake
   that applies the same rules (`fake-consent.ts`).
 - Each route's `__tests__/`: the box is read as a boolean, recorded once, for

@@ -46,3 +46,4 @@ one is amended to point at it.
 | [0038](0038-staff-refunds-full-items-or-amount.md) | Staff refund an Order in full, by its lines, or by an amount, and a charge correction needs no return |
 | [0039](0039-marketing-consent-by-default.md) | Imported customers start subscribed, and the checkout box is ticked by default |
 | [0040](0040-campaign-audiences-read-the-crm.md) | Campaign audiences read the CRM, and one claim rule decides who receives |
+| [0041](0041-sign-up-is-the-customer-sign-in.md) | The sign-up is the Customer sign-in, and Staff sign in on their own tab |

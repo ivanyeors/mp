@@ -9,15 +9,15 @@ import { formatAdminDateMY } from "@/lib/format/admin-date";
  * Writes go through `set_marketing_email()` (20261020120000) only, which
  * appends every change to `customer_consent_events`. Nothing moves a Customer
  * back to `not_subscribed`, and nothing moves `unsubscribed` → `subscribed`
- * except the customer's own `account` action. The import's default and the
- * boxes (checkout, customisation, booking) subscribe only someone nobody has
- * asked (ADR 0039).
+ * except the customer's own `account` action. The import's default, the
+ * boxes (checkout, customisation, booking, Sign in) and the footer sign-up
+ * subscribe only someone nobody has asked (ADR 0039).
  */
 
 export const MARKETING_EMAIL_STATES = ["subscribed", "not_subscribed", "unsubscribed"] as const;
 export type MarketingEmailState = (typeof MARKETING_EMAIL_STATES)[number];
 
-/** Who or what made a change. The migrations' checks list the same ten (20261031144854). */
+/** Who or what made a change. The migrations' checks list the same twelve (20261101031444). */
 export const CONSENT_SOURCES = [
   "shopify_import",
   "import_default",
@@ -25,6 +25,8 @@ export const CONSENT_SOURCES = [
   "checkout",
   "customisation",
   "appointment",
+  "sign_in",
+  "newsletter",
   "account",
   "unsubscribe_link",
   "complaint",
@@ -43,8 +45,13 @@ export const MARKETING_EMAIL_LABEL = "Email me news and offers";
  */
 export const MARKETING_BOX_LABEL = "Email me important updates, event invites and offers. No spam, unsubscribe anytime.";
 
-/** The sources a box records (ADR 0039): subscribe only, only someone nobody has asked. */
-export const CONSENT_BOX_SOURCES = ["checkout", "customisation", "appointment"] as const;
+/**
+ * The sources a box records (ADR 0039): subscribe only, only someone nobody has
+ * asked. The sign-up acts as one (PRD-campaign-audiences slice 03): `sign_in`
+ * is the box on Sign in's Customer tab, `newsletter` the footer's "Get our
+ * emails"; both are recorded only once the address is proven.
+ */
+export const CONSENT_BOX_SOURCES = ["checkout", "customisation", "appointment", "sign_in", "newsletter"] as const;
 export type ConsentBoxSource = (typeof CONSENT_BOX_SOURCES)[number];
 
 export const MARKETING_EMAIL_STATE_LABEL: Record<MarketingEmailState, string> = {
@@ -61,6 +68,8 @@ export const CONSENT_SOURCE_LABEL: Record<ConsentSource, string> = {
   checkout: "the box at checkout",
   customisation: "the box when they customised",
   appointment: "the box when they booked",
+  sign_in: "the box when they signed in",
+  newsletter: "the email sign-up in the site footer",
   account: "the customer, in their account",
   unsubscribe_link: "the unsubscribe link in an email",
   complaint: "a spam complaint",

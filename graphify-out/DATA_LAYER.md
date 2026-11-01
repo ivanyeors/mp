@@ -433,10 +433,10 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `PATCH()` [select,update] — app/api/shop/customers/[id]/route.ts:47
   - `POST()` [insert] — app/api/shop/customers/route.ts:44
   - `findOrCreateCustomer()` [insert] — lib/ecommerce/customers.ts:24
-  - `linkCustomerToAuthUser()` [insert,select,update] — lib/auth/customer-identity.ts:71
+  - `linkCustomerToAuthUser()` [insert,select,update] — lib/auth/customer-identity.ts:82
   - `setMyAftercarePreference()` [update] — app/[lang]/account/actions.ts:60
-  - `touchAccountProviders()` [update] — lib/auth/customer-identity.ts:230
-  - `touchCustomerLastSeen()` [update] — lib/auth/customer-identity.ts:173
+  - `touchAccountProviders()` [update] — lib/auth/customer-identity.ts:242
+  - `touchCustomerLastSeen()` [update] — lib/auth/customer-identity.ts:185
   - `updateCustomerStats()` [update] — lib/ecommerce/customers.ts:82
 - Read by:
   - `GET()` [select] — app/api/settings/customers/[id]/timeline/route.ts:47
@@ -1024,7 +1024,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [select,update] — app/api/stripe/webhook/route.ts:285
   - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:931
   - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:170
-  - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:261
+  - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:273
   - `deductOrderStock()` [update] — lib/ecommerce/order-stock.ts:25
   - `deductOrderStockOrFlag()` [update] — lib/ecommerce/order-stock.ts:80
   - `flagOrder()` [update] — app/api/stripe/webhook/route.ts:152
@@ -1826,7 +1826,7 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
   - `setAftercarePreference()` — lib/aftercare/preferences.ts:49
 
 ### set_marketing_email
-Defined in supabase/migrations/20261031152709_campaign_clicks_and_unsubscribes.sql:139
+Defined in supabase/migrations/20261101031444_consent_sign_up.sql:44
 - Called by:
   - `setMarketingEmail()` — lib/marketing-consent/consent.ts:64
 
@@ -2267,6 +2267,8 @@ app/[lang]/account/addresses/page.tsx
 
 ### /account/login
 app/[lang]/account/login/page.tsx
+- Server actions: `finishSignIn()`
+- Endpoints: `/auth/signout`
 - Loads: `getAdminContext`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `mp_staff`
 - Reads, through the same: `admin_roles`, `admin_users`
@@ -2287,6 +2289,7 @@ app/[lang]/account/orders/[orderNumber]/page.tsx
 
 ### /account/welcome
 app/[lang]/account/welcome/page.tsx
+- Server actions: `finishSignIn()`
 - Endpoints: `/auth/signout`
 - Loads: `linkCustomerToAuthUser()`, `openClaimLink()`, `readClaimBonusView()`
 - Reads: `customer_addresses`
@@ -2307,6 +2310,10 @@ app/[lang]/appointments/confirmed/page.tsx
 - Reads: `readjustment_bookings`
 - Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
 - Reads, through the same: `email_template_copy`, `points_ledger`, `readjustment_bookings`
+
+### /auth/confirm
+app/auth/confirm/page.tsx
+- Server actions: `confirmEmailLink()`
 
 ### /blog
 app/[lang]/blog/page.tsx
@@ -2406,6 +2413,7 @@ app/[lang]/results/page.tsx
 
 ### /results/[id]
 app/[lang]/results/[id]/page.tsx
+- Server actions: `finishSignIn()`
 - Endpoints: `/api/results [GET]`, `/api/results/[id] [GET]`, `/api/results/[id]/accept [POST]`, `/api/results/[id]/decline [POST]`, `/api/results/[id]/reorder [POST]`
 - Changes, through its actions, endpoints and their calls: `commissions`, `coupons`, `customers`, `drop_off_reasons`, `inventory_transactions`, `milestone_bonuses`, `mp_config_responses`, `order_items`, `order_payments`, `order_timeline`, `orders`, `partner_emails`, `partner_milestones`, `partner_whatsapp`, `product_variants`, `result_bolster_filling_placements`, `result_filling_placements`
 - Reads, through the same: `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `bom_templates`, `config_upload`, `email_template_copy`, `inventory_balances`, `item_prices`, `items`, `milestone_rungs`, `partner_users`, `partners`, `pillow_products`, `points_ledger`, `product_prices`, `service_prices`, `shipping_methods`, `tax_rates`

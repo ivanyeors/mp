@@ -115,7 +115,8 @@ counsel's check against the primary text before slice 02 ships.
   [Spam Control Act](https://sso.agc.gov.sg/Act/SCA2007)). Consented email is not unsolicited,
   which is why the source of every consent is recorded.
   → *An unticked box wherever a person gives us their email (slice 02); a double opt-in sign-up
-  for people who have not bought (slice 03).*
+  for people who have not bought (slice 03), built as the Customer sign-in: the emailed link or
+  code is the confirmation (ADR 0041).*
 - **Engagement means clicks, not opens.** Mail Privacy Protection marks nearly every Apple Mail
   message opened; vendors move segments and triggers to clicks
   ([Mapp](https://docs.mapp.com/docs/ios-15-and-mapp),
@@ -209,8 +210,13 @@ campaign); the points-expiry reminders (already automatic, `PRD-loyalty-points` 
    `set_marketing_email()` with its own source (`checkout`, `customisation`, `appointment`), and
    only for someone nobody has asked. Unticked changes nothing; nothing re-subscribes an
    `unsubscribed` Customer but their own Profile. **Built at all three; counsel to read.**
-3. **A sign-up for people who have not bought (03).** A footer form, double opt-in: the confirm
-   link creates or finds the Customer and subscribes them (`newsletter`). They are *Lead*s.
+3. **A sign-up for people who have not bought (03). Built as the Customer sign-in (ADR 0041).**
+   Sign in has two tabs: *Customer* (the default), where signing in and signing up are one step,
+   with a box ticked by default (`sign_in`); and *Staff*, for the Admin Panel only, which never
+   makes a Customer or records consent. The footer's *Get our emails* sends the same link and code
+   (`newsletter`). The click or code proves the address: only then is the Customer made, in the
+   page's language, and the consent recorded, for someone nobody has asked. They are *Lead*s. The
+   emailed link lands on `/auth/confirm`, whose button spends the token, so mail filters cannot.
 4. **Purchase filters (04).** *Didn't buy*, *Pillow size*, *Delivered* in days, and the
    **sub-status** on the Stage filter (*New · Delivered*, *At risk · Lapsed*).
 5. **Reach filters (05).** *Ships to* (Singapore, elsewhere, unknown), *Language*, *Campaign*
@@ -317,7 +323,8 @@ change is in the slice it touches.
    saved Segment, and in the toast after saving one. *Built (slice 11):* the holdout is a
    switch on the Keep sending card, offered once the campaign has been sent to 500 people.
 6. **The sign-up creates Customer rows for people who have not bought. Settled as recommended.**
-   They are *Lead*s.
+   They are *Lead*s. *Built (slice 03), redesigned with the owner on 2026-11-01:* the sign-up is
+   the Customer sign-in, and Staff sign in on their own tab (ADR 0041).
 7. **Topics. Settled as recommended:** decided after three months of unsubscribe reasons.
 
 ### Live audiences, by Lifecycle stage
@@ -367,7 +374,8 @@ review request job); no third cron (fourth hazard); no PII in Telegram; Resend's
   not within seconds of delivery), and the results say clicks are approximate.
 - **A tick at checkout is not a verified address.** Someone can type another person's email.
   The confirmation email, bounce suppression and the unsubscribe link in every campaign are the
-  protection; the sign-up form, where no purchase confirms the address, is double opt-in.
+  protection; the sign-up, where no purchase confirms the address, is the sign-in itself: no
+  Customer and no consent until the link or code proves it (ADR 0041).
 - **Kept sending shares 100 emails a day.** On Resend's free plan, a kept-sending Wave and a
   manual Wave draw on the same room. The daily job leaves a reserve (default 30) for tests and
   manual Waves, and stops at a 429.
