@@ -53,6 +53,30 @@ describe("OwnFittingsCard", () => {
     }
   });
 
+  it("marks the newest of several visits Latest and shows each changed measurement's value at the visit before", () => {
+    const html = render(
+      <OwnFittingsCard
+        fittings={[
+          fitting({ shoulderLengthIn: 18.5, neckToBackIn: 2.5, headToBackIn: 0.5 }),
+          fitting({ id: "0e000000-0000-4000-8000-0000000000c1", fittedAt: "2024-05-01T03:00:00.000Z", shoulderLengthIn: 18, headToBackIn: null }),
+        ]}
+      />,
+    );
+    expect(html.match(/>Latest</g)).toHaveLength(1);
+    expect(html).toContain("18.5 in");
+    expect(html).toContain("was 18 in");
+    // Unchanged (2.5 both times), or nothing to compare with (C was not taken before): no "was".
+    expect(html).not.toContain("was 2.5 in");
+    expect(html.match(/was \d/g)).toHaveLength(1);
+    expect(html).toContain("where one changed, you can see what it was the visit before");
+  });
+
+  it("shows no Latest tag or earlier values for a single visit", () => {
+    const html = render(<OwnFittingsCard fittings={[fitting()]} />);
+    expect(html).not.toContain(">Latest<");
+    expect(html).not.toMatch(/was \d/);
+  });
+
   it("has no photo, preview or Drive link, and nothing about the import", () => {
     const html = render(<OwnFittingsCard fittings={[fitting()]} />);
     expect(html).toContain("What we recorded at your in-store fitting. Measurements are in inches.");

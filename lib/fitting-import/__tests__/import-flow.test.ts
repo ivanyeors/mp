@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parseFittingFormCsv, type DateOrder } from "@/lib/fitting-import/google-form-csv";
+import { importOrder, parseFittingFormCsv, type DateOrder, type FormRawRow } from "@/lib/fitting-import/google-form-csv";
 import {
   existingFromMatches,
   NO_EXISTING,
   normaliseRows,
   planFittingRow,
   planRows,
+  settleWholeFile,
   type ExistingLookup,
   type IndexedRawRow,
   type RowPreview,
@@ -26,7 +27,12 @@ import { formCsv } from "./fixtures";
 
 const NOW = Date.parse("2026-10-31T08:00:00Z");
 
-/** Five rows: a new email, the same new email again later, a mobile only, a duplicate, an unreachable row. */
+/**
+ * Five rows, in file order: a new email, a mobile only, the same new email
+ * again later, a duplicate of the first, an unreachable row. They are
+ * imported in `importOrder`: the three with an email (file rows 0, 2, 3),
+ * then the two without (1, 4).
+ */
 const FILE = formCsv([
   { "Email:": "new@example.com", Timestamp: "10/1/2026 10:00:00" },
   { "Email:": "", "Mobile No: ": "8123 0002", Timestamp: "10/2/2026 10:00:00" },
@@ -40,31 +46,86 @@ const rowsOf = (text: string) => parseFittingFormCsv(text).rows;
 describe("planFittingRow", () => {
   const existing: ExistingLookup = existingFromMatches([
     { match: "email", key: "mei@example.com", customer_id: "c-mei" },
-    { match: "phone", key: "+6591230001", customer_id: "c-ali" },
-    { match: "phone", key: "+6588880000", customer_id: "c-twin-1" },
-    { match: "phone", key: "+6588880000", customer_id: "c-twin-2" },
+    { match: "phone", key: "+6591230001", customer_id: "c-ali", name_key: "ali tan" },
+    { match: "phone", key: "+6588880000", customer_id: "c-twin-1", name_key: "ann lee" },
+    { match: "phone", key: "+6588880000", customer_id: "c-twin-2", name_key: "ben lee" },
     { match: "key", key: "k-done", customer_id: "c-mei" },
   ]);
+  const row = (over: Partial<{ key: string; email: string | null; phone: string | null; name: string | null }>) => ({
+    key: "k",
+    email: null,
+    phone: null,
+    name: null,
+    ...over,
+  });
 
   it("follows the SQL function's rules in order", () => {
-    expect(planFittingRow({ key: "k-done", email: "x@example.com", phone: null }, existing)).toEqual({ outcome: "already_imported" });
-    expect(planFittingRow({ key: "k", email: "mei@example.com", phone: "+6591230001" }, existing)).toEqual({
+    expect(planFittingRow(row({ key: "k-done", email: "x@example.com" }), existing)).toEqual({ outcome: "already_imported" });
+    expect(planFittingRow(row({ email: "mei@example.com", phone: "+6591230001", name: "Ali Tan" }), existing)).toEqual({
       outcome: "matched_email",
       customer_id: "c-mei",
     });
-    expect(planFittingRow({ key: "k", email: "new@example.com", phone: "+6591230001" }, existing)).toEqual({ outcome: "created" });
-    expect(planFittingRow({ key: "k", email: null, phone: "+6591230001" }, existing)).toEqual({
+    expect(planFittingRow(row({ email: "new@example.com", phone: "+6591230001", name: "Kim Tan" }), existing)).toEqual({
+      outcome: "created",
+    });
+    expect(planFittingRow(row({ phone: "+6591230001", name: "Kim Tan" }), existing)).toEqual({
       outcome: "matched_phone",
       customer_id: "c-ali",
     });
-    expect(planFittingRow({ key: "k", email: null, phone: "+6588880000" }, existing)).toEqual({
+    expect(planFittingRow(row({ phone: "+6588880000", name: "Cara Lee" }), existing)).toEqual({
       outcome: "skip",
       reason: "mobile_matches_several",
     });
-    expect(planFittingRow({ key: "k", email: null, phone: "+6590000000" }, existing)).toEqual({
+    expect(planFittingRow(row({ phone: "+6590000000" }), existing)).toEqual({
       outcome: "skip",
       reason: "no_customer_for_mobile",
     });
+  });
+
+  it("finds one person under another email by their mobile and name, and on a shared mobile by name", () => {
+    expect(planFittingRow(row({ email: "ali.typo@example.com", phone: "+6591230001", name: "  ALI  tan " }), existing)).toEqual({
+      outcome: "matched_phone",
+      customer_id: "c-ali",
+    });
+    expect(planFittingRow(row({ email: "ali.typo@example.com", phone: null, name: "Ali Tan" }), existing)).toEqual({
+      outcome: "created",
+    });
+    expect(planFittingRow(row({ phone: "+6588880000", name: "Ben Lee" }), existing)).toEqual({
+      outcome: "matched_phone",
+      customer_id: "c-twin-2",
+    });
+  });
+});
+
+describe("one person's visits", () => {
+  /** Made-up visits of two people, in file order. */
+  const VISITS = formCsv([
+    { "Name:": "Ivy Ng", "Email:": "", "Mobile No: ": "9123 0010", Timestamp: "3/1/2024 10:00:00" },
+    { "Name:": "Ivy Ng", "Email:": "ivy.ng@example.com", "Mobile No: ": "9123 0010", Timestamp: "6/1/2025 10:00:00" },
+    { "Name:": "Ivy Ng", "Email:": "ivy.work@example.com", "Mobile No: ": "+65 9123 0010", Timestamp: "9/1/2026 10:00:00" },
+    { "Name:": "Kim Ng", "Email:": "kim.ng@example.com", "Mobile No: ": "9123 0010", Timestamp: "9/2/2026 10:00:00" },
+    { "Name:": "Ivy", "Email:": "", "Mobile No: ": "9123 0010", Timestamp: "10/1/2026 10:00:00" },
+  ]);
+
+  it("imports the rows with an email first, and keeps each row's place in the file", () => {
+    const rows = rowsOf(VISITS);
+    expect(rows.map((r) => r.fileRow)).toEqual([1, 2, 3, 0, 4]);
+    const shuffled: FormRawRow[] = [{ cells: {}, other: {} }, { cells: { email: "a@example.com" }, other: {} }];
+    expect(importOrder(shuffled)).toEqual([shuffled[1], shuffled[0]]);
+  });
+
+  it("forecasts every visit of Ivy's on one Customer, and Kim on her own", () => {
+    const normalised = normaliseRows(rowsOf(VISITS).map((raw, i) => ({ i, raw })), "mdy", NOW);
+    const previews = settleWholeFile(normalised, planRows(normalised, NO_EXISTING));
+    expect(previews.map((p) => p.reason ?? p.outcome)).toEqual([
+      "created", // file row 1: Ivy's first email
+      "matched_phone", // file row 2: Ivy under another email, the same mobile and name
+      "created", // file row 3: Kim, the same mobile, another name
+      // file row 0, Ivy's first visit, mobile only: two people now hold the number, and one is Ivy Ng.
+      "matched_phone",
+      // file row 4: the name on the form is only "Ivy", so neither holder is it: listed, not guessed.
+      "mobile_matches_several",
+    ]);
   });
 });
 
@@ -79,22 +140,22 @@ describe("the preview", () => {
       return { ok: true, results: planRows(normaliseRows(chunk.rows, chunk.order, NOW), existing) };
     };
 
-  it("sends only the timestamp, email and mobile, and settles the file as a whole", async () => {
+  it("sends only the timestamp, email, mobile and name, and settles the file as a whole", async () => {
     const seen: IndexedRawRow[][] = [];
     const run = await runFittingPreview(FILE, server(existingFromMatches([{ match: "phone", key: "+6581230002", customer_id: "c" }]), seen));
     expect(run.kind).toBe("done");
     if (run.kind !== "done") return;
     for (const row of seen.flat()) {
-      expect(Object.keys(row.raw.cells).every((k) => ["timestamp", "email", "mobile"].includes(k))).toBe(true);
+      expect(Object.keys(row.raw.cells).every((k) => ["timestamp", "email", "mobile", "name"].includes(k))).toBe(true);
       expect(row.raw.other).toEqual({});
     }
     expect(run.order).toBe("mdy");
     expect(run.previews).toEqual<RowPreview[]>([
       { i: 0, outcome: "created" },
-      { i: 1, outcome: "matched_phone" },
-      // The email row 0 creates is a match by the time row 2 is written.
-      { i: 2, outcome: "matched_email" },
-      { i: 3, outcome: "skip", reason: "duplicate_in_file" },
+      // The email the first row creates is a match by the time the next is written.
+      { i: 1, outcome: "matched_email" },
+      { i: 2, outcome: "skip", reason: "duplicate_in_file" },
+      { i: 3, outcome: "matched_phone" },
       { i: 4, outcome: "skip", reason: "no_contact" },
     ]);
     expect(run.summary.outcomes).toEqual({ created: 1, matched_email: 1, matched_phone: 1, already_imported: 0, skip: 2 });
@@ -122,7 +183,7 @@ describe("the preview", () => {
     expect(proven.kind === "done" && proven.order).toBe("mdy");
   });
 
-  it("drops anything but the three cells on the server", () => {
+  it("drops anything but the four cells on the server", () => {
     const chunk = readPreviewChunk(
       [{ i: 0, raw: { cells: { timestamp: "10/1/2026", notes: "secret", bogus: "x" }, other: { Extra: "y" } } }],
       "mdy",
@@ -135,7 +196,8 @@ describe("the preview", () => {
 describe("the import", () => {
   it("marks duplicates in the payload, and the server re-reads every row itself", () => {
     const payload = applyPayload(rowsOf(FILE), "mdy");
-    expect(payload[3]).toEqual({ i: 3, raw: { cells: {}, other: {} }, skip: "duplicate_in_file" });
+    expect(payload[2]).toEqual({ i: 2, raw: { cells: {}, other: {} }, skip: "duplicate_in_file" });
+    expect(payload.every((r) => !("fileRow" in r.raw))).toBe(true);
 
     const chunk = readApplyChunk(payload, 0);
     expect(chunk.ok).toBe(true);
@@ -143,9 +205,9 @@ describe("the import", () => {
     const rows = importRows(chunk.rows, "mdy", NOW);
     expect(rows.map((r) => ("skip" in r ? r.skip : r.email ?? r.phone))).toEqual([
       "new@example.com",
-      "+6581230002",
       "new@example.com",
       "duplicate_in_file",
+      "+6581230002",
       "no_contact",
     ]);
     const first = rows[0]!;
@@ -154,7 +216,7 @@ describe("the import", () => {
 
   it("refuses a chunk out of order, an unknown skip, or a start with no confirmation", () => {
     const payload = applyPayload(rowsOf(FILE), "mdy");
-    expect(readApplyChunk(payload.slice(1), 0)).toEqual({ ok: false, error: "Rows must run in file order." });
+    expect(readApplyChunk(payload.slice(1), 0)).toEqual({ ok: false, error: "Rows must run in order." });
     expect(readApplyChunk([{ i: 0, raw: {}, skip: "made_up" }], 0)).toEqual({ ok: false, error: "Row 1 has an unknown skip." });
     expect(readStartInput({ fileName: "f.csv", sha256: "a".repeat(64), rowsTotal: 5, dateOrder: "mdy", confirmation: "yes" })).toEqual({
       ok: false,

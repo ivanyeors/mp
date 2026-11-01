@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793500554.4481893,
-    "seen": 1793500763.5884385,
-    "ast_hash": "feee91b0a0219ca8a378bd145f8ef34a",
+    "mtime": 1793504153.734117,
+    "seen": 1793504363.217703,
+    "ast_hash": "3060757e5e1daba39ae398288141117d",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -16746,9 +16746,9 @@
     "semantic_hash": ""
   },
   "docs/adr/README.md": {
-    "mtime": 1793500554.4462202,
-    "seen": 1793500763.5885308,
-    "ast_hash": "7f9c156371da99ed2c34879421336134",
+    "mtime": 1793504153.7317417,
+    "seen": 1793504363.2177837,
+    "ast_hash": "33211d9f3ca655f444f8f643a9351738",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/shop.mjs": {
@@ -16926,9 +16926,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/fittings.mjs": {
-    "mtime": 1793500426.906548,
-    "seen": 1793500763.5839427,
-    "ast_hash": "b73e1a601e85468fc248eb907f616aab",
+    "mtime": 1793503903.8174253,
+    "seen": 1793504363.2143598,
+    "ast_hash": "5328e3b9558ba1a26d6d43fc44feb9c2",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/import-fittings/actions.ts": {
@@ -16974,9 +16974,9 @@
     "semantic_hash": ""
   },
   "lib/fitting-import/__tests__/import-flow.test.ts": {
-    "mtime": 1793462660.9605134,
-    "seen": 1793463670.426734,
-    "ast_hash": "e28ad14d9aab36235beefc3ae550f226",
+    "mtime": 1793503727.4501567,
+    "seen": 1793504363.2159164,
+    "ast_hash": "de746a2bb23173665407237c2f972f98",
     "semantic_hash": ""
   },
   "lib/fitting-import/__tests__/phone-e164-agreement.test.ts": {
@@ -16986,15 +16986,15 @@
     "semantic_hash": ""
   },
   "lib/fitting-import/__tests__/sql-agreement.test.ts": {
-    "mtime": 1793462681.6793575,
-    "seen": 1793463670.4267352,
-    "ast_hash": "f04e48166a86f7acbaad60005fb1389a",
+    "mtime": 1793503762.4914706,
+    "seen": 1793504363.2159245,
+    "ast_hash": "07feb82fd61e5fa5004456e6c5445c07",
     "semantic_hash": ""
   },
   "lib/fitting-import/apply.ts": {
-    "mtime": 1793462553.860507,
-    "seen": 1793463670.4267356,
-    "ast_hash": "83d1f99bb5b6a6a6c38ec4b780b4d240",
+    "mtime": 1793503693.2307208,
+    "seen": 1793504363.2159252,
+    "ast_hash": "034b6458e33619e01e3c2b154ca479b8",
     "semantic_hash": ""
   },
   "lib/fitting-import/batches.ts": {
@@ -17004,21 +17004,21 @@
     "semantic_hash": ""
   },
   "lib/fitting-import/google-form-csv.ts": {
-    "mtime": 1793462432.6764998,
-    "seen": 1793463670.426737,
-    "ast_hash": "d651dad8c5446180b1a90e8fd87ca2a7",
+    "mtime": 1793503486.6493871,
+    "seen": 1793504363.2159283,
+    "ast_hash": "9c8a1814fd22811d62e472c102da507c",
     "semantic_hash": ""
   },
   "lib/fitting-import/plan.ts": {
-    "mtime": 1793462462.5525017,
-    "seen": 1793463670.426738,
-    "ast_hash": "46a6c0a3cc016c176466d2eb82756591",
+    "mtime": 1793503515.4149084,
+    "seen": 1793504363.2159302,
+    "ast_hash": "c64cee6b00743f134fa1a72b7c735367",
     "semantic_hash": ""
   },
   "lib/fitting-import/preview.ts": {
-    "mtime": 1793462514.7005048,
-    "seen": 1793463670.4267385,
-    "ast_hash": "92fd1e05f28e0525043b6ea69c271d85",
+    "mtime": 1793503800.758565,
+    "seen": 1793504363.2159314,
+    "ast_hash": "9b1f11a991222432501d3a9623c2db0e",
     "semantic_hash": ""
   },
   "lib/fitting-import/records.ts": {
@@ -17040,9 +17040,9 @@
     "semantic_hash": ""
   },
   "scripts/check-fitting-import-sql.sh": {
-    "mtime": 1793462213.932749,
-    "seen": 1793463670.4273002,
-    "ast_hash": "ee683bc205e99447607ee241200cedc2",
+    "mtime": 1793503788.736407,
+    "seen": 1793504363.216624,
+    "ast_hash": "f9df824e61682ed3ebd46ec7d20c6961",
     "semantic_hash": ""
   },
   "supabase/migrations/20261031120000_customer_fittings.sql": {
@@ -17052,15 +17052,15 @@
     "semantic_hash": ""
   },
   "supabase/tests/fitting-import/assert-agreement.sql": {
-    "mtime": 1793462694.9954107,
-    "seen": 1793463670.4275832,
-    "ast_hash": "ae95760ecbf7aa72080ee85df8d175dd",
+    "mtime": 1793503762.4919453,
+    "seen": 1793504363.2169223,
+    "ast_hash": "f4886a3ddaa39cf91645b122caebe119",
     "semantic_hash": ""
   },
   "supabase/tests/fitting-import/assert-grants.sql": {
-    "mtime": 1793462272.5284903,
-    "seen": 1793463670.4275837,
-    "ast_hash": "1c841014d257f3a26a4d5122f38f02c1",
+    "mtime": 1793503623.5158598,
+    "seen": 1793504363.2169237,
+    "ast_hash": "85b89d1739850e40c732d31b7ce3edbb",
     "semantic_hash": ""
   },
   "supabase/tests/fitting-import/assert-import.sql": {
@@ -17076,9 +17076,9 @@
     "semantic_hash": ""
   },
   "supabase/tests/fitting-import/cases.json": {
-    "mtime": 1793462683.2325146,
-    "seen": 1793463670.4275854,
-    "ast_hash": "6ad371b4a5905e44c13f3404c815421e",
+    "mtime": 1793503763.8315134,
+    "seen": 1793504363.2169294,
+    "ast_hash": "52e3d60467718666bdd009e2fd60da4d",
     "semantic_hash": ""
   },
   "supabase/tests/fitting-import/phone-cases.json": {
@@ -17088,9 +17088,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0039-google-form-fitting-records.md": {
-    "mtime": 1793500554.4455397,
-    "seen": 1793500763.5885289,
-    "ast_hash": "0458007cef11f1a46faeec71eeba6935",
+    "mtime": 1793504144.817632,
+    "seen": 1793504363.2177825,
+    "ast_hash": "4d628c7a146460a6ce7e5c406b736034",
     "semantic_hash": ""
   },
   "lib/fitting-import/__tests__/own-fittings.test.ts": {
@@ -17103,6 +17103,36 @@
     "mtime": 1793500088.177672,
     "seen": 1793500763.5860002,
     "ast_hash": "d60951381594700a0970814727c855b9",
+    "semantic_hash": ""
+  },
+  "lib/fitting-import/__tests__/name-key-agreement.test.ts": {
+    "mtime": 1793503588.4795032,
+    "seen": 1793504363.2159188,
+    "ast_hash": "3e8a8a3c17dbef8fad4edabd0922773c",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261101100000_fitting_import_one_person.sql": {
+    "mtime": 1793503564.7155015,
+    "seen": 1793504363.216898,
+    "ast_hash": "fb745d183426b6dfc203137143f0c051",
+    "semantic_hash": ""
+  },
+  "supabase/tests/fitting-import/assert-name.sql": {
+    "mtime": 1793503588.4829495,
+    "seen": 1793504363.2169259,
+    "ast_hash": "dc21d41f82496d9943dc69eb94f54914",
+    "semantic_hash": ""
+  },
+  "supabase/tests/fitting-import/assert-one-person.sql": {
+    "mtime": 1793503773.9091527,
+    "seen": 1793504363.216927,
+    "ast_hash": "58a1aca5223dc826e14874dcd1cdac06",
+    "semantic_hash": ""
+  },
+  "supabase/tests/fitting-import/name-cases.json": {
+    "mtime": 1793503591.2115033,
+    "seen": 1793504363.2169306,
+    "ast_hash": "d5a55281d4c0afd8737f6f50f2a2d1ff",
     "semantic_hash": ""
   }
 }

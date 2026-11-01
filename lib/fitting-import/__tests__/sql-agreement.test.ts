@@ -29,7 +29,11 @@ const FILE = formCsv([
   {},
   { "Email:": "", "Mobile No: ": "" },
   { Timestamp: "not a date" },
+  // Avery again, under another email: the same mobile and name.
   { "Email:": "second@example.com", "Additional Notes": "Prefers a lower neck.\nRe-check in 3 months.", "Who were you referred from?": "Dr Tan" },
+  // Someone else on Avery's mobile, then a visit of Avery's with only the mobile: two hold it, one is Avery Lim.
+  { "Name:": "Kim Lim", "Email:": "kim.lim@example.com", Timestamp: "10/21/2026 10:00:00" },
+  { "Email:": "", Timestamp: "10/22/2026 10:00:00", "A) Shoulder length Measurements (Inches)": "18.5" },
 ]);
 
 function buildCases() {
@@ -55,7 +59,7 @@ describe("the server action's payload and import_fitting_rows agree", () => {
 
   it("covers every outcome a fresh database can give", () => {
     const outcomes = new Set(buildCases().forecast.map((p) => p.reason ?? p.outcome));
-    for (const o of ["created", "matched_email", "duplicate_in_file", "no_contact", "no_timestamp", "no_customer_for_mobile"]) {
+    for (const o of ["created", "matched_email", "matched_phone", "duplicate_in_file", "no_contact", "no_timestamp", "no_customer_for_mobile"]) {
       expect(outcomes).toContain(o);
     }
   });

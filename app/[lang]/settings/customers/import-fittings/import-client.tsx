@@ -146,9 +146,15 @@ export function FittingImportClient({ history = [] }: { history?: FittingBatchVi
                             serviced them, notes and the Drive photos.
                         </p>
                         <p>
-                            A response with an email joins the customer with that email, or creates one with no
-                            login. One without an email joins the customer with the same mobile number. Only Staff
-                            can see fitting records.
+                            A customer who came in more than once gets every visit as its own record, with its own
+                            measurements, all on one customer. A response joins the customer with its email. Under an
+                            email no customer has, it joins the one with the same mobile and name, or creates a
+                            customer with no login. One without an email joins the customer with its mobile number,
+                            or, when several share it, the one with the same name.
+                        </p>
+                        <p>
+                            Staff see fitting records on the customer&apos;s page. The customer sees their own on their
+                            Profile, without the photos.
                         </p>
                     </InfoTip>
                 </div>
@@ -574,7 +580,7 @@ function ImportPanel({
                             void run({ id: existing.id, rowsDone: existing.rowsDone, rowsTotal: existing.rowsTotal }, existing.dateOrder)
                         }
                     >
-                        {mismatch ? "Check again" : `Continue from row ${int.format(existing.rowsDone + 1)}`}
+                        {mismatch ? "Check again" : "Continue the import"}
                     </Button>
                 </CardContent>
             </Card>
@@ -614,9 +620,9 @@ function ImportOutcome({ run, file }: { run: ImportRun; file: PickedFile }) {
     if (run.kind === "stopped") {
         return (
             <Problem>
-                <p className="font-medium">The import stopped at row {int.format(run.rowsDone)}.</p>
+                <p className="font-medium">The import stopped after {int.format(run.rowsDone)} rows.</p>
                 <p>{run.error}</p>
-                <p>Everything before that row is saved. Pick the same file to continue.</p>
+                <p>Those rows are saved. Pick the same file to continue.</p>
             </Problem>
         );
     }

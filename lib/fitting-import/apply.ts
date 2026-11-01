@@ -7,8 +7,9 @@
  *
  *  1. `startFittingImport` records the batch: the file's name and SHA-256,
  *     its row count, and how its dates are read.
- *  2. The browser sends every row's cells in file order, 100 at a time, from
- *     the batch's `rows_done`. Each chunk is one transaction in
+ *  2. The browser sends every row's cells in import order (`importOrder`:
+ *     the rows with an email first, then the rest, each in file order), 100
+ *     at a time, from the batch's `rows_done`. Each chunk is one transaction in
  *     `import_fitting_rows`, which re-decides every row against the rows as
  *     they are then. A chunk that does not start at `rows_done` is refused,
  *     so a resumed or retried import never counts a row twice.
@@ -32,14 +33,16 @@ export const APPLY_CHUNK_MAX_BYTES = 512 * 1024;
 /** One row as the apply sends it. A row skipped as a duplicate carries no cells at all. */
 export type ApplyRawRow = { i: number; raw: FormRawRow; skip?: "duplicate_in_file" };
 
-/** The rows as the apply sends them: indexed, every cell, duplicates marked. */
+/** The rows as the apply sends them: indexed in import order, every cell, duplicates marked. */
 export function applyPayload(rows: readonly FormRawRow[], order: DateOrder): ApplyRawRow[] {
   const dupes = duplicateSkips(normaliseRows(rows.map((raw, i) => ({ i, raw })), order));
-  return rows.map((raw, i) => (dupes.has(i) ? { i, raw: { cells: {}, other: {} }, skip: "duplicate_in_file" } : { i, raw }));
+  return rows.map(({ cells, other }, i) =>
+    dupes.has(i) ? { i, raw: { cells: {}, other: {} }, skip: "duplicate_in_file" } : { i, raw: { cells, other } },
+  );
 }
 
 /**
- * The server's check of one chunk: at most 100 rows, numbered in file order
+ * The server's check of one chunk: at most 100 rows, numbered in import order
  * from `startIndex`, each read back with `readRawRow`.
  */
 export function readApplyChunk(
@@ -54,7 +57,7 @@ export function readApplyChunk(
   const rows: ApplyRawRow[] = [];
   for (const [k, entry] of input.entries()) {
     const { i, raw, skip } = (entry ?? {}) as { i?: unknown; raw?: unknown; skip?: unknown };
-    if (i !== startIndex + k) return { ok: false, error: "Rows must run in file order." };
+    if (i !== startIndex + k) return { ok: false, error: "Rows must run in order." };
     if (skip !== undefined) {
       if (skip !== "duplicate_in_file") return { ok: false, error: `Row ${i + 1} has an unknown skip.` };
       rows.push({ i, raw: { cells: {}, other: {} }, skip });

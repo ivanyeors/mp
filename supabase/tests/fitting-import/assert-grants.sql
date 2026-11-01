@@ -16,6 +16,7 @@ begin
     'public.fitting_import_skipped_total(jsonb)',
     'public.fitting_import_preview_matches(text[], text[], text[])',
     'public.fitting_source_key(text)',
+    'public.fitting_name_key(text)',
     'public.phone_e164(text)'
   ] loop
     foreach role in array array['anon', 'authenticated', 'public'] loop

@@ -9,12 +9,14 @@
  *     before any server call. It reads the date order from the file's dates;
  *     when every date fits both orders, Staff choose.
  *  2. It sends only what matching needs, a chunk at a time: each row's
- *     Timestamp, Email and Mobile. Measurements, health answers, notes and
- *     photos stay in the browser until the import itself.
+ *     Timestamp, Email, Mobile and Name, in import order (`importOrder`).
+ *     Measurements, health answers, notes and photos stay in the browser
+ *     until the import itself.
  *  3. The server re-reads each row itself and answers per row with an outcome,
  *     never PII.
- *  4. The browser settles what only the whole file can see (a row twice, an
- *     email an earlier row creates) and counts everything from its own copy.
+ *  4. The browser settles what only the whole file can see (a row twice, a
+ *     Customer an earlier row creates, found again by email or by mobile and
+ *     name) and counts everything from its own copy.
  */
 import { toCsv } from "@/lib/csv";
 import { chunkRows, sha256Hex } from "@/lib/customer-migration/preview";
@@ -44,8 +46,8 @@ export { sha256Hex };
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const PREVIEW_CHUNK_ROWS = 250;
 
-/** All the preview sends of a row. */
-export const PREVIEW_FIELDS: readonly FormField[] = ["timestamp", "email", "mobile"];
+/** All the preview sends of a row. The name finds one person under another email, or on a shared mobile. */
+export const PREVIEW_FIELDS: readonly FormField[] = ["timestamp", "email", "mobile", "name"];
 
 export const OUTCOME_LABELS: Record<PlanOutcome, string> = {
   created: "New customer",
@@ -56,9 +58,10 @@ export const OUTCOME_LABELS: Record<PlanOutcome, string> = {
 };
 
 export const OUTCOME_HINTS: Record<PlanOutcome, string> = {
-  created: "No customer has this email yet. One is created, with no login, and the fitting is attached to it.",
+  created: "No customer has this email, or this mobile and name. One is created, with no login, and the fitting is attached to it.",
   matched_email: "Attached to the customer with this email. Their name or mobile is filled in only if it is empty.",
-  matched_phone: "No email on the form. Attached to the one customer with this mobile number.",
+  matched_phone:
+    "Attached to the customer with this mobile number: the only one with it, or the one with the same name. A response under an email no customer has joins the customer with the same mobile and name.",
   already_imported: "This form row is already a fitting record. Nothing changes.",
   skip: "Not imported. Download the list to follow these up.",
 };
@@ -68,7 +71,7 @@ export const SKIP_REASON_LABELS: Record<SkipReason, string> = {
   no_contact: "No usable email or mobile number",
   duplicate_in_file: "Same row twice in this file",
   no_customer_for_mobile: "No email, and no customer has this mobile number",
-  mobile_matches_several: "No email, and several customers share this mobile number",
+  mobile_matches_several: "No email, and several customers share this mobile number, none or more than one with this name",
 };
 
 export const REPAIR_LABELS: Record<RowRepair, string> = {
@@ -146,7 +149,7 @@ export function summarisePreview(previews: readonly RowPreview[], normalised: Re
 
 // ─── Skipped rows ────────────────────────────────────────────────────────────
 
-/** A skipped row as the browser shows it, from its own copy of the file. */
+/** A skipped row as the browser shows it, from its own copy of the file. `row` is its place in the file, 0-based. */
 export type SkippedRow = { row: number; timestamp: string; name: string; email: string; mobile: string; reason: SkipReason };
 
 /** A leading `'` stops a spreadsheet reading a cell as a formula; `cleanCell` strips it again. */
@@ -166,16 +169,23 @@ export function skippedRowsCsv(rows: readonly SkippedRow[]): string {
   );
 }
 
-/** The skipped rows, named from the browser's own copy. `row` is 0-based; the CSV and page add the header. */
+/**
+ * The skipped rows, named from the browser's own copy, in file order. `rows`
+ * are in import order, as `outcomes` index them; `row` is the row's place in
+ * the file, 0-based, and the CSV and page add the header.
+ */
 export function skippedRows(
   rows: readonly IndexedRawRow["raw"][],
   outcomes: readonly { i: number; outcome: PlanOutcome; reason?: SkipReason }[],
 ): SkippedRow[] {
-  return outcomes.flatMap((o) => {
-    if (o.outcome !== "skip" || !o.reason) return [];
-    const c = rows[o.i]?.cells ?? {};
-    return [{ row: o.i, timestamp: c.timestamp ?? "", name: c.name ?? "", email: c.email ?? "", mobile: c.mobile ?? "", reason: o.reason }];
-  });
+  return outcomes
+    .flatMap((o) => {
+      if (o.outcome !== "skip" || !o.reason) return [];
+      const c = rows[o.i]?.cells ?? {};
+      const row = rows[o.i]?.fileRow ?? o.i;
+      return [{ row, timestamp: c.timestamp ?? "", name: c.name ?? "", email: c.email ?? "", mobile: c.mobile ?? "", reason: o.reason }];
+    })
+    .sort((a, b) => a.row - b.row);
 }
 
 // ─── The run ─────────────────────────────────────────────────────────────────

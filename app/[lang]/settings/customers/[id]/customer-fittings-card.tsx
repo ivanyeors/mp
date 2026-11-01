@@ -42,8 +42,9 @@ export function CustomerFittingsCard({ customerId, fittings }: { customerId: str
             description={
                 <>
                     {fittings.length === 1 ? "One in-store fitting" : `${fittings.length} in-store fittings`} from the
-                    fitting form. Measurements are in inches, as recorded. The customer sees the same on their Profile,
-                    without the photos.
+                    fitting form. Measurements are in inches, as recorded
+                    {fittings.length > 1 ? ", with what each was at the visit before when it changed" : ""}. The
+                    customer sees the same on their Profile, without the photos.
                 </>
             }
             media={(f) => (f.files.length > 0 ? <Photos customerId={customerId} fitting={f} /> : null)}

@@ -1,7 +1,8 @@
 # Google Form fittings are imported as Fitting records on the Customer
 
 Status: Accepted (owner, 2026-10-31). Amended (owner, 2026-11-01): the customer sees their own
-Fitting records on their Profile, without the Drive photos (h).
+Fitting records on their Profile, without the Drive photos (h); and one person's many visits,
+each with its own measurements, all land on one Customer (c, i).
 
 Before this platform, every in-store fitting was typed into a Google Form: the customer's name,
 mobile and email, the four measurements (A to D, in inches), the recommended pillow size, the
@@ -42,12 +43,26 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   kept in `other_answers` under its header, so a later version of the form loses nothing.
 - **(b) It is not a Result, an Order or a Purchase.** It never enters the money path, the
   Results queue, analytics, the **Lifecycle stage** or `customers.total_*`.
-- **(c) Matching: email first, then mobile.** A row with a usable email attaches to the
-  **Customer** holding it, or creates one (no login: [ADR 0029](0029-shopify-customer-migration.md) b).
-  A row without one attaches to the one **Customer** whose mobile is the same number. When no
-  Customer, or more than one, has it, the row is skipped and listed for Staff to follow up. A
-  phone-only Customer is never created. Platform data wins: a match fills only a null name or
-  phone, and changes nothing else.
+- **(c) Matching: email first, then mobile; one person, one Customer.** A customer comes back,
+  and each visit is another form row with its own measurements. Every one of them is its own
+  Fitting record on the same Customer (owner, 2026-11-01).
+  - A row with a usable email attaches to the **Customer** holding it.
+  - Under an email no Customer holds (a new one, or a typo), it attaches to the one Customer with
+    the same mobile and the same name, matched by mobile.
+  - Otherwise it creates a Customer (no login: [ADR 0029](0029-shopify-customer-migration.md) b).
+  - A row without an email attaches to the one **Customer** whose mobile is the same number. When
+    several share the number, it attaches to the one of them with the same name.
+  - Otherwise the row is skipped and listed for Staff to follow up.
+
+  Names compare ignoring case and spacing, and a Customer's name is first and last joined
+  (`fitting_name_key`, 20261101100000).
+
+  Rows are imported with every row that has an email first, then the rest, each in file order.
+  So a visit noted with only a mobile finds the Customer another visit's email creates, wherever
+  it sits in the file.
+
+  A phone-only Customer is never created. Platform data wins: a match fills only a null name or
+  phone, and changes nothing else; a Customer's email is never changed by a later visit's.
 - **(d) The import key is the form row itself:** its timestamp, contact and name, hashed. The
   same file imported twice creates nothing, and two fittings of one person on different days are
   two records.
@@ -71,6 +86,10 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   with no Drive file, nothing about how the import found the Customer (match, contact as typed),
   and no other answer that is an upload question's cell or a Google file link. None of it
   reaches the browser. The photo route stays Staff-only.
+- **(i) Several visits read as one history** (owner, 2026-11-01). The Fitting history card,
+  for Staff and on the Profile, lists one person's visits newest first. With more than one, the
+  newest is marked Latest, and each measurement that changed shows what it was at the visit
+  before.
 
 ## Considered options
 
@@ -79,6 +98,10 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
 - **One Customer note per row** — rejected. Quick, but not structured: no reading a size or a
   measurement back, and notes are capped at 5,000 characters.
 - **Fields on `customers`** — rejected. The customer can read their own row.
+- **A new Customer for every email** — the first version (2026-10-31). One person who gave a
+  second email, or mistyped it, became two Customers, and each Profile showed half their visits.
+  Replaced by matching on mobile and name (c). Mobile alone is not enough under another email: a
+  family shares a number more often than a person changes their email.
 - **Creating phone-only Customers** — rejected. It touches sign-in, checkout, campaigns and every
   reader that assumes an email, and such a Customer could never sign in.
 - **Keeping the records from the customer** — the first version (2026-10-31). Reversed by the
@@ -94,8 +117,13 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
 - Glossary: **Fitting record** and **Fitting import** in `CONTEXT.md`.
 - The Shopify import's undo reads every foreign key to `customers`, so a Shopify-created
   Customer who has a Fitting record is kept on that undo, as it should be.
-- A row with no email attaches by mobile (c). When a family shares one number, the account holder
-  sees the other person's fitting on their Profile. Today Staff can only undo the whole import.
+- A row with no email attaches by mobile (c). When a family shares one number and only one of
+  them is a Customer, the account holder sees the other person's fitting on their Profile. Today
+  Staff can only undo the whole import.
+- A visit under another email, the same mobile and the same name is that person's (c). Two
+  people with one name and one number would share a Customer; the form row's own email stays on
+  the Fitting record for Staff to see. A name written differently (`Mei` and `Mei Tan`) is not
+  matched, and the visit becomes its own Customer, as before.
 - The preview of a photo depends on the platform's Google account being able to read the form's
   upload folder. Sharing that folder with it is the owner's one-time setup.
 - The form's timestamp has no time zone. It is read as Singapore time (UTC+8, no daylight

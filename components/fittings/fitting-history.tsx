@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { ChevronDown, Ruler } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
@@ -9,7 +10,10 @@ import { fittingLabel, inches, yesNo, type FittingAnswersView } from "@/lib/fitt
 
 /**
  * Fitting history (ADR 0039): each in-store fitting the old Google Form
- * recorded, newest first and open, older ones folded. One UI for Staff on the
+ * recorded, newest first and open, older ones folded. One person often came
+ * more than once, and each visit is its own record with its own
+ * measurements: with more than one, the newest is marked Latest and each
+ * measurement says what it was at the visit before. One UI for Staff on the
  * Customer page and for the customer on their own Profile (decision h). The
  * Staff page adds the Drive photos and the contact on the form through `media`
  * and `footer`; the Profile adds neither, and its records carry no Drive file.
@@ -42,7 +46,16 @@ export function FittingHistory<F extends FittingAnswersView>({
             </CardHeader>
             <CardContent className="space-y-3">
                 {fittings.map((f, k) => (
-                    <FittingSection key={f.id} fitting={f} defaultOpen={k === 0} formatDate={formatDate} media={media} footer={footer} />
+                    <FittingSection
+                        key={f.id}
+                        fitting={f}
+                        previous={fittings[k + 1]}
+                        latest={k === 0 && fittings.length > 1}
+                        defaultOpen={k === 0}
+                        formatDate={formatDate}
+                        media={media}
+                        footer={footer}
+                    />
                 ))}
             </CardContent>
         </Card>
@@ -51,12 +64,17 @@ export function FittingHistory<F extends FittingAnswersView>({
 
 function FittingSection<F extends FittingAnswersView>({
     fitting: f,
+    previous,
+    latest,
     defaultOpen,
     formatDate,
     media,
     footer,
 }: {
     fitting: F;
+    /** The visit before this one, when there was one. */
+    previous?: F;
+    latest: boolean;
     defaultOpen: boolean;
     formatDate: (iso: string) => string;
     media?: (f: F) => ReactNode;
@@ -67,7 +85,14 @@ function FittingSection<F extends FittingAnswersView>({
         <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border" id={`fitting-${f.id}`}>
             <CollapsibleTrigger className="flex w-full items-start justify-between gap-3 p-3 text-left max-md:min-h-11">
                 <div className="min-w-0 space-y-0.5">
-                    <p className="font-medium">{fittingLabel(f)}</p>
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+                        {fittingLabel(f)}
+                        {latest && (
+                            <Badge variant="secondary" className="font-normal">
+                                Latest
+                            </Badge>
+                        )}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                         {formatDate(f.fittedAt)}
                         {f.servicedBy ? ` · Serviced by ${f.servicedBy}` : ""}
@@ -79,7 +104,7 @@ function FittingSection<F extends FittingAnswersView>({
                 />
             </CollapsibleTrigger>
             <CollapsibleContent className="@container space-y-4 border-t p-3">
-                <Measurements fitting={f} />
+                <Measurements fitting={f} previous={previous} />
                 <Answers fitting={f} />
                 {f.notes && (
                     <div className="space-y-1">
@@ -107,23 +132,33 @@ function FittingSection<F extends FittingAnswersView>({
     );
 }
 
-function Measurements({ fitting: f }: { fitting: FittingAnswersView }) {
-    const items: [string, string, number | null][] = [
-        ["A", "Shoulder length", f.shoulderLengthIn],
-        ["B", "Neck to back", f.neckToBackIn],
-        ["C", "Head to back", f.headToBackIn],
-        ["D", "Neck length", f.neckLengthIn],
-    ];
+type MeasurementKey = "shoulderLengthIn" | "neckToBackIn" | "headToBackIn" | "neckLengthIn";
+const MEASUREMENTS: [string, string, MeasurementKey][] = [
+    ["A", "Shoulder length", "shoulderLengthIn"],
+    ["B", "Neck to back", "neckToBackIn"],
+    ["C", "Head to back", "headToBackIn"],
+    ["D", "Neck length", "neckLengthIn"],
+];
+
+/** A, B, C and D, each with what it was at the visit before when that differs. */
+function Measurements({ fitting: f, previous }: { fitting: FittingAnswersView; previous?: FittingAnswersView }) {
     return (
         <dl className="grid grid-cols-2 gap-2 @lg:grid-cols-4">
-            {items.map(([letter, label, value]) => (
-                <div key={letter} className="rounded-md bg-muted/50 px-3 py-2">
-                    <dt className="text-xs text-muted-foreground">
-                        {letter}) {label}
-                    </dt>
-                    <dd className="text-lg font-semibold tabular-nums">{inches(value)}</dd>
-                </div>
-            ))}
+            {MEASUREMENTS.map(([letter, label, key]) => {
+                const value = f[key];
+                const before = previous?.[key] ?? null;
+                return (
+                    <div key={letter} className="rounded-md bg-muted/50 px-3 py-2">
+                        <dt className="text-xs text-muted-foreground">
+                            {letter}) {label}
+                        </dt>
+                        <dd className="text-lg font-semibold tabular-nums">{inches(value)}</dd>
+                        {value !== null && before !== null && before !== value && (
+                            <dd className="text-xs text-muted-foreground tabular-nums">was {inches(before)}</dd>
+                        )}
+                    </div>
+                );
+            })}
         </dl>
     );
 }

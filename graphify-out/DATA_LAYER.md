@@ -1663,7 +1663,7 @@ Changed from pages: `/settings/customers/import-fittings`
   - `loadFittingImportHistory()` [select] — app/[lang]/settings/customers/import-fittings/history.ts:20
 
 ### fitting_import_preview_matches
-Defined in supabase/migrations/20261031120000_customer_fittings.sql:226
+Defined in supabase/migrations/20261101100000_fitting_import_one_person.sql:66
 - Called by:
   - `previewFittingImport()` — app/[lang]/settings/customers/import-fittings/actions.ts:52
 
@@ -1685,7 +1685,7 @@ Defined in supabase/migrations/20261023120000_points_milestones.sql:181
   - `runPointsMilestones()` — lib/points/earn.ts:77
 
 ### import_fitting_rows
-Defined in supabase/migrations/20261031120000_customer_fittings.sql:281
+Defined in supabase/migrations/20261101100000_fitting_import_one_person.sql:120
 - Called by:
   - `applyFittingImportChunk()` — app/[lang]/settings/customers/import-fittings/actions.ts:121
 

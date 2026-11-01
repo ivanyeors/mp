@@ -77,6 +77,19 @@ export default function fittings({ now }) {
           drive_files: [file("back_photo", 3), file("side_photo", 3)],
           other_answers: { "Upload a photo of your mattress": "https://drive.google.com/open?id=1previewmattressxxxxxxxx", "Pillow height today": "Two fingers" },
         },
+        {
+          // Jamie's visit the year before, under another email: found by mobile and name.
+          id: "00000000-0000-4000-8000-0000000000e4", customer_id: OWN_CUSTOMER, batch_id: BATCH, source: "google_form",
+          source_key: "4".repeat(64), created_customer: false, matched_by: "phone", fitted_at: ago(610), imported_at: ago(1),
+          name_on_form: "Jamie Lim", email_on_form: "jamie.l@preview.local", mobile_on_form: "+65 9123 0042",
+          shoulder_length_in: 18.5, neck_to_back_in: 3, head_to_back_in: 1, neck_length_in: null,
+          recommended_size: "M", configuration_type: "T12", profile_side: "M-LN", sleeper_type: "Side & Back sleeper",
+          sleep_symptoms: ["Neck pain"], blood_pressure: "Normal", acid_reflux: false, ear_discomfort_side_sleep: null,
+          bed_firmness: "Medium Firm", uses_bolster: false, age_group: "40-44", gender: "Male", discovery_source: "Friend",
+          referred_by: "Mei Tan", serviced_by: "Ray", serviced_by_staff_id: null, notes: null,
+          drive_files: [file("back_photo", 4)],
+          other_answers: {},
+        },
       ],
     },
     rpc: {
@@ -86,7 +99,8 @@ export default function fittings({ now }) {
         for (const c of tables.customers ?? []) {
           const email = String(c.email ?? "").toLowerCase();
           if (p_emails.includes(email)) out.push({ match: "email", key: email, customer_id: c.id, has_name: Boolean(c.first_name), has_phone: Boolean(c.phone) });
-          if (c.phone && p_phones.includes(c.phone)) out.push({ match: "phone", key: c.phone, customer_id: c.id, has_name: Boolean(c.first_name), has_phone: true });
+          const name_key = [c.first_name, c.last_name].filter(Boolean).join(" ").replace(/\s+/g, " ").trim().toLowerCase() || null;
+          if (c.phone && p_phones.includes(c.phone)) out.push({ match: "phone", key: c.phone, customer_id: c.id, has_name: Boolean(c.first_name), has_phone: true, name_key });
         }
         return out;
       },

@@ -26,7 +26,7 @@ export function OwnFittingsCard({ fittings }: { fittings: FittingAnswersView[] }
       description={
         fittings.length === 1
           ? "What we recorded at your in-store fitting. Measurements are in inches."
-          : `What we recorded at each of your ${fittings.length} in-store fittings, newest first. Measurements are in inches.`
+          : `What we recorded at each of your ${fittings.length} in-store fittings, newest first. Measurements are in inches; where one changed, you can see what it was the visit before.`
       }
     />
   );

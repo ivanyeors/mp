@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Runs the Fitting import migration (ADR 0039) against a throwaway local
-# Postgres holding a stand-in for the live schema, twice (it must be
+# Runs the Fitting import migrations (ADR 0039) against a throwaway local
+# Postgres holding a stand-in for the live schema, each twice (each must be
 # idempotent), after the Shopify import migrations it sits beside, then the
 # assertions in supabase/tests/fitting-import/: rows attach by email, then by
-# mobile, a match fills only nulls, the same file twice creates nothing, a
-# chunk out of order is refused, the batch reconciles, undo removes only what
-# nobody has signed in to or referenced, phone_e164 agrees with normalizePhone,
+# mobile, one person's visits land on one Customer, a match fills only nulls,
+# the same file twice creates nothing, a chunk out of order is refused, the
+# batch reconciles, undo removes only what nobody has signed in to or
+# referenced, phone_e164 agrees with normalizePhone,
 # and only the service role can run any of it.
 #
 #   ./scripts/check-fitting-import-sql.sh
@@ -19,7 +20,10 @@ BEFORE=(
   supabase/migrations/20261020100000_customer_import.sql
   supabase/migrations/20261020110000_customer_import_apply.sql
 )
-MIGRATIONS=(supabase/migrations/20261031120000_customer_fittings.sql)
+MIGRATIONS=(
+  supabase/migrations/20261031120000_customer_fittings.sql
+  supabase/migrations/20261101100000_fitting_import_one_person.sql
+)
 ASSERTS=(supabase/tests/fitting-import/assert-*.sql)
 
 DIR="$(mktemp -d)"
@@ -39,12 +43,14 @@ PSQL=(psql -h "$DIR" -p 5599 -U postgres -d postgres -v ON_ERROR_STOP=1 -q -X)
 for m in "${BEFORE[@]}"; do
   "${PSQL[@]}" -1 -f "$m" >/dev/null || { echo "FAIL: $m"; exit 1; }
 done
-for pass in 1 2; do
-  for m in "${MIGRATIONS[@]}"; do
+# Each one twice in a row, in order: a migration re-run must change nothing,
+# and a later one may replace what an earlier one made.
+for m in "${MIGRATIONS[@]}"; do
+  for pass in 1 2; do
     "${PSQL[@]}" -1 -f "$m" >/dev/null || { echo "FAIL: $m (pass $pass)"; exit 1; }
   done
 done
 for a in "${ASSERTS[@]}"; do
   "${PSQL[@]}" -t -A -f "$a" || { echo "FAIL: $a"; exit 1; }
 done
-echo "fitting import sql ok (${#MIGRATIONS[@]} migration, run twice; ${#ASSERTS[@]} assert files)"
+echo "fitting import sql ok (${#MIGRATIONS[@]} migrations, each run twice; ${#ASSERTS[@]} assert files)"

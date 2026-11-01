@@ -79,9 +79,11 @@ export type DriveSlot = (typeof DRIVE_SLOTS)[DriveField];
 /**
  * One data row as the file had it. `cells` holds the known columns, `other`
  * every other column under its header as the file wrote it. Empty cells are
- * left out of both.
+ * left out of both. `fileRow` is where `parseFittingFormCsv` found it among
+ * the file's data rows (0-based), for the page: rows are imported in
+ * `importOrder`, not file order. The server never reads it.
  */
-export type FormRawRow = { cells: Partial<Record<FormField, string>>; other: Record<string, string> };
+export type FormRawRow = { cells: Partial<Record<FormField, string>>; other: Record<string, string>; fileRow?: number };
 
 export type FormHeaderCheck = {
   /** The file can be imported: it has a Timestamp, and an Email or a Mobile column. */
@@ -154,8 +156,8 @@ export function parseFittingFormCsv(text: string): ParsedFittingForm {
   if (!index.has("email") && !index.has("mobile")) problems.push("The file has neither an Email nor a Mobile column.");
   if (table.length < 2) problems.push("The file has no rows.");
 
-  const rows: FormRawRow[] = table.slice(1).map((cells) => {
-    const raw: FormRawRow = { cells: {}, other: {} };
+  const rows: FormRawRow[] = table.slice(1).map((cells, fileRow) => {
+    const raw: FormRawRow = { cells: {}, other: {}, fileRow };
     for (const [field, at] of index) {
       const cell = cleanCell(cells[at]);
       if (cell !== "") raw.cells[field] = cell;
@@ -174,8 +176,20 @@ export function parseFittingFormCsv(text: string): ParsedFittingForm {
       missing: FORM_FIELDS.filter((f) => !index.has(f) && f !== "timestamp").map((f) => FORM_COLUMNS[f].headers[0]),
       other: [...otherNames.values()],
     },
-    rows,
+    rows: importOrder(rows),
   };
+}
+
+/**
+ * The order a file's rows are previewed and imported in (ADR 0039 c): every
+ * row with a usable email first, then the rest, each kept in file order. One
+ * person's visits are often a mix, a visit noted with only a mobile and
+ * another with an email too; this way the mobile-only visit finds the
+ * Customer the email creates, wherever it sits in the file.
+ */
+export function importOrder(rows: readonly FormRawRow[]): FormRawRow[] {
+  const withEmail = rows.filter((r) => usableEmail(r.cells.email) !== null);
+  return [...withEmail, ...rows.filter((r) => usableEmail(r.cells.email) === null)];
 }
 
 // ─── Timestamps ──────────────────────────────────────────────────────────────
@@ -342,6 +356,21 @@ export type NormaliseResult =
 
 /** The same shape checkout and the Shopify import accept. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** An Email cell lowercased, or null when it is not one an import can use. */
+export function usableEmail(cell: string | undefined): string | null {
+  const e = cell?.toLowerCase() ?? "";
+  return e && e.length <= 254 && EMAIL_RE.test(e) ? e : null;
+}
+
+/**
+ * A name as two records of one person are compared (ADR 0039 c): lowercase,
+ * single spaces, no ends. `public.fitting_name_key` is the SQL twin.
+ */
+export function nameKey(name: string | null | undefined): string | null {
+  const k = (name ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  return k || null;
+}
 /** The columns' CHECK limits (20261031120000_customer_fittings.sql). */
 const LIMITS = { name: 200, short: 40, code: 80, text: 200, notes: 5000 } as const;
 const MAX_MEASUREMENT_IN = 99;
@@ -416,12 +445,8 @@ export function normaliseFittingRow(raw: FormRawRow, order: DateOrder, now = Dat
     return v.slice(0, max);
   };
 
-  const emailCell = c.email?.toLowerCase() ?? "";
-  let email: string | null = null;
-  if (emailCell) {
-    if (emailCell.length <= 254 && EMAIL_RE.test(emailCell)) email = emailCell;
-    else repairs.add("email_invalid");
-  }
+  const email = usableEmail(c.email);
+  if (c.email && !email) repairs.add("email_invalid");
   const phone = c.mobile ? normalizePhone(c.mobile) : null;
   if (c.mobile && !phone) repairs.add("mobile_unusable");
   if (!email && !phone) return { ok: false, reason: "no_contact" };
