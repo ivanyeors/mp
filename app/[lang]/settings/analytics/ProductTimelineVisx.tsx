@@ -9,7 +9,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
-import { ParentSize } from "@visx/responsive";
+import { ChartWidth } from "./ChartWidth";
 import { addMonths, format, startOfMonth } from "date-fns";
 
 type TimelineDataPoint = {
@@ -468,7 +468,7 @@ export function ProductTimelineVisx({
   return (
     <div className="w-full overflow-x-auto">
       <div className="min-w-[520px]" style={{ minWidth }}>
-        <ParentSize>
+        <ChartWidth>
           {({ width }) =>
             width < 10 ? null : (
               <Chart
@@ -482,7 +482,7 @@ export function ProductTimelineVisx({
               />
             )
           }
-        </ParentSize>
+        </ChartWidth>
       </div>
     </div>
   );

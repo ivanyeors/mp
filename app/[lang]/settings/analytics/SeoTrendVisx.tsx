@@ -8,7 +8,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
-import { ParentSize } from "@visx/responsive";
+import { ChartWidth } from "./ChartWidth";
 import { format } from "date-fns";
 import { AnnotationMarkers, type ChartAnnotation } from "./AnnotationMarkers";
 
@@ -170,7 +170,7 @@ export function SeoTrendVisx(props: Props) {
   const height = props.height ?? 180;
   return (
     <div style={{ height }} className="w-full">
-      <ParentSize>{({ width }) => (width > 0 ? <Chart {...props} width={width} height={height} /> : null)}</ParentSize>
+      <ChartWidth>{({ width }) => (width > 0 ? <Chart {...props} width={width} height={height} /> : null)}</ChartWidth>
     </div>
   );
 }

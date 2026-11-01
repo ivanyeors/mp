@@ -56,11 +56,11 @@ const END = "block-editor:end";
 const NO_VARIABLES: readonly RichTextVariable[] = [];
 const NO_BADGES: Readonly<Record<string, string>> = {};
 
-/** dnd-kit's events, as its handlers receive them. */
-type StartEvent = Parameters<DragStartEvent>[0];
-type OverEvent = Parameters<DragOverEvent>[0];
-type MoveEvent = Parameters<DragMoveEvent>[0];
-type EndEvent = Parameters<DragEndEvent>[0];
+/** dnd-kit's events, as its handlers receive them (since 0.4 these are the event objects, not handler types). */
+type StartEvent = DragStartEvent;
+type OverEvent = DragOverEvent;
+type MoveEvent = DragMoveEvent;
+type EndEvent = DragEndEvent;
 
 /** What a palette item's draggable carries. */
 export type PaletteDrag = { palette: PaletteItem<EditorBlock> };

@@ -265,7 +265,7 @@ Changed from pages: `/settings/inventory`, `/settings/inventory/configure/[card]
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/route.ts:310
   - `PUT()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:246
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/ProductConfigurationCard.tsx:403
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/ProductConfigurationCard.tsx:404
   - `GET()` [select] — app/[lang]/settings/costings/builds/route.ts:61
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:69
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:38
@@ -288,7 +288,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `PUT()` [select,update] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:169
   - `setTemplateKeys()` [update] — lib/filling-templates/membership.ts:140
 - Read by:
-  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/ProductConfigurationCard.tsx:369
+  - `/settings/analytics` (page) [select] — app/[lang]/settings/analytics/ProductConfigurationCard.tsx:370
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:46
   - `GET()` [select] — app/[lang]/settings/costings/builds/route.ts:47
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:61

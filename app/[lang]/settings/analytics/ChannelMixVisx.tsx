@@ -8,7 +8,7 @@ import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
-import { ParentSize } from "@visx/responsive";
+import { ChartWidth } from "./ChartWidth";
 import { format } from "date-fns";
 import { AnnotationMarkers, type ChartAnnotation } from "./AnnotationMarkers";
 import { MIX_SERIES, MIX_SERIES_LABELS, type MixBucket, type MixSeries } from "@/lib/analytics/channel-mix";
@@ -189,7 +189,7 @@ export function ChannelMixVisx(props: Props) {
         ))}
       </ul>
       <div style={{ height }}>
-        <ParentSize>{({ width }) => (width > 0 ? <Chart {...props} width={width} height={height} /> : null)}</ParentSize>
+        <ChartWidth>{({ width }) => (width > 0 ? <Chart {...props} width={width} height={height} /> : null)}</ChartWidth>
       </div>
     </div>
   );

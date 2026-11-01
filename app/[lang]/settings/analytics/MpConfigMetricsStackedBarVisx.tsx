@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ParentSize } from "@visx/responsive";
+import { ChartWidth } from "./ChartWidth";
 import { Group } from "@visx/group";
 import { Bar } from "@visx/shape";
 import { AxisBottom } from "@visx/axis";
@@ -329,9 +329,9 @@ export function MpConfigMetricsStackedBarVisx({ metrics }: { metrics: MpConfigMe
     <div className="w-full overflow-x-auto">
       {/* Phones draw it at the card's width (the chart has a narrow layout under 420px). */}
       <div className="md:min-w-[420px]" style={{ height: fixedHeight }}>
-        <ParentSize>
+        <ChartWidth>
           {({ width }) => <Chart width={width} height={fixedHeight} metrics={metrics} />}
-        </ParentSize>
+        </ChartWidth>
       </div>
     </div>
   );
