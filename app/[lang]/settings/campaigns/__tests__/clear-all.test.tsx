@@ -2,7 +2,7 @@
 import { placeholderOf, retype, richTextIn, until, wordsOf } from "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
@@ -144,6 +144,10 @@ const expectNothingWritten = () => {
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(async () => {
+  // sonner's toasts live in one store for the whole file, and since 2.0.8 a newly mounted
+  // Toaster shows every toast still in it: dismiss them all (a Starter's "Send to is now…"
+  // too), so none turns up in the next test's Toaster.
+  act(() => void toast.dismiss());
   act(() => root?.unmount());
   root = null;
   // The unmount dismisses the toast a frame later: let it, before the next test makes one.

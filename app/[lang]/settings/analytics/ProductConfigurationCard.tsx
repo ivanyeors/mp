@@ -7,8 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Group } from "@visx/group";
-import { Cluster, hierarchy } from "@visx/hierarchy";
-import type { HierarchyPointLink, HierarchyPointNode } from "d3-hierarchy";
+// The node types from visx, not "d3-hierarchy": Cluster hands its nodes out typed with visx's
+// own copy of @types/d3-hierarchy (still v1 in visx 4), which the top-level v3 types do not match.
+import { Cluster, hierarchy, type HierarchyPointLink, type HierarchyPointNode } from "@visx/hierarchy";
 import { LinkVertical } from "@visx/shape";
 
 type NodeShape = {

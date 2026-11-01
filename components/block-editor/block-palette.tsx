@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useMemo } from "react";
-import { PointerSensor } from "@dnd-kit/dom";
+import { Feedback, PointerSensor } from "@dnd-kit/dom";
 import { useDraggable } from "@dnd-kit/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,8 @@ function Item({ item, tab, draggable, onAdded }: { item: PaletteItem<EditorBlock
     data: { palette: item } satisfies PaletteDrag,
     // Enter and Space add the item, so only a pointer drags it.
     sensors: [PointerSensor],
-    feedback: "clone",
+    // A copy follows the pointer and the palette item stays put. Per-draggable since dnd-kit 0.5.
+    plugins: [Feedback.configure({ feedback: "clone" })],
     disabled: !draggable || Boolean(why),
   });
   const Icon = item.icon;
