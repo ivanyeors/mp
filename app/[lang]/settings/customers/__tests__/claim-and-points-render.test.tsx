@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
-import type { MigrationSummary, MigratedCustomerFacts } from "@/lib/customer-migration/overview";
+import type { MigratedCustomerFacts } from "@/lib/customer-migration/overview";
 
 /**
  * What the Claim link and the Claim bonus add to the Customers page
  * (migration slice 06; PRD-loyalty-points slice 06, which retired the
- * Welcome-back voucher): the Migration card's Clicked, Claim bonus, Points
- * spent and Revenue; the list's Points filter; and the From Shopify card's
- * first click and Claim bonus.
+ * Welcome-back voucher): the list's Points filter, and the From Shopify
+ * card's first click and Claim bonus. (The Migration card, with Points spent
+ * and Revenue, left the page on 2026-11-01.)
  */
 
 vi.mock("next/navigation", () => ({
@@ -18,58 +18,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
-const { migrationCells } = await import("../migration-card");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
-
-const summary: MigrationSummary = {
-  imported: 1200,
-  created: 900,
-  matched: 300,
-  signedUp: 150,
-  signedUpBeforeImport: 40,
-  batchesApplied: 1,
-  clicked: 300,
-  claimBonuses: 120,
-  migratedPointsSpent: 31000,
-  pointsOrders: 31,
-  pointsRevenue: 4250.5,
-  emailed: 960,
-  emailsBounced: 12,
-  emailsComplained: 1,
-};
-
-describe("Migration card", () => {
-  it("adds Clicked (of imported), the Claim bonus (of imported), the points spent and the Revenue of their paid orders", () => {
-    const cells = migrationCells(summary);
-    // Migration 08's Emailed sits before Clicked, in funnel order.
-    expect(cells.map((c) => c.label)).toEqual([
-      "Imported",
-      "Signed up",
-      "Emailed",
-      "Clicked",
-      "Claim bonus",
-      "Points spent",
-      "Revenue",
-    ]);
-    const cell = (label: string) => cells.find((c) => c.label === label)!;
-    expect(cell("Clicked")).toEqual({ label: "Clicked", value: "300 (25%)", detail: "opened their Claim link" });
-    expect(cell("Claim bonus")).toEqual({ label: "Claim bonus", value: "120 (10%)", detail: "got the sign-in bonus in points" });
-    // A balance is always shown in points and dollars (ADR 0030 (b)).
-    expect(cell("Points spent")).toEqual({ label: "Points spent", value: "31,000 points (S$310.00)", detail: "on 31 paid orders" });
-    expect(cell("Revenue").value).toMatch(/4,250\.50$/);
-    expect(cell("Revenue").detail).toBe("from 31 paid orders that used points");
-  });
-
-  it("reads one paid order in the singular", () => {
-    const cells = migrationCells({ ...summary, pointsOrders: 1 });
-    expect(cells.find((c) => c.label === "Points spent")!.detail).toBe("on 1 paid order");
-    expect(cells.find((c) => c.label === "Revenue")!.detail).toBe("from 1 paid order that used points");
-  });
-
-  it("says nothing of a voucher", () => {
-    expect(JSON.stringify(migrationCells(summary))).not.toMatch(/voucher/i);
-  });
-});
 
 describe("Customers list: Points filter", () => {
   it("offers Has points and No points, with the URL's value", () => {

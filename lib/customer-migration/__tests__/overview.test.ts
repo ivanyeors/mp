@@ -1,70 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  migratedExtrasFromRow,
-  migratedFactsFromRow,
-  migrationSummaryFromRow,
-  percentOf,
-  signedUpPercent,
-} from "@/lib/customer-migration/overview";
+import { migratedExtrasFromRow, migratedFactsFromRow } from "@/lib/customer-migration/overview";
 
-/** The Migration card's and the From Shopify card's read models (migration slice 12). */
-
-describe("migrationSummaryFromRow", () => {
-  it("reads the view's one row, counts arriving as bigint strings", () => {
-    expect(
-      migrationSummaryFromRow({
-        imported: "5",
-        imported_created: "3",
-        imported_matched: "2",
-        signed_up: 3,
-        signed_up_before_import: 1,
-        batches_applied: "1",
-        clicked: "4",
-        claim_bonuses: "3",
-        migrated_points_spent: "1500",
-        points_orders: 1,
-        points_revenue: "180.50",
-        emailed: "5",
-        emails_bounced: "1",
-        emails_complained: 0,
-      }),
-    ).toEqual({
-      imported: 5,
-      created: 3,
-      matched: 2,
-      signedUp: 3,
-      signedUpBeforeImport: 1,
-      batchesApplied: 1,
-      clicked: 4,
-      claimBonuses: 3,
-      migratedPointsSpent: 1500,
-      pointsOrders: 1,
-      pointsRevenue: 180.5,
-      emailed: 5,
-      emailsBounced: 1,
-      emailsComplained: 0,
-    });
-  });
-
-  it("reads no row as zeros, so the card stays hidden", () => {
-    expect(migrationSummaryFromRow(null)).toEqual({
-      imported: 0,
-      created: 0,
-      matched: 0,
-      signedUp: 0,
-      signedUpBeforeImport: 0,
-      batchesApplied: 0,
-      clicked: 0,
-      claimBonuses: 0,
-      migratedPointsSpent: 0,
-      pointsOrders: 0,
-      pointsRevenue: 0,
-      emailed: 0,
-      emailsBounced: 0,
-      emailsComplained: 0,
-    });
-  });
-});
+/** The From Shopify card's read models (migration slice 12). */
 
 describe("migratedExtrasFromRow (migration slice 06, PRD-loyalty-points slice 06)", () => {
   it("takes the first click and the Claim bonus from the overview", () => {
@@ -80,19 +17,6 @@ describe("migratedExtrasFromRow (migration slice 06, PRD-loyalty-points slice 06
     });
     // A failed overview read leaves the rows out rather than guessing.
     expect(migratedExtrasFromRow(null)).toEqual({ claimLinkFirstClickedAt: null, claimBonusAt: null });
-  });
-
-  it("is a whole percent for the card's Clicked share, and 0 of nobody", () => {
-    expect(percentOf(1, 3)).toBe(33);
-    expect(percentOf(1, 0)).toBe(0);
-  });
-});
-
-describe("signedUpPercent", () => {
-  it("is s / N as a whole percent, and 0 with nobody imported", () => {
-    expect(signedUpPercent({ imported: 3, signedUp: 1 })).toBe(33);
-    expect(signedUpPercent({ imported: 8, signedUp: 7 })).toBe(88);
-    expect(signedUpPercent({ imported: 0, signedUp: 0 })).toBe(0);
   });
 });
 

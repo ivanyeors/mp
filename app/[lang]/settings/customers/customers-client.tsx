@@ -54,7 +54,8 @@ import {
     type MobileFilter,
     type SourceFilter,
 } from "@/lib/crm/customer-filters";
-import type { MigrationSummary } from "@/lib/customer-migration/overview";
+import type { LifecycleStage } from "@/lib/crm/lifecycle-stage";
+import type { LifecycleSummary } from "@/lib/crm/lifecycle-summary";
 import { reviewFacts } from "@/lib/crm/reviews";
 import {
     chosenSegmentFilters,
@@ -64,7 +65,7 @@ import {
 } from "@/lib/crm/segment-rules";
 import { CustomerFilterSummary, CustomerFiltersPanel } from "./customer-filters-panel";
 import { LifecycleStageBadge, LifecycleStageCell, lifecycleNote } from "./lifecycle-stage-badge";
-import { MigrationCard } from "./migration-card";
+import { LifecycleCard } from "./lifecycle-card";
 import { SegmentsRow } from "./segments-row";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -217,7 +218,7 @@ export function CustomersClient({
     initialData,
     initialFilters,
     ignoredFilters = [],
-    migration = null,
+    lifecycle = null,
     initialSegments,
     canEdit = false,
     canEmail = false,
@@ -227,8 +228,8 @@ export function CustomersClient({
     initialFilters?: Partial<CustomerListFilters>;
     /** URL parameters the page dropped as invalid; the list says so. */
     ignoredFilters?: readonly CustomerFilterParam[];
-    /** The Migration card's numbers, or null when they could not be read. */
-    migration?: MigrationSummary | null;
+    /** The Customer lifecycle chart's counts, or null when they could not be read. */
+    lifecycle?: LifecycleSummary | null;
     /** The Segments row (CRM slice 05), read by the page; undefined and the row fetches them. */
     initialSegments?: CustomerSegment[];
     /** `customers-edit`: saving, updating, renaming and archiving Segments. */
@@ -329,12 +330,12 @@ export function CustomersClient({
         applyFilters((f) => ({ ...f, ...chosenSegmentFilters(segment.params) }));
     };
 
-    // The Migration card's link: from Shopify, not signed up yet.
-    const showNotSignedUp = () => changeFilters({ account: "no-account", source: "shopify" });
-    const notSignedUpHref = `${to("/settings/customers")}?${customerFilterParams({
-        account: "no-account",
-        source: "shopify",
-    }).toString()}`;
+    // The Customer lifecycle chart: a stage's row lists that stage alone, and
+    // choosing it again lists everyone. The list keeps its other filters.
+    const activeStage = filters.stage.length === 1 ? filters.stage[0]! : null;
+    const chooseStage = (stage: LifecycleStage) => changeFilters({ stage: activeStage === stage ? [] : [stage] });
+    const stageHref = (stage: LifecycleStage) =>
+        `${to("/settings/customers")}?${customerFilterParams({ stage: [stage] }).toString()}`;
 
     // Fetch customers
     const fetchCustomers = useCallback(async () => {
@@ -459,11 +460,12 @@ export function CustomersClient({
     return (
         <div className="space-y-4 md:space-y-6">
             {/* The page header and tabs are CustomersPageTabs'; this is the list tab. */}
-            {migration && (
-                <MigrationCard
-                    summary={migration}
-                    notSignedUpHref={notSignedUpHref}
-                    onShowNotSignedUp={showNotSignedUp}
+            {lifecycle && (
+                <LifecycleCard
+                    summary={lifecycle}
+                    activeStage={activeStage}
+                    stageHref={stageHref}
+                    onChooseStage={chooseStage}
                 />
             )}
 
