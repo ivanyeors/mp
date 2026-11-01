@@ -18,6 +18,8 @@ const over = fitPillow(
 );
 const html = (compact: boolean) => renderToStaticMarkup(<CrossSectionSvg fit={over} cut={DEFAULT_CUT} itemSubtypes={new Map()} compact={compact} />);
 const fontSizes = (markup: string) => [...markup.matchAll(/font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+/** Every text drawn under each column. */
+const columnText = (markup: string) => [...markup.matchAll(/<g data-column="[a-z]+"[^>]*>(.*?)<\/g>/g)].map((m) => [...m[1].matchAll(/>([^<]+)</g)].map((t) => t[1]).join(" | "));
 /** The drawn outline: its path, its transform's scale, and the polygon it makes in view units. */
 const outlineOf = (markup: string) => {
   const m = markup.match(/<path d="([^"]+)" transform="translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+) ([-\d.]+)\)" fill="[^"]*" data-xray-profile/)!;
@@ -41,10 +43,21 @@ const anchors = (d: string) =>
   });
 
 describe("CrossSectionSvg layouts", () => {
-  it("desktop keeps the 664-unit view with the status inline", () => {
+  it("desktop keeps the 664-unit view and names the columns, nothing else", () => {
     const m = html(false);
     expect(m).toMatch(/viewBox="0 0 664 [\d.]+"/);
-    expect(m).toMatch(/>\d+ mm · cannot close</);
+    expect(columnText(m)).toEqual(["front", "middle", "back"]);
+  });
+
+  it("draws no loft budget, mm or status word, even when a column cannot close", () => {
+    for (const compact of [false, true]) {
+      const m = html(compact);
+      expect(m).toContain('data-status="over"');
+      expect(m).not.toMatch(/>max \d+ mm</);
+      expect(m).not.toMatch(/>[^<]*\d+ mm[^<]*</);
+      expect(m).not.toMatch(/>(cannot close|compressed|empty)</);
+      expect(m).not.toContain('stroke-dasharray="6 4"');
+    }
   });
 
   it("never squashes the outline: the same proportions on a phone as on a desktop, the designer's own", () => {
@@ -66,13 +79,12 @@ describe("CrossSectionSvg layouts", () => {
       }
   });
 
-  it("phones draw a narrower view with larger type, ≥ 10 px at 330 px wide, and the status on its own line", () => {
+  it("phones draw a narrower view with larger type, ≥ 10 px at 330 px wide", () => {
     const m = html(true);
     const width = Number(m.match(/viewBox="0 0 (\d+)/)![1]);
     const scale = 330 / width;
     expect(Math.min(...fontSizes(m)) * scale).toBeGreaterThanOrEqual(10);
-    expect(m).toMatch(/>\d+ mm</);
-    expect(m).toContain(">cannot close<");
+    expect(columnText(m)).toEqual(["front", "middle", "back"]);
   });
 });
 
@@ -138,12 +150,11 @@ describe("CrossSectionSvg pouches", () => {
     const free = fitPillow([{ section: "center", subSection: "middle", slot: 1, itemId: 1, row: 0 }], { size: "M", dims });
     const [d] = [...renderToStaticMarkup(<CrossSectionSvg fit={free} cut={DEFAULT_CUT} itemSubtypes={new Map()} />).matchAll(/data-slab-status="[a-z]+"[^>]*><path d="([^"]+)"/g)].map((x) => x[1]);
     expect(d.match(/C/g)).toHaveLength(8);
-    // No sheen: nothing but the body, its shade, hatch, tint and ring.
+    // Flat colour as in the top view: no sheen, no shade, no shadow.
     expect(m).not.toContain("data-slab-gloss");
-    expect(m).toContain("<linearGradient");
+    expect(m).not.toContain("Gradient");
+    expect(m).not.toContain("<filter");
     expect(m.match(/>6D S</g)).toHaveLength(2);
-    // One loft label for the Section, not one per column.
-    expect(m.match(/>max \d+ mm</g)).toHaveLength(1);
     expect(m.match(/data-xray-column-divider/g)).toHaveLength(2);
   });
 

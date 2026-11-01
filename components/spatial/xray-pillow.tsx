@@ -85,7 +85,9 @@ import {
 import { layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import { PILLOW_DIMENSIONS, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
+import { cellRegion, sectionRegion, useSoftTopPaths, type SoftTopPlane } from "./soft-top";
 
 // Shell regions pouches deform against: the silhouette (wide seam), each
 // cell's boundary (thin seam, matching the pouch-to-pouch gap) for the
@@ -118,6 +120,17 @@ export function stageRegions(stage: StageGeometry): StageRegions {
 /** The two views of one recipe (slice 11): the cells as authored, or where the fill settles. */
 export type PieceView = "authored" | "settled";
 
+/** The conformed outlines with each soft one in its place, where the soft body drew one. */
+/** A pouch off its home corner was nudged by hand: the soft settle keeps it where it was put. */
+const isNudged = (p: PieceLayout) => p.x !== p.home.x || p.y !== p.home.y;
+
+function withSoft(conformed: Map<string, string>, soft: ReadonlyMap<string, string> | null): Map<string, string> {
+  if (!soft) return conformed;
+  const out = new Map(conformed);
+  for (const [key, d] of soft) if (out.has(key) && d) out.set(key, d);
+  return out;
+}
+
 /** A piece whose settled rect differs from its authored one — the dive draws its settled outline as a ghost. */
 const isSpread = (p: PieceLayout) => p.settled.y !== p.y || p.settled.h !== p.h;
 
@@ -132,11 +145,11 @@ const MORPH_MS = 320;
 export const XRAY_SHELL = "var(--xray-shell, rgba(255,255,255,0.9))";
 export const XRAY_INTERIOR = "var(--xray-interior, rgba(15,23,42,0.5))";
 const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
-// Fit status paint (slice 04): red when a cell cannot close — the piece tint,
-// the drop refusal and the cross-section share it. (The amber / red cell
-// rings went with Ivan's 26-9-2026 review: no seams on the pillow but the two
-// dividers; the gauge, the banner and the tint carry the status.)
-const RING_OVER = "#ef4444";
+// Fit status paint (slice 04): nothing turns red (Ivan, 1-11-2026). A piece
+// squeezed or in a cell that cannot close draws with a dashed stroke; the
+// gauge and its warning say which, in amber. (The amber / red cell rings went
+// with Ivan's 26-9-2026 review: no seams on the pillow but the two dividers.)
+const AMBER = "#f59e0b";
 const RELAXED_PIECE: PieceFitStatus = { status: "ok", widthRatio: 1, thicknessRatio: 1 };
 /** A pouch drag in flight (slice 07). */
 type PouchDrag = {
@@ -167,15 +180,6 @@ type LayerPick = {
 const DRAG_THRESHOLD_PX = 6;
 const sameRef = (p: PieceRef, q: PieceRef) => p.section === q.section && p.subSection === q.subSection && p.slot === q.slot;
 const sameCellRef = (p: Cell, q: Cell) => p.section === q.section && p.subSection === q.subSection;
-
-/** `↕ 78 %` / `↔ 85 %` beside the type label when the piece draws squeezed. */
-export const squeezeLines = (ps: PieceFitStatus | undefined): string[] => {
-  if (!ps) return [];
-  const out: string[] = [];
-  if (ps.thicknessRatio < 1 - 1e-6) out.push(`↕ ${Math.round(ps.thicknessRatio * 100)} %`);
-  if (ps.widthRatio < 1 - 1e-6) out.push(`↔ ${Math.round(ps.widthRatio * 100)} %`);
-  return out;
-};
 
 // Dive-editor control sizing. The chips sit ON the pouches, so on a desktop
 // stage (650px wide) they stay tiny; below md the stage is ~360px wide and
@@ -310,7 +314,15 @@ export function MorphPiece({
       };
       raf = requestAnimationFrame(tick);
     }
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      // A new outline mid-flip (the soft body arriving) cuts the flip short: a crossfade must not leave the piece faded.
+      if (morph.crossfade) {
+        el.setAttribute("fill-opacity", "0.9");
+        el.removeAttribute("stroke-opacity");
+        setSettleGhost(null);
+      }
+    };
   }, [view, d]);
 
   const paint = {
@@ -340,7 +352,7 @@ export function MorphPiece({
  */
 export function LoftGauge({ cell, size, compact }: { cell: CellFit; size: string; compact: boolean }) {
   const pct = Math.min(cell.loftMm / Math.max(cell.maxLoftMm, 1), 1) * 100;
-  const bar = cell.status === "over" ? "bg-red-500" : cell.status === "compressed" ? "bg-amber-500" : "bg-emerald-500";
+  const bar = cell.status === "ok" ? "bg-emerald-500" : "bg-amber-500";
   const tone = FIT_TONE[cell.status as Exclude<FitStatus, "ok">];
   return (
     <div
@@ -366,9 +378,10 @@ export function LoftGauge({ cell, size, compact }: { cell: CellFit; size: string
   );
 }
 
+/** Squeezed and cannot close alike: amber, never red (Ivan, 1-11-2026); the word says which. */
 const FIT_TONE: Record<Exclude<FitStatus, "ok">, string> = {
   compressed: "text-amber-600 dark:text-amber-400",
-  over: "text-red-600 dark:text-red-400",
+  over: "text-amber-600 dark:text-amber-400",
 };
 
 /**
@@ -582,6 +595,7 @@ export function XrayPillow({
   items,
   onPlacementsChange,
   controlsSlot,
+  softBody = SOFT_BODY_DEFAULTS,
   className,
 }: {
   placements: PillowPlacement[];
@@ -605,6 +619,8 @@ export function XrayPillow({
   onPlacementsChange?: (next: PillowPlacement[]) => void;
   /** Desktop: render the dive controls into this element instead of over the pillow art. */
   controlsSlot?: HTMLElement | null;
+  /** The soft body's Settings (ADR 0025), the cross-section's own: pouches settle as soft bodies; off draws the conformed outlines. */
+  softBody?: SoftBodySettings;
   className?: string;
 }) {
   const uid = useId();
@@ -726,7 +742,7 @@ export function XrayPillow({
     [placements, stage, itemDims, fit],
   );
   const rectByKey = useMemo(() => new Map(pieces.map((pl) => [pl.key, pl] as const)), [pieces]);
-  /** piece key → its own squeeze (slice 04): dashed stroke, red tint and the ↕ / ↔ micro-label read this. */
+  /** piece key → its own squeeze (slice 04): the dashed stroke reads this. */
   const pieceStatuses = useMemo(
     () => new Map(pieces.map((p) => [p.key, pieceFitStatus(fit, p, p.depth)] as const)),
     [pieces, fit],
@@ -767,9 +783,10 @@ export function XrayPillow({
   /**
    * piece key → outline at its SETTLED rect, conformed to silhouette ∩ Section
    * (only the Section walls are walls): the default view everywhere, computed
-   * once per geometry change.
+   * once per geometry change. Where the soft body settles from, and what
+   * draws without it.
    */
-  const settledPaths = useMemo(() => {
+  const settledConformed = useMemo(() => {
     const paths = new Map<string, string>();
     const { sil: SIL_REGION, sections: SECTION_REGIONS } = stageRegions(stage);
     for (const [section, list] of piecesBySection) {
@@ -786,7 +803,7 @@ export function XrayPillow({
    * the dived Section only, whose crisp cells the drop targets and chips refer
    * to. Empty when nothing is dived, so a read-only x-ray never pays for it.
    */
-  const authoredPaths = useMemo(() => {
+  const authoredConformed = useMemo(() => {
     const paths = new Map<string, string>();
     if (!dived) return paths;
     const { sil: SIL_REGION, sections: SECTION_REGIONS } = stageRegions(stage);
@@ -800,6 +817,52 @@ export function XrayPillow({
     }
     return paths;
   }, [piecesByCell, itemSubtypes, stage, dived]);
+
+  /**
+   * The soft body, as the cross-section draws it (ADR 0025; soft-top.ts): one
+   * plane per Layer of each Section, pressed into silhouette ∩ Section — in
+   * the dive, per Layer of each cell, into silhouette ∩ cell — settled from
+   * the conformed outlines. Every map below reads the soft outline where there
+   * is one, so drawing, labels, hit areas and the drag ghost all follow it.
+   */
+  const settledPlanes = useMemo(() => {
+    const planes: SoftTopPlane[] = [];
+    for (const [section, list] of piecesBySection) {
+      const region = sectionRegion(stage, section);
+      for (const depth of [...new Set(list.map((p) => p.depth))]) {
+        planes.push({
+          id: `settled/${section}/${depth}`,
+          region,
+          pieces: list
+            .filter((p) => p.depth === depth)
+            .map((p) => ({ key: p.key, d: settledConformed.get(p.key)!, rect: p.settled, shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape, held: isNudged(p) })),
+        });
+      }
+    }
+    return planes;
+  }, [piecesBySection, settledConformed, itemSubtypes, stage]);
+  const authoredPlanes = useMemo(() => {
+    if (!dived) return null;
+    const planes: SoftTopPlane[] = [];
+    for (const [cell, list] of piecesByCell) {
+      if (!cell.startsWith(`${dived}/`)) continue;
+      const region = cellRegion(stage, cell);
+      for (const depth of [...new Set(list.map((p) => p.depth))]) {
+        planes.push({
+          id: `authored/${cell}/${depth}`,
+          region,
+          pieces: list
+            .filter((p) => p.depth === depth)
+            .map((p) => ({ key: p.key, d: authoredConformed.get(p.key)!, rect: p, shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape, held: isNudged(p) })),
+        });
+      }
+    }
+    return planes;
+  }, [dived, piecesByCell, authoredConformed, itemSubtypes, stage]);
+  const softSettled = useSoftTopPaths(settledPlanes, softBody, XRAY_VIEW);
+  const softAuthored = useSoftTopPaths(authoredPlanes, softBody, XRAY_VIEW);
+  const settledPaths = useMemo(() => withSoft(settledConformed, softSettled), [settledConformed, softSettled]);
+  const authoredPaths = useMemo(() => withSoft(authoredConformed, softAuthored), [authoredConformed, softAuthored]);
 
   // Labels sit on the drawn body (the conformed outline's centroid), not on
   // the rect's centre — a compartment-filling pouch is cut by the notch.
@@ -1641,8 +1704,6 @@ export function XrayPillow({
                         {p.depth > 0 && (
                           <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
                         )}
-                        {/* A piece in a cell that cannot close: red tint (slice 04). */}
-                        {squeeze.status === "over" && <path d={d} fill={RING_OVER} fillOpacity={0.3} />}
                       </g>
                     );
                   })}
@@ -1686,7 +1747,7 @@ export function XrayPillow({
             {drag?.active && drag.over && (
               <path
                 d={stage.cellClipPaths[`${drag.over.section}/${drag.over.subSection}`]}
-                fill={drag.overfull ? RING_OVER : "#38bdf8"}
+                fill={drag.overfull ? AMBER : "#38bdf8"}
                 fillOpacity={drag.overfull ? 0.25 : 0.18}
                 data-xray-drop-hover={drag.overfull ? "overfull" : "ok"}
               />
@@ -1713,10 +1774,7 @@ export function XrayPillow({
                 <PieceLabel
                   key={`label-${p.key}`}
                   rect={labelRects.get(p.key) ?? (p.section === dived ? p : p.settled)}
-                  lines={[
-                    ...pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null),
-                    ...squeezeLines(pieceStatuses.get(p.key)),
-                  ]}
+                  lines={pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null)}
                 />
               ) : null,
             )}

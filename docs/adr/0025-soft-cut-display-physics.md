@@ -72,6 +72,57 @@ that does this. This record admits it, as a display layer only.
 - **WebGL / canvas** — rejected. SVG keeps the cut's hit-testing, focus, labels, theme variables
   and static server render.
 
+## Amendment: the top-down x-ray settles too (1-11-2026)
+
+Ivan: the top view should use the soft body as the side view does, with the side view's
+configuration left as it is. The x-ray now draws its pouches with the same solver and the same
+Settings (`components/spatial/soft-top.ts`):
+
+- **Same feature, seen from above.** Each **Layer** of a **Section** is one plane, settled on its
+  own: pieces of a **Layer** press on each other, a **Layer** under them does not push them aside.
+  The walls are silhouette ∩ **Section** (in the dive, silhouette ∩ cell). Rigidity, Neck
+  firmness, pouch volume, smoothing, space between pieces, settle length, animate and on/off all
+  apply; empty case height is the cut's alone (seen from above the case has no height to slump).
+- **Three solver options, off by default.** No gravity (it points into the screen), a rigid case
+  (`rigidCase`: the sewn walls do not move) and a tether up ↔ down as well as front ↔ back
+  (`tetherY`). The cut passes none of them, and its output is byte-identical before and after
+  (420 recipe × Size × Section × layout × Settings scenes hashed). The signed-distance grid is
+  built on first use, which a rigid case never reaches.
+- **The layout still decides where.** Rects, **Layers** and squeezed widths are
+  `layoutPlacements`'; the soft settle starts from the conformed outlines and decides only shape.
+  A pouch remembers the codebase footprint (`pouchOutline`) at its volume; a plane holding more
+  than its room is squeezed pro rata first; a **Neck support** is the firm roll, its footprint the
+  pill. Hit areas, labels, the selection ring and the drag ghost read the soft outlines.
+- **Cost.** A plane is 15–45 ms, a pillow up to ~10 planes. The first two unsettled planes settle
+  in render (an edit's, so it never flickers); the rest settle a few steps per frame and arrive
+  together — the solver's split invariance makes that the same picture. Cached per plane, so a
+  change in one **Section** settles that **Section**'s planes alone.
+- **What reads differently.** A top **Layer** spreads to the walls, so a wider piece under it no
+  longer peeks out at the sides (Neck mix: the Neck M roll in the centre).
+
+## Amendment: a nudged pouch stays where it was put (1-11-2026)
+
+Ivan: both views must still allow small, precise placement, the fillings still separated by
+their columns. Measured first: where a pouch had room, both soft settles followed a nudge to the
+millimetre; in a full cell its neighbours pushed it about half way back (the top view showed
+20 mm as 11–15 mm, the cut as ~10 mm, and the cut shrank the pouch instead of moving it).
+
+- **Held, not pushed back.** A piece nudged by hand (a non-zero fine offset; front ↔ back in the
+  cut, either way from above) is `held`: its tether is `HELD_TETHER` (0.5) instead of the loose
+  0.05, so its neighbours make room. Contacts still resolve after the tether in every substep,
+  so it never runs into them. Un-nudged pieces are untouched: the 420 cut scenes and 42 top-view
+  scenes hash identically before and after.
+- **It slides within its columns.** The settle used to cut a nudged pouch to the columns it
+  spans, so pushing it at an occupied neighbour shortened it. A nudged pouch now keeps its length
+  and stops at its columns' edge (`extentIn` in `settle.ts`): it moves exactly as far as its own
+  columns have room and never stands in an occupied neighbour's column. A pouch as long as its
+  column, between full neighbours, has no room front ↔ back; it can still be nudged across from
+  above.
+- **The cut places too.** A drop on the cut lands centred where it was let go — in its own
+  Layer, another Layer or another column — as far as its columns have room
+  (`placeSlabDrop`); Alt + ← / → slides it 5 mm (`nudgeSlab`), saying so when it has no room.
+  Both write the same `offset_y_mm` the top view writes, in Size M mm.
+
 ## Consequences
 
 - A static or server render (and every `renderToStaticMarkup` test) draws the rounded slabs; the

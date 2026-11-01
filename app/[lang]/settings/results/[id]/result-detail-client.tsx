@@ -23,7 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
-import { confirmSaveWithBolsterFit, confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { confirmSaveWithBolsterFit, confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
 import { useBolsterFit, useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
@@ -764,7 +764,7 @@ export default function ResultDetailPage({
     [fillingItems, productType, assignTier],
   );
   // Slice 04: the physical fit of the assignment at its Size — one object for
-  // the x-ray, the banner, the save confirm and the cross-section.
+  // the x-ray, the save confirm and the cross-section.
   const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
   // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
   const { cut, setCut, onDiveChange } = useCut();
@@ -1354,7 +1354,6 @@ export default function ResultDetailPage({
                               </p>
                             </div>
                           )}
-                          <FitBanner fit={fit} />
                           <XrayEditor
                             placements={placements}
                             onPlacementsChange={setPlacements}

@@ -17,10 +17,12 @@
  * what lands. The committed cut never recomputes: it draws the host's fit.
  */
 
-import { cellLayers, layerOf, moveLayer, movePiece, type Cell, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
-import { MAX_LAYERS_PER_CELL, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
+import { cellLayers, layerOf, moveLayer, movePiece, nudgePiece, type Cell, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
+import { MAX_LAYERS_PER_CELL, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
 import type { AlongSlab } from "@/lib/spatial-fillings/cross-section";
+import { PILLOW_DIMENSIONS, sizeFactors } from "@/lib/spatial-fillings/dimensions";
 import { fitPillow, type FitContext, type PillowFit } from "@/lib/spatial-fillings/fit";
+import { authoredStartMm } from "@/lib/spatial-fillings/settle";
 
 export type SlabDropTarget =
   /** Join an existing Layer of the cell (side by side across the Section). */
@@ -126,6 +128,87 @@ export function stepSlabLayer(placements: PillowPlacement[], ref: PieceRef, dir:
   const gap = alone ? (dir === -1 ? own - 1 : own + 2) : dir === -1 ? own : own + 1;
   if (gap < 0 || gap > layers.length) return null;
   return applySlabDrop(placements, ref, { kind: "gap", section: ref.section, subSection: ref.subSection, gap });
+}
+
+/**
+ * The fine front ↔ back offset (Size M mm, as stored) that stands a pouch's
+ * settled extent in `fit` at `startMm` from its Section's front — the cut's
+ * twin of the top view's nudge (slice 08). Slid to stay inside the columns
+ * it spans, as the settle keeps it: what the cut's drop and Alt + ← / →
+ * write, so the pouch lands exactly where it is put and never stands in an
+ * occupied neighbour's column. Measured from what is drawn, not from the
+ * stored offset, so an offset past its room never hides a step.
+ */
+export function slabOffsetAt(fit: PillowFit, placement: PillowPlacement, startMm: number): number {
+  const key = `${placement.section}/${placement.subSection}/${placement.slot}`;
+  const settled = fit.settle.pieces.find((p) => p.key === key);
+  const drawn = fit.sections[placement.section].pieces.find((p) => p.key === key);
+  if (!settled || !drawn) return placement.offsetYMm ?? 0;
+  const cellLen = fit.settle.cellLengthMm;
+  const scale = sizeFactors(PILLOW_DIMENSIONS[fit.size]).along;
+  const lo = SUB_SECTIONS.indexOf(drawn.spanFrom) * cellLen;
+  const hi = (SUB_SECTIONS.indexOf(drawn.spanTo) + 1) * cellLen;
+  const want = Math.min(Math.max(startMm, lo), hi - (drawn.endMm - drawn.startMm));
+  const offset = (placement.offsetYMm ?? 0) * scale;
+  const from = authoredStartMm(SUB_SECTIONS.indexOf(placement.subSection), cellLen, settled.alongMm, offset) - settled.spreadFrontMm;
+  return Math.round((offset + want - from) / scale);
+}
+
+/** A move the cut writes; `within` when the pouch only moved in its own cell (a nudge). */
+export type SlabPlaceResult = (Extract<MoveResult, { ok: true }> & { within: boolean }) | Extract<MoveResult, { ok: false }>;
+
+/** A plain move, as a place result: it left its cell (or changed nothing). */
+export const asMove = (r: MoveResult | null): SlabPlaceResult | null => (r && r.ok ? { ...r, within: false } : r);
+
+const keyOfRef = (ref: PieceRef) => `${ref.section}/${ref.subSection}/${ref.slot}`;
+
+/** Stand a pouch's settled extent at `startMm` in `fit` (which `placements` produced), keeping its across offset. */
+function placeAlong(placements: PillowPlacement[], ref: PieceRef, fit: PillowFit, startMm: (drawn: { startMm: number; endMm: number }) => number): PillowPlacement[] {
+  const p = placements.find((q) => sameCell(q, ref) && q.slot === ref.slot);
+  const drawn = fit.sections[ref.section].pieces.find((q) => q.key === keyOfRef(ref));
+  if (!p || !drawn) return placements;
+  return nudgePiece(placements, ref, { xMm: p.offsetXMm ?? 0, yMm: slabOffsetAt(fit, p, startMm(drawn)) });
+}
+
+/**
+ * A drop on the cut, placed: the move `applySlabDrop` makes (none when it
+ * stays in its own Layer), then its fine front ↔ back offset so the pouch is
+ * centred where the pointer let go (`centreMm` from the Section's front) —
+ * as far as its own columns have room. `fit` is `placements`' own; `ctx`
+ * refits a moved mix. `null` when nothing changes.
+ */
+export function placeSlabDrop(
+  placements: PillowPlacement[],
+  source: PieceRef,
+  target: SlabDropTarget,
+  centreMm: number,
+  fit: PillowFit,
+  ctx: FitContext,
+): SlabPlaceResult | null {
+  const moved = applySlabDrop(placements, source, target);
+  if (moved && !moved.ok) return moved;
+  const base = moved ? moved.placements : placements;
+  const ref = moved ? moved.ref : source;
+  const next = placeAlong(base, ref, moved ? fitPillow(base, ctx) : fit, (d) => centreMm - (d.endMm - d.startMm) / 2);
+  if (next === placements) return null;
+  return { ok: true, placements: next, ref, within: !moved };
+}
+
+/**
+ * The cut's Alt + ← / →: the pouch slides `stepMm` (this Size's mm; − to the
+ * front) within its own columns. `null` when it has no room that way.
+ */
+export function nudgeSlab(placements: PillowPlacement[], ref: PieceRef, stepMm: number, fit: PillowFit): SlabPlaceResult | null {
+  const drawn = fit.sections[ref.section].pieces.find((q) => q.key === keyOfRef(ref));
+  const p = placements.find((q) => sameCell(q, ref) && q.slot === ref.slot);
+  if (!drawn || !p) return null;
+  const cellLen = fit.settle.cellLengthMm;
+  const lo = SUB_SECTIONS.indexOf(drawn.spanFrom) * cellLen;
+  const hi = (SUB_SECTIONS.indexOf(drawn.spanTo) + 1) * cellLen;
+  // Already against its columns' edge that way: nothing to slide.
+  if (stepMm < 0 ? drawn.startMm - lo < 0.5 : hi - drawn.endMm < 0.5) return null;
+  const next = placeAlong(placements, ref, fit, (d) => d.startMm + stepMm);
+  return next === placements ? null : { ok: true, placements: next, ref, within: true };
 }
 
 /** The drop and the fit it would leave — what the cut draws while the slab is held over a target. */

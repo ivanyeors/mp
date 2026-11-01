@@ -7,7 +7,7 @@
  * SVG from the fit the host already computed — one pouch per piece at its
  * compressed thickness, coloured by family through the same CSS variables the
  * pouches use, hatched when compressed; a stack that cannot close pokes out of
- * the case in red; a Neck support is a round roll. A pouch draws as a stuffed
+ * the case (never red: Ivan, 1-11-2026); a Neck support is a round roll. A pouch draws as a stuffed
  * cushion (`slab-shape.ts`): its free top domes, a pressed face flattens, it
  * sags where nothing holds it up, it is pressed into the case where it meets
  * the outline, and it glides to its new place when the mix changes.
@@ -29,7 +29,8 @@ import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cellLayers, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
-import { applySlabDrop, cellBands, describeSlabTarget, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
+import { applySlabDrop, asMove, cellBands, describeSlabTarget, nudgeSlab, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget, type SlabPlaceResult } from "@/lib/dnd/slab-drag";
+import { nudgeKeyFor } from "@/lib/configurator/move-keys";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { SECTIONS, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -55,12 +56,17 @@ export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
 
 /**
  * Text and spacing for the two layouts. The drawing scales to its container,
- * so at a phone's ~330 px the 664-unit view halves every label — the 9-unit
- * "max … mm" drew at 4–5 px (slice 10's 360 px check). Phones draw a narrower
- * view with larger type instead, ~10–13 px on screen, and put the status on a
- * line of its own so it fits a narrow column. The pillow itself is never
- * squashed to fit either one: its outline keeps the designer's proportions
- * (`cutFrame`), so a phone shows the same shape smaller.
+ * so at a phone's ~330 px the 664-unit view halves every label (slice 10's
+ * 360 px check). Phones draw a narrower view with larger type instead, ~10–13
+ * px on screen, and the Mbolster puts its status on a line of its own so it
+ * fits a narrow column. The pillow itself is never squashed to fit either one:
+ * its outline keeps the designer's proportions (`cutFrame`), so a phone shows
+ * the same shape smaller.
+ *
+ * The pillow cut names its columns (front, middle, back) and nothing else: no
+ * loft budget, no mm, no status word (Ivan, 1-11-2026). The pouches carry the
+ * fit — hatched when squeezed or when they cannot close, never red — and the
+ * Section tab's amber dot marks a Section that does not fit.
  */
 type CutLayout = {
   width: number;
@@ -68,21 +74,26 @@ type CutLayout = {
   height: number;
   /** The tallest the outline draws, view units: a tall profile draws narrower instead of taller. */
   maxShellH: number;
+  /** The Mbolster's room above and below its circle. */
   padTop: number;
   padBottom: number;
+  /** The pillow cut's room above its outline, and below it for the column names. */
+  cutPadTop: number;
+  cutPadBottom: number;
+  /** The Mbolster's "Ø … mm". */
   maxFont: number;
   labelFont: number;
   valueFont: number;
   labelDy: number;
   valueDy: number;
-  /** The status ("compressed" / "cannot close") on its own line, at this offset; inline when null. */
+  /** The Mbolster's status ("compressed" / "cannot fit") on its own line, at this offset; inline when null. */
   statusDy: number | null;
   /** A pouch's own label: the largest it draws, and the smallest worth drawing (else it is left off). */
   pieceFont: number;
   minPieceFont: number;
 };
-const LAYOUT: CutLayout = { ...CROSS_SECTION_VIEW, maxShellH: 200, padTop: 22, padBottom: 30, maxFont: 9, labelFont: 11, valueFont: 10, labelDy: 13, valueDy: 25, statusDy: null, pieceFont: 10, minPieceFont: 7 };
-const COMPACT_LAYOUT: CutLayout = { width: 380, height: 250, maxShellH: 170, padTop: 26, padBottom: 54, maxFont: 12, labelFont: 15, valueFont: 14, labelDy: 17, valueDy: 33, statusDy: 49, pieceFont: 13, minPieceFont: 9 };
+const LAYOUT: CutLayout = { ...CROSS_SECTION_VIEW, maxShellH: 200, padTop: 22, padBottom: 30, cutPadTop: 8, cutPadBottom: 18, maxFont: 9, labelFont: 11, valueFont: 10, labelDy: 13, valueDy: 25, statusDy: null, pieceFont: 10, minPieceFont: 7 };
+const COMPACT_LAYOUT: CutLayout = { width: 380, height: 250, maxShellH: 170, padTop: 26, padBottom: 54, cutPadTop: 10, cutPadBottom: 24, maxFont: 12, labelFont: 15, valueFont: 14, labelDy: 17, valueDy: 33, statusDy: 49, pieceFont: 13, minPieceFont: 9 };
 
 const PAD_X = 8;
 /** How far inside the outline every pouch stays, view units: the case's own cloth, so a pouch reads as inside it. */
@@ -91,8 +102,8 @@ const SHELL_MARGIN = 3;
 const FLOOR = SHELL_MARGIN + 1;
 /** The inset at each end of a piece, so two pouches that meet still read as two. */
 const SLAB_GAP = 2;
-const OVER = "#ef4444";
-const COMPRESSED = "#f59e0b";
+/** A drop that would not close, or is refused: amber, as everything that does not fit — nothing turns red (Ivan, 1-11-2026). */
+const AMBER = "#f59e0b";
 const DROP = "#38bdf8";
 /** How long a held pouch rests on a Section tab before the cut opens that Section. */
 const SPRING_MS = 450;
@@ -118,7 +129,7 @@ function refOf(key: string): PieceRef {
 }
 const keyOf = (ref: PieceRef) => `${ref.section}/${ref.subSection}/${ref.slot}`;
 
-/** "compressed" / "cannot close" after a separator, or nothing when the column fits. */
+/** "compressed" / "cannot close" after a separator, or nothing when the column fits: the drag readout's. */
 const statusSuffix = (status: string, sep: string) =>
   status === "compressed" ? `${sep}compressed` : status === "over" ? `${sep}cannot close` : "";
 
@@ -225,8 +236,8 @@ function cutFrame(compact: boolean, profile: Profile, profileMm: number, tallest
   const ky = Math.max(shellH - FLOOR - SHELL_MARGIN, 1) / Math.max(profileMm, 1);
   const kx = drawW / (cellLengthMm * SUB_SECTIONS.length || 1);
   const content = Math.max(shellH, FLOOR + tallest * ky + 4);
-  const baseline = L.padTop + content;
-  return { L, profile, x0, drawW, shellH, baseline, floor: baseline - FLOOR, ky, kx, colW: cellLengthMm * kx, height: baseline + L.padBottom };
+  const baseline = L.cutPadTop + content;
+  return { L, profile, x0, drawW, shellH, baseline, floor: baseline - FLOOR, ky, kx, colW: cellLengthMm * kx, height: baseline + L.cutPadBottom };
 }
 
 /** The frame a cut of this fit draws in; `tallest` pins the view's height (a drag holds the committed one). */
@@ -285,15 +296,15 @@ type SlabHitProps = React.SVGProps<SVGGElement> & { [attr: `data-${string}`]: st
 /** solid: committed · lifted: picked up, its place still shown · landing: where a held pouch will land. */
 type SlabMode = "solid" | "lifted" | "landing";
 
-type SvgIds = { hatch: string; shade: string; rollShade: string; shadow: string; ghostShadow: string };
+type SvgIds = { hatch: string };
 
 function slabOutline(box: SlabBox, roll: boolean, puff: number, shaping?: PouchShaping): string {
   return roll ? rollPath(box) : pouchPath(box, puff, shaping);
 }
 
 /**
- * One filling, side-on: a cushion in its family colour, shaded for volume,
- * with a soft shadow, hatched when compressed, red when it cannot close;
+ * One filling, side-on: a cushion in flat family colour, as the top view
+ * draws it, hatched when compressed or when it cannot close;
  * pressed into the case and sagging where nothing holds it up (`shaping`).
  * When its box changes it eases there (attribute writes in rAF,
  * interruptible) instead of jumping, unless the viewer asked for reduced
@@ -389,7 +400,6 @@ function PuffySlab({
       data-piece={pieceKey}
       data-slab-mode={mode === "solid" ? undefined : mode}
       opacity={mode === "lifted" ? 0.28 : 1}
-      filter={mode === "solid" ? `url(#${ids.shadow})` : undefined}
       {...hit}
       ref={groupEl}
     >
@@ -398,14 +408,12 @@ function PuffySlab({
         data-slab-body=""
         fill={fill}
         fillOpacity={mode === "landing" ? 0.5 : hovered ? 1 : 0.92}
-        stroke={status === "over" ? OVER : hovered ? "white" : "rgba(255,255,255,0.9)"}
+        stroke={hovered ? "white" : "rgba(255,255,255,0.9)"}
         strokeWidth={mode === "landing" || hovered ? 2.2 : 1.5}
         strokeDasharray={mode === "landing" ? "5 3" : undefined}
         vectorEffect="non-scaling-stroke"
       />
-      <path d={body} data-slab-body="" fill={`url(#${roll ? ids.rollShade : ids.shade})`} pointerEvents="none" />
       {hatched && <path d={body} data-slab-body="" fill={`url(#${ids.hatch})`} pointerEvents="none" />}
-      {status === "over" && <path d={body} data-slab-body="" fill={OVER} fillOpacity={0.35} pointerEvents="none" />}
       {selected && (
         <path
           d={body}
@@ -496,7 +504,7 @@ export function CrossSectionSvg({
   const { L, ky, profile } = f;
   const { width } = L;
   const height = f.height;
-  const ids: SvgIds = { hatch: `${uid}-hatch`, shade: `${uid}-shade`, rollShade: `${uid}-roll`, shadow: `${uid}-shadow`, ghostShadow: `${uid}-ghost` };
+  const ids: SvgIds = { hatch: `${uid}-hatch` };
   const shellId = `${uid}-shell`;
   const transform = profileTransform(profile, f.x0, f.drawW, f.baseline);
   const shell = transformAttr(transform);
@@ -507,9 +515,8 @@ export function CrossSectionSvg({
   const soft = useSoftCut(softBody.enabled ? softInputOf(fit, cut, f, polygon, itemSubtypes, softBody) : null, softBody.animate && !drag, softReplay);
   const clothD = soft ? smoothClosedPath(soft.case) : null;
   const labelOf = (itemId: number) => pieceLabelLines(itemSubtypes.get(itemId) ?? null, itemSizes?.get(itemId) ?? null).join(" ");
-  const maxLoft = columns[0]?.maxLoftMm ?? 0;
   const dropX0 = drag?.column ? f.x0 + SUB_SECTIONS.indexOf(drag.column) * f.colW : null;
-  const toneColor = drag?.tone === "over" || drag?.tone === "refused" ? OVER : DROP;
+  const toneColor = drag?.tone === "over" || drag?.tone === "refused" ? AMBER : DROP;
   const top = f.baseline - f.shellH;
   const slabs = alongSlabs(fit, cut.section).map((slab) => {
     const box = slabBox(slab, f);
@@ -517,7 +524,7 @@ export function CrossSectionSvg({
     const label = labelOf(slab.itemId);
     const landing = drag !== null && slab.key === drag.landingKey;
     const mode: SlabMode = landing ? "landing" : drag && !drag.landingKey && slab.key === drag.sourceKey ? "lifted" : "solid";
-    // A stack that cannot close is not pressed into the case: it pokes out of it, red.
+    // A stack that cannot close is not pressed into the case: it pokes out of it.
     const over = slab.status === "over";
     const shaping: PouchShaping = {
       contacts: slab.pressed,
@@ -573,24 +580,6 @@ export function CrossSectionSvg({
         <pattern id={ids.hatch} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <path d="M0 0 L0 6" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
         </pattern>
-        {/* The cushion's volume: lit from above, a shade underneath. */}
-        <linearGradient id={ids.shade} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="white" stopOpacity={0.3} />
-          <stop offset="0.35" stopColor="white" stopOpacity={0.06} />
-          <stop offset="0.62" stopColor="white" stopOpacity={0} />
-          <stop offset="1" stopColor="black" stopOpacity={0.3} />
-        </linearGradient>
-        <radialGradient id={ids.rollShade} cx="0.36" cy="0.32" r="0.75">
-          <stop offset="0" stopColor="white" stopOpacity={0.32} />
-          <stop offset="0.45" stopColor="white" stopOpacity={0.04} />
-          <stop offset="1" stopColor="black" stopOpacity={0.32} />
-        </radialGradient>
-        <filter id={ids.shadow} x="-10%" y="-25%" width="120%" height="170%">
-          <feDropShadow dx="0" dy="1.2" stdDeviation="1.2" floodColor="#020617" floodOpacity={0.45} />
-        </filter>
-        <filter id={ids.ghostShadow} x="-25%" y="-50%" width="150%" height="250%">
-          <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#020617" floodOpacity={0.5} />
-        </filter>
         <clipPath id={shellId}>
           {clothD ? <path d={clothD} /> : <path d={profile.d} transform={shell} />}
         </clipPath>
@@ -635,51 +624,21 @@ export function CrossSectionSvg({
       )}
       {/* A stack that cannot close, through the case. */}
       {slabs.filter((s) => s.over).map((s) => s.el)}
-      {/* The loft line per column, its mm once (one budget per Section). */}
+      {/* The column names, and nothing else: the pouches carry the fit. */}
       {columns.map((col, i) => {
-        const x0 = f.x0 + i * f.colW;
-        const loftY = f.floor - col.maxLoftMm * ky;
-        return (
-          <path
-            key={col.key}
-            d={`M${r1(x0)} ${r1(loftY)} L${r1(x0 + f.colW)} ${r1(loftY)}`}
-            fill="none"
-            stroke={col.status === "over" ? OVER : XRAY_SHELL_VAR}
-            strokeWidth={1}
-            strokeDasharray="6 4"
-            vectorEffect="non-scaling-stroke"
-          />
-        );
-      })}
-      <text x={r1(f.x0 + f.drawW - 2)} y={r1(f.floor - maxLoft * ky - 3)} textAnchor="end" fontSize={L.maxFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
-        max {Math.round(maxLoft)} mm
-      </text>
-      {columns.map((col, i) => {
-        const x0 = f.x0 + i * f.colW;
-        const cx = x0 + f.colW / 2;
-        const tone = col.status === "over" ? OVER : col.status === "compressed" ? COMPRESSED : XRAY_SHELL_VAR;
+        const cx = f.x0 + i * f.colW + f.colW / 2;
         return (
           <g key={col.key} data-column={col.key} data-status={col.status}>
             <text x={r1(cx)} y={r1(f.baseline + L.labelDy)} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={drag?.column === col.key ? toneColor : XRAY_SHELL_VAR} className="select-none capitalize">
               {col.label}
             </text>
-            <text x={r1(cx)} y={r1(f.baseline + L.valueDy)} textAnchor="middle" fontSize={L.valueFont} fill={col.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
-              {col.slabs.length === 0
-                ? "empty"
-                : `${Math.round(col.loftMm)} mm${L.statusDy === null ? statusSuffix(col.status, " · ") : ""}`}
-            </text>
-            {L.statusDy !== null && col.slabs.length > 0 && col.status !== "ok" && (
-              <text x={r1(cx)} y={r1(f.baseline + L.statusDy)} textAnchor="middle" fontSize={L.valueFont} fill={tone} className="select-none">
-                {statusSuffix(col.status, "")}
-              </text>
-            )}
           </g>
         );
       })}
       {/* The held pouch, under the pointer, over everything (even the tabs above the cut). */}
       {drag && (
         <g ref={editor?.ghostRef} transform={`translate(${r1(drag.ghost.at.x)} ${r1(drag.ghost.at.y)})`} pointerEvents="none" data-xray-slab-ghost>
-          <g transform={drag.overTab ? "translate(0 18) scale(0.5)" : "scale(1.04)"} opacity={drag.overTab ? 0.6 : 1} filter={`url(#${ids.ghostShadow})`}>
+          <g transform={drag.overTab ? "translate(0 18) scale(0.5)" : "scale(1.04)"} opacity={drag.overTab ? 0.6 : 1}>
             {(() => {
               const g = drag.ghost;
               const box = { x: -g.w / 2, y: -g.h / 2, w: g.w, h: g.h };
@@ -689,7 +648,6 @@ export function CrossSectionSvg({
               return (
                 <>
                   <path d={d} fill={`var(${visual.cssVar}, ${visual.defaultColor})`} fillOpacity={0.82} stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-                  <path d={d} fill={`url(#${g.roll ? ids.rollShade : ids.shade})`} />
                   {font > 0 && (
                     <text x={0} y={0} textAnchor="middle" dominantBaseline="central" fontSize={font} fontWeight={600} fill="white" stroke="rgba(2,6,23,0.75)" strokeWidth={font * 0.22} strokeLinejoin="round" paintOrder="stroke" className="select-none">
                       {g.label}
@@ -754,7 +712,7 @@ function CutControls({
             {count > 0 && <span className="tabular-nums opacity-70">{count}</span>}
             {sf.status !== "ok" && (
               <span
-                className={cn("inline-block size-1.5 rounded-full", sf.status === "over" ? "bg-red-500" : "bg-amber-400")}
+                className="inline-block size-1.5 rounded-full bg-amber-400"
                 aria-label={sf.status === "over" ? "cannot close" : "compressed"}
                 role="img"
               />
@@ -964,7 +922,7 @@ export function XrayCrossSection({
    * another Section, and Undo is the x-ray's — an inverse applied only while
    * the move is still the last thing that happened (one toast id for both views).
    */
-  const commit = (before: PillowPlacement[], r: Extract<MoveResult, { ok: true }>, source: PieceRef & { itemId: number }) => {
+  const commit = (before: PillowPlacement[], r: Extract<MoveResult, { ok: true }>, source: PieceRef & { itemId: number }, within = false) => {
     if (!onPlacementsChange) return;
     onPlacementsChange(r.placements);
     const nextKey = keyOf(r.ref);
@@ -972,7 +930,9 @@ export function XrayCrossSection({
     pendingFocus.current = nextKey;
     if (r.ref.section !== cut.section) onCutChange?.({ section: r.ref.section });
     const layer = cellLayers(r.placements, r.ref).findIndex((l) => l.some((p) => p.slot === r.ref.slot));
-    toast.success(`Moved ${labelOf(source.itemId)} to ${r.ref.section} ${r.ref.subSection}, layer ${layer + 1}`, {
+    // A nudge reads as the top view's: within its cell.
+    const where = within ? `within ${r.ref.section} ${r.ref.subSection}` : `to ${r.ref.section} ${r.ref.subSection}, layer ${layer + 1}`;
+    toast.success(`Moved ${labelOf(source.itemId)} ${where}`, {
       id: "xray-move",
       action: {
         label: "Undo",
@@ -996,7 +956,7 @@ export function XrayCrossSection({
     return {
       tabIndex: 0,
       role: "button",
-      "aria-label": `${label || labelOf(slab.itemId)}, ${where}. Drag, or use arrow keys to move.`,
+      "aria-label": `${label || labelOf(slab.itemId)}, ${where}. Drag, or use arrow keys to move; Alt + left / right nudges it.`,
       "data-slab-hit": "",
       "data-slab-key": slab.key,
       style: { cursor: "grab", outline: "none", touchAction: "none" },
@@ -1030,7 +990,21 @@ export function XrayCrossSection({
         };
       },
       onKeyDown: (e) => {
-        if (!placements || e.altKey || e.ctrlKey || e.metaKey) return;
+        if (!placements || e.ctrlKey || e.metaKey) return;
+        if (e.altKey) {
+          // Alt + ← / →: the top view's fine nudge, side-on — a few mm toward the front / back, within its columns.
+          const step = nudgeKeyFor(e);
+          if (!step?.xMm) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const n = nudgeSlab(placements, ref, step.xMm, fit);
+          if (!n) {
+            toast(`No room to nudge ${labelOf(slab.itemId)} further ${step.xMm < 0 ? "to the front" : "to the back"}`, { id: "xray-move" });
+            return;
+          }
+          if (n.ok) commit(placements, n, source, true);
+          return;
+        }
         let r: MoveResult | null = null;
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           const dir = e.key === "ArrowLeft" ? -1 : 1;
@@ -1094,13 +1068,18 @@ export function XrayCrossSection({
         return;
       }
       if (!hold.target || !placements) return;
-      const r = applySlabDrop(placements, hold.source, hold.target);
+      // Dropped on the cut, the pouch lands centred where it was let go (as its columns have room); on a Section tab, at home there.
+      const v = toView(e.clientX, e.clientY);
+      const r: SlabPlaceResult | null =
+        hold.target.section === cut.section
+          ? placeSlabDrop(placements, hold.source, hold.target, (v.x - frame.x0) / frame.kx, fit, { size: fit.size, dims: itemDims, loftAllowance: fit.loftAllowance })
+          : asMove(applySlabDrop(placements, hold.source, hold.target));
       if (!r) return;
       if (!r.ok) {
         toast.error(r.error); // cap feedback, the add's path
         return;
       }
-      commit(placements, r, hold.source);
+      commit(placements, r, hold.source, r.within);
     },
     onPointerCancel: (e) => {
       if (holdRef.current?.pointerId === e.pointerId) endHold();
@@ -1168,8 +1147,8 @@ export function XrayCrossSection({
     return {
       tone: "muted" as const,
       text: isMobile
-        ? "Drag a filling to another column or layer; hold it on a tab to open that Section."
-        : "Drag a filling to another column or layer, or hold it on a Section tab. Keys: ← → front / back · ↑ ↓ layer · Shift ← → Section.",
+        ? "Drag a filling and it lands where you let go; hold it on a tab to open that Section."
+        : "Drag a filling and it lands where you let go — in its column, another column or layer — or hold it on a Section tab. Keys: ← → front / back · Alt ← → nudge · ↑ ↓ layer · Shift ← → Section.",
     };
   })();
 
@@ -1216,7 +1195,7 @@ const READOUT_TONE = {
   muted: "opacity-70",
   drop: "text-sky-500 dark:text-sky-300",
   compressed: "text-amber-600 dark:text-amber-300",
-  over: "text-red-600 dark:text-red-400",
+  over: "text-amber-600 dark:text-amber-300",
 } as const;
 
 /** One line under the cut, announced politely: the pending drop, or the thickness of the pouch in hand. */
@@ -1235,7 +1214,7 @@ function CutReadout({ tone, children }: { tone: keyof typeof READOUT_TONE; child
  * thickest pouch's slab inside at its settled, squeezed thickness — the one
  * that decides whether the bolster closes — and, under it, what the pack
  * stands at along the capsule. Same fit language as the pillow: hatched when
- * compressed, red through the shell when it cannot fit.
+ * compressed, an amber shell when it cannot fit.
  */
 export function BolsterCrossSectionSvg({
   fit,
@@ -1251,7 +1230,6 @@ export function BolsterCrossSectionSvg({
   const L = compact ? COMPACT_LAYOUT : LAYOUT;
   const { width, height, padTop, padBottom } = L;
   const hatchId = `${uid}-bhatch`;
-  const shadeId = `${uid}-bshade`;
   const thickest = fit.pieces.reduce<BolsterFit["pieces"][number] | null>(
     (best, p) => (best === null || p.settledThicknessMm > best.settledThicknessMm ? p : best),
     null,
@@ -1282,28 +1260,20 @@ export function BolsterCrossSectionSvg({
         <pattern id={hatchId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <path d="M0 0 L0 6" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
         </pattern>
-        <linearGradient id={shadeId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="white" stopOpacity={0.4} />
-          <stop offset="0.32" stopColor="white" stopOpacity={0.08} />
-          <stop offset="0.6" stopColor="white" stopOpacity={0} />
-          <stop offset="1" stopColor="black" stopOpacity={0.3} />
-        </linearGradient>
       </defs>
       {/* The shell: the registry diameter. */}
-      <circle cx={cx} cy={cy} r={r} fill={XRAY_INTERIOR_VAR} stroke={fit.status === "over" ? OVER : XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      <circle cx={cx} cy={cy} r={r} fill={XRAY_INTERIOR_VAR} stroke={fit.status === "over" ? AMBER : XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       {thickest && visual && (
         <g data-slab-status={status} data-item-subtype={itemSubtypes.get(thickest.itemId) ?? ""}>
           <path
             d={body}
             fill={`var(${visual.cssVar}, ${visual.defaultColor})`}
             fillOpacity={0.92}
-            stroke={status === "over" ? OVER : "rgba(255,255,255,0.9)"}
+            stroke="rgba(255,255,255,0.9)"
             strokeWidth={1.5}
             vectorEffect="non-scaling-stroke"
           />
-          <path d={body} fill={`url(#${shadeId})`} />
           {status !== "ok" && <path d={body} fill={`url(#${hatchId})`} />}
-          {status === "over" && <path d={body} fill={OVER} fillOpacity={0.35} />}
         </g>
       )}
       <text x={r1(cx + r + 6)} y={r1(cy - r + 4)} fontSize={L.maxFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
@@ -1312,13 +1282,13 @@ export function BolsterCrossSectionSvg({
       <text x={cx} y={padTop + plotH + L.labelDy} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={XRAY_SHELL_VAR} className="select-none">
         end-on · {fit.length}
       </text>
-      <text x={cx} y={padTop + plotH + L.valueDy} textAnchor="middle" fontSize={L.valueFont} fill={fit.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
+      <text x={cx} y={padTop + plotH + L.valueDy} textAnchor="middle" fontSize={L.valueFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
         {fit.pieces.length === 0
           ? "empty"
           : `${thickest ? `${Math.round(thickest.settledThicknessMm)} mm thick` : ""} · ${Math.round(fit.usedMm)} / ${Math.round(fit.lengthMm)} mm along${L.statusDy === null ? (fit.status === "compressed" ? " · compressed" : fit.status === "over" ? " · cannot fit" : "") : ""}`}
       </text>
       {L.statusDy !== null && fit.pieces.length > 0 && fit.status !== "ok" && (
-        <text x={cx} y={padTop + plotH + L.statusDy} textAnchor="middle" fontSize={L.valueFont} fill={fit.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none">
+        <text x={cx} y={padTop + plotH + L.statusDy} textAnchor="middle" fontSize={L.valueFont} fill={XRAY_SHELL_VAR} className="select-none">
           {fit.status === "compressed" ? "compressed" : "cannot fit"}
         </text>
       )}

@@ -181,7 +181,7 @@ assert.match(renderer, /const r = movePiece\(placements, d\.source, plan\.to\);/
 assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
 assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
 assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");
-assert.match(renderer, /fill=\{drag\.overfull \? RING_OVER : "#38bdf8"\}/, "the hovered cell highlights in the selection blue (visible on the unveiled Section), red when the drop would leave it overfull");
+assert.match(renderer, /fill=\{drag\.overfull \? AMBER : "#38bdf8"\}/, "the hovered cell highlights in the selection blue (visible on the unveiled Section), amber — never red — when the drop would leave it overfull");
 assert.match(renderer, /data-xray-drag-ghost/, "a ghost of the outline follows the pointer");
 assert.match(renderer, /if \(e\.key !== "Escape"\) return;\s*e\.stopPropagation\(\);\s*cancelDrag\(\);/, "Escape mid-drag cancels the drag and keeps the dive open");
 assert.match(renderer, /draggingRef\.current = true; \/\/ Escape now cancels the drag, not the dive/, "the dive's Escape guard stands down during a pouch drag");
