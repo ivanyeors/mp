@@ -52,6 +52,7 @@ const DRAFT: CampaignDraft = {
   audience: "subscribed",
   segmentId: null,
   excludeSegmentIds: [],
+  includeUnengaged: false,
 };
 const SAVED: Campaign = {
   ...DRAFT,

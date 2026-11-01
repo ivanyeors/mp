@@ -205,6 +205,7 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   campaigns_sent: [],
   campaigns_clicked: [],
   last_emailed_at: "-infinity",
+  unengaged: false,
   ...over,
 });
 

@@ -26,6 +26,9 @@ const PEOPLE = [
   // Slice 09's fit checks: Jun ships to Malaysia and bought 9 days ago; Kavya's country is unknown, and she has no pillow here.
   { first: "Jun", last: "Wei", stage: "new", detail: "delivered", purchases: 1, bought: ["basic"], sizes: ["M"], delivered: 3, consent: "subscribed", source: "checkout", imported: false, ship: "MY", lastBought: 9 },
   { first: "Kavya", last: "Iyer", stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, consent: "subscribed", source: "account", imported: false, ship: null },
+  // Slice 12: Lapsed and subscribed, and clicked none of her last six campaigns. Stated, not drawn
+  // from six made-up campaigns, so the campaign list stays as it was.
+  { first: "Lina", last: "Koh", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 900, consent: "subscribed", source: "shopify_import", imported: true, said: "yes", ship: "SG", unengaged: true },
 ];
 
 const BATCH = "00000000-0000-4000-8000-00000000b001";
@@ -610,6 +613,8 @@ export default function crm({ now }) {
             campaigns_sent: [...new Set(sent.map((x) => x.campaign_id))],
             campaigns_clicked: [...new Set(sent.filter((x) => x.first_clicked_at).map((x) => x.campaign_id))],
             last_emailed_at: lastSent ?? "-infinity",
+            // Slice 12: the sunset rule's answer, stated per person above.
+            unengaged: p.unengaged === true,
           };
         }),
     },

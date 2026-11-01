@@ -45,6 +45,9 @@ import type { MarketingEmailState } from "@/lib/marketing-consent/state";
  * to Singapore · Not emailed in 30 days* is a link too. (Its *Points expire
  * within* is not built: points never expire, ADR 0030 decision 17.)
  *
+ * Slice 12 adds *Engagement*: **Unengaged** (lib/crm/engagement.ts) or not,
+ * the overview's `unengaged`, the column the campaign rule reads too.
+ *
  * Each parameter is read on its own: an unknown value (`bought=foo`) is
  * dropped and named in `ignored`, never passed to the query.
  *
@@ -258,6 +261,17 @@ export function campaignFilterLabel(state: CampaignFilterState, name: string): s
 export type EmailedFilter = { when: "within" | "over"; days: number } | { when: "never" };
 export const EMAILED_DAYS_MAX = 730;
 
+/**
+ * *Engagement* (slice 12): **Unengaged**, the sunset rule, or everyone else.
+ * Campaigns leave the Unengaged out unless one includes them.
+ */
+export const ENGAGEMENT_FILTERS = ["engaged", "unengaged"] as const;
+export type EngagementFilter = (typeof ENGAGEMENT_FILTERS)[number];
+export const ENGAGEMENT_LABELS: Record<EngagementFilter, string> = {
+  engaged: "Engaged",
+  unengaged: "Unengaged",
+};
+
 export const CUSTOMER_SORTS = [
   "newest",
   "oldest",
@@ -310,6 +324,8 @@ export interface CustomerFilters {
   campaign: CampaignFilter | null;
   /** When a campaign last reached them; null for no filter. */
   emailed: EmailedFilter | null;
+  /** Unengaged or not (`unengaged`); null for no filter. */
+  engagement: EngagementFilter | null;
   /** The Google review (CRM slice 12). */
   google_review: GoogleReviewFilter;
   /** Left a Shop review. */
@@ -343,6 +359,7 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   language: null,
   campaign: null,
   emailed: null,
+  engagement: null,
   google_review: "all",
   shop_review: "all",
   rating: null,
@@ -444,6 +461,7 @@ const PARAM_SCHEMAS = {
         z.object({ when: z.enum(["within", "over"]), days: z.number().int().min(1).max(EMAILED_DAYS_MAX) }),
       ]),
     ),
+  engagement: z.enum(ENGAGEMENT_FILTERS),
   google_review: z.enum(GOOGLE_REVIEW_FILTERS),
   shop_review: z.enum(SHOP_REVIEW_FILTERS),
   rating: z.enum(RATING_FILTERS),
@@ -561,6 +579,7 @@ export function customerFilterParams(
   if (f.language) out.set("language", f.language);
   if (f.campaign) out.set("campaign", `${f.campaign.id}:${f.campaign.state}`);
   if (f.emailed) out.set("emailed", emailedParam(f.emailed));
+  if (f.engagement) out.set("engagement", f.engagement);
   if (f.google_review !== "all") out.set("google_review", f.google_review);
   if (f.shop_review !== "all") out.set("shop_review", f.shop_review);
   if (f.rating) out.set("rating", f.rating);
@@ -677,6 +696,7 @@ const FILTER_LABELS: {
   language: (v) => `Reads ${LANGUAGE_LABELS[v]}`,
   campaign: (v, ctx) => campaignFilterLabel(v.state, campaignName(v.id, ctx)),
   emailed: (v) => emailedLabel(v),
+  engagement: (v) => ENGAGEMENT_LABELS[v],
   google_review: (v) => GOOGLE_REVIEW_LABELS[v as Exclude<GoogleReviewFilter, "all">],
   shop_review: (v) => (v === "yes" ? "Left a shop review" : "No shop review"),
   rating: (v) => RATING_LABELS[v],
@@ -817,6 +837,8 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
       q = e.when === "within" ? q.gte("last_campaign_sent_at", cutoff) : q.lt("last_emailed_at", cutoff);
     }
   }
+  // Slice 12: never null, so the two values split every Customer.
+  if (filters.engagement) q = q.eq("unengaged", filters.engagement === "unengaged");
 
   // CRM slice 12. Each Customer is in exactly one Google review value.
   if (filters.google_review === "linked") q = q.not("google_reviewed_at", "is", null);

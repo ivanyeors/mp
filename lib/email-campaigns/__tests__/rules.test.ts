@@ -31,11 +31,15 @@ import {
   type CampaignSendStatus,
 } from "../rules";
 import type { EmailBlock } from "../content";
+import { isUnengaged, latestCampaignEngagement } from "@/lib/crm/engagement";
+import { lifecycleDetail, lifecycleStage } from "@/lib/crm/lifecycle-stage";
+import { monthsBefore } from "@/lib/crm/months";
 
 type Case = {
   name: string;
   audience: CampaignAudience;
   retryFailed?: boolean;
+  includeUnengaged?: boolean;
   customer: {
     migrated?: boolean;
     claimed?: boolean;
@@ -43,9 +47,51 @@ type Case = {
     suppressedBy?: string;
     own?: CampaignSendStatus;
     recent?: { daysAgo: number; kind?: "campaign" | "points_expiry" | "transactional"; status?: CampaignSendStatus }[];
+    engagement?: { stage: "lead" | "new" | "at_risk" | "lapsed"; customerMonths?: number; campaigns: ("sent" | "clicked" | "held_out")[] };
   };
   expected: string | null;
 };
+
+const DAY = 86_400_000;
+/** Each `engagement.stage`'s one purchase, in months before now, as the SQL assert inserts it. */
+const PURCHASE_MONTHS = { lead: null, new: 2, at_risk: 18, lapsed: 30 } as const;
+
+/**
+ * Slice 12: the overview's `unengaged` for a case, through the TypeScript
+ * twins (`lifecycleStage`, `isUnengaged`), from the rows the SQL assert
+ * inserts: a purchase for the stage, the Customer's age, and every campaign
+ * send of theirs the provider accepted, newest first (the case's `campaigns`,
+ * its other campaigns in `recent`, and this one's `own`).
+ */
+function unengagedOf(c: Case, now: Date): boolean {
+  const e = c.customer.engagement;
+  const months = e ? PURCHASE_MONTHS[e.stage] : null;
+  const lastPurchaseAt = months == null ? null : monthsBefore(now, months).toISOString();
+  const facts = {
+    purchases: lastPurchaseAt ? 1 : 0,
+    lastPurchaseAt,
+    bookings: 0,
+    lastBookingAt: null,
+    // The assert dates the consent 30 days ago.
+    unsubscribedAt: c.customer.marketing_email === "unsubscribed" ? new Date(now.getTime() - 30 * DAY).toISOString() : null,
+    lastPurchaseDeliveredAt: null,
+  };
+  const accepted = (status: string | undefined) => ["sent", "bounced", "complained"].includes(status ?? "sent");
+  const sends = [
+    ...(e?.campaigns ?? []).flatMap((x, k) => (x === "held_out" ? [] : [{ daysAgo: 40 + k, clicked: x === "clicked" }])),
+    ...(c.customer.recent ?? []).filter((r) => (r.kind ?? "campaign") === "campaign" && accepted(r.status)).map((r) => ({ daysAgo: r.daysAgo, clicked: false })),
+    ...(c.customer.own && accepted(c.customer.own) ? [{ daysAgo: 0, clicked: false }] : []),
+  ].sort((a, b) => a.daysAgo - b.daysAgo);
+  return isUnengaged(
+    {
+      stage: lifecycleStage(facts, now),
+      detail: lifecycleDetail(facts, now),
+      customerSince: monthsBefore(now, e?.customerMonths ?? 0).toISOString(),
+      ...latestCampaignEngagement(sends.map((x) => x.clicked)),
+    },
+    now,
+  );
+}
 
 /**
  * The `marketing_recent` the view would give for a case's other email: every
@@ -65,8 +111,8 @@ const CASES = JSON.parse(
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021100000_email_campaigns.sql"), "utf8");
 /** The rule's latest definition: the rest period's (PRD-campaign-audiences slice 07). */
 const RULE_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031144935_campaign_rest_period.sql"), "utf8");
-/** The rule's latest definition: slice 11 added `held_out`. */
-const BLOCKER_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031162653_campaign_results.sql"), "utf8");
+/** The rule's latest definition: slice 12 added `unengaged`. */
+const BLOCKER_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261101130000_campaign_unengaged.sql"), "utf8");
 
 const NOW = new Date("2026-10-31T04:00:00.000Z");
 
@@ -90,8 +136,9 @@ describe("composedCampaignBlocker: campaign-rule-cases.json", () => {
           suppressed,
           own: own ? { status: own, wave: "cases", sentAt: "2026-10-20T00:00:00Z" } : null,
           recentMarketing: recentOf(c, NOW),
+          unengaged: unengagedOf(c, NOW),
         },
-        { retryFailed: c.retryFailed, now: NOW },
+        { retryFailed: c.retryFailed, now: NOW, includeUnengaged: c.includeUnengaged },
       ),
     ).toBe(c.expected);
   });
@@ -183,6 +230,7 @@ describe("placeholders, not prefilled words (PRD-campaign-email-editor slice 01)
         audience: "imported_not_signed_in",
         segmentId: null,
         excludeSegmentIds: [],
+        includeUnengaged: false,
       });
     }
     expect(EMPTY_CAMPAIGN_DRAFT.audience).toBe(FIRST_CAMPAIGN_DRAFT.audience);

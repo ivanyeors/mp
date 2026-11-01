@@ -66,6 +66,7 @@ const draftWith = (content: CampaignContent): CampaignDraft => ({
   audience: "subscribed",
   segmentId: null,
   excludeSegmentIds: [],
+  includeUnengaged: false,
 });
 const saved = (draft: CampaignDraft): Campaign => ({
   ...draft,

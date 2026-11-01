@@ -1230,7 +1230,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `loadSoldOrders()` [select] — lib/analytics/sales-report.ts:149
   - `loadVariantLabels()` [select] — lib/stripe/variant-labels.ts:82
   - `pillowDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:141
-  - `readProductClasses()` [select] — lib/email-campaigns/store.ts:497
+  - `readProductClasses()` [select] — lib/email-campaigns/store.ts:528
   - `resultCouponLineItems()` [select] — lib/results/discount.ts:116
   - `syncPillowProducts()` [select] — lib/ecommerce/inventory-sync.ts:21
   - `syncShopifyPricingFromSupabase()` [select] — lib/shopify/pricing.ts:82
@@ -1386,7 +1386,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `main()` [select] — scripts/stripe-sync-all.ts:73
   - `readCampaignProductCards()` [select] — lib/email-campaigns/products.ts:92
   - `readCampaignProducts()` [select] — lib/email-campaigns/products.ts:115
-  - `readProductClasses()` [select] — lib/email-campaigns/store.ts:491
+  - `readProductClasses()` [select] — lib/email-campaigns/store.ts:522
   - `resolveSurfaceKey()` [select] — lib/page-faq/seed.ts:24
   - `resultCouponLineItems()` [select] — lib/results/discount.ts:131
   - `setComposedProductImage()` [select] — app/[lang]/settings/inventory/actions.ts:452
@@ -1403,16 +1403,17 @@ Defined in supabase/migrations/20261101020836_customer_lifecycle_counts.sql:22
   - `getLifecycleSummary()` — lib/crm/lifecycle-summary-server.ts:11
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261031152806_customer_overview_reach_filters.sql:39
+Defined in supabase/migrations/20261101130000_campaign_unengaged.sql:81
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
   - `countShipsToUnknown()` [select] — lib/ecommerce/admin/customers.ts:79
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
-  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:140
+  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:142
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:116
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:57
-  - `readRecipientFacts()` [select] — lib/email-campaigns/store.ts:476
+  - `readRecipientFacts()` [select] — lib/email-campaigns/store.ts:507
+  - `readUnengagedIds()` [select] — lib/email-campaigns/store.ts:458
   - `resolveSegment()` [select] — lib/crm/segments.ts:245
 
 ### admin_google_reviews_unlinked
@@ -1449,7 +1450,7 @@ Defined in supabase/migrations/20261020112000_customer_emails.sql:47
 ### claim_marketing_campaign_send
 Defined in supabase/migrations/20261031162653_campaign_results.sql:164
 - Called by:
-  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:556
+  - `claimMarketingCampaignSend()` — lib/email-campaigns/store.ts:587
 
 ### claim_migrated_customer
 Defined in supabase/migrations/20261021150000_points_claim_bonus.sql:100
@@ -1564,7 +1565,7 @@ References: `customers`, `mp_staff`
 Defined in supabase/migrations/20261031144619_customer_overview_purchase_filters.sql:48
 - Read by:
   - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:158
-  - `readLatestPillows()` [select] — lib/email-campaigns/store.ts:450
+  - `readLatestPillows()` [select] — lib/email-campaigns/store.ts:481
 
 ### customer_review_requests
 Defined in supabase/migrations/20261020124000_customer_review_requests.sql:36

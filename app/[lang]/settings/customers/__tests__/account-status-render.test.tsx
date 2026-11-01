@@ -94,6 +94,7 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   campaigns_sent: [],
   campaigns_clicked: [],
   last_emailed_at: "-infinity",
+  unengaged: false,
   ...over,
 });
 
@@ -279,6 +280,7 @@ describe("Customer detail: Lifecycle stage", () => {
     lifecycle_detail: "delivered",
     lifecycle_undated: false,
     marketing_email_updated_at: null,
+    unengaged: false,
     ...over,
   });
 
@@ -317,6 +319,16 @@ describe("Customer detail: Lifecycle stage", () => {
     expect(html).toContain(">Loyal<");
     expect(html).toContain("Repeat purchases · No dates yet");
     expect(html).toContain("On Shopify");
+  });
+
+  it("says a Lapsed Customer is Unengaged, with the rule on hover (PRD-campaign-audiences slice 12)", () => {
+    const html = withStage(
+      lifecycle({ last_purchase_at: "2024-03-01T02:00:00Z", lifecycle_stage: "at_risk", lifecycle_detail: "lapsed", unengaged: true }),
+    );
+    expect(html).toContain(">At risk<");
+    expect(html).toContain("Lapsed · Unengaged");
+    expect(html).toContain("Clicked none of their last 6 campaign emails");
+    expect(withStage(lifecycle({ lifecycle_stage: "at_risk", lifecycle_detail: "lapsed" }))).not.toContain("Unengaged");
   });
 
   it("says when a Lost Customer unsubscribed", () => {

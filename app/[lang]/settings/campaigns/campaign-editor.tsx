@@ -92,6 +92,7 @@ import {
     type CampaignDraft,
     type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
+import { UNENGAGED_WHO } from "@/lib/crm/engagement";
 import { emailSaysNothing, STARTERS, startedFrom, starterAudience, type Starter } from "@/lib/email-campaigns/starters";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
@@ -288,9 +289,10 @@ export function CampaignEditor({
         audience: initial.audience,
         segmentId: initial.segmentId ?? "",
         excludeSegmentIds: initial.excludeSegmentIds ?? [],
+        includeUnengaged: initial.includeUnengaged ?? false,
     }));
     const draft = history.value;
-    const { name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds } = draft;
+    const { name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds, includeUnengaged } = draft;
     const { choice: buttonChoice, label: buttonLabel, url: buttonUrl } = draft.button;
     const edit = (patch: Partial<EditorDraft>, burst?: string) => history.set((e) => ({ ...e, ...patch }), { burst });
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
@@ -334,12 +336,13 @@ export function CampaignEditor({
             audience,
             segmentId: audience === "segment" ? segmentId || null : null,
             excludeSegmentIds,
+            includeUnengaged,
             button:
                 content || buttonChoice === "none"
                     ? null
                     : { target: buttonChoice, label: buttonLabel, url: buttonChoice === "url" ? buttonUrl : null },
         }),
-        [name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds, buttonChoice, buttonLabel, buttonUrl],
+        [name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds, includeUnengaged, buttonChoice, buttonLabel, buttonUrl],
     );
     const inputKey = JSON.stringify(input);
     const [savedKey, setSavedKey] = useState(inputKey);
@@ -602,7 +605,8 @@ export function CampaignEditor({
     const audienceWords =
         CAMPAIGN_AUDIENCE_LABEL[audience] +
         (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : "") +
-        (excludeSegmentIds.length ? `, leaving out ${excludeSegmentIds.map((x) => `“${segmentName(x)}”`).join(", ")}` : "");
+        (excludeSegmentIds.length ? `, leaving out ${excludeSegmentIds.map((x) => `“${segmentName(x)}”`).join(", ")}` : "") +
+        (includeUnengaged ? ", the Unengaged included" : "");
     const confirmation: SendConfirmation | null = plan
         ? {
               count: planned,
@@ -1094,6 +1098,21 @@ export function CampaignEditor({
                         {locked && !excludeSegmentIds.length ? <p className="text-sm text-muted-foreground">Nobody.</p> : null}
                     </div>
                 </Field>
+                {/* Slice 12 (PRD-campaign-audiences): the sunset rule leaves the Unengaged out unless this is a win-back. */}
+                <div className="space-y-1">
+                    <label className="flex items-center gap-2 text-sm max-md:min-h-11 max-md:active:opacity-60">
+                        <Checkbox
+                            checked={includeUnengaged}
+                            onCheckedChange={(v) => edit({ includeUnengaged: v === true })}
+                            disabled={locked}
+                            aria-describedby="c-include-unengaged-hint"
+                        />
+                        Include unengaged
+                    </label>
+                    <p id="c-include-unengaged-hint" className="text-xs text-muted-foreground">
+                        Off, it leaves out people who {UNENGAGED_WHO}. Tick it for a win-back to At risk · Lapsed.
+                    </p>
+                </div>
                 <p className="text-sm">
                     <span className="font-medium">From</span>{" "}
                     <span className="break-words text-muted-foreground">

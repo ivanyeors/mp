@@ -622,7 +622,7 @@ The 10% of the people a **Kept sending** campaign would send to that it keeps ba
 _Avoid_: "control group" in UI copy; reading a held-out Customer as unsubscribed or suppressed (they get every other campaign)
 
 **Unengaged**:
-A subscribed **Customer** the sunset rule leaves out of campaigns: an *At risk · Lapsed* customer, or a *Lead* who has been a Customer for over 12 months, who clicked none of their last 6 campaigns (owner, 2026-10-31; PRD-campaign-audiences slice 12). Nobody sent fewer than 6 is Unengaged. A Customers filter (*Engagement*), so it can be seen and saved; a campaign leaves it out unless it ticks *Include unengaged*.
+A subscribed **Customer** the sunset rule leaves out of campaigns: an *At risk · Lapsed* customer, or a *Lead* who has been a Customer for over 12 months, who clicked none of their last 6 campaigns (owner, 2026-10-31; PRD-campaign-audiences slice 12). Nobody sent fewer than 6 is Unengaged. A Lead's 12 months count from when they became a Customer here (an imported Customer's from the import: the export has no sign-up date). Derived, never stored: a click or a purchase ends it at once. A Customers filter (*Engagement*), so it can be seen and saved; a campaign leaves it out unless it ticks *Include unengaged* (a win-back), and the plan says how many it left out.
 _Avoid_: reading it as a **Lifecycle stage** or as consent (they can still be emailed, and still unsubscribe); "inactive", "dormant"
 
 **Email template**:

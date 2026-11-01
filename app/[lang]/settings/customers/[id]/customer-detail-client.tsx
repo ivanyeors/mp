@@ -62,7 +62,7 @@ import { CustomerFollowUpsCard } from "./customer-followups-card";
 import { CustomerReviewsCard } from "./customer-reviews-card";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
-import { LifecycleStageBadge, lifecycleNote } from "../lifecycle-stage-badge";
+import { LifecycleStageBadge, UNENGAGED_TITLE, lifecycleNote } from "../lifecycle-stage-badge";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -400,7 +400,11 @@ export function CustomerDetailClient({
                         {lifecycle ? (
                             <LifecycleStageBadge stage={lifecycle.lifecycle_stage} undated={lifecycle.lifecycle_undated} />
                         ) : null}
-                        {note ? <span className="text-xs text-muted-foreground">{note}</span> : null}
+                        {note ? (
+                            <span className="text-xs text-muted-foreground" title={lifecycle?.unengaged ? UNENGAGED_TITLE : undefined}>
+                                {note}
+                            </span>
+                        ) : null}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">
                         Customer since {formatDate(customer.created_at)}

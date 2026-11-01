@@ -784,6 +784,8 @@ export async function planWave(
     retryFailed,
     // Slice 11: who its holdout will keep back, so the plan can say so.
     holdout: Boolean(campaign.keepSending?.holdoutAt),
+    // Slice 12: a win-back reaches the Unengaged; every other campaign leaves them out.
+    includeUnengaged: campaign.includeUnengaged,
   });
   const wanted = Math.min(n, plan.eligible);
   const customerIds = selection.map((c) => c.customerId);

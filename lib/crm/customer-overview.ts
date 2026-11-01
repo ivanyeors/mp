@@ -76,6 +76,7 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "campaigns_sent",
   "campaigns_clicked",
   "last_emailed_at",
+  "unengaged",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -228,6 +229,13 @@ export interface CustomerOverviewRow {
    * never-emailed. Show `last_campaign_sent_at` instead.
    */
   last_emailed_at: string;
+  /**
+   * **Unengaged** (PRD-campaign-audiences slice 12, lib/crm/engagement.ts):
+   * clicked none of their last 6 campaign emails, and Lapsed or a Lead for
+   * over 12 months. Campaigns leave them out unless one includes them. Never
+   * a stage, never consent.
+   */
+  unengaged: boolean;
 }
 
 /** Display name, or null when the Customer has none. */

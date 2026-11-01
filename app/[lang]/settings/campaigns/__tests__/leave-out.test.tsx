@@ -45,6 +45,7 @@ const DRAFT: CampaignDraft = {
   audience: "segment",
   segmentId: OWNERS.id,
   excludeSegmentIds: [STAFF.id, RECENT.id],
+  includeUnengaged: false,
 };
 const saved = (over: Partial<Campaign> = {}): Campaign => ({
   ...DRAFT,

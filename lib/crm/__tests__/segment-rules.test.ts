@@ -205,6 +205,8 @@ describe("choosing a Segment", () => {
       language: null,
       campaign: null,
       emailed: null,
+      // Slice 12's sunset rule.
+      engagement: null,
       // CRM slice 12's review filters.
       google_review: "all",
       shop_review: "all",

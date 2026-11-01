@@ -75,8 +75,11 @@ ticking it is their own `account` choice (slice 02, still to do).
 Consent is necessary, not sufficient. `marketing_campaign_blocker()` decides
 each send (ADR 0040): consent, suppression (a bounce or a spam report), the
 **Rest period** (7 days between marketing emails, at most 4 in 30, points-expiry
-reminders included; `20261031144935`), and, once slice 12 lands, the sunset
-rule. An **Audience** or a
+reminders included; `20261031144935`), and the sunset rule: an **Unengaged**
+Customer (clicked none of their last 6 campaigns, and *At risk · Lapsed* or a
+*Lead* for over 12 months; `20261101130000`) is left out unless the campaign
+ticks *Include unengaged*. Unengaged is never consent: the Customer stays
+`subscribed`, and no consent event is written. An **Audience** or a
 **Segment** only narrows; neither ever reaches someone the claim refuses.
 
 ## Tests

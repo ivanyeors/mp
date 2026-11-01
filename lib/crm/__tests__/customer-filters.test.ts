@@ -559,6 +559,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "consent",
       "delivered",
       "emailed",
+      "engagement",
       "followups",
       "google",
       "google_review",
@@ -592,6 +593,7 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
       "consent",
       "delivered",
       "emailed",
+      "engagement",
       "followups",
       "google",
       "google_review",
@@ -983,5 +985,34 @@ describe("Reach filters (PRD-campaign-audiences slice 05)", () => {
     expect(url.searchParams.get("campaigns_clicked")).toBe(`not.cs.{"${CAMPAIGN}"}`);
     expect(url.searchParams.get("last_emailed_at")).toBe("lt.2026-09-21T04:00:00.000Z");
     expect(url.searchParams.has("or")).toBe(false);
+  });
+});
+
+describe("Engagement (PRD-campaign-audiences slice 12)", () => {
+  const query = (search: string) => {
+    const { q, calls } = recorder();
+    applyCustomerFilters(q, parseCustomerFilters(new URLSearchParams(search)).filters, { now: NOW, order: false });
+    return { calls };
+  };
+
+  it("reads engaged or unengaged, and nothing else", () => {
+    expect(parseCustomerFilters(new URLSearchParams("engagement=unengaged")).filters.engagement).toBe("unengaged");
+    expect(parseCustomerFilters(new URLSearchParams("engagement=engaged")).filters.engagement).toBe("engaged");
+    for (const bad of ["engagement=lapsed", "engagement=", "engagement=Unengaged"]) {
+      expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { engagement: null }, ignored: ["engagement"] });
+    }
+  });
+
+  it("is one eq on the overview's unengaged, the column the campaign rule reads", () => {
+    expect(query("engagement=unengaged").calls).toEqual([["eq", "unengaged", true]]);
+    expect(query("engagement=engaged").calls).toEqual([["eq", "unengaged", false]]);
+    expect(query("").calls).toEqual([]);
+  });
+
+  it("labels each, writes it back, and saves with a Segment like any filter", () => {
+    const { filters } = parseCustomerFilters(new URLSearchParams("stage=at-risk:lapsed&engagement=unengaged"));
+    expect(describeCustomerFilters(filters).map((f) => f.label)).toEqual(["Stage: At risk · Lapsed", "Unengaged"]);
+    expect(customerFilterParams(filters).toString()).toBe("stage=at-risk%3Alapsed&engagement=unengaged");
+    expect(clearCustomerFilter(filters, "engagement").engagement).toBeNull();
   });
 });
