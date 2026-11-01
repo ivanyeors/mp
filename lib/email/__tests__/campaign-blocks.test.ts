@@ -31,7 +31,7 @@ const HINTS = {
   productUnavailable: "Not in the shop.",
 };
 
-const VALUES = { first_name: "Ann", last_name: "Tan", points_balance: "1,250" };
+const VALUES = { first_name: "Ann", last_name: "Tan", points_balance: "1,250", your_pillow: "Premium Mpillow, size M" };
 const data = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> = {}): CampaignBlocksEmailData => ({
   subject: "News",
   preheader: null,

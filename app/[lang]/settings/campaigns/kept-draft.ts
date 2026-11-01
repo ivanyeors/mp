@@ -12,14 +12,19 @@ import { CAMPAIGN_AUDIENCES, CAMPAIGN_BUTTON_TARGETS, type CampaignAudience } fr
 /** The email: its words and blocks, and the greeting switch. */
 export type EditorEmail = CampaignWords & { greeting: boolean };
 
-/** What the editor's history holds: the email and who it goes to, so one Undo takes back any change to either. */
-export type EditorDraft = EditorEmail & { audience: CampaignAudience; segmentId: string };
+/**
+ * What the editor's history holds: the email and who it goes to, the
+ * Segments it leaves out included (PRD-campaign-audiences slice 06), so one
+ * Undo takes back any change to either.
+ */
+export type EditorDraft = EditorEmail & { audience: CampaignAudience; segmentId: string; excludeSegmentIds: string[] };
 
 /** One draft's unsaved state: the email, and who it goes to. */
 export interface KeptDraft {
   email: EditorEmail;
   audience: CampaignAudience;
   segmentId: string;
+  excludeSegmentIds: string[];
 }
 
 const KeptSchema = z.object({
@@ -34,6 +39,8 @@ const KeptSchema = z.object({
   }),
   audience: z.enum(CAMPAIGN_AUDIENCES),
   segmentId: z.string(),
+  // A copy kept before slice 06 has none, and still reads.
+  excludeSegmentIds: z.array(z.string()).default([]),
 });
 
 /** Pure — a kept copy read back, or null when it no longer fits. */
@@ -43,12 +50,17 @@ export function keptDraft(raw: unknown): KeptDraft | null {
 }
 
 /** Pure — the editor's draft as the browser keeps it. */
-export function keptOf({ audience, segmentId, ...email }: EditorDraft): KeptDraft {
-  return { email, audience, segmentId };
+export function keptOf({ audience, segmentId, excludeSegmentIds, ...email }: EditorDraft): KeptDraft {
+  return { email, audience, segmentId, excludeSegmentIds };
 }
 
 /** Pure — a kept copy as the editor's draft. */
-export const draftOf = (k: KeptDraft): EditorDraft => ({ ...k.email, audience: k.audience, segmentId: k.segmentId });
+export const draftOf = (k: KeptDraft): EditorDraft => ({
+  ...k.email,
+  audience: k.audience,
+  segmentId: k.segmentId,
+  excludeSegmentIds: k.excludeSegmentIds,
+});
 
 /** The browser's key for one draft's copy. */
 export const keptDraftKey = (campaignId: string | null) => `mp:campaign-draft:${campaignId ?? "new"}`;

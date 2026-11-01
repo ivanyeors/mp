@@ -31,6 +31,7 @@ import { syncGoogleReviews } from "@/lib/reviews/google-sync";
 import { pollPlacesReviews } from "@/lib/reviews/places-poll";
 import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 import { runAftercareMessages } from "@/lib/aftercare/job";
+import { runKeptSendingFromEnv } from "@/lib/email-campaigns/keep-sending-server";
 import { runPointsEarn, runPointsMilestones } from "@/lib/points/earn";
 import { releaseStalePointReservations } from "@/lib/points/spend";
 import { runSocialInboxMaintenance } from "@/lib/social-inbox/status";
@@ -540,6 +541,19 @@ export async function GET(req: Request) {
     aftercare = { ok: false, error: e instanceof Error ? e.message : "aftercare messages failed" };
   }
 
+  // Chain: kept sending (PRD-campaign-audiences slice 10, ADR 0040 (6)). One
+  // Wave a day for each campaign a person set to keep sending, at most its
+  // cap, through the same claim as a Staff Wave, so consent and the Rest
+  // period apply as there; it leaves 30 of Resend's day for tests and Staff
+  // Waves, and stops at the pause rule or a 429. Off until a person turns it
+  // on for a campaign; a manual re-run never passes a campaign's cap.
+  let keptSending: Awaited<ReturnType<typeof runKeptSendingFromEnv>> | { ok: false; error: string };
+  try {
+    keptSending = await runKeptSendingFromEnv(now);
+  } catch (e) {
+    keptSending = { ok: false, error: e instanceof Error ? e.message : "kept sending failed" };
+  }
+
   // Chain: earned points (PRD-loyalty-points slice 03, ADR 0030 d). One `earn`
   // entry for each Order whose return window has closed; nothing while points
   // are off. A manual re-run writes nothing twice. It never throws: a failure
@@ -589,6 +603,7 @@ export async function GET(req: Request) {
     googleReviews,
     placesReviews,
     aftercare,
+    keptSending,
     points,
     pointsMilestones,
     pointsReservations,

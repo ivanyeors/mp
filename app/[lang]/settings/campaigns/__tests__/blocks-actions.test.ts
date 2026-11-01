@@ -202,7 +202,13 @@ describe("a test send", () => {
     const row = { id, created_at: "t", updated_at: "t", locked_at: null, archived_at: null };
     h.row = { ...row, ...campaignRowFromDraft(CampaignDraftSchema.parse(INPUT)) };
     expect(await sendCampaignTestAction(id, ["me@mpillow.com"])).toMatchObject({ ok: true, sent: 1 });
-    expect(h.tests[0][1]).toEqual({ to: ["me@mpillow.com"], firstName: "Mei Ling", lastName: "Tan", pointsBalance: 1250 });
+    expect(h.tests[0][1]).toEqual({
+      to: ["me@mpillow.com"],
+      firstName: "Mei Ling",
+      lastName: "Tan",
+      pointsBalance: 1250,
+      pillow: { tier: "premium", size: "M" },
+    });
     const { FIRST_CAMPAIGN_DRAFT } = await import("@/lib/email-campaigns/rules");
     h.row = { ...row, ...campaignRowFromDraft(FIRST_CAMPAIGN_DRAFT) };
     await sendCampaignTestAction(id, ["me@mpillow.com"]);

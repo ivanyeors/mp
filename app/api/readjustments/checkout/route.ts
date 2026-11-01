@@ -3,6 +3,7 @@ import { tooManyRequests } from "@/lib/rate-limit";
 import { z } from "zod/v4";
 
 import { isSlotFree } from "@/lib/appointments/book-slot";
+import { recordBoxConsent } from "@/lib/marketing-consent/consent";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
@@ -245,6 +246,10 @@ export async function POST(req: Request) {
     );
   }
   await admin.from("orders").update({ stripe_session_id: session.sessionId }).eq("id", order.id);
+
+  // The marketing email box (ADR 0039), as at shop checkout: recorded with the
+  // fee's Order, for the signed-in Customer. Never stops the booking.
+  await recordBoxConsent(admin, customer.id, body.marketing_email === true, "appointment");
 
   return NextResponse.json({ ok: true, url: session.url, bookingId: booking.id });
 }

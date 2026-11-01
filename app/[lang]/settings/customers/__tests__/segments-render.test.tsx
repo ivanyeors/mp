@@ -130,6 +130,29 @@ describe("the Segments row", () => {
     expect(html).not.toContain("Save as Segment");
   });
 
+  it("offers Email this Segment as a button while the list shows a Segment as saved (PRD-campaign-audiences decision 5)", () => {
+    const html = listFor("bought=premium&last_order=over:12", { canEmail: true });
+    expect(html).toMatch(/<a[^>]*href="\/en-US\/settings\/campaigns\/new\?segment=s1"[^>]*>[\s\S]*?Email this Segment<\/a>/);
+  });
+
+  it("offers no Email this Segment button once the filters change, without campaigns, or for a Segment that needs review", () => {
+    expect(rowFor({ bought: "premium", readjusted: "never" }, "s1")).not.toContain("Email this Segment");
+    expect(listFor("bought=premium&last_order=over:12", { canEmail: false })).not.toContain("Email this Segment");
+    const review = renderToString(
+      <SegmentsRow
+        initialSegments={SEGMENTS}
+        canEdit
+        newCampaignPath="/en-US/settings/campaigns/new"
+        params={{ bought: "basic" }}
+        activeId="s2"
+        listPath="/en-US/settings/customers"
+        onChoose={() => {}}
+        onSelect={() => {}}
+      />,
+    );
+    expect(review).not.toContain("Email this Segment");
+  });
+
   it("renders nothing with no Segments and no filter", () => {
     expect(listFor("", { segments: [] })).not.toContain('aria-label="Segments"');
   });

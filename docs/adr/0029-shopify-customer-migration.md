@@ -84,7 +84,9 @@ scope and no order link: it reads a file the owner exports by hand.
 - **(h) Consent carries provenance.** Shopify's *Accepts Email Marketing = yes* becomes
   `subscribed`, with source `shopify_import` and the export's date. Shopify's "no" stays
   `not_subscribed`, never `unsubscribed`, because it may mean "never asked". An import never
-  re-subscribes anyone who is `unsubscribed`: only the customer's own action does.
+  re-subscribes anyone who is `unsubscribed`: only the customer's own action does. *Amended by
+  ADR 0039 (2026-10-31): after the import, the owner subscribes every Migrated customer nobody
+  has asked (`import_default`), except those on Shopify's unsubscribed list.*
 - **(i) Campaign mail is not transactional mail.** It goes through its own transport and sending
   subdomain, never the Gmail mailbox that sends order emails, so its bounces and complaints cannot
   reach the deliverability of order and **Result** emails. Every campaign email carries one-click

@@ -22,7 +22,10 @@
  *      later purchase, booking or re-subscribe, a Shopify-only buyer is placed
  *      by count without dates;
  *   3. `stage=` for each stage, mapped by `applyCustomerFilters`, lists
- *      exactly the fixture's Customers in that stage;
+ *      exactly the fixture's Customers in that stage; and (PRD-campaign-
+ *      audiences slice 04) for each sub-status, a stage beside a sub-status,
+ *      and *Delivered* (`delivered=within:14`, `over:30`), with the overview's
+ *      `last_delivered_at` and `lifecycle_statuses` compared as in 2;
  *   4. anon and authenticated cannot run either function or read the view,
  *      and the six-stage functions are gone.
  *
@@ -30,9 +33,10 @@
  * covered by lib/crm/__tests__/lifecycle-stage.test.ts.
  */
 import assert from "node:assert/strict";
-import { applyCustomerFilters, parseCustomerFilters } from "@/lib/crm/customer-filters";
+import { applyCustomerFilters, parseCustomerFilters, stageFilterParam } from "@/lib/crm/customer-filters";
 import { isCountedOrder } from "@/lib/crm/purchase-lines";
 import {
+  LIFECYCLE_DETAILS,
   LIFECYCLE_STAGES,
   lifecycleDetail,
   lifecycleStage,
@@ -211,7 +215,30 @@ type OverviewRow = {
   lifecycle_stage: string;
   lifecycle_detail: string | null;
   lifecycle_undated: boolean;
+  last_delivered_at: string | null;
+  lifecycle_statuses: string[];
 };
+
+/** Slice 04's Stage and Delivered filters beyond one main stage, and whom each lists. */
+const SLICE_04_FILTERS: { search: string; lists: (c: FixtureCustomer) => boolean }[] = [
+  ...LIFECYCLE_DETAILS.map((d) => ({ search: `stage=${stageFilterParam(d)}`, lists: (c: FixtureCustomer) => c.detail === d })),
+  { search: "stage=new,at-risk:lapsed", lists: (c) => c.stage === "new" || c.detail === "lapsed" },
+  { search: "stage=lead,loyal:bookings,lost", lists: (c) => ["lead", "lost"].includes(c.stage) || c.detail === "bookings" },
+  // The stage holds its sub-status: read as `stage=new`.
+  { search: "stage=new,new:delivered", lists: (c) => c.stage === "new" },
+  { search: "delivered=within:14", lists: (c) => deliveredDaysAgo(c) != null && deliveredDaysAgo(c)! <= 14 },
+  { search: "delivered=over:30", lists: (c) => deliveredDaysAgo(c) != null && deliveredDaysAgo(c)! > 30 },
+  { search: "delivered=over:30&stage=new", lists: (c) => c.stage === "new" && deliveredDaysAgo(c) != null && deliveredDaysAgo(c)! > 30 },
+];
+
+/** Days since the latest purchase was delivered, as the fixture declares it; null while on its way or with none. */
+function deliveredDaysAgo(c: FixtureCustomer): number | null {
+  const purchases = c.orders.filter(
+    (o) => o.paidDaysAgo != null && isCountedOrder({ paid_at: "x", status: o.status as never }) && o.lines.includes("goods"),
+  );
+  const latest = [...purchases].sort((a, b) => a.paidDaysAgo! - b.paidDaysAgo!)[0];
+  return latest?.deliveredDaysAgo ?? null;
+}
 
 /** What the TypeScript reads from a fixture Customer: the facts the overview's columns hold. */
 function factsOf(c: FixtureCustomer) {
@@ -251,9 +278,10 @@ function main() {
       ...ZONES.flatMap((zone) => [`set local time zone '${zone}';`, ...caseSql(zone)]),
       "set local time zone 'UTC';",
       fixtureSql(),
-      `select '@@overview@@'::text || coalesce(jsonb_agg(to_jsonb(o)), '[]') from (select id, purchases, last_purchase_at, attended_bookings, lifecycle_stage, lifecycle_detail, lifecycle_undated from public.admin_customer_overview where ${inFixture}) o;`,
+      `select '@@overview@@'::text || coalesce(jsonb_agg(to_jsonb(o)), '[]') from (select id, purchases, last_purchase_at, attended_bookings, lifecycle_stage, lifecycle_detail, lifecycle_undated, last_delivered_at, lifecycle_statuses from public.admin_customer_overview where ${inFixture}) o;`,
       ...LIFECYCLE_STAGES.map((s) => filterQuery(`stage_${s}`, `stage=${stageParam(s)}`)),
       filterQuery("stage_loyal_new", "stage=loyal,new"),
+      ...SLICE_04_FILTERS.map((f, i) => filterQuery(`slice04_${i}`, f.search)),
       `select '@@grants@@'::text || jsonb_build_object(
         'anon_stage', has_function_privilege('anon', 'public.customer_lifecycle_stage(${stage6})', 'execute'),
         'auth_stage', has_function_privilege('authenticated', 'public.customer_lifecycle_stage(${stage6})', 'execute'),
@@ -307,6 +335,10 @@ function main() {
       lifecycle_undated: row.lifecycle_undated,
     };
     if (JSON.stringify(sql) !== JSON.stringify(ts)) diffs.push(`fixture "${c.why}": SQL ${JSON.stringify(sql)}, TypeScript ${JSON.stringify(ts)}`);
+    // Slice 04: the latest purchase's delivery, and the stage with its sub-status.
+    const delivered = { last_delivered_at: facts.lastPurchaseDeliveredAt && Date.parse(facts.lastPurchaseDeliveredAt), lifecycle_statuses: [ts.lifecycle_stage, ts.lifecycle_detail].filter((v) => v != null) };
+    const deliveredSql = { last_delivered_at: row.last_delivered_at && Date.parse(row.last_delivered_at), lifecycle_statuses: row.lifecycle_statuses };
+    if (JSON.stringify(deliveredSql) !== JSON.stringify(delivered)) diffs.push(`fixture "${c.why}": SQL ${JSON.stringify(deliveredSql)}, TypeScript ${JSON.stringify(delivered)}`);
     const said = { lifecycle_stage: c.stage, lifecycle_detail: c.detail, lifecycle_undated: c.undated };
     const got = { lifecycle_stage: row.lifecycle_stage, lifecycle_detail: row.lifecycle_detail, lifecycle_undated: row.lifecycle_undated };
     if (JSON.stringify(got) !== JSON.stringify(said)) diffs.push(`fixture "${c.why}": ${JSON.stringify(got)}, the fixture says ${JSON.stringify(said)}`);
@@ -328,6 +360,13 @@ function main() {
   if (JSON.stringify(loyalNew) !== JSON.stringify(ids((c) => c.stage === "loyal" || c.stage === "new"))) {
     diffs.push(`stage=loyal,new: ${loyalNew}`);
   }
+
+  SLICE_04_FILTERS.forEach((f, i) => {
+    const got = json<string[]>(results, `slice04_${i}`);
+    const want = ids(f.lists);
+    if (want.length === 0) diffs.push(`${f.search}: the fixture has no Customer for it`);
+    if (JSON.stringify(got) !== JSON.stringify(want)) diffs.push(`${f.search}: ${got}, expected ${want}`);
+  });
 
   // --- 4. server-only, and the six-stage functions gone ---------------------
   const grants = json<Record<string, boolean>>(results, "grants");
@@ -352,7 +391,7 @@ function main() {
     process.exit(1);
   }
   console.log(
-    `compared ${LIFECYCLE_CASES.length} cases through the functions in ${ZONES.join(" and ")}, ${FIXTURE.length} fixture Customers through the overview, and ${LIFECYCLE_STAGES.length + 1} stage filters`,
+    `compared ${LIFECYCLE_CASES.length} cases through the functions in ${ZONES.join(" and ")}, ${FIXTURE.length} fixture Customers through the overview, ${LIFECYCLE_STAGES.length + 1} stage filters and ${SLICE_04_FILTERS.length} sub-status and delivery filters`,
   );
   console.log("lifecycle-stage.check.ts: ok (rolled back; nothing written)");
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, Bookmark, Loader2, Mail, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +45,10 @@ import {
  *
  * With `campaigns`: *Email this Segment* in the same menu opens a new campaign
  * already sent to it (PRD-crm-retention-loop slice 02). Not on a Segment that
- * needs review, which counts nobody until it is updated.
+ * needs review, which counts nobody until it is updated. The chosen Segment,
+ * as saved, also shows it as a button beside the chips, and saving one offers
+ * it in the toast (PRD-campaign-audiences, owner decision 5): filter, save,
+ * email, without opening a menu.
  *
  * A Segment that *needs review* (a filter it was saved with is no longer one
  * the list knows) shows no count: it counts no Customers until it is updated.
@@ -95,6 +99,7 @@ export function SegmentsRow({
     /** Marks a Segment chosen (after saving one) or none, without changing the filters. */
     onSelect: (id: string | null) => void;
 }) {
+    const router = useRouter();
     const [segments, setSegments] = useState<CustomerSegment[] | null>(initialSegments ?? null);
     const [loadFailed, setLoadFailed] = useState(false);
     const [nameDialog, setNameDialog] = useState<NameDialog | null>(null);
@@ -138,6 +143,8 @@ export function SegmentsRow({
     const changed = active !== null && !sameSegmentFilters(active.params, params);
     const offerUpdate = canEdit && filtered && active !== null && (changed || active.needsReview);
     const offerSave = canEdit && filtered && active === null;
+    // The list shows the chosen Segment as saved: its campaign is one click away.
+    const emailActive = active && !changed ? segmentCampaignHref(newCampaignPath, active) : null;
 
     if (!list.length && !offerSave && !loadFailed) return null;
 
@@ -185,7 +192,8 @@ export function SegmentsRow({
             const sent = await send(SEGMENTS_URL, "POST", { name: trimmed, filters: params }, "Could not save the Segment");
             if (!sent.ok) return;
             if (sent.row) onSelect(sent.row.id);
-            toast.success(`Saved “${trimmed}”`);
+            const emailNew = sent.row ? segmentCampaignHref(newCampaignPath, sent.row) : null;
+            toast.success(`Saved “${trimmed}”`, emailNew ? { action: { label: "Email this Segment", onClick: () => router.push(emailNew) } } : undefined);
         } else {
             const sent = await send(
                 `${SEGMENTS_URL}/${nameDialog.segment.id}`,
@@ -309,6 +317,14 @@ export function SegmentsRow({
                 {offerSave && (
                     <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => openName({ mode: "create" })}>
                         Save as Segment
+                    </Button>
+                )}
+                {emailActive && (
+                    <Button asChild size="sm" className="h-8">
+                        <Link href={emailActive}>
+                            <Mail className="mr-1.5 h-3.5 w-3.5" />
+                            Email this Segment
+                        </Link>
                     </Button>
                 )}
                 {offerUpdate && active && (

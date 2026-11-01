@@ -329,6 +329,9 @@ export function MbolsterConfigClient({
   const [checkoutCode, setCheckoutCode] = React.useState("");
   const [codeStatus, setCodeStatus] = React.useState<CheckoutCodeStatus>({ state: "idle" });
   const [holdNotes, setHoldNotes] = React.useState("");
+  // The marketing email box on the contact step: ticked by default (owner,
+  // 2026-10-31; ADR 0039). A Paired build asks on its Mpillow, not here.
+  const [marketingEmail, setMarketingEmail] = React.useState(true);
   const [holdAddress, setHoldAddress] = React.useState<HoldShippingAddress>({
     recipient: "",
     line1: "",
@@ -1176,6 +1179,7 @@ export function MbolsterConfigClient({
           // Reuse the reference-photo session id as the Result id when staff uploaded photos.
           ...(configSessionId ? { responseId: configSessionId } : {}),
           email: holdEmail.trim(),
+          marketingEmail: !paired && marketingEmail,
           phone: holdPhone.trim(),
           discoverySource,
           discoverySourceOther:
@@ -1676,6 +1680,7 @@ export function MbolsterConfigClient({
                     discoverySourceOther,
                     notes: holdNotes,
                     code: checkoutCode,
+                    marketingEmail,
                   }}
                   codeContext={codeContext}
                   onCodeStatus={setCodeStatus}
@@ -1691,6 +1696,7 @@ export function MbolsterConfigClient({
                     }
                     if (patch.notes !== undefined) setHoldNotes(patch.notes);
                     if (patch.code !== undefined) setCheckoutCode(patch.code);
+                    if (patch.marketingEmail !== undefined) setMarketingEmail(patch.marketingEmail);
                   }}
                 />
 

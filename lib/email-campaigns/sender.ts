@@ -81,6 +81,7 @@ import {
   campaignLedgerKey,
   CAMPAIGN_BLOCKER_TEXT,
   CAMPAIGN_PLACEHOLDERS,
+  excludeSegmentMembers,
   mentionsPoints,
   MAX_TEST_RECIPIENTS,
   MAX_WAVE_SIZE,
@@ -90,16 +91,29 @@ import {
   WAVE_LABEL,
   type Campaign,
   type CampaignPlan,
+  type LeftOutBySegment,
+  type SegmentExclusion,
 } from "./rules";
 import { CHINESE, CHINESE_STATUS_TEXT, chineseAiDrafted, chineseContent, chineseGaps, chineseVersionOf, chineseVersionProblems } from "./chinese-version";
 import { aiDraftedBlocks, contentSignsIn, CONTENT_PLACEHOLDERS, imageAssetsIn, SITE_BUTTON_PATHS, type BlockButton } from "./content";
 import { addressesToAsk, campaignContentChecks, joinVersionChecks, type ContentCheck, type ContentIssue, type EmailFacts } from "./content-checks";
 import { campaignImagesProblem, readCampaignImages, type CampaignImageFailure } from "./images";
+import { addClickToken, hashClickToken, newClickToken } from "./click";
 import { checkLinks, type LinkRequest } from "./link-check";
 import { campaignProductPhotos, campaignProductsProblem, readCampaignProducts, unlistedProductText, type UnlistedProduct } from "./products";
 import { roomAgainText } from "./send-flow";
-import { claimMarketingCampaignSend, finishCampaignSend, readCampaignCandidates, readWaveStats } from "./store";
-import { campaignVariable, SAMPLE_RECIPIENT, variableValues, type VariableRecipient } from "./variables";
+import { campaignFitChecks, fitUnreadCheck } from "./fit-checks";
+import {
+  claimMarketingCampaignSend,
+  finishCampaignSend,
+  readCampaignCandidates,
+  readKeptToday,
+  readLatestPillows,
+  readProductClasses,
+  readRecipientFacts,
+  readWaveStats,
+} from "./store";
+import { campaignVariable, SAMPLE_RECIPIENT, variableValues, type RecipientPillow, type VariableRecipient } from "./variables";
 
 export { MAX_CONSECUTIVE_FAILURES };
 
@@ -199,6 +213,10 @@ export const campaignSignsIn = (campaign: Pick<Campaign, "button" | "content">) 
 export const usesPointsBalance = (campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">) =>
   variablesInEmail(campaign).some((key) => campaignVariable(key).needsPoints);
 
+/** Pure — the Campaign says each recipient's *Your pillow* (PRD-campaign-audiences slice 09), so each batch reads their pillows. */
+export const usesYourPillow = (campaign: Pick<Campaign, "subject" | "preheader" | "content" | "greeting">) =>
+  variablesInEmail(campaign).includes("your_pillow");
+
 /**
  * Pure — the language a reader in `locale` gets the Campaign in (slice 17):
  * its 中文 version for a reader of Chinese, when it has one; else English.
@@ -226,11 +244,8 @@ type CampaignEmailParts = Pick<Campaign, "name" | "subject" | "preheader" | "bod
  */
 export function renderCampaignFor(
   campaign: CampaignEmailParts,
-  p: {
-    firstName: string | null;
-    /** The recipient's other details, for the Variables a block campaign uses (slice 13). */
-    lastName?: string | null;
-    pointsBalance?: number | null;
+  p: VariableRecipient & {
+    /** `firstName`, and the recipient's other details, for the Variables a block campaign uses (slice 13). */
     origin: string;
     locale: Locale;
     claimUrl: string | null;
@@ -294,15 +309,13 @@ export function renderCampaignPreview(
     firstName,
     lastName = null,
     pointsBalance = null,
+    pillow = null,
     forceDark = false,
     images,
     products,
     locale = DEFAULT_LOCALE,
-  }: {
+  }: VariableRecipient & {
     origin: string;
-    firstName: string | null;
-    lastName?: string | null;
-    pointsBalance?: number | null;
     forceDark?: boolean;
     images?: CampaignBlockImages;
     products?: CampaignBlockProducts;
@@ -314,6 +327,7 @@ export function renderCampaignPreview(
     firstName,
     lastName,
     pointsBalance,
+    pillow,
     origin: base,
     locale,
     claimUrl: null,
@@ -547,6 +561,8 @@ export interface SendingStatus {
   checks: PreflightCheck[];
   allowance: SendAllowance | null;
   allowanceError: string | null;
+  /** Today's kept-sending emails across campaigns (PRD-campaign-audiences slice 10); null when they could not be counted. */
+  keptToday: number | null;
 }
 
 /**
@@ -564,8 +580,11 @@ export async function readSendingStatus(setup: CampaignSenderSetup): Promise<Sen
       ? "Resend reports bounces and spam to this site, so they are left out of later sends"
       : "CAMPAIGN_RESEND_WEBHOOK_SECRET is not set: bounces and spam reports are not recorded, and the pause rule cannot see them",
   });
-  const { allowance, error } = await tryAllowance(setup);
-  return { sender: senderOf(setup), checks, allowance, allowanceError: allowance ? null : (error ?? null) };
+  const [{ allowance, error }, keptToday] = await Promise.all([
+    tryAllowance(setup),
+    readKeptToday(setup.admin, (setup.now ?? (() => new Date()))()).catch(() => null),
+  ]);
+  return { sender: senderOf(setup), checks, allowance, allowanceError: allowance ? null : (error ?? null), keptToday };
 }
 
 // ---------------------------------------------------------------------------
@@ -694,11 +713,45 @@ export interface WavePlanResult {
   limitedBy: "daily" | "monthly" | null;
   /** Eligible people this wave leaves for later waves. */
   waiting: number;
+  /**
+   * Who each left-out Segment took away before the rule ran
+   * (PRD-campaign-audiences slice 06), in the campaign's order; empty with none.
+   */
+  leftOutBySegment: LeftOutBySegment[];
+  /**
+   * Where the email and the wave's people do not match (slice 09,
+   * fit-checks.ts): advice only, listed with the email's own; empty when
+   * nothing to say.
+   */
+  fit: ContentCheck[];
+}
+
+/** A Segment a campaign leaves out, as the wave reads it: its name, and its Customers' ids page by page. */
+export interface CampaignExclusionSource {
+  segmentId: string;
+  name: string;
+  ids: () => AsyncIterable<string[]>;
+}
+
+/** Every id each left-out Segment chooses now. Throws, as `resolveSegment` does, for one that cannot be read. */
+async function readExclusions(sources: readonly CampaignExclusionSource[]): Promise<SegmentExclusion[]> {
+  return Promise.all(
+    sources.map(async (x) => {
+      const customerIds = new Set<string>();
+      for await (const page of x.ids()) for (const id of page) customerIds.add(id);
+      return { segmentId: x.segmentId, name: x.name, customerIds };
+    }),
+  );
 }
 
 /**
  * The checks, and who a wave of `size` would go to now. Changes nothing; the
  * caller locks the Campaign before the first batch.
+ *
+ * `exclusions` are the Segments the Campaign leaves out (PRD-campaign-audiences
+ * slice 06): their Customers are dropped from the audience before the rule
+ * runs, whatever the audience. A left-out Segment that cannot be read refuses
+ * the wave, never leaves nobody out.
  */
 export async function planWave(
   campaign: Campaign,
@@ -710,30 +763,58 @@ export async function planWave(
   }: { size: number; retryFailed?: boolean; resume?: boolean; freshLinks?: boolean },
   setup: CampaignSenderSetup,
   segmentIds?: () => AsyncIterable<string[]>,
+  exclusions: readonly CampaignExclusionSource[] = [],
 ): Promise<WavePlanResult> {
   if (campaign.archivedAt) throw new Error("This campaign is archived.");
   const n = Math.floor(size);
   if (!Number.isInteger(n) || n < 1 || n > MAX_WAVE_SIZE) {
     throw new Error(`A wave is 1 to ${MAX_WAVE_SIZE} people.`);
   }
-  const [readiness, waves, candidates] = await Promise.all([
+  const [readiness, waves, audience, leaveOut] = await Promise.all([
     campaignReadiness(setup, { campaign, resume, freshLinks }),
     readWaveStats(setup.admin, campaign.id),
     readCampaignCandidates(setup.admin, campaign, segmentIds),
+    readExclusions(exclusions),
   ]);
+  const { candidates, leftOut } = excludeSegmentMembers(audience, leaveOut);
   // Never past today's room: the rest of the audience waits for the next wave.
   const room = readiness.allowance?.remaining ?? 0;
-  const { selection, ...plan } = planCampaignWave(campaign.audience, candidates, { size: Math.min(n, room), retryFailed });
+  const { selection, ...plan } = planCampaignWave(campaign.audience, candidates, {
+    size: Math.min(n, room),
+    retryFailed,
+    // Slice 11: who its holdout will keep back, so the plan can say so.
+    holdout: Boolean(campaign.keepSending?.holdoutAt),
+  });
   const wanted = Math.min(n, plan.eligible);
+  const customerIds = selection.map((c) => c.customerId);
   return {
     readiness,
     wave: nextWaveLabel(waves.own.map((w) => w.wave)),
     plan,
-    customerIds: selection.map((c) => c.customerId),
+    customerIds,
     requested: n,
     limitedBy: readiness.allowance && selection.length < wanted ? readiness.allowance.binding : null,
     waiting: plan.eligible - selection.length,
+    leftOutBySegment: leftOut,
+    fit: await fitChecks(campaign, customerIds, setup),
   };
+}
+
+/**
+ * The fit checks over the wave's people (slice 09). Advice: a read that fails
+ * says so in one line, and holds nothing.
+ */
+async function fitChecks(campaign: Campaign, customerIds: readonly string[], setup: CampaignSenderSetup): Promise<ContentCheck[]> {
+  if (!customerIds.length) return [];
+  try {
+    const productIds = campaign.content
+      ? [...new Set(campaign.content.blocks.flatMap((b) => (b.type === "products" ? b.products : [])).filter(Boolean))]
+      : [];
+    const [recipients, classes] = await Promise.all([readRecipientFacts(setup.admin, customerIds), readProductClasses(setup.admin, productIds)]);
+    return campaignFitChecks(campaign, recipients, { origin: originOf(setup), productClasses: classes, now: setup.now?.() ?? new Date() });
+  } catch (err) {
+    return [fitUnreadCheck(err instanceof Error ? err.message : String(err))];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -829,6 +910,16 @@ export async function sendCampaignBatch(
   const key = campaignLedgerKey(campaign.id);
   // Each balance is a read of its own: only for an email that says it.
   const readsPoints = usesPointsBalance(campaign);
+  // Their pillows, once for the batch: only for an email that says *Your pillow* (slice 09).
+  let pillows = new Map<string, RecipientPillow>();
+  if (usesYourPillow(campaign)) {
+    try {
+      pillows = await readLatestPillows(setup.admin, ids);
+    } catch (err) {
+      result.stopped = err instanceof Error ? err.message : String(err);
+      return result;
+    }
+  }
 
   for (const customerId of ids) {
     if (result.failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
@@ -853,16 +944,21 @@ export async function sendCampaignBatch(
     // Their language: the 中文 version for a reader of Chinese, when there is one (slice 17).
     const language = campaignLanguage(campaign, locale);
     try {
-      const unsubscribe = unsubscribeLinks(customerId, { origin, locale, secret: setup.unsubscribeSecret });
+      // The unsubscribe link names this send, so leaving is counted against
+      // the campaign (PRD-campaign-audiences slice 08).
+      const unsubscribe = unsubscribeLinks(customerId, { origin, locale, secret: setup.unsubscribeSecret, sendId: claim.sendId });
       if (!unsubscribe) throw new Error("no unsubscribe link could be signed");
       const claimUrl =
         campaignSignsIn(campaign) && claim.unclaimedMigrated
           ? (await mintClaimLink(setup.admin, { customerId, template: key, locale, origin })).url
           : null;
+      // Slice 08: one click token for this email's site links; only its hash is kept.
+      const clickToken = newClickToken();
       const rendered = renderCampaignFor(campaign, {
         firstName: claim.firstName,
         lastName: claim.lastName,
         pointsBalance: readsPoints ? (await readPointsBalance(setup.admin, customerId)).available : null,
+        pillow: pillows.get(customerId) ?? null,
         origin,
         locale,
         claimUrl,
@@ -871,13 +967,18 @@ export async function sendCampaignBatch(
         products: productsFor(shown, language),
       });
       const sent = await transport.send({
-        ...rendered,
+        ...addClickToken(rendered, clickToken, origin),
         to: claim.email,
         from,
         replyTo,
         headers: listUnsubscribeHeaders(unsubscribe, { mailto: replyTo }),
       });
-      await finishCampaignSend(setup.admin, { sendId: claim.sendId, sent: true, providerMessageId: sent.id ?? null });
+      await finishCampaignSend(setup.admin, {
+        sendId: claim.sendId,
+        sent: true,
+        providerMessageId: sent.id ?? null,
+        clickTokenHash: await hashClickToken(clickToken),
+      });
       result.sent++;
       result.failuresInARow = 0;
     } catch (err) {

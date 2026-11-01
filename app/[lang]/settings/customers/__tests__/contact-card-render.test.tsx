@@ -3,6 +3,7 @@ import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import type { ContactFacts, ContactFactsResult } from "@/lib/crm/contact-status";
+import { DEFAULT_CUSTOMER_FILTERS, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
 /**
  * Contact and sign-in status (CRM slice 11): the Customer page's card, and the
@@ -17,6 +18,22 @@ vi.mock("next/navigation", () => ({
 
 const { ContactCard } = await import("../[id]/customer-account-cards");
 const { CustomersClient } = await import("../customers-client");
+const { CustomerFilterGroup } = await import("../customer-filters-panel");
+
+/** One group of the mega filter, as it renders inside the open panel. */
+const groupFor = (
+  group: "stage" | "purchases" | "reach" | "account" | "reviews",
+  filters: Partial<CustomerListFilters>,
+  campaigns?: { id: string; name: string }[],
+) =>
+  renderToString(
+    <CustomerFilterGroup
+      group={group}
+      filters={{ ...DEFAULT_CUSTOMER_FILTERS, ...filters }}
+      onChange={() => {}}
+      campaigns={campaigns}
+    />,
+  );
 
 type CardCustomer = Pick<
   Customer,
@@ -180,6 +197,14 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   lifecycle_detail: null,
   lifecycle_undated: false,
   attended_bookings: 0,
+  pillow_sizes: [],
+  last_delivered_at: null,
+  lifecycle_statuses: ["lead"],
+  ship_country: null,
+  locale: "en-US",
+  campaigns_sent: [],
+  campaigns_clicked: [],
+  last_emailed_at: "-infinity",
   ...over,
 });
 
@@ -210,9 +235,13 @@ describe("Customers list: Contact marks and filters", () => {
     expect(html).not.toContain("Signs in with");
   });
 
-  it("offers the Google and Mobile filters", () => {
-    const html = list([]);
+  it("offers the Google and Mobile filters, in the mega filter's Account group", () => {
+    const html = groupFor("account", { google: "linked", mobile: "missing" });
     expect(html).toContain('aria-label="Google"');
     expect(html).toContain('aria-label="Mobile"');
+    expect(html).toContain("Google linked");
+    expect(html).toContain("Mobile missing");
+    // Not in the toolbar any more: the toolbar is search, sort and Filters.
+    expect(list([])).not.toContain('aria-label="Google"');
   });
 });

@@ -47,6 +47,7 @@ import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { POINTS_ACCOUNT_ERROR, POINTS_CHECKOUT_COPY } from "@/lib/points/spend";
+import { MARKETING_BOX_LABEL } from "@/lib/marketing-consent/state";
 import { CheckoutCodeField } from "@/components/shop/checkout-code-field";
 import {
   checkoutCodeDiscount,
@@ -177,6 +178,10 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>(NEW_ADDRESS);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
+
+  // Marketing email: ticked by default (owner, 2026-10-31; ADR 0039). It only
+  // ever subscribes someone nobody has asked; unticking changes nothing.
+  const [marketingEmail, setMarketingEmail] = useState(true);
 
   // Redirect if cart is empty — once the cart has loaded from storage. This
   // effect runs before the provider's hydration effect, so on a full page load
@@ -466,6 +471,7 @@ export default function CheckoutPage() {
       const payload = {
         email: form.email,
         phone: form.phone || undefined,
+        marketing_email: marketingEmail,
         shipping_address: {
           recipient: form.recipient,
           line1: form.line1,
@@ -773,6 +779,14 @@ export default function CheckoutPage() {
                   {errors.email && (
                     <p className="text-xs text-destructive">{errors.email}</p>
                   )}
+                  <label className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
+                    <Checkbox
+                      className="mt-0.5"
+                      checked={marketingEmail}
+                      onCheckedChange={(checked) => setMarketingEmail(checked === true)}
+                    />
+                    {MARKETING_BOX_LABEL}
+                  </label>
                 </div>
 
                 <div className="sm:col-span-2 flex flex-col gap-1.5">

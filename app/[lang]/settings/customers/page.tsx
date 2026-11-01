@@ -15,6 +15,7 @@ import { getSiteOrigin } from "@/lib/site-url";
 import { parseFollowUpScope } from "@/lib/crm/followup-rules";
 import { parseReviewTabScope } from "@/lib/crm/reviews";
 import { listSegments } from "@/lib/crm/segments";
+import { listCampaignFilterOptions } from "@/lib/email-campaigns/store";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
 import { CustomersPageTabs } from "./customers-page-tabs";
 import type { TelegramUpdatesCardData } from "./telegram-updates-card";
@@ -71,12 +72,15 @@ export default async function SettingsCustomersPage({
     const { filters, ignored } = parseCustomerFilters(searchParamsFromRecord(query));
     const first = { ...filters, page: 1, limit: LIMIT };
 
-    const [customers, lifecycle, segments, telegramUpdates, aftercare] = await Promise.all([
+    const [customers, lifecycle, segments, campaigns, telegramUpdates, aftercare] = await Promise.all([
         listAdminCustomers(customerFilterParams(first, { paging: true })),
         // The Customer lifecycle chart (2026-10-31); null and the chart is left out.
         getLifecycleSummary(),
         // The Segments row (CRM slice 05), with live counts; on a failure the row fetches them.
         listSegments().catch(() => undefined),
+        // The *Campaign* filter's choices (PRD-campaign-audiences slice 05), with
+        // the link's own campaign; on a failure the filter offers none.
+        listCampaignFilterOptions(supabaseAdmin(), filters.campaign ? [filters.campaign.id] : []).catch(() => []),
         view === "settings" ? readTelegramUpdatesCard() : Promise.resolve(undefined),
         view === "settings" ? readAftercareCardData() : Promise.resolve(undefined),
     ]);
@@ -109,6 +113,7 @@ export default async function SettingsCustomersPage({
                 ignoredFilters={ignored}
                 lifecycle={lifecycle}
                 initialSegments={segments}
+                campaigns={campaigns}
                 canEdit={canEdit}
                 canEmail={hasPermission(ctx, "campaigns")}
             />

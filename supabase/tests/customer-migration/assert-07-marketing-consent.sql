@@ -36,11 +36,11 @@ begin
   assert not has_table_privilege('authenticated', 'public.customer_consent_events', 'insert'), 'events: no insert';
   assert (select relrowsecurity from pg_class where oid = 'public.customer_consent_events'::regclass), 'events: RLS on';
   assert not exists (select 1 from pg_policies where tablename = 'customer_consent_events'), 'events: no policy';
-  assert not has_function_privilege('authenticated', 'public.set_marketing_email(uuid, text, text, timestamptz)', 'execute'),
+  assert not has_function_privilege('authenticated', 'public.set_marketing_email(uuid, text, text, timestamptz, uuid)', 'execute'),
     'authenticated cannot call set_marketing_email';
-  assert not has_function_privilege('anon', 'public.set_marketing_email(uuid, text, text, timestamptz)', 'execute'),
+  assert not has_function_privilege('anon', 'public.set_marketing_email(uuid, text, text, timestamptz, uuid)', 'execute'),
     'anon cannot call set_marketing_email';
-  assert has_function_privilege('service_role', 'public.set_marketing_email(uuid, text, text, timestamptz)', 'execute'),
+  assert has_function_privilege('service_role', 'public.set_marketing_email(uuid, text, text, timestamptz, uuid)', 'execute'),
     'the service role calls set_marketing_email';
   assert not has_function_privilege('authenticated', 'public.revert_shopify_email_consent(uuid)', 'execute'),
     'authenticated cannot revert consent';
@@ -79,6 +79,11 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------- backfill
+-- Replaying this slice's migration puts its own set_marketing_email back for
+-- the rest of this rolled-back transaction, as it always did. Since
+-- 20261031152709 the current one has a fifth argument, so it is dropped first:
+-- two overloads would make every four-argument call ambiguous.
+drop function public.set_marketing_email(uuid, text, text, timestamptz, uuid);
 \o /dev/null
 \ir ../../migrations/20261020120000_marketing_consent.sql
 \ir ../../migrations/20261020120000_marketing_consent.sql

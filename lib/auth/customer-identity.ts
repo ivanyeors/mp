@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { claimOnSignIn } from "@/lib/customer-migration/claim";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
+import type { Locale } from "@/lib/i18n/locales";
 import type { Customer } from "@/lib/types/ecommerce";
 
 /**
@@ -54,7 +55,17 @@ export function decideCustomerLink(params: {
  * the verified email but were never linked to a customer record (see #33), so
  * historical purchases show up in the customer's order history.
  */
-export async function linkCustomerToAuthUser(user: User): Promise<Customer> {
+export async function linkCustomerToAuthUser(
+  user: User,
+  options: {
+    /**
+     * The site language they signed in on (PRD-campaign-audiences slice 03).
+     * Set on a Customer this call creates, so campaigns reach them in it; an
+     * existing Customer's language is left as it is.
+     */
+    locale?: Locale;
+  } = {},
+): Promise<Customer> {
   const email = (user.email ?? "").toLowerCase().trim();
   if (!email) {
     throw new Error("Cannot link a customer for an auth user without an email");
@@ -114,6 +125,7 @@ export async function linkCustomerToAuthUser(user: User): Promise<Customer> {
         auth_user_id: user.id,
         first_name: firstName ?? null,
         last_name: rest.length ? rest.join(" ") : null,
+        ...(options.locale ? { locale: options.locale } : {}),
       })
       .select("*")
       .single();

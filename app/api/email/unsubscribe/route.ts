@@ -8,7 +8,7 @@ import {
   NOT_CONFIGURED,
   UNSUBSCRIBE_PAGE,
   unsubscribeConfigured,
-  verifyUnsubscribeToken,
+  verifyUnsubscribeLink,
 } from "@/lib/marketing-consent/unsubscribe";
 
 export const runtime = "nodejs";
@@ -24,7 +24,10 @@ export const dynamic = "force-dynamic";
  *  - the confirm page's button (form field `via=page`): answered `303` back to
  *    that page, which now says they are unsubscribed.
  * Either sets `unsubscribed` with source `unsubscribe_link` and writes one
- * event, and a second POST changes nothing. A link that does not verify is
+ * event, and a second POST changes nothing. A campaign email's link also
+ * carries its send, `s`, signed with the Customer: the event then names that
+ * send (PRD-campaign-audiences slice 08), so the campaign's page counts who
+ * left because of it. A link that does not verify is
  * `400 { error: "invalid_link" }` and changes nothing; that answer to an empty
  * POST is also how a campaign sender checks the route is live
  * (`probeUnsubscribeRoute`).
@@ -47,17 +50,21 @@ const field = (form: FormData | null, key: string): string | null => {
   return typeof value === "string" ? value : null;
 };
 
-function pageUrl(req: Request, lang: string | null, u: string | null, t: string | null): URL {
+function pageUrl(req: Request, lang: string | null, u: string | null, t: string | null, s: string | null): URL {
   const locale = lang && isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const url = new URL(withLocale(UNSUBSCRIBE_PAGE, locale), req.url);
   if (u) url.searchParams.set("u", u);
   if (t) url.searchParams.set("t", t);
+  if (s) url.searchParams.set("s", s);
   return url;
 }
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  return NextResponse.redirect(pageUrl(req, null, searchParams.get("u"), searchParams.get("t")), 303);
+  return NextResponse.redirect(
+    pageUrl(req, null, searchParams.get("u"), searchParams.get("t"), searchParams.get("s")),
+    303,
+  );
 }
 
 export async function POST(req: Request) {
@@ -69,14 +76,17 @@ export async function POST(req: Request) {
   const form = await readForm(req);
   const u = searchParams.get("u") ?? field(form, "u");
   const t = searchParams.get("t") ?? field(form, "t");
-  if (!verifyUnsubscribeToken(u, t)) {
+  const s = searchParams.get("s") ?? field(form, "s");
+  const link = verifyUnsubscribeLink(u, t, s);
+  if (!link) {
     return NextResponse.json({ ok: false, error: INVALID_LINK }, { status: 400 });
   }
 
   const result = await setMarketingEmail(supabaseAdmin(), {
-    customerId: u,
+    customerId: link.customerId,
     to: "unsubscribed",
     source: "unsubscribe_link",
+    campaignSendId: link.sendId,
   });
   // A Customer since deleted is on no list: done, as far as the sender knows.
   if (!result.ok && !result.notFound) {
@@ -87,7 +97,7 @@ export async function POST(req: Request) {
   // The confirm page's button says so; any other POST is a mail client's
   // one-click, which RFC 8058 answers with a 2xx and no redirect.
   if (field(form, "via") === "page") {
-    return NextResponse.redirect(pageUrl(req, field(form, "lang"), u, t), 303);
+    return NextResponse.redirect(pageUrl(req, field(form, "lang"), u, t, s), 303);
   }
   return NextResponse.json({ ok: true });
 }

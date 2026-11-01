@@ -117,7 +117,7 @@ describe("a hero", () => {
     // Its heading and line take Variables as a heading block's does (slice 13).
     expect(issues(one(hero({ heading: "{first_name}, sleep cooler", line: "For {first_name} {last_name}" })))).toEqual([]);
     expect(issues(one(hero({ line: "For {frist_name}" })))).toEqual([
-      ["blocks.0.line", "{frist_name} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}."],
+      ["blocks.0.line", "{frist_name} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}."],
     ]);
     expect(CampaignContentSchema.safeParse(one(hero({ heading: "<h1>Sale</h1>" }))).success).toBe(false);
     expect(CampaignContentSchema.safeParse(one(hero({ text: "on the image" }))).success).toBe(false);

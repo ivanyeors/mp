@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 
 /**
  * POST /api/readjustments/checkout — a charged re-adjustment (ADR 0024).
@@ -16,6 +17,7 @@ const h = vi.hoisted(() => ({
   target: null as unknown,
   isSlotFree: vi.fn(),
   createSession: vi.fn(),
+  recordBoxConsent: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -74,6 +76,8 @@ vi.mock("@/lib/ecommerce/tax", () => ({
 }));
 vi.mock("@/lib/stripe/client", () => ({ getStripe: vi.fn() }));
 
+vi.mock("@/lib/marketing-consent/consent", () => ({ recordBoxConsent: h.recordBoxConsent }));
+
 const { POST } = await import("@/app/api/readjustments/checkout/route");
 
 const ITEM = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -112,6 +116,7 @@ const post = (extra: Row = {}) =>
   );
 
 beforeEach(() => {
+  resetRateLimits();
   vi.clearAllMocks();
   h.db = {};
   h.customer = { id: "cust-1", email: "ada@x.test" };
@@ -230,5 +235,24 @@ describe("POST /api/readjustments/checkout", () => {
     h.isSlotFree.mockResolvedValue(false);
     expect((await post()).status).toBe(409);
     expect(h.db.readjustment_bookings ?? []).toEqual([]);
+  });
+});
+
+// PRD-campaign-audiences slice 02: the marketing email box, ticked by default.
+describe("POST /api/readjustments/checkout — the marketing email box", () => {
+  it("records it for the signed-in Customer, as appointment, with the fee's Order", async () => {
+    expect((await post({ marketing_email: true })).status).toBe(200);
+    expect(h.recordBoxConsent).toHaveBeenCalledTimes(1);
+    expect(h.recordBoxConsent.mock.calls[0].slice(1)).toEqual(["cust-1", true, "appointment"]);
+  });
+
+  it("absent is unticked; nothing is recorded when Checkout could not open", async () => {
+    expect((await post()).status).toBe(200);
+    expect(h.recordBoxConsent.mock.calls[0].slice(1)).toEqual(["cust-1", false, "appointment"]);
+    h.recordBoxConsent.mockClear();
+    h.db = {};
+    h.createSession.mockRejectedValue(new Error("stripe down"));
+    expect((await post({ marketing_email: true })).status).toBe(502);
+    expect(h.recordBoxConsent).not.toHaveBeenCalled();
   });
 });

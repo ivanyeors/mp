@@ -44,6 +44,7 @@ const status = (over: Partial<SendingStatus> = {}): SendingStatus => ({
   checks: [ok("transport"), ok("from"), ok("reply_to"), ok("site"), ok("reports")],
   allowance: allowance(),
   allowanceError: null,
+  keptToday: 0,
   ...over,
 });
 const text = (html: string) =>
@@ -161,7 +162,7 @@ describe("the Send card", () => {
         <CampaignEditor
           campaign={campaign}
           draft={campaign}
-          stats={{ handed: 50, bounced: 1, complained: 0, failed: 0, pending: 0, waves: 1, firstSentAt: null, lastSentAt: null, linkClicks: 4 }}
+          stats={{ handed: 50, bounced: 1, complained: 0, failed: 0, pending: 0, waves: 1, firstSentAt: null, lastSentAt: null, linkClicks: 4, clicked: 7, clicks: 9, unsubscribed: 2, bought: 3, boughtAfterClick: 1, boughtTotal: 640, counting: 50, heldOut: 0 }}
           waves={[{ template: "campaign:x", wave: "w1", handed: 50, bounced: 1, complained: 0, failed: 0, pending: 0, lastSentAt: "2026-10-20T02:00:00.000Z" }]}
           segments={[]}
           staffEmail="owner@mpillow.com"

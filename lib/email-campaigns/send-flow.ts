@@ -50,6 +50,13 @@ export const CHECK_LABEL: Record<string, string> = {
   image_words: "Words beside the images",
   ai_drafted: "Drafted with AI",
   links_unchecked: "Links not checked",
+  // Who the wave goes to, against the email (PRD-campaign-audiences slice 09): advice, after a plan.
+  fit_chinese: "Readers of Chinese",
+  fit_fallbacks: "Who reads the fallback words",
+  fit_in_store: "In-store visits",
+  fit_already_own: "Products they already own",
+  fit_recent: "Recent buyers",
+  fit_unread: "Who it goes to",
   send_limit: "Room in the sending plan",
   reports: "Bounce and spam reports",
 };
@@ -320,6 +327,15 @@ export function languageSummary(p: { eligible: number; eligibleChinese: number; 
   return `${readers} and will get the 中文 version; everyone else gets English.${wave}`;
 }
 
+/**
+ * Pure — the plan's line on its fit checks (PRD-campaign-audiences slice 09),
+ * which *The email* lists with its advice: `count` of them.
+ */
+export function fitSummary(count: number): string | null {
+  if (!count) return null;
+  return `Recommended: ${count === 1 ? "one thing" : `${n(count)} things`} about who it goes to, listed under The email above. None holds the wave.`;
+}
+
 // ─── After a wave ────────────────────────────────────────────────────────────
 
 /**
@@ -381,6 +397,9 @@ export const PAUSE_LINES_TEXT = `A wave pauses sending when more than ${PAUSE_BO
 /** Pure — one row per wave, oldest first, judged as the pause rule judges it (`wavePause`). */
 export function waveRows(stats: readonly CampaignWaveStats[]): WaveRow[] {
   return [...stats]
+    // A wave whose every row a holdout kept back (PRD-campaign-audiences slice
+    // 11) sent nobody and claimed nothing to send: not a wave to judge.
+    .filter((s) => s.handed + s.failed + s.pending > 0)
     .sort((a, b) => (Date.parse(a.lastSentAt ?? "") || Infinity) - (Date.parse(b.lastSentAt ?? "") || Infinity))
     .map((s) => {
       const state: WaveState =
