@@ -224,10 +224,13 @@ describe("starting an email from a Starter", () => {
   });
 
   it("sends a Playbook to its stage's Segment, found by name, or leaves the Segment to choose", () => {
-    const playbook: Starter = { ...LAYOUT_STARTERS[3], id: "second_purchase", audience: { audience: "segment", segment: "New" } };
+    const playbook: Starter = { ...LAYOUT_STARTERS[3], id: "second_purchase", audience: { audience: "segment", segment: "New", filters: "stage=new" } };
     expect(starterAudience(playbook, SEGMENTS)).toEqual({ audience: "segment", segmentId: SEGMENTS[0].id });
     expect(starterAudience(playbook, [])).toEqual({ audience: "segment", segmentId: "" });
     expect(starterAudience(LAYOUT_STARTERS[0], SEGMENTS)).toEqual({});
+    // A win-back reaches the Unengaged too (PRD-campaign-audiences slice 12).
+    const winBack: Starter = { ...playbook, audience: { audience: "segment", segment: "New", filters: "stage=new", includeUnengaged: true } };
+    expect(starterAudience(winBack, SEGMENTS)).toEqual({ audience: "segment", segmentId: SEGMENTS[0].id, includeUnengaged: true });
   });
 
   it("is offered while the email says nothing, whatever it is named", () => {

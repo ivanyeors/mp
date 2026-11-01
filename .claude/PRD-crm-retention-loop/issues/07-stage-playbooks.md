@@ -2,7 +2,7 @@
 
 **Issue:** not filed
 **Type:** AFK, then HITL (owner approves the words)
-**Status:** not started
+**Status:** **built** as drafts (2026-11-01); offered once the owner approves each one's words
 **Blocked by:** 02, 03
 **Labels:** `enhancement`, `needs-triage`, `P3`, `area:admin`, `area:email`
 
@@ -34,8 +34,34 @@ Segment.
   chooses it since PRD-campaign-audiences slice 04 (`stage=at-risk:lapsed`, 2026-10-31).
 - Everything else is the existing send flow: test, readiness, waves within Resend's plan.
 
+## As built (2026-11-01)
+
+- **`PLAYBOOK_DRAFTS`** in `lib/email-campaigns/starters.ts`: the four, each with its name,
+  subject, preview line and blocks written in full, from `MPILLOW_FACTS` only. None offers a
+  discount, asks for a review or rating, or carries an aftercare message; *Thank you* and *We miss
+  you* speak of points, so they wait for points to be live, as every campaign that does. Points
+  never expire (2026-10-31), so *We miss you* says so instead of an expiry date.
+- **The approval gate:** `APPROVED_PLAYBOOKS` (empty). Only an approved draft is in
+  `PLAYBOOK_STARTERS`, and so in the Start panel and the palette. Approving one is adding its id.
+- **Audiences:** each names its stage's Segment and the Customers query that saves it, so Staff
+  save it once under that name and the Playbook finds it:
+
+  | Playbook | Segment name | Customers query |
+  |---|---|---|
+  | Second purchase | New · delivered over 60 days ago | `stage=new&delivered=over:60` |
+  | Thank you | Loyal | `stage=loyal` |
+  | We miss you | At risk · 12 to 24 months | `stage=at-risk&last_order=within:24` |
+  | Welcome back | At risk · Lapsed | `stage=at-risk:lapsed`, and *Include unengaged* on |
+
+- **Welcome back** is the win-back: started, it ticks *Include unengaged*
+  (PRD-campaign-audiences slice 12).
+- **Tests:** `lib/email-campaigns/__tests__/playbooks.test.ts` (each saves as written once its
+  Segment is chosen; every Segment query parses; no discount, review, rating or aftercare words;
+  which wait for points; only approved drafts offered).
+
 ## Acceptance criteria
 
-- [ ] No playbook mentions a review, a rating or an aftercare message.
-- [ ] Only `subscribed` Customers receive any of them (checked at send, as today).
-- [ ] The owner has approved each playbook's words before it is offered.
+- [x] No playbook mentions a review, a rating or an aftercare message.
+- [x] Only `subscribed` Customers receive any of them (checked at send, as today).
+- [ ] The owner has approved each playbook's words before it is offered. The gate is built; the
+  approval is the owner's.
