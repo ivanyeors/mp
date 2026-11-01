@@ -6,12 +6,12 @@
 - Unclassified: 25 file(s) not represented in the graph (top: .glb 12, (none) 5, .obj 3)
 
 ## Summary
-- 20754 nodes · 45958 edges · 1133 communities (876 shown, 257 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 1998 edges (avg confidence: 0.93)
+- 20754 nodes · 45957 edges · 1133 communities (876 shown, 257 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 1997 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `fa3414c1`
+- Built from commit: `50cb8933`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -4517,8 +4517,8 @@ Cohesion: 0.50
 Nodes (3): APP_DIR, EMAIL_DIR, walk()
 
 ## Knowledge Gaps
-- **7257 isolated node(s):** `STAFF`, `PEOPLE`, `OFF`, `ADR-0039`, `SETTLED_IN` (+7252 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 9344 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **7258 isolated node(s):** `STAFF`, `PEOPLE`, `OFF`, `ADR-0039`, `SETTLED_IN` (+7253 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 9345 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **257 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
@@ -4528,13 +4528,13 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.262) - this node is a cross-community bridge._
 - **Why does `supabaseAdmin()` connect `supabaseAdmin` to `sql-agreement.test.ts`, `orders/route.ts`, `assign/route.ts`, `email/index.ts`, `readjustments/checkout/route.ts`, `stripe/webhook/route.ts`, `whatsapp.ts`, `appointments/settings.ts`, `shop/checkout/route.ts`, `review-requests.ts`, `purchase-lines.check.ts`, `customize/route.ts`, `rules-engine/index.ts`, `whatsapp/route.ts`, `rules-engine/recommend.ts`, `reviews/telegram-handler.ts`, `timeline/registry.ts`, `social-inbox/telegram-handler.ts`, `results-sla/route.ts`, `chat-http.ts`, `refund/route.ts`, `response-detail.ts`, `blogs/[id]/route.ts`, `sign-in-intent.ts`, `overview.ts`, `addons.ts`, `segment-rules.ts`, `staff/admin.ts`, `telegram/webhook/route.ts`, `read.ts`, `seo-actions.ts`, `drive.ts`, `google-sync.ts`, `authorizeResultAccess`, `writing-settings.ts`, `from-inventory.ts`, `chat.ts`, `linkCustomerToAuthUser`, `pack-list-labels-neck-support.test.ts`, `slots.ts`, `reviews/status.ts`, `requireAdmin`, `customers/[id]/route.ts`, `migrate-public-apply.ts`, `soft-body/route.ts`, `discounts.ts`, `points/server.ts`, `chat-codes.ts`, `media-assets/index.ts`, `sources/results.ts`, `aftercare-notify.ts`, `marketing-consent/state.ts`, `permissions.ts`, `ecommerce/products.ts`, `sg-calendar.ts`, `discount.ts`, `PRD-loyalty-points/issues/README.md`, `err`, `admin/customers.ts`, `inventory-deduction.ts`, `pre-order-restock.ts`, `faq/index.ts`, `shop-listings.ts`, `getAdminContext`, `reasons.ts`, `pricing.ts`, `sender.ts`, `withLocale`, `draft-publish.check.ts`, `locations/index.ts`, `default-consent.ts`, `unpromoted/route.ts`, `next`, `book-slot.ts`, `order-mirror-ingest.ts`, `tiktok.ts`, `batches.ts`, `topic-reviews-loader.ts`, `lifecycle-stage.ts`, `price-sync.ts`, `google-review-match-server.ts`, `order-mirror-catchup.ts`, `seed-rule-graphs.ts`, `addDays`, `answer-lede-coverage.check.ts`, `dimensions.ts`, `partners/index.ts`, `getStripe`, `page-faq/index.ts`, `csv-import.ts`, `review-request-server.ts`, `telegram-updates.ts`, `exchange-rates.ts`, `secretMatches`, `discovery-source/index.ts`, `wave-sender.ts`, `sales-report.ts`, `tax.ts`, `config-upload/index.ts`, `overlays.ts`, `page-faq/items/[id]/route.ts`, `link-admin.ts`, `rma.ts`, `checkout/__tests__/points.test.ts`, `seo/index.ts`, `import-drive.ts`, `analytics/actions.ts`, `checkups.ts`, `customer-privacy.check.ts`, `email/results.ts`, `channel-mix.ts`, `email-campaigns/store.ts`, `places-poll.ts`, `chat-telegram.ts`, `discovery-source.check.ts`, `composed-sellable.ts`, `costings/save/route.ts`, `sources/returns.ts`, `api-configs/route.ts`, `quote.ts`, `hold/route.ts`, `import/actions.ts`, `checkout/code/route.ts`, `inventory/actions.ts`?**
   _High betweenness centrality (0.147) - this node is a cross-community bridge._
-- **Why does `@supabase/supabase-js` connect `@supabase/supabase-js` to `content.ts`, `orders/route.ts`, `email/index.ts`, `assign/route.ts`, `readjustments/checkout/route.ts`, `stripe/webhook/route.ts`, `supabaseAdmin`, `checkup-server.ts`, `shop/checkout/route.ts`, `checkup-job.test.ts`, `purchase-lines.check.ts`, `whatsapp/route.ts`, `package.json`, `results-sla/route.ts`, `refund/route.ts`, `sign-in-intent.ts`, `transition.ts`, `normalizePhone`, `create.ts`, `box-consent.test.ts`, `writing-settings.ts`, `from-inventory.ts`, `reorder.ts`, `card-server.ts`, `linkCustomerToAuthUser`, `pack-list-labels-neck-support.test.ts`, `requireAdmin`, `soft-body/route.ts`, `ga-sync.check.ts`, `shoot.mjs`, `points/server.ts`, `sources/results.ts`, `aftercare-notify.ts`, `vitest`, `marketing-consent/state.ts`, `journey-aggregates.test.ts`, `milestones/ledger.ts`, `ingest-gsc.ts`, `ref_node_path`, `discount.ts`, `authorization-hold/index.ts`, `country.check.ts`, `inventory-deduction.ts`, `pre-order-restock.ts`, `points/__tests__/points.test.ts`, `getAdminContext`, `reasons.ts`, `commissions/ledger.ts`, `sender.ts`, `withLocale`, `email/partner.ts`, `identity.ts`, `unpromoted/route.ts`, `restock-order.ts`, `price-sync.ts`, `telegram-update-sources.ts`, `google-review-match-server.ts`, `getStripe`, `draft-reply.ts`, `review-request-server.ts`, `telegram-updates.ts`, `fake-admin.ts`, `wave-sender.ts`, `applyCustomerFilters`, `send-flow.ts`, `aggregates.ts`, `rma.ts`, `telegram-updates-job.test.ts`, `import-drive.ts`, `verify-money-flow-e2e.mjs`, `customer-privacy.check.ts`, `journey/ingest.ts`, `email-campaigns/store.ts`, `commissions/index.ts`, `keep-sending-run.test.ts`, `partner-notify.ts`, `composed-sellable.ts`, `soft-body-settings.test.ts`, `content-checks.ts`, `costings/save/route.ts`, `quote.ts`, `hold/route.ts`, `checkout/code/route.ts`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
+- **Why does `Block` connect `blocks.py` to `.kind`?**
+  _High betweenness centrality (0.052) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `supabaseAdmin()` (e.g. with `Build notes` and `What to build`) actually correct?**
   _`supabaseAdmin()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `requireAdmin()` (e.g. with `Build notes` and `PRD: Guest Result Ownership — the Result id stops being a password`) actually correct?**
   _`requireAdmin()` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `STAFF`, `PEOPLE`, `OFF` to the rest of the system?**
-  _7257 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _7258 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `content.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.026401788785689714 - nodes in this community are weakly interconnected._
