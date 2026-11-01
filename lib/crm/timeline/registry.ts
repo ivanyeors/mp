@@ -4,6 +4,7 @@ import { campaignSendsAdapter } from "@/lib/crm/timeline/sources/campaign-sends"
 import { checkupsAdapter } from "@/lib/crm/timeline/sources/checkups";
 import { claimLinksAdapter } from "@/lib/crm/timeline/sources/claim-links";
 import { consentAdapter } from "@/lib/crm/timeline/sources/consent";
+import { fittingsAdapter } from "@/lib/crm/timeline/sources/fittings";
 import { followUpsAdapter } from "@/lib/crm/timeline/sources/followups";
 import { googleReviewsAdapter } from "@/lib/crm/timeline/sources/google-reviews";
 import { notesAdapter } from "@/lib/crm/timeline/sources/notes";
@@ -44,6 +45,8 @@ export const TIMELINE_ADAPTERS: readonly TimelineAdapter[] = [
   ordersAdapter,
   orderEmailsAdapter,
   resultsAdapter,
+  // ADR 0042: an in-store fitting from the old Google Form, at its own date.
+  fittingsAdapter,
   readjustmentsAdapter,
   returnsAdapter,
   reviewsAdapter,

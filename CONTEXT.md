@@ -388,6 +388,16 @@ _Avoid_: "upload" — the file itself is never uploaded or stored; the browser r
 Whether a **Customer** row is bound to a login: *Signed up* (since `account_linked_at`) or *No account*. It is derived from `auth_user_id` in the Customer overview (`admin_customer_overview`), never stored as text. It applies to every **Customer**, not only Migrated ones. For a **Migrated customer**, *Signed up* and **Claimed** usually coincide. They differ when the person already had an account before the import: that Customer is *Signed up* at once, and is **Claimed** at their next **Sign in**.
 _Avoid_: "registered", "member" (a **Member** is **Staff**) or "active" for this; reading *Signed up* as **Claimed**
 
+## Google Form fittings (ADR 0042)
+
+**Fitting record**:
+One in-store fitting from before this platform, as the old Google Form recorded it, linked to a **Customer** (`customer_fittings`). It keeps every answer the form had: the four measurements in inches (A shoulder length, B neck to back, C head to back, D neck length), the recommended pillow size, the configuration type (e.g. `T12`) and profile side (e.g. `M-LN`), the sleep and health answers, who serviced them (a **Staff profile** when the name matches one), notes, and the Drive photos, previewed on the Customer page and never copied. Readable by the service role only. Shown to **Staff** holding `customers`, and to the **Customer** on their own Profile in the same card, without the Drive photos (ADR 0042 h).
+_Avoid_: calling it a **Result** (it never had a hold, a build or a payment), an **Order** or a **Purchase**; writing its answers onto `customers` (the customer can read that row); "measurement" alone (a **Measurement service** is the fee)
+
+**Fitting import**:
+One run of **Admin Panel** → Customers → Import fittings: the owner's Google Form CSV, read in the browser and sent a chunk of rows at a time, like an **Import batch**. One person's visits all land on one **Customer**, each its own **Fitting record** (ADR 0042 c). A row attaches to the **Customer** with its email. Under an email nobody has, it attaches to the one Customer with the same mobile and name, or creates one. A row with no email attaches to the one **Customer** with its mobile, or the one of several with the same name, or is skipped and listed. Rows with an email go first, so a mobile-only visit finds the Customer another visit creates. Importing the same file twice creates nothing, and Undo removes the batch's **Fitting records** and the Customers it created that nobody has signed in to or referenced since.
+_Avoid_: "upload" (the file is never uploaded or stored); creating a phone-only **Customer**
+
 ## Rules Engine (recommendations)
 
 **Rules Engine**:

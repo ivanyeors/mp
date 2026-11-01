@@ -106,6 +106,11 @@ export default async function SettingsCustomersPage({
                     ? withLocale("/settings/customers/import", locale)
                     : undefined
             }
+            importFittingsHref={
+                hasPermission(ctx, "customer-import")
+                    ? withLocale("/settings/customers/import-fittings", locale)
+                    : undefined
+            }
         >
             <CustomersClient
                 initialData={initialData}

@@ -29,6 +29,7 @@ export function CustomersPageTabs({
   telegramUpdates,
   aftercare,
   importHref,
+  importFittingsHref,
   followUpScope = "mine",
   reviewScope = "to-match",
   children,
@@ -44,6 +45,8 @@ export function CustomersPageTabs({
   aftercare?: AftercareCardData;
   /** Import from Shopify, when the role holds `customer-import` (migration slice 02). */
   importHref?: string;
+  /** Import fittings from the Google Form, under the same permission (ADR 0042). */
+  importFittingsHref?: string;
   /** The Follow-ups tab's list from `?scope=`. */
   followUpScope?: FollowUpScope;
   /** The Reviews tab's list from `?scope=`. */
@@ -87,13 +90,25 @@ export function CustomersPageTabs({
             </p>
           </InfoTip>
         </div>
-        {importHref && (
-          <Button size="sm" variant="outline" asChild>
-            <Link href={importHref}>
-              <Upload className="mr-1.5 h-4 w-4" />
-              Import from Shopify
-            </Link>
-          </Button>
+        {(importHref || importFittingsHref) && (
+          <div className="flex flex-wrap gap-2">
+            {importHref && (
+              <Button size="sm" variant="outline" asChild>
+                <Link href={importHref}>
+                  <Upload className="mr-1.5 h-4 w-4" />
+                  Import from Shopify
+                </Link>
+              </Button>
+            )}
+            {importFittingsHref && (
+              <Button size="sm" variant="outline" asChild>
+                <Link href={importFittingsHref}>
+                  <Upload className="mr-1.5 h-4 w-4" />
+                  Import fittings
+                </Link>
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
