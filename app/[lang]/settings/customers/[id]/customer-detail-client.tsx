@@ -63,6 +63,7 @@ import { CustomerReviewsCard } from "./customer-reviews-card";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import type { CustomerUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
+import type { NextStep } from "@/lib/crm/next-step";
 import { LifecycleStageBadge, UNENGAGED_TITLE, lifecycleNote } from "../lifecycle-stage-badge";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -140,6 +141,8 @@ export type CustomerDetailInitialData = {
     lifecycle?: AdminCustomerLifecycle | null;
     /** Why they unsubscribed, when they said (slice 11); null otherwise. */
     unsubscribeReason?: CustomerUnsubscribeReason | null;
+    /** What to do now (PRD-crm-retention-loop slice 05); null when nothing is due or it could not be read. */
+    nextStep?: NextStep | null;
     /** Fitting records from the old Google Form (ADR 0042); null when they could not be read. */
     fittings?: CustomerFittingsResult;
 };
@@ -414,6 +417,33 @@ export function CustomerDetailClient({
                     </p>
                 </div>
             </div>
+
+            {/* PRD-crm-retention-loop slice 05: what now. Nothing due, no line. */}
+            {initialData?.nextStep ? (
+                <div
+                    role="note"
+                    aria-label="Next step"
+                    className="flex flex-col gap-2 rounded-lg border border-dashed px-4 py-3 text-sm sm:flex-row sm:items-center sm:gap-3"
+                >
+                    <p className="min-w-0 flex-1">
+                        <span className="font-medium">Next step</span>{" "}
+                        <span className="text-muted-foreground">{initialData.nextStep.text}</span>
+                    </p>
+                    {initialData.nextStep.addFollowUp && canEdit ? (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="self-start sm:self-auto"
+                            onClick={() => {
+                                document.getElementById("follow-ups")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                document.getElementById("followup-title")?.focus({ preventScroll: true });
+                            }}
+                        >
+                            Add a follow-up
+                        </Button>
+                    ) : null}
+                </div>
+            ) : null}
 
             {/* Stats: one strip across the page, so the columns below hold only cards */}
             <Card className="py-4">

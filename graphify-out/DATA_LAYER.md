@@ -1412,6 +1412,7 @@ Defined in supabase/migrations/20261101130000_campaign_unengaged.sql:81
   - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:142
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:116
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:57
+  - `readNextStepFacts()` [select] — lib/crm/next-step-server.ts:16
   - `readRecipientFacts()` [select] — lib/email-campaigns/store.ts:507
   - `readUnengagedIds()` [select] — lib/email-campaigns/store.ts:458
   - `resolveSegment()` [select] — lib/crm/segments.ts:245
@@ -1530,6 +1531,7 @@ Changed from pages: `/settings/customers`, `/settings/customers/[id]`
   - `listCustomerFollowUps()` [select] — lib/crm/followups.ts:84
   - `listFollowUps()` [select] — lib/crm/followups.ts:127
   - `listFollowUpsByTime()` [select] — lib/crm/followups.ts:103
+  - `readNextStepFacts()` [select] — lib/crm/next-step-server.ts:28
 
 ### customer_google_reviews
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:49
@@ -1976,6 +1978,7 @@ Changed from pages: `/appointments`, `/settings/appointments`
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:213
   - `loadRecentReadjustments()` [select] — lib/aftercare/checkup-server.ts:242
   - `readContactFacts()` [select] — lib/crm/contact-facts.ts:181
+  - `readNextStepFacts()` [select] — lib/crm/next-step-server.ts:22
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:53
 
 ### result_bolster_filling_placements
@@ -2561,7 +2564,7 @@ app/[lang]/settings/customers/page.tsx
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
 - Endpoints: `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
-- Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerFittings()`, `listCustomerNotes()`, `readContactFacts()`, `readCustomerUnsubscribeReason()`, `requireAdminPage()`
+- Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerFittings()`, `listCustomerNotes()`, `readContactFacts()`, `readCustomerUnsubscribeReason()`, `readNextStepFacts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customer_followups`, `customer_notes`, `customers`, `inventory_transactions`, `mp_staff`, `order_items`, `order_timeline`, `orders`, `product_variants`
 - Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `customer_consent_events`, `customer_fittings`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_unsubscribe_reasons`, `customer_whatsapp`, `item_prices`, `migrated_customers`, `mp_config_responses`, `order_margins`, `pillow_products`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
 

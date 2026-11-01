@@ -18,7 +18,7 @@ demoable path through the layers it touches.
 | [02](02-hand-off-links.md) · [#338](https://github.com/ivanyeors/mp/issues/338) | Hand-offs: every page in the loop links to the next | AFK | **built** (`claude/crm-loop-handoffs-dropoff`) | 01 |
 | [03](03-lifecycle-stage.md) · [#339](https://github.com/ivanyeors/mp/issues/339) | A lifecycle stage on every Customer: Lead, New, Loyal, At risk, Lost | AFK | **built** (`claude/crm-loop-handoffs-dropoff`), reworked into the funnel 2026-10-28 | none (decisions 1 and 4 settled) |
 | [04](04-stage-chips.md) · [#340](https://github.com/ivanyeors/mp/issues/340) | Stage chips above the Customers list, counted live | AFK | not started | 03 |
-| [05](05-next-step-on-customer.md) · [#341](https://github.com/ivanyeors/mp/issues/341) | The next step on the Customer | AFK | not started | 03 |
+| [05](05-next-step-on-customer.md) · [#341](https://github.com/ivanyeors/mp/issues/341) | The next step on the Customer | AFK | **built** | 03 |
 | [06](06-retention-numbers.md) · [#342](https://github.com/ivanyeors/mp/issues/342) | The scorecard: is the loop working? | AFK | not started | 03 |
 | [07](07-stage-playbooks.md) · [#343](https://github.com/ivanyeors/mp/issues/343) | Playbooks: a ready-written campaign for each stage | AFK, then HITL | **built as drafts**; owner to approve the words | 02, 03 |
 | [08](08-signoff.md) · [#344](https://github.com/ivanyeors/mp/issues/344) | Sign-off: the owner walks the loop on production | HITL | not started | 01–07, 09, 10 |

@@ -331,6 +331,22 @@ describe("Customer detail: Lifecycle stage", () => {
     expect(withStage(lifecycle({ lifecycle_stage: "at_risk", lifecycle_detail: "lapsed" }))).not.toContain("Unengaged");
   });
 
+  it("shows the next step above the cards, offering a follow-up only to someone who can add one (PRD-crm-retention-loop slice 05)", () => {
+    const step = { kind: "checkup_due" as const, text: "Check-up due: no re-adjustment in a year", addFollowUp: true };
+    const render = (canEdit: boolean, nextStep: typeof step | null) =>
+      renderToString(
+        <CustomerDetailClient
+          initialData={{ customer: { ok: true, row: customer({}) }, notes: [], lifecycle: lifecycle({}), nextStep }}
+          canEdit={canEdit}
+          viewer={{ userId: "u1", grantsAll: false }}
+        />,
+      );
+    expect(render(true, step)).toContain("Check-up due: no re-adjustment in a year");
+    expect(render(true, step)).toContain("Add a follow-up");
+    expect(render(false, step)).not.toContain("Add a follow-up");
+    expect(render(true, null)).not.toContain("Next step");
+  });
+
   it("says when a Lost Customer unsubscribed", () => {
     const html = withStage(
       lifecycle({ lifecycle_stage: "lost", lifecycle_detail: null, marketing_email_updated_at: "2026-10-12T03:00:00Z" }),
