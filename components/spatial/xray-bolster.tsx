@@ -36,7 +36,7 @@ import {
   makeRegion,
 } from "@/lib/spatial-fillings/conform";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
-import { FitWarning, MorphPiece, PieceLabel, squeezeLines, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
+import { FitWarning, MorphPiece, PieceLabel, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
 import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath, SHELL_SEAM, XRAY_VIEW } from "./xray-assets";
 
@@ -47,15 +47,14 @@ const SHELL_REGIONS = {
   long: makeRegion(bolsterShellPolygon("long"), SHELL_SEAM),
 } as const;
 
-// The pillow's status paint (slice 04): amber at the limit, red when it cannot fit.
+// The pillow's status paint (slice 04): amber at the limit and when it cannot fit — nothing turns red (Ivan, 1-11-2026).
 const RING_COMPRESSED = "#f59e0b";
-const RING_OVER = "#ef4444";
 
 /** The capsule gauge (slice 09): used / length mm, a bar, and the fit message when the pack is not ok. */
 export function BolsterGauge({ fit, label }: { fit: BolsterFit; label: (itemId: number) => string }) {
   const pct = Math.min(fit.usedMm / Math.max(fit.lengthMm, 1), 1) * 100;
-  const bar = fit.status === "over" ? "bg-red-500" : fit.status === "compressed" ? "bg-amber-500" : "bg-emerald-500";
-  const tone = fit.status === "over" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400";
+  const bar = fit.status === "ok" ? "bg-emerald-500" : "bg-amber-500";
+  const tone = "text-amber-600 dark:text-amber-400";
   return (
     <div
       className="flex w-full max-w-sm flex-col gap-0.5 rounded border bg-background/90 px-1.5 py-0.5 text-[10px] leading-4 shadow-sm"
@@ -181,8 +180,6 @@ export function XrayBolster({
                   d={d}
                   status={squeeze.status}
                 />
-                {/* A pouch in a pack that cannot fit, or too thick for the bolster: red tint (slice 09). */}
-                {squeeze.status === "over" && <path d={d} fill={RING_OVER} fillOpacity={0.3} />}
               </g>
             );
           })}
@@ -190,10 +187,7 @@ export function XrayBolster({
             <PieceLabel
               key={`label-${p.key}`}
               rect={p}
-              lines={[
-                ...pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null),
-                ...squeezeLines(squeezeOf(p.slot)),
-              ]}
+              lines={pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null)}
             />
           ))}
           {hovered && editable && <path d={capsule} fill="white" fillOpacity={0.15} />}
@@ -209,13 +203,13 @@ export function XrayBolster({
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         />
-        {/* Capsule status ring (slice 09): amber at the compression limit, red
+        {/* Capsule status ring (slice 09): amber at the compression limit and
             when the pack cannot fit — a stroke on the capsule path itself. */}
         {fit.status !== "ok" && (
           <path
             d={capsule}
             fill="none"
-            stroke={fit.status === "over" ? RING_OVER : RING_COMPRESSED}
+            stroke={RING_COMPRESSED}
             strokeWidth={2.5}
             strokeOpacity={0.9}
             vectorEffect="non-scaling-stroke"

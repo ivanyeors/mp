@@ -572,13 +572,13 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
           problems.map((c) => (
             <p
               key={c.subSection}
-              className={c.status === "over" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}
+              className="text-amber-600 dark:text-amber-400"
             >
               {fitMessage(c, fit.size)}
             </p>
           ))
         )}
-        {worst === "over" && <p className="text-muted-foreground">A stack that cannot close draws out of the case in red.</p>}
+        {worst === "over" && <p className="text-muted-foreground">A stack that cannot close draws out of the case.</p>}
         {dimsFailed && <p className="text-muted-foreground">Couldn&apos;t load dimensions, so pouches are drawn at the code defaults.</p>}
       </div>
     </div>

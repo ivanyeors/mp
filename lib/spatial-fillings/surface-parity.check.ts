@@ -96,7 +96,8 @@ assert.ok(frame.includes("pillowSize"), "the frame passes the Size through");
 // Slice 04 (ADR 0019): every editing surface computes the fit once, hands it to
 // the x-ray, and confirms — never blocks — the save or hold that carries a cell
 // that cannot close. Same posture as Spatially authored. No surface shows a
-// banner for it (1-11-2026): the pieces' red tint and the Section tab's dot do.
+// banner for it (1-11-2026), and nothing turns red: the pieces' dashed outline, the
+// Section tab's amber dot and the dive's gauge do.
 for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   const src = readFileSync(path, "utf8");
   assert.ok(/\bfit=\{/.test(src), `${surface} hands its own fit to the x-ray`);

@@ -7,9 +7,10 @@
  * Spatially authored warning. It reads the host's fit object; nothing is
  * recomputed.
  *
- * There is no banner above the x-ray any more (Ivan, 1-11-2026): a cell that
- * cannot close shows on the pillow itself — its pieces tinted red in the
- * x-ray and the cut, a red dot on its Section tab — and in this confirm.
+ * There is no banner above the x-ray any more (Ivan, 1-11-2026), and nothing
+ * turns red: a cell that cannot close shows as its pieces' dashed outline in
+ * the x-ray and hatching in the cut, the amber dot on its Section tab, the
+ * dive's gauge and warning, and this confirm.
  */
 
 import { bolsterFitMessage, fitMessage, overCells, type BolsterFit, type PillowFit } from "@/lib/spatial-fillings/fit";

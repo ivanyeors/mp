@@ -142,11 +142,11 @@ const MORPH_MS = 320;
 export const XRAY_SHELL = "var(--xray-shell, rgba(255,255,255,0.9))";
 export const XRAY_INTERIOR = "var(--xray-interior, rgba(15,23,42,0.5))";
 const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
-// Fit status paint (slice 04): red when a cell cannot close — the piece tint,
-// the drop refusal and the cross-section share it. (The amber / red cell
-// rings went with Ivan's 26-9-2026 review: no seams on the pillow but the two
-// dividers; the gauge and the tint carry the status.)
-const RING_OVER = "#ef4444";
+// Fit status paint (slice 04): nothing turns red (Ivan, 1-11-2026). A piece
+// squeezed or in a cell that cannot close draws with a dashed stroke; the
+// gauge and its warning say which, in amber. (The amber / red cell rings went
+// with Ivan's 26-9-2026 review: no seams on the pillow but the two dividers.)
+const AMBER = "#f59e0b";
 const RELAXED_PIECE: PieceFitStatus = { status: "ok", widthRatio: 1, thicknessRatio: 1 };
 /** A pouch drag in flight (slice 07). */
 type PouchDrag = {
@@ -177,15 +177,6 @@ type LayerPick = {
 const DRAG_THRESHOLD_PX = 6;
 const sameRef = (p: PieceRef, q: PieceRef) => p.section === q.section && p.subSection === q.subSection && p.slot === q.slot;
 const sameCellRef = (p: Cell, q: Cell) => p.section === q.section && p.subSection === q.subSection;
-
-/** `↕ 78 %` / `↔ 85 %` beside the type label when the piece draws squeezed. */
-export const squeezeLines = (ps: PieceFitStatus | undefined): string[] => {
-  if (!ps) return [];
-  const out: string[] = [];
-  if (ps.thicknessRatio < 1 - 1e-6) out.push(`↕ ${Math.round(ps.thicknessRatio * 100)} %`);
-  if (ps.widthRatio < 1 - 1e-6) out.push(`↔ ${Math.round(ps.widthRatio * 100)} %`);
-  return out;
-};
 
 // Dive-editor control sizing. The chips sit ON the pouches, so on a desktop
 // stage (650px wide) they stay tiny; below md the stage is ~360px wide and
@@ -358,7 +349,7 @@ export function MorphPiece({
  */
 export function LoftGauge({ cell, size, compact }: { cell: CellFit; size: string; compact: boolean }) {
   const pct = Math.min(cell.loftMm / Math.max(cell.maxLoftMm, 1), 1) * 100;
-  const bar = cell.status === "over" ? "bg-red-500" : cell.status === "compressed" ? "bg-amber-500" : "bg-emerald-500";
+  const bar = cell.status === "ok" ? "bg-emerald-500" : "bg-amber-500";
   const tone = FIT_TONE[cell.status as Exclude<FitStatus, "ok">];
   return (
     <div
@@ -384,9 +375,10 @@ export function LoftGauge({ cell, size, compact }: { cell: CellFit; size: string
   );
 }
 
+/** Squeezed and cannot close alike: amber, never red (Ivan, 1-11-2026); the word says which. */
 const FIT_TONE: Record<Exclude<FitStatus, "ok">, string> = {
   compressed: "text-amber-600 dark:text-amber-400",
-  over: "text-red-600 dark:text-red-400",
+  over: "text-amber-600 dark:text-amber-400",
 };
 
 /**
@@ -747,7 +739,7 @@ export function XrayPillow({
     [placements, stage, itemDims, fit],
   );
   const rectByKey = useMemo(() => new Map(pieces.map((pl) => [pl.key, pl] as const)), [pieces]);
-  /** piece key → its own squeeze (slice 04): dashed stroke, red tint and the ↕ / ↔ micro-label read this. */
+  /** piece key → its own squeeze (slice 04): the dashed stroke reads this. */
   const pieceStatuses = useMemo(
     () => new Map(pieces.map((p) => [p.key, pieceFitStatus(fit, p, p.depth)] as const)),
     [pieces, fit],
@@ -1709,8 +1701,6 @@ export function XrayPillow({
                         {p.depth > 0 && (
                           <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
                         )}
-                        {/* A piece in a cell that cannot close: red tint (slice 04). */}
-                        {squeeze.status === "over" && <path d={d} fill={RING_OVER} fillOpacity={0.3} />}
                       </g>
                     );
                   })}
@@ -1754,7 +1744,7 @@ export function XrayPillow({
             {drag?.active && drag.over && (
               <path
                 d={stage.cellClipPaths[`${drag.over.section}/${drag.over.subSection}`]}
-                fill={drag.overfull ? RING_OVER : "#38bdf8"}
+                fill={drag.overfull ? AMBER : "#38bdf8"}
                 fillOpacity={drag.overfull ? 0.25 : 0.18}
                 data-xray-drop-hover={drag.overfull ? "overfull" : "ok"}
               />
@@ -1781,10 +1771,7 @@ export function XrayPillow({
                 <PieceLabel
                   key={`label-${p.key}`}
                   rect={labelRects.get(p.key) ?? (p.section === dived ? p : p.settled)}
-                  lines={[
-                    ...pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null),
-                    ...squeezeLines(pieceStatuses.get(p.key)),
-                  ]}
+                  lines={pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null)}
                 />
               ) : null,
             )}

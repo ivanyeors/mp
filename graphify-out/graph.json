@@ -136554,7 +136554,7 @@
       "file_type": "code",
       "norm_label": "adr8",
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L173"
+      "source_location": "L174"
     },
     {
       "id": "lib_spatial_fillings_surface_parity_check_banner",
@@ -136565,7 +136565,7 @@
       "file_type": "code",
       "norm_label": "banner",
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L107"
+      "source_location": "L108"
     },
     {
       "id": "lib_spatial_fillings_surface_parity_check_bolster_editors",
@@ -136587,7 +136587,7 @@
       "file_type": "code",
       "norm_label": "bolster_surfaces",
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L163"
+      "source_location": "L164"
     },
     {
       "id": "lib_spatial_fillings_surface_parity_check_cells",
@@ -136609,7 +136609,7 @@
       "file_type": "code",
       "norm_label": "configurator",
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L122"
+      "source_location": "L123"
     },
     {
       "id": "lib_spatial_fillings_surface_parity_check_configure",
@@ -136620,7 +136620,7 @@
       "file_type": "code",
       "norm_label": "configure",
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L112"
+      "source_location": "L113"
     },
     {
       "id": "lib_spatial_fillings_surface_parity_check_crosssection",
@@ -136631,7 +136631,7 @@
       "file_type": "code",
       "norm_label": "crosssection",
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L128"
+      "source_location": "L129"
     },
     {
       "id": "lib_spatial_fillings_surface_parity_check_editing_surfaces",
@@ -136686,7 +136686,7 @@
       "file_type": "code",
       "norm_label": "scope",
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L110"
+      "source_location": "L111"
     },
     {
       "id": "lib_spatial_fillings_surface_parity_check_ts_docref_adr_0008",
@@ -136719,7 +136719,7 @@
       "file_type": "concept",
       "norm_label": "adr-0025",
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L144"
+      "source_location": "L145"
     },
     {
       "id": "lib_utils",
@@ -577422,7 +577422,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L144",
+      "source_location": "L145",
       "weight": 1.0
     },
     {
@@ -731213,7 +731213,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L107",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -731224,7 +731224,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L110",
+      "source_location": "L111",
       "weight": 1.0
     },
     {
@@ -731235,7 +731235,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L112",
+      "source_location": "L113",
       "weight": 1.0
     },
     {
@@ -731246,7 +731246,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L122",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -731257,7 +731257,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L128",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -731279,7 +731279,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L163",
+      "source_location": "L164",
       "weight": 1.0
     },
     {
@@ -731290,7 +731290,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/spatial-fillings/surface-parity.check.ts",
-      "source_location": "L173",
+      "source_location": "L174",
       "weight": 1.0
     },
     {
@@ -826590,5 +826590,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "8560cf3db61a41e0944cb6e03818f93ddba76739"
+  "built_at_commit": "558a6dfb304ab76503a1df60d0701e6c502aac4e"
 }
