@@ -22,6 +22,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Declared, not inherited from the repository's default token scope. The secret
+# scan lists the pull request's commits (GET /pulls/{n}/commits), which needs
+# pull-requests: read; under a read-contents-only default it fails with
+# "Resource not accessible by integration" and nothing after it runs. Naming any
+# permission sets the rest to none, so checkout's contents: read is listed too.
+permissions:
+  contents: read
+  pull-requests: read
+
 env:
   NEXT_TELEMETRY_DISABLED: "1"
 
