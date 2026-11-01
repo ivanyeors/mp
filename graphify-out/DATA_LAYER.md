@@ -89,8 +89,8 @@ References: `analytics_visitors`, `analytics_visits`
 Defined in supabase/migrations/20260715103000_analytics_ga_events.sql:3
 References: `analytics_visitors`
 - Written by:
-  - `runGaSync()` [insert] — lib/analytics/journey/ga-sync.ts:156
-  - `stitchUnlinkedGaEvents()` [select,update] — lib/analytics/journey/ga-sync.ts:169
+  - `runGaSync()` [insert] — lib/analytics/journey/ga-sync.ts:161
+  - `stitchUnlinkedGaEvents()` [select,update] — lib/analytics/journey/ga-sync.ts:174
 
 ### analytics_visitors
 Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:3
@@ -100,7 +100,7 @@ Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:3
   - `stampVisitorRef()` [upsert] — lib/referrals/index.ts:176
 - Read by:
   - `POST()` [select] — app/api/results/hold/route.ts:695
-  - `stitchUnlinkedGaEvents()` [select] — lib/analytics/journey/ga-sync.ts:178
+  - `stitchUnlinkedGaEvents()` [select] — lib/analytics/journey/ga-sync.ts:183
 
 ### analytics_visits
 Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:16

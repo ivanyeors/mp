@@ -404,7 +404,7 @@
       "file_type": "code",
       "norm_label": "gasyncresult",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L117"
+      "source_location": "L122"
     },
     {
       "id": "lib_checkout_code_index_resolvedcheckoutcode",
@@ -29798,7 +29798,7 @@
       "file_type": "code",
       "norm_label": "rungasync()",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L130"
+      "source_location": "L135"
     },
     {
       "id": "lib_analytics_journey_ga_sync_stitchgarowstovisitors",
@@ -29810,7 +29810,7 @@
       "file_type": "code",
       "norm_label": "stitchgarowstovisitors()",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L100"
+      "source_location": "L105"
     },
     {
       "id": "lib_analytics_journey_ga_sync_stitchunlinkedgaevents",
@@ -29822,7 +29822,7 @@
       "file_type": "code",
       "norm_label": "stitchunlinkedgaevents()",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L168"
+      "source_location": "L173"
     },
     {
       "id": "lib_analytics_journey_slice_12_smoke_cleanup",
@@ -286347,7 +286347,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L93",
+      "source_location": "L98",
       "weight": 1.0
     },
     {
@@ -286371,7 +286371,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L141",
+      "source_location": "L146",
       "weight": 1.0
     },
     {
@@ -286383,7 +286383,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L141",
+      "source_location": "L146",
       "weight": 1.0
     },
     {
@@ -286395,7 +286395,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L164",
+      "source_location": "L169",
       "weight": 1.0
     },
     {
@@ -286407,7 +286407,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L185",
+      "source_location": "L190",
       "weight": 1.0
     },
     {
@@ -639528,7 +639528,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L100",
+      "source_location": "L105",
       "weight": 1.0
     },
     {
@@ -639539,7 +639539,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L117",
+      "source_location": "L122",
       "weight": 1.0
     },
     {
@@ -639550,7 +639550,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L130",
+      "source_location": "L135",
       "weight": 1.0
     },
     {
@@ -639572,7 +639572,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L168",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -799808,7 +799808,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L156",
+      "source_location": "L161",
       "weight": 1.0,
       "context": "insert"
     },
@@ -799820,7 +799820,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L178",
+      "source_location": "L183",
       "weight": 1.0,
       "context": "select"
     },
@@ -799832,7 +799832,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/analytics/journey/ga-sync.ts",
-      "source_location": "L169",
+      "source_location": "L174",
       "weight": 1.0,
       "context": "select,update"
     },
@@ -809359,5 +809359,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "50cb89331b11d48e81a20f768bca1f8635dd7b0c"
+  "built_at_commit": "9ac55e733e37a07466b9d15daf93446f44278fc8"
 }

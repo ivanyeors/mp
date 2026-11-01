@@ -89,7 +89,12 @@ export function defaultGaFixturePath(): string {
 
 export function loadGaExportFixture(path: string = defaultGaFixturePath()): GaExportRow[] {
   try {
-    const text = readFileSync(path, "utf8");
+    // A path chosen at run time (GA_SYNC_FIXTURE_PATH), so the build cannot
+    // know the file. Without the ignore, Turbopack copies the whole project
+    // (graphify-out, public, every source file) into the results-sla cron
+    // function, which then passes Vercel's 250 MB limit. The cron reads a
+    // fixture only when that variable is set; the check script runs locally.
+    const text = readFileSync(/*turbopackIgnore: true*/ path, "utf8");
     return parseGaExportRows(JSON.parse(text) as unknown);
   } catch {
     return [];
