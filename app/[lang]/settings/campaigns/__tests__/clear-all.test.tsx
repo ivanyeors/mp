@@ -152,8 +152,11 @@ afterEach(async () => {
   act(() => void toast.dismiss());
   act(() => root?.unmount());
   root = null;
-  // The unmount dismisses the toast a frame later: let it, before the next test makes one.
-  await settle(50);
+  // sonner takes a dismissed toast out of its Toaster 200 ms later (its TIME_BEFORE_UNMOUNT)
+  // on a timer the unmount does not clear: wait it out, before the next test makes one and
+  // before the file ends, or the last test's timer fires after jsdom has gone and sets state
+  // with no window (an unhandled "window is not defined" that fails the run).
+  await settle(250);
   document.body.innerHTML = "";
 });
 
