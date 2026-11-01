@@ -22,6 +22,14 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# The token's rights, stated rather than inherited: the repository's default
+# grants contents only, and gitleaks reads the pull request's commits through
+# the API (GET /pulls/{n}/commits), which answered 403 without
+# `pull-requests: read` and failed every run at the Secret scan step.
+permissions:
+  contents: read
+  pull-requests: read
+
 env:
   NEXT_TELEMETRY_DISABLED: "1"
 
@@ -31,15 +39,19 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       # Fails the PR when any of its commits adds a credential.
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A finding fails this step and is listed in the job summary. Commenting
+          # it on the pull request would need `pull-requests: write`, which this
+          # job does not get.
+          GITLEAKS_ENABLE_COMMENTS: "false"
 
       # corepack pins pnpm from package.json's `packageManager` field, so the
       # version here can never drift from the one the lockfile was written with.
@@ -47,7 +59,7 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm

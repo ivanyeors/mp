@@ -6,7 +6,7 @@ import { Bar } from "@visx/shape";
 import { AxisBottom } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
 import { scaleLinear } from "@visx/scale";
-import { ParentSize } from "@visx/responsive";
+import { ChartWidth } from "./ChartWidth";
 import { useTooltip } from "@visx/tooltip";
 import { Button } from "@/components/ui/button";
 
@@ -287,7 +287,7 @@ export function MarginBreakdownVisx({
       ) : (
         <div className="w-full overflow-x-auto">
           <div className="min-w-[360px]">
-            <ParentSize debounceTime={50}>
+            <ChartWidth debounceTime={50}>
               {({ width }) =>
                 width < 10 ? (
                   <div style={{ height: visible.length * ROW_STEP + MARGIN.top + MARGIN.bottom }} />
@@ -299,7 +299,7 @@ export function MarginBreakdownVisx({
                   />
                 )
               }
-            </ParentSize>
+            </ChartWidth>
           </div>
         </div>
       )}

@@ -5,7 +5,7 @@ let _stripe: Stripe | null = null;
 // Pin the Stripe API version so SDK upgrades / account-default changes don't
 // silently alter request/response shapes. Must match the version bundled by the
 // installed `stripe` SDK (its `apiVersion` literal type), so bump both together.
-const STRIPE_API_VERSION = "2026-06-24.dahlia";
+const STRIPE_API_VERSION = "2026-09-30.endive";
 
 export function getStripe(): Stripe {
   if (!_stripe) {
