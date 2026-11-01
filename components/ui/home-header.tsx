@@ -3,7 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { LOGO_SRC, LOGO_INV_SRC } from "@/lib/brand-logo";
+import { LOGO_SRC } from "@/lib/brand-logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -72,30 +72,16 @@ export function HomeHeader() {
           }`}
       >
         {/* Just the logo, which is also the way home: booking and chat live in the
-            dock. `dark` pins the cart button to dark-mode tokens in both themes,
-            so it stays legible on the blue; its popover portals to <body> and
-            keeps the page theme. `text-foreground` re-reads the colour here:
-            inherited from <body> it stays the light theme's near-black. */}
-        <div className="dark relative flex max-w-full items-center gap-2 rounded-[35px] px-5 py-1 text-foreground">
-          {/* Dock background (matches `components/ui/shadcn-io/dock/index.tsx`) */}
-          <div
-            className="absolute inset-0 -z-10 rounded-[35px]"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgb(0, 23, 54) 0%, rgb(43, 105, 188) 100%), linear-gradient(90deg, rgb(7, 55, 120) 0%, rgb(7, 55, 120) 100%)",
-            }}
-          />
-          <div
-            className="absolute inset-0 pointer-events-none -z-10 rounded-[35px]"
-            style={{
-              boxShadow:
-                "inset 1px 1px 1.8px 0px rgba(194, 220, 255, 0.5), inset -4px 13px 28.4px 0px rgba(102, 167, 255, 0.5)",
-            }}
-          />
-
+            dock. The pill is white in both themes because the logo is the
+            brand's dark blue, the same one as the expanded header; there is no
+            light-blue logo for dark backgrounds any more. The cart button is
+            pinned to navy for the same reason: on a dark page its theme tokens
+            would turn it white on white. Its popover portals to <body> and
+            keeps the page theme. */}
+        <div className="relative flex max-w-full items-center gap-2 rounded-[35px] border border-[#001736]/10 bg-white px-5 py-1 shadow-[0_8px_24px_-12px_rgba(0,23,54,0.45)]">
           <Link href={homeHref} className="shrink-0" aria-label="Mpillow home">
             <Image
-              src={LOGO_INV_SRC}
+              src={LOGO_SRC}
               unoptimized
               alt="Mpillow"
               width={48}
@@ -104,7 +90,12 @@ export function HomeHeader() {
               priority
             />
           </Link>
-          {showCompactCart && <CartButton />}
+          {showCompactCart && (
+            <CartButton
+              className="text-[#001736] hover:bg-[#001736]/5 hover:text-[#001736] dark:hover:bg-[#001736]/5"
+              badgeClassName="bg-[#2b69bc] text-white"
+            />
+          )}
         </div>
       </div>
 

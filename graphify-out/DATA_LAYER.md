@@ -1394,10 +1394,10 @@ Defined in supabase/migrations/20261021120000_points_ledger.sql:261
 - Called by:
   - `adjustPoints()` — lib/points/server.ts:161
 
-### admin_customer_migration_summary
-Defined in supabase/migrations/20261021160000_retire_welcome_voucher.sql:299
-- Read by:
-  - `getMigrationSummary()` [select] — lib/customer-migration/overview.ts:108
+### admin_customer_lifecycle_counts
+Defined in supabase/migrations/20261101020836_customer_lifecycle_counts.sql:22
+- Called by:
+  - `getLifecycleSummary()` — lib/crm/lifecycle-summary-server.ts:11
 
 ### admin_customer_overview
 Defined in supabase/migrations/20261031152806_customer_overview_reach_filters.sql:39
@@ -1407,7 +1407,7 @@ Defined in supabase/migrations/20261031152806_customer_overview_reach_filters.sq
   - `countShipsToUnknown()` [select] — lib/ecommerce/admin/customers.ts:79
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
   - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:140
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:220
+  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:116
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:57
   - `readRecipientFacts()` [select] — lib/email-campaigns/store.ts:476
   - `resolveSegment()` [select] — lib/crm/segments.ts:245
@@ -1709,7 +1709,7 @@ References: `media_assets`
 Defined in supabase/migrations/20261020100000_customer_import.sql:52
 References: `customer_addresses`, `customer_import_batches`, `customers`
 - Read by:
-  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:217
+  - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:113
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:25
   - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:38
 
@@ -2494,9 +2494,9 @@ app/[lang]/settings/costings/services/page.tsx
 ### /settings/customers
 app/[lang]/settings/customers/page.tsx
 - Endpoints: `/api/admin/working-as [POST]`, `/api/settings/customers/aftercare [GET,PUT]`, `/api/settings/customers/followups [GET]`, `/api/settings/customers/google-reviews [GET]`, `/api/settings/customers/segments`, `/api/settings/customers/telegram-updates [GET,PUT]`, `/api/settings/customers/telegram-updates/test [POST]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id]/followups/[followupId]`
-- Loads: `getMigrationSummary()`, `getSiteSettings()`, `listAdminCustomers()`, `listCampaignFilterOptions()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
+- Loads: `getLifecycleSummary()`, `getSiteSettings()`, `listAdminCustomers()`, `listCampaignFilterOptions()`, `listSegments()`, `readAftercareCard()`, `readTelegramUpdates()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_emails`, `customer_followups`, `customer_review_requests`, `customer_segments`, `customer_whatsapp`, `customers`, `mp_staff`, `site_settings`
-- Reads, through the same: `admin_customer_migration_summary`, `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `customer_preference_events`, `customer_purchase_lines`, `email_campaigns`, `email_template_copy`, `order_items`, `orders`, `pillow_products`, `readjustment_bookings`, `service_prices`, `whatsapp_inbound`
+- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `customer_preference_events`, `customer_purchase_lines`, `email_campaigns`, `email_template_copy`, `order_items`, `orders`, `pillow_products`, `readjustment_bookings`, `service_prices`, `whatsapp_inbound`
 
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
