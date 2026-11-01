@@ -150,9 +150,10 @@ describe("CrossSectionSvg pouches", () => {
     const free = fitPillow([{ section: "center", subSection: "middle", slot: 1, itemId: 1, row: 0 }], { size: "M", dims });
     const [d] = [...renderToStaticMarkup(<CrossSectionSvg fit={free} cut={DEFAULT_CUT} itemSubtypes={new Map()} />).matchAll(/data-slab-status="[a-z]+"[^>]*><path d="([^"]+)"/g)].map((x) => x[1]);
     expect(d.match(/C/g)).toHaveLength(8);
-    // No sheen: nothing but the body, its shade, hatch, tint and ring.
+    // Flat colour as in the top view: no sheen, no shade, no shadow.
     expect(m).not.toContain("data-slab-gloss");
-    expect(m).toContain("<linearGradient");
+    expect(m).not.toContain("Gradient");
+    expect(m).not.toContain("<filter");
     expect(m.match(/>6D S</g)).toHaveLength(2);
     expect(m.match(/data-xray-column-divider/g)).toHaveLength(2);
   });

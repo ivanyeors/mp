@@ -295,15 +295,15 @@ type SlabHitProps = React.SVGProps<SVGGElement> & { [attr: `data-${string}`]: st
 /** solid: committed · lifted: picked up, its place still shown · landing: where a held pouch will land. */
 type SlabMode = "solid" | "lifted" | "landing";
 
-type SvgIds = { hatch: string; shade: string; rollShade: string };
+type SvgIds = { hatch: string };
 
 function slabOutline(box: SlabBox, roll: boolean, puff: number, shaping?: PouchShaping): string {
   return roll ? rollPath(box) : pouchPath(box, puff, shaping);
 }
 
 /**
- * One filling, side-on: a cushion in its family colour, shaded for volume,
- * hatched when compressed or when it cannot close;
+ * One filling, side-on: a cushion in flat family colour, as the top view
+ * draws it, hatched when compressed or when it cannot close;
  * pressed into the case and sagging where nothing holds it up (`shaping`).
  * When its box changes it eases there (attribute writes in rAF,
  * interruptible) instead of jumping, unless the viewer asked for reduced
@@ -412,7 +412,6 @@ function PuffySlab({
         strokeDasharray={mode === "landing" ? "5 3" : undefined}
         vectorEffect="non-scaling-stroke"
       />
-      <path d={body} data-slab-body="" fill={`url(#${roll ? ids.rollShade : ids.shade})`} pointerEvents="none" />
       {hatched && <path d={body} data-slab-body="" fill={`url(#${ids.hatch})`} pointerEvents="none" />}
       {selected && (
         <path
@@ -504,7 +503,7 @@ export function CrossSectionSvg({
   const { L, ky, profile } = f;
   const { width } = L;
   const height = f.height;
-  const ids: SvgIds = { hatch: `${uid}-hatch`, shade: `${uid}-shade`, rollShade: `${uid}-roll` };
+  const ids: SvgIds = { hatch: `${uid}-hatch` };
   const shellId = `${uid}-shell`;
   const transform = profileTransform(profile, f.x0, f.drawW, f.baseline);
   const shell = transformAttr(transform);
@@ -580,18 +579,6 @@ export function CrossSectionSvg({
         <pattern id={ids.hatch} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <path d="M0 0 L0 6" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
         </pattern>
-        {/* The cushion's volume: lit from above, a shade underneath. */}
-        <linearGradient id={ids.shade} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="white" stopOpacity={0.3} />
-          <stop offset="0.35" stopColor="white" stopOpacity={0.06} />
-          <stop offset="0.62" stopColor="white" stopOpacity={0} />
-          <stop offset="1" stopColor="black" stopOpacity={0.3} />
-        </linearGradient>
-        <radialGradient id={ids.rollShade} cx="0.36" cy="0.32" r="0.75">
-          <stop offset="0" stopColor="white" stopOpacity={0.32} />
-          <stop offset="0.45" stopColor="white" stopOpacity={0.04} />
-          <stop offset="1" stopColor="black" stopOpacity={0.32} />
-        </radialGradient>
         <clipPath id={shellId}>
           {clothD ? <path d={clothD} /> : <path d={profile.d} transform={shell} />}
         </clipPath>
@@ -660,7 +647,6 @@ export function CrossSectionSvg({
               return (
                 <>
                   <path d={d} fill={`var(${visual.cssVar}, ${visual.defaultColor})`} fillOpacity={0.82} stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-                  <path d={d} fill={`url(#${g.roll ? ids.rollShade : ids.shade})`} />
                   {font > 0 && (
                     <text x={0} y={0} textAnchor="middle" dominantBaseline="central" fontSize={font} fontWeight={600} fill="white" stroke="rgba(2,6,23,0.75)" strokeWidth={font * 0.22} strokeLinejoin="round" paintOrder="stroke" className="select-none">
                       {g.label}
@@ -1222,7 +1208,6 @@ export function BolsterCrossSectionSvg({
   const L = compact ? COMPACT_LAYOUT : LAYOUT;
   const { width, height, padTop, padBottom } = L;
   const hatchId = `${uid}-bhatch`;
-  const shadeId = `${uid}-bshade`;
   const thickest = fit.pieces.reduce<BolsterFit["pieces"][number] | null>(
     (best, p) => (best === null || p.settledThicknessMm > best.settledThicknessMm ? p : best),
     null,
@@ -1253,12 +1238,6 @@ export function BolsterCrossSectionSvg({
         <pattern id={hatchId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <path d="M0 0 L0 6" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
         </pattern>
-        <linearGradient id={shadeId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="white" stopOpacity={0.4} />
-          <stop offset="0.32" stopColor="white" stopOpacity={0.08} />
-          <stop offset="0.6" stopColor="white" stopOpacity={0} />
-          <stop offset="1" stopColor="black" stopOpacity={0.3} />
-        </linearGradient>
       </defs>
       {/* The shell: the registry diameter. */}
       <circle cx={cx} cy={cy} r={r} fill={XRAY_INTERIOR_VAR} stroke={fit.status === "over" ? AMBER : XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
@@ -1272,7 +1251,6 @@ export function BolsterCrossSectionSvg({
             strokeWidth={1.5}
             vectorEffect="non-scaling-stroke"
           />
-          <path d={body} fill={`url(#${shadeId})`} />
           {status !== "ok" && <path d={body} fill={`url(#${hatchId})`} />}
         </g>
       )}
