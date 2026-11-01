@@ -7,7 +7,8 @@ import { forceDarkMode, FORCED_DARK_STYLE_ID, type EmailShellOptions } from "@/l
 import type { CampaignBlocksEmailData } from "@/lib/email/campaign-blocks";
 import type { ComposedCampaignEmailData } from "@/lib/email/campaigns";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
-import { PROBE_CUSTOMER_ID, unsubscribeToken, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
+import { PROBE_CUSTOMER_ID, unsubscribeToken, verifyUnsubscribeLink, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
+import { hashClickToken } from "../click";
 import { CAMPAIGN_PLACEHOLDERS, EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, campaignLedgerKey, type Campaign } from "../rules";
 import { ResendTransport } from "@/lib/email/transport";
 import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
@@ -133,8 +134,10 @@ describe("sendCampaignBatch", () => {
     expect(ann.replyTo).toBe("support@mpillow.com");
     expect(ann.subject).toBe(FIRST_CAMPAIGN_DRAFT.subject);
     expect(ann.html).toContain("Hi Ann,");
-    const token = unsubscribeToken(ANN, SECRET)!;
-    expect(ann.headers?.["List-Unsubscribe"]).toContain(`${ORIGIN}/api/email/unsubscribe?u=${ANN}&t=${token}`);
+    // Slice 08: the link names Ann's send, signed with her.
+    const annSend = world.sends.find((x) => x.customer_id === ANN)!.id;
+    const token = unsubscribeToken(ANN, SECRET, annSend)!;
+    expect(ann.headers?.["List-Unsubscribe"]).toContain(`${ORIGIN}/api/email/unsubscribe?u=${ANN}&t=${token}&s=${annSend}`);
     expect(ann.headers?.["List-Unsubscribe"]).toContain("mailto:support@mpillow.com");
     expect(ann.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(ann.html).toContain(`/zh-CN/unsubscribe?u=${ANN}`);
@@ -333,6 +336,60 @@ describe("planWave", () => {
     );
     expect(segment.plan.considered).toBe(2);
     expect(segment.customerIds).toEqual([BEA]);
+  });
+
+  // PRD-campaign-audiences slice 06.
+  describe("leaving Segments out", () => {
+    const ids = (...pages: string[][]) =>
+      async function* () {
+        yield* pages;
+      };
+
+    it("drops their Customers before the rule, with Everyone subscribed too, and says how many each took", async () => {
+      const { s } = setup();
+      const r = await planWave(campaign(), { size: 10 }, s, undefined, [
+        { segmentId: "seg-staff", name: "Staff and test accounts", ids: ids([BEA], [CAL]) },
+        { segmentId: "seg-recent", name: "Bought in the last 14 days", ids: ids([BEA, ANN]) },
+      ]);
+      // Bea is in both: she counts once, against the first.
+      expect(r.leftOutBySegment).toEqual([
+        { segmentId: "seg-staff", name: "Staff and test accounts", count: 2 },
+        { segmentId: "seg-recent", name: "Bought in the last 14 days", count: 1 },
+      ]);
+      expect(r.customerIds).toEqual([DAN]);
+      // Cal left with the Segment, before the rule could count her unsubscribe.
+      expect(r.plan.considered).toBe(1);
+      expect(r.plan.excluded).toEqual({});
+    });
+
+    it("works with a Segment audience, and lists a Segment that took nobody", async () => {
+      const { s } = setup();
+      const r = await planWave(
+        campaign({ audience: "segment", segmentId: "3f2b6c1e-8d4a-4f0b-9c7e-1a2b3c4d5e6f" }),
+        { size: 10 },
+        s,
+        ids([BEA, ANN, DAN]),
+        [{ segmentId: "seg-none", name: "Nobody here", ids: ids([id(99)]) }, { segmentId: "seg-ann", name: "Ann", ids: ids([ANN]) }],
+      );
+      expect(r.leftOutBySegment.map((x) => x.count)).toEqual([0, 1]);
+      expect(r.customerIds).toEqual([BEA, DAN]);
+    });
+
+    it("leaves nobody out without exclusions", async () => {
+      const r = await planWave(campaign(), { size: 10 }, setup().s);
+      expect(r.leftOutBySegment).toEqual([]);
+      expect(r.plan.considered).toBe(4);
+    });
+
+    it("refuses the wave when a left-out Segment cannot be read, never sending to more", async () => {
+      const { s } = setup();
+      const refused = async function* (): AsyncGenerator<string[]> {
+        throw new Error("It leaves out “Staff”, which cannot be used: This Segment is archived.");
+      };
+      await expect(
+        planWave(campaign(), { size: 10 }, s, undefined, [{ segmentId: "seg-staff", name: "Staff", ids: refused }]),
+      ).rejects.toThrow(/leaves out “Staff”.*archived/);
+    });
   });
 });
 
@@ -541,14 +598,15 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     expect(ann.html).toContain(">Sleep cooler this December</h1>");
     expect(ann.html).toContain("Hi Ann,");
     expect(ann.html).toContain("Hello Ann, our <strong>FibreCool</strong> covers are back.");
-    expect(ann.html).toMatch(/<a class="mp-fg" href="https:\/\/custom\.mpillow\.com\/en-US\/faq"[^>]*>the care guide<\/a>/);
+    // Slice 08: a site link carries the send's click token.
+    expect(ann.html).toMatch(/<a class="mp-fg" href="https:\/\/custom\.mpillow\.com\/en-US\/faq\?mc=[A-Za-z0-9_-]{43}"[^>]*>the care guide<\/a>/);
     expect(ann.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     // Ann was imported and has not signed in: the sign-in button is her own Claim link, in her language.
     expect(world.claimLinks).toEqual([expect.objectContaining({ customer_id: ANN, template: `campaign:${CAMPAIGN}` })]);
     expect(ann.html).toMatch(/\/zh-CN\/account\/welcome\?c=[A-Za-z0-9_-]{43}/);
     expect(ann.html).toContain(`${ORIGIN}/zh-CN/mp-config?utm_source=email_campaign&amp;utm_medium=email&amp;utm_campaign=december-cooling`);
     expect(ann.text).toMatch(/^Sign in: https:\/\/custom\.mpillow\.com\/zh-CN\/account\/welcome\?c=/m);
-    expect(ann.text).toContain("the care guide: https://custom.mpillow.com/en-US/faq");
+    expect(ann.text).toMatch(/the care guide: https:\/\/custom\.mpillow\.com\/en-US\/faq\?mc=[A-Za-z0-9_-]{43}/);
     // Bea signed up here: her sign-in button is her account.
     expect(bea.html).toContain(`${ORIGIN}/en-US/account?utm_source=email_campaign`);
     expect(bea.html).not.toContain("welcome?c=");
@@ -839,5 +897,80 @@ describe("readSendingStatus", () => {
       reports: "CAMPAIGN_RESEND_WEBHOOK_SECRET is not set: bounces and spam reports are not recorded, and the pause rule cannot see them",
     });
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+// PRD-campaign-audiences slice 07: the rest period, from plan to claim.
+describe("the rest period", () => {
+  const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+  it("plans around someone emailed in the last 7 days, and says when the first can get it", async () => {
+    world.recentMarketing = { [BEA]: [ago(2)], [DAN]: [ago(9)] };
+    const r = await planWave(campaign(), { size: 10 }, setup().s);
+    expect(r.customerIds).not.toContain(BEA);
+    expect(r.customerIds).toContain(DAN);
+    expect(r.plan.excluded.resting).toBe(1);
+    expect(Date.parse(r.plan.restingUntil!)).toBeGreaterThan(Date.now() + 4 * 86_400_000);
+    expect(Date.parse(r.plan.restingUntil!)).toBeLessThan(Date.now() + 6 * 86_400_000);
+  });
+
+  it("skips, never fails, someone who started resting after the plan, writing no ledger row", async () => {
+    const { s, sent } = setup();
+    // Another campaign reached Bea between the plan and the send.
+    world.onClaim = (customerId) => {
+      if (customerId === BEA) world.recentMarketing = { [BEA]: [ago(0.01)] };
+    };
+    const r = await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+    expect(r.skipped).toEqual({ resting: 1 });
+    expect(r.failed).toBe(0);
+    expect(sent.map((e) => e.to)).toEqual(["ann@x.test"]);
+    expect(world.sends.filter((x) => x.customer_id === BEA)).toEqual([]);
+  });
+
+  it("never holds a test: it goes to Staff addresses through no claim", async () => {
+    world.recentMarketing = { [BEA]: [ago(0.01)] };
+    const { s } = setup();
+    const admin = s.admin as unknown as ReturnType<typeof fakeCampaignsClient>;
+    expect(await sendCampaignTest(campaign(), { to: ["bea@x.test"], firstName: "Bea" }, s)).toMatchObject({ sent: ["bea@x.test"] });
+    expect(admin.rpcCalls.filter((c) => c.name === "claim_marketing_campaign_send")).toEqual([]);
+  });
+});
+
+// PRD-campaign-audiences slice 08: clicks and unsubscribes tied to the send.
+describe("each send's click token and unsubscribe link", () => {
+  const tokensIn = (html: string) => [...new Set([...html.matchAll(/[?&](?:amp;)?mc=([A-Za-z0-9_-]{43})/g)].map((m) => m[1]))];
+
+  it("puts one token per email on its site links, keeps only its hash, and leaves the unsubscribe link without it", async () => {
+    const { s, sent } = setup();
+    await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [ANN, BEA] }, s);
+    const [annTokens, beaTokens] = sent.map((e) => tokensIn(e.html));
+    expect(annTokens).toHaveLength(1);
+    expect(beaTokens).toHaveLength(1);
+    expect(annTokens[0]).not.toBe(beaTokens[0]);
+    const annSend = world.sends.find((x) => x.customer_id === ANN)!;
+    expect(annSend.click_token_hash).toBe(await hashClickToken(annTokens[0]));
+    // The plaintext is in the email only.
+    expect(JSON.stringify(world.sends)).not.toContain(annTokens[0]);
+    // The unsubscribe link names the send instead, and never carries the click token.
+    const unsub = sent[0].html.match(/href="([^"]*\/unsubscribe\?[^"]*)"/)![1].replace(/&amp;/g, "&");
+    expect(unsub).not.toContain("mc=");
+    const u = new URL(unsub);
+    expect(verifyUnsubscribeLink(u.searchParams.get("u"), u.searchParams.get("t"), u.searchParams.get("s"), SECRET)).toEqual({
+      customerId: ANN,
+      sendId: annSend.id,
+    });
+  });
+
+  it("keeps no token for a send that failed", async () => {
+    const { s } = setup({ failFor: new Set(["bea@x.test"]) });
+    await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [BEA] }, s);
+    expect(world.sends.find((x) => x.customer_id === BEA)).toMatchObject({ status: "failed" });
+    expect(world.sends.find((x) => x.customer_id === BEA)?.click_token_hash ?? null).toBeNull();
+  });
+
+  it("never puts a click token on a test", async () => {
+    const { s, sent } = setup();
+    await sendCampaignTest(campaign(), { to: ["me@mpillow.com"], firstName: "Ivan" }, s);
+    expect(sent[0].html).not.toMatch(/[?&](amp;)?mc=/);
   });
 });

@@ -8,7 +8,8 @@
  * nobody whose campaign email bounced or drew a complaint, and nobody twice.
  *
  * `composedCampaignBlocker` is the rule the plan uses.
- * `marketing_campaign_blocker()` (20261021100000) is the same rule in SQL,
+ * `marketing_campaign_blocker()` (20261021100000, with the rest period since
+ * 20261031144935) is the same rule in SQL,
  * which `claim_marketing_campaign_send()` re-runs at the moment of each send,
  * so the SQL decides. supabase/tests/email-marketing/campaign-rule-cases.json
  * holds the two equal.
@@ -29,6 +30,8 @@ import {
 } from "./content";
 import { chineseVersionOf, chineseWords } from "./chinese-version";
 import { campaignVariable, fallbackWords, isVariableKey, type VariableKey } from "./variables";
+import { KEEP_SENDING_COLUMNS, keepSendingFromRow, type KeepSending } from "./keep-sending";
+import { inHoldout } from "./results";
 
 export { isHttpsUrl };
 
@@ -54,6 +57,21 @@ export const WAVE_LABEL = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
 export const MAX_WAVE_SIZE = 1000;
 /** The most addresses one test goes to. */
 export const MAX_TEST_RECIPIENTS = 3;
+/** Segments one campaign may leave out of its audience (PRD-campaign-audiences slice 06). */
+export const MAX_EXCLUDED_SEGMENTS = 3;
+
+/**
+ * The **Rest period** (PRD-campaign-audiences slice 07; owner decision 2):
+ * nobody gets a marketing email within `REST_DAYS` of their last one, or once
+ * they have had `REST_MAX_PER_30_DAYS` in 30 days. `marketing_rest_until()`
+ * (20261031144935) uses the same numbers.
+ */
+export const REST_DAYS = 7;
+export const REST_MAX_PER_30_DAYS = 4;
+export const REST_WINDOW_DAYS = 30;
+
+/** The rest period in words, for the Sending card and the plan. */
+export const REST_PERIOD_TEXT = `Nobody gets a marketing email within ${REST_DAYS} days of their last one, or more than ${REST_MAX_PER_30_DAYS} in ${REST_WINDOW_DAYS} days. Points-expiry reminders count; order and aftercare email never do.`;
 
 export const CAMPAIGN_LIMITS = {
   name: 80,
@@ -124,10 +142,21 @@ function draftSchema({ required }: { required: boolean }) {
         }),
       audience: z.enum(CAMPAIGN_AUDIENCES),
       segmentId: z.string().uuid().nullable().default(null),
+      // Slice 06 (PRD-campaign-audiences): Segments whose Customers this campaign leaves out.
+      excludeSegmentIds: z
+        .array(z.string().uuid())
+        .max(MAX_EXCLUDED_SEGMENTS, `Leave out at most ${MAX_EXCLUDED_SEGMENTS} Segments.`)
+        .default([]),
     })
     .superRefine((d, ctx) => {
       if (d.audience === "segment" && !d.segmentId) {
         ctx.addIssue({ code: "custom", path: ["segmentId"], message: "Choose the Segment to send to." });
+      }
+      if (new Set(d.excludeSegmentIds).size !== d.excludeSegmentIds.length) {
+        ctx.addIssue({ code: "custom", path: ["excludeSegmentIds"], message: "A Segment is left out twice." });
+      }
+      if (d.audience === "segment" && d.segmentId && d.excludeSegmentIds.includes(d.segmentId)) {
+        ctx.addIssue({ code: "custom", path: ["excludeSegmentIds"], message: "It cannot leave out the Segment it is sent to." });
       }
       if (!d.content) {
         if (required && !d.body.trim()) ctx.addIssue({ code: "custom", path: ["body"], message: "Write the email." });
@@ -162,7 +191,9 @@ function draftSchema({ required }: { required: boolean }) {
 
 /**
  * What the editor saves. `button` is null for none; `segmentId` only with the
- * Segment audience. Mirrors the table's checks, so a draft that parses saves.
+ * Segment audience; `excludeSegmentIds` with any audience, at most 3, never
+ * the one it is sent to. Mirrors the table's checks, so a draft that parses
+ * saves.
  */
 export const CampaignDraftSchema = draftSchema({ required: true });
 
@@ -219,12 +250,14 @@ export interface Campaign extends CampaignDraft {
   lockedAt: string | null;
   archivedAt: string | null;
   createdBy: string | null;
+  /** Kept sending (PRD-campaign-audiences slice 10): off unless a person turned it on after the first wave. */
+  keepSending?: KeepSending;
 }
 
 /** The one table row's columns, in its order. */
 export const CAMPAIGN_COLUMNS =
-  "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, " +
-  "created_at, updated_at, locked_at, archived_at, creator:mp_staff!created_by_profile_id(name)";
+  "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, exclude_segment_ids, " +
+  `created_at, updated_at, locked_at, archived_at, ${KEEP_SENDING_COLUMNS}, creator:mp_staff!created_by_profile_id(name)`;
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
@@ -255,11 +288,15 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
         : null,
     audience: audience as CampaignAudience,
     segmentId: str(row.segment_id),
+    excludeSegmentIds: Array.isArray(row.exclude_segment_ids)
+      ? row.exclude_segment_ids.filter((v): v is string => typeof v === "string")
+      : [],
     createdAt: str(row.created_at) ?? "",
     updatedAt: str(row.updated_at) ?? "",
     lockedAt: str(row.locked_at),
     archivedAt: str(row.archived_at),
     createdBy: str((creator as { name?: unknown } | null | undefined)?.name),
+    keepSending: keepSendingFromRow(row),
   };
 }
 
@@ -277,6 +314,7 @@ export function campaignRowFromDraft(d: CampaignDraft) {
     button_url: d.button?.target === "url" ? d.button.url : null,
     audience: d.audience,
     segment_id: d.audience === "segment" ? d.segmentId : null,
+    exclude_segment_ids: d.excludeSegmentIds,
   };
 }
 
@@ -284,7 +322,8 @@ export function campaignRowFromDraft(d: CampaignDraft) {
 // The rule
 // ---------------------------------------------------------------------------
 
-export const CAMPAIGN_SEND_STATUSES = ["pending", "sent", "failed", "bounced", "complained"] as const;
+/** `held_out`: kept back by the campaign's holdout, never sent it (PRD-campaign-audiences slice 11). */
+export const CAMPAIGN_SEND_STATUSES = ["pending", "sent", "failed", "bounced", "complained", "held_out"] as const;
 export type CampaignSendStatus = (typeof CAMPAIGN_SEND_STATUSES)[number];
 
 /** This Campaign's send to one Customer. */
@@ -314,6 +353,17 @@ export interface CampaignCandidate {
   own: OwnSend | null;
   /** The language they use the site in (`customers.locale`): `zh-CN` gets a campaign's 中文 version (slice 17). */
   locale: string;
+  /**
+   * When their marketing email of the last 30 days reached them, newest first
+   * (`marketing_recent`: any campaign send but a failed one, and points-expiry
+   * reminders). Absent reads as none. PRD-campaign-audiences slice 07.
+   */
+  recentMarketing?: readonly string[];
+  /**
+   * 0 to 99, the same for them every time (`campaign_holdout_bucket`): under
+   * 10, a campaign's holdout keeps them back (slice 11). Absent reads as none.
+   */
+  holdoutBucket?: number | null;
 }
 
 /** Why a Customer may not receive a Campaign now, in the order the rule checks. */
@@ -324,7 +374,9 @@ export const CAMPAIGN_RULE_BLOCKERS = [
   "suppressed",
   "not_subscribed",
   "failed",
+  "held_out",
   "already_sent",
+  "resting",
 ] as const;
 export type CampaignRuleBlocker = (typeof CAMPAIGN_RULE_BLOCKERS)[number];
 
@@ -338,12 +390,36 @@ export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", 
   suppressed: "an earlier campaign email bounced or was marked as spam",
   not_subscribed: "never agreed to marketing email",
   failed: "the send failed before (use Retry failed sends)",
+  held_out: "held out to measure the campaign, so never sent it",
   already_sent: "already sent this campaign",
+  resting: `resting (emailed in the last ${REST_DAYS} days, or ${REST_MAX_PER_30_DAYS} times in ${REST_WINDOW_DAYS} days)`,
   not_failed: "nothing of theirs failed",
   unknown_campaign: "the campaign no longer exists",
   campaign_archived: "the campaign is archived",
   not_found: "the customer no longer exists",
 };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Pure — when someone with these marketing emails is next eligible, or null
+ * when they are not resting at `now`: the later of their latest + 7 days and,
+ * with 4 or more in the last 30 days, their 4th most recent + 30 days. The
+ * twin of `marketing_rest_until()`. Unreadable times are ignored.
+ */
+export function restUntil(recent: readonly string[] | undefined, now: Date = new Date()): string | null {
+  const t = now.getTime();
+  const times = (recent ?? [])
+    .map((at) => Date.parse(at))
+    .filter((at) => Number.isFinite(at) && at <= t && at > t - REST_WINDOW_DAYS * DAY_MS)
+    .sort((a, b) => b - a);
+  if (!times.length) return null;
+  let until = times[0] + REST_DAYS * DAY_MS;
+  if (times.length >= REST_MAX_PER_30_DAYS) {
+    until = Math.max(until, times[REST_MAX_PER_30_DAYS - 1] + REST_WINDOW_DAYS * DAY_MS);
+  }
+  return until > t ? new Date(until).toISOString() : null;
+}
 
 /**
  * Why `c` may not receive a Campaign for `audience` now, or null when they
@@ -352,8 +428,8 @@ export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", 
  */
 export function composedCampaignBlocker(
   audience: CampaignAudience,
-  c: Pick<CampaignCandidate, "migrated" | "claimedAt" | "marketingEmail" | "suppressed" | "own">,
-  { retryFailed = false }: { retryFailed?: boolean } = {},
+  c: Pick<CampaignCandidate, "migrated" | "claimedAt" | "marketingEmail" | "suppressed" | "own" | "recentMarketing">,
+  { retryFailed = false, now = new Date() }: { retryFailed?: boolean; now?: Date } = {},
 ): CampaignRuleBlocker | null {
   if (audience === "imported_not_signed_in") {
     if (!c.migrated) return "not_migrated";
@@ -363,7 +439,11 @@ export function composedCampaignBlocker(
   if (c.suppressed) return "suppressed";
   if (c.marketingEmail !== "subscribed") return "not_subscribed";
   if (c.own?.status === "failed" && !retryFailed) return "failed";
+  // Slice 11: the holdout, for good, before "already sent".
+  if (c.own?.status === "held_out") return "held_out";
   if (c.own && c.own.status !== "failed") return "already_sent";
+  // Slice 07: last, so a plan still says "already sent" or "unsubscribed" first.
+  if (restUntil(c.recentMarketing, now)) return "resting";
   return null;
 }
 
@@ -397,18 +477,33 @@ export interface CampaignPlan {
   excluded: Partial<Record<PlanExclusion, number>>;
   /** Sends already handed to the provider for this Campaign. */
   alreadySent: number;
+  /**
+   * Of `selection`, those its holdout will keep back (slice 11): the claim
+   * records them as held out and sends them nothing. 0 with no holdout.
+   */
+  heldOut: number;
   /** This Campaign's failed sends, which a retry would send again. */
   failed: number;
   /** Of `eligible`, and of the wave, those who read the site in Chinese (PRD-campaign-email-editor slice 17). */
   eligibleChinese: number;
   selectedChinese: number;
+  /**
+   * Of those resting (`excluded.resting`), the earliest any of them is next
+   * eligible; null with nobody resting (PRD-campaign-audiences slice 07).
+   */
+  restingUntil: string | null;
 }
 
 /** Pure — a wave of `size` from every candidate. A retry selects this Campaign's failed sends only. */
 export function planCampaignWave(
   audience: CampaignAudience,
   candidates: readonly CampaignCandidate[],
-  { size, retryFailed = false }: { size: number; retryFailed?: boolean },
+  {
+    size,
+    retryFailed = false,
+    now = new Date(),
+    holdout = false,
+  }: { size: number; retryFailed?: boolean; now?: Date; holdout?: boolean },
 ): CampaignPlan {
   const excluded: Partial<Record<PlanExclusion, number>> = {};
   const exclude = (why: PlanExclusion) => {
@@ -417,10 +512,15 @@ export function planCampaignWave(
   const eligible: CampaignCandidate[] = [];
   let alreadySent = 0;
   let failed = 0;
+  let restingUntil: string | null = null;
   for (const c of candidates) {
-    if (c.own && c.own.status !== "failed" && c.own.status !== "pending") alreadySent++;
+    if (c.own && c.own.status !== "failed" && c.own.status !== "pending" && c.own.status !== "held_out") alreadySent++;
     if (c.own?.status === "failed") failed++;
-    const blocker = composedCampaignBlocker(audience, c, { retryFailed });
+    const blocker = composedCampaignBlocker(audience, c, { retryFailed, now });
+    if (blocker === "resting") {
+      const until = restUntil(c.recentMarketing, now);
+      if (until && (!restingUntil || until < restingUntil)) restingUntil = until;
+    }
     if (blocker) exclude(blocker);
     else if (retryFailed && c.own?.status !== "failed") exclude("not_failed");
     else eligible.push(c);
@@ -436,16 +536,80 @@ export function planCampaignWave(
     selection,
     excluded,
     alreadySent,
+    // A retry sends failed sends again: the claim holds out only a new one.
+    heldOut: holdout && !retryFailed ? selection.filter((c) => inHoldout(c.holdoutBucket)).length : 0,
     failed,
     eligibleChinese: eligible.filter(readsChinese).length,
     selectedChinese: selection.filter(readsChinese).length,
+    restingUntil,
   };
 }
 
-/** Pure — the next wave's label: `w1`, `w2`, … after the ones the Campaign has. */
+// ---------------------------------------------------------------------------
+// Leaving Segments out (PRD-campaign-audiences slice 06)
+// ---------------------------------------------------------------------------
+
+/** A Segment the campaign leaves out, resolved when the wave is planned: who it chooses now. */
+export interface SegmentExclusion {
+  segmentId: string;
+  name: string;
+  customerIds: ReadonlySet<string>;
+}
+
+/** How many of the audience one left-out Segment took away. */
+export interface LeftOutBySegment {
+  segmentId: string;
+  name: string;
+  count: number;
+}
+
+/**
+ * Pure — the audience less everyone a left-out Segment chooses, before the
+ * rule runs. It only drops: what comes out is a subset of what went in, in the
+ * same order. Someone in two left-out Segments counts once, against the first
+ * in the campaign's order; every left-out Segment is listed, at 0 when it took
+ * nobody away.
+ */
+export function excludeSegmentMembers<C extends Pick<CampaignCandidate, "customerId">>(
+  candidates: readonly C[],
+  exclusions: readonly SegmentExclusion[],
+): { candidates: C[]; leftOut: LeftOutBySegment[] } {
+  const leftOut = exclusions.map((x) => ({ segmentId: x.segmentId, name: x.name, count: 0 }));
+  const kept: C[] = [];
+  for (const c of candidates) {
+    const at = exclusions.findIndex((x) => x.customerIds.has(c.customerId));
+    if (at < 0) kept.push(c);
+    else leftOut[at]!.count++;
+  }
+  return { candidates: kept, leftOut };
+}
+
+/**
+ * Pure — PRD-campaign-audiences slice 05. A Segment chosen by what this same
+ * campaign did (*got it*, *clicked it*, *got it, didn't click*) holds only
+ * people it has already reached, and nobody gets a campaign twice: as its
+ * Audience it would never send. The words saying so, or null when it can.
+ * *Didn't get it* is fine: that is who it has left to reach.
+ */
+export function selfDefeatingAudience(
+  campaignId: string,
+  segment: { name: string; filters: { campaign: { id: string; state: string } | null } },
+): string | null {
+  const c = segment.filters.campaign;
+  if (!c || c.id !== campaignId.toLowerCase() || c.state === "not-sent") return null;
+  return (
+    `“${segment.name}” chooses people this campaign has already been sent, and nobody gets a campaign twice, ` +
+    `so it would never send. Send it to another Segment, or use “${segment.name}” for a follow-up campaign.`
+  );
+}
+
+/**
+ * Pure — the next wave's label: `w1`, `w2`, … after the ones the Campaign has.
+ * The daily job's Waves (`daily-…`, slice 10) are not numbered and are not counted.
+ */
 export function nextWaveLabel(existing: readonly string[]): string {
   const taken = new Set(existing);
-  let n = existing.length + 1;
+  let n = existing.filter((w) => /^w\d+$/.test(w)).length + 1;
   while (taken.has(`w${n}`)) n++;
   return `w${n}`;
 }
@@ -455,7 +619,7 @@ const isSendStatus = (v: unknown): v is CampaignSendStatus =>
 
 /** The view's columns, in its order. */
 export const CANDIDATE_COLUMNS =
-  "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends";
+  "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends, marketing_recent, holdout_bucket";
 
 /** Pure — one `marketing_campaign_candidates` row for `campaignId`, or null for a malformed one. */
 export function candidateFromRow(row: Record<string, unknown>, campaignId: string): CampaignCandidate | null {
@@ -483,6 +647,10 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
     suppressed: row.suppressed === true,
     own,
     locale: typeof row.locale === "string" ? row.locale : "en-US",
+    recentMarketing: Array.isArray(row.marketing_recent)
+      ? row.marketing_recent.filter((at): at is string => typeof at === "string")
+      : [],
+    holdoutBucket: typeof row.holdout_bucket === "number" ? row.holdout_bucket : null,
   };
 }
 
@@ -518,6 +686,7 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   button: { target: "sign_in", label: "Sign in and collect your points", url: null },
   audience: "imported_not_signed_in",
   segmentId: null,
+  excludeSegmentIds: [],
 };
 
 /**
@@ -536,6 +705,7 @@ export const EMPTY_CAMPAIGN_DRAFT: CampaignDraft = {
   button: null,
   audience: "imported_not_signed_in",
   segmentId: null,
+  excludeSegmentIds: [],
 };
 
 /**

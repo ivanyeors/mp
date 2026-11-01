@@ -171,3 +171,41 @@ describe("probeUnsubscribeSecret against this route", () => {
     expect(h.rpcCalls).toBe(0);
   });
 });
+
+// PRD-campaign-audiences slice 08: the unsubscribe names the campaign send behind it.
+describe("POST /api/email/unsubscribe — from a campaign email", () => {
+  const SEND = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
+  const sendLink = (send = SEND) =>
+    `${BASE}?u=${ID}&t=${encodeURIComponent(unsubscribeToken(ID, SECRET, send)!)}&s=${send}`;
+
+  it("records the send on the event, from a one-click POST", async () => {
+    (h.db as Record<string, unknown>).customer_campaign_sends = [{ id: SEND, customer_id: ID }];
+    expect((await oneClick(sendLink())).status).toBe(200);
+    expect(h.db.customer_consent_events).toEqual([expect.objectContaining({ source: "unsubscribe_link", campaign_send_id: SEND })]);
+  });
+
+  it("records it from the confirm page's button, and sends the browser back with it", async () => {
+    (h.db as Record<string, unknown>).customer_campaign_sends = [{ id: SEND, customer_id: ID }];
+    const t = unsubscribeToken(ID, SECRET, SEND)!;
+    const res = await route.POST(form(BASE, { u: ID, t, s: SEND, via: "page", lang: "en-US" }));
+    expect(res.status).toBe(303);
+    expect(new URL(res.headers.get("location")!).searchParams.get("s")).toBe(SEND);
+    expect(h.db.customer_consent_events).toEqual([expect.objectContaining({ campaign_send_id: SEND })]);
+  });
+
+  it("never pins it on a send that is not theirs", async () => {
+    (h.db as Record<string, unknown>).customer_campaign_sends = [{ id: SEND, customer_id: "someone-else" }];
+    expect((await oneClick(sendLink())).status).toBe(200);
+    expect(h.db.customer_consent_events).toEqual([expect.objectContaining({ campaign_send_id: null })]);
+  });
+
+  it("still works without a send, as every link sent before does, and names none", async () => {
+    expect((await oneClick()).status).toBe(200);
+    expect(h.db.customer_consent_events).toEqual([expect.objectContaining({ campaign_send_id: null })]);
+  });
+
+  it("keeps the send through a GET to the confirm page", async () => {
+    const res = await route.GET(new Request(sendLink()));
+    expect(new URL(res.headers.get("location")!).searchParams.get("s")).toBe(SEND);
+  });
+});

@@ -68,6 +68,7 @@ const LEGACY: CampaignDraft = {
   button: { target: "url", label: "Shop the covers", url: "https://mpillow.com/shop" },
   audience: "subscribed",
   segmentId: null,
+  excludeSegmentIds: [],
 };
 const CONTENT: CampaignContent = {
   v: 1,
@@ -318,7 +319,7 @@ describe("a new campaign's blocks", () => {
       fallbacks: { first_name: "friend" },
     });
     typeInto(text, " {nickname}");
-    expect(cards()[0].textContent).toContain("{nickname} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.");
+    expect(cards()[0].textContent).toContain("{nickname} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.");
   });
 
   it("ask for a Variable's fallback words when only the subject or the preview line uses it", async () => {

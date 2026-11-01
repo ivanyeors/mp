@@ -84,15 +84,15 @@
 <p class="mp-muted" style="margin:10px 0 0;font-family:'Figtree','Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;font-weight:400;color:#737373;text-align:center">This code expires shortly</p></td></tr>
 </table></td></tr>
 </table>
-<p class="mp-muted" style="margin:0px 0 12px;font-family:'Figtree','Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;font-weight:400;color:#737373">If you didn&#39;t create an Mpillow account, you can ignore this email.</p>
+<p class="mp-muted" style="margin:0px 0 12px;font-family:'Figtree','Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;font-size:12px;line-height:18px;mso-line-height-rule:exactly;font-weight:400;color:#737373">Confirming makes your Mpillow account and, if you signed up for our emails, confirms that too. If you didn&#39;t ask for this, you can ignore this email: nothing is kept.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;width:100%;">
   <tr><td style="text-align:center;padding:16px 0"><!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .ConfirmationURL }}" style="height:44px;v-text-anchor:middle;width:238px;" arcsize="36%" stroke="f" fillcolor="#171717">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}" style="height:44px;v-text-anchor:middle;width:238px;" arcsize="36%" stroke="f" fillcolor="#171717">
 <w:anchorlock/>
 <center style="color:#fafafa;font-family:'Figtree','Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;font-size:14px;font-weight:500;">Or confirm with one click</center>
 </v:roundrect>
 <![endif]--><!--[if !mso]><!-- --><table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" class="mp-btn-table" style="border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt">
-  <tr><td class="mp-btn-cell" bgcolor="#171717" style="background:#171717;background-color:#171717;border-radius:16px;border:none;text-align:center"><a class="mp-btn" href="{{ .ConfirmationURL }}" style="margin:0;font-family:'Figtree','Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;font-size:14px;line-height:44px;mso-line-height-rule:exactly;font-weight:500;color:#fafafa;display:inline-block;text-align:center;text-decoration:none;padding:0 24px;mso-padding-alt:0">Or confirm with one click</a></td></tr>
+  <tr><td class="mp-btn-cell" bgcolor="#171717" style="background:#171717;background-color:#171717;border-radius:16px;border:none;text-align:center"><a class="mp-btn" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}" style="margin:0;font-family:'Figtree','Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif;font-size:14px;line-height:44px;mso-line-height-rule:exactly;font-weight:500;color:#fafafa;display:inline-block;text-align:center;text-decoration:none;padding:0 24px;mso-padding-alt:0">Or confirm with one click</a></td></tr>
 </table><!--<![endif]--></td></tr>
 </table>
           </td>

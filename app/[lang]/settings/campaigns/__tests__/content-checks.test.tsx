@@ -37,6 +37,7 @@ const SAVED: Campaign = {
   button: null,
   audience: "subscribed",
   segmentId: null,
+  excludeSegmentIds: [],
   id: ID,
   createdAt: "2026-10-21T00:00:00Z",
   updatedAt: "2026-10-21T00:00:00Z",
@@ -150,6 +151,8 @@ describe("The email, in the Send card", () => {
       requested: 10,
       limitedBy: null,
       waiting: 0,
+      leftOutBySegment: [],
+      fit: [],
     });
     mount();
     await openTab("Send");

@@ -8,6 +8,7 @@ import { CartShell } from "@/components/shop/cart-shell";
 import { AppDock } from "@/components/ui/app-dock";
 import { HomeHeader } from "@/components/ui/home-header";
 import { MarketingFooter } from "@/components/ui/marketing-footer";
+import { SignUpNoticeToast } from "@/components/auth/sign-up-notice";
 import { SonnerProvider } from "@/components/ui/sonner-provider";
 import { RouteScope } from "@/components/route-scope";
 import { ApiRequestTracker } from "@/components/api-request-tracker";
@@ -134,6 +135,8 @@ export default async function RootLayout({
           {/* After the page in reading order: screen readers meet it where it appears. */}
           <DropOffQuestionMount />
           <SonnerProvider />
+          {/* What a sign-up did to their emails, on the page it lands on (PRD-campaign-audiences slice 03). */}
+          <SignUpNoticeToast />
         </ThemeProvider>
         {isProd ? <SpeedInsights /> : null}
       </body>

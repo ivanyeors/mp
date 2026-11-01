@@ -1,5 +1,5 @@
 import { monthsBefore } from "@/lib/crm/customer-filters";
-import type { PurchaseClass } from "@/lib/crm/customer-overview";
+import type { PillowSize, PurchaseClass } from "@/lib/crm/customer-overview";
 import type { PurchaseLine } from "@/lib/crm/purchase-lines";
 
 /**
@@ -14,15 +14,22 @@ import type { PurchaseLine } from "@/lib/crm/purchase-lines";
  * back, and read through `customer_purchase_lines` and the overview).
  *
  * Pillow products are not invented: a database already holds one per Tier and
- * size, so lines name a Tier and the check looks the id up. `missing` is an id
- * no pillow product has.
+ * size, so lines name a Tier and the check looks up that Tier's size M id.
+ * `missing` is an id no pillow product has.
+ *
+ * PRD-campaign-audiences slice 04 adds each line's pillow size, and the
+ * overview's `pillow_sizes` per Customer (`SIZES`), for *Pillow size*.
  */
 
+/** Size M pillow products of each Tier, and an id none has. */
 export interface PillowIds {
   premium: number;
   basic: number;
   missing: number;
 }
+
+/** The size of the `premium` and `basic` pillow products. */
+export const PILLOW_ID_SIZE = "M";
 
 /** The ids the vitest side uses; the check reads real ones from the database. */
 export const TEST_PILLOW_IDS: PillowIds = { premium: 8, basic: 3, missing: 999_999 };
@@ -158,11 +165,12 @@ function line(
   lines.push({ id: id(5000 + lineSeq), order_id: orderId, kind, variant_id: variant?.id ?? null, snapshot, expect, why });
 }
 
-const premium: PurchaseLine = { product_type: "pillow", tier: "premium" };
-const basic: PurchaseLine = { product_type: "pillow", tier: "basic" };
-const untiered: PurchaseLine = { product_type: "pillow", tier: null };
-const bolster: PurchaseLine = { product_type: "bolster", tier: null };
-const accessory: PurchaseLine = { product_type: "accessory", tier: null };
+const premium: PurchaseLine = { product_type: "pillow", tier: "premium", size: PILLOW_ID_SIZE };
+const basic: PurchaseLine = { product_type: "pillow", tier: "basic", size: PILLOW_ID_SIZE };
+const untiered: PurchaseLine = { product_type: "pillow", tier: null, size: null };
+const bolster: PurchaseLine = { product_type: "bolster", tier: null, size: null };
+const accessory: PurchaseLine = { product_type: "accessory", tier: null, size: null };
+const sized = (line: PurchaseLine, size: string | null): PurchaseLine => ({ ...line, size });
 
 // --- the acceptance filter's Customers ------------------------------------
 {
@@ -178,9 +186,22 @@ const accessory: PurchaseLine = { product_type: "accessory", tier: null };
 }
 {
   line(order(CUSTOMERS.recent, "delivered", 14), "a Premium pillow, long ago", premium, { variant: VARIANTS.premiumPillow });
-  line(order(CUSTOMERS.recent, "shipped", 2), "and a case two months ago", accessory, { variant: VARIANTS.accessory });
+  const o = order(CUSTOMERS.recent, "shipped", 2);
+  line(o, "and a case two months ago", accessory, { variant: VARIANTS.accessory });
+  line(o, "with a size L Result pillow: its size is the snapshot's", sized(premium, "L"), {
+    snapshot: () => ({ result_id: "r-crm04-5", product_type: "pillow", assigned_tier: "premium", assigned_size: "L" }),
+  });
 }
-line(order(CUSTOMERS.basic, "delivered", 14), "a Basic pillow", basic, { variant: VARIANTS.basicPillow });
+{
+  const o = order(CUSTOMERS.basic, "delivered", 14);
+  line(o, "a Basic pillow", basic, { variant: VARIANTS.basicPillow });
+  line(o, "a Result size written in lower case, with spaces: the line keeps it, the overview reads XL", sized(basic, " xl "), {
+    snapshot: () => ({ result_id: "r-crm04-6", product_type: "pillow", assigned_tier: "basic", assigned_size: " xl " }),
+  });
+  line(o, "a Result size that is not a string is none", sized(basic, null), {
+    snapshot: () => ({ result_id: "r-crm04-7", product_type: "pillow", assigned_tier: "basic", assigned_size: 5 }),
+  });
+}
 line(order(CUSTOMERS.cancelled, "cancelled", 14), "a Premium pillow on a cancelled Order is not listed", null, {
   variant: VARIANTS.premiumPillow,
 });
@@ -195,6 +216,9 @@ line(order(CUSTOMERS.booked, "delivered", 13), "a legacy cart customisation: the
   line(o, "a bolster variant", bolster, { variant: VARIANTS.bolster });
   line(o, "a bolster variant naming a pillow product: the bolster wins", bolster, { variant: VARIANTS.bolsterWithPillow });
   line(o, "a Result bolster", bolster, { snapshot: () => ({ result_id: "r-crm04-2", product_type: "bolster", assigned_length: "long" }) });
+  line(o, "a bolster has no pillow size, whatever its snapshot says", bolster, {
+    snapshot: () => ({ result_id: "r-crm04-8", product_type: "bolster", assigned_length: "short", assigned_size: "M" }),
+  });
   line(o, "a Service line is never a purchase", null, { kind: "service" });
   line(o, "a bundle is an accessory", accessory, { variant: VARIANTS.bundle });
   line(o, "no variant and no snapshot: an accessory", accessory);
@@ -285,6 +309,21 @@ export const BOUGHT: Record<keyof typeof CUSTOMERS, PurchaseClass[]> = {
   lookalike: [],
   comma: [],
   statuses: ["accessory"],
+};
+
+/** What the overview's `pillow_sizes` holds for each fixture Customer. */
+export const SIZES: Record<keyof typeof CUSTOMERS, PillowSize[]> = {
+  lapsed: ["M"],
+  readjusted: ["M"],
+  recent: ["M", "L"],
+  basic: ["M", "XL"],
+  cancelled: [],
+  booked: ["M"],
+  mixed: [],
+  bracket: [],
+  lookalike: [],
+  comma: [],
+  statuses: [],
 };
 
 /** An ISO time `months` before `now` (negative is ahead). */

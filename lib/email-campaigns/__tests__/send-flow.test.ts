@@ -225,6 +225,11 @@ describe("waveRows", () => {
       ["w5", "—", "—", "not_sent", "Nothing delivered"],
     ]);
   });
+
+  it("leaves out a wave the holdout kept everyone back from (slice 11)", () => {
+    const rows = waveRows([wave({ wave: "w1" }), wave({ wave: "daily-2026-11-01", handed: 0, lastSentAt: null })]);
+    expect(rows.map((r) => r.wave)).toEqual(["w1"]);
+  });
 });
 
 describe("rampUntil", () => {

@@ -54,6 +54,7 @@ const draftOf = (content: CampaignContent): CampaignDraft => ({
   button: null,
   audience: "subscribed",
   segmentId: null,
+  excludeSegmentIds: [],
 });
 const saved = (content: CampaignContent): Campaign => ({
   ...draftOf(content),

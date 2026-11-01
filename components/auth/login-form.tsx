@@ -2,35 +2,80 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
-import { authCallbackUrl } from "@/lib/site-url";
+import { getClientSiteOrigin } from "@/lib/site-url";
 import { safeNextPath } from "@/lib/auth/post-auth-redirect";
 import { authErrorMessage } from "@/lib/auth/error-message";
+import { finishSignIn } from "@/lib/auth/sign-in-actions";
+import {
+  audienceForPath,
+  signInCallbackUrl,
+  type SignInAudience,
+  type SignInIntent,
+  type SignUpConsent,
+} from "@/lib/auth/sign-in-intent";
+import { getLocaleOrDefault } from "@/lib/i18n/routing";
+import { MARKETING_BOX_LABEL } from "@/lib/marketing-consent/state";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 /**
- * Shared Supabase Auth login form (Google OAuth + email magic link).
- * Google is the primary CTA; `nextPath` controls the post-login destination.
+ * Shared Supabase Auth login form: Google, or an emailed link with a 6-digit
+ * code. Signing in and signing up are the same steps; there is no password.
+ *
+ * Who it is for decides what happens after (lib/auth/sign-in-intent.ts):
+ * `customer` (the default) makes their Customer and, with the box left
+ * ticked, records `sign_in` consent once the address is proven; `staff` only
+ * opens the Admin Panel; `partner` only opens the Partner Hub. The intent
+ * rides in the link's return address, and the code step hands the same intent
+ * to `finishSignIn`.
  */
 export function LoginForm({
   nextPath,
   initialEmail = "",
-  submitLabel = "Email me a magic link",
+  submitLabel = "Email me a sign-in link",
+  audience: audienceProp,
+  consentBox,
+  consent: fixedConsent,
+  initialSent = false,
+  onStart,
 }: {
   nextPath: string;
   /** Prefill email (e.g. from a Result hold submission). */
   initialEmail?: string;
   submitLabel?: string;
+  /** Who is signing in; by default, read from `nextPath`. */
+  audience?: SignInAudience;
+  /** Customer only: show the marketing box, ticked by default. On by default for a customer. */
+  consentBox?: boolean;
+  /** Customer only: consent already asked for elsewhere (the footer's sign-up), in place of the box. */
+  consent?: SignUpConsent;
+  /** Open on the code step: the link was already sent (by the footer). */
+  initialSent?: boolean;
+  /** Called as a sign-in starts (Google or the email), e.g. to remember the tab. */
+  onStart?: () => void;
 }) {
   const emailFieldId = useId();
   const codeFieldId = useId();
+  const audience = audienceProp ?? audienceForPath(nextPath);
+  const showBox = audience === "customer" && !fixedConsent && consentBox !== false;
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState<"google" | "email" | "verify" | null>(null);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState(initialSent && Boolean(initialEmail));
   const [error, setError] = useState<string | null>(null);
+  // Ticked by default (owner decision 1); recorded only once the address is proven.
+  const [boxTicked, setBoxTicked] = useState(true);
+  // The intent the email was sent with: the code step finishes with the same one.
+  const intentNow = (): SignInIntent => ({
+    audience,
+    next: nextPath,
+    locale: getLocaleOrDefault(nextPath),
+    consent: audience !== "customer" ? null : (fixedConsent ?? (showBox && boxTicked ? "sign_in" : null)),
+  });
+  const [sentIntent, setSentIntent] = useState<SignInIntent | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   // Set when leaving the code step, so the chooser lands the caret on the email.
   const focusEmailRef = useRef(false);
@@ -86,7 +131,8 @@ export function LoginForm({
   const signInWithGoogle = async () => {
     setError(null);
     setLoading("google");
-    const redirectTo = authCallbackUrl(nextPath);
+    onStart?.();
+    const redirectTo = signInCallbackUrl(getClientSiteOrigin(), intentNow());
     if (process.env.NODE_ENV === "development") {
       console.info("[auth] OAuth redirectTo:", redirectTo);
     }
@@ -106,16 +152,20 @@ export function LoginForm({
   const requestOtp = async () => {
     setError(null);
     setLoading("email");
+    onStart?.();
+    // "Resend code" keeps the intent the first email was sent with.
+    const intent = sent && sentIntent ? sentIntent : intentNow();
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: authCallbackUrl(nextPath) },
+      options: { emailRedirectTo: signInCallbackUrl(getClientSiteOrigin(), intent) },
     });
     setLoading(null);
     if (error) {
       setError(authErrorMessage(error));
       return;
     }
+    setSentIntent(intent);
     setSent(true);
   };
 
@@ -142,8 +192,18 @@ export function LoginForm({
       setError(authErrorMessage(error));
       return;
     }
-    // Same-origin guard mirrors the callback route's safeNext; keep spinner.
-    window.location.assign(safeNextPath(nextPath, "/"));
+    // The browser holds the session now; the server finishes as the link
+    // would (the Staff check, the Customer, the consent). Keep the spinner.
+    const intent = sentIntent ?? intentNow();
+    let destination = safeNextPath(nextPath, "/");
+    try {
+      destination = (
+        await finishSignIn({ next: intent.next, as: intent.audience, consent: intent.consent, lang: intent.locale })
+      ).destination;
+    } catch {
+      // Signed in either way; the next account page links the Customer.
+    }
+    window.location.assign(safeNextPath(destination, "/"));
   };
 
   if (sent) {
@@ -165,7 +225,12 @@ export function LoginForm({
           <p className="mt-1 text-sm text-muted-foreground">
             We sent a sign-in link and a 6-digit code to{" "}
             <span className="font-medium">{email}</span>. Click the link, or
-            enter the code below.
+            enter the code below
+            {(sentIntent?.consent ?? fixedConsent) === "newsletter"
+              ? ", to confirm your email and join our list."
+              : audience === "staff"
+                ? ", to open the Admin Panel."
+                : "."}
           </p>
         </div>
 
@@ -279,6 +344,18 @@ export function LoginForm({
           {submitLabel}
         </Button>
       </form>
+
+      {showBox ? (
+        <label className="flex items-start gap-2 text-sm text-muted-foreground">
+          <Checkbox
+            className="mt-0.5"
+            checked={boxTicked}
+            onCheckedChange={(checked) => setBoxTicked(checked === true)}
+            disabled={loading !== null}
+          />
+          {MARKETING_BOX_LABEL}
+        </label>
+      ) : null}
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>

@@ -40,6 +40,7 @@ function recorder() {
     overlaps: record("overlaps"),
     contains: record("contains"),
     eq: record("eq"),
+    neq: record("neq"),
     in: record("in"),
     is: record("is"),
     not: record("not"),
@@ -523,8 +524,12 @@ describe("customerFilterParams", () => {
       points: "has",
       followups: "open",
       consent: "unsubscribed",
+      stage: ["lead", "awaiting_delivery", "lapsed"],
       bought: ["premium", "mbolster"],
+      not_bought: ["basic", "accessory"],
+      size: ["S", "XL"],
       last_order: { when: "over", months: 18 },
+      delivered: { when: "within", days: 14 },
       readjusted: "never",
       min_spend: 249.9,
       sort: "last-order",
@@ -550,20 +555,27 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_PARAMS].sort()).toEqual([
       "account",
       "bought",
+      "campaign",
       "consent",
+      "delivered",
+      "emailed",
       "followups",
       "google",
       "google_review",
+      "language",
       "last_order",
       "limit",
       "min_spend",
       "mobile",
+      "not_bought",
       "page",
       "points",
       "rating",
       "readjusted",
       "search",
+      "ships_to",
       "shop_review",
+      "size",
       "sort",
       "source",
       "stage",
@@ -576,18 +588,25 @@ describe("CUSTOMER_FILTER_PARAMS", () => {
     expect([...CUSTOMER_FILTER_KEYS].sort()).toEqual([
       "account",
       "bought",
+      "campaign",
       "consent",
+      "delivered",
+      "emailed",
       "followups",
       "google",
       "google_review",
+      "language",
       "last_order",
       "min_spend",
       "mobile",
+      "not_bought",
       "points",
       "rating",
       "readjusted",
       "search",
+      "ships_to",
       "shop_review",
+      "size",
       "source",
       "stage",
       "tags",
@@ -700,5 +719,269 @@ describe("the Stage filter", () => {
     const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
     const q = applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW });
     expect((q as unknown as { url: URL }).url.searchParams.get("lifecycle_stage")).toBe("in.(at_risk,lost)");
+  });
+});
+
+// PRD-campaign-audiences slice 04: the Playbooks' audiences.
+describe("Purchase filters (PRD-campaign-audiences slice 04)", () => {
+  const label = (search: string) =>
+    describeCustomerFilters(parseCustomerFilters(new URLSearchParams(search)).filters).map((f) => f.label);
+
+  describe("Didn't buy", () => {
+    it("reads the classes Bought reads, once each, in the same order", () => {
+      expect(parseCustomerFilters(new URLSearchParams("not_bought=accessory,mbolster,accessory")).filters.not_bought).toEqual([
+        "mbolster",
+        "accessory",
+      ]);
+      expect(parseCustomerFilters(new URLSearchParams("not_bought=pillow"))).toMatchObject({
+        filters: { not_bought: [] },
+        ignored: ["not_bought"],
+      });
+    });
+
+    it("is not.ov on the same `bought` column, so beside Bought it is one query", () => {
+      expect(query("bought=premium&not_bought=mbolster").calls).toEqual([
+        ["overlaps", "bought", '{"premium"}'],
+        ["not", "bought", "ov", '{"mbolster"}'],
+        newest,
+      ]);
+    });
+
+    it("labels and writes back like Bought", () => {
+      expect(label("bought=premium&not_bought=mbolster,accessory")).toEqual([
+        "Bought Premium Mpillow",
+        "Didn't buy Mbolster or Accessories",
+      ]);
+      expect(customerFilterParams({ not_bought: ["mbolster"] }).toString()).toBe("not_bought=mbolster");
+    });
+  });
+
+  describe("Pillow size", () => {
+    it("reads lower-case sizes into the overview's, smallest first, once each", () => {
+      expect(parseCustomerFilters(new URLSearchParams("size=xl,m,m")).filters.size).toEqual(["M", "XL"]);
+      for (const bad of ["size=M", "size=xxl", "size=m,big"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { size: [] }, ignored: ["size"] });
+      }
+    });
+
+    it("is one overlap on pillow_sizes, and writes lower case back", () => {
+      expect(query("size=m,l").calls).toEqual([["overlaps", "pillow_sizes", '{"M","L"}'], newest]);
+      expect(customerFilterParams({ size: ["M", "L"] }).toString()).toBe("size=m%2Cl");
+      expect(label("size=m,l")).toEqual(["Pillow size M or L"]);
+    });
+  });
+
+  describe("Delivered", () => {
+    it("reads within or over a number of days, 1 to 730", () => {
+      expect(parseCustomerFilters(new URLSearchParams("delivered=over:30")).filters.delivered).toEqual({ when: "over", days: 30 });
+      for (const bad of ["delivered=over:0", "delivered=within:731", "delivered=since:14", "delivered=over:1.5", "delivered=14"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { delivered: null }, ignored: ["delivered"] });
+      }
+    });
+
+    it("counts whole days back from now on last_delivered_at", () => {
+      expect(query("delivered=within:14").calls).toEqual([["gte", "last_delivered_at", "2026-10-07T04:00:00.000Z"], newest]);
+      expect(query("delivered=over:30").calls).toEqual([["lt", "last_delivered_at", "2026-09-21T04:00:00.000Z"], newest]);
+    });
+
+    it("labels days", () => {
+      expect(label("delivered=within:14")).toEqual(["Delivered within 14 days"]);
+      expect(label("delivered=over:1")).toEqual(["Delivered over a day ago"]);
+      expect(customerFilterParams({ delivered: { when: "over", days: 30 } }).toString()).toBe("delivered=over%3A30");
+    });
+  });
+
+  describe("Stage sub-statuses", () => {
+    it("reads each sub-status after its stage, in funnel order", () => {
+      expect(
+        parseCustomerFilters(new URLSearchParams("stage=at-risk:lapsed,new:awaiting-delivery,loyal:repeat-purchases,lead")).filters
+          .stage,
+      ).toEqual(["lead", "awaiting_delivery", "repeat_purchases", "lapsed"]);
+      for (const sub of ["new:delivered", "new:settled", "loyal:bookings"]) {
+        expect(parseCustomerFilters(new URLSearchParams(`stage=${sub}`)).ignored, sub).toEqual([]);
+      }
+    });
+
+    it("refuses a sub-status under the wrong stage, or in the database's spelling", () => {
+      for (const bad of ["stage=loyal:lapsed", "stage=at-risk:awaiting-delivery", "stage=new:awaiting_delivery", "stage=lost:lapsed"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { stage: [] }, ignored: ["stage"] });
+      }
+    });
+
+    it("drops a sub-status beside its own stage: the stage holds it", () => {
+      expect(parseCustomerFilters(new URLSearchParams("stage=new:delivered,new,at-risk:lapsed")).filters.stage).toEqual([
+        "new",
+        "lapsed",
+      ]);
+    });
+
+    it("is one overlap on lifecycle_statuses with a sub-status, and `in` on the stage without", () => {
+      expect(query("stage=new,at-risk:lapsed").calls).toEqual([
+        ["overlaps", "lifecycle_statuses", '{"new","lapsed"}'],
+        newest,
+      ]);
+      expect(query("stage=new,at-risk").calls).toEqual([["in", "lifecycle_stage", ["new", "at_risk"]], newest]);
+    });
+
+    it("labels a sub-status with its stage, and writes it back", () => {
+      expect(label("stage=new,at-risk:lapsed")).toEqual(["Stage: New or At risk · Lapsed"]);
+      const { filters } = parseCustomerFilters(new URLSearchParams("stage=at-risk:lapsed,new:awaiting-delivery"));
+      expect(customerFilterParams(filters).get("stage")).toBe("new:awaiting-delivery,at-risk:lapsed");
+    });
+  });
+
+  it("makes the PRD's demo one link: Bought Premium, Didn't buy Mbolster, Delivered over 30 days ago", () => {
+    const search = "bought=premium&not_bought=mbolster&delivered=over:30";
+    const { filters, ignored } = parseCustomerFilters(new URLSearchParams(search));
+    expect(ignored).toEqual([]);
+    expect(customerFilterParams(filters).toString()).toBe("bought=premium&not_bought=mbolster&delivered=over%3A30");
+    expect(describeCustomerFilters(filters).map((f) => f.label)).toEqual([
+      "Bought Premium Mpillow",
+      "Didn't buy Mbolster",
+      "Delivered over 30 days ago",
+    ]);
+    expect(clearCustomerFilters(filters)).toEqual(DEFAULT_CUSTOMER_FILTERS);
+  });
+
+  it("goes to PostgREST as plain filters, never or=", () => {
+    const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
+    const { filters } = parseCustomerFilters(
+      new URLSearchParams("stage=new,at-risk:lapsed&bought=premium&not_bought=mbolster&size=m&delivered=over:30"),
+    );
+    const url = (applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW }) as unknown as { url: URL }).url;
+    expect(url.searchParams.get("lifecycle_statuses")).toBe('ov.{"new","lapsed"}');
+    expect(url.searchParams.getAll("bought")).toEqual(['ov.{"premium"}', 'not.ov.{"mbolster"}']);
+    expect(url.searchParams.get("pillow_sizes")).toBe('ov.{"M"}');
+    expect(url.searchParams.get("last_delivered_at")).toBe("lt.2026-09-21T04:00:00.000Z");
+    expect(url.searchParams.has("or")).toBe(false);
+  });
+});
+
+// PRD-campaign-audiences slice 05: where they are, what they read, what we last sent them.
+describe("Reach filters (PRD-campaign-audiences slice 05)", () => {
+  const CAMPAIGN = "0b5c6c1e-2a7d-4c4e-9f3a-1d2e3f4a5b6c";
+  const names = new Map([[CAMPAIGN, "November care tips"]]);
+  const label = (search: string) =>
+    describeCustomerFilters(parseCustomerFilters(new URLSearchParams(search)).filters, { campaignNames: names }).map(
+      (f) => f.label,
+    );
+
+  describe("Ships to", () => {
+    it("reads Singapore, outside it, or unknown", () => {
+      expect(parseCustomerFilters(new URLSearchParams("ships_to=not-sg")).filters.ships_to).toBe("not-sg");
+      for (const bad of ["ships_to=SG", "ships_to=my", "ships_to=sg,unknown"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { ships_to: null }, ignored: ["ships_to"] });
+      }
+    });
+
+    it("never takes an unknown country for Singapore, nor for outside it", () => {
+      expect(query("ships_to=sg").calls).toEqual([["eq", "ship_country", "SG"], newest]);
+      // `<>` never lists a null: Unknown stays out of *outside Singapore* too.
+      expect(query("ships_to=not-sg").calls).toEqual([["neq", "ship_country", "SG"], newest]);
+      expect(query("ships_to=unknown").calls).toEqual([["is", "ship_country", null], newest]);
+    });
+
+    it("labels each", () => {
+      expect(label("ships_to=sg")).toEqual(["Ships to Singapore"]);
+      expect(label("ships_to=not-sg")).toEqual(["Ships outside Singapore"]);
+      expect(label("ships_to=unknown")).toEqual(["Ships to an unknown country"]);
+    });
+  });
+
+  describe("Language", () => {
+    it("reads English or Chinese as customers.locale holds them", () => {
+      expect(query("language=zh-cn").calls).toEqual([["eq", "locale", "zh-CN"], newest]);
+      expect(query("language=en").calls).toEqual([["eq", "locale", "en-US"], newest]);
+      expect(parseCustomerFilters(new URLSearchParams("language=zh-CN"))).toMatchObject({ ignored: ["language"] });
+      expect(label("language=zh-cn")).toEqual(["Reads Chinese"]);
+    });
+  });
+
+  it("has no Points expire filter: points never expire (ADR 0030 decision 17)", () => {
+    const { filters } = parseCustomerFilters(new URLSearchParams("points_expire=within:3"));
+    expect(filters).toEqual(DEFAULT_CUSTOMER_FILTERS);
+    expect(query("points_expire=within:3").calls).toEqual([newest]);
+  });
+
+  describe("Campaign", () => {
+    it("reads a campaign id and what they did, the id written lower-case", () => {
+      expect(parseCustomerFilters(new URLSearchParams(`campaign=${CAMPAIGN.toUpperCase()}:not-clicked`)).filters.campaign).toEqual({
+        id: CAMPAIGN,
+        state: "not-clicked",
+      });
+      for (const bad of [`campaign=${CAMPAIGN}`, `campaign=${CAMPAIGN}:opened`, "campaign=launch:sent", `campaign=${CAMPAIGN}:sent:x`]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { campaign: null }, ignored: ["campaign"] });
+      }
+    });
+
+    it("reads campaigns_sent and campaigns_clicked; didn't click is got it and never clicked", () => {
+      const one = `{"${CAMPAIGN}"}`;
+      expect(query(`campaign=${CAMPAIGN}:sent`).calls).toEqual([["contains", "campaigns_sent", [CAMPAIGN]], newest]);
+      expect(query(`campaign=${CAMPAIGN}:not-sent`).calls).toEqual([["not", "campaigns_sent", "cs", one], newest]);
+      expect(query(`campaign=${CAMPAIGN}:clicked`).calls).toEqual([["contains", "campaigns_clicked", [CAMPAIGN]], newest]);
+      expect(query(`campaign=${CAMPAIGN}:not-clicked`).calls).toEqual([
+        ["contains", "campaigns_sent", [CAMPAIGN]],
+        ["not", "campaigns_clicked", "cs", one],
+        newest,
+      ]);
+    });
+
+    it("labels by the campaign's name, or *a campaign* when it is not known", () => {
+      expect(label(`campaign=${CAMPAIGN}:sent`)).toEqual(["Got “November care tips”"]);
+      expect(label(`campaign=${CAMPAIGN}:not-sent`)).toEqual(["Didn't get “November care tips”"]);
+      expect(label(`campaign=${CAMPAIGN}:clicked`)).toEqual(["Clicked “November care tips”"]);
+      expect(label(`campaign=${CAMPAIGN}:not-clicked`)).toEqual(["Got “November care tips”, didn't click"]);
+      const { filters } = parseCustomerFilters(new URLSearchParams(`campaign=${CAMPAIGN}:sent`));
+      expect(describeCustomerFilters(filters).map((f) => f.label)).toEqual(["Got a campaign"]);
+      expect(customerFilterParams(filters).get("campaign")).toBe(`${CAMPAIGN}:sent`);
+    });
+  });
+
+  describe("Last emailed", () => {
+    it("reads within or over 1 to 730 days, or never", () => {
+      expect(parseCustomerFilters(new URLSearchParams("emailed=never")).filters.emailed).toEqual({ when: "never" });
+      expect(parseCustomerFilters(new URLSearchParams("emailed=over:30")).filters.emailed).toEqual({ when: "over", days: 30 });
+      for (const bad of ["emailed=over:0", "emailed=within:731", "emailed=never:3", "emailed=since:14", "emailed=ever"]) {
+        expect(parseCustomerFilters(new URLSearchParams(bad)), bad).toMatchObject({ filters: { emailed: null }, ignored: ["emailed"] });
+      }
+    });
+
+    it("keeps the never-emailed in *not emailed in N days*, with one lt and no or", () => {
+      expect(query("emailed=within:14").calls).toEqual([["gte", "last_campaign_sent_at", "2026-10-07T04:00:00.000Z"], newest]);
+      expect(query("emailed=over:30").calls).toEqual([["lt", "last_emailed_at", "2026-09-21T04:00:00.000Z"], newest]);
+      expect(query("emailed=never").calls).toEqual([["is", "last_campaign_sent_at", null], newest]);
+    });
+
+    it("labels each, and writes them back", () => {
+      expect(label("emailed=within:14")).toEqual(["Emailed within 14 days"]);
+      expect(label("emailed=over:30")).toEqual(["Not emailed in 30 days"]);
+      expect(label("emailed=never")).toEqual(["Never emailed"]);
+      expect(customerFilterParams({ emailed: { when: "never" } }).toString()).toBe("emailed=never");
+    });
+  });
+
+  it("makes the PRD's demo one link: At risk, Ships to Singapore, Not emailed in 30 days", () => {
+    const search = "stage=at-risk&ships_to=sg&emailed=over:30";
+    const { filters, ignored } = parseCustomerFilters(new URLSearchParams(search));
+    expect(ignored).toEqual([]);
+    expect(customerFilterParams(filters).toString()).toBe("stage=at-risk&ships_to=sg&emailed=over%3A30");
+    expect(label(search)).toEqual(["Stage: At risk", "Ships to Singapore", "Not emailed in 30 days"]);
+    expect(clearCustomerFilters(filters)).toEqual(DEFAULT_CUSTOMER_FILTERS);
+  });
+
+  it("goes to PostgREST as plain filters, never or=", () => {
+    const builder = createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id");
+    const { filters } = parseCustomerFilters(
+      new URLSearchParams(
+        `ships_to=not-sg&language=zh-cn&campaign=${CAMPAIGN}:not-clicked&emailed=over:30`,
+      ),
+    );
+    const url = (applyCustomerFilters(builder as unknown as CustomerListQuery, filters, { now: NOW }) as unknown as { url: URL }).url;
+    expect(url.searchParams.get("ship_country")).toBe("neq.SG");
+    expect(url.searchParams.get("locale")).toBe("eq.zh-CN");
+    expect(url.searchParams.get("campaigns_sent")).toBe(`cs.{${CAMPAIGN}}`);
+    expect(url.searchParams.get("campaigns_clicked")).toBe(`not.cs.{"${CAMPAIGN}"}`);
+    expect(url.searchParams.get("last_emailed_at")).toBe("lt.2026-09-21T04:00:00.000Z");
+    expect(url.searchParams.has("or")).toBe(false);
   });
 });

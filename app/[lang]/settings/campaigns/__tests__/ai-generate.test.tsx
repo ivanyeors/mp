@@ -51,6 +51,7 @@ const DRAFT: CampaignDraft = {
   button: null,
   audience: "subscribed",
   segmentId: null,
+  excludeSegmentIds: [],
 };
 const SAVED: Campaign = {
   ...DRAFT,

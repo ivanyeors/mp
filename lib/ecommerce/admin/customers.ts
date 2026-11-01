@@ -1,5 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { applyCustomerFilters, parseCustomerFilters, type CustomerListQuery } from "@/lib/crm/customer-filters";
+import {
+  applyCustomerFilters,
+  parseCustomerFilters,
+  type CustomerFilters,
+  type CustomerListQuery,
+} from "@/lib/crm/customer-filters";
 import { CUSTOMER_OVERVIEW_SELECT, type CustomerOverviewColumn, type CustomerOverviewRow } from "@/lib/crm/customer-overview";
 
 /**
@@ -17,6 +22,13 @@ export interface AdminCustomersListPayload {
   total: number;
   page: number;
   limit: number;
+  /**
+   * With *Ships to Singapore* or *outside Singapore* (PRD-campaign-audiences
+   * slice 05): how many more match every other filter but ship to an unknown
+   * country, so the list says who it leaves out. Null otherwise, or when that
+   * count could not be read.
+   */
+  shipsToUnknown: number | null;
 }
 
 export type AdminCustomersListResult =
@@ -46,10 +58,27 @@ export async function listAdminCustomers(
     .from("admin_customer_overview")
     .select(CUSTOMER_OVERVIEW_SELECT, { count: "exact" }) as unknown as OverviewQuery;
 
-  const { data, error, count } = await applyCustomerFilters(base, filters).range(from, to);
+  const [list, shipsToUnknown] = await Promise.all([
+    applyCustomerFilters(base, filters).range(from, to),
+    countShipsToUnknown(admin, filters),
+  ]);
+  const { data, error, count } = list;
   if (error) return { ok: false, error: error.message };
 
-  return { ok: true, rows: data ?? [], total: count ?? 0, page, limit };
+  return { ok: true, rows: data ?? [], total: count ?? 0, page, limit, shipsToUnknown };
+}
+
+type CountQuery = CustomerListQuery & PromiseLike<{ count: number | null; error: { message: string } | null }>;
+
+/** The same filters with *Ships to: unknown*, counted; null without a known-country filter, or on a failed read. */
+async function countShipsToUnknown(
+  admin: ReturnType<typeof supabaseAdmin>,
+  filters: CustomerFilters,
+): Promise<number | null> {
+  if (filters.ships_to !== "sg" && filters.ships_to !== "not-sg") return null;
+  const head = admin.from("admin_customer_overview").select("id", { count: "exact", head: true }) as unknown as CountQuery;
+  const { count, error } = await applyCustomerFilters(head, { ...filters, ships_to: "unknown" }, { order: false });
+  return error ? null : (count ?? 0);
 }
 
 type OverviewQuery = CustomerListQuery & {

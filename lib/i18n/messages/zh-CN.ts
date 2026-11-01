@@ -432,6 +432,7 @@ export const zhCN: Messages = {
         languageMandarin: "华语",
         languageNone: "无偏好",
         languageHint: "我们会尽量安排能以您所选语言沟通的工作人员为您服务。",
+        marketingEmail: "通过电子邮件接收重要通知、活动邀请和优惠。绝无垃圾邮件，可随时退订。",
         measurementFeeNote:
           "测量服务费：高级款 Mpillow {premium}，基础款 Mpillow {basic}，Mbolster 不收取——现场为你定制、调整，当天即可带回家。",
       },

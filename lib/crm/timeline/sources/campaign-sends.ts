@@ -15,7 +15,9 @@ import type { TimelineAdapter, TimelineEntry } from "@/lib/crm/timeline/types";
  * `complained_at`). The send's current status is its pill. The Claim link
  * the email carried is the claim-links source's entry, at its first click.
  * A campaign Staff wrote (PRD-email-marketing; `campaign:<id>`) is named by
- * its campaign name.
+ * its campaign name. Its first counted **Campaign click** on a site link
+ * (`first_clicked_at`, PRD-campaign-audiences slice 08) is a fourth: it shows
+ * the link came from that email, not who opened it.
  */
 
 type SendRow = {
@@ -26,10 +28,13 @@ type SendRow = {
   sent_at: string;
   bounced_at: string | null;
   complained_at: string | null;
+  first_clicked_at?: string | null;
+  clicks?: number | null;
   campaign?: { name: string | null } | { name: string | null }[] | null;
 };
 
-const COLUMNS = "id, template, wave, status, sent_at, bounced_at, complained_at, campaign:email_campaigns(name)";
+const COLUMNS =
+  "id, template, wave, status, sent_at, bounced_at, complained_at, first_clicked_at, clicks, campaign:email_campaigns(name)";
 
 const label = (s: Pick<SendRow, "template" | "campaign">) => {
   if (isCampaignTemplate(s.template)) return CAMPAIGN_TEMPLATE_LABEL[s.template];
@@ -45,11 +50,11 @@ const ref = (s: SendRow) => ({ type: "campaign_send", id: s.id });
 export const campaignSendsAdapter: TimelineAdapter = {
   key: "campaign_sends",
   group: MARKETING_GROUP,
-  kinds: ["campaign_email.sent", "campaign_email.bounced", "campaign_email.complained"],
+  kinds: ["campaign_email.sent", "campaign_email.bounced", "campaign_email.complained", "campaign_email.clicked"],
   permission: "customers",
   async load(customer, before, limit) {
     const rows = () => supabaseAdmin().from("customer_campaign_sends").select(COLUMNS).eq("customer_id", customer.id);
-    const [sent, bounced, complained] = await Promise.all([
+    const [sent, bounced, complained, clicked] = await Promise.all([
       readStream<SendRow>(
         rows().in("status", ["sent", "bounced", "complained"]),
         "sent_at",
@@ -78,7 +83,14 @@ export const campaignSendsAdapter: TimelineAdapter = {
         ref: ref(s),
         summary: `Marked as spam: ${label(s)}`,
       })),
+      readStream<SendRow>(rows(), "first_clicked_at", before, limit, (s) => ({
+        id: `campaign_email.clicked:${s.id}`,
+        at: s.first_clicked_at!,
+        kind: "campaign_email.clicked",
+        ref: ref(s),
+        summary: `Clicked ${label(s)}${(s.clicks ?? 0) > 1 ? ` (${s.clicks} clicks)` : ""}`,
+      })),
     ]);
-    return joinBatches([sent, bounced, complained]);
+    return joinBatches([sent, bounced, complained, clicked]);
   },
 };

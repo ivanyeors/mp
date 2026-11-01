@@ -22,6 +22,7 @@ import { FIRST_CAMPAIGN_DRAFT } from "../rules";
 import {
   CAMPAIGN_VARIABLES,
   fallbackWords,
+  pillowWords,
   SAMPLE_RECIPIENT,
   unknownVariablesIn,
   VARIABLE_KEYS,
@@ -161,14 +162,14 @@ describe("CampaignContentSchema", () => {
   it("refuses on save a {name} that would reach the customer in braces: an unknown one in a heading or a text block, any in a button", () => {
     const text = (t: string) => withBlock({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: t }] }] });
     const issues = (c: unknown) => CampaignContentSchema.safeParse(c).error?.issues.map((i) => [i.path.join("."), i.message]);
-    const unknown = (name: string) => `{${name}} is not a Variable: the Variables are {first_name}, {last_name} and {points_balance}.`;
+    const unknown = (name: string) => `{${name}} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.`;
     expect(issues(text(", our {frist_name} covers"))).toEqual([["blocks.0.paragraphs", unknown("frist_name")]]);
     // A heading takes Variables (slice 13), written as the subject writes them.
     expect(issues(withBlock({ id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" }))).toBeUndefined();
     expect(issues(withBlock({ id: "h", type: "heading", level: 1, text: "{points_balance} points, {last_name}" }))).toBeUndefined();
     expect(issues(withBlock({ id: "h", type: "heading", level: 2, text: "Hi {firstname}" }))).toEqual([["blocks.0.text", unknown("firstname")]]);
     expect(issues(withBlock({ id: "h", type: "heading", level: 2, text: "Hi {a} and {b}" }))).toEqual([
-      ["blocks.0.text", "{a} and {b} are not Variables: the Variables are {first_name}, {last_name} and {points_balance}."],
+      ["blocks.0.text", "{a} and {b} are not Variables: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}."],
     ]);
     expect(issues(withBlock({ id: "b", type: "buttons", buttons: [{ label: "Shop, {first_name}", target: "shop", style: "primary" }] }))).toEqual([
       ["blocks.0.buttons.0.label", "{first_name} can go in a heading, a text block, the subject or the preview line, not here."],
@@ -297,13 +298,20 @@ describe("contentFromLegacy (Convert to blocks)", () => {
 });
 
 describe("Variables", () => {
-  it("has the first name, the last name and the points balance, each with a sample and default fallback words where there are any", () => {
-    expect(VARIABLE_KEYS).toEqual(["first_name", "last_name", "points_balance"]);
+  it("has the first name, the last name, the points balance and their pillow, each with a sample and default fallback words where there are any", () => {
+    expect(VARIABLE_KEYS).toEqual(["first_name", "last_name", "points_balance", "your_pillow"]);
     expect(CAMPAIGN_VARIABLES.first_name).toMatchObject({ label: "First name", sample: "Mei Ling", fallback: "there" });
     expect(CAMPAIGN_VARIABLES.last_name).toMatchObject({ label: "Last name", sample: "Tan", fallback: null });
     expect(CAMPAIGN_VARIABLES.points_balance).toMatchObject({ label: "Points balance", sample: "1,250", fallback: null, needsPoints: true });
+    // PRD-campaign-audiences slice 09.
+    expect(CAMPAIGN_VARIABLES.your_pillow).toMatchObject({ label: "Your pillow", sample: "Premium Mpillow, size M", fallback: "your pillow", chineseFallback: "您的枕头" });
     // The sample customer reads as each Variable's sample.
-    expect(variableValues(SAMPLE_RECIPIENT, {})).toEqual({ first_name: "Mei Ling", last_name: "Tan", points_balance: "1,250" });
+    expect(variableValues(SAMPLE_RECIPIENT, {})).toEqual({
+      first_name: "Mei Ling",
+      last_name: "Tan",
+      points_balance: "1,250",
+      your_pillow: "Premium Mpillow, size M",
+    });
     expect(withSampleValues("{first_name}, you have {points_balance} points")).toBe("Mei Ling, you have 1,250 points");
   });
 
@@ -312,16 +320,30 @@ describe("Variables", () => {
     expect(variableValue("x".repeat(80))).toHaveLength(60);
     expect(variableValue("   ")).toBeNull();
     const fallbacks = { first_name: "friend", last_name: "of ours", points_balance: "some" };
-    expect(variableValues({ firstName: "Ann", lastName: "Lee", pointsBalance: 12500 }, fallbacks)).toEqual({
+    expect(variableValues({ firstName: "Ann", lastName: "Lee", pointsBalance: 12500, pillow: { tier: "basic", size: "l" } }, fallbacks)).toEqual({
       first_name: "Ann",
       last_name: "Lee",
       points_balance: "12,500",
+      your_pillow: "Basic Mpillow, size L",
     });
-    expect(variableValues({ firstName: null }, fallbacks)).toEqual({ first_name: "friend", last_name: "of ours", points_balance: "some" });
+    expect(variableValues({ firstName: null }, fallbacks)).toEqual({ first_name: "friend", last_name: "of ours", points_balance: "some", your_pillow: "your pillow" });
     // A balance of 0 is none: the fallback words, not "0".
     expect(variableValues({ firstName: "Ann", pointsBalance: 0 }, fallbacks).points_balance).toBe("some");
-    expect(variableValues({ firstName: " " }, {})).toEqual({ first_name: "there", last_name: "", points_balance: "" });
+    expect(variableValues({ firstName: " " }, {})).toEqual({ first_name: "there", last_name: "", points_balance: "", your_pillow: "your pillow" });
     expect(variableFallback("first_name", { first_name: "  " })).toBe("there");
+  });
+
+  it("names their pillow as the shop does, in English letters in the 中文 version too, and none for no pillow (slice 09)", () => {
+    expect(pillowWords({ tier: "premium", size: "M" })).toBe("Premium Mpillow, size M");
+    expect(pillowWords({ tier: "basic", size: " xl " })).toBe("Basic Mpillow, size XL");
+    // A line from before Tiers were recorded: the pillow, without one.
+    expect(pillowWords({ tier: null, size: "S" })).toBe("Mpillow, size S");
+    expect(pillowWords({ tier: "premium", size: null })).toBe("Premium Mpillow");
+    expect(pillowWords({ tier: "premium", size: "M" }, { chinese: true })).toBe("Premium Mpillow（尺寸 M）");
+    expect(pillowWords(null)).toBeNull();
+    // A reader of Chinese with no pillow reads the 中文 fallback.
+    expect(variableValues({ firstName: "美玲", pillow: null }, {}, { chinese: true }).your_pillow).toBe("您的枕头");
+    expect(variableValues({ firstName: "美玲", pillow: { tier: "basic", size: "S" } }, {}, { chinese: true }).your_pillow).toBe("Basic Mpillow（尺寸 S）");
   });
 
   it("knows the fallback words a used Variable has: the campaign's, else the catalogue's, and none for an empty one", () => {
@@ -333,13 +355,13 @@ describe("Variables", () => {
   });
 
   it("names the {name}s of a subject that are not Variables", () => {
-    expect(unknownVariablesIn("{first_name}, {last_name} and {points_balance}")).toEqual([]);
+    expect(unknownVariablesIn("{first_name}, {last_name}, {points_balance} and {your_pillow}")).toEqual([]);
     expect(unknownVariablesIn("Hello {first_name} {nickname}")).toEqual(["nickname"]);
   });
 });
 
 describe("filling the blocks for one recipient", () => {
-  const values = { first_name: "Mei Ling", last_name: "Tan", points_balance: "1,250" };
+  const values = { first_name: "Mei Ling", last_name: "Tan", points_balance: "1,250", your_pillow: "Premium Mpillow, size M" };
   it("fills every Variable run and every {name} in the blocks' words, and leaves links, labels and ids as written", () => {
     const content: CampaignContent = {
       v: 1,

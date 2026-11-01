@@ -105,6 +105,8 @@ declare
   v_state  text;
   v_got    text;
   v_exp    text;
+  r        jsonb;
+  v_other  uuid;
   failures text := '';
 begin
   for c in select value from jsonb_array_elements(doc->'cases') loop
@@ -125,12 +127,32 @@ begin
       values (v_id, 'ec0ec0ec-0000-4000-8000-0000000000b0', true, 'yes', date '2026-10-01',
               case when coalesce((cust->>'claimed')::boolean, false) then now() - interval '1 day' end);
     end if;
+    -- Dated 60 days ago: suppression is forever, the rest period is not.
     if cust ? 'suppressedBy' then
-      insert into customer_campaign_sends (customer_id, template, wave, status, bounced_at, complained_at)
-      values (v_id, 'migration_announcement', 'cases', cust->>'suppressedBy',
+      insert into customer_campaign_sends (customer_id, template, wave, status, sent_at, bounced_at, complained_at)
+      values (v_id, 'migration_announcement', 'cases', cust->>'suppressedBy', now() - interval '60 days',
               case when cust->>'suppressedBy' = 'bounced' then now() end,
               case when cust->>'suppressedBy' = 'complained' then now() end);
     end if;
+    -- Slice 07: their other email, each on its own day.
+    for r in select value from jsonb_array_elements(coalesce(cust->'recent', '[]'::jsonb)) loop
+      case coalesce(r->>'kind', 'campaign')
+        when 'campaign' then
+          insert into email_campaigns (name, subject, body, audience)
+          values ('assert-ec rest ' || i, 'S', 'B', 'subscribed') returning id into v_other;
+          insert into customer_campaign_sends (customer_id, template, campaign_id, wave, status, sent_at)
+          values (v_id, 'campaign:' || v_other::text, v_other, 'cases', coalesce(r->>'status', 'sent'),
+                  now() - make_interval(secs => (r->>'daysAgo')::numeric * 86400));
+        when 'points_expiry' then
+          insert into customer_emails (customer_id, template, entity_id, status, sent_at)
+          values (v_id, 'points.expiry_1m', gen_random_uuid(), 'sent',
+                  now() - make_interval(secs => (r->>'daysAgo')::numeric * 86400));
+        when 'transactional' then
+          insert into customer_emails (customer_id, template, entity_id, status, sent_at)
+          values (v_id, 'order.confirmation', gen_random_uuid(), 'sent',
+                  now() - make_interval(secs => (r->>'daysAgo')::numeric * 86400));
+      end case;
+    end loop;
     if cust ? 'own' then
       insert into customer_campaign_sends (customer_id, template, campaign_id, wave, status, bounced_at, complained_at)
       values (v_id, 'campaign:' || v_camp::text, v_camp, 'cases', cust->>'own',
@@ -189,7 +211,12 @@ begin
   select * into r from claim_marketing_campaign_send(ann, c_imp, 'w2');
   assert r.send_id is null and r.blocker = 'already_sent', 'twice: another wave is skipped too';
 
-  -- The same Customer may get a different campaign.
+  -- The same Customer may get a different campaign, once they have rested
+  -- (PRD-campaign-audiences slice 07): not the same day, and nothing written.
+  select * into r from claim_marketing_campaign_send(ann, c_sub, 'w1');
+  assert r.send_id is null and r.blocker = 'resting', 'another campaign the same day: resting';
+  assert (select count(*) from customer_campaign_sends where customer_id = ann) = 1, 'resting writes no row';
+  update customer_campaign_sends set sent_at = now() - interval '8 days' where id = v_send;
   select * into r from claim_marketing_campaign_send(ann, c_sub, 'w1');
   assert r.send_id is not null, 'another campaign is another send';
   perform finish_campaign_send(r.send_id, true, 're_ec_ann_2');

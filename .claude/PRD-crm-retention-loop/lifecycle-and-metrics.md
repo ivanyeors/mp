@@ -197,7 +197,7 @@ platform records. Stars, where we have them, sit beside it.
 | M19 | Time to second purchase | Median days, first to second purchase | Slice 06 |
 | M20 | Customers by stage | Lead, New, Loyal, At risk (Lapsed), Lost, and the trend | Slices 03, 04 |
 | M21 | Win-back | At risk at the start of a quarter who bought or attended a booking during it | Slice 06 |
-| M22 | Campaign to purchase | Customers sent a campaign who bought within 30 days, against the same stage not sent it | Slice 06 |
+| M22 | Campaign to purchase | Customers sent a campaign who bought within 30 days, against the same stage not sent it | Slice 06; the sent side is `email_campaign_stage_results` (PRD-campaign-audiences slice 11) |
 | M23 | Imported customers | Claimed ÷ imported; bought here ÷ claimed | Today, partly (claims) |
 | M24 | Points | Points spent ÷ points earned; points expired | Slice 06 |
 | M25 | Spend per customer | Average spend per customer at 12 and 24 months after the first purchase | Slice 06 |

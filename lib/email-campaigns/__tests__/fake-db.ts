@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } from "../rules";
+import { inHoldout } from "../results";
 
 /**
  * An in-memory stand-in for the service-role client, answering exactly what
@@ -14,11 +16,19 @@ import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } fro
  *    and `points_balance`;
  *  - for a campaign's products (slice 07), `products` (`select`, `in`) with
  *    each row's Variants and images nested as the shop's select returns them,
- *    and `media_assets` (`in` on `hosted_url`).
+ *    and `media_assets` (`in` on `hosted_url`);
+ *  - for the fit checks and *Your pillow* (PRD-campaign-audiences slice 09),
+ *    `admin_customer_overview` (each Customer's facts), `customer_purchase_lines`
+ *    (the test's pillow lines) and `pillow_products`;
+ *  - for kept sending (slice 10), `email_campaigns` (`eq`, `is`, `order`);
+ *  - for the holdout (slice 11), each candidate's `holdout_bucket` (the md5
+ *    of their id, as `campaign_holdout_bucket`), a campaign's `holdout`, and
+ *    `neq` on the ledger.
  *
- * The claim mirrors the SQL (20261021100000): the wave check, the rule (here
+ * The claim mirrors the SQL (20261031162653): the wave check, the rule (here
  * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
- * `marketing_campaign_blocker`), and the unique (Customer, template) key.
+ * `marketing_campaign_blocker`), the holdout, and the unique (Customer,
+ * template) key.
  * assert-01-email-campaigns.sql proves the real function.
  */
 
@@ -35,6 +45,10 @@ export interface FakeCustomer {
   marketing_email?: string;
   total_orders?: number;
   created_at?: string;
+  /** The overview's, for the fit checks (slice 09). */
+  ship_country?: string | null;
+  bought?: string[];
+  last_purchase_at?: string | null;
 }
 
 export interface FakeMigrated {
@@ -57,13 +71,16 @@ export interface FakeSend {
   last_error: string | null;
   bounced_at: string | null;
   complained_at: string | null;
+  /** SHA-256 hex of the send's click token (PRD-campaign-audiences slice 08). */
+  click_token_hash?: string | null;
 }
 
 export interface FakeWorld {
   customers: FakeCustomer[];
   migrated: FakeMigrated[];
   sends: FakeSend[];
-  campaigns: { id: string; audience: CampaignAudience; archived?: boolean }[];
+  /** `holdout`: its holdout is on (slice 11), so the claim holds a bucket under 10 out. */
+  campaigns: { id: string; audience: CampaignAudience; archived?: boolean; holdout?: boolean }[];
   claimLinks: { customer_id: string; token_hash: string; template: string }[];
   /** `site_settings`, by key: the points settings a Campaign that mentions points is checked against. */
   settings: Record<string, string>;
@@ -77,7 +94,23 @@ export interface FakeWorld {
   mediaAssets?: { id: string; hosted_url: string }[];
   /** Every table read, in order: what a test checks nothing else was touched with. */
   reads?: string[];
+  /**
+   * The view's `marketing_recent` by Customer (PRD-campaign-audiences slice
+   * 07): their marketing email of the last 30 days, newest first, as the SQL
+   * would count it. Given by a test, not worked out from `sends`, so fixtures
+   * dated near today never rest anyone by accident.
+   */
+  recentMarketing?: Record<string, string[]>;
+  /** `customer_purchase_lines` pillow rows: `customer_id`, `product_type`, `tier`, `size`, `paid_at`, `order_item_id` (slice 09). */
+  pillowLines?: Row[];
+  /** `pillow_products` rows: `id`, `kind`. */
+  pillowProducts?: Row[];
+  /** `email_campaigns` rows, as the table holds them: what the daily job's list reads (PRD-campaign-audiences slice 10). */
+  campaignRows?: Row[];
 }
+
+/** `campaign_holdout_bucket(id)`: the first 32 bits of the md5 of the id, mod 100. */
+export const holdoutBucketOf = (id: string): number => parseInt(createHash("md5").update(id).digest("hex").slice(0, 8), 16) % 100;
 
 export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [], settings: {} });
 
@@ -104,6 +137,8 @@ function candidates(world: FakeWorld): Row[] {
       since: m?.imported_at ?? c.created_at ?? "2026-01-01T00:00:00Z",
       suppressed: suppressedIn(sends),
       campaign_sends: campaignSends,
+      marketing_recent: world.recentMarketing?.[c.id] ?? [],
+      holdout_bucket: holdoutBucketOf(c.id),
     };
   });
 }
@@ -124,6 +159,7 @@ function waveStats(world: FakeWorld): Row[] {
       complained: rows.filter((s) => s.complained_at).length,
       failed: rows.filter((s) => s.status === "failed").length,
       pending: rows.filter((s) => s.status === "pending").length,
+      held_out: rows.filter((s) => s.status === "held_out").length,
       last_sent_at: handed.map((s) => s.sent_at).sort().at(-1) ?? null,
     };
   });
@@ -148,6 +184,8 @@ function query(rows: () => Row[]) {
   const q = {
     select: (_columns?: string, opts?: { count?: string; head?: boolean }) => ((head = opts?.head === true), q),
     eq: (col: string, v: unknown) => (filters.push((r) => r[col] === v), q),
+    neq: (col: string, v: unknown) => (filters.push((r) => r[col] !== v), q),
+    is: (col: string, v: unknown) => (filters.push((r) => (r[col] ?? null) === v), q),
     in: (col: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[col])), q),
     gte: (col: string, v: string) => (filters.push((r) => String(r[col]) >= v), q),
     order: (col: string, opts?: { ascending?: boolean }) => ((order = col), (descending = opts?.ascending === false), q),
@@ -192,6 +230,7 @@ export function fakeCampaignsClient(world: FakeWorld) {
         marketingEmail: row.marketing_email as "subscribed",
         suppressed: row.suppressed as boolean,
         own: own ? { status: own.status as "sent", wave: own.wave, sentAt: own.sent_at } : null,
+        recentMarketing: row.marketing_recent as string[],
       },
       { retryFailed: retry },
     );
@@ -204,7 +243,26 @@ export function fakeCampaignsClient(world: FakeWorld) {
       id = own.id;
     } else {
       if (own) return none("already_sent");
-      id = `send-${++sendSeq}`;
+      // A uuid, as the ledger mints: the unsubscribe link signs it (slice 08).
+      id = `5e5d0000-0000-4000-8000-${String(++sendSeq).padStart(12, "0")}`;
+      // Slice 11: a holdout records the row and sends nothing.
+      if (campaign.holdout && inHoldout(holdoutBucketOf(customerId))) {
+        world.sends.push({
+          id,
+          customer_id: customerId,
+          template: key,
+          campaign_id: campaignId,
+          wave,
+          status: "held_out",
+          provider_message_id: null,
+          sent_at: new Date().toISOString(),
+          attempts: 1,
+          last_error: null,
+          bounced_at: null,
+          complained_at: null,
+        });
+        return none("held_out");
+      }
       world.sends.push({
         id,
         customer_id: customerId,
@@ -240,7 +298,11 @@ export function fakeCampaignsClient(world: FakeWorld) {
   function finish(args: Row) {
     const s = world.sends.find((x) => x.id === args.p_send_id);
     if (!s || s.status !== "pending") return { data: false, error: null };
-    if (args.p_sent) Object.assign(s, { status: "sent", provider_message_id: args.p_provider_message_id ?? null });
+    if (args.p_sent) {
+      // Slice 08: the click token's hash, kept with a successful send only (20261031152709).
+      const hash = typeof args.p_click_token_hash === "string" && /^[0-9a-f]{64}$/.test(args.p_click_token_hash) ? args.p_click_token_hash : null;
+      Object.assign(s, { status: "sent", provider_message_id: args.p_provider_message_id ?? null, click_token_hash: hash });
+    }
     else Object.assign(s, { status: "failed", last_error: args.p_error ?? "unknown error" });
     return { data: true, error: null };
   }
@@ -255,6 +317,22 @@ export function fakeCampaignsClient(world: FakeWorld) {
       if (table === "customer_campaign_wave_stats") return query(() => waveStats(world));
       if (table === "customer_campaign_sends") return query(() => world.sends as unknown as Row[]);
       if (table === "admin_audit_log") return query(() => (world.auditLog ?? []) as unknown as Row[]);
+      if (table === "admin_customer_overview")
+        return query(() =>
+          world.customers.map((c) => ({
+            id: c.id,
+            first_name: c.first_name ?? null,
+            last_name: c.last_name ?? null,
+            locale: c.locale ?? "en-US",
+            ship_country: c.ship_country ?? null,
+            bought: c.bought ?? [],
+            last_purchase_at: c.last_purchase_at ?? null,
+            points_available: c.points ?? 0,
+          })),
+        );
+      if (table === "customer_purchase_lines") return query(() => world.pillowLines ?? []);
+      if (table === "pillow_products") return query(() => world.pillowProducts ?? []);
+      if (table === "email_campaigns") return query(() => world.campaignRows ?? []);
       if (table === "site_settings") return query(() => Object.entries(world.settings).map(([key, value]) => ({ key, value })));
       throw new Error(`fake: no table ${table}`);
     },

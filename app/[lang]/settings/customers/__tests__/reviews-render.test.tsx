@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
-import { parseCustomerFilters } from "@/lib/crm/customer-filters";
+import { DEFAULT_CUSTOMER_FILTERS, parseCustomerFilters, type CustomerListFilters } from "@/lib/crm/customer-filters";
 import type { CustomerReviewsData } from "@/lib/crm/reviews";
 
 /**
@@ -16,6 +16,22 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { CustomersClient } = await import("../customers-client");
+const { CustomerFilterGroup } = await import("../customer-filters-panel");
+
+/** One group of the mega filter, as it renders inside the open panel. */
+const groupFor = (
+  group: "stage" | "purchases" | "reach" | "account" | "reviews",
+  filters: Partial<CustomerListFilters>,
+  campaigns?: { id: string; name: string }[],
+) =>
+  renderToString(
+    <CustomerFilterGroup
+      group={group}
+      filters={{ ...DEFAULT_CUSTOMER_FILTERS, ...filters }}
+      onChange={() => {}}
+      campaigns={campaigns}
+    />,
+  );
 const { CustomersPageTabs } = await import("../customers-page-tabs");
 const { CustomerReviewsBody } = await import("../[id]/customer-reviews-card");
 const { parseCustomersView } = await import("../views");
@@ -68,6 +84,14 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   lifecycle_detail: null,
   lifecycle_undated: false,
   attended_bookings: 0,
+  pillow_sizes: [],
+  last_delivered_at: null,
+  lifecycle_statuses: ["lead"],
+  ship_country: null,
+  locale: "en-US",
+  campaigns_sent: [],
+  campaigns_clicked: [],
+  last_emailed_at: "-infinity",
   ...over,
 });
 
@@ -100,10 +124,10 @@ describe("the Review column", () => {
 
   it("opens a Segment's link with the review filters in the panel, labelled in the summary", () => {
     const html = listFor("google_review=linked&rating=5", [row({})]);
-    expect(html).toContain('id="customer-filters-panel"');
-    expect(html).toContain('aria-label="Google review"');
-    expect(html).toContain('aria-label="Shop review"');
-    expect(html).toContain('aria-label="Rating"');
+    const reviews = groupFor("reviews", parseCustomerFilters(new URLSearchParams("google_review=linked&rating=5")).filters);
+    expect(reviews).toContain('aria-label="Google review"');
+    expect(reviews).toContain('aria-label="Shop review"');
+    expect(reviews).toContain('aria-label="Rating"');
     expect(html).toContain("Google review linked");
     expect(html).toContain("Rated 5★");
     expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>2</);
