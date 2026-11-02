@@ -1758,9 +1758,9 @@
     "semantic_hash": ""
   },
   "app/api/cron/results-sla/route.ts": {
-    "mtime": 1793534515.7358913,
-    "seen": 1793638183.565772,
-    "ast_hash": "2edb9c388f451172e916a01ea9704b44",
+    "mtime": 1793638325.8169131,
+    "seen": 1793639160.570193,
+    "ast_hash": "9bea4d341b9e731a28fa66ae5f0b5880",
     "semantic_hash": ""
   },
   "app/api/discovery-source/route.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793638086.4448988,
-    "seen": 1793638183.5705628,
-    "ast_hash": "45b207f2778ddba7048fea118b04d700",
+    "mtime": 1793638972.2362456,
+    "seen": 1793639160.5738776,
+    "ast_hash": "76ed98f7607356602d04c5dfe6c42a34",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -14934,9 +14934,9 @@
     "semantic_hash": ""
   },
   "app/api/webhooks/tiktok-messages/route.ts": {
-    "mtime": 1793534515.762384,
-    "seen": 1793638183.566332,
-    "ast_hash": "632655e84f680b7372d93dd6b7e136b7",
+    "mtime": 1793638341.816914,
+    "seen": 1793639160.5706158,
+    "ast_hash": "b222dc2c00f5cf49c897c379b21d5396",
     "semantic_hash": ""
   },
   "lib/social-inbox/__tests__/cards.test.ts": {
@@ -14958,9 +14958,9 @@
     "semantic_hash": ""
   },
   "lib/social-inbox/__tests__/tiktok-token.test.ts": {
-    "mtime": 1793534515.9464734,
-    "seen": 1793638183.5687144,
-    "ast_hash": "4cf0bebb0322645269eacd79a4be365b",
+    "mtime": 1793638416.8888593,
+    "seen": 1793639160.5725365,
+    "ast_hash": "ab25df5533b7f40b9569513c6d5c4f0e",
     "semantic_hash": ""
   },
   "lib/social-inbox/cards.ts": {
@@ -15000,9 +15000,9 @@
     "semantic_hash": ""
   },
   "lib/social-inbox/status.ts": {
-    "mtime": 1793534515.9464734,
-    "seen": 1793638183.5687273,
-    "ast_hash": "997a195e3d860dfe44dc087dec6dc658",
+    "mtime": 1793638323.703646,
+    "seen": 1793639160.5725474,
+    "ast_hash": "93ee06816dd7628a001fbf10587386dd",
     "semantic_hash": ""
   },
   "lib/social-inbox/store.ts": {
@@ -15024,9 +15024,9 @@
     "semantic_hash": ""
   },
   "lib/social-inbox/tiktok.ts": {
-    "mtime": 1793534515.9464734,
-    "seen": 1793638183.5687335,
-    "ast_hash": "b42977c4341e17cdcec37079ff04f259",
+    "mtime": 1793638338.6489139,
+    "seen": 1793639160.5725513,
+    "ast_hash": "456a12fcdf6b96b41962c971b7305e0e",
     "semantic_hash": ""
   },
   "lib/social-inbox/types.ts": {
@@ -15048,15 +15048,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-social-inbox/OPS-CHECKLIST.md": {
-    "mtime": 1793633970.9508142,
-    "seen": 1793638183.5703404,
-    "ast_hash": "bd989ae22711be0b181fded8228d2def",
+    "mtime": 1793638977.2541533,
+    "seen": 1793639160.5737164,
+    "ast_hash": "425dff3b08879e7818cc81021f7395bd",
     "semantic_hash": ""
   },
   ".claude/PRD-social-inbox/social-inbox-prd.md": {
-    "mtime": 1793534515.6492627,
-    "seen": 1793638183.5703418,
-    "ast_hash": "9daa34e6ad006ef8d0e9bf303ee14661",
+    "mtime": 1793638972.233286,
+    "seen": 1793639160.5737176,
+    "ast_hash": "d2784936fe161dbe727a1b7cfdde2a92",
     "semantic_hash": ""
   },
   "app/api/checkout/code/__tests__/route.test.ts": {
@@ -17787,6 +17787,30 @@
     "mtime": 1793638086.568899,
     "seen": 1793638183.568265,
     "ast_hash": "4a6748df743b463013de46beaa032884",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/fixtures/social-inbox.mjs": {
+    "mtime": 1793638655.1107712,
+    "seen": 1793639160.5698547,
+    "ast_hash": "dd38f2cba662f448ca6dc2ab7a4df0ae",
+    "semantic_hash": ""
+  },
+  "app/api/social-inbox/tiktok/disconnect/route.ts": {
+    "mtime": 1793638345.3329144,
+    "seen": 1793639160.5705671,
+    "ast_hash": "2aec797a60c8e721ba6e4efd2cadadbb",
+    "semantic_hash": ""
+  },
+  "lib/social-inbox/__tests__/retention.test.ts": {
+    "mtime": 1793638404.224918,
+    "seen": 1793639160.5725348,
+    "ast_hash": "e4880f20a6af598babfbd2405726f7c4",
+    "semantic_hash": ""
+  },
+  "lib/social-inbox/retention.ts": {
+    "mtime": 1793638312.0809124,
+    "seen": 1793639160.572545,
+    "ast_hash": "70d82f090665bd5f643647c67c23815b",
     "semantic_hash": ""
   }
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Music2, Webhook } from "lucide-react";
+import { Loader2, Music2, Unplug, Webhook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,7 +12,8 @@ import type { SocialInboxStatus } from "@/lib/social-inbox/status";
  * Users & permissions → Telegram → Customer messages: which of Facebook, Instagram and TikTok
  * are connected to the measurements group, what still stands in Meta's way
  * (checked live against Meta), and the one-click connects — Meta's webhooks
- * once its env is set, TikTok's sign-in (.claude/PRD-social-inbox/OPS-CHECKLIST.md).
+ * once its env is set, TikTok's sign-in (.claude/PRD-social-inbox/OPS-CHECKLIST.md),
+ * and Disconnect TikTok, which also deletes every stored TikTok message.
  *
  * The TikTok callback lands back on this tab with ?tiktok=connected|error;
  * that outcome is toasted once and removed from the address bar.
@@ -21,6 +22,7 @@ export function SocialInboxCard() {
   const [status, setStatus] = useState<SocialInboxStatus | null>(null);
   const [failed, setFailed] = useState(false);
   const [connectingMeta, setConnectingMeta] = useState(false);
+  const [disconnectingTikTok, setDisconnectingTikTok] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/social-inbox/status");
@@ -68,6 +70,28 @@ export function SocialInboxCard() {
     // Either way, show what Meta now says.
     await load().then(setStatus, () => setFailed(true));
     setConnectingMeta(false);
+  }
+
+  async function disconnectTikTok() {
+    if (
+      !window.confirm(
+        "Disconnect TikTok? This deletes every TikTok message and conversation stored on the site, and new TikTok messages stop coming to the group. Cards already in the group stay.",
+      )
+    ) {
+      return;
+    }
+    setDisconnectingTikTok(true);
+    try {
+      const res = await fetch("/api/social-inbox/tiktok/disconnect", { method: "POST" });
+      const payload = (await res.json().catch(() => null)) as { error?: string; revokeError?: string | null } | null;
+      if (!res.ok) throw new Error(payload?.error ?? "unknown error");
+      toast.success("TikTok disconnected and its messages deleted.");
+      if (payload?.revokeError) toast.message(`TikTok didn't confirm the sign-out (${payload.revokeError}). Nothing is kept here either way.`);
+    } catch (e) {
+      toast.error(`Couldn't disconnect TikTok: ${e instanceof Error ? e.message : "unknown error"}`);
+    }
+    await load().then(setStatus, () => setFailed(true));
+    setDisconnectingTikTok(false);
   }
 
   const meta = status?.meta;
@@ -153,16 +177,32 @@ export function SocialInboxCard() {
                   : "Set TIKTOK_APP_ID and TIKTOK_APP_SECRET first (OPS checklist, part 2)."
             }
             action={
-              tiktok?.appConfigured ? (
-                // A full-page navigation (not the router): the route redirects to TikTok's sign-in.
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.location.assign(new URL("/api/social-inbox/tiktok/connect", window.location.origin))}
-                >
-                  <Music2 className="mr-2 h-4 w-4" />
-                  {tiktok.connected ? "Reconnect TikTok" : "Connect TikTok"}
-                </Button>
+              tiktok?.appConfigured || tiktok?.connected ? (
+                <div className="flex flex-wrap gap-2">
+                  {tiktok.appConfigured ? (
+                    // A full-page navigation (not the router): the route redirects to TikTok's sign-in.
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        window.location.assign(new URL("/api/social-inbox/tiktok/connect", window.location.origin))
+                      }
+                    >
+                      <Music2 className="mr-2 h-4 w-4" />
+                      {tiktok.connected ? "Reconnect TikTok" : "Connect TikTok"}
+                    </Button>
+                  ) : null}
+                  {tiktok.connected ? (
+                    <Button variant="outline" size="sm" disabled={disconnectingTikTok} onClick={disconnectTikTok}>
+                      {disconnectingTikTok ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Unplug className="mr-2 h-4 w-4" />
+                      )}
+                      Disconnect
+                    </Button>
+                  ) : null}
+                </div>
               ) : null
             }
           />

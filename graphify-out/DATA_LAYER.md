@@ -2245,6 +2245,7 @@ Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/c
 Defined in supabase/migrations/20261024130000_social_inbox.sql:106
 Changed from pages: `/settings/users`
 - Written by:
+  - `disconnectTikTok()` [delete] — lib/social-inbox/tiktok.ts:526
   - `saveTikTokConnection()` [upsert] — lib/social-inbox/tiktok.ts:411
   - `tiktokAccess()` [update] — lib/social-inbox/tiktok.ts:453
 - Read by:
@@ -2252,8 +2253,11 @@ Changed from pages: `/settings/users`
 
 ### social_conversations
 Defined in supabase/migrations/20261024130000_social_inbox.sql:26
+Changed from pages: `/settings/users`
 - Written by:
+  - `disconnectTikTok()` [delete] — lib/social-inbox/tiktok.ts:520
   - `ensureConversation()` [select,upsert] — lib/social-inbox/store.ts:65
+  - `purgeOldSocialMessages()` [delete] — lib/social-inbox/retention.ts:30
   - `updateConversation()` [update] — lib/social-inbox/store.ts:83
 - Read by:
   - `getConversation()` [select] — lib/social-inbox/store.ts:53
@@ -2261,9 +2265,12 @@ Defined in supabase/migrations/20261024130000_social_inbox.sql:26
 ### social_messages
 Defined in supabase/migrations/20261024130000_social_inbox.sql:52
 References: `social_conversations`
+Changed from pages: `/settings/users`
 - Written by:
+  - `disconnectTikTok()` [delete] — lib/social-inbox/tiktok.ts:515
   - `ingestEcho()` [select,update] — lib/social-inbox/ingest.ts:162
   - `insertMessage()` [upsert] — lib/social-inbox/store.ts:127
+  - `purgeOldSocialMessages()` [delete] — lib/social-inbox/retention.ts:36
   - `sweepUncarded()` [select,update] — lib/social-inbox/ingest.ts:231
   - `updateMessage()` [update] — lib/social-inbox/store.ts:141
 - Read by:
@@ -2836,9 +2843,9 @@ app/[lang]/settings/showroom/page.tsx
 
 ### /settings/users
 app/[lang]/settings/users/page.tsx
-- Endpoints: `/api/admin/roles [POST]`, `/api/admin/roles/[id] [GET,PATCH]`, `/api/admin/users [GET,POST]`, `/api/admin/users/[id] [PATCH]`, `/api/admin/users/[id]/resend-invite`, `/api/reviews/google/status [GET]`, `/api/social-inbox/meta/connect [POST]`, `/api/social-inbox/status [GET]`, `/api/social-inbox/tiktok/connect`, `/api/staff [GET]`, `/api/staff/[id]`, `/api/staff/telegram-operators [GET]`, `/api/staff/telegram-operators/[id]`, `/api/staff/telegram-operators/preview [POST]`
+- Endpoints: `/api/admin/roles [POST]`, `/api/admin/roles/[id] [GET,PATCH]`, `/api/admin/users [GET,POST]`, `/api/admin/users/[id] [PATCH]`, `/api/admin/users/[id]/resend-invite`, `/api/reviews/google/status [GET]`, `/api/social-inbox/meta/connect [POST]`, `/api/social-inbox/status [GET]`, `/api/social-inbox/tiktok/connect`, `/api/social-inbox/tiktok/disconnect [POST]`, `/api/staff [GET]`, `/api/staff/[id]`, `/api/staff/telegram-operators [GET]`, `/api/staff/telegram-operators/[id]`, `/api/staff/telegram-operators/preview [POST]`
 - Loads: `listMembers()`, `listRoles()`, `listStaffProfiles()`, `listTelegramLinks()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_roles`, `admin_users`, `mp_staff`, `social_channel_tokens`, `telegram_operators`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_roles`, `admin_users`, `mp_staff`, `social_channel_tokens`, `social_conversations`, `social_messages`, `telegram_operators`
 - Reads, through the same: `google_places_polls`, `google_reviews`, `mp_config_responses`
 
 ### /shipping-refund-policies

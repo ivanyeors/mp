@@ -102,6 +102,13 @@ land, and where they should be answered from.
   code; scopes include `user.account.type`; an invalid-token reply (40105) is retried once with a
   refreshed token. Customers in the EEA, Switzerland and the UK arrive as `im_receive_msg_eu` with
   no content and stay in the TikTok app.
+- **Kept for a year, gone on disconnect.** TikTok's data security review asks that personal data
+  is kept no longer than needed and deleted when an account stops sharing it. The daily cron deletes
+  messages older than 12 months, and conversations untouched for 12 months with the person's name
+  (`lib/social-inbox/retention.ts`). **Disconnect TikTok** revokes the token with TikTok and deletes
+  every TikTok message, conversation and token; with nothing connected, the TikTok webhook stores
+  nothing. Cards already in the group stay: the bot can't delete group messages older than 48
+  hours. The privacy policy (sections 3, 6 and 8) says the same.
 - **Graph API version** `v24.0` by default (`META_GRAPH_VERSION` to change it). The WhatsApp code
   still pins `v21.0`; Meta retires versions about two years after release, so that one is due for a
   bump too.

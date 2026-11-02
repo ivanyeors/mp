@@ -583,8 +583,9 @@ export async function GET(req: Request) {
   }
 
   // Chain: customer messages (PRD-social-inbox). Re-cards any message a
-  // webhook stored but could not post to Telegram, and refreshes the TikTok
-  // token so its rotating refresh token never lapses. No-op until connected.
+  // webhook stored but could not post to Telegram, refreshes the TikTok
+  // token so its rotating refresh token never lapses, and deletes messages
+  // past the retention period. No-op until connected.
   let socialInbox: Awaited<ReturnType<typeof runSocialInboxMaintenance>> | { ok: false; error: string };
   try {
     socialInbox = await runSocialInboxMaintenance();

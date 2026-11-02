@@ -244,6 +244,9 @@ The access token refreshes itself — on use, and daily from the `results-sla` c
 itself lasts **a year**: in its last month the tab shows "reconnect by …"; tap **Reconnect TikTok**
 before then. If it ever shows "last refresh failed", reconnect too.
 
+**Disconnect** (next to Reconnect) signs the app out of TikTok and deletes every TikTok message and
+conversation stored on the site. Reconnecting later starts empty. Cards already in the group stay.
+
 Limits to know:
 
 - **No time limit**, but TikTok caps messages to a customer who isn't a mutual follow: up to **10**
@@ -280,6 +283,15 @@ connected; nothing else is affected.
    under the card.
 
 ---
+
+## Data kept
+
+Every customer message and reply is deleted from the site 12 months after it was sent, by the
+daily `results-sla` cron. A conversation nobody has written in for 12 months goes too, with the
+person's name. The privacy policy (section 8) says so. The bot can't delete group messages older
+than 48 hours, so the cards in the Telegram group stay until someone deletes them in Telegram, or
+until the group's **Auto-delete messages** timer does. That timer covers the Google review cards in
+the same group too.
 
 ## How the team uses it (pin this in the group)
 

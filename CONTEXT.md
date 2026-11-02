@@ -640,7 +640,7 @@ _Avoid_: "batch" for the whole run (a batch is one request inside a Wave); sched
 ## Customer messages (PRD-social-inbox)
 
 **Customer message**:
-A direct message someone sends Mpillow on Facebook Messenger, Instagram or TikTok, stored in `social_messages` under one `social_conversations` row per person per platform. The sender need not be a **Customer** (no account, no order) — anyone who writes.
+A direct message someone sends Mpillow on Facebook Messenger, Instagram or TikTok, stored in `social_messages` under one `social_conversations` row per person per platform. The sender need not be a **Customer** (no account, no order) — anyone who writes. Kept for 12 months, then deleted; a conversation nobody has written in for 12 months goes too, with the person's name. Disconnecting TikTok deletes every TikTok one at once.
 _Avoid_: "chat" or "lead" for the stored row; mixing these with WhatsApp (the staffed WhatsApp line is answered in the Business app, and the Cloud API number only sends appointment reminders)
 
 **Message card**:

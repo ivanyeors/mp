@@ -9,7 +9,7 @@ import {
   SUPPORT_WHATSAPP_URL,
 } from "@/lib/contact";
 
-const EFFECTIVE_DATE = "5 July 2026";
+const EFFECTIVE_DATE = "2 November 2026";
 
 /**
  * Customer accounts moved from Shopify (PRD-shopify-customer-migration slice
@@ -51,6 +51,7 @@ const SECTIONS: PolicySection[] = [
       "Create or use an Mpillow account",
       "Complete a pillow customisation, measurement, or configuration flow",
       "Book an appointment or request support",
+      "Send us a message on Facebook, Instagram or TikTok",
       "Subscribe to updates or marketing communications where offered",
     ],
   },
@@ -64,6 +65,7 @@ const SECTIONS: PolicySection[] = [
       "Shipping and billing details: recipient name, address, city, state, postal code, country, and phone number",
       "Saved addresses linked to your account",
       "Support and communication content: messages you send through our contact form, email, WhatsApp, or other channels",
+      "Social media messages: when you message our Facebook Page, Instagram account or TikTok account, the message, any photo or file you attach, the name and username that platform shows us, and the identifier it uses for your conversation with us",
       "Customisation and sleep-related responses you provide when configuring a pillow or completing a measurement flow",
       "Technical and usage data: browser type, device information, pages viewed, and interactions with our site",
       "First-party visit analytics: an anonymous visitor identifier and the pages you view during a visit, so we can understand how people move through the site and improve the experience",
@@ -77,7 +79,7 @@ const SECTIONS: PolicySection[] = [
       "Process and fulfil orders, including payment, shipping, delivery, and after-sales support",
       "Provide account access, order history, saved addresses, and customisation tracking",
       "Operate pillow customisation, measurement, and appointment-related services",
-      "Respond to enquiries, warranty claims, returns, and customer support requests",
+      "Respond to enquiries, warranty claims, returns, and customer support requests, including messages you send us on Facebook, Instagram or TikTok",
       "Send transactional messages such as order confirmations, payment receipts, shipping updates, and refund notices",
       "Prevent fraud, protect our services, and maintain security",
       "Measure storefront visits (first-party visit analytics) and improve our website, products, and customer experience",
@@ -107,6 +109,8 @@ const SECTIONS: PolicySection[] = [
       "Hosting, database, and authentication providers such as Supabase",
       "Inventory and commerce integrations such as Shopify, where used for product or order operations",
       "Email and messaging providers used to send transactional or support communications",
+      "Meta (Facebook and Instagram) and TikTok, which carry messages between you and us on their apps",
+      "Telegram, where our staff read and answer those messages in a private group open only to staff",
       "Delivery and logistics partners needed to ship your order",
       "Analytics, maps, or review providers where used to improve site functionality or display store information",
       "Professional advisers, insurers, or authorities where required by law or to protect our legal rights",
@@ -143,7 +147,10 @@ const SECTIONS: PolicySection[] = [
       "Resolving disputes and enforcing our agreements",
       "Maintaining security logs and fraud-prevention records",
     ],
-    outro: ["When data is no longer needed, we delete it or anonymise it where appropriate."],
+    outro: [
+      "Messages you send us on Facebook, Instagram or TikTok, and our replies, are deleted from our systems 12 months after they were sent. Your name and username go with them once neither of us has written for 12 months. If we disconnect our TikTok account, its messages are deleted at that point. Copies our staff saw in their Telegram group stay there until deleted in Telegram.",
+      "When data is no longer needed, we delete it or anonymise it where appropriate.",
+    ],
   },
   {
     title: "9. Cross-border transfers",

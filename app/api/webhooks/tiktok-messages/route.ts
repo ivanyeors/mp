@@ -35,9 +35,11 @@ export async function POST(req: Request) {
 
   after(async () => {
     try {
-      // Only the connected business account's messages; before connecting, any.
+      // Only the connected business account's messages. None while nothing is
+      // connected: after Disconnect TikTok, nothing of that account is kept.
       const connected = await getTikTokTokenRow();
-      const events = parseTikTokWebhook(payload, connected?.account_id ?? null);
+      if (!connected) return;
+      const events = parseTikTokWebhook(payload, connected.account_id);
       if (events.length === 0) return;
       const summary = await ingestSocialEvents(events);
       await sweepUncarded({ max: 3 });

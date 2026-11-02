@@ -481,3 +481,50 @@ export async function tiktokAccess(
     ? { ok: true, businessId: winner.account_id, token: winner.access_token }
     : { ok: false, error: "TikTok was disconnected while refreshing." };
 }
+
+/**
+ * Settings → Users & permissions → Telegram → "Disconnect TikTok": revokes
+ * the access token with TikTok (so TikTok stops sending this account's
+ * messages), then deletes every TikTok message and conversation we hold and
+ * the tokens. TikTok's data security review asks that an account's data goes
+ * when it stops sharing it. The data is deleted even if TikTok refuses the
+ * revoke (the token may already be dead); `revokeError` says so.
+ *
+ * Cards already posted in the Telegram group stay, as with retention.ts.
+ */
+export async function disconnectTikTok(
+  deps: { fetch?: typeof fetch } = {},
+): Promise<{ messages: number; conversations: number; revokeError: string | null }> {
+  const row = await getTikTokTokenRow();
+  const app = tiktokAppConfig();
+  let revokeError: string | null = null;
+  if (row && app) {
+    const access = await tiktokAccess({ fetch: deps.fetch }).catch(() => null);
+    const res = await callTikTok<unknown>(
+      "/tt_user/oauth2/revoke/",
+      {
+        method: "POST",
+        body: { client_id: app.appId, client_secret: app.secret, access_token: access?.ok ? access.token : row.access_token },
+      },
+      deps,
+    );
+    if (!res.ok) revokeError = res.error;
+  }
+
+  const admin = supabaseAdmin();
+  const { count: messages, error: messageError } = await admin
+    .from("social_messages")
+    .delete({ count: "exact" })
+    .eq("platform", "tiktok");
+  if (messageError) throw new Error(messageError.message);
+  const { count: conversations, error: conversationError } = await admin
+    .from("social_conversations")
+    .delete({ count: "exact" })
+    .eq("platform", "tiktok");
+  if (conversationError) throw new Error(conversationError.message);
+  // Last, so a failure above leaves it connected and the button there to try again.
+  const { error: tokenError } = await admin.from("social_channel_tokens").delete().eq("platform", "tiktok");
+  if (tokenError) throw new Error(tokenError.message);
+
+  return { messages: messages ?? 0, conversations: conversations ?? 0, revokeError };
+}

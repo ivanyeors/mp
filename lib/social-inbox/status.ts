@@ -1,6 +1,7 @@
 import { sweepUncarded } from "@/lib/social-inbox/ingest";
 import { checkMetaSetup, metaAccountIds, metaConfigured, type MetaSetup } from "@/lib/social-inbox/meta";
 import { humanAgentEnabled } from "@/lib/social-inbox/platforms";
+import { purgeOldSocialMessages } from "@/lib/social-inbox/retention";
 import { getTikTokTokenRow, tiktokAccess, tiktokAppConfig } from "@/lib/social-inbox/tiktok";
 
 /** What Users & permissions → Telegram shows about each platform. Never includes a token. */
@@ -54,13 +55,15 @@ export async function getSocialInboxStatus(metaWebhookUrl: string | null): Promi
 }
 
 /**
- * Daily, from the results-sla cron: card anything a webhook left uncarded, and
+ * Daily, from the results-sla cron: card anything a webhook left uncarded,
  * refresh TikTok's token, so a broken TikTok connection shows on the Telegram
- * access tab before an agent's reply fails on it.
+ * access tab before an agent's reply fails on it, and delete messages past
+ * the retention period (retention.ts).
  */
 export async function runSocialInboxMaintenance(): Promise<{
   sweep: Awaited<ReturnType<typeof sweepUncarded>> | { error: string };
   tiktok: "refreshed" | "not_connected" | { error: string };
+  purged: Awaited<ReturnType<typeof purgeOldSocialMessages>> | { error: string };
 }> {
   let sweep: Awaited<ReturnType<typeof sweepUncarded>> | { error: string };
   try {
@@ -78,5 +81,12 @@ export async function runSocialInboxMaintenance(): Promise<{
   } catch (e) {
     tiktok = { error: e instanceof Error ? e.message : "tiktok refresh failed" };
   }
-  return { sweep, tiktok };
+
+  let purged: Awaited<ReturnType<typeof purgeOldSocialMessages>> | { error: string };
+  try {
+    purged = await purgeOldSocialMessages();
+  } catch (e) {
+    purged = { error: e instanceof Error ? e.message : "purge failed" };
+  }
+  return { sweep, tiktok, purged };
 }
