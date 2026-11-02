@@ -209,6 +209,13 @@ const MeasurementSchema = z.object({
   headToBack: z.string().default(""),
   neckLength: z.string().default(""),
   notes: z.string().max(2000).optional().default(""),
+  // The health answers the Premium rule graph reads. Without them here the
+  // object strip dropped them on every save, and a Result whose answers were
+  // dropped could not be evaluated. Optional with no default: a caller that
+  // does not send them (the Admin Panel's Save) keeps what is stored.
+  sleepPainAreas: z.array(z.string().max(64)).max(12).optional(),
+  sleepPositionType: z.array(z.string().max(64)).max(12).optional(),
+  usesBolster: YesNoEmptySchema.optional(),
 });
 
 const MeasuredBySchema = z.discriminatedUnion("type", [
@@ -317,11 +324,23 @@ export async function POST(req: Request) {
   const { data: existing, error: existingErr } = await admin
     .from("mp_config_responses")
     .select(
-      "is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status,access_token,customer_id,customer_email,order_id",
+      "data,is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status,access_token,customer_id,customer_email,order_id",
     )
     .eq("id", id)
     .maybeSingle();
   if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
+
+  // An update lays the posted answers over the stored ones instead of replacing
+  // them, so a caller that sends only some fields cannot blank the rest. The
+  // configurator sends every field, cleared ones included, so it still clears.
+  const storedData =
+    existing?.data && typeof existing.data === "object" && !Array.isArray(existing.data)
+      ? (existing.data as Record<string, unknown>)
+      : null;
+  const data: Record<string, unknown> = storedData
+    ? { ...storedData, ...parsed.data.data }
+    : parsed.data.data;
+  row.data = data;
 
   // Creating a row stays open — there is nothing to own yet, and the configurator
   // saves from the first keystroke. Updating one does not.
@@ -434,9 +453,7 @@ export async function POST(req: Request) {
     shouldCreateInstoreReviewOnly(existing) &&
     parsed.data.data
   ) {
-    reviewOnlyPatch = await buildInstoreReviewOnlyPatch(
-      parsed.data.data as Record<string, unknown>,
-    );
+    reviewOnlyPatch = await buildInstoreReviewOnlyPatch(data);
     Object.assign(row, reviewOnlyPatch);
   }
 

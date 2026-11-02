@@ -240,7 +240,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:129
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:196
   - `loadCostingsPriceMaps()` [select] — lib/shop/price-sync.ts:132
-  - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:219
+  - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:257
   - `loadShopifyMirrorCostingsContext()` [select] — lib/shopify/order-mirror-ingest.ts:473
   - `loadVariantLabels()` [select] — lib/stripe/variant-labels.ts:83
   - `pillowDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:140
@@ -713,7 +713,7 @@ Changed from pages: `/settings/inventory`
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:177
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:393
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:57
-  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:557
+  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:589
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
   - `GET()` [select] — app/api/mp-config/assist/route.ts:116
   - `GET()` [select] — app/api/results/addons/route.ts:41
@@ -836,7 +836,7 @@ Changed from pages: `/mp-basic`, `/mp-config`
 - Written by:
   - `POST()` [upsert] — app/api/mp-config/photos/route.ts:57
 - Read by:
-  - `POST()` [select] — app/api/mp-config/responses/route.ts:499
+  - `POST()` [select] — app/api/mp-config/responses/route.ts:516
 
 ### mp_config_responses
 Defined in supabase/migrations/0023_mp_config_responses.sql:6
@@ -846,7 +846,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `DELETE()` [delete,select] — app/api/mp-config/responses/[id]/route.ts:72
   - `DELETE()` [update] — app/api/shop/orders/[id]/mp-config-link/route.ts:116
   - `GET()` [select,update] — app/api/cron/results-sla/route.ts:111
-  - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:317
+  - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:324
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:72
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:135
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
@@ -860,7 +860,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `attachHoldPaymentIntent()` [select,update] — lib/authorization-hold/index.ts:41
   - `cascadeEnding()` [update] — lib/results/pair-ending.ts:75
   - `createMpConfigFromCustomization()` [insert,select] — lib/ecommerce/mp-config-sync.ts:157
-  - `loadMpConfigResponseDetail()` [select,update] — lib/results/admin/response-detail.ts:114
+  - `loadMpConfigResponseDetail()` [select,update] — lib/results/admin/response-detail.ts:122
   - `reorderResult` [insert,select,update] — lib/results/reorder.ts:152
   - `rollback()` [delete] — lib/results/reorder.ts:111
   - `runPreOrderRestockNotices()` [select,update] — lib/configurator/pre-order-restock.ts:115
@@ -900,7 +900,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
   - `updateStaffProfile()` [update] — lib/staff/admin.ts:209
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:68
-  - `POST()` [select] — app/api/mp-config/responses/route.ts:463
+  - `POST()` [select] — app/api/mp-config/responses/route.ts:480
   - `isPickableStaffProfile()` [select] — lib/staff/admin.ts:281
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:40
   - `listAssignableProfiles()` [select] — lib/crm/followups.ts:159
@@ -1067,7 +1067,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `loadAdminOrderDetail()` [select] — lib/ecommerce/admin/order-detail.ts:18
   - `loadDeliveredOrders()` [select] — lib/aftercare/checkup-server.ts:179
   - `loadDueOrders()` [select] — lib/aftercare/review-request-server.ts:119
-  - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:138
+  - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:146
   - `loadOrderForShipping()` [select] — lib/shipping/order-shipment.ts:60
   - `loadOrderInfo()` [select] — lib/commissions/referral-rows.ts:141
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:56
@@ -1222,7 +1222,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `handleCommand()` [select] — app/api/telegram/webhook/route.ts:255
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:337
   - `loadComposedSellable()` [select] — lib/results/composed-sellable.ts:177
-  - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:195
+  - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:233
   - `loadPillows()` [select] — lib/aftercare/review-request-server.ts:167
   - `loadPreOrderTriggerAtHold()` [select] — lib/configurator/pre-order-persist.ts:37
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:239

@@ -127,7 +127,7 @@ export default function analytics({ scenario, now }) {
   let pp = 1;
   for (const kind of ["basic", "premium"]) {
     for (const size of SIZES) {
-      pillow_products.push({ id: pp, kind, size });
+      pillow_products.push({ id: pp, kind, size, is_active: true });
       const id = `var-${kind}-${size}`;
       PILLOW_VARIANT[kind][size] = id;
       product_variants.push({ id, product_id: `prod-pillow-${kind}`, item_id: null, pillow_product_id: pp, option1: size, title: size });
