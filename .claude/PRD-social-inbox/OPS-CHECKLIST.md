@@ -174,8 +174,10 @@ names for a new app, and the messaging permissions are added once the review pas
      names CTX Events Management, but it wasn't offered when we created the app. Don't add TikTok
      Accounts yet: since 20 March 2026 it needs its own form (step 6).
    - Submit. TikTok reviews it in 2–3 business days (My Apps → Verification Status).
-2. Once approved: App Detail → **App logo** (JPG/PNG, at most 512×512) — without it TikTok's sign-in
-   page shows an error.
+2. **App logo** (JPG/PNG, at most 512×512), at the top of App Detail → Basic Information. Without it,
+   TikTok's sign-in page shows an error. Our approved app showed no logo field with only Ad Account
+   Management and Measurement. TikTok's own screenshot shows the field on an app that has TikTok
+   Accounts, so upload it once step 6 adds that, before pressing Connect TikTok.
 3. (Step 6.) App Detail → **Authorization → Scope of permission** → **TikTok Accounts** and
    **Business Messaging**.
 4. **TikTok account holder redirect URL** (App Detail → Basic Information, once TikTok Accounts is
