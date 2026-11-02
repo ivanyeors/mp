@@ -47,6 +47,11 @@ export interface MpConfigResponseDetailPayload {
   };
   order_number: string | null;
   order: LinkedOrderDetail | null;
+  /**
+   * Null when the Rules Engine cannot evaluate this Result: the published graph
+   * reads an answer the Result does not have. The Result still loads; the
+   * suggestion is advice, and Staff assign the size and tier themselves.
+   */
   suggestion: {
     recommended: { size: string; tier: string };
     product: { id: number; size: string; tier: "basic" | "premium" } | null;
@@ -54,7 +59,9 @@ export interface MpConfigResponseDetailPayload {
     reasons: string[];
     graph_version_id: unknown;
     recommendation_record: unknown;
-  };
+  } | null;
+  /** Engine input keys the Result lacks, when that is why `suggestion` is null. */
+  suggestion_missing: string[];
 }
 
 /**
@@ -77,7 +84,7 @@ export interface OwnerResultPayload {
   suggestion: {
     recommended: { size: string; tier: string };
     product: { id: number; size: string; tier: "basic" | "premium" } | null;
-  };
+  } | null;
 }
 
 export function toOwnerResultPayload(
@@ -90,17 +97,18 @@ export function toOwnerResultPayload(
       data: full.response.data,
       is_final: full.response.is_final,
     },
-    suggestion: {
-      recommended: full.suggestion.recommended,
-      product: full.suggestion.product,
-    },
+    suggestion: full.suggestion
+      ? {
+          recommended: full.suggestion.recommended,
+          product: full.suggestion.product,
+        }
+      : null,
   };
 }
 
 export type MpConfigResponseDetailResult =
   | { status: 200; body: MpConfigResponseDetailPayload }
-  | { status: 404 | 500; body: { error: string } }
-  | { status: 422; body: { error: string; missing: unknown } };
+  | { status: 404 | 500; body: { error: string } };
 
 /**
  * Assembles the `/api/mp-config/responses/[id]` GET payload: the response row,
@@ -162,13 +170,43 @@ export async function loadMpConfigResponseDetail(
       : null;
   }
 
+  // A Paired build (ADR 0026): the other Result on the same hold, so Staff can
+  // move between the Mpillow and the Mbolster it carries.
+  let paired_result_id: string | null = null;
+  if (responseRow.paired_build_id === responseRow.id) {
+    const { data: companions } = await admin
+      .from("mp_config_responses")
+      .select("id, status")
+      .eq("paired_build_id", responseRow.id)
+      .neq("id", responseRow.id);
+    paired_result_id = pickPartner(companions ?? [], responseRow.id)?.id ?? null;
+  } else if (responseRow.paired_build_id) {
+    paired_result_id = responseRow.paired_build_id;
+  }
+
   const data = (responseRow.data ?? {}) as Record<string, unknown>;
   const engineResult = await recommendWithEngine("premium-mpillow", inputsFromMpConfigData(data));
 
+  // The engine refuses a Result that lacks an answer the published graph reads
+  // (a Draft Result mid-questionnaire, or one saved before those answers were
+  // kept). That costs the suggestion, never the Result: refusing the whole load
+  // left Staff unable to open it at all.
   if ("error" in engineResult) {
     return {
-      status: 422,
-      body: { error: engineResult.error, missing: engineResult.missing },
+      status: 200,
+      body: {
+        ok: true,
+        response: {
+          ...responseRow,
+          paired_result_id,
+          discovery_source_label,
+          recommendation_record: responseRow.recommendation_record ?? null,
+        },
+        order_number: orderNumber,
+        order,
+        suggestion: null,
+        suggestion_missing: engineResult.missing ?? [],
+      },
     };
   }
 
@@ -224,20 +262,6 @@ export async function loadMpConfigResponseDetail(
     bomLines = (lines ?? []) as unknown as BomLineRow[];
   }
 
-  // A Paired build (ADR 0026): the other Result on the same hold, so Staff can
-  // move between the Mpillow and the Mbolster it carries.
-  let paired_result_id: string | null = null;
-  if (responseRow.paired_build_id === responseRow.id) {
-    const { data: companions } = await admin
-      .from("mp_config_responses")
-      .select("id, status")
-      .eq("paired_build_id", responseRow.id)
-      .neq("id", responseRow.id);
-    paired_result_id = pickPartner(companions ?? [], responseRow.id)?.id ?? null;
-  } else if (responseRow.paired_build_id) {
-    paired_result_id = responseRow.paired_build_id;
-  }
-
   return {
     status: 200,
     body: {
@@ -264,6 +288,7 @@ export async function loadMpConfigResponseDetail(
         graph_version_id: engineResult.graphVersionId,
         recommendation_record: toPersistedRecommendationRecord(engineResult),
       },
+      suggestion_missing: [],
     },
   };
 }

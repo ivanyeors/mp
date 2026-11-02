@@ -47,7 +47,7 @@ export default async function ResultDetailRoute({
       ? Promise.all([
           loadResultAssignPrep(
             response,
-            detail.status === 200 ? detail.body.suggestion.recommended : null,
+            detail.status === 200 ? (detail.body.suggestion?.recommended ?? null) : null,
           ),
           loadFillingItems(),
         ])

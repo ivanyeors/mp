@@ -221,7 +221,7 @@ import {
 } from "@/components/configurator/staff-assist-panel";
 import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
-import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
 import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { XraySectionDock } from "@/components/spatial/xray-section-dock";
@@ -295,7 +295,7 @@ const pillowPath = (size: string | null | undefined) =>
   stageGeometry(pillowDimensions(size).dims.size).silhouettePath;
 
 // Every block on the preview stage shares the x-ray's width, so the Staff
-// toolbar, the pillow, the fit banner, the cut and the pack list read as one
+// toolbar, the pillow, the cut and the pack list read as one
 // column. Below lg: the full column, capped at 500px so cells and dive chips
 // are big enough to tap. From lg: sized to the viewport so the pillow and its
 // cut stay in view together, and never wider than the column it sits in.
@@ -586,7 +586,7 @@ export function MpConfigClient({
     [assistDimensionOverrides, shopDimensionOverrides],
   );
   // Slice 04: the physical fit of the session mix at the Size on screen —
-  // computed once here and shared by the x-ray, the banner and the hold /
+  // computed once here and shared by the x-ray and the hold /
   // save confirm (and the cross-section, slice 05). The same Size expression
   // the hold submits with, so the fit is judged against the pillow being held.
   const previewSize =
@@ -3234,6 +3234,8 @@ export function MpConfigClient({
                           // Staff: the dived Section's controls render in the stage's Section
                           // editor dock, off the pillow art (phones keep their own dock).
                           controlsSlot={staffAssist ? (wideStage ? sideSlot : inlineSlot) : undefined}
+                          // The soft body the cut below draws with: one Settings value for both views.
+                          softBody={staffAssist ? assistSoftBody : guestSoftBody}
                           className="absolute inset-0"
                         />
                       )}
@@ -3252,9 +3254,6 @@ export function MpConfigClient({
                         className={cn(STAGE_BLOCK_CLASS, STAGE_PANEL_CLASS, "max-md:hidden", divedSection ? "flex" : "hidden")}
                       />
                     )}
-                    {/* Slice 04: a loaded template or a Size change that no longer
-                        fits is flagged here as well as on the cells. Advisory. */}
-                    {staffAssist && xrayVisible && <FitBanner fit={assistFit} className={STAGE_BLOCK_CLASS} />}
                     {/* Slice 05: the live cut under the pillow — Staff get the
                         controls, a guest the across cut alone, read-only. */}
                     {xrayVisible && (

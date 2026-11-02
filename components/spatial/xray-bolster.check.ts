@@ -45,7 +45,7 @@ assert.match(renderer, /layoutBolsterPlacements\(placements, length, \{ dims: it
 assert.match(renderer, /fitProp \?\? fitBolster\(placements, length, \{ dims: itemDims \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
 assert.match(renderer, /onPlacementsChange\?\.\(addBolsterPiece\(placements, itemId\)\);/, "fit never refuses a bolster add — the gauge warns");
 assert.match(renderer, /<FitWarning status=\{fit\.status\} message=\{bolsterFitMessage\(fit, label\)\}/, "the gauge's fit message lives in its warning tooltip");
-assert.match(renderer, /data-xray-bolster-ring=\{fit\.status\}/, "the capsule ring is a stroke on the capsule path, amber or red");
+assert.match(renderer, /data-xray-bolster-ring=\{fit\.status\}/, "the capsule ring is a stroke on the capsule path, amber (never red)");
 assert.match(renderer, /<BolsterGauge fit=\{fit\} label=\{pieceLabel\} \/>/, "the length gauge sits with the editor");
 assert.match(renderer, /status=\{squeeze\.status\}/, "a squeezed pouch draws dashed");
 assert.doesNotMatch(renderer, /MAX_BOLSTER|placements\.length >= \d/, "the cap is physical and derived — never a slot number (ADR 0008 amendment)");

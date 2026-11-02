@@ -23,7 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
-import { confirmSaveWithBolsterFit, confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { confirmSaveWithBolsterFit, confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
 import { useBolsterFit, useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
@@ -193,8 +193,33 @@ type AssignPrepData = {
   fillingTemplates: Array<{ id: number; name: string }>;
 };
 
+/** The answers the rules read, in the configurator's words, for "why no suggestion". */
+const ENGINE_INPUT_LABELS: Record<string, string> = {
+  shoulder_length_cm: "shoulder length",
+  neck_to_back_cm: "neck to back",
+  head_to_back_cm: "head to back",
+  neck_length_cm: "neck length",
+  sleep_position: "sleep position",
+  bed_firmness: "bed firmness",
+  acid_reflux: "acid reflux",
+  ear_discomfort_side_sleep: "ear discomfort",
+  blood_pressure: "blood pressure",
+  sleep_pain_areas: "pain areas",
+  uses_bolster: "bolster use",
+  gender: "gender",
+  age_group: "age group",
+};
+
+const engineInputLabel = (key: string): string =>
+  ENGINE_INPUT_LABELS[key] ?? key.replace(/_cm$/, "").replace(/_/g, " ");
+
 const safeString = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
 const safeYesNoEmpty = (value: unknown): YesNoEmpty => (value === "yes" || value === "no" ? value : "");
+
+const missingFromPayload = (payload: unknown): string[] => {
+  const missing = (payload as { suggestion_missing?: unknown } | null)?.suggestion_missing;
+  return Array.isArray(missing) ? missing.filter((k): k is string => typeof k === "string") : [];
+};
 
 const normalizeMeasurement = (data: Partial<MeasurementData> | null | undefined): MeasurementData => ({
   name: safeString(data?.name),
@@ -224,7 +249,10 @@ export type ResultDetailInitialData = {
     response: MpConfigResponseRow;
     order_number: string | null;
     order: LinkedOrderDetail | null;
-    suggestion: MpConfigSuggestion;
+    /** Null when the rules could not run on this Result's answers. */
+    suggestion: MpConfigSuggestion | null;
+    /** The answers the rules needed and this Result lacks, when `suggestion` is null. */
+    suggestion_missing?: string[];
   } | null;
   assignPrep: AssignPrepData | null;
   fillingItems: BolsterListItem[] | null;
@@ -274,6 +302,7 @@ function deriveSeed(initialData: ResultDetailInitialData | undefined) {
     orderNumber: detail?.order_number ?? null,
     order: detail?.order ?? null,
     suggestion,
+    suggestionMissing: detail?.suggestion_missing ?? [],
     draft: normalizeMeasurement(response?.data ?? null),
     assignSize,
     assignTier,
@@ -322,6 +351,7 @@ export default function ResultDetailPage({
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(seed.suggestion);
+  const [suggestionMissing, setSuggestionMissing] = useState<string[]>(seed.suggestionMissing);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
 
   const [draft, setDraft] = useState<MeasurementData>(seed.draft);
@@ -383,6 +413,7 @@ export default function ResultDetailPage({
       setLinkedOrder((payload?.order as LinkedOrderDetail | null) ?? null);
       const sug = (payload?.suggestion ?? null) as MpConfigSuggestion | null;
       setSuggestion(sug);
+      setSuggestionMissing(missingFromPayload(payload));
       setDraft(normalizeMeasurement(response?.data ?? null));
 
       const size =
@@ -405,6 +436,7 @@ export default function ResultDetailPage({
       toast.error(e instanceof Error ? e.message : "Couldn't load the result.");
       setRow(null);
       setSuggestion(null);
+      setSuggestionMissing([]);
     } finally {
       setLoading(false);
     }
@@ -764,7 +796,7 @@ export default function ResultDetailPage({
     [fillingItems, productType, assignTier],
   );
   // Slice 04: the physical fit of the assignment at its Size — one object for
-  // the x-ray, the banner, the save confirm and the cross-section.
+  // the x-ray, the save confirm and the cross-section.
   const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
   // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
   const { cut, setCut, onDiveChange } = useCut();
@@ -783,6 +815,7 @@ export default function ResultDetailPage({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Couldn't refresh the suggestion.");
       setSuggestion((payload?.suggestion ?? null) as MpConfigSuggestion | null);
+      setSuggestionMissing(missingFromPayload(payload));
       const response = payload?.response as MpConfigResponseRow | null;
       if (response) setRow(response);
     } catch (e) {
@@ -1354,7 +1387,6 @@ export default function ResultDetailPage({
                               </p>
                             </div>
                           )}
-                          <FitBanner fit={fit} />
                           <XrayEditor
                             placements={placements}
                             onPlacementsChange={setPlacements}
@@ -1757,7 +1789,13 @@ export default function ResultDetailPage({
         </div>
 
         {!suggestion ? (
-          <div className="text-sm text-muted-foreground">No suggestion available.</div>
+          <div className="text-sm text-muted-foreground">
+            {suggestionMissing.length > 0
+              ? `No suggestion. The rules need answers this Result doesn't have: ${suggestionMissing
+                  .map(engineInputLabel)
+                  .join(", ")}.`
+              : "No suggestion available."}
+          </div>
         ) : (
           <Card className="p-4 space-y-4 max-md:space-y-0">
             <div className="grid grid-cols-2 gap-3">

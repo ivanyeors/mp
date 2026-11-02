@@ -218,7 +218,8 @@ describe("POST /api/campaigns/ai-draft", () => {
     expect((await post()).status).toBe(200);
     const res = await post();
     expect(res.status).toBe(429);
-    expect((await res.json()).error).toMatch(/^You've drafted a lot today\. Try again after \d{1,2}:\d{2} (am|pm)\.$/);
+    // From 15:50 to 16:00 UTC the ten minutes end at midnight in Singapore: "12:00 am tomorrow".
+    expect((await res.json()).error).toMatch(/^You've drafted a lot today\. Try again after \d{1,2}:\d{2} (am|pm)( tomorrow)?\.$/);
     expect(fake.calls).toHaveLength(2);
   });
 

@@ -275,6 +275,34 @@ describe("soft cut", () => {
     for (const b of snap.bodies) for (const p of b.ring) expect(p[1]).toBeLessThanOrEqual(raw.frame.baseline + 1e-6);
   });
 
+  it("keeps a pouch nudged front ↔ back where it was put, inside its own columns", () => {
+    const at = (offsetYMm: number | undefined, cells = RECIPES.mix, key = "center/middle/2") => {
+      const placements = placementsOf(cells).map((p) => (`center/${p.subSection}/${p.slot}` === key && offsetYMm ? { ...p, offsetYMm } : p));
+      const fit = fitPillow(placements, { size: "M", dims: DIMS });
+      const input = softCutInputFor(fit, { section: "center" }, { itemSubtypes: SUBTYPES });
+      const ring = settleSoftCut(input).rings.get(key)!;
+      const piece = fit.sections.center.pieces.find((p) => p.key === key)!;
+      return { x: ring.reduce((a, q) => a + q[0], 0) / ring.length / input.frame.kx, piece, cellMm: fit.settle.cellLengthMm };
+    };
+    // The Neck support roll has room in its column: it lands where it was nudged, to the millimetre.
+    const home = at(undefined);
+    expect(home.piece.nudged).toBeUndefined();
+    for (const mm of [5, -5, 20, -20]) {
+      const moved = at(mm);
+      expect(moved.piece.nudged).toBe(true);
+      expect(Math.abs(moved.x - home.x - mm), `roll nudged ${mm} mm`).toBeLessThan(1);
+    }
+    // Nudged past its column's room, it stops at the column's edge: it never stands in the next column.
+    const far = at(80);
+    expect(far.piece.endMm).toBeLessThanOrEqual(2 * far.cellMm + 0.05);
+    // A pouch as long as its column, between full neighbours, keeps its length: a nudge never shrinks it.
+    const full = at(20, RECIPES["11"], "center/middle/1");
+    const still = at(undefined, RECIPES["11"], "center/middle/1");
+    expect(full.piece.endMm - full.piece.startMm).toBeCloseTo(still.piece.endMm - still.piece.startMm, 1);
+    expect(full.piece.startMm).toBeGreaterThanOrEqual(full.cellMm - 0.05);
+    expect(full.piece.endMm).toBeLessThanOrEqual(2 * full.cellMm + 0.05);
+  });
+
   it("settles a full recipe well inside a frame budget", () => {
     const input = inputOf(RECIPES.mix, "XL");
     const t = performance.now();

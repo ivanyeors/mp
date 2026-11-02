@@ -23,6 +23,11 @@
  * Deterministic: a fixed start, a fixed number of steps, no randomness and no
  * trig inside the loop, so the same recipe always settles to the same
  * picture on every device, however the steps are split. Pure + browser-safe.
+ *
+ * The top-down x-ray settles with the same solver (`soft-top.ts`): no gravity
+ * (it falls into the screen), a case that does not move (the Section's sewn
+ * walls seen from above), and each piece held loosely to where the layout put
+ * it both ways. Those are options, off by default, so the cut is unchanged.
  */
 
 export type Pt = [number, number];
@@ -40,6 +45,12 @@ export type SoftPiece = {
   areaMin?: number;
   /** Its cell cannot close: it may poke through the case. */
   over?: boolean;
+  /**
+   * Placed by hand (a fine nudge): held firmly where it starts — front ↔ back,
+   * and up ↔ down where `tetherY` holds anything — so its neighbours make
+   * room instead of pushing it back.
+   */
+  held?: boolean;
 };
 
 export type SolverOptions = {
@@ -76,7 +87,14 @@ export type SolverOptions = {
   fabricCompliance: number;
   /** A Neck support's firmness, 0 … 1: how little its foam gives where it is pressed. */
   rollFirmness: number;
+  /** How loosely a piece is held up ↔ down to where it started; 0 in the cut, where gravity places it. */
+  tetherY: number;
+  /** The case does not move at all (the top-down x-ray's walls); the cut's is cloth. */
+  rigidCase: boolean;
 };
+
+/** The tether on a piece placed by hand: firm enough that its neighbours, on the loose tether, give way. */
+export const HELD_TETHER = 0.5;
 
 export const SOLVER_DEFAULTS: SolverOptions = {
   steps: 24,
@@ -98,6 +116,8 @@ export const SOLVER_DEFAULTS: SolverOptions = {
   maxStep: 1.2,
   fabricCompliance: 2e-6,
   rollFirmness: 0.75,
+  tetherY: 0,
+  rigidCase: false,
 };
 
 export type SettleFrame = {
@@ -239,6 +259,10 @@ type Body = {
   lx: Float64Array;
   ly: Float64Array;
   cx0: number;
+  cy0: number;
+  /** How firmly it is held to (cx0, cy0) each way: the tether, or HELD_TETHER for a piece placed by hand. */
+  tx: number;
+  ty: number;
   seedArea: number;
   target: number;
   areaMin: number;
@@ -252,7 +276,7 @@ type Body = {
 /** Start a settle of `pieces` inside the case. Nothing moves until `step`. */
 export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, options: Partial<SolverOptions> = {}): SoftSettle {
   const o: SolverOptions = { ...SOLVER_DEFAULTS, ...options };
-  const { steps, substeps, gap, margin, gravity, tether, areaCompliance, inflate, skin, shapeMemory, caseDetail, caseBend, casePull, billow, maxStep, fabricCompliance, rollFirmness } = o;
+  const { steps, substeps, gap, margin, gravity, tether, tetherY, rigidCase, areaCompliance, inflate, skin, shapeMemory, caseDetail, caseBend, casePull, billow, maxStep, fabricCompliance, rollFirmness } = o;
   // Foam, not air: a roll's volume gives under load (never below its floor) and it springs back to round.
   const rollGive = areaCompliance * 6 * (1 - rollFirmness);
   const rollMemory = 0.06 + 0.24 * rollFirmness;
@@ -262,12 +286,14 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
   const { baseline } = frame;
   const raw = resample(frame.outline, o.caseN);
   const full = signedArea(raw) < 0 ? raw.slice().reverse() : raw;
-  const sdf = sdfFor(full, frame.width, frame.height);
+  // Built on first use: a rigid case never reaches the seam it holds the cloth to.
+  let sdfAt: ((x: number, y: number) => number) | null = null;
+  const sdf = (x: number, y: number) => (sdfAt ??= sdfFor(full, frame.width, frame.height))(x, y);
   const slumped = full.map(([x, y]): Pt => [x, baseline - (baseline - y) * o.slump]);
 
   // Every ring runs the same way round; a piece's rest ring follows its start ring.
   const rings = [
-    { id: "case", kind: "case" as const, pts: full as readonly Pt[], restPts: null as readonly Pt[] | null, areaTarget: undefined as number | undefined, areaMin: 0, over: false },
+    { id: "case", kind: "case" as const, pts: full as readonly Pt[], restPts: null as readonly Pt[] | null, areaTarget: undefined as number | undefined, areaMin: 0, over: false, held: false },
     ...pieces.map((p) => {
       const flip = signedArea(p.ring) < 0;
       const or = (r: readonly Pt[]) => (flip ? r.slice().reverse() : r);
@@ -279,6 +305,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
         areaTarget: p.areaTarget,
         areaMin: p.areaMin ?? 0,
         over: !!p.over,
+        held: !!p.held,
       };
     }),
   ];
@@ -297,13 +324,16 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
     const n = r.pts.length;
     const start = off;
     let cx = 0;
+    let cy = 0;
     r.pts.forEach(([x, y], k) => {
       X[off + k] = x;
       Y[off + k] = y;
       cx += x;
-      W[off + k] = r.kind === "case" ? (y > baseline - 0.6 ? 0 : 1.5) : r.kind === "roll" ? 0.4 : 1;
+      W[off + k] = r.kind === "case" ? (rigidCase || y > baseline - 0.6 ? 0 : 1.5) : r.kind === "roll" ? 0.4 : 1;
+      cy += y;
     });
     cx /= n;
+    cy /= n;
     const R = r.restPts ?? r.pts;
     let rx = 0;
     let ry = 0;
@@ -341,6 +371,9 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       lx,
       ly,
       cx0: cx,
+      cy0: cy,
+      tx: r.held ? Math.max(tether, HELD_TETHER) : tether,
+      ty: r.held && tetherY ? Math.max(tetherY, HELD_TETHER) : tetherY,
       seedArea: a0,
       target,
       areaMin: r.areaMin || (r.kind === "roll" ? target * rollFloor : 0),
@@ -419,7 +452,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       Y[i] += my;
     }
   }
-  /** Shape memory toward the rest cushion (squash and stretch allowed, area-normalised, no turning); held front ↔ back loosely. */
+  /** Shape memory toward the rest cushion (squash and stretch allowed, area-normalised, no turning); held front ↔ back loosely (and up ↔ down, with `tetherY`). */
   function shape(b: Body, stiff: number, beta: number) {
     let cx = 0;
     let cy = 0;
@@ -462,8 +495,12 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       X[i] += (cx + m00 * b.qx[k] + m01 * b.qy[k] - X[i]) * stiff;
       Y[i] += (cy + m10 * b.qx[k] + m11 * b.qy[k] - Y[i]) * stiff;
     }
-    const dx = (b.cx0 - cx) * tether;
+    const dx = (b.cx0 - cx) * b.tx;
     for (let k = 0; k < b.n; k++) X[b.start + k] += dx;
+    if (b.ty) {
+      const dy = (b.cy0 - cy) * b.ty;
+      for (let k = 0; k < b.n; k++) Y[b.start + k] += dy;
+    }
   }
   /** Fabric under tension: each skin point eases toward its neighbours' midpoint; pressure holds the volume. */
   function smoothSkin(b: Body, w: number) {

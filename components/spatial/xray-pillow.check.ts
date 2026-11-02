@@ -108,8 +108,8 @@ assert.match(
   "the two divider seams are drawn at the Section columns, in the shell stroke",
 );
 assert.match(renderer, /strokeDasharray: status === "ok" \? undefined : "6 3"/, "a squeezed piece draws with a dashed stroke");
-assert.match(renderer, /squeeze\.status === "over" && <path d=\{d\} fill=\{RING_OVER\}/, "a piece in a cell that cannot close is tinted red on its own outline");
-assert.match(renderer, /\.\.\.squeezeLines\(pieceStatuses\.get\(p\.key\)\)/, "the ↕ / ↔ micro-label joins the type label through PieceLabel's size rule");
+assert.doesNotMatch(renderer, /#ef4444|bg-red-|text-red-|RING_OVER/, "nothing turns red (Ivan, 1-11-2026): a piece in a cell that cannot close keeps the dashed outline, the gauge says it in amber");
+assert.doesNotMatch(renderer, /squeezeLines|↕ \$\{|↔ \$\{/, "no ↕ / ↔ squeeze percentage beside the type label (Ivan, 1-11-2026)");
 assert.match(renderer, /fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
 // Slice 05, as reviewed 26-9-2026: the x-ray draws no cut line (the cross-section's own controls say where it is taken).
 assert.doesNotMatch(renderer, /cutAt|data-xray-cut=/, "no dashed cut line on the x-ray");
