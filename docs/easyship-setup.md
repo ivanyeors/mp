@@ -106,14 +106,25 @@ the live courier rate in place of Standard and Express. The list was set before 
 so a country no courier serves still appears at checkout with no delivery option. Run
 Coverage, then remove those countries from the method.
 
-## 8. Buy a label (sandbox first)
+## 8. Labels (sandbox first)
 
-On a paid order in **Settings → Orders**, use **Buy courier label**. The customer's courier is
-preselected with today's price: the one paid for at checkout, or for an order from a
-customisation, the one its method picks today. If the paid-for courier is no longer offered for
-the parcel, the dialog says so. Labels are bought one order at a time; nothing buys them
-automatically (ADR 0043). **Buy label** creates the shipment; once tracking exists the order is
-marked shipped and the customer emailed. Delivery events from the courier mark it delivered.
+**Every paid order that ships by courier gets its label automatically** (ADR 0044): when a shop
+checkout is paid, or a customisation is accepted, the label is made on the customer's courier
+(the one paid for at checkout, else the one their live method picks today) and the courier's fee
+is charged to the Easyship account. Staff open the order in **Settings → Orders** and use **Print
+label** to print the PDF for the box.
+
+No label is made, and the order's timeline says why, when the method charges a flat price (it
+names no courier), when the courier the customer paid for is not offered for the parcel that day,
+or when Easyship refuses. Staff then use **Create label**: today's rates with the customer's
+courier preselected. Make Standard and Express live methods pinned to their courier (step 7) so
+their labels are made too.
+
+Making a label does not ship the order. The order is marked shipped, and the customer gets the
+shipping email, when the courier first scans the parcel; delivery marks it delivered. Both come
+from the webhook (step 4), so keep it enabled with the tracking events ticked; without it, mark
+orders shipped by hand. A full refund cancels the label in Easyship while the parcel is still
+here, and the fee goes back to the account.
 
 Do one full sandbox order end to end — rate at checkout, label, webhook — before swapping in the
 production token. Easyship's API field names have moved between versions; the code reads both the

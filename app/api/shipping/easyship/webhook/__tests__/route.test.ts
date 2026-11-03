@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * The Easyship webhook: fails closed without a secret, rejects a bad signature,
- * marks the order shipped from a label event and delivered from a tracking event
- * — once. Only Supabase and the email sender are faked.
+ * stores the label from a label event, marks the order shipped at the courier's
+ * first scan and delivered at the last — once each (ADR 0044). Only Supabase and
+ * the email sender are faked.
  */
 
 const h = vi.hoisted(() => ({
@@ -145,12 +146,12 @@ describe("POST /api/shipping/easyship/webhook", () => {
     expect(h.updates).toHaveLength(0);
   });
 
-  it("marks the order shipped with tracking and the label, and emails the customer", async () => {
+  it("stores the label and tracking, and leaves the order unshipped until the courier collects it", async () => {
     const res = await send(labelCreated);
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ shipped: true });
     expect(h.tables.orders).toMatchObject({
-      status: "shipped",
+      status: "confirmed",
+      shipped_at: null,
       tracking_number: "NV123",
       tracking_url: "https://track.test/ESSG1",
     });
@@ -161,21 +162,60 @@ describe("POST /api/shipping/easyship/webhook", () => {
       label_url: "https://labels.test/ESSG1.pdf",
       courier_service_id: "cs_ninja",
     });
-    expect(h.sendShippingEmail).toHaveBeenCalledTimes(1);
+    expect(h.sendShippingEmail).not.toHaveBeenCalled();
   });
 
-  it("does not ship twice when Easyship repeats the label event", async () => {
+  it("ships the order and emails the customer at the courier's first scan, once for both events of that scan", async () => {
     await send(labelCreated);
-    await send(labelCreated);
+    const first = await send(tracking("In Transit to Customer"));
+    expect(await first.json()).toMatchObject({ shipped: true });
+    await send({
+      event_type: "shipment.tracking.checkpoints.created",
+      resource_id: "ESSG1",
+      data: { easyship_shipment_id: "ESSG1", status: "In Transit to Customer", checkpoints: [{ message: "Picked up" }] },
+    });
+    expect(h.tables.orders).toMatchObject({
+      status: "shipped",
+      tracking_number: "NV123",
+      shipping_tracking_status: "In Transit to Customer",
+    });
+    expect(h.tables.orders!.shipped_at).toBeTruthy();
+    expect(h.tables.orders!.delivered_at).toBeNull();
     expect(h.sendShippingEmail).toHaveBeenCalledTimes(1);
     expect(h.timeline.filter((t) => t.event_type === "order_shipped")).toHaveLength(1);
   });
 
-  it("records an in-transit status without changing the order's state", async () => {
+  it("does not ship on a status from before pickup", async () => {
+    await send(labelCreated);
+    for (const status of ["Info Received", "Pending", "Exception"]) {
+      const res = await send(tracking(status));
+      expect(await res.json()).toMatchObject({ shipped: false });
+    }
+    expect(h.tables.orders).toMatchObject({ status: "confirmed", shipped_at: null });
+    expect(h.sendShippingEmail).not.toHaveBeenCalled();
+  });
+
+  it("sends no separate in-transit email for the scan that shipped it", async () => {
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      tracking_email: { ...DEFAULT_SETTINGS.tracking_email, allowed_statuses: ["in_transit", "out_for_delivery"] },
+    };
+    h.tables.api_configs = { slug: "easyship", config: { settings } };
     await send(labelCreated);
     await send(tracking("In Transit to Customer"));
-    expect(h.tables.orders).toMatchObject({ status: "shipped", shipping_tracking_status: "In Transit to Customer" });
-    expect(h.tables.orders!.delivered_at).toBeNull();
+    expect(h.sendShippingEmail).toHaveBeenCalledTimes(1);
+    expect(h.sendTrackingEmail).not.toHaveBeenCalled();
+    await send(tracking("Out for Delivery"));
+    expect(h.sendTrackingEmail.mock.calls.map((c) => c[1])).toEqual(["out_for_delivery"]);
+  });
+
+  it("ships, then delivers, a parcel whose first scan is its delivery", async () => {
+    await send(labelCreated);
+    const res = await send(tracking("Delivered"));
+    expect(await res.json()).toMatchObject({ shipped: true, delivered: true });
+    expect(h.tables.orders).toMatchObject({ status: "delivered" });
+    expect(h.tables.orders!.shipped_at).toBeTruthy();
+    expect(h.timeline.map((t) => t.event_type)).toEqual(["order_shipped", "order_delivered"]);
   });
 
   it("marks the order delivered once, and never moves delivered_at", async () => {

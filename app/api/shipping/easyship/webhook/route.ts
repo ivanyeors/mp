@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { markOrderDeliveredByCourier } from "@/lib/ecommerce/fulfilment";
+import { markOrderDeliveredByCourier, markOrderShippedByCourier } from "@/lib/ecommerce/fulfilment";
 import { sendTrackingEmail } from "@/lib/email";
 import {
   EASYSHIP_SIGNATURE_HEADER,
   type EasyshipWebhookEvent,
   isDeliveredStatus,
   parseEasyshipEvent,
+  type TrackingStatusKey,
   trackingStatusKey,
   verifyEasyshipSignature,
 } from "@/lib/shipping/easyship-webhook";
@@ -16,7 +17,8 @@ import { readEasyshipConfig } from "@/lib/easyship/store";
 export const runtime = "nodejs";
 
 /**
- * Easyship → order updates. Register this URL in Easyship (Connect → API
+ * Easyship → order updates: the label is ready, the courier collected the parcel
+ * (the order ships), it was delivered. Register this URL in Easyship (Connect → API
  * Integrations → Webhooks) for `shipment.label.created`, `shipment.label.failed`,
  * `shipment.tracking.status.changed` and `shipment.tracking.checkpoints.created`.
  *
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
 
   const { data: order, error } = await admin
     .from("orders")
-    .select("id, status, shipped_at, delivered_at")
+    .select("id, status, shipped_at, delivered_at, tracking_number, tracking_url, shipping_courier")
     .eq("id", shipment.order_id)
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -58,14 +60,15 @@ export async function POST(req: Request) {
 
   try {
     switch (event.eventType) {
+      // The label is ready to print. It does not ship the order: the courier's first scan does.
       case "shipment.label.created": {
-        const { shipped } = await applyShipmentToOrder(admin, order, {
+        await applyShipmentToOrder(admin, order, {
           shipmentId: event.shipmentId,
           trackingNumber: event.trackingNumber,
           trackingUrl: event.trackingUrl,
           labelUrl: event.labelUrl,
         });
-        return NextResponse.json({ ok: true, shipped });
+        return NextResponse.json({ ok: true });
       }
       case "shipment.label.failed": {
         await admin.from("order_timeline").insert({
@@ -79,6 +82,19 @@ export async function POST(req: Request) {
       // Checkpoint events carry the status too, so both run the same update and email.
       case "shipment.tracking.checkpoints.created":
       case "shipment.tracking.status.changed": {
+        // The first scan that means the courier has the parcel ships the order
+        // and sends the shipping email (ADR 0044). Once: both events of one scan race.
+        const key = trackingStatusKey(event.status);
+        const shipped =
+          key != null && COLLECTED.has(key)
+            ? await markOrderShippedByCourier(admin, order.id as string, {
+                courierStatus: event.status!,
+                courierName: order.shipping_courier as string | null,
+                trackingNumber: event.trackingNumber ?? (order.tracking_number as string | null),
+                trackingUrl: event.trackingUrl ?? (order.tracking_url as string | null),
+                shipmentId: event.shipmentId,
+              })
+            : false;
         let delivered: boolean | undefined;
         if (isDeliveredStatus(event.status)) {
           delivered = await markOrderDeliveredByCourier(admin, order.id as string, event.status!);
@@ -88,8 +104,9 @@ export async function POST(req: Request) {
           if (event.trackingUrl) update.tracking_url = event.trackingUrl;
           await admin.from("orders").update(update).eq("id", order.id);
         }
-        await emailStatus(admin, order.id as string, event);
-        return NextResponse.json({ ok: true, ...(delivered === undefined ? {} : { delivered }) });
+        // The shipping email just said it is on its way; an "in transit" one would repeat it.
+        if (!(shipped && key === "in_transit")) await emailStatus(admin, order.id as string, event);
+        return NextResponse.json({ ok: true, shipped, ...(delivered === undefined ? {} : { delivered }) });
       }
       default:
         return NextResponse.json({ ok: true, ignored: event.eventType });
@@ -102,6 +119,9 @@ export async function POST(req: Request) {
 }
 
 const DETAIL_KEYS = new Set(["unsuccessful_delivery_attempt", "exception"]);
+
+/** Statuses only a parcel the courier has collected can reach. An exception can come before pickup. */
+const COLLECTED = new Set<TrackingStatusKey>(["in_transit", "out_for_delivery", "unsuccessful_delivery_attempt", "delivered"]);
 
 /** Emails the customer, in our template, for the statuses ticked under Couriers › Tracking. Never throws. */
 async function emailStatus(

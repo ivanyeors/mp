@@ -26,6 +26,7 @@ import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import { clawbackPointsForRefund } from "@/lib/points/earn";
 import { releasePoints } from "@/lib/points/spend";
 import { sendTelegram } from "@/lib/telegram/notify";
+import { scheduleAutoLabel, scheduleLabelCancel } from "@/lib/shipping/schedule-labels";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -573,6 +574,11 @@ export async function POST(req: Request) {
           console.error(`[stripe/webhook] Order emails failed for ${orderId}:`, err);
         }
 
+        // Step 8b: make the courier label Staff print for the box (ADR 0044),
+        // after the response so a slow courier never holds up the payment. An
+        // order with a label, or nothing to ship, is left alone.
+        scheduleAutoLabel(admin, orderId);
+
         // Step 9: a paid Re-adjustment (ADR 0024) — the money is in, so put the
         // visit on the calendar. Idempotent on the booking's calendar event, so a
         // replay writes nothing. Critical: money with no booked visit must retry.
@@ -773,6 +779,9 @@ export async function POST(req: Request) {
         // recompute customer lifetime stats so reporting and coupon limits stay
         // accurate. Partial refunds leave both untouched.
         if (nowFullyRefunded && !wasFullyRefunded) {
+          // Its label was made at payment (ADR 0044): cancel it while the parcel
+          // is still here, so the courier fee comes back. After the response.
+          scheduleLabelCancel(admin, order.id);
           // Void the partner's commission on the whole reversed sale (#77). The
           // RMA path voids per-item; this covers a full refund with NO RMA link
           // (e.g. a staff Stripe-dashboard refund), which would otherwise pay

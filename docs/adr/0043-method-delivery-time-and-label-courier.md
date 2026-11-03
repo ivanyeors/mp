@@ -42,9 +42,8 @@ method takes, and which courier the label is bought with.
 - A method that still has old "Estimated days" text (the seeded `standard` and `express` carry
   "5-7 days" and "1-3 days") now shows that text instead of the courier's window. Check each
   live method's Delivery time after this ships, and clear the ones that should follow the courier.
-- Labels are still bought by Staff, one order at a time. Buying a label marks the order shipped
-  and emails the customer, so buying one automatically at payment would announce a made-to-order
-  build as shipped before it is made. Automatic purchase needs its own decision: when it fires,
-  and "shipped" taken from the courier's pickup scan rather than the label.
+- Labels were still bought by Staff, one order at a time. Superseded by ADR 0044: the label is
+  made at payment, on the same courier this record preselects, and the order ships at the
+  courier's first scan.
 - The shipping email still states the courier's transit window from the label, after the parcel
   has left.

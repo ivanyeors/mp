@@ -72,6 +72,51 @@ export async function markOrderShipped(
 }
 
 /**
+ * Mark an order shipped from the courier's first scan of its parcel (ADR 0044):
+ * the label was made when the order was paid, and the parcel left only now. The
+ * order is claimed on `shipped_at`, so the status and checkpoint events Easyship
+ * sends for the same scan ship it, and email the customer, once. False when it
+ * was already shipped, or is no longer an order that ships.
+ */
+export async function markOrderShippedByCourier(
+  admin: SupabaseClient,
+  orderId: string,
+  input: {
+    courierStatus: string;
+    courierName?: string | null;
+    trackingNumber?: string | null;
+    trackingUrl?: string | null;
+    shipmentId: string;
+  },
+): Promise<boolean> {
+  const { data: claimed, error } = await admin
+    .from("orders")
+    .update({ shipped_at: new Date().toISOString() })
+    .eq("id", orderId)
+    .in("status", ["confirmed", "processing"])
+    .is("shipped_at", null)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!claimed?.length) return false;
+
+  const result = await markOrderShipped(admin, orderId, {
+    trackingNumber: input.trackingNumber,
+    trackingUrl: input.trackingUrl,
+    extra: { shipping_tracking_status: input.courierStatus },
+    message: `Collected by ${input.courierName ?? "the courier"}${
+      input.trackingNumber ? `. Tracking: ${input.trackingNumber}` : ""
+    }`,
+    metadata: { source: "easyship", easyship_shipment_id: input.shipmentId, courier_status: input.courierStatus },
+  });
+  if (!result.ok) {
+    // markOrderShipped fails only when its update did not land: let the retry claim it again.
+    await admin.from("orders").update({ shipped_at: null }).eq("id", orderId);
+    throw new Error(result.error);
+  }
+  return true;
+}
+
+/**
  * Mark an order delivered from a courier event. `delivered_at` anchors the RMA
  * return window and commission release, so it is written once and never moved:
  * an order already delivered (or cancelled/refunded) is left alone.

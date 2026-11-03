@@ -1986,9 +1986,9 @@
     "semantic_hash": ""
   },
   "app/api/results/[id]/accept/route.ts": {
-    "mtime": 1793431614.2436752,
-    "seen": 1793709532.3670805,
-    "ast_hash": "a568536a6f10e847f21fa91bce38a049",
+    "mtime": 1793719653.5985415,
+    "seen": 1793720214.7132475,
+    "ast_hash": "6bd4e72e24ded940b8f189b3306618d4",
     "semantic_hash": ""
   },
   "app/api/results/[id]/assign/route.ts": {
@@ -2346,9 +2346,9 @@
     "semantic_hash": ""
   },
   "app/api/stripe/webhook/route.ts": {
-    "mtime": 1793431614.2554522,
-    "seen": 1793709532.3674326,
-    "ast_hash": "a1a3e1ab08db0de6dc03c89c85cceade",
+    "mtime": 1793719657.8731732,
+    "seen": 1793720214.7135773,
+    "ast_hash": "73fafc102664f93a7aa8d572dab90c4c",
     "semantic_hash": ""
   },
   "app/api/telegram/webhook/route.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793708943.5342085,
-    "seen": 1793709532.3713682,
-    "ast_hash": "76ee64ba97f27a1e523581015453c920",
+    "mtime": 1793719903.9002686,
+    "seen": 1793720214.7179606,
+    "ast_hash": "eae48f26dc4f7ffd5bc0768afe0cf8ed",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9822,15 +9822,15 @@
     "semantic_hash": ""
   },
   "app/api/shipping/easyship/webhook/__tests__/route.test.ts": {
-    "mtime": 1793431614.2483523,
-    "seen": 1793709532.3672445,
-    "ast_hash": "71862955953b2550d711c61d4548e22c",
+    "mtime": 1793719804.058422,
+    "seen": 1793720214.71338,
+    "ast_hash": "7adb0bc5c82b53303d8833460e2ab5fd",
     "semantic_hash": ""
   },
   "app/api/shipping/easyship/webhook/route.ts": {
-    "mtime": 1793431614.2483523,
-    "seen": 1793709532.3672545,
-    "ast_hash": "322868ba7e506c537fe2f75bf2718c87",
+    "mtime": 1793719525.862884,
+    "seen": 1793720214.713382,
+    "ast_hash": "c31f9b6ed80aa4ad096c883407cc98a0",
     "semantic_hash": ""
   },
   "app/api/shop/orders/[id]/easyship/label/route.ts": {
@@ -9846,9 +9846,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/orders/[id]/easyship/route.ts": {
-    "mtime": 1793431614.2507372,
-    "seen": 1793709532.367324,
-    "ast_hash": "6c9237b049dacc978eeb0275847b0347",
+    "mtime": 1793719681.8728197,
+    "seen": 1793720214.71347,
+    "ast_hash": "5e28f136071cfec7d07b4079901f28a4",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/quote/route.ts": {
@@ -9870,9 +9870,9 @@
     "semantic_hash": ""
   },
   "lib/ecommerce/fulfilment.ts": {
-    "mtime": 1793431614.5654294,
-    "seen": 1793709532.368422,
-    "ast_hash": "3e633052fe59a939a2869e3f764f268b",
+    "mtime": 1793719507.0291643,
+    "seen": 1793720214.7148557,
+    "ast_hash": "028e29ddb03f58693817fb7b5e67ac38",
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/easyship.test.ts": {
@@ -9882,9 +9882,9 @@
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/order-shipment.test.ts": {
-    "mtime": 1793708777.271384,
-    "seen": 1793709532.3694818,
-    "ast_hash": "8a28e1a9c3d7f471fed1d76d5b54d0f1",
+    "mtime": 1793719787.7853854,
+    "seen": 1793720214.7158172,
+    "ast_hash": "30d13049d467a934878995c43120e14f",
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/parcels.test.ts": {
@@ -9912,9 +9912,9 @@
     "semantic_hash": ""
   },
   "lib/shipping/easyship.ts": {
-    "mtime": 1793431614.5981522,
-    "seen": 1793709532.3695033,
-    "ast_hash": "73691f869d7dd64d676dd69df0cd7348",
+    "mtime": 1793719634.7011719,
+    "seen": 1793720214.715833,
+    "ast_hash": "c8ca478cfd9776951498af563c9930b3",
     "semantic_hash": ""
   },
   "lib/shipping/lines.ts": {
@@ -9930,9 +9930,9 @@
     "semantic_hash": ""
   },
   "lib/shipping/order-shipment.ts": {
-    "mtime": 1793708777.2715342,
-    "seen": 1793709532.369508,
-    "ast_hash": "02ba00a5e8b54545860b43fa20edd320",
+    "mtime": 1793719675.2506754,
+    "seen": 1793720214.7158358,
+    "ast_hash": "bf5c29a7a33b6b5d7a096a637fbcbcc3",
     "semantic_hash": ""
   },
   "lib/shipping/parcels.ts": {
@@ -9978,15 +9978,15 @@
     "semantic_hash": ""
   },
   "docs/adr/0020-easyship-live-shipping-rates.md": {
-    "mtime": 1793431614.2860296,
-    "seen": 1793709532.3714254,
-    "ast_hash": "53b8e810671acf0ecd38534250ef2ad6",
+    "mtime": 1793719901.5473807,
+    "seen": 1793720214.7180254,
+    "ast_hash": "dd6df85f60820e39448f288f9b9b6216",
     "semantic_hash": ""
   },
   "docs/easyship-setup.md": {
-    "mtime": 1793708973.802709,
-    "seen": 1793709532.3714743,
-    "ast_hash": "ca236145b19b37fe2660be13129acd66",
+    "mtime": 1793719901.5478866,
+    "seen": 1793720214.7180843,
+    "ast_hash": "88b04207745b4910bc62a576cb8c795e",
     "semantic_hash": ""
   },
   "app/api/cron/google-reviews-sync/route.ts": {
@@ -14166,9 +14166,9 @@
     "semantic_hash": ""
   },
   "docs/data-flows/settings.md": {
-    "mtime": 1793431614.2893996,
-    "seen": 1793709532.3714728,
-    "ast_hash": "35cce7e9bb007eef5594ffe681057ce4",
+    "mtime": 1793719907.5421584,
+    "seen": 1793720214.718083,
+    "ast_hash": "ca47ec175d051859859b3e9e0769eee6",
     "semantic_hash": ""
   },
   "scripts/graph-hint": {
@@ -15180,9 +15180,9 @@
     "semantic_hash": ""
   },
   "app/api/stripe/webhook/__tests__/confirm-once.test.ts": {
-    "mtime": 1793431614.2553859,
-    "seen": 1793709532.3674226,
-    "ast_hash": "43c005e905b5a347dfb4ffc6183d53b2",
+    "mtime": 1793719852.6697345,
+    "seen": 1793720214.7135682,
+    "ast_hash": "45959874c1a07d678626b023b41f6712",
     "semantic_hash": ""
   },
   "lib/ecommerce/__tests__/coupon-open-checkouts.test.ts": {
@@ -16746,9 +16746,9 @@
     "semantic_hash": ""
   },
   "docs/adr/README.md": {
-    "mtime": 1793708937.3646934,
-    "seen": 1793709532.371462,
-    "ast_hash": "abfc83901a7c69f82c39189e94d88a60",
+    "mtime": 1793719885.0373514,
+    "seen": 1793720214.7180696,
+    "ast_hash": "d33dc67554464431e56a610a4121648b",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/shop.mjs": {
@@ -17802,9 +17802,33 @@
     "semantic_hash": ""
   },
   "docs/adr/0043-method-delivery-time-and-label-courier.md": {
-    "mtime": 1793708979.3405185,
-    "seen": 1793709532.3714607,
-    "ast_hash": "19119dbc48a449f6f815de20f170e6f6",
+    "mtime": 1793719885.0397656,
+    "seen": 1793720214.7180655,
+    "ast_hash": "d7df6c6ac4d2e8df1b1832ccd450d4a7",
+    "semantic_hash": ""
+  },
+  "lib/shipping/__tests__/auto-label.test.ts": {
+    "mtime": 1793719837.216239,
+    "seen": 1793720214.7158065,
+    "ast_hash": "1abb322f364249bafe40605105828429",
+    "semantic_hash": ""
+  },
+  "lib/shipping/auto-label.ts": {
+    "mtime": 1793719594.9531693,
+    "seen": 1793720214.7158256,
+    "ast_hash": "246e325846b98b12c31e792336a9901f",
+    "semantic_hash": ""
+  },
+  "lib/shipping/schedule-labels.ts": {
+    "mtime": 1793719653.590018,
+    "seen": 1793720214.71584,
+    "ast_hash": "7ab879ecdf91a179a2a02328cef0e9f8",
+    "semantic_hash": ""
+  },
+  "docs/adr/0044-labels-made-at-payment-shipped-at-pickup.md": {
+    "mtime": 1793719885.0211866,
+    "seen": 1793720214.7180672,
+    "ast_hash": "8fc5bfcaa512d989236d3f2536e94f1d",
     "semantic_hash": ""
   }
 }

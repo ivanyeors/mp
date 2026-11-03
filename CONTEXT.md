@@ -657,7 +657,7 @@ _Avoid_: retrying a refused reply from Telegram — the platform will refuse it 
 **Echo**:
 A message our own account sent, reported back by the platform. The echo of a reply sent from Telegram is matched and ignored; one sent from Meta Business Suite, the Instagram app or TikTok is recorded and noted under the card as `↪️ Answered in …`. TikTok's automatic messages (welcome message, suggested questions, keyword replies) are not echoes a person sent and are dropped.
 
-## Shipping (ADR 0020, ADR 0022, ADR 0031, ADR 0043)
+## Shipping (ADR 0020, ADR 0022, ADR 0031, ADR 0043, ADR 0044)
 
 **Shipping method**:
 A row in `shipping_methods` a shopper picks at checkout (e.g. Standard, Express), scoped to `countries`. Its **Rate source** decides how it is priced; `free_above` and free-shipping coupons apply to either source. Edited in Settings → Shipping.
@@ -705,11 +705,15 @@ Which **Courier account** box an item type (pillow, bolster, accessory) ships in
 _Avoid_: "package profile"
 
 **Courier service**:
-One Easyship service (e.g. "Ninja Van Standard"), identified by its Easyship id. The one a shopper paid for at checkout is recorded with the **Order shipment**. An **Order** made from a **Result** records none, so its label opens on the one its method's strategy picks from today's rates (ADR 0043). Staff may choose another when buying the label.
+One Easyship service (e.g. "Ninja Van Standard"), identified by its Easyship id. The one a shopper paid for at checkout is recorded with the **Order shipment**. An **Order** made from a **Result** records none, so its label is made with the one its method's strategy picks from today's rates (ADR 0043, ADR 0044). Staff may choose another when they create a label by hand.
 
 **Order shipment**:
 An **Order**'s Easyship shipment in `order_shipments` (one per order): the **Courier service** chosen at checkout and what it was quoted at, the label, and what the label cost. Server-only — what a courier costs us is never on `orders`, which customers read. The courier's name and its latest tracking status are on `orders`, because customers see those.
 _Avoid_: putting carrier cost or label URLs on `orders`
+
+**Label**:
+The courier's shipping label for an **Order**'s box: a PDF with the courier's barcode and tracking number, which Staff print and stick on the parcel. The courier issues it only when its fee is paid, so making a label charges the Easyship account. Made automatically when the Order is paid, on the customer's **Courier service** (ADR 0044); Staff **Create label** by hand only when that did not happen, and the Order's timeline says why. Making it does not ship the Order: the courier's first scan does. A full refund cancels it while the parcel is still here.
+_Avoid_: "buy a label" in Staff-facing copy (Staff create and print labels; the fee is the courier account's); treating a label as "shipped"
 
 ## Relationships
 

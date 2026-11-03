@@ -44,13 +44,15 @@ Southeast Asian couriers in one integration, and landed-cost quotes for cross-bo
   so the courier service, its quoted cost, the label and its cost live in `order_shipments`
   (server-only, one row per order). `orders` gains only `shipping_courier` and
   `shipping_tracking_status`, which the customer sees on their order page.
-- **One label per order, bought by Staff.** "Ship with Easyship" fetches today's rates for the
+- **One label per order, bought by Staff.** (ADR 0044: the label is now made at payment, and
+  Staff create one only when that did not happen.) "Ship with Easyship" fetches today's rates for the
   order's parcels with the shopper's courier preselected. The purchase claims the order
   (`order_shipments.easyship_shipment_id = 'pending:<uuid>'` under a guarded update) before calling
   Easyship and releases the claim if Easyship refuses, so a double click cannot buy two labels.
 - **Shipped and delivered come from the courier.** `markOrderShipped` is now the one path for both
   manual fulfilment and Easyship: tracking, timeline, the (idempotent) shipping email. It runs the
-  first time a tracking number exists — at purchase, or from `shipment.label.created`. A
+  first time a tracking number exists — at purchase, or from `shipment.label.created`. (ADR 0044:
+  it now runs at the courier's first scan, never at the label.) A
   `shipment.tracking.status.changed` of "Delivered" sets `delivered_at` once, and never moves it.
   The webhook verifies Easyship's HS256 JWT signature and accepts nothing without
   `EASYSHIP_WEBHOOK_SECRET`.

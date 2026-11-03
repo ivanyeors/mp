@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { markOrderShipped } from "@/lib/ecommerce/fulfilment";
 import type { OrderShipment, ShippingMethod } from "@/lib/types/ecommerce";
 import {
+  cancelShipment,
   createShipment,
   easyshipConfig,
   EasyshipError,
@@ -202,17 +202,17 @@ export async function quoteOrderShipment(
 
 /**
  * Write what Easyship knows about a shipment onto its order. The label and its
- * cost go to `order_shipments`; the courier name, and — the first time a tracking
- * number exists — tracking, "shipped", the timeline event and the shipping email
- * go to the order. That first time is at purchase for a synchronous label, or
- * later from the label webhook.
+ * cost go to `order_shipments`; the courier name and tracking go to the order.
+ * A label does not ship the order (ADR 0044): the parcel is still on our shelf,
+ * often not yet made. "Shipped", its timeline event and the shipping email come
+ * from the courier's first scan, in `markOrderShippedByCourier`.
  */
 export async function applyShipmentToOrder(
   admin: SupabaseClient,
-  order: Pick<OrderForShipping, "id" | "shipped_at" | "status">,
+  order: Pick<OrderForShipping, "id">,
   shipment: Pick<ParsedShipment, "shipmentId" | "trackingNumber" | "trackingUrl" | "labelUrl"> &
     Partial<Pick<ParsedShipment, "courierName" | "courierServiceId" | "totalCharge" | "labelState" | "minDays" | "maxDays">>,
-): Promise<{ shipped: boolean }> {
+): Promise<void> {
   const shipmentRow: Record<string, unknown> = {
     order_id: order.id,
     easyship_shipment_id: shipment.shipmentId,
@@ -233,42 +233,33 @@ export async function applyShipmentToOrder(
     extra.shipping_max_days = shipment.maxDays ?? shipment.minDays;
   }
 
-  const alreadyShipped = order.shipped_at != null || !SHIPPABLE_STATUSES.has(order.status);
-  if (shipment.trackingNumber && !alreadyShipped) {
-    const result = await markOrderShipped(admin, order.id, {
-      trackingNumber: shipment.trackingNumber,
-      trackingUrl: shipment.trackingUrl,
-      extra,
-      message: `Shipped with ${shipment.courierName ?? "Easyship"}. Tracking: ${shipment.trackingNumber}`,
-      metadata: { source: "easyship", easyship_shipment_id: shipment.shipmentId },
-    });
-    if (!result.ok) throw new Error(result.error);
-    return { shipped: true };
-  }
-
+  // The customer sees tracking only once the order is shipped (account pages
+  // check the status), so it can be stored as soon as the label has it.
   if (shipment.trackingNumber) extra.tracking_number = shipment.trackingNumber;
   if (shipment.trackingUrl) extra.tracking_url = shipment.trackingUrl;
   if (Object.keys(extra).length > 0) {
     const { error } = await admin.from("orders").update(extra).eq("id", order.id);
     if (error) throw new Error(error.message);
   }
-  return { shipped: false };
 }
 
 export type BuyLabelResult =
-  | { ok: true; shipment: ParsedShipment; shipped: boolean }
+  | { ok: true; shipment: ParsedShipment }
   | { ok: false; status: number; error: string };
 
 /**
  * Create the Easyship shipment for an order and buy its label with the chosen
- * courier. One label per order: the order is claimed before Easyship is called,
- * so a double click or two Staff at once cannot buy two.
+ * courier: the PDF Staff print for the box. The courier's fee is charged to the
+ * Easyship account. One label per order: the order is claimed before Easyship is
+ * called, so a double click, two Staff at once, or Staff racing the automatic
+ * label cannot buy two.
  */
 export async function buyOrderLabel(
   admin: SupabaseClient,
   order: OrderForShipping,
   courierServiceId: string,
   config: EasyshipConfig | null = easyshipConfig(),
+  opts: { auto?: boolean } = {},
 ): Promise<BuyLabelResult> {
   if (!config) return { ok: false, status: 503, error: "Easyship is not connected (EASYSHIP_API_TOKEN is not set)" };
   if (!SHIPPABLE_STATUSES.has(order.status)) {
@@ -347,25 +338,82 @@ export async function buyOrderLabel(
     return { ok: false, status: 502, error: "Easyship did not return a shipment" };
   }
 
+  const courier = shipment.courierName ?? courierServiceId;
+  const ready = shipment.labelUrl || shipment.labelBase64.length > 0 || shipment.trackingNumber;
   await admin.from("order_timeline").insert({
     order_id: order.id,
     event_type: "shipment_created",
-    message: shipment.trackingNumber
-      ? `Easyship label bought (${shipment.courierName ?? courierServiceId}).`
-      : `Easyship shipment ${shipment.shipmentId} created; the label is being generated.`,
+    message: ready
+      ? `${opts.auto ? "Label made automatically" : "Label made"} with ${courier}. Print it from this order.`
+      : `${opts.auto ? "Label requested automatically" : "Label requested"} with ${courier}; Easyship is still making it.`,
     metadata: {
       easyship_shipment_id: shipment.shipmentId,
       courier_service_id: shipment.courierServiceId ?? courierServiceId,
       label_state: shipment.labelState,
       carrier_cost: shipment.totalCharge,
+      ...(opts.auto ? { source: "auto" } : {}),
     },
   });
 
   // After the "created" event, so the timeline reads in the order things happened.
-  const { shipped } = await applyShipmentToOrder(admin, order, {
+  await applyShipmentToOrder(admin, order, {
     ...shipment,
     courierServiceId: shipment.courierServiceId ?? courierServiceId,
   });
 
-  return { ok: true, shipment, shipped };
+  return { ok: true, shipment };
+}
+
+/** `order_shipments.label_state` once the label is cancelled; the shipment id is cleared with it. */
+export const VOIDED_LABEL_STATE = "voided";
+
+/**
+ * Cancel a refunded order's label in Easyship, so the courier fee comes back
+ * (ADR 0044: labels are made at payment, so a refunded order can hold one). Only
+ * while the courier has not collected the parcel. Never throws: what happened, or
+ * what Staff must do in Easyship, goes on the order's timeline.
+ */
+export async function cancelOrderLabel(
+  admin: SupabaseClient,
+  orderId: string,
+  config: EasyshipConfig | null = easyshipConfig(),
+): Promise<{ cancelled: boolean }> {
+  const shipment = await loadOrderShipment(admin, orderId).catch(() => null);
+  const shipmentId = shipment?.easyship_shipment_id;
+  if (!shipmentId || isPendingShipmentId(shipmentId)) return { cancelled: false };
+  const { data: order } = await admin.from("orders").select("shipped_at").eq("id", orderId).maybeSingle();
+  // With the courier already: there is no label left to void.
+  if (order?.shipped_at) return { cancelled: false };
+
+  const note = (event_type: string, message: string) =>
+    admin.from("order_timeline").insert({
+      order_id: orderId,
+      event_type,
+      message,
+      metadata: { easyship_shipment_id: shipmentId, source: "easyship" },
+    });
+
+  if (!config) {
+    await note("label_not_cancelled", `The order was refunded but still has a label. Cancel shipment ${shipmentId} in Easyship to get the courier fee back.`);
+    return { cancelled: false };
+  }
+  try {
+    await cancelShipment(config, shipmentId);
+  } catch (err) {
+    const why = err instanceof Error ? err.message : "Easyship request failed";
+    await note(
+      "label_not_cancelled",
+      `The order was refunded, but its label could not be cancelled (${why}). Cancel shipment ${shipmentId} in Easyship to get the courier fee back, and do not send the parcel.`,
+    );
+    return { cancelled: false };
+  }
+  // Forget the void label, so it cannot be printed and an order reinstated later
+  // (a dispute won) can get a new one. The timeline keeps the shipment id.
+  await admin
+    .from("order_shipments")
+    .update({ easyship_shipment_id: null, label_url: null, carrier_cost: null, label_state: VOIDED_LABEL_STATE })
+    .eq("order_id", orderId)
+    .eq("easyship_shipment_id", shipmentId);
+  await note("label_cancelled", "Label cancelled in Easyship because the order was refunded. Easyship refunds the courier fee to the account.");
+  return { cancelled: true };
 }

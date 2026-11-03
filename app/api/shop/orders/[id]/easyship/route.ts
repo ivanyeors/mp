@@ -8,6 +8,7 @@ import {
   isPendingShipmentId,
   loadOrderForShipping,
   loadOrderShipment,
+  VOIDED_LABEL_STATE,
 } from "@/lib/shipping/order-shipment";
 
 export const runtime = "nodejs";
@@ -28,6 +29,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         quoted_carrier_cost: shipment.quoted_carrier_cost,
         carrier_cost: shipment.carrier_cost,
         label_state: shipment.label_state,
+        /** The label was cancelled after a refund (its shipment is cleared). */
+        label_voided: shipment.label_state === VOIDED_LABEL_STATE,
         /** True once a real shipment exists (not a purchase still in flight). */
         has_label: Boolean(shipment.easyship_shipment_id) && !isPendingShipmentId(shipment.easyship_shipment_id),
         purchase_pending: isPendingShipmentId(shipment.easyship_shipment_id),
@@ -48,7 +51,10 @@ const BuyLabelSchema = z.object({
   courier_service_id: z.string().trim().min(1).max(200),
 });
 
-/** Create the Easyship shipment for this order and buy its label with the chosen courier. */
+/**
+ * Make this order's label by hand, with the chosen courier: when the automatic
+ * one was not made (ADR 0044). The courier's fee is charged to the Easyship account.
+ */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;
@@ -66,9 +72,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const result = await buyOrderLabel(admin, order, parsed.data.courier_service_id);
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    const s = result.shipment;
     return NextResponse.json({
       ok: true,
-      shipped: result.shipped,
+      /** The PDF can be printed now; otherwise Easyship is still making it. */
+      label_ready: Boolean(s.labelUrl || s.labelBase64.length > 0 || s.trackingNumber),
       shipment: {
         id: result.shipment.shipmentId,
         label_state: result.shipment.labelState,
