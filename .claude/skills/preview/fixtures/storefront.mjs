@@ -1,9 +1,11 @@
 // What the public shop (/shop, /shop/<slug>, the cart) needs to render: two
 // more Listed products beside `analytics.mjs`'s "Accessories" (one with a
 // single Variant, one with three so its card says "From"), stock for every
-// Variant, SGD exchange rates for the currency picker, one flat Singapore
-// shipping method with a free-shipping threshold, and a discount code
-// (SAMPLE10) for the cart. Every price is made up.
+// Variant, SGD exchange rates for the currency picker, two Singapore shipping
+// methods (a flat Standard with a free-shipping threshold and Staff's own
+// delivery time, and a live Express pinned to one courier, which the preview
+// cannot quote without a courier token), and a discount code (SAMPLE10) for
+// the cart. Every price is made up.
 //
 // Product pages: /shop/slope-mattress and /shop/cervical-neck-support. Their
 // ids are UUIDs because the reviews and shipping-quote endpoints refuse any other.
@@ -111,7 +113,7 @@ export default function storefront({ now }) {
         {
           id: "ship-sg-standard",
           slug: "standard-sg",
-          content: { "en-US": { name: "Standard delivery", description: "", estimated_days: "2-4" } },
+          content: { "en-US": { name: "Standard delivery", description: "", estimated_days: "About 2 weeks" } },
           base_rate: 8,
           free_above: 150,
           currency: "SGD",
@@ -119,6 +121,25 @@ export default function storefront({ now }) {
           is_active: true,
           position: 0,
           rate_source: "flat",
+          created_at: created(30),
+          updated_at: created(30),
+        },
+        {
+          id: "ship-sg-express",
+          slug: "express-sg",
+          content: { "en-US": { name: "Express delivery", description: "", estimated_days: "" } },
+          base_rate: 0,
+          free_above: null,
+          currency: "SGD",
+          countries: ["SG"],
+          is_active: true,
+          position: 1,
+          rate_source: "easyship",
+          easyship_strategy: "courier",
+          easyship_courier_service_id: "sample-courier-express",
+          markup_percent: 10,
+          markup_fixed: 0,
+          rate_rounding: 0.5,
           created_at: created(30),
           updated_at: created(30),
         },

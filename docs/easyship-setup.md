@@ -49,7 +49,7 @@ confirm delivery.
 4. **Connection → Customs & quotes** — DDU (receiver pays duties) is the default; HS code 940490
    covers pillows; handling days are added to courier transit times shown to shoppers.
 5. **Save & sync**, then use **Connection → Test a quote** with a Singapore and a Malaysian postal
-   code. Copy a courier service id if you want to pin one to a method.
+   code. It lists every courier that serves the address, with its service id.
 
 ## 6. Turn methods live
 
@@ -58,11 +58,18 @@ confirm delivery.
    the customisation flows both quote it for the shopper's address (ADR 0032).
 2. A live method with no quote is **hidden** — there is no fallback price (ADR 0022). Keep one
    active flat method if checkout must always offer an option; the Shipping page warns when there is none.
-3. Check the storefront: the checkout shows a live rate with courier and delivery time once a postal
+3. **Let shoppers choose the courier** with one live method per courier: set **Courier → A specific
+   courier**, press **Find couriers**, and pick one (J&T Express for Standard, a faster one for
+   Express). Each method shows "via" its courier at that courier's price, so choosing another
+   method changes the price and the total, and the label opens on that courier (ADR 0043).
+4. **Delivery time** is what shoppers are told the method takes ("About 2 weeks"). It replaces
+   the courier's transit estimate on checkout, the configurators and the delivery checker; leave
+   it empty on a live method to show the courier's.
+5. Check the storefront: the checkout shows a live rate with courier and delivery time once a postal
    code is entered; the cart, the product page and the shipping policy page have a delivery
    checker; a **Delivery Estimator** section can be added to the landing page from the page
    builder (Settings → Page builder → Add section).
-4. The customisation flows (Mpillow, Mbolster, a Paired build) ask where it ships, show each
+6. The customisation flows (Mpillow, Mbolster, a Paired build) ask where it ships, show each
    method at its live price, and add it to the total. The hold stores the quoted rate on the
    Result, so assign and accept charge the same figure (ADR 0032). Apply
    `20261023160000_result_shipping_rate.sql` before deploying that code.
@@ -102,7 +109,10 @@ Coverage, then remove those countries from the method.
 ## 8. Buy a label (sandbox first)
 
 On a paid order in **Settings → Orders**, use **Buy courier label**. The customer's courier is
-preselected with today's price. **Buy label** creates the shipment; once tracking exists the order is
+preselected with today's price: the one paid for at checkout, or for an order from a
+customisation, the one its method picks today. If the paid-for courier is no longer offered for
+the parcel, the dialog says so. Labels are bought one order at a time; nothing buys them
+automatically (ADR 0043). **Buy label** creates the shipment; once tracking exists the order is
 marked shipped and the customer emailed. Delivery events from the courier mark it delivered.
 
 Do one full sandbox order end to end — rate at checkout, label, webhook — before swapping in the

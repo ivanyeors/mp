@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { markOrderShipped } from "@/lib/ecommerce/fulfilment";
-import type { OrderShipment } from "@/lib/types/ecommerce";
+import type { OrderShipment, ShippingMethod } from "@/lib/types/ecommerce";
 import {
   createShipment,
   easyshipConfig,
@@ -14,12 +14,13 @@ import { loadOrderShippableLines } from "@/lib/shipping/lines";
 import { buildParcels } from "@/lib/shipping/parcels";
 import { isSelfCollectAddress } from "@/lib/shipping/self-collect";
 import { fetchCourierRates } from "@/lib/shipping/quote";
+import { pickRate } from "@/lib/shipping/rates";
 import { readShippingSettings } from "@/lib/shipping/settings";
 import { readEasyshipConfig, readSenderAddress, readTypeBoxes } from "@/lib/easyship/store";
-import type { RatesResult, ShippingDestination } from "@/lib/shipping/types";
+import type { CourierRate, RatesResult, ShippingDestination } from "@/lib/shipping/types";
 
 const ORDER_SHIPPING_COLUMNS =
-  "id, order_number, email, phone, status, currency, shipping_address, shipping_courier, shipped_at";
+  "id, order_number, email, phone, status, currency, shipping_address, shipping_method_id, shipping_courier, shipped_at";
 
 export type OrderForShipping = {
   id: string;
@@ -38,6 +39,8 @@ export type OrderForShipping = {
     country?: string;
     phone?: string | null;
   } | null;
+  /** Set by shop checkout. A customisation's Order names its method on its Result instead. */
+  shipping_method_id?: string | null;
   shipping_courier: string | null;
   shipped_at: string | null;
 };
@@ -79,6 +82,85 @@ export function orderDestination(order: OrderForShipping): ShippingDestination |
     line1: a.line1 ?? null,
     line2: a.line2 ?? null,
   };
+}
+
+/**
+ * The Shipping method the customer chose for an order: shop checkout stores it on
+ * the order; an order made from a Result keeps it on the Result, by slug (a Paired
+ * build's anchor carries it). Null when neither names one that still exists.
+ */
+export async function loadOrderShippingMethod(
+  admin: SupabaseClient,
+  order: Pick<OrderForShipping, "id" | "shipping_method_id">,
+): Promise<ShippingMethod | null> {
+  if (order.shipping_method_id) {
+    const { data, error } = await admin
+      .from("shipping_methods")
+      .select("*")
+      .eq("id", order.shipping_method_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return (data as ShippingMethod | null) ?? null;
+  }
+  const { data: results, error: resultsError } = await admin
+    .from("mp_config_responses")
+    .select("id, paired_build_id, shipping_method")
+    .eq("order_id", order.id);
+  if (resultsError) throw new Error(resultsError.message);
+  const rows = ((results ?? []) as Array<{ id: string; paired_build_id: string | null; shipping_method: string | null }>)
+    .filter((r) => r.shipping_method);
+  const chosen = rows.find((r) => !r.paired_build_id || r.paired_build_id === r.id) ?? rows[0];
+  if (!chosen) return null;
+  const { data, error } = await admin
+    .from("shipping_methods")
+    .select("*")
+    .eq("slug", chosen.shipping_method!)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as ShippingMethod | null) ?? null;
+}
+
+export type CourierPreselection = {
+  /** The courier the label dialog opens on; null only when there are no rates. */
+  courierServiceId: string | null;
+  /**
+   * Why: `checkout` is the courier the customer paid for at checkout; `method`
+   * is the one their Shipping method's strategy picks from today's rates (an
+   * order made from a Result records no courier); `cheapest` is neither.
+   */
+  by: "checkout" | "method" | "cheapest" | null;
+  /** The customer paid for a courier that today's rates for this order no longer offer. */
+  paidForMissing: boolean;
+};
+
+/**
+ * Which courier to buy an order's label with, so the label follows the
+ * customer's choice: the courier they paid for, else the courier their method
+ * picks today, else the cheapest. Pure; `rates` are today's rates for the order.
+ */
+export function preselectCourier(
+  rates: CourierRate[],
+  paidFor: string | null | undefined,
+  method: Pick<ShippingMethod, "rate_source" | "currency" | "easyship_strategy" | "easyship_courier_service_id"> | null,
+): CourierPreselection {
+  if (rates.length === 0) return { courierServiceId: null, by: null, paidForMissing: Boolean(paidFor) };
+  if (paidFor && rates.some((r) => r.courier_service_id === paidFor)) {
+    return { courierServiceId: paidFor, by: "checkout", paidForMissing: false };
+  }
+  // A courier the customer paid for that is gone today is not swapped silently:
+  // the dialog says so and Staff choose. The method's pick is still the best guess.
+  if (method && (method.rate_source ?? "flat") === "easyship") {
+    const currency = method.currency?.toUpperCase();
+    const inCurrency = rates.filter((r) => r.currency === currency);
+    const picked = pickRate(
+      inCurrency.length > 0 ? inCurrency : rates,
+      method.easyship_strategy ?? "cheapest",
+      method.easyship_courier_service_id,
+    );
+    if (picked) return { courierServiceId: picked.courier_service_id, by: "method", paidForMissing: Boolean(paidFor) };
+  }
+  const cheapest = pickRate(rates, "cheapest");
+  return { courierServiceId: cheapest?.courier_service_id ?? null, by: "cheapest", paidForMissing: Boolean(paidFor) };
 }
 
 export type OrderRatesResult =

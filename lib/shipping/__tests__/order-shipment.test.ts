@@ -47,7 +47,7 @@ vi.mock("@/lib/shipping/lines", () => ({
   ],
 }));
 
-const { buyOrderLabel } = await import("@/lib/shipping/order-shipment");
+const { buyOrderLabel, loadOrderShippingMethod, preselectCourier } = await import("@/lib/shipping/order-shipment");
 
 function fakeAdmin() {
   return {
@@ -199,5 +199,119 @@ describe("buyOrderLabel", () => {
 
   it("does not try without an Easyship token", async () => {
     expect(await buyOrderLabel(fakeAdmin(), order, "cs_ninja", null)).toMatchObject({ ok: false, status: 503 });
+  });
+});
+
+const rate = (id: string, total: number, max: number, currency = "SGD") => ({
+  courier_service_id: id,
+  courier_name: id,
+  umbrella_name: null,
+  total_charge: total,
+  currency,
+  min_days: 1,
+  max_days: max,
+  cost_rank: null,
+  delivery_time_rank: null,
+  value_for_money_rank: null,
+});
+
+// J&T is the cheapest and slowest; DHL the dearest and fastest.
+const today = [rate("cs_jnt", 5.2, 14), rate("cs_ninja", 6.4, 4), rate("cs_dhl", 21, 2)];
+const live = (over: Record<string, unknown> = {}) => ({
+  rate_source: "easyship" as const,
+  currency: "SGD",
+  easyship_strategy: "cheapest" as const,
+  easyship_courier_service_id: null,
+  ...over,
+});
+
+describe("preselectCourier: the label follows the customer's choice", () => {
+  it("opens on the courier the customer paid for at checkout", () => {
+    expect(preselectCourier(today, "cs_ninja", live())).toEqual({
+      courierServiceId: "cs_ninja",
+      by: "checkout",
+      paidForMissing: false,
+    });
+  });
+
+  it("opens an order made from a Result on the courier its method picks today", () => {
+    expect(preselectCourier(today, null, live({ easyship_strategy: "fastest" }))).toMatchObject({
+      courierServiceId: "cs_dhl",
+      by: "method",
+    });
+    expect(
+      preselectCourier(today, null, live({ easyship_strategy: "courier", easyship_courier_service_id: "cs_ninja" })),
+    ).toMatchObject({ courierServiceId: "cs_ninja", by: "method" });
+  });
+
+  it("says when the courier the customer paid for is not offered today, rather than swapping it silently", () => {
+    expect(preselectCourier(today, "cs_gone", live({ easyship_strategy: "fastest" }))).toEqual({
+      courierServiceId: "cs_dhl",
+      by: "method",
+      paidForMissing: true,
+    });
+  });
+
+  it("falls back to the cheapest for a flat method, a pinned courier that is gone, or no method", () => {
+    expect(preselectCourier(today, null, { ...live(), rate_source: "flat" })).toMatchObject({
+      courierServiceId: "cs_jnt",
+      by: "cheapest",
+    });
+    expect(
+      preselectCourier(today, null, live({ easyship_strategy: "courier", easyship_courier_service_id: "cs_gone" })),
+    ).toMatchObject({ courierServiceId: "cs_jnt", by: "cheapest" });
+    expect(preselectCourier(today, null, null)).toMatchObject({ courierServiceId: "cs_jnt", by: "cheapest" });
+  });
+
+  it("has nothing to preselect without rates", () => {
+    expect(preselectCourier([], "cs_ninja", live())).toEqual({ courierServiceId: null, by: null, paidForMissing: true });
+  });
+});
+
+describe("loadOrderShippingMethod", () => {
+  /** Rows per table, filtered by `eq`; enough for the two lookups. */
+  function rowsAdmin(tables: Record<string, Array<Record<string, unknown>>>) {
+    return {
+      from(table: string) {
+        const filters: Array<[string, unknown]> = [];
+        const rows = () => (tables[table] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v));
+        const b: Record<string, unknown> = {
+          select: () => b,
+          eq: (c: string, v: unknown) => (filters.push([c, v]), b),
+          maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
+          then: (resolve: (v: unknown) => unknown) => resolve({ data: rows(), error: null }),
+        };
+        return b;
+      },
+    } as unknown as SupabaseClient;
+  }
+  const methods = [
+    { id: "m-standard", slug: "standard" },
+    { id: "m-express", slug: "express" },
+  ];
+
+  it("reads a shop order's method from the order", async () => {
+    const admin = rowsAdmin({ shipping_methods: methods });
+    expect(await loadOrderShippingMethod(admin, { id: "o1", shipping_method_id: "m-express" })).toMatchObject({
+      slug: "express",
+    });
+  });
+
+  it("reads a customisation order's method from its Result, the anchor's for a Paired build", async () => {
+    const admin = rowsAdmin({
+      shipping_methods: methods,
+      mp_config_responses: [
+        { id: "companion", paired_build_id: "anchor", shipping_method: "standard", order_id: "o2" },
+        { id: "anchor", paired_build_id: "anchor", shipping_method: "express", order_id: "o2" },
+      ],
+    });
+    expect(await loadOrderShippingMethod(admin, { id: "o2", shipping_method_id: null })).toMatchObject({
+      slug: "express",
+    });
+  });
+
+  it("is null when nothing names a method", async () => {
+    const admin = rowsAdmin({ shipping_methods: methods, mp_config_responses: [] });
+    expect(await loadOrderShippingMethod(admin, { id: "o3", shipping_method_id: null })).toBeNull();
   });
 });

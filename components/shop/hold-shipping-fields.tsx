@@ -13,6 +13,7 @@ import { formatDeliveryWindow, isPostalReady, useShippingQuote } from "@/lib/sho
 import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
 import { findCountry, usesPostalCode } from "@/lib/shipping/countries";
 import { needsState } from "@/lib/shipping/state-countries";
+import { shownDeliveryTime } from "@/lib/shipping/delivery-time";
 import type { PackageType } from "@/lib/shipping/types";
 import type { CustomerAddress } from "@/lib/types/ecommerce";
 
@@ -58,8 +59,13 @@ export type HoldShippingOption = {
   price: number | null;
   status: "priced" | "needs_postal" | "quoting" | "unavailable";
   currency: string;
-  /** Courier transit plus handling days, when quoted. */
+  /**
+   * How long it takes: the delivery time Staff set on the method ("About 2
+   * weeks"), else the courier's transit plus handling days once quoted.
+   */
   window: string | null;
+  /** The courier a live rate is for ("J&T Express"), once quoted. */
+  courier: string | null;
 };
 
 /**
@@ -95,7 +101,13 @@ export function useHoldShippingQuote({
   const quoted = new Map(quote.options.map((o) => [o.method_id, o]));
 
   const options = methods.map((method): HoldShippingOption => {
-    const base = { method, currency: method.currency ?? "SGD", window: null };
+    // The configurators are English-only, like `holdShippingName`.
+    const base = {
+      method,
+      currency: method.currency ?? "SGD",
+      window: shownDeliveryTime(method.content, "en-US", null),
+      courier: null,
+    };
     if (!isLiveMethod(method)) return { ...base, price: Number(method.base_rate), status: "priced" };
     if (!postalReady) return { ...base, price: null, status: "needs_postal" };
     if (quote.loading) return { ...base, price: null, status: "quoting" };
@@ -106,7 +118,8 @@ export function useHoldShippingQuote({
       price: option.price,
       status: "priced",
       currency: option.currency,
-      window: formatDeliveryWindow(option.min_days, option.max_days),
+      window: shownDeliveryTime(method.content, "en-US", formatDeliveryWindow(option.min_days, option.max_days)),
+      courier: option.courier?.name ?? null,
     };
   });
 
@@ -277,7 +290,7 @@ export function HoldShippingFields({
               const unavailable = option.status === "unavailable";
               const detail = unavailable
                 ? "No courier delivers this to your address"
-                : option.window;
+                : [option.courier ? `via ${option.courier}` : null, option.window].filter(Boolean).join(" · ");
               return (
                 <button
                   key={m.id}

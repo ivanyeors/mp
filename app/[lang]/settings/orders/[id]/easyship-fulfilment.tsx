@@ -27,13 +27,23 @@ type ShipmentInfo = {
     easyship_shipment_id: string | null;
 };
 
+/** The courier the customer's choice comes to today, from the rates endpoint. */
+type CustomerPick = {
+    courierServiceId: string | null;
+    by: "checkout" | "method" | "cheapest" | null;
+    methodName: string | null;
+    paidForUnavailable: string | null;
+};
+
+const NO_PICK: CustomerPick = { courierServiceId: null, by: null, methodName: null, paidForUnavailable: null };
+
 /** Orders a label can still be bought for: paid, not shipped, not unwound. */
 const SHIPPABLE = new Set(["confirmed", "processing"]);
 
 function transit(r: CourierRate): string {
     if (r.min_days == null) return "";
     const max = r.max_days ?? r.min_days;
-    return r.min_days === max ? `${max} days` : `${r.min_days}–${max} days`;
+    return r.min_days === max ? `${max} ${max === 1 ? "day" : "days"}` : `${r.min_days}–${max} days`;
 }
 
 /**
@@ -54,6 +64,7 @@ export function EasyshipFulfilment({
     const [rates, setRates] = useState<CourierRate[] | null>(null);
     const [ratesError, setRatesError] = useState<string | null>(null);
     const [selected, setSelected] = useState<string>("");
+    const [pick, setPick] = useState<CustomerPick>(NO_PICK);
     const [buying, setBuying] = useState(false);
     // Server-only shipment data (courier cost, label) comes from its own endpoint.
     const [shipment, setShipment] = useState<ShipmentInfo | null>(null);
@@ -97,6 +108,7 @@ export function EasyshipFulfilment({
         setLoadingRates(true);
         setRates(null);
         setRatesError(null);
+        setPick(NO_PICK);
         try {
             const res = await fetch(`/api/shop/orders/${order.id}/easyship/rates`, { method: "POST" });
             const json = await res.json().catch(() => null);
@@ -106,10 +118,17 @@ export function EasyshipFulfilment({
             }
             const list = json.rates as CourierRate[];
             setRates(list);
-            const paidFor = json.selected_courier_service_id as string | null;
+            // The customer's courier: the one they paid for, else what their method picks today.
+            const preselected = json.selected_courier_service_id as string | null;
+            setPick({
+                courierServiceId: preselected,
+                by: json.selected_by ?? null,
+                methodName: json.method_name ?? null,
+                paidForUnavailable: json.paid_for_unavailable ?? null,
+            });
             setSelected(
-                paidFor && list.some((r) => r.courier_service_id === paidFor)
-                    ? paidFor
+                preselected && list.some((r) => r.courier_service_id === preselected)
+                    ? preselected
                     : (list[0]?.courier_service_id ?? ""),
             );
         } catch {
@@ -223,9 +242,29 @@ export function EasyshipFulfilment({
                                 No courier serves this address for these parcels. Mark it shipped manually instead.
                             </p>
                         ) : (
+                            <div className="space-y-2">
+                            {pick.paidForUnavailable && (
+                                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                                    {pick.paidForUnavailable}, which the customer paid for, isn&apos;t offered for
+                                    this order today. Choose another courier.
+                                </div>
+                            )}
+                            {pick.by === "method" && pick.methodName && !pick.paidForUnavailable && (
+                                <p className="text-xs text-muted-foreground">
+                                    Preselected from the customer&apos;s shipping method, {pick.methodName}.
+                                </p>
+                            )}
                             <div className="max-h-80 space-y-2 overflow-y-auto">
                                 {rates?.map((r) => {
-                                    const paidFor = r.courier_service_id === shipment?.courier_service_id;
+                                    // Paid for at checkout, or what the customer's method picks today.
+                                    const badge =
+                                        r.courier_service_id !== pick.courierServiceId
+                                            ? null
+                                            : pick.by === "checkout"
+                                              ? "Customer's choice"
+                                              : pick.by === "method"
+                                                ? "Customer's method"
+                                                : null;
                                     return (
                                         <label
                                             key={r.courier_service_id}
@@ -247,9 +286,9 @@ export function EasyshipFulfilment({
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-medium">
                                                         {r.courier_name}
-                                                        {paidFor && (
+                                                        {badge && (
                                                             <Badge variant="secondary" className="ml-2">
-                                                                Customer&apos;s choice
+                                                                {badge}
                                                             </Badge>
                                                         )}
                                                     </p>
@@ -262,6 +301,7 @@ export function EasyshipFulfilment({
                                         </label>
                                     );
                                 })}
+                            </div>
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">

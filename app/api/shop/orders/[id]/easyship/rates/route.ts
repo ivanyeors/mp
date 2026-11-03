@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
-import { loadOrderForShipping, loadOrderShipment, quoteOrderShipment } from "@/lib/shipping/order-shipment";
+import { resolveShippingContent } from "@/lib/ecommerce/shipping";
+import {
+  loadOrderForShipping,
+  loadOrderShipment,
+  loadOrderShippingMethod,
+  preselectCourier,
+  quoteOrderShipment,
+} from "@/lib/shipping/order-shipment";
 
 export const runtime = "nodejs";
 
-/** Today's courier rates for this order — what Settings → Orders shows before buying a label. */
+/**
+ * Today's courier rates for this order — what Settings → Orders shows before
+ * buying a label — and the courier the customer's choice comes to, preselected.
+ */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;
@@ -22,11 +32,25 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   }));
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-  const shipment = await loadOrderShipment(admin, id).catch(() => null);
+  const [shipment, method] = await Promise.all([
+    loadOrderShipment(admin, id).catch(() => null),
+    // Without it the dialog still opens, on the cheapest courier.
+    loadOrderShippingMethod(admin, order).catch((err: unknown) => {
+      console.error(`[orders/easyship] Could not read the shipping method of ${id}:`, err);
+      return null;
+    }),
+  ]);
+  const rates = [...result.rates.rates].sort((a, b) => a.total_charge - b.total_charge);
+  const pick = preselectCourier(rates, shipment?.courier_service_id, method);
+
   return NextResponse.json({
     ok: true,
-    /** The courier the shopper paid for, preselected in the dialog. */
-    selected_courier_service_id: shipment?.courier_service_id ?? null,
-    rates: [...result.rates.rates].sort((a, b) => a.total_charge - b.total_charge),
+    selected_courier_service_id: pick.courierServiceId,
+    /** checkout: what the customer paid for · method: what their method picks today · cheapest: neither. */
+    selected_by: pick.by,
+    method_name: method ? resolveShippingContent(method).name : null,
+    /** The courier the customer paid for, when today's rates no longer offer it. */
+    paid_for_unavailable: pick.paidForMissing ? (order.shipping_courier ?? "The courier the customer chose") : null,
+    rates,
   });
 }
