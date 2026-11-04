@@ -136,6 +136,7 @@ export const POUCH_CATALOG: readonly { key: string; label: string }[] = [
   { key: "6d+/s", label: "6D+ (S)" },
   { key: "6d+/l", label: "6D+ (L)" },
   { key: "6d+/folded", label: "6D+ (Folded)" },
+  { key: "ear/one-size", label: "Ear Comfort Pad" },
 ];
 
 function fallbackFor(key: string): Measured<PouchDimensions> {

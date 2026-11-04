@@ -5,14 +5,17 @@
  * each filling as a soft pouch that settles inside the cloth case; the few
  * knobs here tune it for every cut, saved as one site setting. The preview
  * always draws the unsaved draft, on the sample recipes the testing preview
- * was approved on, so a value is seen before it is saved.
+ * was approved on, so a value is seen before it is saved — side-on (the cut)
+ * and from above (the x-ray), so the Ear Comfort Pad's well reads both ways.
  */
 
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
+import { XRAY_VIEW } from "@/components/spatial/xray-assets";
 import { CrossSectionSvg } from "@/components/spatial/xray-cross-section";
+import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { XRAY_THEME } from "@/components/spatial/xray-theme";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -309,6 +312,16 @@ function SoftBodyControls({
           onChange={(v) => set("neckFirmness", v)}
         />
         <SliderRow
+          label="Ear pad firmness"
+          tip="How firmly an Ear Comfort Pad keeps its shape, its rim and its well, where it rests and where a pouch presses on it. Soft, it gives a crowded cell some of its thickness."
+          rangeKey="earFirmness"
+          value={draft.earFirmness}
+          defaultValue={defaults.earFirmness}
+          display={(v) => `${v < 34 ? "soft" : v < 67 ? "medium" : "firm"} (${v})`}
+          disabled={off}
+          onChange={(v) => set("earFirmness", v)}
+        />
+        <SliderRow
           label="Pouch volume"
           tip="How full each pouch is compared with its relaxed size; above 1 it fills the space it is given."
           rangeKey="volumePct"
@@ -364,6 +377,40 @@ function SoftBodyControls({
           checked={draft.animate}
           disabled={off}
           onChange={(v) => set("animate", v)}
+        />
+      </div>
+      <div className="space-y-5 border-t pt-4">
+        <div className="flex items-center gap-1.5">
+          <h4 className="text-sm font-semibold">Ear Comfort Pad</h4>
+          <InfoTip label="About the Ear Comfort Pad">
+            <p>
+              A square cushion with a sewn well in its middle, where the ear rests. Placed in a
+              filling template, the x-ray draws the well as a ring from above, and the cut draws it
+              as a dip between two rims.
+            </p>
+            <p>
+              Its size and thickness are on the Dimensions tab. Pick the “Ear pad mix” recipe in the
+              preview to see it.
+            </p>
+          </InfoTip>
+        </div>
+        <SliderRow
+          label="Well size"
+          tip="How wide the sewn well is, as a share of the pad's width. Drawn with the soft cut on or off."
+          rangeKey="earWellPct"
+          value={draft.earWellPct}
+          defaultValue={defaults.earWellPct}
+          display={(v) => `${v} % of the width`}
+          onChange={(v) => set("earWellPct", v)}
+        />
+        <SliderRow
+          label="Well depth"
+          tip="How far the well dips, as a share of the pad's thickness; 0 draws a flat cushion. Drawn with the soft cut on or off."
+          rangeKey="earWellDepthPct"
+          value={draft.earWellDepthPct}
+          defaultValue={defaults.earWellDepthPct}
+          display={(v) => `${v} % of the thickness`}
+          onChange={(v) => set("earWellDepthPct", v)}
         />
       </div>
     </div>
@@ -515,7 +562,8 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
           <p>
             Draws the values on the left as you move them, before they are saved, on the sample
             recipes the soft cut was approved on: {SOFT_BODY_RECIPES.map((r) => r.name).join(", ")}.
-            The recipe fills the chosen section, and the cut is its side view, front to back.
+            The recipe fills the chosen section; the cut is its side view, front to back, and the
+            x-ray below it the same pillow from above.
           </p>
           <p>
             Pouches are sized from the Dimensions tab where a row exists, or else from the code
@@ -562,6 +610,22 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
         {compare && <CutFigure caption="Slabs">{drawing(slabSettings)}</CutFigure>}
         <CutFigure caption={draft.enabled ? "Soft cut" : "Slabs (soft cut is off)"}>{drawing(settings)}</CutFigure>
       </div>
+
+      <CutFigure caption="From above">
+        <div className="relative w-full" style={{ aspectRatio: `${XRAY_VIEW.width} / ${XRAY_VIEW.height}` }}>
+          <XrayPillow
+            placements={placements}
+            itemSubtypes={itemSubtypes}
+            itemSizes={itemSizes}
+            itemDims={itemDims}
+            pillowSize={preview.size}
+            loftAllowance={registry.loftAllowance}
+            fit={fit}
+            softBody={settings}
+            className="absolute inset-0"
+          />
+        </div>
+      </CutFigure>
 
       <div className="space-y-1 text-xs" role="status" aria-live="polite">
         {problems.length === 0 ? (

@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/mobile-sticky-action-bar";
 import { formatFillingPreview } from "@/lib/filling-preview";
 import dynamic from "next/dynamic";
-import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
+import { isInPillowAccessory } from "@/lib/spatial-fillings/filling-groups";
 import {
   isSpatiallyAuthored,
   isSpatiallyAuthoredCoverage,
@@ -231,7 +231,8 @@ const getItemBaseName = (item: Item): string => normalizeNameOrFallback(item.nam
 
 const getFillingDisplayLabel = (item: Item, fallbackSize?: string): string => {
   const variant = normalizeNameOrFallback(item.subtype ?? item.name, "filling");
-  const sizeLabel = item.size ?? fallbackSize;
+  // An unsized filling is cut to the card's size; an unsized accessory (the Ear Comfort Pad) is one size.
+  const sizeLabel = item.size ?? (item.category === "filling" ? fallbackSize : undefined);
   return sizeLabel ? `${variant} ${sizeLabel}` : variant;
 };
 
@@ -1858,8 +1859,8 @@ function FillingConfigPanel({
   const gridItems = useMemo(
     () =>
       items
-        // Neck supports are pillow-only; a basic Result refuses one at assign.
-        .filter((i) => i.category === "filling" || (kind === "pillow" && isNeckSupportItem(i)))
+        // Neck supports and ear pads are pillow-only; a basic Result refuses one at assign.
+        .filter((i) => i.category === "filling" || (kind === "pillow" && isInPillowAccessory(i)))
         .map((i) => ({
           id: i.id,
           label: getFillingDisplayLabel(i, templateKey),

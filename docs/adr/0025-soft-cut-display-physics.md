@@ -123,6 +123,30 @@ millimetre; in a full cell its neighbours pushed it about half way back (the top
   (`placeSlabDrop`); Alt + ← / → slides it 5 mm (`nudgeSlab`), saying so when it has no room.
   Both write the same `offset_y_mm` the top view writes, in Size M mm.
 
+## Amendment: the Ear Comfort Pad (4-11-2026)
+
+Ivan: an Ear Comfort Pad added to a Filling Template should be configurable in Soft body and show
+its shape in the x-ray, as the fillings do. It is placeable on the Neck support's terms (premium
+pillows only, inside the pillow's MSRP as the Neck support is since 4-11-2026; `isInPillowAccessory`), and
+drawn as a third shape:
+
+- **Its own body kind.** The solver's `pad` is firm the way the roll is — volume that gives under
+  load, a floor, spring-back, a cap on how far it squashes out of shape — at its own firmness
+  (`padFirmness`, Settings "Ear pad firmness", default 60). Its skin smooths toward its own rest
+  curvature, not toward flat, so surface tension takes ripples and leaves the sewn well. Pouches
+  and rolls run the same arithmetic as before.
+- **Side-on**, it is the codebase cushion with its top dipped by the well (`wellDip`: the full
+  depth across the sewn floor, a cosine rise to the rim), seeded and remembered so; with the soft
+  cut off the slab draws the same dip. **From above**, it is a firm pad whose footprint is a
+  puffy square (corner 0.3 of its short side), and the x-ray draws the well on it as a shaded ring
+  at its centroid; its label moves beside the ring.
+- **The well is a setting, not a dimension.** Its size (share of the pad's width, default 32 %)
+  and depth (share of its thickness, default 55 %) are Soft body settings, read from the product
+  photo; they draw with the soft cut on or off. The pad's own size is a Dimensions row
+  (`ear/one-size`, a 180 × 180 × 40 mm fallback until measured).
+- **Saving from an older page** that predates the three knobs keeps their stored values; it does
+  not reset them.
+
 ## Consequences
 
 - A static or server render (and every `renderToStaticMarkup` test) draws the rounded slabs; the

@@ -11,7 +11,9 @@
  * support drapes over it. A cell holding more than the case has room for is
  * squeezed first, pro rata by each piece's compressible range — the fit's own
  * rule; a Neck support's range is the share of its foam its firmness gives
- * (none when fully firm), and squashed it is a stadium, not a circle. Pieces
+ * (none when fully firm), and squashed it is a stadium, not a circle. An Ear
+ * Comfort Pad is firm the same way at its own firmness, and is seeded and
+ * remembered as its cushion with the sewn well dipping its top. Pieces
  * that share a Layer in one cell lie side by side across the pillow, behind
  * one another in this view, so they settle as one body and draw with one
  * outline.
@@ -36,8 +38,8 @@ import {
   type SoftSettle,
   type SolverOptions,
 } from "@/lib/spatial-fillings/soft-body";
-import { solverOptionsFor, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
-import { puffyPath, shellPolygon, type SlabBox } from "./slab-shape";
+import { padWellOf, solverOptionsFor, type PadWell, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
+import { padRing, puffyPath, shellPolygon, type SlabBox } from "./slab-shape";
 
 /** Points on a pouch's ring. */
 const RING_POINTS = 40;
@@ -72,6 +74,8 @@ export type SoftCutInput = {
   casePolygon: readonly Pt[];
   /** True for a piece drawn as a roll (a Neck support). */
   isRoll: (itemId: number) => boolean;
+  /** True for a piece drawn as an Ear Comfort Pad; absent, there is none. */
+  isPad?: (itemId: number) => boolean;
   settings: SoftBodySettings;
 };
 
@@ -84,7 +88,7 @@ export type SoftCutShapes = {
 
 type Seed = {
   id: string;
-  kind: "pouch" | "roll";
+  kind: "pouch" | "roll" | "pad";
   /** Its authored cell's column, and its Layer counted from the floor. */
   col: number;
   level: number;
@@ -95,7 +99,7 @@ type Seed = {
   /** Relaxed and minimum thickness at this Size, before any squeeze. */
   relaxed: number;
   min: number;
-  /** How much of its thickness a roll gives up to a crowded cell (0 for a pouch, whose whole range gives). */
+  /** How much of its thickness a roll or an ear pad gives up to a crowded cell (0 for a pouch, whose whole range gives). */
   give: number;
   areaTarget: number;
   areaMin: number;
@@ -167,7 +171,7 @@ export function roomAt(poly: readonly Pt[], floorY: number, x0: number, x1: numb
  * earlier. Flat underneath, a pouch is the codebase's cushion; uneven, its
  * underside follows the support as cloth would.
  */
-export function dropStack(seeds: readonly Seed[], floorY: number, x0: number, x1: number, step = SUPPORT_STEP): Seed[] {
+export function dropStack(seeds: readonly Seed[], floorY: number, x0: number, x1: number, step = SUPPORT_STEP, well: PadWell = { width: 0, depth: 0 }): Seed[] {
   const n = Math.ceil((x1 - x0) / step) + 1;
   const support = new Float64Array(n);
   const at = (x: number) => Math.min(Math.max(Math.round((x - x0) / step), 0), n - 1);
@@ -202,7 +206,8 @@ export function dropStack(seeds: readonly Seed[], floorY: number, x0: number, x1
           hi = Math.max(hi, under[k]);
         }
         if (hi - lo < 1) {
-          out.push({ ...p, flat: true, bottom: floorY - hi, ring: cushionRing({ x: p.x0, y: floorY - hi - t, w: p.x1 - p.x0, h: t }) });
+          const box = { x: p.x0, y: floorY - hi - t, w: p.x1 - p.x0, h: t };
+          out.push({ ...p, flat: true, bottom: floorY - hi, ring: p.kind === "pad" ? padRing(box, well, RING_POINTS) : cushionRing(box) });
           for (let k = i0; k <= i1; k++) top[k] = hi + t;
         } else {
           // The underside a ball of the bending radius would trace, rolled along under the pouch's span, then smoothed.
@@ -255,7 +260,8 @@ export function softCutScene(input: SoftCutInput): {
   bodyOf: ReadonlyMap<string, string>;
   scale: number;
 } {
-  const { fit, section, frame: f, casePolygon, isRoll, settings } = input;
+  const { fit, section, frame: f, casePolygon, isRoll, isPad, settings } = input;
+  const well = padWellOf(settings);
   const scale = f.scale;
   const settled = new Map(fit.settle.pieces.map((p) => [p.key, p] as const));
   const pieces = fit.sections[section].pieces;
@@ -294,9 +300,11 @@ export function softCutScene(input: SoftCutInput): {
 
   const volume = settings.volumePct / 100;
   const neckSoftness = 1 - settings.neckFirmness / 100;
+  const padSoftness = 1 - settings.earFirmness / 100;
   const seeds: Seed[] = leaders.map(({ piece, sub }) => {
     const s = settled.get(piece.key);
     const roll = isRoll(piece.itemId);
+    const pad = !roll && (isPad?.(piece.itemId) ?? false);
     const [lo, hi] = reach(SUB_SECTIONS.indexOf(sub));
     // The fit rounds to 0.1 mm; a span on a cell's edge is on it exactly.
     const onEdge = (mm: number) => (Math.abs(mm - Math.round(mm / cellMm) * cellMm) < 0.15 ? Math.round(mm / cellMm) * cellMm : mm);
@@ -312,7 +320,7 @@ export function softCutScene(input: SoftCutInput): {
     const areaTarget = (s?.thicknessMm ?? relaxedMm) * f.ky * lengthMm * f.kx;
     return {
       id: piece.key,
-      kind: roll ? "roll" : "pouch",
+      kind: roll ? "roll" : pad ? "pad" : "pouch",
       col: SUB_SECTIONS.indexOf(sub),
       level: depthsOf.get(sub)!.indexOf(piece.depth),
       x0: f.x0 + startMm * f.kx + f.slabGap,
@@ -322,7 +330,7 @@ export function softCutScene(input: SoftCutInput): {
       min,
       // A Neck support yields none of its foam when fully firm and all of it, down to fully squashed, when soft;
       // squared, so the soft end of the slider does most of it and the firm default barely moves.
-      give: roll ? (relaxed - min) * neckSoftness ** 2 : 0,
+      give: roll ? (relaxed - min) * neckSoftness ** 2 : pad ? (relaxed - min) * padSoftness ** 2 : 0,
       areaTarget: roll ? Math.PI * (relaxed / 2) ** 2 : areaTarget,
       areaMin: (s?.minThicknessMm ?? relaxedMm) * f.ky * lengthMm * f.kx,
       over: piece.status === "over",
@@ -336,21 +344,22 @@ export function softCutScene(input: SoftCutInput): {
   for (let c = 0; c < SUB_SECTIONS.length; c++) {
     room.set(c, roomAt(casePolygon, f.floor, f.x0 + c * f.colW + f.slabGap, f.x0 + (c + 1) * f.colW - f.slabGap, 6 * scale));
   }
-  const rangeOf = (s: Seed) => (s.kind === "roll" ? s.give : s.relaxed - s.min);
+  const firmKind = (s: Seed) => s.kind === "roll" || s.kind === "pad";
+  const rangeOf = (s: Seed) => (firmKind(s) ? s.give : s.relaxed - s.min);
   for (const [c, inCol] of groupBy(seeds, (s) => s.col)) {
     const over = inCol.reduce((a, s) => a + s.relaxed, 0) - room.get(c)!;
     const range = inCol.reduce((a, s) => a + rangeOf(s), 0);
     const k = over > 0 && range > 0 ? Math.min(over / range, 1) : 0;
     for (const s of inCol) s.t = s.relaxed - k * rangeOf(s);
   }
-  const stacked = dropStack(seeds, f.floor, f.x0, f.x0 + f.drawW, SUPPORT_STEP * scale);
+  const stacked = dropStack(seeds, f.floor, f.x0, f.x0 + f.drawW, SUPPORT_STEP * scale, well);
 
   // A cell cannot remember more cushion than it has room for: there the rest shapes share the room pro rata.
   // What a roll's firmness will not give is held out of the share.
   const squeeze = new Map<number, number>();
   for (const [c, inCol] of groupBy(stacked, (s) => s.col)) {
-    const want = inCol.reduce((a, s) => a + (s.kind === "roll" ? s.relaxed : (s.areaTarget * volume) / Math.max(s.x1 - s.x0, 1)), 0);
-    const firm = inCol.filter((s) => s.kind === "roll").reduce((a, s) => a + s.relaxed - s.give, 0);
+    const want = inCol.reduce((a, s) => a + (firmKind(s) ? s.relaxed : (s.areaTarget * volume) / Math.max(s.x1 - s.x0, 1)), 0);
+    const firm = inCol.filter(firmKind).reduce((a, s) => a + s.relaxed - s.give, 0);
     const r = room.get(c)!;
     squeeze.set(c, want > r ? Math.max((r - firm) / Math.max(want - firm, 1), 0.3) : 1);
   }
@@ -362,6 +371,13 @@ export function softCutScene(input: SoftCutInput): {
       const at = s.ring!.reduce((a, p) => [a[0] + p[0] / s.ring!.length, a[1] + p[1] / s.ring!.length], [0, 0]);
       const rest = pairedWith(rollRing(at[0], at[1], s.relaxed, t), s.ring!);
       return { id: s.id, ring: s.ring!, rest, kind: "roll", areaTarget: Math.abs(signedArea(rest)), over: s.over };
+    }
+    if (s.kind === "pad") {
+      // It remembers its rim and its well, as thick as its share of the room lets it be, and that much fill.
+      const t = s.relaxed - s.give * (1 - (squeeze.get(s.col) ?? 1));
+      const bottom = s.flat ? s.bottom! : Math.max(...s.ring!.map((p) => p[1]));
+      const rest = pairedWith(padRing({ x: s.x0, y: bottom - t, w: s.x1 - s.x0, h: t }, well, s.ring!.length), s.ring!);
+      return { id: s.id, ring: s.ring!, rest, kind: "pad", areaTarget: Math.abs(signedArea(rest)), over: s.over };
     }
     const target = s.areaTarget * volume * (squeeze.get(s.col) ?? 1);
     // The relaxed cushion it remembers: its span, as thick as its volume makes it, resting where it was seeded.
@@ -432,7 +448,7 @@ function shapesOf(scene: ReturnType<typeof softCutScene>, sim: SoftSettle, input
 export function softCutKey(input: SoftCutInput): string {
   const { fit, section, frame: f, settings } = input;
   const r = (n: number) => Math.round(n * 100) / 100;
-  const pieces = fit.sections[section].pieces.map((p) => `${p.key}:${p.itemId}:${p.depth}:${r(p.startMm)}:${r(p.endMm)}:${r(p.thicknessMm)}:${p.status}:${input.isRoll(p.itemId) ? 1 : 0}${p.nudged ? ":held" : ""}`);
+  const pieces = fit.sections[section].pieces.map((p) => `${p.key}:${p.itemId}:${p.depth}:${r(p.startMm)}:${r(p.endMm)}:${r(p.thicknessMm)}:${p.status}:${input.isRoll(p.itemId) ? 1 : input.isPad?.(p.itemId) ? 2 : 0}${p.nudged ? ":held" : ""}`);
   const settled = fit.settle.pieces.filter((p) => p.section === section).map((p) => `${p.key}:${r(p.thicknessMm)}:${r(p.minThicknessMm)}:${r(p.alongMm)}:${r(p.settledThicknessMm)}`);
   const outline = input.casePolygon;
   return [

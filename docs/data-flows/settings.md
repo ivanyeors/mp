@@ -76,7 +76,9 @@ flowchart TD
 - **Build cost** is shown, never stored. A card has one cost per Filling
   Template serving its size: the composed BOM plus that template's Derived pack
   list, the sum `assembleBuild` makes. A premium fabric's build ships that
-  fabric's case, and a Basic build leaves out a template's neck support.
+  fabric's case, and a Basic build leaves out a template's neck support and
+  ear pad. On a Premium build either one ships inside the pillow's MSRP: its
+  cost counts, its price adds nothing.
   `GET /settings/costings/builds` supplies the pack lists, because the
   placement tables are service-role only. `lib/costings/build-costs.ts` does
   the arithmetic.

@@ -23,7 +23,8 @@ export type SampleItem = {
   id: number;
   name: string;
   subtype: string;
-  size: string;
+  /** Null for an unsized Item (the Ear Comfort Pad). */
+  size: string | null;
   /** Absent = a filling. */
   category?: string;
   /** What the pouch is labelled when its type alone would not tell it apart ("6D Fold"). */
@@ -35,6 +36,7 @@ export const SOFT_BODY_SAMPLE_ITEMS: readonly SampleItem[] = [
   { id: 2, name: "6D Fold (S)", subtype: "6D", size: "S", label: "6D Fold" },
   { id: 3, name: "3D (S)", subtype: "3D", size: "S" },
   { id: 4, name: "Cervical Neck Support (M)", subtype: "Cervical Neck Support", category: "accessories", size: "M" },
+  { id: 5, name: "Ear Comfort Pad", subtype: "Ear Comfort Pad", category: "accessories", size: null },
 ];
 
 export type SampleRecipe = {
@@ -82,6 +84,13 @@ export const SOFT_BODY_RECIPES: readonly SampleRecipe[] = [
     name: "Neck mix",
     cells: { front: [1, 2], middle: [1, 4], back: [3, 1, 1] },
     order: { "middle/1": 1, "middle/0": 2, "front/1": 3, "front/0": 4, "back/2": 5, "back/1": 6, "back/0": 7 },
+  },
+  {
+    // An Ear Comfort Pad on top of the middle, where the ear rests, over a Type 11 build.
+    key: "ear-pad",
+    name: "Ear pad mix",
+    cells: { front: [1], middle: [5, 1], back: [3, 1, 1] },
+    order: { "front/0": 1, "middle/1": 2, "back/2": 3, "back/1": 4, "back/0": 5, "middle/0": 6 },
   },
 ];
 
@@ -131,7 +140,7 @@ export function registryFromCatalog(
 /** What the drawing reads per sample Item: its label type, its size and its registry dimensions. */
 export function sampleItemMaps(registry: DimensionRegistry = CODE_REGISTRY): {
   itemSubtypes: Map<number, string>;
-  itemSizes: Map<number, string>;
+  itemSizes: Map<number, string | null>;
   itemDims: Map<number, ResolvedDims>;
 } {
   const items = SOFT_BODY_SAMPLE_ITEMS;

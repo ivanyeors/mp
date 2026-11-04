@@ -28,7 +28,7 @@ import { useBolsterFit, useCut, useItemMaps, usePillowFit } from "@/components/s
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { InsertOrderList } from "@/components/spatial/insert-order-list";
-import { fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
+import { EAR_PAD, fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
 
 /**
  * The x-ray editor and the cross-section load on demand, as on the Configure
@@ -787,12 +787,12 @@ export default function ResultDetailPage({
     () => new Map(fillingItems.map((i) => [i.id, i.label])),
     [fillingItems],
   );
-  // A neck support is for premium pillows only — never offered on basic or a bolster.
+  // A neck support or an ear pad is for premium pillows only — never offered on basic or a bolster.
   const pickerItems = useMemo(
     () =>
       productType === "pillow" && assignTier === "premium"
         ? fillingItems
-        : fillingItems.filter((i) => !NECK_SUPPORT.test(i.name)),
+        : fillingItems.filter((i) => !NECK_SUPPORT.test(i.name) && !EAR_PAD.test(i.name)),
     [fillingItems, productType, assignTier],
   );
   // Slice 04: the physical fit of the assignment at its Size — one object for

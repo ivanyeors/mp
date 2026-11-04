@@ -3,7 +3,7 @@
  * Pure + browser-safe — no I/O, no node builtins (fingerprinting lives in index.ts).
  */
 
-import { isNeckSupportItem } from "./filling-groups";
+import { isEarPadItem, isNeckSupportItem } from "./filling-groups";
 
 export type Section = "left" | "center" | "right";
 export type SubSection = "front" | "middle" | "back";
@@ -143,29 +143,38 @@ export function bolsterPlacementsToRows(placements: BolsterPlacement[]): Bolster
 
 /**
  * What an Item is to the validators below: "filling", "neck_support" for a
- * Cervical Neck Support accessory (placeable, priced inside the pillow), else its category.
+ * Cervical Neck Support accessory, "ear_pad" for an Ear Comfort Pad (both
+ * placeable, and priced inside the pillow), else its category.
  */
 export function placementKind(item: { category: string; name: string }): string {
-  return isNeckSupportItem(item) ? "neck_support" : item.category;
+  if (isNeckSupportItem(item)) return "neck_support";
+  if (isEarPadItem(item)) return "ear_pad";
+  return item.category;
 }
 
+/** What a premium-only accessory is called when a basic pillow or a bolster refuses it. */
+const ACCESSORY_NAME: Readonly<Record<string, string>> = {
+  neck_support: "A Cervical Neck Support",
+  ear_pad: "An Ear Comfort Pad",
+};
+
 /**
- * A neck support is for premium pillows only: never a bolster, never a basic
- * pillow. `tier` is omitted where it is not known yet (a Filling Template is
- * scoped by size alone), and the Result that uses it re-checks with its tier.
+ * A neck support or an ear pad is for premium pillows only: never a bolster,
+ * never a basic pillow. `tier` is omitted where it is not known yet (a Filling
+ * Template is scoped by size alone), and the Result that uses it re-checks
+ * with its tier.
  */
 function assertFillingItem(
   itemId: number,
   itemCategories: ReadonlyMap<number, string>,
-  neckSupport: { allowed: boolean },
+  accessory: { allowed: boolean },
 ): string | null {
   const kind = itemCategories.get(itemId);
   if (kind === undefined) return `Unknown item_id: ${itemId}`;
-  if (kind === "neck_support" && !neckSupport.allowed) {
-    return "A Cervical Neck Support is for premium pillows only";
-  }
-  if (kind !== "filling" && kind !== "neck_support") {
-    return `Placements may only use filling items or a neck support (rejected item_id: ${itemId})`;
+  const name = ACCESSORY_NAME[kind];
+  if (name && !accessory.allowed) return `${name} is for premium pillows only`;
+  if (kind !== "filling" && !name) {
+    return `Placements may only use filling items, a neck support or an ear pad (rejected item_id: ${itemId})`;
   }
   return null;
 }
@@ -182,7 +191,7 @@ export function validatePillowPlacements(
   itemCategories: ReadonlyMap<number, string>,
   opts: { tier?: string | null } = {},
 ): Validation {
-  const neckSupport = { allowed: opts.tier == null || opts.tier === "premium" };
+  const accessory = { allowed: opts.tier == null || opts.tier === "premium" };
   const seen = new Set<string>();
   const perLayer = new Map<string, number>();
   for (const p of placements) {
@@ -219,7 +228,7 @@ export function validatePillowPlacements(
     const slotKey = `${p.section}/${p.subSection}/${p.slot}`;
     if (seen.has(slotKey)) return { ok: false, error: `Duplicate placement at ${slotKey}` };
     seen.add(slotKey);
-    const itemError = assertFillingItem(p.itemId, itemCategories, neckSupport);
+    const itemError = assertFillingItem(p.itemId, itemCategories, accessory);
     if (itemError) return { ok: false, error: itemError };
   }
   return { ok: true };

@@ -65,7 +65,7 @@ import {
   type BuildCostOption,
   type BuildCosts,
 } from "@/lib/costings/build-costs";
-import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
+import { isInPillowAccessory } from "@/lib/spatial-fillings/filling-groups";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
@@ -1004,7 +1004,8 @@ export default function CostingsPage() {
   // MSRP moves every build that uses it as soon as the debounce lands.
   const cardBuilds = useMemo(() => {
     const msrpCentsOf = (itemId: number) => parseToCents(committedDraft[itemKey(itemId)]?.msrp ?? "");
-    const neckSupportItemIds = new Set(items.filter((item) => isNeckSupportItem(item)).map((item) => item.id));
+    // Every accessory placed in the pillow (a Neck support, an Ear Comfort Pad) is in its price.
+    const neckSupportItemIds = new Set(items.filter((item) => isInPillowAccessory(item)).map((item) => item.id));
     const caseItems = items.filter((item) => CASE_CATEGORIES.has(item.category));
     const map = new Map<string, CardBuild>();
     for (const card of productCards) {
@@ -1949,10 +1950,10 @@ export default function CostingsPage() {
                                 </div>
                                 {option.neckSupport === "included" ? (
                                   <div className="text-xs text-muted-foreground">
-                                    Neck support included in the price
+                                    Accessories inside are included in the price
                                   </div>
                                 ) : option.neckSupport === "left_out" ? (
-                                  <div className="text-xs text-muted-foreground">Built without its neck support</div>
+                                  <div className="text-xs text-muted-foreground">Built without the accessories inside it</div>
                                 ) : null}
                               </button>
                             );

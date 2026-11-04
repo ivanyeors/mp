@@ -31,14 +31,36 @@ export function isNeckSupportItem(item: { category?: string | null; name: string
   return item.category === "accessories" && NECK_SUPPORT.test(item.name);
 }
 
-/** PostgREST `.or()` filter for every Item the x-ray may place: fillings plus neck supports. */
+/**
+ * An Ear Comfort Pad: a cushion with a sewn well for the ear, an Accessories
+ * Item that is also an Add-on, and that staff may place inside a pillow as
+ * they place a Neck support. Matched by name — inventory has no category of
+ * its own for it.
+ */
+export const EAR_PAD = /ear comfort/i;
+
+export function isEarPadItem(item: { category?: string | null; name: string }): boolean {
+  return item.category === "accessories" && EAR_PAD.test(item.name);
+}
+
+/**
+ * An Accessories Item the x-ray may place inside a pillow: a Neck support or
+ * an Ear Comfort Pad. Premium pillows only, and charged at its own MSRP per
+ * piece (fillings are part of the Costings row and add nothing).
+ */
+export function isInPillowAccessory(item: { category?: string | null; name: string }): boolean {
+  return isNeckSupportItem(item) || isEarPadItem(item);
+}
+
+/** PostgREST `.or()` filter for every Item the x-ray may place: fillings plus neck supports and ear pads. */
 export const PLACEABLE_ITEMS_OR =
-  "category.eq.filling,and(category.eq.accessories,or(name.ilike.*cervical*,name.ilike.*neck support*))";
+  "category.eq.filling,and(category.eq.accessories,or(name.ilike.*cervical*,name.ilike.*neck support*,name.ilike.*ear comfort*))";
 
 /** Filling family from a descriptor like "6D+ (Folded)" or "3D-S" → 3D / 6D / 6D+. */
 export function fillingFamily(descriptor: string | null): { key: string; label: string } {
   const s = descriptor?.trim() ?? "";
   if (NECK_SUPPORT.test(s)) return { key: "neck", label: "Neck support" };
+  if (EAR_PAD.test(s)) return { key: "ear", label: "Ear pad" };
   const m = s.match(DENSITY);
   if (!m) return { key: "other", label: "Other" };
   const density = m[1].toUpperCase(); // "6D"
@@ -71,11 +93,11 @@ export function fillingLabelLines(descriptor: string | null, size: string | null
   return sz && !tokens.includes(sz.toUpperCase()) ? [type, sz] : [type];
 }
 
-/** Lines written inside a piece: as fillingLabelLines, with a neck support shortened to "Neck". */
+/** Lines written inside a piece: as fillingLabelLines, with a neck support shortened to "Neck" and an ear pad to "Ear pad". */
 export function pieceLabelLines(descriptor: string | null, size: string | null): string[] {
-  return NECK_SUPPORT.test(descriptor ?? "")
-    ? fillingLabelLines("Neck", size)
-    : fillingLabelLines(descriptor, size);
+  if (NECK_SUPPORT.test(descriptor ?? "")) return fillingLabelLines("Neck", size);
+  if (EAR_PAD.test(descriptor ?? "")) return fillingLabelLines("Ear pad", size);
+  return fillingLabelLines(descriptor, size);
 }
 
 /** Clean label for a placed piece, e.g. "6D (L)" or "6D Fold S" — not "filling (6D (L))". */
@@ -91,10 +113,11 @@ function variantLabel(descriptor: string): string {
   return stripped || descriptor.trim();
 }
 
-/** Sort rank: 3D < 6D < 6D+ < Neck support < Other. */
+/** Sort rank: 3D < 6D < 6D+ < Neck support < Ear pad < Other. */
 function familyRank(key: string): number {
   if (key === "other") return Infinity;
   if (key === "neck") return 1000;
+  if (key === "ear") return 1001;
   const density = Number(key.match(/^(\d+)d/)?.[1] ?? 0);
   return density + (key.endsWith("+") ? 0.5 : 0);
 }
@@ -123,10 +146,10 @@ export function fillingItemsToSunburst(items: FillingItemLike[]): SunburstNode[]
     const usedLabels = new Set<string>();
     const leaves: SunburstNode[] = sorted.map((item) => {
       // Real family → show the variant (S/M/L/Folded…); Other → the item name;
-      // neck supports differ only by size.
+      // neck supports and ear pads differ only by size (an unsized ear pad is its name).
       let label = isOther
         ? item.name.trim()
-        : key === "neck"
+        : key === "neck" || key === "ear"
           ? (item.size?.trim() ?? "")
           : variantLabel(fillingDescriptor(item));
       if (!label) label = item.name.trim() || `Item #${item.id}`;

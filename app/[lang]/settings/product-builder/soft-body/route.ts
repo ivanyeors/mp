@@ -66,11 +66,21 @@ const numbers = Object.fromEntries(
   Object.entries(SOFT_BODY_RANGES).map(([key, { min, max }]) => [key, z.number().min(min).max(max)]),
 ) as Record<keyof typeof SOFT_BODY_RANGES, z.ZodNumber>
 
-const SettingsSchema = z.object({
-  enabled: z.boolean(),
-  animate: z.boolean(),
-  ...numbers,
-}) satisfies z.ZodType<SoftBodySettings>
+/**
+ * Knobs added after the tab first shipped (the Ear Comfort Pad's, 4-11-2026).
+ * A page loaded before them saves without them, and they keep their stored
+ * value rather than falling back to the defaults.
+ */
+const LATER_KEYS = { earFirmness: true, earWellPct: true, earWellDepthPct: true } as const
+type LaterKey = keyof typeof LATER_KEYS
+
+const SettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    animate: z.boolean(),
+    ...numbers,
+  })
+  .partial(LATER_KEYS) satisfies z.ZodType<Omit<SoftBodySettings, LaterKey> & Partial<Pick<SoftBodySettings, LaterKey>>>
 
 const SaveSchema = z.object({ settings: SettingsSchema })
 
@@ -85,9 +95,10 @@ export async function POST(req: NextRequest) {
   const admin = supabaseAdmin()
   try {
     const before = await loadPayload(admin)
+    const sent = Object.fromEntries(Object.entries(parsed.data.settings).filter(([, v]) => v !== undefined))
     const row = {
       key: SOFT_BODY_SETTING_KEY,
-      value: softBodySettingsToStored(parsed.data.settings),
+      value: softBodySettingsToStored({ ...before.settings, ...sent }),
       updated_at: new Date().toISOString(),
     }
     const { error } = await admin.from('site_settings').upsert(row, { onConflict: 'key' })

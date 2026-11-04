@@ -79,6 +79,9 @@ const tuned: SoftBodySettings = {
   enabled: false,
   rigidity: 72,
   neckFirmness: 60,
+  earFirmness: 40,
+  earWellPct: 45,
+  earWellDepthPct: 30,
   volumePct: 110,
   emptyCasePct: 45,
   smoothing: 3,
@@ -160,6 +163,15 @@ describe("POST", () => {
     expect((await post({ settings: tuned })).status).toBe(200);
     expect(h.upserts).toHaveLength(1);
     expect(h.audit).not.toHaveBeenCalled();
+  });
+
+  it("keeps the stored ear pad knobs when a page loaded before them saves without them", async () => {
+    h.row = storedRow(tuned);
+    const { earFirmness: _f, earWellPct: _w, earWellDepthPct: _d, ...before } = tuned;
+    void [_f, _w, _d];
+    const res = await post({ settings: { ...before, rigidity: 20 } });
+    expect(res.status).toBe(200);
+    expect(JSON.parse(h.upserts[0].row.value)).toEqual({ ...tuned, rigidity: 20 });
   });
 
   it("snaps a value between steps to the slider's step", async () => {

@@ -21,6 +21,12 @@ export type SoftBodySettings = {
   rigidity: number;
   /** How little a Neck support gives where it rests and is pressed, 0 soft (in a crowded cell it squashes as far as fully squashed) … 100 as firm as foam gets (it stays nearly round). */
   neckFirmness: number;
+  /** How firmly an Ear Comfort Pad keeps its shape — its rim and its well — where it rests and is pressed, 0 soft … 100 firm. */
+  earFirmness: number;
+  /** The ear pad's sewn well: its diameter as a share of the pad's width, %. */
+  earWellPct: number;
+  /** How far the well dips, as a share of the pad's thickness, %. 0 draws a flat cushion. */
+  earWellDepthPct: number;
   /** A pouch's volume as a share of its relaxed size, %. Over 100 lets it fill the space it is given. */
   volumePct: number;
   /** How high the empty case stands, as a share of its sewn height, %. */
@@ -41,6 +47,9 @@ type NumberKey = { [K in keyof SoftBodySettings]: SoftBodySettings[K] extends nu
 export const SOFT_BODY_RANGES: Record<NumberKey, { min: number; max: number; step: number }> = {
   rigidity: { min: 0, max: 100, step: 1 },
   neckFirmness: { min: 0, max: 100, step: 1 },
+  earFirmness: { min: 0, max: 100, step: 1 },
+  earWellPct: { min: 15, max: 60, step: 1 },
+  earWellDepthPct: { min: 0, max: 80, step: 1 },
   volumePct: { min: 80, max: 180, step: 1 },
   emptyCasePct: { min: 20, max: 70, step: 1 },
   smoothing: { min: 0, max: 16, step: 1 },
@@ -52,6 +61,10 @@ export const SOFT_BODY_DEFAULTS: SoftBodySettings = {
   enabled: true,
   rigidity: 50,
   neckFirmness: Math.round(SOLVER_DEFAULTS.rollFirmness * 100),
+  earFirmness: Math.round(SOLVER_DEFAULTS.padFirmness * 100),
+  // From the product photo (Nov 2026): the well is about a third of the pad across, sewn down past half its rim.
+  earWellPct: 32,
+  earWellDepthPct: 55,
   volumePct: 130,
   emptyCasePct: Math.round(SOLVER_DEFAULTS.slump * 100),
   smoothing: 8,
@@ -83,6 +96,9 @@ export function softBodySettings(value: unknown): SoftBodySettings {
     enabled: typeof o.enabled === "boolean" ? o.enabled : SOFT_BODY_DEFAULTS.enabled,
     rigidity: clampTo("rigidity", o.rigidity),
     neckFirmness: clampTo("neckFirmness", o.neckFirmness),
+    earFirmness: clampTo("earFirmness", o.earFirmness),
+    earWellPct: clampTo("earWellPct", o.earWellPct),
+    earWellDepthPct: clampTo("earWellDepthPct", o.earWellDepthPct),
     volumePct: clampTo("volumePct", o.volumePct),
     emptyCasePct: clampTo("emptyCasePct", o.emptyCasePct),
     smoothing: clampTo("smoothing", o.smoothing),
@@ -126,7 +142,8 @@ export const sameSoftBodySettings = (a: SoftBodySettings, b: SoftBodySettings) =
  * 664-wide desktop cut (lengths, speeds and areas scale with it). Rigidity is
  * shape memory and skin tension together: the preview's 0 … 100 mapping.
  * Neck firmness is the roll's own: how much its foam gives, and how hard it
- * springs back to round.
+ * springs back to round. Ear pad firmness is the same for the Ear Comfort Pad,
+ * springing back to its rim and well.
  */
 export function solverOptionsFor(s: SoftBodySettings, scale = 1): Partial<SolverOptions> {
   const rig = s.rigidity / 100;
@@ -141,5 +158,17 @@ export function solverOptionsFor(s: SoftBodySettings, scale = 1): Partial<Solver
     shapeMemory: 0.01 + rig * 0.06,
     skin: 0.08 + rig * 0.24,
     rollFirmness: s.neckFirmness / 100,
+    padFirmness: s.earFirmness / 100,
   };
+}
+
+/**
+ * An Ear Comfort Pad's sewn well, as every view draws it: `width` its diameter
+ * as a share of the pad's width (side-on, of its span front ↔ back), `depth`
+ * how far it dips as a share of the pad's thickness.
+ */
+export type PadWell = { width: number; depth: number };
+
+export function padWellOf(s: Pick<SoftBodySettings, "earWellPct" | "earWellDepthPct">): PadWell {
+  return { width: s.earWellPct / 100, depth: s.earWellDepthPct / 100 };
 }

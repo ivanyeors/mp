@@ -111,11 +111,12 @@ export function buildCostOptions(input: {
   templates: FillingTemplateRecipe[];
   defaultTemplateId: number | null;
   costByItem: ReadonlyMap<number, number | null>;
-  /** Neck support item ids. */
+  /** Item ids of the accessories placed in the pillow: Neck supports and Ear Comfort Pads (`isInPillowAccessory`). */
   neckSupportItemIds: ReadonlySet<number>;
   /**
-   * Basic Mpillow takes no Neck support: its pieces come out of the mix, as
-   * `mixAfterTierChange` takes them out of a session's, and the rest still builds.
+   * Basic Mpillow takes no Neck support or ear pad: its pieces come out of the
+   * mix, as `mixAfterTierChange` takes them out of a session's, and the rest
+   * still builds.
    */
   allowNeckSupport: boolean;
 }): BuildCosts {

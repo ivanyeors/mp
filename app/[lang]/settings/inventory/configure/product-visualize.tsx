@@ -28,7 +28,7 @@ import {
   OverlayWorkbench,
   type OverlayDraft,
 } from "@/components/product-builder/overlay-workbench";
-import { FILLING_SHAPE_PATHS } from "@/components/spatial/xray-assets";
+import { EAR_WELL_THUMB_PATH, FILLING_SHAPE_PATHS } from "@/components/spatial/xray-assets";
 import {
   effectiveFillingColors,
   type ColorOverrideRow,
@@ -317,6 +317,9 @@ function FillingVisualRow({
           aria-label={`${row.subtype} shape (read-only)`}
         >
           <path d={FILLING_SHAPE_PATHS[row.shape]} fill={row.color} />
+          {row.shape === "ear" && (
+            <path d={EAR_WELL_THUMB_PATH} fill="rgb(2,6,23)" fillOpacity={0.22} stroke="white" strokeOpacity={0.8} strokeWidth={2} />
+          )}
         </svg>
       </TableCell>
       <TableCell className="font-medium">{row.subtype}</TableCell>

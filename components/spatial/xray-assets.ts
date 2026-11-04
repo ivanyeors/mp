@@ -65,7 +65,16 @@ export const FILLING_SHAPE_PATHS: Record<ShapeId, string> = {
   // Neck support: a stadium, round ends on the short axis (thumbnail only — the
   // x-ray builds the stretched outline in conform.ts).
   pill: "M30 20 L70 20 C87 20 98 34 98 50 C98 66 87 80 70 80 L30 80 C13 80 2 66 2 50 C2 34 13 20 30 20 Z",
+  // Ear Comfort Pad: a puffy square, its corners rounder than a pouch's. Its
+  // sewn well is drawn on top (`EAR_WELL_THUMB_PATH`), not cut out, so the
+  // shape stays one ring the morphs can interpolate.
+  ear:
+    "M50 6 C72 6 88 6 92 14 C96 22 94 36 94 50 C94 64 96 78 92 86 C88 94 72 94 50 94 " +
+    "C28 94 12 94 8 86 C4 78 6 64 6 50 C6 36 4 22 8 14 C12 6 28 6 50 6 Z",
 };
+
+/** The Ear Comfort Pad thumbnail's sewn well, in the same 100×100 box. */
+export const EAR_WELL_THUMB_PATH = "M36 50 A14 14 0 1 0 64 50 A14 14 0 1 0 36 50 Z";
 
 /**
  * Air line between the fillings and the shell, in view units — pouch outlines

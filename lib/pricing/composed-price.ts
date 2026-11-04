@@ -20,9 +20,10 @@
  * BOM's own default case.
  *
  * Whatever goes inside the pillow is in the row. That is every filling, and a
- * Cervical Neck Support placed in a premium pillow too: placing one or taking it
- * out never moves the price off the pillow's MSRP. An Add-on, such as an Ear
- * Comfort Pad, ships beside the pillow and adds its own MSRP.
+ * Cervical Neck Support or an Ear Comfort Pad placed in a premium pillow too:
+ * placing one or taking it out never moves the price off the pillow's MSRP. An
+ * Add-on, such as an Ear Comfort Pad picked as one, ships beside the pillow and
+ * adds its own MSRP.
  */
 
 /** `product_prices.variant` for a pillow row — `items.price_family` of its case. */

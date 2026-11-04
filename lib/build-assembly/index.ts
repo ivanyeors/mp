@@ -45,13 +45,17 @@ export function preferenceRoleOf(category: string): "cover" | "case" | null {
   return null;
 }
 
+/** The `placementKind`s a pack list may hold: what goes inside the pillow. */
+const INSIDE_THE_PILLOW: ReadonlySet<string> = new Set(["filling", "neck_support", "ear_pad"]);
+
 export type AssembleBuildInput = {
   /** Live composed sellable BOM for assigned size×tier / length. */
   composedBomLines: BomLineInput[];
   /**
    * What goes inside the pillow: the Filling Template or snapshot's pack list.
-   * `category` is `placementKind`'s: `filling`, or `neck_support` for a Cervical
-   * Neck Support placed in a premium pillow. Anything else is refused.
+   * `category` is `placementKind`'s: `filling`, `neck_support` for a Cervical
+   * Neck Support or `ear_pad` for an Ear Comfort Pad placed in a premium pillow.
+   * Anything else is refused.
    */
   fillingTemplateLines: BomLineInput[];
   /** Customer preferences: cover and case only. */
@@ -70,17 +74,15 @@ export type AssembleBuildResult =
  * Protector is never accepted as a customer preference.
  */
 export function assembleBuild(input: AssembleBuildInput): AssembleBuildResult {
-  // A neck support goes inside a premium pillow beside the fillings: it ships and
-  // comes out of stock with them. The placement validators already keep it off a
-  // basic pillow and a bolster, so here it only has to be let through.
-  const badFills = input.fillingTemplateLines.filter(
-    (l) => l.category !== "filling" && l.category !== "neck_support",
-  );
+  // A neck support or an ear pad goes inside a premium pillow beside the fillings:
+  // it ships and comes out of stock with them. The placement validators already
+  // keep it off a basic pillow and a bolster, so here it only has to be let through.
+  const badFills = input.fillingTemplateLines.filter((l) => !INSIDE_THE_PILLOW.has(l.category));
   if (badFills.length > 0) {
     const ids = badFills.map((l) => l.item_id).join(", ");
     return {
       ok: false,
-      error: `Fillings may only be filling items or a neck support (rejected item_id: ${ids})`,
+      error: `Fillings may only be filling items, a neck support or an ear pad (rejected item_id: ${ids})`,
     };
   }
 
