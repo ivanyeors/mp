@@ -7,7 +7,8 @@
  * SVG from the fit the host already computed — one pouch per piece at its
  * compressed thickness, coloured by family through the same CSS variables the
  * pouches use, hatched when compressed; a stack that cannot close pokes out of
- * the case (never red: Ivan, 1-11-2026); a Neck support is a round roll. A pouch draws as a stuffed
+ * the case (never red: Ivan, 1-11-2026); a Neck support is a round roll; an Ear Comfort Pad
+ * is a cushion whose top dips into its sewn well between two rims. A pouch draws as a stuffed
  * cushion (`slab-shape.ts`): its free top domes, a pressed face flattens, it
  * sags where nothing holds it up, it is pressed into the case where it meets
  * the outline, and it glides to its new place when the mix changes.
@@ -45,10 +46,10 @@ import {
 } from "@/lib/spatial-fillings/cross-section";
 import type { BolsterFit, FitStatus, PillowFit } from "@/lib/spatial-fillings/fit";
 import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
-import { SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
+import { padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { cn } from "@/lib/utils";
-import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, smoothClosedPath, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
+import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, smoothClosedPath, wellDip, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
 import { useSoftCut, type SoftCutInput } from "./soft-cut";
 import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
@@ -274,6 +275,7 @@ function softInputOf(fit: PillowFit, cut: Cut, f: Frame, polygon: ShellPolygon, 
     frame: { ...f, width: f.L.width, slabGap: SLAB_GAP, scale: f.drawW / Math.min(LAYOUT.width - 2 * PAD_X, LAYOUT.maxShellH * aspectOf(f.profile)) },
     casePolygon: polygon as SoftCutInput["casePolygon"],
     isRoll: (itemId) => fillingVisual(itemSubtypes.get(itemId) ?? null).shape === "pill",
+    isPad: (itemId) => fillingVisual(itemSubtypes.get(itemId) ?? null).shape === "ear",
     settings,
   };
 }
@@ -359,7 +361,9 @@ function PuffySlab({
   const body = outline ?? slabOutline(box, roll, puff, shaping);
   // The label rides the sag at the pouch's middle, so it stays on the fill.
   const mid = (a?: readonly number[]) => (a && a.length ? a[Math.floor(a.length / 2)] : 0);
-  const labelDy = roll ? 0 : (mid(shaping?.sag) + mid(shaping?.sagTop ?? shaping?.sag)) / 2;
+  // An ear pad's label sits in the fill under its well, not in the dip above it.
+  const wellDy = shaping?.well ? (wellDip(0.5, shaping.well) * box.h) / 2 : 0;
+  const labelDy = roll ? 0 : (mid(shaping?.sag) + mid(shaping?.sagTop ?? shaping?.sag)) / 2 + wellDy;
   // The tween writes the outline to every body-shaped path and the label, so they move together.
   const groupEl = useRef<SVGGElement | null>(null);
   const shown = useRef(box);
@@ -514,6 +518,8 @@ export function CrossSectionSvg({
   // The hook keys the settle by value, so a fresh input each render settles only when something it reads changed.
   const soft = useSoftCut(softBody.enabled ? softInputOf(fit, cut, f, polygon, itemSubtypes, softBody) : null, softBody.animate && !drag, softReplay);
   const clothD = soft ? smoothClosedPath(soft.case) : null;
+  const well = padWellOf(softBody);
+  const wellOf = (subtype: string | null) => (fillingVisual(subtype).shape === "ear" ? well : undefined);
   const labelOf = (itemId: number) => pieceLabelLines(itemSubtypes.get(itemId) ?? null, itemSizes?.get(itemId) ?? null).join(" ");
   const dropX0 = drag?.column ? f.x0 + SUB_SECTIONS.indexOf(drag.column) * f.colW : null;
   const toneColor = drag?.tone === "over" || drag?.tone === "refused" ? AMBER : DROP;
@@ -528,6 +534,7 @@ export function CrossSectionSvg({
     const over = slab.status === "over";
     const shaping: PouchShaping = {
       contacts: slab.pressed,
+      well: wellOf(subtype),
       sag: slab.sagMm.map((mm) => mm * ky),
       sagTop: slab.sagTopMm.map((mm) => mm * ky),
       shell: over ? undefined : { polygon, margin: SHELL_MARGIN },
@@ -536,7 +543,9 @@ export function CrossSectionSvg({
     const key = landing ? drag!.sourceKey : slab.key;
     const ring = soft?.rings.get(slab.key);
     const spot = ring ? soft!.labels.get(slab.key) : undefined;
-    const font = spot ? pieceFontFor(label, { x: 0, y: 0, w: spot.r * 2.6, h: spot.r * 2 }, L) : pieceFontFor(label, box, L);
+    // Under a well there is less fill to write on.
+    const fontBox = shaping.well ? { ...box, h: box.h * (1 - wellDip(0.5, shaping.well)) } : box;
+    const font = spot ? pieceFontFor(label, { x: 0, y: 0, w: spot.r * 2.6, h: spot.r * 2 }, L) : pieceFontFor(label, fontBox, L);
     const el = (
       <PuffySlab
         key={key}
@@ -642,7 +651,7 @@ export function CrossSectionSvg({
             {(() => {
               const g = drag.ghost;
               const box = { x: -g.w / 2, y: -g.h / 2, w: g.w, h: g.h };
-              const d = slabOutline(box, g.roll, g.puff);
+              const d = slabOutline(box, g.roll, g.puff, { well: wellOf(g.subtype) });
               const visual = fillingVisual(g.subtype);
               const font = pieceFontFor(g.label, box, L);
               return (

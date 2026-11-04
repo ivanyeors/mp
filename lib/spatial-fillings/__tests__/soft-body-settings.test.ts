@@ -9,6 +9,7 @@ import {
   SOFT_BODY_DEFAULTS,
   SOFT_BODY_RANGES,
   SOFT_BODY_SETTING_KEY,
+  padWellOf,
   softBodyFromPayload,
   softBodySettings,
   softBodySettingsToStored,
@@ -28,6 +29,9 @@ const tuned: SoftBodySettings = {
   enabled: false,
   rigidity: 72,
   neckFirmness: 60,
+  earFirmness: 40,
+  earWellPct: 45,
+  earWellDepthPct: 30,
   volumePct: 110,
   emptyCasePct: 45,
   smoothing: 3,
@@ -143,6 +147,11 @@ describe("solverOptionsFor", () => {
     expect(solverOptionsFor(SOFT_BODY_DEFAULTS).rollFirmness).toBeCloseTo(SOLVER_DEFAULTS.rollFirmness, 10);
   });
 
+  it("hands the Ear Comfort Pad's firmness to the solver as a share, its default the solver's own", () => {
+    expect(solverOptionsFor(tuned).padFirmness).toBeCloseTo(0.4, 10);
+    expect(solverOptionsFor(SOFT_BODY_DEFAULTS).padFirmness).toBeCloseTo(SOLVER_DEFAULTS.padFirmness, 10);
+  });
+
   it("carries steps and the empty case height as they are", () => {
     const o = solverOptionsFor(tuned, 2);
     expect(o.steps).toBe(30);
@@ -165,6 +174,24 @@ describe("solverOptionsFor", () => {
     for (const key of ["steps", "slump", "shapeMemory", "skin"] as const) {
       expect(half[key], key).toBe(one[key]);
     }
+  });
+});
+
+describe("padWellOf", () => {
+  it("is the well's size and depth as shares", () => {
+    expect(padWellOf(tuned)).toEqual({ width: 0.45, depth: 0.3 });
+    expect(padWellOf(SOFT_BODY_DEFAULTS)).toEqual({ width: 0.32, depth: 0.55 });
+  });
+
+  it("reads a value saved before the ear pad knobs with their defaults", () => {
+    const { earFirmness: _f, earWellPct: _w, earWellDepthPct: _d, ...before } = tuned;
+    void [_f, _w, _d];
+    expect(softBodySettings(JSON.stringify(before))).toEqual({
+      ...tuned,
+      earFirmness: SOFT_BODY_DEFAULTS.earFirmness,
+      earWellPct: SOFT_BODY_DEFAULTS.earWellPct,
+      earWellDepthPct: SOFT_BODY_DEFAULTS.earWellDepthPct,
+    });
   });
 });
 

@@ -18,9 +18,10 @@
  * - a pouch remembers the codebase's own footprint (`pouchOutline`) at the
  *   volume Settings gives it; a plane holding more than its room is squeezed
  *   pro rata first, as the cut squeezes a crowded cell; a Neck support is the
- *   firm roll, its footprint the pill.
+ *   firm roll, its footprint the pill; an Ear Comfort Pad is a firm pad, its
+ *   footprint a puffy square (its well is drawn on it by the x-ray).
  *
- * The same solver, the same Settings (rigidity, Neck firmness, pouch volume,
+ * The same solver, the same Settings (rigidity, Neck and ear pad firmness, pouch volume,
  * smoothing, space between pieces, settle length, animate, on/off), the same
  * smoothing and the same easing as the cut. Empty case height is the cut's
  * alone: seen from above the case has no height to slump.
@@ -131,9 +132,10 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
     const ring = starts.get(p.key)!;
     return { p, ring, area: Math.abs(signedArea(ring)) };
   });
-  // A roll keeps its own footprint; the pouches share what room it leaves, pro rata, when they would want more.
-  const firm = drawn.filter((x) => x.p.shape === "pill").reduce((a, x) => a + x.area, 0);
-  const want = drawn.filter((x) => x.p.shape !== "pill").reduce((a, x) => a + x.area * volume, 0);
+  // A roll or an ear pad keeps its own footprint; the pouches share what room it leaves, pro rata, when they would want more.
+  const isFirm = (shape: ShapeId) => shape === "pill" || shape === "ear";
+  const firm = drawn.filter((x) => isFirm(x.p.shape)).reduce((a, x) => a + x.area, 0);
+  const want = drawn.filter((x) => !isFirm(x.p.shape)).reduce((a, x) => a + x.area * volume, 0);
   const squeeze = want > room - firm ? Math.max((room - firm) / Math.max(want, 1), MIN_SQUEEZE) : 1;
   return drawn
     .filter((x) => x.ring.length >= 3 && x.area > 1)
@@ -142,6 +144,11 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
         // The firm roll: it remembers the pill it was drawn as, at the footprint it has.
         const rest = pairedWith(scaledTo(pouchOutline(p.rect, 10, "pill") as Pt[], area), ring);
         return { id: p.key, ring, rest, kind: "roll", areaTarget: area, ...(p.held ? { held: true } : {}) };
+      }
+      if (p.shape === "ear") {
+        // The firm pad: it remembers the puffy square it was drawn as, at the footprint it has.
+        const rest = pairedWith(scaledTo(pouchOutline(p.rect, 8, "ear") as Pt[], area), ring);
+        return { id: p.key, ring, rest, kind: "pad", areaTarget: area, ...(p.held ? { held: true } : {}) };
       }
       // A pouch remembers the codebase's own footprint at the volume it holds.
       const target = area * volume * squeeze;

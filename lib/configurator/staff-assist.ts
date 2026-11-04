@@ -158,7 +158,8 @@ export function startingTemplateId(
  * The mix after a confirmed size×tier change, or null when a size change means
  * starting over from that size's template. A tier-only change keeps the mix —
  * templates are scoped by size, never by tier — except that a basic pillow
- * cannot take a neck support (the hold refuses one), so those pieces go.
+ * cannot take a neck support or an ear pad (the hold refuses one), so those
+ * pieces go.
  */
 export function mixAfterTierChange(
   current: SizeTier,

@@ -1,5 +1,7 @@
 /** Dynamic accessory add-on suggestions for pillow vs bolster purchase paths. */
 
+import { EAR_PAD } from "@/lib/spatial-fillings/filling-groups";
+
 export const PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 export type PillowSize = (typeof PILLOW_SIZES)[number];
 
@@ -110,9 +112,9 @@ export function addonMatchRank(
 /**
  * An Ear Comfort Pad: an accessory for ear discomfort during side sleep. Matched
  * by name, as a neck support is (`isNeckSupportItem`) — inventory has no
- * category of its own for it.
+ * category of its own for it. The x-ray's own match, so the two never drift.
  */
-export const EAR_COMFORT = /ear comfort/i;
+export const EAR_COMFORT = EAR_PAD;
 
 /**
  * The add-ons a shopper's answers make relevant. An Ear Comfort Pad is offered

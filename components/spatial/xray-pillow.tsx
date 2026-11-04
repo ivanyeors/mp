@@ -67,6 +67,7 @@ import {
   conformPouchPath,
   labelRectOf,
   makeRegion,
+  parsePathPolygon,
   type ConformRegion,
 } from "@/lib/spatial-fillings/conform";
 import { getShapeMorph, prepareMorph } from "@/lib/spatial-fillings/morphs";
@@ -85,7 +86,7 @@ import {
 import { layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import { PILLOW_DIMENSIONS, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
-import { SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
+import { padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 import { cellRegion, sectionRegion, useSoftTopPaths, type SoftTopPlane } from "./soft-top";
 
@@ -202,6 +203,45 @@ const LAYER_ICON_BUTTON_CLASS =
 const easeOut = (t: number) => t * (2 - t);
 
 /**
+ * An Ear Comfort Pad's sewn well seen from above: a circle at the middle of
+ * its outline `d` (its area centroid), `share` of its width across — the pad
+ * is square, and a cell squeezes it front ↔ back, not the well — never more
+ * than 0.8 of its short side. Null for an outline too small to draw one in.
+ */
+export function earWellCircle(d: string, share: number): { cx: number; cy: number; r: number } | null {
+  if (share <= 0) return null;
+  const P = parsePathPolygon(d, 4);
+  if (P.length < 3) return null;
+  let a2 = 0;
+  let cx = 0;
+  let cy = 0;
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i < P.length; i++) {
+    const [ax, ay] = P[i];
+    const [bx, by] = P[(i + 1) % P.length];
+    const c = ax * by - bx * ay;
+    a2 += c;
+    cx += (ax + bx) * c;
+    cy += (ay + by) * c;
+    x0 = Math.min(x0, ax);
+    x1 = Math.max(x1, ax);
+    y0 = Math.min(y0, ay);
+    y1 = Math.max(y1, ay);
+  }
+  if (Math.abs(a2) < 1e-6) return null;
+  const r = Math.min((share * (x1 - x0)) / 2, 0.4 * Math.min(x1 - x0, y1 - y0));
+  return r >= 2 ? { cx: cx / (3 * a2), cy: cy / (3 * a2), r } : null;
+}
+
+const circlePath = ({ cx, cy, r }: { cx: number; cy: number; r: number }) => {
+  const f = (n: number) => Math.round(n * 10) / 10;
+  return `M${f(cx - r)} ${f(cy)} A${f(r)} ${f(r)} 0 1 0 ${f(cx + r)} ${f(cy)} A${f(r)} ${f(r)} 0 1 0 ${f(cx - r)} ${f(cy)} Z`;
+};
+
+/**
  * One filling piece; `d` is its conform-deformed outline in view coordinates
  * (see conform.ts), so its border follows the shell curve with no sharp cut
  * corners. When its shape swaps (item type change in the same slot), the
@@ -224,6 +264,7 @@ export function MorphPiece({
   d,
   view = "settled",
   status = "ok",
+  well = 0,
 }: {
   subtype: string | null;
   visual: FillingVisual;
@@ -231,6 +272,8 @@ export function MorphPiece({
   view?: PieceView;
   /** The piece's own fit (slice 04): a squeezed piece draws with a dashed stroke. */
   status?: FitStatus;
+  /** An Ear Comfort Pad's sewn well, as a share of its short side across (Settings › Soft body); 0 draws none. */
+  well?: number;
 }) {
   const shape = visual.shape;
   const ref = useRef<SVGPathElement>(null);
@@ -335,11 +378,26 @@ export function MorphPiece({
     vectorEffect: "non-scaling-stroke",
   } as const;
 
+  const wellAt = visual.shape === "ear" ? earWellCircle(d, well) : null;
+
   return (
     <>
       {ghost && <path ref={ghostRef} d={d} {...paint} />}
       {settleGhost && <path ref={settleGhostRef} d={settleGhost} {...paint} />}
       <path ref={ref} d={d} {...paint} />
+      {wellAt && (
+        // The sewn well: a shaded dip ringed by its seam, where the ear rests.
+        <path
+          d={circlePath(wellAt)}
+          data-ear-well=""
+          fill="rgb(2,6,23)"
+          fillOpacity={0.22}
+          stroke="rgba(255,255,255,0.8)"
+          strokeWidth={1.5}
+          vectorEffect="non-scaling-stroke"
+          pointerEvents="none"
+        />
+      )}
     </>
   );
 }
@@ -859,22 +917,39 @@ export function XrayPillow({
     }
     return planes;
   }, [dived, piecesByCell, authoredConformed, itemSubtypes, stage]);
+  const earWell = padWellOf(softBody).width;
   const softSettled = useSoftTopPaths(settledPlanes, softBody, XRAY_VIEW);
   const softAuthored = useSoftTopPaths(authoredPlanes, softBody, XRAY_VIEW);
   const settledPaths = useMemo(() => withSoft(settledConformed, softSettled), [settledConformed, softSettled]);
   const authoredPaths = useMemo(() => withSoft(authoredConformed, softAuthored), [authoredConformed, softAuthored]);
 
   // Labels sit on the drawn body (the conformed outline's centroid), not on
-  // the rect's centre — a compartment-filling pouch is cut by the notch.
+  // the rect's centre — a compartment-filling pouch is cut by the notch. An
+  // ear pad's sits beside its well (below it, or above when that has more
+  // room), so the well stays in view.
   const labelRects = useMemo(() => {
     const out = new Map<string, PieceRect>();
     for (const p of pieces) {
       if (p.depth !== 0) continue;
       const d = (p.section === dived ? authoredPaths : settledPaths).get(p.key);
-      if (d) out.set(p.key, labelRectOf(d));
+      if (!d) continue;
+      const rect = labelRectOf(d);
+      const well = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape === "ear" ? earWellCircle(d, earWell) : null;
+      if (!well) {
+        out.set(p.key, rect);
+        continue;
+      }
+      const below = rect.y + rect.h - (well.cy + well.r);
+      const above = well.cy - well.r - rect.y;
+      out.set(
+        p.key,
+        below >= above
+          ? { x: rect.x, y: well.cy + well.r, w: rect.w, h: Math.max(below, 0) }
+          : { x: rect.x, y: rect.y, w: rect.w, h: Math.max(above, 0) },
+      );
     }
     return out;
-  }, [pieces, dived, authoredPaths, settledPaths]);  const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
+  }, [pieces, dived, authoredPaths, settledPaths, itemSubtypes, earWell]);  const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
   // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
   // the editor overlay aligns to the dived column in place.
@@ -1700,6 +1775,7 @@ export function XrayPillow({
                           d={d}
                           view={authored ? "authored" : "settled"}
                           status={squeeze.status}
+                          well={earWell}
                         />
                         {p.depth > 0 && (
                           <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />

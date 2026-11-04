@@ -220,7 +220,7 @@ import {
   StaffAssistPanel,
   type FillingItem,
 } from "@/components/configurator/staff-assist-panel";
-import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
+import { isInPillowAccessory, isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
 import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
@@ -1739,17 +1739,23 @@ export function MpConfigClient({
     }));
 
     // Templates are scoped by size, so only a size change replaces the mix.
-    const neckSupportIds = new Set(
+    const accessoryIds = new Set(
       assistItems
-        .filter((i) => isNeckSupportItem({ category: i.category, name: i.name }))
+        .filter((i) => isInPillowAccessory({ category: i.category, name: i.name }))
         .map((i) => i.id),
     );
-    const kept = mixAfterTierChange(from, next, assistPlacements, (id) => neckSupportIds.has(id));
+    const neckIds = new Set(
+      assistItems.filter((i) => isNeckSupportItem({ category: i.category, name: i.name })).map((i) => i.id),
+    );
+    const kept = mixAfterTierChange(from, next, assistPlacements, (id) => accessoryIds.has(id));
     if (kept) {
       setAssistPlacements(kept.placements);
       if (kept.removed > 0) {
-        toast.message("Neck support removed", {
-          description: "A neck support is for Premium pillows only.",
+        const onlyNeck = assistPlacements.every((p) => !accessoryIds.has(p.itemId) || neckIds.has(p.itemId));
+        toast.message(onlyNeck ? "Neck support removed" : "Accessories removed", {
+          description: onlyNeck
+            ? "A neck support is for Premium pillows only."
+            : "A neck support or ear pad is for Premium pillows only.",
         });
       }
     } else {

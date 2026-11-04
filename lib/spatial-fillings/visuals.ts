@@ -9,8 +9,10 @@ import { fillingFamily } from "./filling-groups";
 
 // ponytail: one rounded-square pouch for every filling type — color + size
 // carry the distinction; per-family designer fluid shapes slot back in here.
-// A neck support is not a filling, so it reads as a pill.
-export type ShapeId = "pouch" | "pill";
+// A neck support is not a filling, so it reads as a pill. An Ear Comfort Pad
+// is a rounder square cushion with a sewn well for the ear: from above the
+// well is drawn as a ring in its middle, side-on as a dip in its top.
+export type ShapeId = "pouch" | "pill" | "ear";
 
 export type FillingVisual = {
   shape: ShapeId;
@@ -25,6 +27,7 @@ const FAMILY_COLORS: Record<string, string> = {
   "6d": "#38bdf8",
   "3d": "#a78bfa",
   neck: "#34d399",
+  ear: "#fda4af",
 };
 
 /**
@@ -59,10 +62,13 @@ export function subtypeSlug(subtype: string | null): string {
   return slug || "default";
 }
 
+/** The families that are not a pouch. */
+const FAMILY_SHAPES: Readonly<Record<string, ShapeId>> = { neck: "pill", ear: "ear" };
+
 /** `subtype` is the item's type descriptor (see fillingDescriptor), not the raw column. */
 export function fillingVisual(subtype: string | null): FillingVisual {
   return {
-    shape: fillingFamily(subtype).key === "neck" ? "pill" : "pouch",
+    shape: FAMILY_SHAPES[fillingFamily(subtype).key] ?? "pouch",
     cssVar: `--xray-fill-${subtypeSlug(subtype)}`,
     defaultColor: familyColor(subtype),
   };

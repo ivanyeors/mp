@@ -13,6 +13,9 @@
  * - a Neck support is a firm roll: foam in a cover that does not stretch, so
  *   it keeps its round side view but gives a little — flattening where it
  *   rests and where it is pressed — the less the firmer it is;
+ * - an Ear Comfort Pad is a firm pad the same way, with its own firmness: it
+ *   remembers its rim and the sewn well in its middle, and its skin keeps
+ *   that dip (surface tension smooths ripples, never the shape it was sewn);
  * - the case is cloth: never longer than sewn, drawn lightly toward a slumped
  *   copy of the sewn outline, keeping its curves and bending smoothly, and
  *   never past the sewn outline (a signed-distance limit). Its flat bottom is
@@ -38,7 +41,8 @@ export type SoftPiece = {
   ring: readonly Pt[];
   /** The relaxed cushion it remembers (same point count and order as `ring`); absent = its start. */
   rest?: readonly Pt[];
-  kind: "pouch" | "roll";
+  /** A filling pouch, a Neck support's roll, or an Ear Comfort Pad. */
+  kind: "pouch" | "roll" | "pad";
   /** The area it inflates to, view units²; absent = its rest area. */
   areaTarget?: number;
   /** It never squeezes below this area. */
@@ -87,6 +91,8 @@ export type SolverOptions = {
   fabricCompliance: number;
   /** A Neck support's firmness, 0 … 1: how little its foam gives where it is pressed. */
   rollFirmness: number;
+  /** An Ear Comfort Pad's firmness, 0 … 1: how little it gives, and how hard it springs back to its rim and well. */
+  padFirmness: number;
   /** How loosely a piece is held up ↔ down to where it started; 0 in the cut, where gravity places it. */
   tetherY: number;
   /** The case does not move at all (the top-down x-ray's walls); the cut's is cloth. */
@@ -116,6 +122,7 @@ export const SOLVER_DEFAULTS: SolverOptions = {
   maxStep: 1.2,
   fabricCompliance: 2e-6,
   rollFirmness: 0.75,
+  padFirmness: 0.6,
   tetherY: 0,
   rigidCase: false,
 };
@@ -248,7 +255,7 @@ function sdfFor(P: readonly Pt[], width: number, height: number, step = 3) {
 }
 
 type Body = {
-  kind: "case" | "pouch" | "roll";
+  kind: "case" | "pouch" | "roll" | "pad";
   id: string;
   start: number;
   n: number;
@@ -276,13 +283,18 @@ type Body = {
 /** Start a settle of `pieces` inside the case. Nothing moves until `step`. */
 export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, options: Partial<SolverOptions> = {}): SoftSettle {
   const o: SolverOptions = { ...SOLVER_DEFAULTS, ...options };
-  const { steps, substeps, gap, margin, gravity, tether, tetherY, rigidCase, areaCompliance, inflate, skin, shapeMemory, caseDetail, caseBend, casePull, billow, maxStep, fabricCompliance, rollFirmness } = o;
+  const { steps, substeps, gap, margin, gravity, tether, tetherY, rigidCase, areaCompliance, inflate, skin, shapeMemory, caseDetail, caseBend, casePull, billow, maxStep, fabricCompliance, rollFirmness, padFirmness } = o;
   // Foam, not air: a roll's volume gives under load (never below its floor) and it springs back to round.
   const rollGive = areaCompliance * 6 * (1 - rollFirmness);
   const rollMemory = 0.06 + 0.24 * rollFirmness;
   const rollFloor = 0.8 + 0.16 * rollFirmness;
   // How far it may squash out of round, linearly: none at all when fully firm.
   const rollBeta = 0.85 * (1 - rollFirmness);
+  // An ear pad is firm the same way, at its own firmness, springing back to its rim and well.
+  const padGive = areaCompliance * 6 * (1 - padFirmness);
+  const padMemory = 0.06 + 0.24 * padFirmness;
+  const padFloor = 0.8 + 0.16 * padFirmness;
+  const padBeta = 0.85 * (1 - padFirmness);
   const { baseline } = frame;
   const raw = resample(frame.outline, o.caseN);
   const full = signedArea(raw) < 0 ? raw.slice().reverse() : raw;
@@ -329,7 +341,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       X[off + k] = x;
       Y[off + k] = y;
       cx += x;
-      W[off + k] = r.kind === "case" ? (rigidCase || y > baseline - 0.6 ? 0 : 1.5) : r.kind === "roll" ? 0.4 : 1;
+      W[off + k] = r.kind === "case" ? (rigidCase || y > baseline - 0.6 ? 0 : 1.5) : r.kind === "roll" || r.kind === "pad" ? 0.4 : 1;
       cy += y;
     });
     cx /= n;
@@ -376,7 +388,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       ty: r.held && tetherY ? Math.max(tetherY, HELD_TETHER) : tetherY,
       seedArea: a0,
       target,
-      areaMin: r.areaMin || (r.kind === "roll" ? target * rollFloor : 0),
+      areaMin: r.areaMin || (r.kind === "roll" ? target * rollFloor : r.kind === "pad" ? target * padFloor : 0),
       area0: a0,
       over: r.over,
       gx: new Float64Array(n),
@@ -510,6 +522,16 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       const q = I(b, k + 1);
       X[i] += ((X[p] + X[q]) / 2 - X[i]) * w;
       Y[i] += ((Y[p] + Y[q]) / 2 - Y[i]) * w;
+    }
+  }
+  /** A sewn skin (the ear pad's): it smooths toward its own rest curvature, so ripples go and the well stays. */
+  function smoothSewn(b: Body, w: number) {
+    for (let k = 0; k < b.n; k++) {
+      const i = I(b, k);
+      const p = I(b, k - 1);
+      const q = I(b, k + 1);
+      X[i] += ((X[p] + X[q]) / 2 + b.lx[k] - X[i]) * w;
+      Y[i] += ((Y[p] + Y[q]) / 2 + b.ly[k] - Y[i]) * w;
     }
   }
 
@@ -727,12 +749,14 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
     }
     for (const b of pcs) {
       const roll = b.kind === "roll";
+      const pad = b.kind === "pad";
       // Cloth around fill: the fabric (a roll's cover too) neither stretches nor shrinks, so puffing up shortens it and squashing lengthens it.
       for (let k = 0; k < b.n; k++) dist(I(b, k), I(b, k + 1), b.rest[k], fabricCompliance, false);
-      smoothSkin(b, skin);
-      area(b, b.area0, (roll ? rollGive : areaCompliance) * (b.target / 10000));
+      if (pad) smoothSewn(b, skin);
+      else smoothSkin(b, skin);
+      area(b, b.area0, (roll ? rollGive : pad ? padGive : areaCompliance) * (b.target / 10000));
       if (b.areaMin && areaOf(b) < b.areaMin) area(b, b.areaMin, 0);
-      shape(b, roll ? rollMemory : shapeMemory, roll ? rollBeta : 0.85);
+      shape(b, roll ? rollMemory : pad ? padMemory : shapeMemory, roll ? rollBeta : pad ? padBeta : 0.85);
     }
     collide();
     // A full stack presses the cloth out; the seam holds it, and the pieces meet it next substep.

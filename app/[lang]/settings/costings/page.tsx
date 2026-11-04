@@ -65,7 +65,7 @@ import {
   type BuildCostOption,
   type BuildCosts,
 } from "@/lib/costings/build-costs";
-import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
+import { isInPillowAccessory } from "@/lib/spatial-fillings/filling-groups";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
@@ -1007,7 +1007,8 @@ export default function CostingsPage() {
   const cardBuilds = useMemo(() => {
     const msrpCentsOf = (itemId: number) => parseToCents(committedDraft[itemKey(itemId)]?.msrp ?? "");
     const neckSupportMsrpByItem = new Map<number, number | null>(
-      items.filter((item) => isNeckSupportItem(item)).map((item) => [item.id, msrpCentsOf(item.id)]),
+      // Every accessory placed in the pillow (a Neck support, an Ear Comfort Pad) costs its own MSRP.
+      items.filter((item) => isInPillowAccessory(item)).map((item) => [item.id, msrpCentsOf(item.id)]),
     );
     const caseItems = items.filter((item) => CASE_CATEGORIES.has(item.category));
     const map = new Map<string, CardBuild>();
@@ -1953,11 +1954,11 @@ export default function CostingsPage() {
                                 {option.neckSupport === "charged" ? (
                                   <div className="text-xs text-muted-foreground">
                                     {option.extraChargeCents === null
-                                      ? "Its neck support has no MSRP"
-                                      : `Neck support adds ${formatCentsLabel(option.extraChargeCents)} to the price`}
+                                      ? "An accessory inside it has no MSRP"
+                                      : `Accessories inside add ${formatCentsLabel(option.extraChargeCents)} to the price`}
                                   </div>
                                 ) : option.neckSupport === "left_out" ? (
-                                  <div className="text-xs text-muted-foreground">Built without its neck support</div>
+                                  <div className="text-xs text-muted-foreground">Built without the accessories inside it</div>
                                 ) : null}
                               </button>
                             );

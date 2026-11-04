@@ -41,7 +41,10 @@ export type BuildCostOption = {
    * the money path refuses rather than charging nothing.
    */
   extraChargeCents: number | null;
-  /** `charged`: shipped at its own MSRP. `left_out`: the template holds one this build cannot take. */
+  /**
+   * The accessories placed inside it (a Neck support, an Ear Comfort Pad).
+   * `charged`: shipped at their own MSRP. `left_out`: the template holds one this build cannot take.
+   */
   neckSupport: "none" | "charged" | "left_out";
   /** Items in the build with no cost price. They add 0 here, so the cost is a floor. */
   uncostedItemIds: number[];
@@ -114,11 +117,15 @@ export function buildCostOptions(input: {
   templates: FillingTemplateRecipe[];
   defaultTemplateId: number | null;
   costByItem: ReadonlyMap<number, number | null>;
-  /** Neck support items, with their MSRP (`null` when unpriced). */
+  /**
+   * Accessories placed in the pillow (Neck supports and Ear Comfort Pads,
+   * `isInPillowAccessory`), with their MSRP (`null` when unpriced).
+   */
   neckSupportMsrpByItem: ReadonlyMap<number, number | null>;
   /**
-   * Basic Mpillow takes no Neck support: its pieces come out of the mix, as
-   * `mixAfterTierChange` takes them out of a session's, and the rest still builds.
+   * Basic Mpillow takes no Neck support or ear pad: its pieces come out of the
+   * mix, as `mixAfterTierChange` takes them out of a session's, and the rest
+   * still builds.
    */
   allowNeckSupport: boolean;
 }): BuildCosts {

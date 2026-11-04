@@ -2,7 +2,7 @@
  * Physical dimension registry for the x-ray (ADR 0019, X-ray pillow UX slice 01).
  * Every measurement the x-ray needs, in millimetres, in one pure, browser-safe
  * module: the pillow per Size (from the 2018 drawings), the filling pouches,
- * the Cervical Neck support and the Mbolster capsule.
+ * the Cervical Neck support, the Ear Comfort Pad and the Mbolster capsule.
  *
  * - Pillow geometry is code only: outlines, Section widths and gusset heights
  *   come from the drawings, not from anyone's typing.
@@ -13,7 +13,7 @@
  *   which is which and never throws.
  */
 
-import { fillingDescriptor, fillingFamily, NECK_SUPPORT } from "./filling-groups";
+import { EAR_PAD, fillingDescriptor, fillingFamily, NECK_SUPPORT } from "./filling-groups";
 import {
   SILHOUETTE_MASTER,
   SILHOUETTE_MASTER_LENGTH_MM,
@@ -317,6 +317,19 @@ export const POUCH_FAMILY_FALLBACKS: Readonly<Record<string, Measured<PouchDimen
     minWidthMm: 170,
     measuredOn: null,
   },
+  /**
+   * The Ear Comfort Pad: a square cushion with a sewn well in its middle for
+   * the ear, lying flat in the pillow. Measured as a pouch is (its rim is its
+   * thickness); the well's size and depth are drawn from Settings › Soft body.
+   */
+  ear: {
+    widthMm: 180,
+    lengthMm: 180,
+    thicknessMm: 40,
+    minThicknessMm: 18,
+    minWidthMm: 170,
+    measuredOn: null,
+  },
 };
 
 /** The pouch drawn for a type outside every family. Not measured. */
@@ -391,17 +404,24 @@ export type DimensionItemLike = {
   category?: string | null;
 };
 
+/** The registry key of an unsized Ear Comfort Pad (the one the inventory carries). */
+export const EAR_PAD_KEY = "ear/one-size";
+
 /**
  * Registry key for an item. The same pouch reaches here as `"6D (L)"`,
  * `"6D L"` or `{ name: "6D Fold", size: "L" }`, so the key is built from the
  * family and a normalised variant: `6d/l`, `6d/l`, `6d/folded/l`. A Neck
- * support keys as `neck/<size>`; an unknown type as `other/<name>`.
+ * support keys as `neck/<size>`; an Ear Comfort Pad as `ear/<size>`, or
+ * `ear/one-size` unsized; an unknown type as `other/<name>`.
  */
 export function pouchKey(item: DimensionItemLike): string {
   const descriptor = fillingDescriptor({ name: item.name, subtype: item.subtype ?? null });
   const size = (item.size ?? "").trim().toLowerCase();
   if (NECK_SUPPORT.test(descriptor) || NECK_SUPPORT.test(item.name)) {
     return `neck/${size || "m"}`;
+  }
+  if (EAR_PAD.test(descriptor) || EAR_PAD.test(item.name)) {
+    return size && size !== "-" ? `ear/${size}` : EAR_PAD_KEY;
   }
   const family = fillingFamily(descriptor).key;
   const variant = normaliseVariant(descriptor);
