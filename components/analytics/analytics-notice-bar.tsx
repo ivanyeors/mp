@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { isAdminJourneyPath } from "@/lib/analytics/journey/paths";
+import { useScreenBottomPin } from "@/hooks/use-screen-bottom-pin";
 
 const STORAGE_KEY = "mp_analytics_notice_ok";
 
@@ -34,6 +35,7 @@ export function AnalyticsNoticeBar() {
   // Publish how much of the bottom corner the bar takes, so the chat bubble
   // (components/support/support-chat-window.tsx) sits above it, not over "Got it".
   const barRef = useRef<HTMLDivElement>(null);
+  const pinRef = useScreenBottomPin();
   useEffect(() => {
     const bar = barRef.current;
     if (!visible || !bar || typeof ResizeObserver === "undefined") return;
@@ -65,8 +67,13 @@ export function AnalyticsNoticeBar() {
 
   return (
     // pointer-events only on the bar — rest of viewport stays clickable (configurator/checkout)
-    // desktop: right side (clears center dock); mobile: above dock via --app-dock-clearance
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center p-3 pb-[calc(0.75rem+max(var(--safe-bottom),var(--app-dock-clearance)))] md:justify-end md:pb-[calc(0.75rem+var(--safe-bottom))]">
+    // desktop: right side (clears center dock); mobile: above the dock (--app-dock-clearance)
+    // and above a step's or the cart's action bar (--mobile-bottom-bar-height)
+    // bottom: 0, kept on the screen's edge on iOS after a keyboard (useScreenBottomPin)
+    <div
+      ref={pinRef}
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--screen-pin-offset,0px)*-1)] z-40 flex justify-center p-3 pb-[calc(0.75rem+max(var(--safe-bottom),var(--app-dock-clearance),var(--mobile-bottom-bar-height,0px)))] md:justify-end md:pb-[calc(0.75rem+var(--safe-bottom))]"
+    >
       <div
         ref={barRef}
         role="status"

@@ -35,6 +35,7 @@ import {
   configuratorCardPadClassName,
   configuratorMobileCloseClearanceClassName,
   configuratorPreviewPadClassName,
+  configuratorStickyHeaderClassName,
 } from "@/components/configurator/configurator-mobile-chrome";
 import { PageFaqAccordion } from "@/components/page-faq/page-faq-accordion";
 import type { PageFaqSectionItem } from "@/components/page-faq/page-faq-section";
@@ -1328,7 +1329,9 @@ export function MbolsterConfigClient({
           : bolsterBallpark - codeDiscount + (shippingAmount ?? 0);
 
     return (
-      <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background">
+      // `overflow-x-clip`, not `-hidden`: hidden makes this box a scroll container,
+      // and the header would stick to it rather than the screen.
+      <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-clip bg-background">
         {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
         <div
           key={state.step}
@@ -1344,7 +1347,12 @@ export function MbolsterConfigClient({
           description="This will clear your session and return home."
           onConfirmExit={exitConfirmed}
         />
-        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header
+          className={cn(
+            configuratorStickyHeaderClassName,
+            "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+          )}
+        >
           <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 max-md:px-3">
             <Button
               variant="ghost"
@@ -1863,7 +1871,8 @@ export function MbolsterConfigClient({
   }
 
   return (
-    <div className="relative min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden bg-background">
+    // `overflow-x-clip`, not `-hidden`, so the Paired stepper sticks to the screen.
+    <div className="relative min-h-dvh w-full min-w-0 max-w-full overflow-x-clip bg-background">
       {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
       <div
         key={state.step}
@@ -1885,7 +1894,10 @@ export function MbolsterConfigClient({
       {/* Step 2 of a Paired build: the stepper along the top, as on every step. */}
       {paired ? (
         <PairedStepperBar
-          className="sticky top-0 z-40 border-b backdrop-blur supports-[backdrop-filter]:bg-background/60"
+          className={cn(
+            configuratorStickyHeaderClassName,
+            "border-b backdrop-blur supports-[backdrop-filter]:bg-background/60",
+          )}
           step={2}
         />
       ) : null}

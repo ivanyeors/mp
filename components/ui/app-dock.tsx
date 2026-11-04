@@ -26,6 +26,7 @@ import {
   type DockSessionRole,
 } from "@/lib/auth/dock-chrome";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { pinToScreenBottom } from "@/hooks/use-screen-bottom-pin";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
@@ -153,6 +154,14 @@ export function AppDock() {
     };
   }, [isMobile]);
 
+  // On iOS, keep the dock on the screen's bottom edge once a keyboard has been
+  // and gone (useScreenBottomPin). Re-run when the dock (re)appears.
+  const previewRoute = isPageBuilderPreviewRoute(basePathname);
+  React.useEffect(() => {
+    const el = dockRef.current;
+    return el ? pinToScreenBottom(el) : undefined;
+  }, [previewRoute]);
+
   React.useEffect(() => {
     let lastY = window.scrollY;
 
@@ -264,14 +273,17 @@ export function AppDock() {
 
   // Preview mode is the landing page inside the Page Builder: a fixed dock would cover
   // what Staff are reviewing and swallow clicks meant for section selection.
-  if (isPageBuilderPreviewRoute(basePathname)) return null;
+  if (previewRoute) return null;
   return (
     <>
       <div
         ref={dockRef}
         className={`app-dock fixed left-1/2 max-w-full -translate-x-1/2 z-50 transition-transform duration-200 ease-out ${isHidden ? "translate-y-24 opacity-0" : "translate-y-0 opacity-100"
           }`}
-        style={{ bottom: "calc(var(--mobile-dock-offset) + var(--safe-bottom))" }}
+        style={{
+          bottom:
+            "calc(var(--mobile-dock-offset) + var(--safe-bottom) - var(--screen-pin-offset, 0px))",
+        }}
       >
         <Dock className="items-end pb-3">
           {adminDock ? (

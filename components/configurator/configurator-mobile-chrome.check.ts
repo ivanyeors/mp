@@ -16,7 +16,9 @@ import {
   configuratorMobileCloseClearanceClassName,
   configuratorOuterPadClassName,
   configuratorPreviewPadClassName,
+  configuratorStickyHeaderClassName,
 } from "./configurator-mobile-chrome";
+import { screenBottomPinClassName } from "@/hooks/use-screen-bottom-pin";
 import { sheetStickyBottomClassName } from "@/lib/sheet/safe-area";
 
 const ROOT = process.cwd();
@@ -107,6 +109,29 @@ assert.match(barHtml, /sr-only/);
 // Actions slot: collapses when empty; the last action (Continue) fills the bar.
 assert.match(barHtml, /empty:hidden/);
 assert.match(barHtml, /\[&amp;&gt;:last-child\]:flex-1/);
+// The bar stays on the screen's bottom edge after an iOS keyboard has been and
+// gone, instead of floating up the screen as the page scrolls (useScreenBottomPin).
+assert.ok(barHtml.includes(screenBottomPinClassName), "bar must use the screen-bottom pin");
+assert.match(barHtml, /\bfixed\b/);
+// It publishes its height, and the floating chrome sharing the bottom of the
+// screen sits above it, not over Back / Continue (a first visit's analytics
+// notice covered them until "Got it").
+assert.match(
+  readFileSync(join(ROOT, "components/configurator/configurator-mobile-chrome.tsx"), "utf8"),
+  /publishMobileBottomBarHeight\(el\)/,
+);
+for (const file of ["components/analytics/analytics-notice-bar.tsx", "components/support/support-chat-window.tsx"]) {
+  assert.match(readFileSync(join(ROOT, file), "utf8"), /--mobile-bottom-bar-height/, file);
+}
+
+// Sticky headers: one shared class, which also covers the status bar in the
+// installed app. (The page roots must clip, not hide — mobile-overflow.check.ts.)
+assert.match(configuratorStickyHeaderClassName, /^sticky top-0 /);
+assert.match(configuratorStickyHeaderClassName, /standalone:pt-\[var\(--safe-top\)\]/);
+assert.match(configuratorStickyHeaderClassName, /standalone:-mt-\[var\(--safe-top\)\]/);
+assert.equal(mp.match(/cn\(\s*configuratorStickyHeaderClassName,/g)?.length, 1);
+assert.equal(bolster.match(/cn\(\s*configuratorStickyHeaderClassName,/g)?.length, 2);
+for (const src of [mp, bolster]) assert.doesNotMatch(src, /className="sticky top-0/);
 
 const dialogHtml = renderToStaticMarkup(
   createElement(ConfiguratorExitDialog, {
