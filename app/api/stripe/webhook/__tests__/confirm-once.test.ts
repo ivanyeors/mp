@@ -20,6 +20,7 @@ const h = vi.hoisted(() => ({
   ledger: vi.fn(),
   emails: vi.fn(),
   deduct: vi.fn(),
+  autoLabel: vi.fn(),
 }));
 
 vi.mock("@/lib/stripe/client", () => ({ getStripe: () => ({ webhooks: { constructEvent: () => h.event } }) }));
@@ -57,6 +58,7 @@ vi.mock("@/lib/milestones/ledger", () => ({ applyMilestoneProgress: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendOrderConfirmedEmails: h.emails, sendRefundEmail: vi.fn() }));
 vi.mock("@/lib/email/partner", () => ({ sendReferralEarnedEmail: vi.fn() }));
 vi.mock("@/lib/telegram/notify", () => ({ sendTelegram: vi.fn().mockResolvedValue("sent") }));
+vi.mock("@/lib/shipping/schedule-labels", () => ({ scheduleAutoLabel: h.autoLabel, scheduleLabelCancel: vi.fn() }));
 
 const { POST } = await import("@/app/api/stripe/webhook/route");
 
@@ -83,7 +85,7 @@ const timelineTypes = () => h.timeline.mock.calls.map((c) => c[1]);
 
 beforeEach(() => {
   process.env.STRIPE_WEBHOOK_SECRET = "whsec";
-  for (const fn of [h.timeline, h.ledger, h.emails, h.deduct]) fn.mockReset();
+  for (const fn of [h.timeline, h.ledger, h.emails, h.deduct, h.autoLabel]) fn.mockReset();
   h.ledger.mockResolvedValue({ recorded: true });
   h.db = {
     orders: [
@@ -130,6 +132,8 @@ describe("Stripe webhook — confirm once, honestly", () => {
     expect((await deliver("checkout.session.completed", paidSession)).status).toBe(200);
     expect(order().status).toBe("confirmed");
     expect(order().paid_at).toBeTruthy();
+    // The courier label is made once the payment is answered (ADR 0044).
+    expect(h.autoLabel).toHaveBeenCalledWith(expect.anything(), ORDER);
   });
 
   it("an Order paid after Staff cancelled it is recorded and flagged, never fulfilled", async () => {
@@ -145,6 +149,7 @@ describe("Stripe webhook — confirm once, honestly", () => {
     );
     expect(h.deduct).not.toHaveBeenCalled();
     expect(h.emails).not.toHaveBeenCalled();
+    expect(h.autoLabel).not.toHaveBeenCalled();
     expect(timelineTypes()).toContain("paid_while_closed");
     expect(h.db.stripe_webhook_failures).toHaveLength(1);
   });

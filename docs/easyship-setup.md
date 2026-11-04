@@ -49,7 +49,7 @@ confirm delivery.
 4. **Connection → Customs & quotes** — DDU (receiver pays duties) is the default; HS code 940490
    covers pillows; handling days are added to courier transit times shown to shoppers.
 5. **Save & sync**, then use **Connection → Test a quote** with a Singapore and a Malaysian postal
-   code. Copy a courier service id if you want to pin one to a method.
+   code. It lists every courier that serves the address, with its service id.
 
 ## 6. Turn methods live
 
@@ -58,11 +58,18 @@ confirm delivery.
    the customisation flows both quote it for the shopper's address (ADR 0032).
 2. A live method with no quote is **hidden** — there is no fallback price (ADR 0022). Keep one
    active flat method if checkout must always offer an option; the Shipping page warns when there is none.
-3. Check the storefront: the checkout shows a live rate with courier and delivery time once a postal
+3. **Let shoppers choose the courier** with one live method per courier: set **Courier → A specific
+   courier**, press **Find couriers**, and pick one (J&T Express for Standard, a faster one for
+   Express). Each method shows "via" its courier at that courier's price, so choosing another
+   method changes the price and the total, and the label opens on that courier (ADR 0043).
+4. **Delivery time** is what shoppers are told the method takes ("About 2 weeks"). It replaces
+   the courier's transit estimate on checkout, the configurators and the delivery checker; leave
+   it empty on a live method to show the courier's.
+5. Check the storefront: the checkout shows a live rate with courier and delivery time once a postal
    code is entered; the cart, the product page and the shipping policy page have a delivery
    checker; a **Delivery Estimator** section can be added to the landing page from the page
    builder (Settings → Page builder → Add section).
-4. The customisation flows (Mpillow, Mbolster, a Paired build) ask where it ships, show each
+6. The customisation flows (Mpillow, Mbolster, a Paired build) ask where it ships, show each
    method at its live price, and add it to the total. The hold stores the quoted rate on the
    Result, so assign and accept charge the same figure (ADR 0032). Apply
    `20261023160000_result_shipping_rate.sql` before deploying that code.
@@ -99,11 +106,25 @@ the live courier rate in place of Standard and Express. The list was set before 
 so a country no courier serves still appears at checkout with no delivery option. Run
 Coverage, then remove those countries from the method.
 
-## 8. Buy a label (sandbox first)
+## 8. Labels (sandbox first)
 
-On a paid order in **Settings → Orders**, use **Buy courier label**. The customer's courier is
-preselected with today's price. **Buy label** creates the shipment; once tracking exists the order is
-marked shipped and the customer emailed. Delivery events from the courier mark it delivered.
+**Every paid order that ships by courier gets its label automatically** (ADR 0044): when a shop
+checkout is paid, or a customisation is accepted, the label is made on the customer's courier
+(the one paid for at checkout, else the one their live method picks today) and the courier's fee
+is charged to the Easyship account. Staff open the order in **Settings → Orders** and use **Print
+label** to print the PDF for the box.
+
+No label is made, and the order's timeline says why, when the method charges a flat price (it
+names no courier), when the courier the customer paid for is not offered for the parcel that day,
+or when Easyship refuses. Staff then use **Create label**: today's rates with the customer's
+courier preselected. Make Standard and Express live methods pinned to their courier (step 7) so
+their labels are made too.
+
+Making a label does not ship the order. The order is marked shipped, and the customer gets the
+shipping email, when the courier first scans the parcel; delivery marks it delivered. Both come
+from the webhook (step 4), so keep it enabled with the tracking events ticked; without it, mark
+orders shipped by hand. A full refund cancels the label in Easyship while the parcel is still
+here, and the fee goes back to the account.
 
 Do one full sandbox order end to end — rate at checkout, label, webhook — before swapping in the
 production token. Easyship's API field names have moved between versions; the code reads both the

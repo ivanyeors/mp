@@ -27,6 +27,7 @@ const priced = (over: Partial<HoldShippingOption> = {}): HoldShippingOption => (
   status: "priced",
   currency: "SGD",
   window: "3–5 business days",
+  courier: "J&T Express",
   ...over,
 });
 
@@ -62,8 +63,18 @@ describe("Customisation shipping (ADR 0032)", () => {
     expect(html).toContain("Standard Shipping");
     expect(html).toContain("SGD 37.50");
     expect(html).toContain("3–5 business days");
+    // Which courier the price is for, as checkout says it.
+    expect(html).toContain("via J&amp;T Express");
     // Easyship needs a state in the US; the field is offered there.
     expect(html).toContain("State / Province");
+  });
+
+  it("shows the delivery time Staff set, even before the address is priced", () => {
+    const html = render([
+      priced({ price: null, status: "needs_postal", window: "About 2 weeks", courier: null }),
+    ]);
+    expect(html).toContain("About 2 weeks");
+    expect(html).not.toContain("via ");
   });
 
   it("says what a live method still needs instead of a price", () => {

@@ -47,7 +47,9 @@ vi.mock("@/lib/shipping/lines", () => ({
   ],
 }));
 
-const { buyOrderLabel } = await import("@/lib/shipping/order-shipment");
+const { buyOrderLabel, cancelOrderLabel, loadOrderShippingMethod, preselectCourier } = await import(
+  "@/lib/shipping/order-shipment"
+);
 
 function fakeAdmin() {
   return {
@@ -144,9 +146,9 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("buyOrderLabel", () => {
-  it("buys the label with the chosen courier and ships the order", async () => {
+  it("makes the label with the chosen courier, and leaves the order unshipped until the courier collects it", async () => {
     const result = await buyOrderLabel(fakeAdmin(), order, "cs_ninja", config);
-    expect(result).toMatchObject({ ok: true, shipped: true });
+    expect(result).toMatchObject({ ok: true });
 
     const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
     expect(body.courier_settings).toEqual({ courier_service_id: "cs_ninja", allow_fallback: false });
@@ -158,9 +160,20 @@ describe("buyOrderLabel", () => {
       carrier_cost: 6.42,
       courier_service_id: "cs_ninja",
     });
-    expect(h.tables.orders).toMatchObject({ status: "shipped", tracking_number: "NV123" });
-    expect(h.sendShippingEmail).toHaveBeenCalledTimes(1);
-    expect(h.timeline.map((t) => t.event_type)).toEqual(["shipment_created", "order_shipped"]);
+    // Tracking is kept (customers see it only once shipped); the status, shipped_at
+    // and the shipping email wait for the courier's first scan (ADR 0044).
+    expect(h.tables.orders).toMatchObject({ status: "confirmed", shipped_at: null, tracking_number: "NV123" });
+    expect(h.sendShippingEmail).not.toHaveBeenCalled();
+    expect(h.timeline.map((t) => t.event_type)).toEqual(["shipment_created"]);
+    expect(h.timeline[0].message).toBe("Label made with Ninja Van Standard. Print it from this order.");
+  });
+
+  it("says on the timeline when the label was made automatically", async () => {
+    await buyOrderLabel(fakeAdmin(), order, "cs_ninja", config, { auto: true });
+    expect(h.timeline[0]).toMatchObject({
+      message: "Label made automatically with Ninja Van Standard. Print it from this order.",
+      metadata: expect.objectContaining({ source: "auto" }),
+    });
   });
 
   it("never buys a second label for the same order", async () => {
@@ -199,5 +212,170 @@ describe("buyOrderLabel", () => {
 
   it("does not try without an Easyship token", async () => {
     expect(await buyOrderLabel(fakeAdmin(), order, "cs_ninja", null)).toMatchObject({ ok: false, status: 503 });
+  });
+});
+
+const rate = (id: string, total: number, max: number, currency = "SGD") => ({
+  courier_service_id: id,
+  courier_name: id,
+  umbrella_name: null,
+  total_charge: total,
+  currency,
+  min_days: 1,
+  max_days: max,
+  cost_rank: null,
+  delivery_time_rank: null,
+  value_for_money_rank: null,
+});
+
+// J&T is the cheapest and slowest; DHL the dearest and fastest.
+const today = [rate("cs_jnt", 5.2, 14), rate("cs_ninja", 6.4, 4), rate("cs_dhl", 21, 2)];
+const live = (over: Record<string, unknown> = {}) => ({
+  rate_source: "easyship" as const,
+  currency: "SGD",
+  easyship_strategy: "cheapest" as const,
+  easyship_courier_service_id: null,
+  ...over,
+});
+
+describe("preselectCourier: the label follows the customer's choice", () => {
+  it("opens on the courier the customer paid for at checkout", () => {
+    expect(preselectCourier(today, "cs_ninja", live())).toEqual({
+      courierServiceId: "cs_ninja",
+      by: "checkout",
+      paidForMissing: false,
+    });
+  });
+
+  it("opens an order made from a Result on the courier its method picks today", () => {
+    expect(preselectCourier(today, null, live({ easyship_strategy: "fastest" }))).toMatchObject({
+      courierServiceId: "cs_dhl",
+      by: "method",
+    });
+    expect(
+      preselectCourier(today, null, live({ easyship_strategy: "courier", easyship_courier_service_id: "cs_ninja" })),
+    ).toMatchObject({ courierServiceId: "cs_ninja", by: "method" });
+  });
+
+  it("says when the courier the customer paid for is not offered today, rather than swapping it silently", () => {
+    expect(preselectCourier(today, "cs_gone", live({ easyship_strategy: "fastest" }))).toEqual({
+      courierServiceId: "cs_dhl",
+      by: "method",
+      paidForMissing: true,
+    });
+  });
+
+  it("falls back to the cheapest for a flat method, a pinned courier that is gone, or no method", () => {
+    expect(preselectCourier(today, null, { ...live(), rate_source: "flat" })).toMatchObject({
+      courierServiceId: "cs_jnt",
+      by: "cheapest",
+    });
+    expect(
+      preselectCourier(today, null, live({ easyship_strategy: "courier", easyship_courier_service_id: "cs_gone" })),
+    ).toMatchObject({ courierServiceId: "cs_jnt", by: "cheapest" });
+    expect(preselectCourier(today, null, null)).toMatchObject({ courierServiceId: "cs_jnt", by: "cheapest" });
+  });
+
+  it("has nothing to preselect without rates", () => {
+    expect(preselectCourier([], "cs_ninja", live())).toEqual({ courierServiceId: null, by: null, paidForMissing: true });
+  });
+});
+
+describe("loadOrderShippingMethod", () => {
+  /** Rows per table, filtered by `eq`; enough for the two lookups. */
+  function rowsAdmin(tables: Record<string, Array<Record<string, unknown>>>) {
+    return {
+      from(table: string) {
+        const filters: Array<[string, unknown]> = [];
+        const rows = () => (tables[table] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v));
+        const b: Record<string, unknown> = {
+          select: () => b,
+          eq: (c: string, v: unknown) => (filters.push([c, v]), b),
+          maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
+          then: (resolve: (v: unknown) => unknown) => resolve({ data: rows(), error: null }),
+        };
+        return b;
+      },
+    } as unknown as SupabaseClient;
+  }
+  const methods = [
+    { id: "m-standard", slug: "standard" },
+    { id: "m-express", slug: "express" },
+  ];
+
+  it("reads a shop order's method from the order", async () => {
+    const admin = rowsAdmin({ shipping_methods: methods });
+    expect(await loadOrderShippingMethod(admin, { id: "o1", shipping_method_id: "m-express" })).toMatchObject({
+      slug: "express",
+    });
+  });
+
+  it("reads a customisation order's method from its Result, the anchor's for a Paired build", async () => {
+    const admin = rowsAdmin({
+      shipping_methods: methods,
+      mp_config_responses: [
+        { id: "companion", paired_build_id: "anchor", shipping_method: "standard", order_id: "o2" },
+        { id: "anchor", paired_build_id: "anchor", shipping_method: "express", order_id: "o2" },
+      ],
+    });
+    expect(await loadOrderShippingMethod(admin, { id: "o2", shipping_method_id: null })).toMatchObject({
+      slug: "express",
+    });
+  });
+
+  it("is null when nothing names a method", async () => {
+    const admin = rowsAdmin({ shipping_methods: methods, mp_config_responses: [] });
+    expect(await loadOrderShippingMethod(admin, { id: "o3", shipping_method_id: null })).toBeNull();
+  });
+});
+
+describe("cancelOrderLabel: a refunded order's label is cancelled while the parcel is still here", () => {
+  const withLabel = () => {
+    h.tables.order_shipments = {
+      order_id: "order-1",
+      easyship_shipment_id: "ESSG1",
+      label_url: "https://labels.test/ESSG1.pdf",
+      carrier_cost: 6.42,
+      courier_service_id: "cs_ninja",
+    };
+  };
+
+  it("cancels it in Easyship and clears it, so it cannot be printed", async () => {
+    withLabel();
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ success: { message: "Shipment successfully cancelled" } })));
+    expect(await cancelOrderLabel(fakeAdmin(), "order-1", config)).toEqual({ cancelled: true });
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://es.test/2024-09/shipments/ESSG1/cancel");
+    expect(init.method).toBe("POST");
+    expect(h.tables.order_shipments).toMatchObject({
+      easyship_shipment_id: null,
+      label_url: null,
+      carrier_cost: null,
+      label_state: "voided",
+      courier_service_id: "cs_ninja",
+    });
+    expect(h.timeline.map((t) => t.event_type)).toEqual(["label_cancelled"]);
+  });
+
+  it("tells Staff to cancel it in Easyship when Easyship refuses", async () => {
+    withLabel();
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: { message: "This Shipment cannot be cancelled." } }), { status: 422 }),
+    );
+    expect(await cancelOrderLabel(fakeAdmin(), "order-1", config)).toEqual({ cancelled: false });
+    expect(h.tables.order_shipments).toMatchObject({ easyship_shipment_id: "ESSG1" });
+    expect(h.timeline[0]).toMatchObject({ event_type: "label_not_cancelled" });
+    expect(h.timeline[0].message).toContain("Cancel shipment ESSG1 in Easyship");
+  });
+
+  it("leaves a parcel the courier already has, and an order with no label", async () => {
+    withLabel();
+    h.tables.orders = { ...order, shipped_at: "2026-11-01T00:00:00Z" };
+    expect(await cancelOrderLabel(fakeAdmin(), "order-1", config)).toEqual({ cancelled: false });
+    h.tables.order_shipments = { order_id: "order-1", easyship_shipment_id: null };
+    expect(await cancelOrderLabel(fakeAdmin(), "order-1", config)).toEqual({ cancelled: false });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(h.timeline).toHaveLength(0);
   });
 });

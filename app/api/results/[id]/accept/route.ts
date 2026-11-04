@@ -34,6 +34,7 @@ import { incrementCouponUsage } from "@/lib/ecommerce/discounts";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { deductOrderStockOrFlag } from "@/lib/ecommerce/order-stock";
 import { getPublicOrigin } from "@/lib/site-url";
+import { scheduleAutoLabel } from "@/lib/shipping/schedule-labels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -800,6 +801,11 @@ export async function POST(
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
     }
   }
+
+  // The courier label Staff print for the box (ADR 0044), on the courier the
+  // customer's method picks. After the Result points at the Order, which is how
+  // the label finds that method; after the response, so it never slows Accept.
+  if (!inStoreHandover) scheduleAutoLabel(admin, order.id as string);
 
   return NextResponse.json({
     ok: true,

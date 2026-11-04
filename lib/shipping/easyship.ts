@@ -257,6 +257,20 @@ export function createShipment(config: EasyshipConfig, body: unknown, fetchImpl?
   );
 }
 
+/**
+ * Cancel a shipment whose label has been requested, while the parcel is not yet
+ * in transit. Easyship voids the label and refunds the courier fee to the account.
+ * A 422 means it can no longer be cancelled (the courier has it, or it is too old).
+ */
+export function cancelShipment(config: EasyshipConfig, shipmentId: string, fetchImpl?: typeof fetch) {
+  return easyshipRequest(
+    config,
+    `/shipments/${encodeURIComponent(shipmentId)}/cancel`,
+    { method: "POST", timeoutMs: SHIPMENT_TIMEOUT_MS },
+    fetchImpl,
+  );
+}
+
 export function getShipment(config: EasyshipConfig, shipmentId: string, fetchImpl?: typeof fetch) {
   return easyshipRequest(
     config,

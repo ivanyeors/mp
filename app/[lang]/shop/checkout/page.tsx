@@ -43,6 +43,7 @@ import {
 } from "@/lib/shop/use-shipping-quote";
 import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
 import { findCountry, usesPostalCode } from "@/lib/shipping/countries";
+import { shownDeliveryTime } from "@/lib/shipping/delivery-time";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
@@ -1026,8 +1027,12 @@ export default function CheckoutPage() {
                     const isFree =
                       !option.pending && (checkoutFreeShipping || isFreeFor(option) || option.price === 0);
                     const isSelected = chosenShipping === option.id;
-                    const eta =
-                      formatDeliveryWindow(option.min_days, option.max_days) ?? content.estimated_days;
+                    // Staff's own delivery time wins over the courier's, and needs no address.
+                    const eta = shownDeliveryTime(
+                      option.content,
+                      lang,
+                      formatDeliveryWindow(option.min_days, option.max_days),
+                    );
 
                     return (
                       <label
@@ -1070,7 +1075,7 @@ export default function CheckoutPage() {
                                 {content.description}
                               </p>
                             )}
-                            {eta && !option.pending && (
+                            {eta && (
                               <p className="text-xs text-muted-foreground mt-0.5">{eta}</p>
                             )}
                             {option.pending && (

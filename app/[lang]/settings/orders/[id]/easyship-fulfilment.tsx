@@ -22,31 +22,44 @@ type ShipmentInfo = {
     quoted_carrier_cost: number | null;
     carrier_cost: number | null;
     label_state: string | null;
+    /** Cancelled after a refund: nothing to print. */
+    label_voided?: boolean;
     has_label: boolean;
     purchase_pending: boolean;
     easyship_shipment_id: string | null;
 };
 
-/** Orders a label can still be bought for: paid, not shipped, not unwound. */
+/** The courier the customer's choice comes to today, from the rates endpoint. */
+type CustomerPick = {
+    courierServiceId: string | null;
+    by: "checkout" | "method" | "cheapest" | null;
+    methodName: string | null;
+    paidForUnavailable: string | null;
+};
+
+const NO_PICK: CustomerPick = { courierServiceId: null, by: null, methodName: null, paidForUnavailable: null };
+
+/** Orders a label can still be made for: paid, not shipped, not unwound. */
 const SHIPPABLE = new Set(["confirmed", "processing"]);
 
 function transit(r: CourierRate): string {
     if (r.min_days == null) return "";
     const max = r.max_days ?? r.min_days;
-    return r.min_days === max ? `${max} days` : `${r.min_days}–${max} days`;
+    return r.min_days === max ? `${max} ${max === 1 ? "day" : "days"}` : `${r.min_days}–${max} days`;
 }
 
 /**
- * The Easyship half of the order's Fulfillment card: what the shopper chose, the
- * label once bought, and "Buy courier label" — today's rates for this order's
- * parcels, the courier the shopper paid for preselected, one click to buy.
+ * The Easyship half of the order's Fulfillment card: what the shopper chose and
+ * "Print label", the PDF for the box. The label is made when the order is paid
+ * (ADR 0044); when it was not, "Create label" shows today's rates for this
+ * order's parcels with the customer's courier preselected.
  */
 export function EasyshipFulfilment({
     order,
     onChanged,
 }: {
     order: Order;
-    /** Refetch the order and timeline after a label is bought. */
+    /** Refetch the order and timeline after a label is made. */
     onChanged: () => Promise<unknown>;
 }) {
     const [open, setOpen] = useState(false);
@@ -54,6 +67,7 @@ export function EasyshipFulfilment({
     const [rates, setRates] = useState<CourierRate[] | null>(null);
     const [ratesError, setRatesError] = useState<string | null>(null);
     const [selected, setSelected] = useState<string>("");
+    const [pick, setPick] = useState<CustomerPick>(NO_PICK);
     const [buying, setBuying] = useState(false);
     // Server-only shipment data (courier cost, label) comes from its own endpoint.
     const [shipment, setShipment] = useState<ShipmentInfo | null>(null);
@@ -97,6 +111,7 @@ export function EasyshipFulfilment({
         setLoadingRates(true);
         setRates(null);
         setRatesError(null);
+        setPick(NO_PICK);
         try {
             const res = await fetch(`/api/shop/orders/${order.id}/easyship/rates`, { method: "POST" });
             const json = await res.json().catch(() => null);
@@ -106,10 +121,17 @@ export function EasyshipFulfilment({
             }
             const list = json.rates as CourierRate[];
             setRates(list);
-            const paidFor = json.selected_courier_service_id as string | null;
+            // The customer's courier: the one they paid for, else what their method picks today.
+            const preselected = json.selected_courier_service_id as string | null;
+            setPick({
+                courierServiceId: preselected,
+                by: json.selected_by ?? null,
+                methodName: json.method_name ?? null,
+                paidForUnavailable: json.paid_for_unavailable ?? null,
+            });
             setSelected(
-                paidFor && list.some((r) => r.courier_service_id === paidFor)
-                    ? paidFor
+                preselected && list.some((r) => r.courier_service_id === preselected)
+                    ? preselected
                     : (list[0]?.courier_service_id ?? ""),
             );
         } catch {
@@ -119,7 +141,7 @@ export function EasyshipFulfilment({
         }
     };
 
-    const buyLabel = async () => {
+    const createLabel = async () => {
         if (!selected) return;
         setBuying(true);
         try {
@@ -130,13 +152,13 @@ export function EasyshipFulfilment({
             });
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) {
-                toast.error(typeof json?.error === "string" ? json.error : "Couldn't buy the label.");
+                toast.error(typeof json?.error === "string" ? json.error : "Couldn't make the label.");
                 return;
             }
             toast.success(
-                json.shipped
-                    ? "Label bought. The order is marked shipped and the customer has been emailed."
-                    : "Shipment created. The label is still being made, and tracking appears once it's ready.",
+                json.label_ready
+                    ? "Label ready. Print it from this order."
+                    : "Easyship is still making the label. Print label appears here when it's ready.",
             );
             setOpen(false);
             await Promise.all([onChanged(), loadShipment()]);
@@ -181,13 +203,25 @@ export function EasyshipFulfilment({
             )}
 
             {shipment?.has_label ? (
-                <Button asChild size="sm" variant="outline" className="w-full">
-                    <a href={labelHref} target="_blank" rel="noopener noreferrer">
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print label
-                        <ExternalLink className="ml-auto h-3.5 w-3.5" />
-                    </a>
-                </Button>
+                <div className="space-y-1.5">
+                    <Button asChild size="sm" variant="outline" className="w-full">
+                        <a href={labelHref} target="_blank" rel="noopener noreferrer">
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print label
+                            <ExternalLink className="ml-auto h-3.5 w-3.5" />
+                        </a>
+                    </Button>
+                    {SHIPPABLE.has(order.status) && !order.shipped_at && (
+                        <p className="text-xs text-muted-foreground">
+                            Stick it on the box. The order is marked shipped, and the customer emailed, when the
+                            courier collects the parcel.
+                        </p>
+                    )}
+                </div>
+            ) : shipment?.label_voided ? (
+                <p className="text-xs text-muted-foreground">
+                    The label was cancelled when the order was refunded. Don&apos;t send the parcel.
+                </p>
             ) : connected &&
               SHIPPABLE.has(order.status) &&
               order.shipping_address &&
@@ -199,14 +233,14 @@ export function EasyshipFulfilment({
                     disabled={shipment?.purchase_pending === true}
                 >
                     <Truck className="mr-2 h-4 w-4" />
-                    {shipment?.purchase_pending ? "Label purchase in progress…" : "Buy courier label"}
+                    {shipment?.purchase_pending ? "Making the label…" : "Create label"}
                 </Button>
             ) : null}
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Buy courier label</DialogTitle>
+                        <DialogTitle>Create label</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         {loadingRates ? (
@@ -223,9 +257,29 @@ export function EasyshipFulfilment({
                                 No courier serves this address for these parcels. Mark it shipped manually instead.
                             </p>
                         ) : (
+                            <div className="space-y-2">
+                            {pick.paidForUnavailable && (
+                                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                                    {pick.paidForUnavailable}, which the customer paid for, isn&apos;t offered for
+                                    this order today. Choose another courier.
+                                </div>
+                            )}
+                            {pick.by === "method" && pick.methodName && !pick.paidForUnavailable && (
+                                <p className="text-xs text-muted-foreground">
+                                    Preselected from the customer&apos;s shipping method, {pick.methodName}.
+                                </p>
+                            )}
                             <div className="max-h-80 space-y-2 overflow-y-auto">
                                 {rates?.map((r) => {
-                                    const paidFor = r.courier_service_id === shipment?.courier_service_id;
+                                    // Paid for at checkout, or what the customer's method picks today.
+                                    const badge =
+                                        r.courier_service_id !== pick.courierServiceId
+                                            ? null
+                                            : pick.by === "checkout"
+                                              ? "Customer's choice"
+                                              : pick.by === "method"
+                                                ? "Customer's method"
+                                                : null;
                                     return (
                                         <label
                                             key={r.courier_service_id}
@@ -247,9 +301,9 @@ export function EasyshipFulfilment({
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-medium">
                                                         {r.courier_name}
-                                                        {paidFor && (
+                                                        {badge && (
                                                             <Badge variant="secondary" className="ml-2">
-                                                                Customer&apos;s choice
+                                                                {badge}
                                                             </Badge>
                                                         )}
                                                     </p>
@@ -263,23 +317,24 @@ export function EasyshipFulfilment({
                                     );
                                 })}
                             </div>
+                            </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            Buying the label charges your courier account. When tracking is available the order
-                            is marked shipped and the customer gets the shipping email.
+                            The courier&apos;s fee is charged to your Easyship account. The order is marked
+                            shipped, and the customer emailed, when the courier collects the parcel.
                         </p>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={buyLabel} disabled={buying || loadingRates || !selected}>
+                        <Button onClick={createLabel} disabled={buying || loadingRates || !selected}>
                             {buying ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             ) : (
                                 <Printer className="mr-2 h-4 w-4" />
                             )}
-                            Buy label
+                            Create label
                         </Button>
                     </DialogFooter>
                 </DialogContent>

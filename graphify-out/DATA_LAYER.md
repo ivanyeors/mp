@@ -296,7 +296,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:82
   - `GET()` [select] — app/api/mp-config/assist/route.ts:62
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:23
-  - `POST()` [select] — app/api/results/[id]/accept/route.ts:574
+  - `POST()` [select] — app/api/results/[id]/accept/route.ts:575
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:178
   - `assertTemplateNameFree()` [select] — lib/filling-templates/membership.ts:75
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:80
@@ -314,7 +314,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
 Defined in supabase/migrations/0028_ecommerce.sql:272
 References: `customers`
 - Written by:
-  - `POST()` [delete] — app/api/stripe/webhook/route.ts:279
+  - `POST()` [delete] — app/api/stripe/webhook/route.ts:280
 
 ### categories
 Defined in supabase/migrations/0028_ecommerce.sql:15
@@ -847,7 +847,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `DELETE()` [update] — app/api/shop/orders/[id]/mp-config-link/route.ts:116
   - `GET()` [select,update] — app/api/cron/results-sla/route.ts:111
   - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:324
-  - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:72
+  - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:73
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:135
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
   - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:40
@@ -856,7 +856,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:48
   - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:345
   - `POST()` [insert,update] — app/api/shop/orders/[id]/mp-config-link/route.ts:60
-  - `POST()` [update] — app/api/stripe/webhook/route.ts:210
+  - `POST()` [update] — app/api/stripe/webhook/route.ts:211
   - `attachHoldPaymentIntent()` [select,update] — lib/authorization-hold/index.ts:41
   - `cascadeEnding()` [update] — lib/results/pair-ending.ts:75
   - `createMpConfigFromCustomization()` [insert,select] — lib/ecommerce/mp-config-sync.ts:157
@@ -882,6 +882,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:70
   - `loadAdminOrderMpConfigLinks()` [select] — lib/ecommerce/admin/order-detail.ts:88
   - `loadEndingPlan()` [select] — lib/results/pair-ending.ts:46
+  - `loadOrderShippingMethod()` [select] — lib/shipping/order-shipment.ts:105
   - `loadPartnerMoneyReferrals()` [select] — lib/commissions/referral-rows.ts:191
   - `loadResumeFinish()` [select] — lib/results/resume-finish.ts:41
   - `loadStaffEditResult()` [select] — lib/results/staff-edit.ts:126
@@ -941,7 +942,7 @@ References: `customization_configs`, `orders`, `product_variants`, `service_pric
 Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/shop/checkout`
 - Written by:
   - `POST()` [insert] — app/api/readjustments/checkout/route.ts:200
-  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:603
+  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:604
   - `POST()` [insert] — app/api/shop/checkout/route.ts:811
   - `POST()` [insert] — app/api/shop/orders/route.ts:136
   - `abandonPendingOrder()` [delete] — app/api/shop/checkout/route.ts:938
@@ -970,9 +971,9 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`
 - Written by:
   - `recordLedgerEntry()` [insert] — lib/ecommerce/money-ledger.ts:126
 - Read by:
-  - `POST()` [select] — app/api/stripe/webhook/route.ts:1017
+  - `POST()` [select] — app/api/stripe/webhook/route.ts:1026
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:136
-  - `orderIdForIntent()` [select] — app/api/stripe/webhook/route.ts:95
+  - `orderIdForIntent()` [select] — app/api/stripe/webhook/route.ts:96
   - `paymentIntentsOf()` [select] — app/api/shop/orders/[id]/refund/route.ts:79
   - `rollupOrderMoney()` [select] — lib/ecommerce/money-ledger.ts:150
   - `stripeCharges()` [select] — lib/analytics/sales-report.ts:82
@@ -984,26 +985,30 @@ Changed from pages: `/settings/orders/[id]`, `/settings/shipping`, `/settings/sh
 - Written by:
   - `GET()` [update] — app/api/shop/orders/[id]/easyship/label/route.ts:45
   - `POST()` [insert] — app/api/shop/checkout/route.ts:777
-  - `applyShipmentToOrder()` [upsert] — lib/shipping/order-shipment.ts:142
-  - `buyOrderLabel()` [update,upsert] — lib/shipping/order-shipment.ts:217
+  - `applyShipmentToOrder()` [upsert] — lib/shipping/order-shipment.ts:224
+  - `buyOrderLabel()` [update,upsert] — lib/shipping/order-shipment.ts:290
+  - `cancelOrderLabel()` [update] — lib/shipping/order-shipment.ts:412
 - Read by:
-  - `POST()` [select] — app/api/shipping/easyship/webhook/route.ts:43
-  - `loadOrderShipment()` [select] — lib/shipping/order-shipment.ts:66
+  - `POST()` [select] — app/api/shipping/easyship/webhook/route.ts:45
+  - `loadOrderShipment()` [select] — lib/shipping/order-shipment.ts:69
 
 ### order_timeline
 Defined in supabase/migrations/0028_ecommerce.sql:480
 References: `orders`
 Changed from pages: `/account/orders/[orderNumber]`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders`, `/settings/orders/[id]`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`
 - Written by:
-  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:778
-  - `POST()` [insert] — app/api/shipping/easyship/webhook/route.ts:71
+  - `POST()` [insert] — app/api/results/[id]/accept/route.ts:779
+  - `POST()` [insert] — app/api/shipping/easyship/webhook/route.ts:74
   - `POST()` [insert] — app/api/shop/orders/[id]/timeline/route.ts:49
   - `POST()` [insert] — app/api/shop/orders/route.ts:145
   - `addOrderTimelineEvent()` [insert] — lib/ecommerce/orders.ts:95
-  - `buyOrderLabel()` [insert] — lib/shipping/order-shipment.ts:268
+  - `autoCreateOrderLabel()` [insert] — lib/shipping/auto-label.ts:55
+  - `autoCreateOrderLabelSafely()` [insert] — lib/shipping/auto-label.ts:103
+  - `buyOrderLabel()` [insert] — lib/shipping/order-shipment.ts:343
+  - `cancelOrderLabel()` [insert] — lib/shipping/order-shipment.ts:389
   - `deductOrderStockOrFlag()` [insert] — lib/ecommerce/order-stock.ts:81
   - `fulfillOrder()` [insert] — app/[lang]/settings/orders/actions.ts:105
-  - `markOrderDeliveredByCourier()` [insert] — lib/ecommerce/fulfilment.ts:95
+  - `markOrderDeliveredByCourier()` [insert] — lib/ecommerce/fulfilment.ts:140
   - `markOrderShipped()` [insert] — lib/ecommerce/fulfilment.ts:52
 - Read by:
   - `loadAdminOrderTimeline()` [select] — lib/ecommerce/admin/order-detail.ts:59
@@ -1016,24 +1021,25 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `PATCH()` [select,update] — app/api/shop/orders/[id]/route.ts:66
   - `POST()` [select,update] — app/api/account/orders/[orderNumber]/refund-request/route.ts:34
   - `POST()` [insert,select,update] — app/api/readjustments/checkout/route.ts:96
-  - `POST()` [delete,insert,update] — app/api/results/[id]/accept/route.ts:525
+  - `POST()` [delete,insert,update] — app/api/results/[id]/accept/route.ts:526
   - `POST()` [update] — app/api/settings/readjustments/[id]/route.ts:137
-  - `POST()` [select,update] — app/api/shipping/easyship/webhook/route.ts:51
+  - `POST()` [select,update] — app/api/shipping/easyship/webhook/route.ts:53
   - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:727
   - `POST()` [select,update] — app/api/shop/orders/[id]/cancel/route.ts:22
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund-request/route.ts:43
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund/route.ts:122
   - `POST()` [delete,insert,select] — app/api/shop/orders/route.ts:125
-  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:285
+  - `POST()` [select,update] — app/api/stripe/webhook/route.ts:286
   - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:931
-  - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:170
+  - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:241
   - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:273
   - `deductOrderStock()` [update] — lib/ecommerce/order-stock.ts:25
   - `deductOrderStockOrFlag()` [update] — lib/ecommerce/order-stock.ts:80
-  - `flagOrder()` [update] — app/api/stripe/webhook/route.ts:152
+  - `flagOrder()` [update] — app/api/stripe/webhook/route.ts:153
   - `fulfillOrder()` [select,update] — app/[lang]/settings/orders/actions.ts:66
-  - `markOrderDeliveredByCourier()` [update] — lib/ecommerce/fulfilment.ts:85
+  - `markOrderDeliveredByCourier()` [update] — lib/ecommerce/fulfilment.ts:130
   - `markOrderShipped()` [select,update] — lib/ecommerce/fulfilment.ts:35
+  - `markOrderShippedByCourier()` [update] — lib/ecommerce/fulfilment.ts:92
   - `rollupOrderMoney()` [select,update] — lib/ecommerce/money-ledger.ts:144
   - `updateOrderStatus()` [select,update] — app/[lang]/settings/orders/actions.ts:23
 - Read by:
@@ -1047,9 +1053,10 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [select] — app/api/shop/orders/[id]/restock/route.ts:34
   - `POST()` [select] — app/api/shop/orders/[id]/timeline/route.ts:39
   - `POST()` [select] — app/api/shop/reviews/route.ts:78
+  - `cancelOrderLabel()` [select] — lib/shipping/order-shipment.ts:384
   - `countNotMarkedDelivered()` [select] — lib/aftercare/checkup-server.ts:197
   - `countNotMarkedDelivered()` [select] — lib/aftercare/review-request-server.ts:141
-  - `emailStatus()` [select] — app/api/shipping/easyship/webhook/route.ts:121
+  - `emailStatus()` [select] — app/api/shipping/easyship/webhook/route.ts:141
   - `fetchConvertedRows()` [select] — lib/analytics/journey/aggregates.ts:436
   - `fetchCustomerCouponUseCount()` [select] — lib/ecommerce/discounts.ts:164
   - `fetchPendingOrderCouponUseCount()` [select] — lib/ecommerce/discounts.ts:187
@@ -1068,14 +1075,14 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `loadDeliveredOrders()` [select] — lib/aftercare/checkup-server.ts:179
   - `loadDueOrders()` [select] — lib/aftercare/review-request-server.ts:119
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:146
-  - `loadOrderForShipping()` [select] — lib/shipping/order-shipment.ts:60
+  - `loadOrderForShipping()` [select] — lib/shipping/order-shipment.ts:63
   - `loadOrderInfo()` [select] — lib/commissions/referral-rows.ts:141
   - `loadOrdersDashboard()` [select] — lib/ecommerce/admin/orders-dashboard.ts:56
   - `loadPartnerMoneyReferrals()` [select] — lib/commissions/referral-rows.ts:185
   - `loadReadjustmentContext()` [select] — lib/readjustment/purchases.ts:206
   - `loadSelfPurchaseAllowance()` [select] — lib/partner-self-purchase/allowance.ts:41
   - `loadSoldOrders()` [select] — lib/analytics/sales-report.ts:117
-  - `orderIdForIntent()` [select] — app/api/stripe/webhook/route.ts:87
+  - `orderIdForIntent()` [select] — app/api/stripe/webhook/route.ts:88
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:391
   - `sources/orders.ts` [select] — lib/crm/timeline/sources/orders.ts:67
   - `updateCustomerStats()` [select] — lib/ecommerce/customers.ts:72
@@ -1784,7 +1791,7 @@ Defined in supabase/migrations/20261031032017_points_never_expire.sql:157
 Defined in supabase/migrations/20261021120000_points_ledger.sql:79
 References: `customers`, `mp_staff`, `orders`
 - Read by:
-  - `pointsWereReleased()` [select] — app/api/stripe/webhook/route.ts:134
+  - `pointsWereReleased()` [select] — app/api/stripe/webhook/route.ts:135
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:24
   - `readOrderPoints()` [select] — lib/points/order.ts:45
   - `readPointsHistory()` [select] — lib/points/server.ts:88
@@ -2123,6 +2130,7 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `getActiveShippingMethods()` [select] — lib/ecommerce/shipping.ts:7
   - `getAllShippingMethods()` [select] — lib/ecommerce/shipping.ts:20
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:305
+  - `loadOrderShippingMethod()` [select] — lib/shipping/order-shipment.ts:97
   - `shipping-methods.ts` [select] — lib/shop/shipping-methods.ts:14
 
 ### shipping_rate_quotes
@@ -2273,7 +2281,7 @@ References: `social_conversations`
 ### stripe_webhook_failures
 Defined in supabase/migrations/0033_stripe_webhook_failures.sql:8
 - Written by:
-  - `recordWebhookFailure()` [upsert] — app/api/stripe/webhook/route.ts:112
+  - `recordWebhookFailure()` [upsert] — app/api/stripe/webhook/route.ts:113
 
 ### tax_rates
 Defined in supabase/migrations/0036_tax_rates.sql:16
@@ -2717,7 +2725,7 @@ app/[lang]/settings/orders/[id]/page.tsx
 - Endpoints: `/api/mp-config/responses [GET]`, `/api/shop/orders/[id] [GET,PATCH]`, `/api/shop/orders/[id]/cancel [POST]`, `/api/shop/orders/[id]/deduct-stock [POST]`, `/api/shop/orders/[id]/easyship [GET,POST]`, `/api/shop/orders/[id]/easyship/label`, `/api/shop/orders/[id]/easyship/rates [POST]`, `/api/shop/orders/[id]/fulfill [POST]`, `/api/shop/orders/[id]/mp-config-link [DELETE,GET,POST]`, `/api/shop/orders/[id]/refund [POST]`, `/api/shop/orders/[id]/refund-request [POST]`, `/api/shop/orders/[id]/restock [POST]`, `/api/shop/orders/[id]/timeline [GET,POST]`
 - Loads: `loadAdminOrderDetail()`, `loadAdminOrderMpConfigLinks()`, `loadAdminOrderTimeline()`, `readOrderPoints()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `commissions`, `inventory_transactions`, `mp_config_responses`, `mp_staff`, `order_emails`, `order_items`, `order_shipments`, `order_timeline`, `orders`, `product_variants`, `shipping_rate_quotes`
-- Reads, through the same: `admin_roles`, `admin_users`, `api_configs`, `config_upload`, `customers`, `mp_config_response_photos`, `order_margins`, `order_payments`, `points_ledger`, `points_order_candidates`, `site_settings`
+- Reads, through the same: `admin_roles`, `admin_users`, `api_configs`, `config_upload`, `customers`, `mp_config_response_photos`, `order_margins`, `order_payments`, `points_ledger`, `points_order_candidates`, `shipping_methods`, `site_settings`
 
 ### /settings/page-builder
 app/[lang]/settings/page-builder/page.tsx

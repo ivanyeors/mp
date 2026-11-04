@@ -44,8 +44,10 @@ import type { EasyshipStrategy, ShippingRateSource } from "@/lib/types/ecommerce
 import { apiErrorMessage } from "./couriers/easyship-panel";
 import { InfoTip } from "@/components/ui/info-tip";
 import { findCountry, summarizeCountries } from "@/lib/shipping/countries";
+import { methodDeliveryTime } from "@/lib/shipping/delivery-time";
 import { CountryPicker } from "./country-picker";
 import { CoverageCheck } from "./coverage-check";
+import { CourierServicePicker } from "./courier-service-picker";
 import { EmptyState } from "@/components/settings/empty-state";
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
@@ -533,6 +535,9 @@ export default function SettingsShippingPage({
                                                 ? `Free above ${formatCurrency(method.free_above, method.currency)}`
                                                 : "No free shipping"}
                                         </span>
+                                        {methodDeliveryTime(method.content, "en-US") && (
+                                            <span>Delivery time: {methodDeliveryTime(method.content, "en-US")}</span>
+                                        )}
                                         <span className="text-xs">{method.slug}</span>
                                     </div>
 
@@ -629,8 +634,9 @@ export default function SettingsShippingPage({
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <Label>Estimated days</Label>
+                                        <Label htmlFor={`estimated_days_${loc.short}`}>Delivery time</Label>
                                         <Input
+                                            id={`estimated_days_${loc.short}`}
                                             value={form[loc.short]?.estimated_days ?? ""}
                                             onChange={(e) =>
                                                 setLocale(
@@ -639,8 +645,14 @@ export default function SettingsShippingPage({
                                                     e.target.value
                                                 )
                                             }
-                                            placeholder="e.g. 3-5 days"
+                                            placeholder={loc.short === "en" ? "e.g. About 2 weeks" : "e.g. 约2周"}
+                                            className="text-base md:text-sm"
                                         />
+                                        <p className="text-xs text-muted-foreground">
+                                            {form.rate_source === "easyship" && !form.collect_location_id
+                                                ? "Shown to shoppers instead of the courier's estimate. Leave empty to show the courier's."
+                                                : "Shown to shoppers under the method's name."}
+                                        </p>
                                     </div>
                                 </TabsContent>
                             ))}
@@ -741,19 +753,11 @@ export default function SettingsShippingPage({
                                         </div>
 
                                         {form.easyship_strategy === "courier" && (
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="easyship_courier_service_id">Courier service id</Label>
-                                                <Input
-                                                    id="easyship_courier_service_id"
-                                                    value={form.easyship_courier_service_id}
-                                                    onChange={(e) => setField("easyship_courier_service_id", e.target.value)}
-                                                    placeholder="Copy one from Couriers → Test a quote"
-                                                    className="text-base md:text-sm"
-                                                />
-                                                <p className="text-xs text-muted-foreground">
-                                                    The method is hidden for addresses this courier does not serve.
-                                                </p>
-                                            </div>
+                                            <CourierServicePicker
+                                                value={form.easyship_courier_service_id}
+                                                onChange={(id) => setField("easyship_courier_service_id", id)}
+                                                country={form.countries[0] ?? "SG"}
+                                            />
                                         )}
 
                                         <div className="grid grid-cols-2 gap-4">

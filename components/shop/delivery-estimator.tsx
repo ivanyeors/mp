@@ -24,6 +24,7 @@ import {
 } from "@/lib/shop/use-shipping-quote";
 import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
 import { usesPostalCode } from "@/lib/shipping/countries";
+import { shownDeliveryTime } from "@/lib/shipping/delivery-time";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 interface DeliveryEstimatorProps {
@@ -195,7 +196,7 @@ export function DeliveryEstimator({
       {showResults && !quote.error && quote.options.length > 0 && (
         <ul className="divide-y rounded-lg border" aria-live="polite">
           {quote.options.map((o) => {
-            const eta = formatDeliveryWindow(o.min_days, o.max_days, windowLabels);
+            const eta = shownDeliveryTime(o.content, locale, formatDeliveryWindow(o.min_days, o.max_days, windowLabels));
             return (
               <li key={o.method_id} className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
                 <div className="min-w-0">
