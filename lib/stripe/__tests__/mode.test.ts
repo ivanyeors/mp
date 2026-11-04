@@ -41,11 +41,28 @@ describe("stripeMode", () => {
     expect(m.stripeMode()).toBe("test");
   });
 
-  it("falls back to the publishable key, which is all the browser has", async () => {
-    // Next replaces STRIPE_SECRET_KEY with undefined in the client bundle, so the
-    // admin's "linked to Stripe" badge would otherwise always read live.
-    const m = await withKeys(undefined, "pk_test_abc");
-    expect(m.stripeMode()).toBe("test");
+  it("ignores the publishable key — the secret key is the account in use", async () => {
+    // The publishable key is optional (hosted Checkout needs none), so it cannot
+    // decide which column the admin reads. Reading it made a live deploy with a blank
+    // or stale publishable key show every synced product as "Not synced".
+    const live = await withKeys("sk_live_abc", "pk_test_abc");
+    expect(live.stripeMode()).toBe("live");
+    const unset = await withKeys(undefined, "pk_live_abc");
+    expect(unset.stripeMode()).toBe("test");
+  });
+
+  it("refuses to guess in the browser", async () => {
+    // A client component must be handed the mode by its server page.
+    const m = await withKeys("sk_live_abc");
+    vi.stubGlobal("window", {});
+    try {
+      expect(() => m.stripeMode()).toThrow(/server-only/);
+      // An explicit mode is fine in the browser.
+      expect(m.stripeProductIdOf(PRODUCT, "live")).toBe("prod_live");
+      expect(m.stripePriceIdOf(SANDBOX, "test")).toBe("price_sandbox");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("defaults to test when nothing is configured", async () => {

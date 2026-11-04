@@ -13,24 +13,34 @@
 
 export type StripeMode = "test" | "live";
 
-/** Both secret (`sk_`/`rk_`) and publishable (`pk_`) keys carry the mode this way. */
+/** Secret (`sk_`) and restricted (`rk_`) keys carry the mode this way. */
 const TEST_MARKER = "_test_";
 
 /**
- * The active mode.
+ * The active mode, from `STRIPE_SECRET_KEY` — the key the server actually charges
+ * and syncs with. SERVER ONLY.
  *
- * Server code sees `STRIPE_SECRET_KEY`. Client code cannot — Next replaces non-public
- * env with `undefined` in the browser bundle — so it falls back to the publishable
- * key, which encodes the same mode and is safe to ship.
+ * The browser cannot see that key (Next replaces non-public env with `undefined` in
+ * the client bundle), so a client component takes the mode as a prop from the server
+ * page that renders it, and passes it to `stripeProductIdOf(row, mode)` /
+ * `stripePriceIdOf(row, mode)`. It used to fall back to the publishable key instead,
+ * which is optional here (the storefront uses hosted Checkout): with it blank on a
+ * live deploy the admin read the SANDBOX column, so a product the sync had just
+ * linked showed "Not synced" again on every reload.
  *
- * With neither key set this answers "test". An unconfigured environment must not
+ * Called in the browser this throws rather than guess, because a guess is that bug.
+ *
+ * With no key set this answers "test". An unconfigured environment must not
  * default to reading live ids.
  */
 export function stripeMode(): StripeMode {
-  const key =
-    process.env.STRIPE_SECRET_KEY ||
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-    "";
+  if (typeof window !== "undefined") {
+    throw new Error(
+      "stripeMode() is server-only. Pass the mode from the server page as a prop and " +
+        "hand it to stripeProductIdOf(row, mode) / stripePriceIdOf(row, mode).",
+    );
+  }
+  const key = process.env.STRIPE_SECRET_KEY || "";
   if (!key) return "test";
   return key.includes(TEST_MARKER) ? "test" : "live";
 }
