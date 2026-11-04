@@ -176,7 +176,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
 - Read by:
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:530
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:184
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:487
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:488
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:154
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:163
   - `getBolsterBaseQuantities()` [select] — lib/shop/customization-inventory.ts:416
@@ -203,7 +203,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `setDefaultFillingTemplateId()` [update] — lib/results/composed-sellable.ts:401
 - Read by:
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:532
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:396
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:397
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:155
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:344
 
@@ -234,7 +234,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:529
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:183
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:84
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:395
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:396
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:162
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:234
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:129
@@ -711,7 +711,7 @@ Changed from pages: `/settings/inventory`
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:516
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:177
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:393
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:394
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:57
   - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:589
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
@@ -1211,7 +1211,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:524
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:182
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:80
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:394
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:395
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:32
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:33
   - `POST()` [select] — app/[lang]/settings/inventory/configure/save/route.ts:118
@@ -2211,10 +2211,10 @@ Defined in supabase/migrations/20260308000000_create_site_settings.sql:2
 Changed from pages: `/settings/appointments`, `/settings/costings`, `/settings/costings/services`, `/settings/customers`, `/settings/discounts`, `/settings/forms`, `/settings/general`, `/settings/inventory/configure`, `/settings/media`
 - Written by:
   - `DELETE()` [delete] — app/[lang]/settings/product-builder/dimensions/route.ts:182
-  - `DELETE()` [delete] — app/[lang]/settings/product-builder/soft-body/route.ts:122
+  - `DELETE()` [delete] — app/[lang]/settings/product-builder/soft-body/route.ts:133
   - `DELETE()` [delete] — app/api/site-settings/route.ts:177
   - `POST()` [upsert] — app/[lang]/settings/product-builder/dimensions/route.ts:147
-  - `POST()` [upsert] — app/[lang]/settings/product-builder/soft-body/route.ts:93
+  - `POST()` [upsert] — app/[lang]/settings/product-builder/soft-body/route.ts:104
   - `PUT()` [select,upsert] — app/api/results/sla-settings/route.ts:100
   - `PUT()` [select,upsert] — app/api/settings/appointments/route.ts:83
   - `PUT()` [upsert] — app/api/settings/customers/aftercare/route.ts:70
