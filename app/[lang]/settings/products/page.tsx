@@ -2,6 +2,7 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { requireAdminPage } from "@/lib/auth/admin";
 import { listAdminProducts } from "@/lib/ecommerce/admin/products";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
+import { stripeMode } from "@/lib/stripe/mode";
 import {
     ProductsClient,
     type Category,
@@ -52,6 +53,7 @@ export default async function SettingsProductsPage({
         <ProductsClient
             initialData={initialData}
             initialTab={tab === "categories" || tab === "shop" ? tab : "products"}
+            stripeMode={stripeMode()}
         />
     );
 }

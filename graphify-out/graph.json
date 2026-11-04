@@ -27171,7 +27171,7 @@
       "file_type": "code",
       "norm_label": "priceidrow",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L57"
+      "source_location": "L67"
     },
     {
       "id": "lib_stripe_mode_productidrow",
@@ -27184,7 +27184,7 @@
       "file_type": "code",
       "norm_label": "productidrow",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L52"
+      "source_location": "L62"
     },
     {
       "id": "lib_stripe_mode_stripemode",
@@ -27197,7 +27197,7 @@
       "file_type": "code",
       "norm_label": "stripemode",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L29"
+      "source_location": "L36"
     },
     {
       "id": "lib_stripe_variant_labels_variantlabel",
@@ -33475,7 +33475,7 @@
       "file_type": "code",
       "norm_label": "deactivatepaymentlink()",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L277"
+      "source_location": "L289"
     },
     {
       "id": "claude_skills_preview_lib_shoot_filebase",
@@ -99919,7 +99919,7 @@
       "file_type": "code",
       "norm_label": "premigration()",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L75"
+      "source_location": "L85"
     },
     {
       "id": "lib_stripe_mode_stripepriceidcolumn",
@@ -99931,7 +99931,7 @@
       "file_type": "code",
       "norm_label": "stripepriceidcolumn()",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L48"
+      "source_location": "L58"
     },
     {
       "id": "lib_stripe_mode_stripepriceidof",
@@ -99943,7 +99943,7 @@
       "file_type": "code",
       "norm_label": "stripepriceidof()",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L91"
+      "source_location": "L101"
     },
     {
       "id": "lib_stripe_mode_stripeproductidcolumn",
@@ -99955,7 +99955,7 @@
       "file_type": "code",
       "norm_label": "stripeproductidcolumn()",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L44"
+      "source_location": "L54"
     },
     {
       "id": "lib_stripe_mode_stripeproductidof",
@@ -99967,7 +99967,7 @@
       "file_type": "code",
       "norm_label": "stripeproductidof()",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L80"
+      "source_location": "L90"
     },
     {
       "id": "lib_stripe_sync_createpaymentlink",
@@ -99979,7 +99979,7 @@
       "file_type": "code",
       "norm_label": "createpaymentlink()",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L222"
+      "source_location": "L234"
     },
     {
       "id": "lib_stripe_sync_syncproducttostripe",
@@ -100003,7 +100003,7 @@
       "file_type": "code",
       "norm_label": "syncproducttostripesafe()",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L146"
+      "source_location": "L158"
     },
     {
       "id": "lib_stripe_sync_syncvariantprice",
@@ -100015,7 +100015,7 @@
       "file_type": "code",
       "norm_label": "syncvariantprice()",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L167"
+      "source_location": "L179"
     },
     {
       "id": "lib_stripe_tests_mode_test_withkeys",
@@ -239732,7 +239732,7 @@
       "file_type": "code",
       "norm_label": "stripe_id_column",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L39"
+      "source_location": "L49"
     },
     {
       "id": "lib_stripe_sync",
@@ -351394,7 +351394,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L97",
+      "source_location": "L107",
       "weight": 1.0
     },
     {
@@ -351406,7 +351406,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L86",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -351478,7 +351478,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L223",
+      "source_location": "L235",
       "weight": 1.0
     },
     {
@@ -351490,7 +351490,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L224",
+      "source_location": "L236",
       "weight": 1.0
     },
     {
@@ -351502,7 +351502,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L242",
+      "source_location": "L254",
       "weight": 1.0
     },
     {
@@ -351514,7 +351514,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L278",
+      "source_location": "L290",
       "weight": 1.0
     },
     {
@@ -351526,7 +351526,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L124",
+      "source_location": "L131",
       "weight": 1.0
     },
     {
@@ -351622,7 +351622,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L154",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -351634,7 +351634,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L172",
+      "source_location": "L184",
       "weight": 1.0
     },
     {
@@ -351646,7 +351646,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L182",
+      "source_location": "L194",
       "weight": 1.0
     },
     {
@@ -735634,13 +735634,24 @@
     },
     {
       "source": "lib_stripe_mode",
+      "target": "lib_stripe_mode_stripepriceidof",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/stripe/mode.ts",
+      "source_location": "L101",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_stripe_mode",
       "target": "lib_stripe_mode_stripemode",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L29",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -735651,7 +735662,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L39",
+      "source_location": "L49",
       "weight": 1.0
     },
     {
@@ -735662,7 +735673,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L44",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
@@ -735673,7 +735684,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L48",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -735684,7 +735695,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L52",
+      "source_location": "L62",
       "weight": 1.0
     },
     {
@@ -735695,7 +735706,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L57",
+      "source_location": "L67",
       "weight": 1.0
     },
     {
@@ -735706,7 +735717,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L75",
+      "source_location": "L85",
       "weight": 1.0
     },
     {
@@ -735717,18 +735728,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/mode.ts",
-      "source_location": "L80",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_stripe_mode",
-      "target": "lib_stripe_mode_stripepriceidof",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/stripe/mode.ts",
-      "source_location": "L91",
+      "source_location": "L90",
       "weight": 1.0
     },
     {
@@ -735904,7 +735904,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L146",
+      "source_location": "L158",
       "weight": 1.0
     },
     {
@@ -735915,7 +735915,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L167",
+      "source_location": "L179",
       "weight": 1.0
     },
     {
@@ -735926,7 +735926,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L222",
+      "source_location": "L234",
       "weight": 1.0
     },
     {
@@ -735937,7 +735937,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L277",
+      "source_location": "L289",
       "weight": 1.0
     },
     {
@@ -818191,7 +818191,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/products-client.tsx",
-      "source_location": "L253",
+      "source_location": "L257",
       "weight": 1.0,
       "context": "GET,POST"
     },
@@ -818215,7 +818215,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/products-client.tsx",
-      "source_location": "L278",
+      "source_location": "L282",
       "weight": 1.0,
       "context": "GET"
     },
@@ -818239,7 +818239,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/products-client.tsx",
-      "source_location": "L389",
+      "source_location": "L393",
       "weight": 1.0,
       "context": "DELETE"
     },
@@ -818251,7 +818251,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/products-client.tsx",
-      "source_location": "L325",
+      "source_location": "L329",
       "weight": 1.0,
       "context": "POST"
     },
@@ -818263,7 +818263,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/products-client.tsx",
-      "source_location": "L305",
+      "source_location": "L309",
       "weight": 1.0,
       "context": "POST"
     },
@@ -818359,7 +818359,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L233",
+      "source_location": "L245",
       "weight": 1.0,
       "context": "GET"
     },
@@ -818371,7 +818371,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L340",
+      "source_location": "L352",
       "weight": 1.0,
       "context": "POST"
     },
@@ -818383,7 +818383,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L252",
+      "source_location": "L264",
       "weight": 1.0,
       "context": "GET,PATCH"
     },
@@ -818395,7 +818395,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L380",
+      "source_location": "L392",
       "weight": 1.0,
       "context": "POST"
     },
@@ -818407,7 +818407,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L403",
+      "source_location": "L415",
       "weight": 1.0,
       "context": "DELETE"
     },
@@ -818419,7 +818419,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L423",
+      "source_location": "L435",
       "weight": 1.0,
       "context": "PUT"
     },
@@ -818431,7 +818431,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L499",
+      "source_location": "L511",
       "weight": 1.0,
       "context": "POST"
     },
@@ -818443,7 +818443,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L493",
+      "source_location": "L505",
       "weight": 1.0,
       "context": "DELETE,PATCH"
     },
@@ -818455,7 +818455,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L586",
+      "source_location": "L611",
       "weight": 1.0,
       "context": "POST"
     },
@@ -818467,7 +818467,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/products/[id]/product-editor-client.tsx",
-      "source_location": "L563",
+      "source_location": "L575",
       "weight": 1.0,
       "context": "POST"
     },
@@ -828842,7 +828842,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L227",
+      "source_location": "L239",
       "weight": 1.0,
       "context": "select,update"
     },
@@ -828854,7 +828854,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/stripe/sync.ts",
-      "source_location": "L128",
+      "source_location": "L135",
       "weight": 1.0,
       "context": "update"
     },
@@ -830335,5 +830335,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "be567addf80912ff855ff49b45580abe9479422c"
+  "built_at_commit": "78c70da2ce20f1e1ae3e1dadb89b5a500dd43587"
 }

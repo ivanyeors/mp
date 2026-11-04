@@ -2,6 +2,7 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { requireAdminPage } from "@/lib/auth/admin";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
+import { stripeMode } from "@/lib/stripe/mode";
 import {
     ProductEditorClient,
     type LoadedProduct,
@@ -43,5 +44,7 @@ export default async function ProductEditorPage({
               }
             : undefined;
 
-    return <ProductEditorClient initialData={initialData} />;
+    // The browser cannot see STRIPE_SECRET_KEY, so it is told which account's ids
+    // to read rather than left to guess.
+    return <ProductEditorClient initialData={initialData} stripeMode={stripeMode()} />;
 }

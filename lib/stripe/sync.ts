@@ -107,11 +107,18 @@ export async function syncProductToStripe(productId: string) {
     });
     stripeProductId = stripeProduct.id;
 
-    // Save the id under this mode's column
-    await admin
+    // Save the id under this mode's column. Checked, so the editor can never say
+    // "Synced to Stripe" while the row keeps no id: a reload would show "Not
+    // synced", and the next sync would make a second Stripe Product.
+    const { error } = await admin
       .from("products")
       .update({ [productIdColumn]: stripeProductId })
       .eq("id", productId);
+    if (error) {
+      throw new Error(
+        `Created Stripe product ${stripeProductId} but couldn't save its id: ${error.message}`,
+      );
+    }
   }
 
   // Sync variant prices
@@ -124,11 +131,16 @@ export async function syncProductToStripe(productId: string) {
     const priceId = await syncVariantPrice(stripeProductId, variant, labels.get(variant.id));
     variantResults.push({ id: variant.id, stripePriceId: priceId });
 
-    // Save the id under this mode's column
-    await admin
+    // Save the id under this mode's column. Checked for the same reason as above.
+    const { error } = await admin
       .from("product_variants")
       .update({ [priceIdColumn]: priceId })
       .eq("id", variant.id);
+    if (error) {
+      throw new Error(
+        `Couldn't save the Stripe price for variant ${variant.sku || variant.id}: ${error.message}`,
+      );
+    }
   }
 
   return { stripeProductId, variants: variantResults };
