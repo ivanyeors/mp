@@ -45,7 +45,9 @@ export default function analytics({ scenario, now }) {
     .filter(Boolean)
     .map((s) => {
       const [id, name, size, category, subtype] = s.split("|");
-      return { id: Number(id), name: name || null, size: size || null, category: category || null, subtype: subtype || null, cost_price: null, is_active: true };
+      // A case's fabric family picks its premium Costings row (`items.price_family`).
+      const price_family = category === "pillow_case" ? (/fibrecool/i.test(name) ? "fibrecool" : /linen/i.test(name) ? "linen" : null) : null;
+      return { id: Number(id), name: name || null, size: size || null, category: category || null, subtype: subtype || null, price_family, cost_price: null, is_active: true };
     });
 
   // Stock ledger: an opening balance before the period, deliveries and use inside it.

@@ -36,13 +36,10 @@ export type BuildCostOption = {
   fillingCents: number;
   buildCents: number;
   /**
-   * MSRP charged on top of the Costings row for pieces placed in this template: a
-   * Neck support costs its own MSRP (CONTEXT.md). `null` when one has no MSRP, which
-   * the money path refuses rather than charging nothing.
+   * `included`: shipped inside the pillow at the row's price, its cost in the build
+   * (CONTEXT.md). `left_out`: the template holds one this build cannot take.
    */
-  extraChargeCents: number | null;
-  /** `charged`: shipped at its own MSRP. `left_out`: the template holds one this build cannot take. */
-  neckSupport: "none" | "charged" | "left_out";
+  neckSupport: "none" | "included" | "left_out";
   /** Items in the build with no cost price. They add 0 here, so the cost is a floor. */
   uncostedItemIds: number[];
 };
@@ -114,8 +111,8 @@ export function buildCostOptions(input: {
   templates: FillingTemplateRecipe[];
   defaultTemplateId: number | null;
   costByItem: ReadonlyMap<number, number | null>;
-  /** Neck support items, with their MSRP (`null` when unpriced). */
-  neckSupportMsrpByItem: ReadonlyMap<number, number | null>;
+  /** Neck support item ids. */
+  neckSupportItemIds: ReadonlySet<number>;
   /**
    * Basic Mpillow takes no Neck support: its pieces come out of the mix, as
    * `mixAfterTierChange` takes them out of a session's, and the rest still builds.
@@ -126,18 +123,11 @@ export function buildCostOptions(input: {
   const options: BuildCostOption[] = [];
 
   for (const template of input.templates) {
-    const isNeck = (l: { itemId: number }) => input.neckSupportMsrpByItem.has(l.itemId);
-    const neckLines = template.pack.filter(isNeck);
+    const isNeck = (l: { itemId: number }) => input.neckSupportItemIds.has(l.itemId);
+    const hasNeck = template.pack.some(isNeck);
     const shipped = input.allowNeckSupport ? template.pack : template.pack.filter((l) => !isNeck(l));
     const lines = shipped.map((l) => ({ itemId: l.itemId, quantity: l.count }));
     const filling = componentsCostCents(lines, input.costByItem);
-    let extraChargeCents: number | null = 0;
-    if (input.allowNeckSupport) {
-      for (const l of neckLines) {
-        const msrp = input.neckSupportMsrpByItem.get(l.itemId) ?? null;
-        extraChargeCents = msrp == null || extraChargeCents == null ? null : extraChargeCents + msrp * l.count;
-      }
-    }
     options.push({
       templateId: template.id,
       name: template.name,
@@ -146,8 +136,7 @@ export function buildCostOptions(input: {
       pieces: shipped.reduce((sum, l) => sum + l.count, 0),
       fillingCents: filling.cents,
       buildCents: base.cents + filling.cents,
-      extraChargeCents,
-      neckSupport: neckLines.length === 0 ? "none" : input.allowNeckSupport ? "charged" : "left_out",
+      neckSupport: !hasNeck ? "none" : input.allowNeckSupport ? "included" : "left_out",
       uncostedItemIds: [...new Set([...base.uncostedItemIds, ...filling.uncostedItemIds])],
     });
   }
