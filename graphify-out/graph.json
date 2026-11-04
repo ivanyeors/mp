@@ -7297,19 +7297,6 @@
       "source_location": "L137"
     },
     {
-      "id": "lib_reviews_places_poll_placespollstatus",
-      "label": "PlacesPollStatus",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 158,
-      "community_name": "reviews/status.ts",
-      "file_type": "code",
-      "norm_label": "placespollstatus",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L231"
-    },
-    {
       "id": "lib_reviews_status_businessprofilesetup",
       "label": "BusinessProfileSetup",
       "_callable": true,
@@ -7713,19 +7700,6 @@
       "source_location": "L84"
     },
     {
-      "id": "lib_reviews_reply_style_replystyle",
-      "label": "ReplyStyle",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 166,
-      "community_name": "draft-reply.ts",
-      "file_type": "code",
-      "norm_label": "replystyle",
-      "source_file": "lib/reviews/reply-style.ts",
-      "source_location": "L15"
-    },
-    {
       "id": "lib_email_campaigns_ai_guardrails_check",
       "label": "Check",
       "_callable": true,
@@ -7763,19 +7737,6 @@
       "norm_label": "guardrailcontext",
       "source_file": "lib/email-campaigns/ai-guardrails.ts",
       "source_location": "L21"
-    },
-    {
-      "id": "lib_reviews_cards_card",
-      "label": "Card",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 169,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "card",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L30"
     },
     {
       "id": "lib_reviews_cards_googlecardoptions",
@@ -7854,6 +7815,19 @@
       "norm_label": "previewresult",
       "source_file": "lib/reviews/preview.ts",
       "source_location": "L232"
+    },
+    {
+      "id": "lib_reviews_reply_style_replystyle",
+      "label": "ReplyStyle",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 169,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "replystyle",
+      "source_file": "lib/reviews/reply-style.ts",
+      "source_location": "L15"
     },
     {
       "id": "app_api_results_route_resultrow",
@@ -11730,6 +11704,19 @@
       "source_location": "L206"
     },
     {
+      "id": "lib_reviews_cards_card",
+      "label": "Card",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 239,
+      "community_name": "Admin Panel mobile audit: spacing, tap targets and tap states \u2014 October 2026",
+      "file_type": "code",
+      "norm_label": "card",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L30"
+    },
+    {
       "id": "lib_crm_customer_overview_purchaseclass",
       "label": "PurchaseClass",
       "_callable": true,
@@ -15266,19 +15253,6 @@
       "source_location": "L23"
     },
     {
-      "id": "lib_telegram_operators_telegramdenial",
-      "label": "TelegramDenial",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 30,
-      "community_name": "reviews/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "telegramdenial",
-      "source_file": "lib/telegram/operators.ts",
-      "source_location": "L139"
-    },
-    {
       "id": "lib_crm_tests_telegram_updates_job_test_db",
       "label": "Db",
       "_callable": true,
@@ -16694,6 +16668,19 @@
       "norm_label": "socialevent",
       "source_file": "lib/social-inbox/types.ts",
       "source_location": "L36"
+    },
+    {
+      "id": "lib_telegram_operators_telegramdenial",
+      "label": "TelegramDenial",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "telegramdenial",
+      "source_file": "lib/telegram/operators.ts",
+      "source_location": "L139"
     },
     {
       "id": "app_lang_settings_customers_import_actions_defaultconsentresponse",
@@ -22026,6 +22013,32 @@
       "source_location": "L13"
     },
     {
+      "id": "lib_crm_note_rules_customernote",
+      "label": "CustomerNote",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "code",
+      "norm_label": "customernote",
+      "source_file": "lib/crm/note-rules.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "lib_shop_customer_orders_customerorder",
+      "label": "CustomerOrder",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "code",
+      "norm_label": "customerorder",
+      "source_file": "lib/shop/customer-orders.ts",
+      "source_location": "L43"
+    },
+    {
       "id": "lib_crm_next_step_nextstep",
       "label": "nextStep",
       "_callable": true,
@@ -23729,32 +23742,6 @@
       "source_location": "L7"
     },
     {
-      "id": "lib_crm_note_rules_customernote",
-      "label": "CustomerNote",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "customernote",
-      "source_file": "lib/crm/note-rules.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "lib_shop_customer_orders_customerorder",
-      "label": "CustomerOrder",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "customerorder",
-      "source_file": "lib/shop/customer-orders.ts",
-      "source_location": "L43"
-    },
-    {
       "id": "lib_media_assets_drive_driveerror",
       "label": "DriveError",
       "_callable": true,
@@ -24353,19 +24340,6 @@
       "source_location": "L36"
     },
     {
-      "id": "lib_google_business_profile_gbpstarrating",
-      "label": "GbpStarRating",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "gbpstarrating",
-      "source_file": "lib/google/business-profile.ts",
-      "source_location": "L22"
-    },
-    {
       "id": "lib_reviews_google_reviews_googlereviewsource",
       "label": "GoogleReviewSource",
       "_callable": true,
@@ -24429,6 +24403,45 @@
       "norm_label": "reviewlister",
       "source_file": "lib/reviews/google-sync.ts",
       "source_location": "L63"
+    },
+    {
+      "id": "lib_reviews_google_sync_reviewsyncdeps",
+      "label": "ReviewSyncDeps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "google-sync.ts",
+      "file_type": "code",
+      "norm_label": "reviewsyncdeps",
+      "source_file": "lib/reviews/google-sync.ts",
+      "source_location": "L67"
+    },
+    {
+      "id": "lib_reviews_google_sync_reviewsyncsummary",
+      "label": "ReviewSyncSummary",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "google-sync.ts",
+      "file_type": "code",
+      "norm_label": "reviewsyncsummary",
+      "source_file": "lib/reviews/google-sync.ts",
+      "source_location": "L85"
+    },
+    {
+      "id": "lib_reviews_google_sync_syncreview",
+      "label": "SyncReview",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "google-sync.ts",
+      "file_type": "code",
+      "norm_label": "syncreview",
+      "source_file": "lib/reviews/google-sync.ts",
+      "source_location": "L60"
     },
     {
       "id": "scripts_google_business_setup_json",
@@ -28123,6 +28136,19 @@
       "source_location": "L101"
     },
     {
+      "id": "lib_google_business_profile_gbpstarrating",
+      "label": "GbpStarRating",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "gbpstarrating",
+      "source_file": "lib/google/business-profile.ts",
+      "source_location": "L22"
+    },
+    {
       "id": "lib_google_places_reviews_googleplacetestimonial",
       "label": "GooglePlaceTestimonial",
       "_callable": true,
@@ -28188,45 +28214,6 @@
       "source_location": "L12"
     },
     {
-      "id": "lib_reviews_google_sync_reviewsyncdeps",
-      "label": "ReviewSyncDeps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "places-poll.ts",
-      "file_type": "code",
-      "norm_label": "reviewsyncdeps",
-      "source_file": "lib/reviews/google-sync.ts",
-      "source_location": "L67"
-    },
-    {
-      "id": "lib_reviews_google_sync_reviewsyncsummary",
-      "label": "ReviewSyncSummary",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "places-poll.ts",
-      "file_type": "code",
-      "norm_label": "reviewsyncsummary",
-      "source_file": "lib/reviews/google-sync.ts",
-      "source_location": "L85"
-    },
-    {
-      "id": "lib_reviews_google_sync_syncreview",
-      "label": "SyncReview",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "places-poll.ts",
-      "file_type": "code",
-      "norm_label": "syncreview",
-      "source_file": "lib/reviews/google-sync.ts",
-      "source_location": "L60"
-    },
-    {
       "id": "lib_reviews_places_poll_claim",
       "label": "Claim",
       "_callable": true,
@@ -28251,6 +28238,19 @@
       "norm_label": "placespolldeps",
       "source_file": "lib/reviews/places-poll.ts",
       "source_location": "L156"
+    },
+    {
+      "id": "lib_reviews_places_poll_placespollstatus",
+      "label": "PlacesPollStatus",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placespollstatus",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L231"
     },
     {
       "id": "lib_reviews_places_poll_placespollsummary",
@@ -42958,54 +42958,6 @@
       "source_location": "L21"
     },
     {
-      "id": "app_api_webhooks_tiktok_messages_route_get",
-      "label": "GET()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "get()",
-      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "app_api_webhooks_tiktok_messages_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
-      "source_location": "L23"
-    },
-    {
-      "id": "lib_social_inbox_send_sendtocustomer",
-      "label": "sendToCustomer()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "sendtocustomer()",
-      "source_file": "lib/social-inbox/send.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_social_inbox_status_runsocialinboxmaintenance",
-      "label": "runSocialInboxMaintenance()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "runsocialinboxmaintenance()",
-      "source_file": "lib/social-inbox/status.ts",
-      "source_location": "L61"
-    },
-    {
       "id": "lib_social_inbox_tiktok_apibase",
       "label": "apiBase()",
       "_callable": true,
@@ -43090,30 +43042,6 @@
       "source_location": "L305"
     },
     {
-      "id": "lib_social_inbox_tiktok_gettiktoktokenrow",
-      "label": "getTikTokTokenRow()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "gettiktoktokenrow()",
-      "source_file": "lib/social-inbox/tiktok.ts",
-      "source_location": "L397"
-    },
-    {
-      "id": "lib_social_inbox_tiktok_parsetiktokwebhook",
-      "label": "parseTikTokWebhook()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "parsetiktokwebhook()",
-      "source_file": "lib/social-inbox/tiktok.ts",
-      "source_location": "L141"
-    },
-    {
       "id": "lib_social_inbox_tiktok_refreshtiktoktokens",
       "label": "refreshTikTokTokens()",
       "_callable": true,
@@ -43150,30 +43078,6 @@
       "source_location": "L407"
     },
     {
-      "id": "lib_social_inbox_tiktok_sendtiktoktext",
-      "label": "sendTikTokText()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "sendtiktoktext()",
-      "source_file": "lib/social-inbox/tiktok.ts",
-      "source_location": "L344"
-    },
-    {
-      "id": "lib_social_inbox_tiktok_tiktokaccess",
-      "label": "tiktokAccess()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "tiktokaccess()",
-      "source_file": "lib/social-inbox/tiktok.ts",
-      "source_location": "L437"
-    },
-    {
       "id": "lib_social_inbox_tiktok_tiktokappconfig",
       "label": "tiktokAppConfig()",
       "_callable": true,
@@ -43198,18 +43102,6 @@
       "source_location": "L214"
     },
     {
-      "id": "lib_social_inbox_tiktok_toattachments",
-      "label": "toAttachments()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "toattachments()",
-      "source_file": "lib/social-inbox/tiktok.ts",
-      "source_location": "L112"
-    },
-    {
       "id": "lib_social_inbox_tiktok_totokens",
       "label": "toTokens()",
       "_callable": true,
@@ -43220,18 +43112,6 @@
       "norm_label": "totokens()",
       "source_file": "lib/social-inbox/tiktok.ts",
       "source_location": "L247"
-    },
-    {
-      "id": "lib_social_inbox_tiktok_verifytiktoksignature",
-      "label": "verifyTikTokSignature()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "verifytiktoksignature()",
-      "source_file": "lib/social-inbox/tiktok.ts",
-      "source_location": "L66"
     },
     {
       "id": "app_lang_partner_apply_actions_reacceptagreement",
@@ -49702,18 +49582,6 @@
       "source_location": "L66"
     },
     {
-      "id": "lib_reviews_reply_style_replystylefor",
-      "label": "replyStyleFor()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 166,
-      "community_name": "draft-reply.ts",
-      "file_type": "code",
-      "norm_label": "replystylefor()",
-      "source_file": "lib/reviews/reply-style.ts",
-      "source_location": "L24"
-    },
-    {
       "id": "lib_reviews_tests_draft_reply_test_fakeclient",
       "label": "fakeClient()",
       "_callable": true,
@@ -50062,18 +49930,6 @@
       "source_location": "L109"
     },
     {
-      "id": "lib_reviews_cards_parsereviewcallback",
-      "label": "parseReviewCallback()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 169,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "parsereviewcallback()",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L69"
-    },
-    {
       "id": "lib_reviews_cards_placesopencard",
       "label": "placesOpenCard()",
       "_callable": true,
@@ -50132,6 +49988,18 @@
       "norm_label": "rendergooglecardwithin()",
       "source_file": "lib/reviews/cards.ts",
       "source_location": "L176"
+    },
+    {
+      "id": "lib_reviews_cards_rendergooglereviewcard",
+      "label": "renderGoogleReviewCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 169,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "rendergooglereviewcard()",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L167"
     },
     {
       "id": "lib_reviews_cards_rendermissedreviewsnotice",
@@ -50254,6 +50122,18 @@
       "source_location": "L244"
     },
     {
+      "id": "lib_reviews_reply_style_replystylefor",
+      "label": "replyStyleFor()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 169,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "replystylefor()",
+      "source_file": "lib/reviews/reply-style.ts",
+      "source_location": "L24"
+    },
+    {
       "id": "lib_reviews_tests_cards_test_buttons",
       "label": "buttons()",
       "_callable": true,
@@ -50288,18 +50168,6 @@
       "norm_label": "lines()",
       "source_file": "lib/reviews/__tests__/preview.test.ts",
       "source_location": "L18"
-    },
-    {
-      "id": "lib_social_inbox_preview_inboxpreviewcard",
-      "label": "inboxPreviewCard()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 169,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "inboxpreviewcard()",
-      "source_file": "lib/social-inbox/preview.ts",
-      "source_location": "L10"
     },
     {
       "id": "scripts_telegram_review_preview_main",
@@ -61066,30 +60934,6 @@
       "source_location": "L16"
     },
     {
-      "id": "claude_skills_preview_fixtures_costings_costings",
-      "label": "costings()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "code",
-      "norm_label": "costings()",
-      "source_file": ".claude/skills/preview/fixtures/costings.mjs",
-      "source_location": "L15"
-    },
-    {
-      "id": "claude_skills_preview_fixtures_costings_piece",
-      "label": "piece()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "code",
-      "norm_label": "piece()",
-      "source_file": ".claude/skills/preview/fixtures/costings.mjs",
-      "source_location": "L6"
-    },
-    {
       "id": "lib_crm_tests_lifecycle_stage_sql_test_before",
       "label": "before()",
       "_callable": true,
@@ -66466,6 +66310,30 @@
       "source_location": "L38"
     },
     {
+      "id": "claude_skills_preview_fixtures_costings_costings",
+      "label": "costings()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 287,
+      "community_name": "staff",
+      "file_type": "code",
+      "norm_label": "costings()",
+      "source_file": ".claude/skills/preview/fixtures/costings.mjs",
+      "source_location": "L15"
+    },
+    {
+      "id": "claude_skills_preview_fixtures_costings_piece",
+      "label": "piece()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 287,
+      "community_name": "staff",
+      "file_type": "code",
+      "norm_label": "piece()",
+      "source_file": ".claude/skills/preview/fixtures/costings.mjs",
+      "source_location": "L6"
+    },
+    {
       "id": "lib_assist_link_tests_assist_link_test_staff",
       "label": "staff()",
       "_callable": true,
@@ -68674,6 +68542,18 @@
       "source_location": "L217"
     },
     {
+      "id": "lib_reviews_cards_parsereviewcallback",
+      "label": "parseReviewCallback()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "parsereviewcallback()",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L69"
+    },
+    {
       "id": "lib_reviews_google_actions_actorfields",
       "label": "actorFields()",
       "_callable": true,
@@ -69116,6 +68996,18 @@
       "norm_label": "replyinchat()",
       "source_file": "lib/telegram/bot-api.ts",
       "source_location": "L153"
+    },
+    {
+      "id": "lib_telegram_bot_api_replyingroup",
+      "label": "replyInGroup()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "replyingroup()",
+      "source_file": "lib/telegram/bot-api.ts",
+      "source_location": "L142"
     },
     {
       "id": "lib_telegram_bot_api_replyto",
@@ -70150,6 +70042,18 @@
       "source_location": "L20"
     },
     {
+      "id": "app_api_webhooks_meta_messages_route_post",
+      "label": "POST()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "meta.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/api/webhooks/meta-messages/route.ts",
+      "source_location": "L31"
+    },
+    {
       "id": "lib_social_inbox_meta_authquery",
       "label": "authQuery()",
       "_callable": true,
@@ -70366,6 +70270,18 @@
       "source_location": "L48"
     },
     {
+      "id": "lib_social_inbox_send_sendtocustomer",
+      "label": "sendToCustomer()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "meta.ts",
+      "file_type": "code",
+      "norm_label": "sendtocustomer()",
+      "source_file": "lib/social-inbox/send.ts",
+      "source_location": "L9"
+    },
+    {
       "id": "lib_social_inbox_status_getsocialinboxstatus",
       "label": "getSocialInboxStatus()",
       "_callable": true,
@@ -70378,40 +70294,52 @@
       "source_location": "L28"
     },
     {
-      "id": "lib_social_inbox_tests_platforms_test_env",
-      "label": "env()",
+      "id": "lib_social_inbox_status_runsocialinboxmaintenance",
+      "label": "runSocialInboxMaintenance()",
       "_callable": true,
       "_origin": "ast",
       "community": 32,
       "community_name": "meta.ts",
       "file_type": "code",
-      "norm_label": "env()",
-      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
-      "source_location": "L195"
+      "norm_label": "runsocialinboxmaintenance()",
+      "source_file": "lib/social-inbox/status.ts",
+      "source_location": "L61"
     },
     {
-      "id": "lib_social_inbox_tests_platforms_test_graph",
-      "label": "graph()",
+      "id": "lib_social_inbox_tiktok_gettiktoktokenrow",
+      "label": "getTikTokTokenRow()",
       "_callable": true,
       "_origin": "ast",
       "community": 32,
       "community_name": "meta.ts",
       "file_type": "code",
-      "norm_label": "graph()",
-      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
-      "source_location": "L160"
+      "norm_label": "gettiktoktokenrow()",
+      "source_file": "lib/social-inbox/tiktok.ts",
+      "source_location": "L397"
     },
     {
-      "id": "lib_social_inbox_tests_platforms_test_hoursago",
-      "label": "hoursAgo()",
+      "id": "lib_social_inbox_tiktok_sendtiktoktext",
+      "label": "sendTikTokText()",
       "_callable": true,
       "_origin": "ast",
       "community": 32,
       "community_name": "meta.ts",
       "file_type": "code",
-      "norm_label": "hoursago()",
-      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
-      "source_location": "L19"
+      "norm_label": "sendtiktoktext()",
+      "source_file": "lib/social-inbox/tiktok.ts",
+      "source_location": "L344"
+    },
+    {
+      "id": "lib_social_inbox_tiktok_tiktokaccess",
+      "label": "tiktokAccess()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "meta.ts",
+      "file_type": "code",
+      "norm_label": "tiktokaccess()",
+      "source_file": "lib/social-inbox/tiktok.ts",
+      "source_location": "L437"
     },
     {
       "id": "scripts_social_inbox_setup_arg",
@@ -71686,7 +71614,19 @@
       "source_location": "L26"
     },
     {
-      "id": "app_api_webhooks_meta_messages_route_post",
+      "id": "app_api_webhooks_tiktok_messages_route_get",
+      "label": "GET()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "get()",
+      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "app_api_webhooks_tiktok_messages_route_post",
       "label": "POST()",
       "_callable": true,
       "_origin": "ast",
@@ -71694,8 +71634,8 @@
       "community_name": "social-inbox/telegram-handler.ts",
       "file_type": "code",
       "norm_label": "post()",
-      "source_file": "app/api/webhooks/meta-messages/route.ts",
-      "source_location": "L31"
+      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
+      "source_location": "L23"
     },
     {
       "id": "lib_social_inbox_cards_attachmentline",
@@ -71914,6 +71854,18 @@
       "source_location": "L18"
     },
     {
+      "id": "lib_social_inbox_preview_inboxpreviewcard",
+      "label": "inboxPreviewCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "inboxpreviewcard()",
+      "source_file": "lib/social-inbox/preview.ts",
+      "source_location": "L10"
+    },
+    {
       "id": "lib_social_inbox_store_ensureconversation",
       "label": "ensureConversation()",
       "_callable": true,
@@ -72022,18 +71974,6 @@
       "source_location": "L63"
     },
     {
-      "id": "lib_social_inbox_telegram_handler_handleinboxupdate",
-      "label": "handleInboxUpdate()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "handleinboxupdate()",
-      "source_file": "lib/social-inbox/telegram-handler.ts",
-      "source_location": "L180"
-    },
-    {
       "id": "lib_social_inbox_telegram_handler_handlereply",
       "label": "handleReply()",
       "_callable": true,
@@ -72044,6 +71984,18 @@
       "norm_label": "handlereply()",
       "source_file": "lib/social-inbox/telegram-handler.ts",
       "source_location": "L88"
+    },
+    {
+      "id": "lib_social_inbox_telegram_handler_isinboxupdate",
+      "label": "isInboxUpdate()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "isinboxupdate()",
+      "source_file": "lib/social-inbox/telegram-handler.ts",
+      "source_location": "L52"
     },
     {
       "id": "lib_social_inbox_tests_cards_test_lines",
@@ -72058,16 +72010,76 @@
       "source_location": "L20"
     },
     {
-      "id": "lib_telegram_bot_api_replyingroup",
-      "label": "replyInGroup()",
+      "id": "lib_social_inbox_tests_platforms_test_env",
+      "label": "env()",
       "_callable": true,
       "_origin": "ast",
       "community": 34,
       "community_name": "social-inbox/telegram-handler.ts",
       "file_type": "code",
-      "norm_label": "replyingroup()",
-      "source_file": "lib/telegram/bot-api.ts",
-      "source_location": "L142"
+      "norm_label": "env()",
+      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
+      "source_location": "L195"
+    },
+    {
+      "id": "lib_social_inbox_tests_platforms_test_graph",
+      "label": "graph()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "graph()",
+      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
+      "source_location": "L160"
+    },
+    {
+      "id": "lib_social_inbox_tests_platforms_test_hoursago",
+      "label": "hoursAgo()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "hoursago()",
+      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "lib_social_inbox_tiktok_parsetiktokwebhook",
+      "label": "parseTikTokWebhook()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "parsetiktokwebhook()",
+      "source_file": "lib/social-inbox/tiktok.ts",
+      "source_location": "L141"
+    },
+    {
+      "id": "lib_social_inbox_tiktok_toattachments",
+      "label": "toAttachments()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "toattachments()",
+      "source_file": "lib/social-inbox/tiktok.ts",
+      "source_location": "L112"
+    },
+    {
+      "id": "lib_social_inbox_tiktok_verifytiktoksignature",
+      "label": "verifyTikTokSignature()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "verifytiktoksignature()",
+      "source_file": "lib/social-inbox/tiktok.ts",
+      "source_location": "L66"
     },
     {
       "id": "app_lang_settings_customers_import_actions_applyshopifyimportchunk",
@@ -83638,16 +83650,16 @@
       "source_location": "L14"
     },
     {
-      "id": "lib_social_inbox_telegram_handler_isinboxupdate",
-      "label": "isInboxUpdate()",
+      "id": "lib_social_inbox_telegram_handler_handleinboxupdate",
+      "label": "handleInboxUpdate()",
       "_callable": true,
       "_origin": "ast",
       "community": 54,
       "community_name": "telegram/webhook/route.ts",
       "file_type": "code",
-      "norm_label": "isinboxupdate()",
+      "norm_label": "handleinboxupdate()",
       "source_file": "lib/social-inbox/telegram-handler.ts",
-      "source_location": "L52"
+      "source_location": "L180"
     },
     {
       "id": "app_api_locations_route_get",
@@ -91112,18 +91124,6 @@
       "norm_label": "fakefetch()",
       "source_file": "lib/google/__tests__/business-profile.test.ts",
       "source_location": "L14"
-    },
-    {
-      "id": "lib_reviews_cards_rendergooglereviewcard",
-      "label": "renderGoogleReviewCard()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "rendergooglereviewcard()",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L167"
     },
     {
       "id": "lib_reviews_draft_reply_draftinputfor",
@@ -116052,72 +116052,6 @@
       "source_location": "L49"
     },
     {
-      "id": "supabase_migrations_20261013120000_readjustment_bookings",
-      "label": "20261013120000_readjustment_bookings.sql",
-      "_origin": "ast",
-      "community": 1110,
-      "community_name": "readjustment_bookings",
-      "file_type": "code",
-      "norm_label": "20261013120000_readjustment_bookings.sql",
-      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_bookings",
-      "label": "readjustment_bookings",
-      "_origin": "ast",
-      "community": 1110,
-      "community_name": "readjustment_bookings",
-      "file_type": "code",
-      "norm_label": "readjustment_bookings",
-      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
-      "source_location": "L10"
-    },
-    {
-      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_by_customer",
-      "label": "readjustment_by_customer",
-      "_origin": "ast",
-      "community": 1110,
-      "community_name": "readjustment_bookings",
-      "file_type": "code",
-      "norm_label": "readjustment_by_customer",
-      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
-      "source_location": "L63"
-    },
-    {
-      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_by_order_item",
-      "label": "readjustment_by_order_item",
-      "_origin": "ast",
-      "community": 1110,
-      "community_name": "readjustment_bookings",
-      "file_type": "code",
-      "norm_label": "readjustment_by_order_item",
-      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
-      "source_location": "L66"
-    },
-    {
-      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_complimentary_claim",
-      "label": "readjustment_complimentary_claim",
-      "_origin": "ast",
-      "community": 1110,
-      "community_name": "readjustment_bookings",
-      "file_type": "code",
-      "norm_label": "readjustment_complimentary_claim",
-      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
-      "source_location": "L54"
-    },
-    {
-      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_live_holds",
-      "label": "readjustment_live_holds",
-      "_origin": "ast",
-      "community": 1110,
-      "community_name": "readjustment_bookings",
-      "file_type": "code",
-      "norm_label": "readjustment_live_holds",
-      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
-      "source_location": "L59"
-    },
-    {
       "id": "claude_prd_ux_polish_jul2026_issues_03_mbolster_height_draft",
       "label": "03-mbolster-height-draft.md",
       "_origin": "ast",
@@ -123671,61 +123605,6 @@
       "source_location": "L12"
     },
     {
-      "id": "app_api_webhooks_tiktok_messages_route",
-      "label": "tiktok-messages/route.ts",
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "tiktok-messages/route.ts",
-      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_api_webhooks_tiktok_messages_route_dynamic",
-      "label": "dynamic",
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "dynamic",
-      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
-      "source_location": "L6"
-    },
-    {
-      "id": "app_api_webhooks_tiktok_messages_route_maxduration",
-      "label": "maxDuration",
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "maxduration",
-      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
-      "source_location": "L7"
-    },
-    {
-      "id": "app_api_webhooks_tiktok_messages_route_runtime",
-      "label": "runtime",
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "runtime",
-      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
-      "source_location": "L5"
-    },
-    {
-      "id": "lib_social_inbox_send",
-      "label": "send.ts",
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "send.ts",
-      "source_file": "lib/social-inbox/send.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "lib_social_inbox_tiktok",
       "label": "tiktok.ts",
       "_origin": "ast",
@@ -123768,17 +123647,6 @@
       "norm_label": "tiktok_state_cookie",
       "source_file": "lib/social-inbox/tiktok-connect.ts",
       "source_location": "L10"
-    },
-    {
-      "id": "lib_social_inbox_tiktok_tiktok_invalid_token",
-      "label": "TIKTOK_INVALID_TOKEN",
-      "_origin": "ast",
-      "community": 136,
-      "community_name": "tiktok.ts",
-      "file_type": "code",
-      "norm_label": "tiktok_invalid_token",
-      "source_file": "lib/social-inbox/tiktok.ts",
-      "source_location": "L177"
     },
     {
       "id": "lib_social_inbox_tiktok_tiktok_scopes",
@@ -130136,6 +130004,30 @@
       "source_location": "L24"
     },
     {
+      "id": "claude",
+      "label": "CLAUDE.md",
+      "_origin": "ast",
+      "community": 158,
+      "community_name": "reviews/status.ts",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "claude.md",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_commit_author",
+      "label": "Commit author",
+      "_origin": "ast",
+      "community": 158,
+      "community_name": "reviews/status.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "commit author",
+      "source_file": "CLAUDE.md",
+      "source_location": "L52"
+    },
+    {
       "id": "claude_graphify_knowledge_graph",
       "label": "graphify knowledge graph",
       "_origin": "ast",
@@ -130146,6 +130038,54 @@
       "norm_label": "graphify knowledge graph",
       "source_file": "CLAUDE.md",
       "source_location": "L110"
+    },
+    {
+      "id": "claude_mp_agent_guide",
+      "label": "mp \u2014 agent guide",
+      "_origin": "ast",
+      "community": 158,
+      "community_name": "reviews/status.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "mp \u2014 agent guide",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_project_context",
+      "label": "Project context",
+      "_origin": "ast",
+      "community": 158,
+      "community_name": "reviews/status.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "project context",
+      "source_file": "CLAUDE.md",
+      "source_location": "L3"
+    },
+    {
+      "id": "claude_shopify_is_being_replaced",
+      "label": "Shopify is being replaced",
+      "_origin": "ast",
+      "community": 158,
+      "community_name": "reviews/status.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "shopify is being replaced",
+      "source_file": "CLAUDE.md",
+      "source_location": "L20"
+    },
+    {
+      "id": "claude_show_what_you_changed",
+      "label": "Show what you changed",
+      "_origin": "ast",
+      "community": 158,
+      "community_name": "reviews/status.ts",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "show what you changed",
+      "source_file": "CLAUDE.md",
+      "source_location": "L35"
     },
     {
       "id": "lib_dnd_layer_drag",
@@ -132075,39 +132015,6 @@
       "source_location": "L17"
     },
     {
-      "id": "lib_reviews_reply_style",
-      "label": "reply-style.ts",
-      "_origin": "ast",
-      "community": 166,
-      "community_name": "draft-reply.ts",
-      "file_type": "code",
-      "norm_label": "reply-style.ts",
-      "source_file": "lib/reviews/reply-style.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_reviews_reply_style_reply_style_names",
-      "label": "REPLY_STYLE_NAMES",
-      "_origin": "ast",
-      "community": 166,
-      "community_name": "draft-reply.ts",
-      "file_type": "code",
-      "norm_label": "reply_style_names",
-      "source_file": "lib/reviews/reply-style.ts",
-      "source_location": "L18"
-    },
-    {
-      "id": "lib_reviews_reply_style_reply_styles",
-      "label": "REPLY_STYLES",
-      "_origin": "ast",
-      "community": 166,
-      "community_name": "draft-reply.ts",
-      "file_type": "code",
-      "norm_label": "reply_styles",
-      "source_file": "lib/reviews/reply-style.ts",
-      "source_location": "L14"
-    },
-    {
       "id": "lib_reviews_tests_draft_reply_test",
       "label": "draft-reply.test.ts",
       "_origin": "ast",
@@ -132138,17 +132045,6 @@
       "file_type": "code",
       "norm_label": "reply-rules.test.ts",
       "source_file": "lib/reviews/__tests__/reply-rules.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_reviews_tests_reply_style_test",
-      "label": "reply-style.test.ts",
-      "_origin": "ast",
-      "community": 166,
-      "community_name": "draft-reply.ts",
-      "file_type": "code",
-      "norm_label": "reply-style.test.ts",
-      "source_file": "lib/reviews/__tests__/reply-style.test.ts",
       "source_location": "L1"
     },
     {
@@ -132559,17 +132455,6 @@
       "source_location": "L22"
     },
     {
-      "id": "lib_reviews_cards_preview_card_prefix",
-      "label": "PREVIEW_CARD_PREFIX",
-      "_origin": "ast",
-      "community": 169,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "preview_card_prefix",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L53"
-    },
-    {
       "id": "lib_reviews_cards_preview_review_id",
       "label": "PREVIEW_REVIEW_ID",
       "_origin": "ast",
@@ -132579,17 +132464,6 @@
       "norm_label": "preview_review_id",
       "source_file": "lib/reviews/cards.ts",
       "source_location": "L51"
-    },
-    {
-      "id": "lib_reviews_cards_review_callback_prefix",
-      "label": "REVIEW_CALLBACK_PREFIX",
-      "_origin": "ast",
-      "community": 169,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "review_callback_prefix",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L44"
     },
     {
       "id": "lib_reviews_cards_settled",
@@ -132636,6 +132510,39 @@
       "source_location": "L28"
     },
     {
+      "id": "lib_reviews_reply_style",
+      "label": "reply-style.ts",
+      "_origin": "ast",
+      "community": 169,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "reply-style.ts",
+      "source_file": "lib/reviews/reply-style.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_reviews_reply_style_reply_style_names",
+      "label": "REPLY_STYLE_NAMES",
+      "_origin": "ast",
+      "community": 169,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "reply_style_names",
+      "source_file": "lib/reviews/reply-style.ts",
+      "source_location": "L18"
+    },
+    {
+      "id": "lib_reviews_reply_style_reply_styles",
+      "label": "REPLY_STYLES",
+      "_origin": "ast",
+      "community": 169,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "reply_styles",
+      "source_file": "lib/reviews/reply-style.ts",
+      "source_location": "L14"
+    },
+    {
       "id": "lib_reviews_tests_cards_test",
       "label": "reviews/__tests__/cards.test.ts",
       "_origin": "ast",
@@ -132669,14 +132576,14 @@
       "source_location": "L17"
     },
     {
-      "id": "lib_social_inbox_preview",
-      "label": "social-inbox/preview.ts",
+      "id": "lib_reviews_tests_reply_style_test",
+      "label": "reply-style.test.ts",
       "_origin": "ast",
       "community": 169,
       "community_name": "reviews/cards.ts",
       "file_type": "code",
-      "norm_label": "social-inbox/preview.ts",
-      "source_file": "lib/social-inbox/preview.ts",
+      "norm_label": "reply-style.test.ts",
+      "source_file": "lib/reviews/__tests__/reply-style.test.ts",
       "source_location": "L1"
     },
     {
@@ -141867,6 +141774,66 @@
       "source_location": "L8"
     },
     {
+      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_06_the_scorecard_is_the_loop_working",
+      "label": "06 \u2014 The scorecard: is the loop working?",
+      "_origin": "ast",
+      "community": 207,
+      "community_name": "analytics",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "06 \u2014 the scorecard: is the loop working?",
+      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_acceptance_criteria",
+      "label": "Acceptance criteria",
+      "_origin": "ast",
+      "community": 207,
+      "community_name": "analytics",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "acceptance criteria",
+      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
+      "source_location": "L59"
+    },
+    {
+      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_as_built_so_far_2026_11_01_the_headline",
+      "label": "As built so far (2026-11-01): the headline",
+      "_origin": "ast",
+      "community": 207,
+      "community_name": "analytics",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "as built so far (2026-11-01): the headline",
+      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
+      "source_location": "L39"
+    },
+    {
+      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_goal",
+      "label": "Goal",
+      "_origin": "ast",
+      "community": 207,
+      "community_name": "analytics",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "goal",
+      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
+      "source_location": "L9"
+    },
+    {
+      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_what_to_build",
+      "label": "What to build",
+      "_origin": "ast",
+      "community": 207,
+      "community_name": "analytics",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what to build",
+      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
+      "source_location": "L15"
+    },
+    {
       "id": "claude_prd_crm_retention_loop_issues_10_ask_why_they_left_10_ask_why_they_left_and_close_the_loop",
       "label": "10 \u2014 Ask why they left, and close the loop",
       "_origin": "ast",
@@ -148941,17 +148908,6 @@
       "source_location": "L72"
     },
     {
-      "id": "claude_skills_preview_fixtures_costings",
-      "label": "costings.mjs",
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "code",
-      "norm_label": "costings.mjs",
-      "source_file": ".claude/skills/preview/fixtures/costings.mjs",
-      "source_location": "L1"
-    },
-    {
       "id": "claude_prd_configure_product_filling_tabs_configure_product_filling_tabs_prd",
       "label": "configure-product-filling-tabs-prd.md",
       "_origin": "ast",
@@ -149300,66 +149256,6 @@
       "source_location": "L149"
     },
     {
-      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_design",
-      "label": "Design",
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "design",
-      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
-      "source_location": "L198"
-    },
-    {
-      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_measurement_fee_rules",
-      "label": "Measurement fee rules",
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "measurement fee rules",
-      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
-      "source_location": "L225"
-    },
-    {
-      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_paid_booking_mechanics",
-      "label": "Paid booking mechanics",
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "paid booking mechanics",
-      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
-      "source_location": "L297"
-    },
-    {
-      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_the_customer_s_re_adjustment_flow",
-      "label": "The customer's re-adjustment flow",
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "the customer's re-adjustment flow",
-      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
-      "source_location": "L282"
-    },
-    {
-      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_where_the_fees_live_costings_service_fees",
-      "label": "Where the fees live: Costings \u2192 Service fees",
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "where the fees live: costings \u2192 service fees",
-      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
-      "source_location": "L200"
-    },
-    {
       "id": "claude_prd_template_linked_customisation_issues_01_domain_glossary",
       "label": "PRD-template-linked-customisation/issues/01-domain-glossary.md",
       "_origin": "ast",
@@ -149430,18 +149326,6 @@
       "norm_label": "what to build",
       "source_file": ".claude/PRD-template-linked-customisation/issues/01-domain-glossary.md",
       "source_location": "L7"
-    },
-    {
-      "id": "claude_prd_users_permissions_rbac_users_permissions_rbac_prd_permission_catalog_code",
-      "label": "Permission catalog (code)",
-      "_origin": "ast",
-      "community": 237,
-      "community_name": ".kind",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "permission catalog (code)",
-      "source_file": ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md",
-      "source_location": "L106"
     },
     {
       "id": "context_flagged_ambiguities",
@@ -156402,42 +156286,6 @@
       "source_location": "L7"
     },
     {
-      "id": "claude",
-      "label": "CLAUDE.md",
-      "_origin": "ast",
-      "community": 268,
-      "community_name": "name",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "claude.md",
-      "source_file": "CLAUDE.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_commit_author",
-      "label": "Commit author",
-      "_origin": "ast",
-      "community": 268,
-      "community_name": "name",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "commit author",
-      "source_file": "CLAUDE.md",
-      "source_location": "L52"
-    },
-    {
-      "id": "claude_mp_agent_guide",
-      "label": "mp \u2014 agent guide",
-      "_origin": "ast",
-      "community": 268,
-      "community_name": "name",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "mp \u2014 agent guide",
-      "source_file": "CLAUDE.md",
-      "source_location": "L1"
-    },
-    {
       "id": "claude_prd_prod_hardening_issues_07_dead_surface_and_admin_gets",
       "label": "07-dead-surface-and-admin-gets.md",
       "_origin": "ast",
@@ -156652,42 +156500,6 @@
       "norm_label": "what to build",
       "source_file": ".claude/PRD-users-permissions-rbac/issues/07-staff-profiles.md",
       "source_location": "L9"
-    },
-    {
-      "id": "claude_project_context",
-      "label": "Project context",
-      "_origin": "ast",
-      "community": 268,
-      "community_name": "name",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "project context",
-      "source_file": "CLAUDE.md",
-      "source_location": "L3"
-    },
-    {
-      "id": "claude_shopify_is_being_replaced",
-      "label": "Shopify is being replaced",
-      "_origin": "ast",
-      "community": 268,
-      "community_name": "name",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "shopify is being replaced",
-      "source_file": "CLAUDE.md",
-      "source_location": "L20"
-    },
-    {
-      "id": "claude_show_what_you_changed",
-      "label": "Show what you changed",
-      "_origin": "ast",
-      "community": 268,
-      "community_name": "name",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "show what you changed",
-      "source_file": "CLAUDE.md",
-      "source_location": "L35"
     },
     {
       "id": "claude_skills_plan_to_3d_skill_1_intake",
@@ -159467,6 +159279,17 @@
       "source_location": "L97"
     },
     {
+      "id": "claude_skills_preview_fixtures_costings",
+      "label": "costings.mjs",
+      "_origin": "ast",
+      "community": 287,
+      "community_name": "staff",
+      "file_type": "code",
+      "norm_label": "costings.mjs",
+      "source_file": ".claude/skills/preview/fixtures/costings.mjs",
+      "source_location": "L1"
+    },
+    {
       "id": "claude_prd_prod_hardening_issues_13_authorization_tightening",
       "label": "13-authorization-tightening.md",
       "_origin": "ast",
@@ -159539,184 +159362,64 @@
       "source_location": "L12"
     },
     {
-      "id": "claude_prd_prod_hardening_prod_hardening_prd_admin_data_served_to_the_public",
-      "label": "Admin data served to the public",
+      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_design",
+      "label": "Design",
       "_origin": "ast",
       "community": 287,
       "community_name": "staff",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "admin data served to the public",
-      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
-      "source_location": "L79"
+      "norm_label": "design",
+      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
+      "source_location": "L198"
     },
     {
-      "id": "claude_prd_prod_hardening_prod_hardening_prd_already_fine_no_work",
-      "label": "Already fine (no work)",
+      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_measurement_fee_rules",
+      "label": "Measurement fee rules",
       "_origin": "ast",
       "community": 287,
       "community_name": "staff",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "already fine (no work)",
-      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
-      "source_location": "L108"
+      "norm_label": "measurement fee rules",
+      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
+      "source_location": "L225"
     },
     {
-      "id": "claude_prd_prod_hardening_prod_hardening_prd_broken_in_prod_right_now",
-      "label": "Broken in prod right now",
+      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_paid_booking_mechanics",
+      "label": "Paid booking mechanics",
       "_origin": "ast",
       "community": 287,
       "community_name": "staff",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "broken in prod right now",
-      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
-      "source_location": "L34"
+      "norm_label": "paid booking mechanics",
+      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
+      "source_location": "L297"
     },
     {
-      "id": "claude_prd_prod_hardening_prod_hardening_prd_customers_who_can_be_harmed",
-      "label": "Customers who can be harmed",
+      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_the_customer_s_re_adjustment_flow",
+      "label": "The customer's re-adjustment flow",
       "_origin": "ast",
       "community": 287,
       "community_name": "staff",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "customers who can be harmed",
-      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
-      "source_location": "L61"
+      "norm_label": "the customer's re-adjustment flow",
+      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
+      "source_location": "L282"
     },
     {
-      "id": "claude_prd_prod_hardening_prod_hardening_prd_money_that_can_be_taken",
-      "label": "Money that can be taken",
+      "id": "claude_prd_service_fees_readjustment_service_fees_readjustment_prd_where_the_fees_live_costings_service_fees",
+      "label": "Where the fees live: Costings \u2192 Service fees",
       "_origin": "ast",
       "community": 287,
       "community_name": "staff",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "money that can be taken",
-      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
-      "source_location": "L48"
-    },
-    {
-      "id": "claude_prd_prod_hardening_prod_hardening_prd_reliability",
-      "label": "Reliability",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "reliability",
-      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
-      "source_location": "L90"
-    },
-    {
-      "id": "claude_prd_prod_hardening_prod_hardening_prd_surfaces_that_cost_money_or_send_messages_to_anyone",
-      "label": "Surfaces that cost money or send messages to anyone",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "surfaces that cost money or send messages to anyone",
-      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
-      "source_location": "L70"
-    },
-    {
-      "id": "claude_prd_prod_hardening_prod_hardening_prd_what_the_audit_found",
-      "label": "What the audit found",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what the audit found",
-      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
-      "source_location": "L21"
-    },
-    {
-      "id": "claude_prd_staff_assisted_customisation_issues_readme",
-      "label": "PRD-staff-assisted-customisation/issues/README.md",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "prd-staff-assisted-customisation/issues/readme.md",
-      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_staff_assisted_customisation_issues_readme_build_order",
-      "label": "Build order",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "build order",
-      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
-      "source_location": "L83"
-    },
-    {
-      "id": "claude_prd_staff_assisted_customisation_issues_readme_coordination_with_staff_assist_mode",
-      "label": "Coordination with Staff assist mode",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "coordination with staff assist mode",
-      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
-      "source_location": "L113"
-    },
-    {
-      "id": "claude_prd_staff_assisted_customisation_issues_readme_dependency_graph",
-      "label": "Dependency graph",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "dependency graph",
-      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
-      "source_location": "L60"
-    },
-    {
-      "id": "claude_prd_staff_assisted_customisation_issues_readme_hitl_notes",
-      "label": "HITL notes",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "hitl notes",
-      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
-      "source_location": "L142"
-    },
-    {
-      "id": "claude_prd_staff_assisted_customisation_issues_readme_slices",
-      "label": "Slices",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "slices",
-      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
-      "source_location": "L9"
-    },
-    {
-      "id": "claude_prd_staff_assisted_customisation_issues_readme_staff_assisted_customisation_vertical_slices_issues",
-      "label": "Staff-Assisted Customisation \u2014 Vertical Slices (Issues)",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "staff-assisted customisation \u2014 vertical slices (issues)",
-      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
-      "source_location": "L1"
+      "norm_label": "where the fees live: costings \u2192 service fees",
+      "source_file": ".claude/PRD-service-fees-readjustment/service-fees-readjustment-prd.md",
+      "source_location": "L200"
     },
     {
       "id": "claude_prd_staff_assisted_customisation_ops_signoff",
@@ -160007,6 +159710,18 @@
       "source_location": "L184"
     },
     {
+      "id": "claude_prd_users_permissions_rbac_users_permissions_rbac_prd_permission_catalog_code",
+      "label": "Permission catalog (code)",
+      "_origin": "ast",
+      "community": 287,
+      "community_name": "staff",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "permission catalog (code)",
+      "source_file": ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md",
+      "source_location": "L106"
+    },
+    {
       "id": "claude_prd_users_permissions_rbac_users_permissions_rbac_prd_prd_users_permissions_admin_panel_rbac",
       "label": "PRD: Users & permissions (Admin Panel RBAC)",
       "_origin": "ast",
@@ -160161,42 +159876,6 @@
       "norm_label": "working as (slice 10)",
       "source_file": ".claude/PRD-users-permissions-rbac/users-permissions-rbac-prd.md",
       "source_location": "L101"
-    },
-    {
-      "id": "docs_adr_0023_rbac_roles_are_data_permissions_are_code_admin_panel_rbac_roles_are_data_permissions_are_code",
-      "label": "Admin Panel RBAC: roles are data, permissions are code",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "admin panel rbac: roles are data, permissions are code",
-      "source_file": "docs/adr/0023-rbac-roles-are-data-permissions-are-code.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "docs_adr_0023_rbac_roles_are_data_permissions_are_code_consequences",
-      "label": "Consequences",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "consequences",
-      "source_file": "docs/adr/0023-rbac-roles-are-data-permissions-are-code.md",
-      "source_location": "L41"
-    },
-    {
-      "id": "docs_adr_0023_rbac_roles_are_data_permissions_are_code_decisions",
-      "label": "Decisions",
-      "_origin": "ast",
-      "community": 287,
-      "community_name": "staff",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "decisions",
-      "source_file": "docs/adr/0023-rbac-roles-are-data-permissions-are-code.md",
-      "source_location": "L12"
     },
     {
       "id": "app_api_account_orders_ordernumber_refund_request_route",
@@ -163344,6 +163023,17 @@
       "source_location": "L52"
     },
     {
+      "id": "lib_reviews_cards_review_callback_prefix",
+      "label": "REVIEW_CALLBACK_PREFIX",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "review_callback_prefix",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L44"
+    },
+    {
       "id": "lib_reviews_google_actions",
       "label": "google-actions.ts",
       "_origin": "ast",
@@ -166279,6 +165969,17 @@
       "source_location": "L304"
     },
     {
+      "id": "lib_social_inbox_send",
+      "label": "send.ts",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "meta.ts",
+      "file_type": "code",
+      "norm_label": "send.ts",
+      "source_file": "lib/social-inbox/send.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "lib_social_inbox_status",
       "label": "social-inbox/status.ts",
       "_origin": "ast",
@@ -166290,26 +165991,15 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_social_inbox_tests_platforms_test",
-      "label": "platforms.test.ts",
+      "id": "lib_social_inbox_tiktok_tiktok_invalid_token",
+      "label": "TIKTOK_INVALID_TOKEN",
       "_origin": "ast",
       "community": 32,
       "community_name": "meta.ts",
       "file_type": "code",
-      "norm_label": "platforms.test.ts",
-      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_social_inbox_tests_platforms_test_now",
-      "label": "NOW",
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "meta.ts",
-      "file_type": "code",
-      "norm_label": "now",
-      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
-      "source_location": "L18"
+      "norm_label": "tiktok_invalid_token",
+      "source_file": "lib/social-inbox/tiktok.ts",
+      "source_location": "L177"
     },
     {
       "id": "scripts_social_inbox_setup",
@@ -170147,6 +169837,61 @@
       "source_location": "L36"
     },
     {
+      "id": "app_api_webhooks_tiktok_messages_route",
+      "label": "tiktok-messages/route.ts",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "tiktok-messages/route.ts",
+      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_api_webhooks_tiktok_messages_route_dynamic",
+      "label": "dynamic",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "dynamic",
+      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "app_api_webhooks_tiktok_messages_route_maxduration",
+      "label": "maxDuration",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "maxduration",
+      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
+      "source_location": "L7"
+    },
+    {
+      "id": "app_api_webhooks_tiktok_messages_route_runtime",
+      "label": "runtime",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "runtime",
+      "source_file": "app/api/webhooks/tiktok-messages/route.ts",
+      "source_location": "L5"
+    },
+    {
+      "id": "lib_reviews_cards_preview_card_prefix",
+      "label": "PREVIEW_CARD_PREFIX",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "preview_card_prefix",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L53"
+    },
+    {
       "id": "lib_reviews_cards_team_note_prefix",
       "label": "TEAM_NOTE_PREFIX",
       "_origin": "ast",
@@ -170323,6 +170068,17 @@
       "source_location": "L15"
     },
     {
+      "id": "lib_social_inbox_preview",
+      "label": "social-inbox/preview.ts",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "social-inbox/preview.ts",
+      "source_file": "lib/social-inbox/preview.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "lib_social_inbox_store",
       "label": "social-inbox/store.ts",
       "_origin": "ast",
@@ -170376,6 +170132,28 @@
       "norm_label": "social-inbox/__tests__/cards.test.ts",
       "source_file": "lib/social-inbox/__tests__/cards.test.ts",
       "source_location": "L1"
+    },
+    {
+      "id": "lib_social_inbox_tests_platforms_test",
+      "label": "platforms.test.ts",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "platforms.test.ts",
+      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_social_inbox_tests_platforms_test_now",
+      "label": "NOW",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "now",
+      "source_file": "lib/social-inbox/__tests__/platforms.test.ts",
+      "source_location": "L18"
     },
     {
       "id": "lib_social_inbox_types",
@@ -197707,66 +197485,6 @@
       "source_location": ""
     },
     {
-      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_06_the_scorecard_is_the_loop_working",
-      "label": "06 \u2014 The scorecard: is the loop working?",
-      "_origin": "ast",
-      "community": 545,
-      "community_name": "customers",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "06 \u2014 the scorecard: is the loop working?",
-      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_acceptance_criteria",
-      "label": "Acceptance criteria",
-      "_origin": "ast",
-      "community": 545,
-      "community_name": "customers",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "acceptance criteria",
-      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
-      "source_location": "L59"
-    },
-    {
-      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_as_built_so_far_2026_11_01_the_headline",
-      "label": "As built so far (2026-11-01): the headline",
-      "_origin": "ast",
-      "community": 545,
-      "community_name": "customers",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "as built so far (2026-11-01): the headline",
-      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
-      "source_location": "L39"
-    },
-    {
-      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_goal",
-      "label": "Goal",
-      "_origin": "ast",
-      "community": 545,
-      "community_name": "customers",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "goal",
-      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
-      "source_location": "L9"
-    },
-    {
-      "id": "claude_prd_crm_retention_loop_issues_06_retention_numbers_what_to_build",
-      "label": "What to build",
-      "_origin": "ast",
-      "community": 545,
-      "community_name": "customers",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "what to build",
-      "source_file": ".claude/PRD-crm-retention-loop/issues/06-retention-numbers.md",
-      "source_location": "L15"
-    },
-    {
       "id": "claude_prd_customer_crm_customer_crm_prd_10_aftercare_switches_and_whatsapp_slice_13",
       "label": "10. Aftercare switches and WhatsApp (slice 13)",
       "_origin": "ast",
@@ -198031,6 +197749,258 @@
       "source_location": "L212"
     },
     {
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr",
+      "label": "PRD-customer-crm/issues/01-glossary-and-adr.md",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "prd-customer-crm/issues/01-glossary-and-adr.md",
+      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
+      "label": "01 \u2014 Glossary and ADR 0028: what the CRM is made of",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "01 \u2014 glossary and adr 0028: what the crm is made of",
+      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_acceptance_criteria",
+      "label": "Acceptance criteria",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "acceptance criteria",
+      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
+      "source_location": "L125"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
+      "label": "ADR 0028 \u2014 decisions to record",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "adr 0028 \u2014 decisions to record",
+      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
+      "source_location": "L80"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_build_notes",
+      "label": "Build notes",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "build notes",
+      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
+      "source_location": "L133"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_context_md_entries",
+      "label": "CONTEXT.md entries",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "context.md entries",
+      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
+      "source_location": "L20"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_goal",
+      "label": "Goal",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "goal",
+      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
+      "source_location": "L10"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure",
+      "label": "02-staff-notes-and-close-exposure.md",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "02-staff-notes-and-close-exposure.md",
+      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_02_staff_notes_customers_cannot_read_and_closing_the_live_exposure",
+      "label": "02 \u2014 Staff notes customers cannot read, and closing the live exposure",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "02 \u2014 staff notes customers cannot read, and closing the live exposure",
+      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_acceptance_criteria",
+      "label": "Acceptance criteria",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "acceptance criteria",
+      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "source_location": "L95"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_admin_panel",
+      "label": "Admin Panel",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "admin panel",
+      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "source_location": "L72"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_build_notes",
+      "label": "Build notes",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "build notes",
+      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "source_location": "L114"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_column_grants",
+      "label": "Column grants",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "column grants",
+      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "source_location": "L44"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_goal",
+      "label": "Goal",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "goal",
+      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "source_location": "L10"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_schema_one_migration",
+      "label": "Schema (one migration)",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "schema (one migration)",
+      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "source_location": "L18"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery",
+      "label": "07-review-request-after-delivery.md",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "07-review-request-after-delivery.md",
+      "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_09_signoff",
+      "label": "09-signoff.md",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "09-signoff.md",
+      "source_file": ".claude/PRD-customer-crm/issues/09-signoff.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_09_signoff_09_sign_off_the_privacy_check_in_production_a_staff_walkthrough_and_the_first_review_requests",
+      "label": "09 \u2014 Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "09 \u2014 sign-off: the privacy check in production, a staff walkthrough, and the first review requests",
+      "source_file": ".claude/PRD-customer-crm/issues/09-signoff.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_09_signoff_acceptance_criteria",
+      "label": "Acceptance criteria",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "acceptance criteria",
+      "source_file": ".claude/PRD-customer-crm/issues/09-signoff.md",
+      "source_location": "L62"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_09_signoff_steps",
+      "label": "Steps",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "steps",
+      "source_file": ".claude/PRD-customer-crm/issues/09-signoff.md",
+      "source_location": "L9"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_10_customers_view_permission",
+      "label": "10-customers-view-permission.md",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "10-customers-view-permission.md",
+      "source_file": ".claude/PRD-customer-crm/issues/10-customers-view-permission.md",
+      "source_location": "L1"
+    },
+    {
       "id": "claude_prd_customer_crm_issues_10_customers_view_permission_10_a_view_only_customers_permission",
       "label": "10 \u2014 A view-only Customers permission",
       "_origin": "ast",
@@ -198125,6 +198095,138 @@
       "norm_label": "what each key allows",
       "source_file": ".claude/PRD-customer-crm/issues/10-customers-view-permission.md",
       "source_location": "L58"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp",
+      "label": "13-aftercare-preferences-and-whatsapp.md",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "13-aftercare-preferences-and-whatsapp.md",
+      "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_14_telegram_updates",
+      "label": "14-telegram-updates.md",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "14-telegram-updates.md",
+      "source_file": ".claude/PRD-customer-crm/issues/14-telegram-updates.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme",
+      "label": "PRD-customer-crm/issues/README.md",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "prd-customer-crm/issues/readme.md",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme_build_order",
+      "label": "Build order",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "build order",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L94"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme_customer_crm_vertical_slices_issues",
+      "label": "Customer CRM: vertical slices (issues)",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "customer crm: vertical slices (issues)",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme_dependency_graph",
+      "label": "Dependency graph",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "dependency graph",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L32"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme_hazards",
+      "label": "Hazards",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "hazards",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L125"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme_hitl_notes",
+      "label": "HITL notes",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "hitl notes",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L168"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme_how_this_fits_the_shopify_migration_prd",
+      "label": "How this fits the Shopify migration PRD",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "how this fits the shopify migration prd",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L115"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme_noticed_not_fixed_here",
+      "label": "Noticed, not fixed here",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "noticed, not fixed here",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L161"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_readme_slices",
+      "label": "Slices",
+      "_origin": "ast",
+      "community": 545,
+      "community_name": "customers",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slices",
+      "source_file": ".claude/PRD-customer-crm/issues/README.md",
+      "source_location": "L9"
     },
     {
       "id": "claude_prd_prod_hardening_issues_15_supabase_hygiene",
@@ -198595,7 +198697,7 @@
       "label": "customer-crm-prd.md",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "customer-crm-prd.md",
@@ -198603,383 +198705,11 @@
       "source_location": "L1"
     },
     {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr",
-      "label": "PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "prd-customer-crm/issues/01-glossary-and-adr.md",
-      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_01_glossary_and_adr_0028_what_the_crm_is_made_of",
-      "label": "01 \u2014 Glossary and ADR 0028: what the CRM is made of",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "01 \u2014 glossary and adr 0028: what the crm is made of",
-      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_acceptance_criteria",
-      "label": "Acceptance criteria",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "acceptance criteria",
-      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L125"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_adr_0028_decisions_to_record",
-      "label": "ADR 0028 \u2014 decisions to record",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "adr 0028 \u2014 decisions to record",
-      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L80"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_build_notes",
-      "label": "Build notes",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "build notes",
-      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L133"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_context_md_entries",
-      "label": "CONTEXT.md entries",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "context.md entries",
-      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L20"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_01_glossary_and_adr_goal",
-      "label": "Goal",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "goal",
-      "source_file": ".claude/PRD-customer-crm/issues/01-glossary-and-adr.md",
-      "source_location": "L10"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_06_follow_ups",
-      "label": "06-follow-ups.md",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "06-follow-ups.md",
-      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_06_follow_ups_06_follow_ups_assigned_to_staff_profiles",
-      "label": "06 \u2014 Follow-ups assigned to Staff profiles",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "06 \u2014 follow-ups assigned to staff profiles",
-      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_06_follow_ups_acceptance_criteria",
-      "label": "Acceptance criteria",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "acceptance criteria",
-      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
-      "source_location": "L70"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_06_follow_ups_admin_panel",
-      "label": "Admin Panel",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "admin panel",
-      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
-      "source_location": "L39"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_06_follow_ups_goal",
-      "label": "Goal",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "goal",
-      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
-      "source_location": "L10"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_06_follow_ups_schema",
-      "label": "Schema",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "schema",
-      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
-      "source_location": "L15"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_06_follow_ups_telegram",
-      "label": "Telegram",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "telegram",
-      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
-      "source_location": "L64"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_07_review_request_after_delivery",
-      "label": "07-review-request-after-delivery.md",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "07-review-request-after-delivery.md",
-      "source_file": ".claude/PRD-customer-crm/issues/07-review-request-after-delivery.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_09_signoff",
-      "label": "09-signoff.md",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "09-signoff.md",
-      "source_file": ".claude/PRD-customer-crm/issues/09-signoff.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_09_signoff_09_sign_off_the_privacy_check_in_production_a_staff_walkthrough_and_the_first_review_requests",
-      "label": "09 \u2014 Sign-off: the privacy check in production, a Staff walkthrough, and the first review requests",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "09 \u2014 sign-off: the privacy check in production, a staff walkthrough, and the first review requests",
-      "source_file": ".claude/PRD-customer-crm/issues/09-signoff.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_09_signoff_acceptance_criteria",
-      "label": "Acceptance criteria",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "acceptance criteria",
-      "source_file": ".claude/PRD-customer-crm/issues/09-signoff.md",
-      "source_location": "L62"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_09_signoff_steps",
-      "label": "Steps",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "steps",
-      "source_file": ".claude/PRD-customer-crm/issues/09-signoff.md",
-      "source_location": "L9"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_10_customers_view_permission",
-      "label": "10-customers-view-permission.md",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "10-customers-view-permission.md",
-      "source_file": ".claude/PRD-customer-crm/issues/10-customers-view-permission.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_13_aftercare_preferences_and_whatsapp",
-      "label": "13-aftercare-preferences-and-whatsapp.md",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "13-aftercare-preferences-and-whatsapp.md",
-      "source_file": ".claude/PRD-customer-crm/issues/13-aftercare-preferences-and-whatsapp.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_14_telegram_updates",
-      "label": "14-telegram-updates.md",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "14-telegram-updates.md",
-      "source_file": ".claude/PRD-customer-crm/issues/14-telegram-updates.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme",
-      "label": "PRD-customer-crm/issues/README.md",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "prd-customer-crm/issues/readme.md",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme_build_order",
-      "label": "Build order",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "build order",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L94"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme_customer_crm_vertical_slices_issues",
-      "label": "Customer CRM: vertical slices (issues)",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "customer crm: vertical slices (issues)",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme_dependency_graph",
-      "label": "Dependency graph",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "dependency graph",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L32"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme_hazards",
-      "label": "Hazards",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "hazards",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L125"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme_hitl_notes",
-      "label": "HITL notes",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "hitl notes",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L168"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme_how_this_fits_the_shopify_migration_prd",
-      "label": "How this fits the Shopify migration PRD",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "how this fits the shopify migration prd",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L115"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme_noticed_not_fixed_here",
-      "label": "Noticed, not fixed here",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "noticed, not fixed here",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L161"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_readme_slices",
-      "label": "Slices",
-      "_origin": "ast",
-      "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "slices",
-      "source_file": ".claude/PRD-customer-crm/issues/README.md",
-      "source_location": "L9"
-    },
-    {
       "id": "claude_prd_email_marketing_email_marketing_prd",
       "label": "email-marketing-prd.md",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "email-marketing-prd.md",
@@ -198991,7 +198721,7 @@
       "label": "Before the first send (ops, HITL)",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "before the first send (ops, hitl)",
@@ -199003,7 +198733,7 @@
       "label": "Not in v1",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "not in v1",
@@ -199015,7 +198745,7 @@
       "label": "PRD \u2014 Email marketing",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "prd \u2014 email marketing",
@@ -199027,7 +198757,7 @@
       "label": "Rules it keeps",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "rules it keeps",
@@ -199039,7 +198769,7 @@
       "label": "What it does",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "what it does",
@@ -199051,7 +198781,7 @@
       "label": "Who can use it",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "heading",
       "norm_label": "who can use it",
@@ -199063,7 +198793,7 @@
       "label": "shopify-customer-migration-prd.md",
       "_origin": "ast",
       "community": 547,
-      "community_name": "PRD-customer-crm/issues/README.md",
+      "community_name": "PRD \u2014 Email marketing",
       "file_type": "document",
       "node_kind": "page",
       "norm_label": "shopify-customer-migration-prd.md",
@@ -210528,169 +210258,70 @@
       "source_location": "L33"
     },
     {
-      "id": "supabase_migrations_20261021120000_points_ledger",
-      "label": "20261021120000_points_ledger.sql",
+      "id": "supabase_migrations_20261013120000_readjustment_bookings",
+      "label": "20261013120000_readjustment_bookings.sql",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "code",
-      "norm_label": "20261021120000_points_ledger.sql",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "norm_label": "20261013120000_readjustment_bookings.sql",
+      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20261021120000_points_ledger_points_ledger_customer_idx",
-      "label": "points_ledger_customer_idx",
+      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_bookings",
+      "label": "readjustment_bookings",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "code",
-      "norm_label": "points_ledger_customer_idx",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L106"
+      "norm_label": "readjustment_bookings",
+      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
+      "source_location": "L10"
     },
     {
-      "id": "supabase_migrations_20261021120000_points_ledger_points_ledger_one_claim_bonus",
-      "label": "points_ledger_one_claim_bonus",
+      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_by_customer",
+      "label": "readjustment_by_customer",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "code",
-      "norm_label": "points_ledger_one_claim_bonus",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L102"
+      "norm_label": "readjustment_by_customer",
+      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
+      "source_location": "L63"
     },
     {
-      "id": "supabase_migrations_20261021120000_points_ledger_points_ledger_one_per_order",
-      "label": "points_ledger_one_per_order",
+      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_by_order_item",
+      "label": "readjustment_by_order_item",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "code",
-      "norm_label": "points_ledger_one_per_order",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L99"
+      "norm_label": "readjustment_by_order_item",
+      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
+      "source_location": "L66"
     },
     {
-      "id": "supabase_migrations_20261021120000_points_ledger_points_ledger_one_per_refund",
-      "label": "points_ledger_one_per_refund",
+      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_complimentary_claim",
+      "label": "readjustment_complimentary_claim",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "code",
-      "norm_label": "points_ledger_one_per_refund",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L104"
+      "norm_label": "readjustment_complimentary_claim",
+      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
+      "source_location": "L54"
     },
     {
-      "id": "supabase_migrations_20261021120000_points_ledger_public_adjust_points",
-      "label": "public.adjust_points()",
+      "id": "supabase_migrations_20261013120000_readjustment_bookings_readjustment_live_holds",
+      "label": "readjustment_live_holds",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "code",
-      "norm_label": "public.adjust_points()",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L261"
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_public_is_partner_customer",
-      "label": "public.is_partner_customer()",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "public.is_partner_customer()",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L143"
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_public_points_balance",
-      "label": "public.points_balance()",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "public.points_balance()",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L225"
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_public_points_ledger",
-      "label": "public.points_ledger",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "public.points_ledger",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L79"
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_public_points_order_candidates",
-      "label": "public.points_order_candidates",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "public.points_order_candidates",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L177"
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_public_reject_points_ledger_change",
-      "label": "public.reject_points_ledger_change()",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "public.reject_points_ledger_change()",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L115"
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_sql_public_customers",
-      "label": "public.customers",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "public.customers",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_sql_public_mp_staff",
-      "label": "public.mp_staff",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "public.mp_staff",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_sql_public_orders",
-      "label": "public.orders",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "public.orders",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "supabase_migrations_20261021120000_points_ledger_trg_points_ledger_append_only",
-      "label": "trg_points_ledger_append_only",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "code",
-      "norm_label": "trg_points_ledger_append_only",
-      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
-      "source_location": "L132"
+      "norm_label": "readjustment_live_holds",
+      "source_file": "supabase/migrations/20261013120000_readjustment_bookings.sql",
+      "source_location": "L59"
     },
     {
       "id": "supabase_migrations_20261021140000_points_spending",
@@ -211042,100 +210673,40 @@
       "source_location": "L33"
     },
     {
-      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure",
-      "label": "02-staff-notes-and-close-exposure.md",
+      "id": "docs_adr_0023_rbac_roles_are_data_permissions_are_code_admin_panel_rbac_roles_are_data_permissions_are_code",
+      "label": "Admin Panel RBAC: roles are data, permissions are code",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "02-staff-notes-and-close-exposure.md",
-      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
+      "node_kind": "heading",
+      "norm_label": "admin panel rbac: roles are data, permissions are code",
+      "source_file": "docs/adr/0023-rbac-roles-are-data-permissions-are-code.md",
       "source_location": "L1"
     },
     {
-      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_02_staff_notes_customers_cannot_read_and_closing_the_live_exposure",
-      "label": "02 \u2014 Staff notes customers cannot read, and closing the live exposure",
+      "id": "docs_adr_0023_rbac_roles_are_data_permissions_are_code_consequences",
+      "label": "Consequences",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "02 \u2014 staff notes customers cannot read, and closing the live exposure",
-      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
-      "source_location": "L1"
+      "norm_label": "consequences",
+      "source_file": "docs/adr/0023-rbac-roles-are-data-permissions-are-code.md",
+      "source_location": "L41"
     },
     {
-      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_acceptance_criteria",
-      "label": "Acceptance criteria",
+      "id": "docs_adr_0023_rbac_roles_are_data_permissions_are_code_decisions",
+      "label": "Decisions",
       "_origin": "ast",
       "community": 637,
       "community_name": "orders",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "acceptance criteria",
-      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
-      "source_location": "L95"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_admin_panel",
-      "label": "Admin Panel",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "admin panel",
-      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
-      "source_location": "L72"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_build_notes",
-      "label": "Build notes",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "build notes",
-      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
-      "source_location": "L114"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_column_grants",
-      "label": "Column grants",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "column grants",
-      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
-      "source_location": "L44"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_goal",
-      "label": "Goal",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "goal",
-      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
-      "source_location": "L10"
-    },
-    {
-      "id": "claude_prd_customer_crm_issues_02_staff_notes_and_close_exposure_schema_one_migration",
-      "label": "Schema (one migration)",
-      "_origin": "ast",
-      "community": 637,
-      "community_name": "orders",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "schema (one migration)",
-      "source_file": ".claude/PRD-customer-crm/issues/02-staff-notes-and-close-exposure.md",
-      "source_location": "L18"
+      "norm_label": "decisions",
+      "source_file": "docs/adr/0023-rbac-roles-are-data-permissions-are-code.md",
+      "source_location": "L12"
     },
     {
       "id": "docs_adr_0002_authorize_then_capture_customised_goods",
@@ -213526,102 +213097,6 @@
       "source_location": "L6"
     },
     {
-      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd",
-      "label": "appointments-locations-availability-prd.md",
-      "_origin": "ast",
-      "community": 653,
-      "community_name": "results",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "appointments-locations-availability-prd.md",
-      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_decisions",
-      "label": "Decisions",
-      "_origin": "ast",
-      "community": 653,
-      "community_name": "results",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "decisions",
-      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
-      "source_location": "L25"
-    },
-    {
-      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_links",
-      "label": "Links",
-      "_origin": "ast",
-      "community": 653,
-      "community_name": "results",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "links",
-      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
-      "source_location": "L55"
-    },
-    {
-      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_non_goals",
-      "label": "Non-goals",
-      "_origin": "ast",
-      "community": 653,
-      "community_name": "results",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "non-goals",
-      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
-      "source_location": "L50"
-    },
-    {
-      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_prd_appointments_bookable_locations_location_legend_chip_redesign_weekly_availability",
-      "label": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
-      "_origin": "ast",
-      "community": 653,
-      "community_name": "results",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "prd \u2014 appointments: bookable locations, location legend, chip redesign, weekly availability",
-      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_problem_user_stories",
-      "label": "Problem / user stories",
-      "_origin": "ast",
-      "community": 653,
-      "community_name": "results",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "problem / user stories",
-      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
-      "source_location": "L7"
-    },
-    {
-      "id": "claude_prd_appointments_locations_availability_issues_readme",
-      "label": "PRD-appointments-locations-availability/issues/README.md",
-      "_origin": "ast",
-      "community": 653,
-      "community_name": "results",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "prd-appointments-locations-availability/issues/readme.md",
-      "source_file": ".claude/PRD-appointments-locations-availability/issues/README.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_prd_appointments_locations_availability_issues_readme_prd_appointments_bookable_locations_location_legend_chip_redesign_weekly_availability",
-      "label": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
-      "_origin": "ast",
-      "community": 653,
-      "community_name": "results",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "prd \u2014 appointments: bookable locations, location legend, chip redesign, weekly availability",
-      "source_file": ".claude/PRD-appointments-locations-availability/issues/README.md",
-      "source_location": "L1"
-    },
-    {
       "id": "claude_prd_customer_crm_issues_03_customer_timeline",
       "label": "03-customer-timeline.md",
       "_origin": "ast",
@@ -213994,6 +213469,54 @@
       "source_location": "L1"
     },
     {
+      "id": "claude_prd_prod_hardening_prod_hardening_prd_admin_data_served_to_the_public",
+      "label": "Admin data served to the public",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "admin data served to the public",
+      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
+      "source_location": "L79"
+    },
+    {
+      "id": "claude_prd_prod_hardening_prod_hardening_prd_already_fine_no_work",
+      "label": "Already fine (no work)",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "already fine (no work)",
+      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
+      "source_location": "L108"
+    },
+    {
+      "id": "claude_prd_prod_hardening_prod_hardening_prd_broken_in_prod_right_now",
+      "label": "Broken in prod right now",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "broken in prod right now",
+      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
+      "source_location": "L34"
+    },
+    {
+      "id": "claude_prd_prod_hardening_prod_hardening_prd_customers_who_can_be_harmed",
+      "label": "Customers who can be harmed",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "customers who can be harmed",
+      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
+      "source_location": "L61"
+    },
+    {
       "id": "claude_prd_prod_hardening_prod_hardening_prd_further_notes",
       "label": "Further Notes",
       "_origin": "ast",
@@ -214016,6 +213539,18 @@
       "norm_label": "implementation decisions",
       "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
       "source_location": "L187"
+    },
+    {
+      "id": "claude_prd_prod_hardening_prod_hardening_prd_money_that_can_be_taken",
+      "label": "Money that can be taken",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "money that can be taken",
+      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
+      "source_location": "L48"
     },
     {
       "id": "claude_prd_prod_hardening_prod_hardening_prd_out_of_scope",
@@ -214054,6 +213589,18 @@
       "source_location": "L8"
     },
     {
+      "id": "claude_prd_prod_hardening_prod_hardening_prd_reliability",
+      "label": "Reliability",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "reliability",
+      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
+      "source_location": "L90"
+    },
+    {
       "id": "claude_prd_prod_hardening_prod_hardening_prd_solution",
       "label": "Solution",
       "_origin": "ast",
@@ -214064,6 +213611,18 @@
       "norm_label": "solution",
       "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
       "source_location": "L122"
+    },
+    {
+      "id": "claude_prd_prod_hardening_prod_hardening_prd_surfaces_that_cost_money_or_send_messages_to_anyone",
+      "label": "Surfaces that cost money or send messages to anyone",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "surfaces that cost money or send messages to anyone",
+      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
+      "source_location": "L70"
     },
     {
       "id": "claude_prd_prod_hardening_prod_hardening_prd_testing_decisions",
@@ -214088,6 +213647,102 @@
       "norm_label": "user stories",
       "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
       "source_location": "L136"
+    },
+    {
+      "id": "claude_prd_prod_hardening_prod_hardening_prd_what_the_audit_found",
+      "label": "What the audit found",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what the audit found",
+      "source_file": ".claude/PRD-prod-hardening/prod-hardening-prd.md",
+      "source_location": "L21"
+    },
+    {
+      "id": "claude_prd_staff_assisted_customisation_issues_readme",
+      "label": "PRD-staff-assisted-customisation/issues/README.md",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "prd-staff-assisted-customisation/issues/readme.md",
+      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_staff_assisted_customisation_issues_readme_build_order",
+      "label": "Build order",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "build order",
+      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
+      "source_location": "L83"
+    },
+    {
+      "id": "claude_prd_staff_assisted_customisation_issues_readme_coordination_with_staff_assist_mode",
+      "label": "Coordination with Staff assist mode",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "coordination with staff assist mode",
+      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
+      "source_location": "L113"
+    },
+    {
+      "id": "claude_prd_staff_assisted_customisation_issues_readme_dependency_graph",
+      "label": "Dependency graph",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "dependency graph",
+      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
+      "source_location": "L60"
+    },
+    {
+      "id": "claude_prd_staff_assisted_customisation_issues_readme_hitl_notes",
+      "label": "HITL notes",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "hitl notes",
+      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
+      "source_location": "L142"
+    },
+    {
+      "id": "claude_prd_staff_assisted_customisation_issues_readme_slices",
+      "label": "Slices",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "slices",
+      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
+      "source_location": "L9"
+    },
+    {
+      "id": "claude_prd_staff_assisted_customisation_issues_readme_staff_assisted_customisation_vertical_slices_issues",
+      "label": "Staff-Assisted Customisation \u2014 Vertical Slices (Issues)",
+      "_origin": "ast",
+      "community": 653,
+      "community_name": "results",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "staff-assisted customisation \u2014 vertical slices (issues)",
+      "source_file": ".claude/PRD-staff-assisted-customisation/issues/README.md",
+      "source_location": "L1"
     },
     {
       "id": "claude_prd_staff_assisted_customisation_staff_assisted_customisation_prd_coordination_with_staff_assist_mode_slice_14_now_on_main",
@@ -223626,7 +223281,7 @@
       "label": "20260728000000_partner_users.sql",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "20260728000000_partner_users.sql",
       "source_file": "supabase/migrations/20260728000000_partner_users.sql",
@@ -223637,7 +223292,7 @@
       "label": "idx_partner_users_backup_email",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "idx_partner_users_backup_email",
       "source_file": "supabase/migrations/20260728000000_partner_users.sql",
@@ -223648,7 +223303,7 @@
       "label": "idx_partner_users_email",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "idx_partner_users_email",
       "source_file": "supabase/migrations/20260728000000_partner_users.sql",
@@ -223659,7 +223314,7 @@
       "label": "idx_partner_users_partner",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "idx_partner_users_partner",
       "source_file": "supabase/migrations/20260728000000_partner_users.sql",
@@ -223670,7 +223325,7 @@
       "label": "partner_users",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "partner_users",
       "source_file": "supabase/migrations/20260728000000_partner_users.sql",
@@ -223681,7 +223336,7 @@
       "label": "auth.users",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "auth.users",
       "source_file": "",
@@ -223692,7 +223347,7 @@
       "label": "trg_partner_users_updated_at",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "trg_partner_users_updated_at",
       "source_file": "supabase/migrations/20260728000000_partner_users.sql",
@@ -223703,7 +223358,7 @@
       "label": "20260729000000_partner_backup_email_hardening.sql",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "20260729000000_partner_backup_email_hardening.sql",
       "source_file": "supabase/migrations/20260729000000_partner_backup_email_hardening.sql",
@@ -223714,11 +223369,176 @@
       "label": "idx_partner_users_backup_email_verified_unique",
       "_origin": "ast",
       "community": 729,
-      "community_name": "partner_users",
+      "community_name": "20261021120000_points_ledger.sql",
       "file_type": "code",
       "norm_label": "idx_partner_users_backup_email_verified_unique",
       "source_file": "supabase/migrations/20260729000000_partner_backup_email_hardening.sql",
       "source_location": "L15"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger",
+      "label": "20261021120000_points_ledger.sql",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "20261021120000_points_ledger.sql",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": null
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_points_ledger_customer_idx",
+      "label": "points_ledger_customer_idx",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "points_ledger_customer_idx",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L106"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_points_ledger_one_claim_bonus",
+      "label": "points_ledger_one_claim_bonus",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "points_ledger_one_claim_bonus",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L102"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_points_ledger_one_per_order",
+      "label": "points_ledger_one_per_order",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "points_ledger_one_per_order",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L99"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_points_ledger_one_per_refund",
+      "label": "points_ledger_one_per_refund",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "points_ledger_one_per_refund",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L104"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_public_adjust_points",
+      "label": "public.adjust_points()",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.adjust_points()",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L261"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_public_is_partner_customer",
+      "label": "public.is_partner_customer()",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.is_partner_customer()",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L143"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_public_points_balance",
+      "label": "public.points_balance()",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.points_balance()",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L225"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_public_points_ledger",
+      "label": "public.points_ledger",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.points_ledger",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L79"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_public_points_order_candidates",
+      "label": "public.points_order_candidates",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.points_order_candidates",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L177"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_public_reject_points_ledger_change",
+      "label": "public.reject_points_ledger_change()",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.reject_points_ledger_change()",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L115"
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_sql_public_customers",
+      "label": "public.customers",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.customers",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_sql_public_mp_staff",
+      "label": "public.mp_staff",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.mp_staff",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_sql_public_orders",
+      "label": "public.orders",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "public.orders",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "supabase_migrations_20261021120000_points_ledger_trg_points_ledger_append_only",
+      "label": "trg_points_ledger_append_only",
+      "_origin": "ast",
+      "community": 729,
+      "community_name": "20261021120000_points_ledger.sql",
+      "file_type": "code",
+      "norm_label": "trg_points_ledger_append_only",
+      "source_file": "supabase/migrations/20261021120000_points_ledger.sql",
+      "source_location": "L132"
     },
     {
       "id": "app_api_settings_ai_writing_route",
@@ -247430,6 +247250,102 @@
       "source_location": "L210"
     },
     {
+      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd",
+      "label": "appointments-locations-availability-prd.md",
+      "_origin": "ast",
+      "community": 980,
+      "community_name": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "appointments-locations-availability-prd.md",
+      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_decisions",
+      "label": "Decisions",
+      "_origin": "ast",
+      "community": 980,
+      "community_name": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "decisions",
+      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
+      "source_location": "L25"
+    },
+    {
+      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_links",
+      "label": "Links",
+      "_origin": "ast",
+      "community": 980,
+      "community_name": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "links",
+      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
+      "source_location": "L55"
+    },
+    {
+      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_non_goals",
+      "label": "Non-goals",
+      "_origin": "ast",
+      "community": 980,
+      "community_name": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "non-goals",
+      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
+      "source_location": "L50"
+    },
+    {
+      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_prd_appointments_bookable_locations_location_legend_chip_redesign_weekly_availability",
+      "label": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "_origin": "ast",
+      "community": 980,
+      "community_name": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "prd \u2014 appointments: bookable locations, location legend, chip redesign, weekly availability",
+      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_appointments_locations_availability_appointments_locations_availability_prd_problem_user_stories",
+      "label": "Problem / user stories",
+      "_origin": "ast",
+      "community": 980,
+      "community_name": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "problem / user stories",
+      "source_file": ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md",
+      "source_location": "L7"
+    },
+    {
+      "id": "claude_prd_appointments_locations_availability_issues_readme",
+      "label": "PRD-appointments-locations-availability/issues/README.md",
+      "_origin": "ast",
+      "community": 980,
+      "community_name": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "prd-appointments-locations-availability/issues/readme.md",
+      "source_file": ".claude/PRD-appointments-locations-availability/issues/README.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_appointments_locations_availability_issues_readme_prd_appointments_bookable_locations_location_legend_chip_redesign_weekly_availability",
+      "label": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "_origin": "ast",
+      "community": 980,
+      "community_name": "PRD \u2014 Appointments: bookable Locations, Location legend, chip redesign, weekly availability",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "prd \u2014 appointments: bookable locations, location legend, chip redesign, weekly availability",
+      "source_file": ".claude/PRD-appointments-locations-availability/issues/README.md",
+      "source_location": "L1"
+    },
+    {
       "id": "supabase_migrations_20261023140000_access_token_companion",
       "label": "20261023140000_access_token_companion.sql",
       "_origin": "ast",
@@ -247516,6 +247432,90 @@
       "norm_label": "webhook_tolerance_seconds",
       "source_file": "lib/email/resend-webhook.ts",
       "source_location": "L24"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_06_follow_ups",
+      "label": "06-follow-ups.md",
+      "_origin": "ast",
+      "community": 983,
+      "community_name": "06 \u2014 Follow-ups assigned to Staff profiles",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "06-follow-ups.md",
+      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_06_follow_ups_06_follow_ups_assigned_to_staff_profiles",
+      "label": "06 \u2014 Follow-ups assigned to Staff profiles",
+      "_origin": "ast",
+      "community": 983,
+      "community_name": "06 \u2014 Follow-ups assigned to Staff profiles",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "06 \u2014 follow-ups assigned to staff profiles",
+      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_06_follow_ups_acceptance_criteria",
+      "label": "Acceptance criteria",
+      "_origin": "ast",
+      "community": 983,
+      "community_name": "06 \u2014 Follow-ups assigned to Staff profiles",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "acceptance criteria",
+      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
+      "source_location": "L70"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_06_follow_ups_admin_panel",
+      "label": "Admin Panel",
+      "_origin": "ast",
+      "community": 983,
+      "community_name": "06 \u2014 Follow-ups assigned to Staff profiles",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "admin panel",
+      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
+      "source_location": "L39"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_06_follow_ups_goal",
+      "label": "Goal",
+      "_origin": "ast",
+      "community": 983,
+      "community_name": "06 \u2014 Follow-ups assigned to Staff profiles",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "goal",
+      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
+      "source_location": "L10"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_06_follow_ups_schema",
+      "label": "Schema",
+      "_origin": "ast",
+      "community": 983,
+      "community_name": "06 \u2014 Follow-ups assigned to Staff profiles",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "schema",
+      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
+      "source_location": "L15"
+    },
+    {
+      "id": "claude_prd_customer_crm_issues_06_follow_ups_telegram",
+      "label": "Telegram",
+      "_origin": "ast",
+      "community": 983,
+      "community_name": "06 \u2014 Follow-ups assigned to Staff profiles",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "telegram",
+      "source_file": ".claude/PRD-customer-crm/issues/06-follow-ups.md",
+      "source_location": "L64"
     },
     {
       "id": "supabase_migrations_20261023140100_shipping_self_collect",
@@ -253197,8 +253197,8 @@
       "id": "dataflow_endpoint_api_webhooks_tiktok_messages",
       "label": "/api/webhooks/tiktok-messages",
       "_origin": "dataflow",
-      "community": 136,
-      "community_name": "tiktok.ts",
+      "community": 34,
+      "community_name": "social-inbox/telegram-handler.ts",
       "file_type": "code",
       "_dataflow": "endpoint",
       "norm_label": "/api/webhooks/tiktok-messages",
@@ -801591,18 +801591,6 @@
       "weight": 1.0
     },
     {
-      "source": "claude_commit_author",
-      "target": "lib_email_campaigns_store_name",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "context": "user.name",
-      "source_file": "CLAUDE.md",
-      "source_location": "L75",
-      "weight": 1.0
-    },
-    {
       "source": "claude_prd_campaign_audiences_issues_09_fit_checks_and_variables_as_built_2026_10_31",
       "target": "lib_email_campaigns_sender_usesyourpillow",
       "relation": "references",
@@ -830617,5 +830605,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4022a71a5ec39604d38cad4cfad7a61008a925ea"
+  "built_at_commit": "9937e8fc45abf1897587c352e837765645b32c52"
 }
