@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
+import { pinToScreenBottom, screenBottomPinClassName } from "@/hooks/use-screen-bottom-pin";
+import { publishMobileBottomBarHeight } from "@/lib/mobile-bottom-bar-height";
 import { sheetStickyBottomClassName } from "@/lib/sheet/safe-area";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +34,17 @@ export const configuratorPreviewPadClassName = "px-3 py-6 md:px-5";
  */
 export const configuratorMobileCloseClearanceClassName =
   "max-md:pb-[calc(6rem+var(--safe-bottom))]";
+
+/**
+ * A configurator's sticky top header (title row, or the Paired build's stepper).
+ * In the installed app the page runs under a see-through status bar and the body
+ * is padded clear of it; the header reaches up into that padding, so once it
+ * sticks it covers the status bar instead of the page scrolling under the clock.
+ * The page must not be inside an `overflow-x-hidden` box: that makes the box a
+ * scroll container, and the header sticks to it, which never scrolls.
+ */
+export const configuratorStickyHeaderClassName =
+  "sticky top-0 z-40 standalone:-mt-[var(--safe-top)] standalone:pt-[var(--safe-top)]";
 
 export function ConfiguratorExitDialog({
   open,
@@ -85,6 +98,10 @@ const mobileActionsSlotClassName = cn(
  * Fixed bottom bar — mobile only; slide-in safe-bottom language. Close on the
  * left, then the current step's Back / Continue (see ConfiguratorStepActions),
  * so the step's actions stay in thumb reach however far the step scrolls.
+ * Pinned to the screen's real bottom edge: after a step's keyboard closes, iOS
+ * would otherwise float it up the screen as the page scrolls (useScreenBottomPin).
+ * Publishes its height, so the analytics notice and the chat bubble sit above
+ * Back / Continue rather than over them.
  */
 export function ConfiguratorMobileCloseBar({
   onClose,
@@ -94,11 +111,22 @@ export function ConfiguratorMobileCloseBar({
   /** Receives the slot ConfiguratorStepActions portals into. */
   actionsRef?: (el: HTMLDivElement | null) => void;
 }) {
+  const barRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const unpin = pinToScreenBottom(el);
+    const unpublish = publishMobileBottomBarHeight(el);
+    return () => {
+      unpin();
+      unpublish();
+    };
+  }, []);
   return (
     <div
+      ref={barRef}
       className={cn(
         sheetStickyBottomClassName,
-        "fixed inset-x-0 bottom-0 z-20 md:hidden",
+        "fixed inset-x-0 z-20 md:hidden",
+        screenBottomPinClassName,
       )}
     >
       <div className="flex items-center justify-end gap-2 px-3 py-2.5">

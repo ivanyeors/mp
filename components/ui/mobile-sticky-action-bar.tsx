@@ -1,6 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { pinToScreenBottom, screenBottomPinClassName } from "@/hooks/use-screen-bottom-pin";
+import { publishMobileBottomBarHeight } from "@/lib/mobile-bottom-bar-height";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,6 +38,19 @@ export function MobileStickyActionBar({
 }) {
   const barRef = useRef<HTMLDivElement>(null);
 
+  // On iOS, keep it on the screen's bottom edge once a keyboard has been and gone;
+  // and keep the analytics notice and chat bubble above it, not over its buttons.
+  useLayoutEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const unpin = pinToScreenBottom(el);
+    const unpublish = publishMobileBottomBarHeight(el);
+    return () => {
+      unpin();
+      unpublish();
+    };
+  }, []);
+
   // Layout effect: publish before first paint so the spacer never lags the bar.
   useLayoutEffect(() => {
     const el = barRef.current;
@@ -59,7 +74,10 @@ export function MobileStickyActionBar({
   return (
     <div
       ref={barRef}
-      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
+      className={cn(
+        "fixed inset-x-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden",
+        screenBottomPinClassName,
+      )}
     >
       <div
         className={cn(

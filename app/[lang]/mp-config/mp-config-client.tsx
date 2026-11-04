@@ -54,6 +54,7 @@ import {
   configuratorMobileCloseClearanceClassName,
   configuratorOuterPadClassName,
   configuratorPreviewPadClassName,
+  configuratorStickyHeaderClassName,
 } from "@/components/configurator/configurator-mobile-chrome";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
@@ -3035,9 +3036,11 @@ export function MpConfigClient({
           onConfirmExit={exitToStart}
         />
         {/* An app surface on a public route: the editor copy and the finish form set
-            their own sizes, which the marketing typography would force to 18px. */}
+            their own sizes, which the marketing typography would force to 18px.
+            `overflow-x-clip`, not `-hidden`: hidden makes this box a scroll
+            container, and the header would stick to it rather than the screen. */}
         <div
-          className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background"
+          className="relative min-h-dvh min-w-0 max-w-full overflow-x-clip bg-background"
           data-typography-scope="app"
         >
           {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
@@ -3049,7 +3052,12 @@ export function MpConfigClient({
             className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"
             aria-hidden
           />
-          <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <header
+            className={cn(
+              configuratorStickyHeaderClassName,
+              "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+            )}
+          >
             <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 max-md:px-3">
               <Button
                 variant="ghost"
@@ -3741,7 +3749,9 @@ export function MpConfigClient({
   }
 
   return (
-    <div className="relative min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden bg-background">
+    // `overflow-x-clip`, not `-hidden`: hidden makes this box a scroll container,
+    // which nothing sticky inside it could stick to the screen through.
+    <div className="relative min-h-dvh w-full min-w-0 max-w-full overflow-x-clip bg-background">
       {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
       <div
         key={currentStep}

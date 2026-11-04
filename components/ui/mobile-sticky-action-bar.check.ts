@@ -11,13 +11,15 @@ import {
   MobileStickyActionBar,
   mobileStickyActionBarSpacerClassName,
 } from "./mobile-sticky-action-bar";
+import { screenBottomPinClassName } from "@/hooks/use-screen-bottom-pin";
 
 const html = renderToStaticMarkup(
   createElement(MobileStickyActionBar, null, "child"),
 );
 
 assert.match(html, /fixed/);
-assert.match(html, /bottom-0/);
+// bottom: 0, kept on the screen's edge on iOS after a keyboard (useScreenBottomPin).
+assert.ok(html.includes(screenBottomPinClassName), "bar must use the screen-bottom pin");
 assert.match(html, /md:hidden/);
 assert.match(html, /--mobile-bottom-clearance/);
 // --mobile-bottom-clearance already contains --safe-bottom; adding the inset

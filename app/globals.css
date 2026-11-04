@@ -6,6 +6,13 @@
 @custom-variant dark (&:is(.dark *));
 /* Inside the x-ray dive panel (phone dock or host slot), not on the stage. */
 @custom-variant dock (&:where([data-xray-dive-dock] *));
+/* Running as the installed app, where the body is padded clear of the status bar
+   (see the display-mode rule below). */
+@custom-variant standalone {
+  @media (display-mode: standalone), (display-mode: fullscreen) {
+    @slot;
+  }
+}
 
 @theme inline {
   --color-background: var(--background);

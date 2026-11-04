@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { opensKeyboard, useScreenBottomPin } from "@/hooks/use-screen-bottom-pin";
 import { Launcher, MESSAGE_MAX } from "./support-chat-launcher";
 import {
   AssistantNote,
@@ -73,6 +74,7 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
   const phone = usePhone();
   const [showHistory, setShowHistory] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
+  const pinBubble = useScreenBottomPin();
   // Minimising moves focus to the bubble, so the keyboard isn't left on a button that's gone.
   const focusBubble = useRef(false);
   const open = view === "open";
@@ -88,16 +90,24 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
     root.style.overflow = "hidden";
     const fit = () => {
       if (!vv) return;
-      el.style.height = `${vv.height}px`;
+      // With nothing focused that takes typing there is no keyboard to fit above.
+      // iOS 26+ can leave the visual viewport keyboard-short after the keyboard has
+      // gone (see hooks/use-screen-bottom-pin), which would float the composer.
+      const height = opensKeyboard(document.activeElement) ? vv.height : window.innerHeight;
+      el.style.height = `${height}px`;
       el.style.top = `${vv.offsetTop}px`;
     };
     fit();
     vv?.addEventListener("resize", fit);
     vv?.addEventListener("scroll", fit);
+    document.addEventListener("focusin", fit);
+    document.addEventListener("focusout", fit);
     return () => {
       root.style.overflow = overflow;
       vv?.removeEventListener("resize", fit);
       vv?.removeEventListener("scroll", fit);
+      document.removeEventListener("focusin", fit);
+      document.removeEventListener("focusout", fit);
       el.style.height = "";
       el.style.top = "";
     };
@@ -233,11 +243,14 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={reduceMotion ? undefined : { opacity: 0, y: 16, scale: 0.85 }}
           transition={{ duration: 0.3, ease: EASE }}
+          ref={pinBubble}
           className="fixed right-4 z-50 md:right-6"
-          // Above the phone dock and the analytics notice, which share this corner.
+          // Above the phone dock, a step's or the cart's action bar, and the
+          // analytics notice, which share this corner; on the screen's bottom edge
+          // on iOS after a keyboard (useScreenBottomPin).
           style={{
             bottom:
-              "calc(max(var(--safe-bottom), var(--app-dock-clearance)) + var(--analytics-notice-clearance, 0px) + 1rem)",
+              "calc(max(var(--safe-bottom), var(--app-dock-clearance), var(--mobile-bottom-bar-height, 0px)) + var(--analytics-notice-clearance, 0px) + 1rem - var(--screen-pin-offset, 0px))",
           }}
         >
           <ChatBubble

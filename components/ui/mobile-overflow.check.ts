@@ -36,9 +36,12 @@ assert.match(carousel, /overscroll-x-contain/);
 assert.match(sizeMatters, /min-w-0 flex-1 overflow-y-auto overflow-x-hidden/);
 assert.match(sizeMatters, /<Carousel\b/);
 
-// Configurators: page roots clamp width
+// Configurators: page roots clamp width with `overflow-x-clip`. `-hidden` would
+// make each root a scroll container, and the sticky header and Paired stepper
+// inside would stick to it (it never scrolls) and scroll off the screen.
 for (const src of [mp, bolster]) {
-  assert.match(src, /min-w-0 max-w-full overflow-x-hidden/);
+  assert.match(src, /min-w-0 max-w-full overflow-x-clip/);
+  assert.doesNotMatch(src, /overflow-x-hidden/);
 }
 
 // Sample /settings page + Admin mobile shell
