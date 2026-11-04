@@ -1,6 +1,5 @@
-import { claudeConfigured } from "@/lib/ai/claude";
-import { readAiWritingSettings } from "@/lib/ai/settings";
 import type { AiWritingAvailability } from "@/lib/ai/availability";
+import { readAiWritingAvailability } from "@/lib/ai/page-availability";
 
 /**
  * Whether the editor offers ✨ (PRD-campaign-email-editor slices 09 and 16):
@@ -9,6 +8,5 @@ import type { AiWritingAvailability } from "@/lib/ai/availability";
  * call checks again on the server.
  */
 export async function campaignAiWriting(): Promise<AiWritingAvailability> {
-  const read = await readAiWritingSettings();
-  return { on: read.settings.enabled, configured: await claudeConfigured() };
+  return readAiWritingAvailability();
 }

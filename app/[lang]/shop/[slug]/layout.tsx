@@ -14,6 +14,7 @@ import {
 import { getPageFaq, productSurfaceKey, stripMarkdownForSchema } from "@/lib/page-faq";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { productMetaDescription } from "@/lib/seo/page-meta";
+import { productPageTitle } from "@/lib/seo/product-seo";
 import { configuratorPath } from "@/lib/ecommerce/configurator-path";
 import type { Locale } from "@/lib/i18n/locales";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // The shop layout's own title ends the root template, so the brand is added here.
   const name = content.seo_title || content.title || product.slug;
-  const title = name.includes("Mpillow") ? name : `${name} | Mpillow Singapore`;
+  const title = productPageTitle(name);
 
   return buildPageMetadata({
     title,

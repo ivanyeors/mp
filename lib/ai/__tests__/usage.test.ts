@@ -36,7 +36,15 @@ const fixtureRows = [
 
 describe("the AI writing audit entry", () => {
   it("is one action per kind, with the serving model and token counts and nothing else", () => {
-    expect(AI_USAGE_ACTIONS).toEqual(AI_WRITING_KINDS.map((k) => `email_campaign.ai_${k}`));
+    expect(AI_USAGE_ACTIONS).toEqual([
+      "email_campaign.ai_draft",
+      "email_campaign.ai_translate",
+      "email_campaign.ai_subjects",
+      "email_campaign.ai_preview_lines",
+      "email_campaign.ai_rewrite",
+      "product.ai_description",
+      "product.ai_seo",
+    ]);
     expect(aiUsageAuditEntry("draft", { model: MODEL, usage: { input_tokens: 10, output_tokens: 20 } })).toEqual({
       action: "email_campaign.ai_draft",
       after: { kind: "draft", model: MODEL, input_tokens: 10, output_tokens: 20 },
@@ -100,6 +108,18 @@ describe("estimateAiUsage", () => {
     expect(formatUsageCost(3.4)).toBe("US$3.40");
     expect(formatUsageCost(0.001)).toBe("under US$0.01");
     expect(formatUsageCost(0)).toBe("US$0.00");
+  });
+
+  it("counts the product editor's ✨ Write and ✨ Generate SEO as product texts, and prices them", () => {
+    const products = [
+      ...fixtureRows,
+      { action: "product.ai_description", after: aiUsageAuditEntry("product_description", { model: MODEL, usage: { input_tokens: 2_000, output_tokens: 1_500 } }).after },
+      { action: "product.ai_seo", after: aiUsageAuditEntry("product_seo", { model: MODEL, usage: { input_tokens: 1_800, output_tokens: 500 } }).after },
+    ].map((r) => aiUsageEntryFromAudit(r)!);
+    const withProducts = estimateAiUsage(products);
+    expect(withProducts.byKind.product_description).toMatchObject({ calls: 1, inputTokens: 2_000, outputTokens: 1_500 });
+    expect(withProducts.byKind.product_seo.calls).toBe(1);
+    expect(aiUsageSummaryLine(withProducts)).toBe("3 drafts, 1 translation, 4 quick actions, 2 product texts, about US$0.39");
   });
 });
 
