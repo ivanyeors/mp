@@ -1333,7 +1333,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/costi
   - `syncBolsterProducts()` [insert,select] — lib/ecommerce/inventory-sync.ts:265
   - `syncItemImageToProducts()` [select,update] — lib/ecommerce/item-image-sync.ts:85
   - `syncPillowProducts()` [insert,select] — lib/ecommerce/inventory-sync.ts:129
-  - `syncProductToStripe()` [update] — lib/stripe/sync.ts:128
+  - `syncProductToStripe()` [update] — lib/stripe/sync.ts:135
   - `syncVariantPricesFromCostings()` [select,update] — lib/shop/price-sync.ts:210
 - Read by:
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:49
@@ -1366,7 +1366,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
   - `activate()` [update] — lib/ecommerce/shop-listings.ts:281
   - `adoptManualProducts()` [select,update] — lib/ecommerce/inventory-sync.ts:359
   - `archiveUnsellableItemProducts()` [select,update] — lib/ecommerce/inventory-sync.ts:331
-  - `createPaymentLink()` [select,update] — lib/stripe/sync.ts:227
+  - `createPaymentLink()` [select,update] — lib/stripe/sync.ts:239
   - `deactivate()` [update] — lib/ecommerce/shop-listings.ts:272
   - `deleteProduct()` [delete,select] — app/[lang]/settings/products/actions.ts:17
   - `deleteProducts()` [delete] — app/[lang]/settings/products/actions.ts:41

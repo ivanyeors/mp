@@ -42,7 +42,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
-import { stripePriceIdOf } from "@/lib/stripe/mode";
+import { stripePriceIdOf, type StripeMode } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -158,10 +158,11 @@ function hasPriceWarning(variants: ProductVariant[]): boolean {
     return variants.some((v) => v.price === 0 || v.price === null);
 }
 
-function hasMissingStripe(variants: ProductVariant[]): boolean {
+function hasMissingStripe(variants: ProductVariant[], mode: StripeMode): boolean {
     // Per mode: a product linked in the sandbox is NOT linked in live, and an admin
-    // looking at localhost must not be told live is ready (or the reverse).
-    return variants.some((v) => !stripePriceIdOf(v));
+    // looking at localhost must not be told live is ready (or the reverse). The mode
+    // comes from the server page — the browser cannot see the secret key.
+    return variants.some((v) => !stripePriceIdOf(v, mode));
 }
 
 function getThumbnailUrl(images: ProductImage[]): string | null {
@@ -183,9 +184,12 @@ function statusBadgeVariant(status: string): StatusVariant {
 export function ProductsClient({
     initialData,
     initialTab = "products",
+    stripeMode,
 }: {
     initialData?: ProductsInitialData;
     initialTab?: string;
+    /** Which Stripe account this deploy uses, read on the server from its key. */
+    stripeMode: StripeMode;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -482,7 +486,7 @@ export function ProductsClient({
                             const priceRange = getPriceRange(product.product_variants);
                             const { value: stock } = getTotalStock(product.product_variants);
                             const priceWarn = hasPriceWarning(product.product_variants);
-                            const stripeWarn = hasMissingStripe(product.product_variants);
+                            const stripeWarn = hasMissingStripe(product.product_variants, stripeMode);
                             const category = product.category_id
                                 ? categoryMap.get(product.category_id)
                                 : null;

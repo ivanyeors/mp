@@ -30,6 +30,8 @@ export async function POST(req: Request) {
       ok: true,
       stripeProductId: result.stripeProductId,
       variant_count: result.variants.length,
+      // The editor applies these in place, so "No Stripe ID" clears without a reload.
+      variants: result.variants,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to sync product to Stripe";
