@@ -43,9 +43,8 @@ export type FillingItem = {
   name: string;
   subtype: string | null;
   size: string | null;
-  /** Set by the assist route: a neck support ("accessories") is charged at its MSRP. */
+  /** Set by the assist route: "accessories" marks a neck support, premium only. */
   category?: string;
-  msrp?: number | null;
 };
 type TemplateRow = { id: number; name: string };
 

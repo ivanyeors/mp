@@ -369,11 +369,9 @@ const formatMarginRange = (values: Array<number | null>): string | null => {
   return min === max ? `${min}%` : `${min}% to ${max}%`;
 };
 
-/** Margin of one build at a row's MSRP, counting a Neck support's own MSRP as sold with it. */
-const optionMargin = (option: BuildCostOption, msrpCents: number | null): number | null => {
-  if (msrpCents === null || option.extraChargeCents === null) return null;
-  return marginPct(msrpCents + option.extraChargeCents, option.buildCents);
-};
+/** Margin of one build at a row's MSRP. A Neck support inside it is in that price, and its cost in the build. */
+const optionMargin = (option: BuildCostOption, msrpCents: number | null): number | null =>
+  marginPct(msrpCents, option.buildCents);
 
 /** What a price row's builds cost; none when the row cannot be built at all. */
 const buildCostCents = (build: FamilyBuild): number[] => {
@@ -1006,10 +1004,8 @@ export default function CostingsPage() {
   // MSRP moves every build that uses it as soon as the debounce lands.
   const cardBuilds = useMemo(() => {
     const msrpCentsOf = (itemId: number) => parseToCents(committedDraft[itemKey(itemId)]?.msrp ?? "");
-    const neckSupportMsrpByItem = new Map<number, number | null>(
-      // Every accessory placed in the pillow (a Neck support, an Ear Comfort Pad) costs its own MSRP.
-      items.filter((item) => isInPillowAccessory(item)).map((item) => [item.id, msrpCentsOf(item.id)]),
-    );
+    // Every accessory placed in the pillow (a Neck support, an Ear Comfort Pad) is in its price.
+    const neckSupportItemIds = new Set(items.filter((item) => isInPillowAccessory(item)).map((item) => item.id));
     const caseItems = items.filter((item) => CASE_CATEGORIES.has(item.category));
     const map = new Map<string, CardBuild>();
     for (const card of productCards) {
@@ -1051,7 +1047,7 @@ export default function CostingsPage() {
             templates: missingCase ? [] : templates,
             defaultTemplateId: card.defaultFillingTemplateId,
             costByItem: itemCostByIdFromDraft,
-            neckSupportMsrpByItem,
+            neckSupportItemIds,
             allowNeckSupport: card.kind === "pillow" && card.pillowKind === "premium",
           }),
         };
@@ -1902,8 +1898,9 @@ export default function CostingsPage() {
                         <div className="flex items-center gap-1.5">
                           <h3 className="text-sm font-medium">Build cost by filling template</h3>
                           <InfoTip label="About build cost">
-                            A build costs its parts plus the filling template it is assigned. A neck support is charged
-                            at its own MSRP, so its margin counts that too. Basic Mpillow is built without one.
+                            A build costs its parts plus the filling template it is assigned. A neck support inside a
+                            Premium Mpillow is in its price: it adds to the cost, never to the price. Basic Mpillow is
+                            built without one.
                           </InfoTip>
                         </div>
                         {activeOptions.length > 1 ? (
@@ -1951,11 +1948,9 @@ export default function CostingsPage() {
                                   Mix {formatCentsLabel(option.fillingCents)} for {option.pieces}{" "}
                                   {option.pieces === 1 ? "piece" : "pieces"}
                                 </div>
-                                {option.neckSupport === "charged" ? (
+                                {option.neckSupport === "included" ? (
                                   <div className="text-xs text-muted-foreground">
-                                    {option.extraChargeCents === null
-                                      ? "An accessory inside it has no MSRP"
-                                      : `Accessories inside add ${formatCentsLabel(option.extraChargeCents)} to the price`}
+                                    Accessories inside are included in the price
                                   </div>
                                 ) : option.neckSupport === "left_out" ? (
                                   <div className="text-xs text-muted-foreground">Built without the accessories inside it</div>

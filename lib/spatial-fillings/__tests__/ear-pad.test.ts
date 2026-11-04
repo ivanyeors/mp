@@ -1,13 +1,13 @@
 /**
  * The Ear Comfort Pad in the x-ray: placeable like a Neck support (premium
- * pillows only, charged at its MSRP), measured as a pouch, drawn as a puffy
+ * pillows only, inside the pillow's MSRP and its stock), measured as a pouch, drawn as a puffy
  * square with a sewn well from above and as a cushion dipping between two rims
  * side-on, settled at its own firmness.
  */
 
 import { describe, expect, it } from "vitest";
 
-import { placedChargeLines } from "@/lib/pricing/composed-price";
+import { assembleBuild } from "@/lib/build-assembly";
 import { padRing, pouchPath, wellDip } from "@/components/spatial/slab-shape";
 import { earWellCircle } from "@/components/spatial/xray-pillow";
 import { pouchOutline } from "../conform";
@@ -81,17 +81,26 @@ describe("placing an Ear Comfort Pad", () => {
     expect(validateBolsterPlacements([{ slot: 1, itemId: 41 }], kinds).ok).toBe(false);
   });
 
-  it("is charged at its MSRP per piece, and refused unpriced rather than free", () => {
-    const items = new Map([
-      [55, { category: "filling", name: "6D" }],
-      [41, EAR],
+  it("ships inside the pillow beside the fillings, out of stock and into its cost", () => {
+    // Priced inside the pillow's MSRP, as a placed neck support is: the build ships it as a filling line.
+    const costs = new Map([
+      [55, 4],
+      [41, 15],
     ]);
-    const pack = [
-      { item_id: 55, count: 3 },
-      { item_id: 41, count: 1 },
-    ];
-    expect(placedChargeLines(pack, items, new Map([[41, 60]]))).toEqual([{ msrp: 60, quantity: 1 }]);
-    expect(placedChargeLines(pack, items, new Map())).toEqual([{ msrp: null, quantity: 1 }]);
+    const result = assembleBuild({
+      composedBomLines: [],
+      fillingTemplateLines: [
+        { item_id: 55, quantity: 3, category: placementKind({ category: "filling", name: "6D" }) },
+        { item_id: 41, quantity: 1, category: placementKind(EAR) },
+      ],
+      preferenceLines: [],
+      addonLines: [],
+      costByItem: costs,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.lines.filter((l) => l.role === "filling").map((l) => l.item_id)).toEqual([55, 41]);
+    expect(result.cogs).toBe(3 * 4 + 15);
   });
 });
 

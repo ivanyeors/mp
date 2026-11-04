@@ -127,7 +127,8 @@ millimetre; in a full cell its neighbours pushed it about half way back (the top
 
 Ivan: an Ear Comfort Pad added to a Filling Template should be configurable in Soft body and show
 its shape in the x-ray, as the fillings do. It is placeable on the Neck support's terms (premium
-pillows only, its own MSRP per piece; `isInPillowAccessory`), and drawn as a third shape:
+pillows only, inside the pillow's MSRP as the Neck support is since 4-11-2026; `isInPillowAccessory`), and
+drawn as a third shape:
 
 - **Its own body kind.** The solver's `pad` is firm the way the roll is — volume that gives under
   load, a floor, spring-back, a cap on how far it squashes out of shape — at its own firmness

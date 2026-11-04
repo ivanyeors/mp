@@ -48,8 +48,8 @@ export default function results({ now }) {
       // Made-up MSRPs for the two Results' sizes, so the Assignment card can price
       // them. Premium M and L are pillow_products 8 and 9 in analytics.mjs.
       product_prices: [
-        { key: "pillow-premium-M-linen", kind: "pillow", product_id: 8, variant: "linen", msrp: 320, currency: "SGD" },
-        { key: "pillow-premium-L-linen", kind: "pillow", product_id: 9, variant: "linen", msrp: 340, currency: "SGD" },
+        { key: "product:pillow:8:linen", kind: "pillow", product_id: 8, variant: "linen", msrp: 320, currency: "SGD" },
+        { key: "product:pillow:9:linen", kind: "pillow", product_id: 9, variant: "linen", msrp: 340, currency: "SGD" },
       ],
       rule_graphs: [
         {

@@ -88,7 +88,7 @@ describe("buildCostOptions", () => {
     { id: 101, name: "Type-2", pack: [{ itemId: FILL_6D_S, count: 2 }, { itemId: NECK, count: 1 }] },
     { id: 102, name: "Type-5", pack: [{ itemId: FILL_6D_S, count: 3 }] },
   ];
-  const neckSupportMsrpByItem = new Map<number, number | null>([[NECK, 3500]]);
+  const neckSupportItemIds = new Set([NECK]);
 
   it("costs every template on top of the base, default first then cheapest", () => {
     const result = buildCostOptions({
@@ -96,16 +96,16 @@ describe("buildCostOptions", () => {
       templates,
       defaultTemplateId: 100,
       costByItem,
-      neckSupportMsrpByItem,
+      neckSupportItemIds,
       allowNeckSupport: true,
     });
     expect(result.baseCents).toBe(2950);
     expect(result.options.map((o) => o.templateId)).toEqual([100, 102, 101]);
     const [def, cheap, neck] = result.options;
-    expect(def).toMatchObject({ isDefault: true, pieces: 6, fillingCents: 1100, buildCents: 4050, extraChargeCents: 0 });
+    expect(def).toMatchObject({ isDefault: true, pieces: 6, fillingCents: 1100, buildCents: 4050, neckSupport: "none" });
     expect(cheap).toMatchObject({ isDefault: false, fillingCents: 480, buildCents: 3430, neckSupport: "none" });
-    // The neck support's cost is COGS; its MSRP is charged on top of the row.
-    expect(neck).toMatchObject({ neckSupport: "charged", pieces: 3, fillingCents: 620, buildCents: 3570, extraChargeCents: 3500 });
+    // The neck support's cost is COGS; the price is the row's, with nothing on top.
+    expect(neck).toMatchObject({ neckSupport: "included", pieces: 3, fillingCents: 620, buildCents: 3570 });
     expect(neck.uncostedItemIds).toEqual([ZIP_LOCK]);
   });
 
@@ -115,7 +115,7 @@ describe("buildCostOptions", () => {
       templates,
       defaultTemplateId: 101,
       costByItem,
-      neckSupportMsrpByItem,
+      neckSupportItemIds,
       allowNeckSupport: false,
     });
     const neck = result.options.find((o) => o.templateId === 101)!;
@@ -126,20 +126,7 @@ describe("buildCostOptions", () => {
       pieces: 2,
       fillingCents: 320,
       buildCents: 3270,
-      extraChargeCents: 0,
     });
-  });
-
-  it("reports an unpriced Neck support as an unknown charge, never 0", () => {
-    const result = buildCostOptions({
-      baseComponents: BOM,
-      templates: [templates[1]],
-      defaultTemplateId: null,
-      costByItem,
-      neckSupportMsrpByItem: new Map([[NECK, null]]),
-      allowNeckSupport: true,
-    });
-    expect(result.options[0].extraChargeCents).toBeNull();
   });
 });
 

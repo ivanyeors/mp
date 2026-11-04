@@ -22,8 +22,8 @@ const DENSITY = /^\s*(\d+D)(\+)?/i;
 
 /**
  * A Cervical Neck Support: an Accessories Item staff may also place inside a
- * pillow, charged at its own MSRP (unlike fillings). Matched by type name —
- * inventory has no category of its own for it.
+ * premium pillow, where it is in the pillow's MSRP like the fillings. Matched by
+ * type name — inventory has no category of its own for it.
  */
 export const NECK_SUPPORT = /cervical|neck support/i;
 
