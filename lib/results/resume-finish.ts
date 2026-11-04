@@ -20,7 +20,7 @@ export type ResumeFinish = {
   discoverySourceOther: string;
   /** The Staff-composed fillings, shown read-only in the x-ray. */
   placements: PillowPlacementRow[];
-  /** The placed Items — the shop's filling list has no neck support to label, color or charge. */
+  /** The placed Items — the shop's filling list has no neck support to label or color. */
   items: FillingItem[];
   /** The discount code submitted with the questionnaire (ADR 0033); the page shows it off the price. */
   coupon: ResultCoupon | null;
@@ -62,7 +62,7 @@ export async function loadResumeFinish(
   const { data: items } = placedIds.length
     ? await admin
         .from("items")
-        .select("id, name, subtype, size, category, item_prices(msrp)")
+        .select("id, name, subtype, size, category")
         .in("id", placedIds)
     : { data: [] };
 
@@ -77,10 +77,7 @@ export async function loadResumeFinish(
     discoverySource: row.discovery_source ?? "",
     discoverySourceOther: row.discovery_source_other ?? "",
     placements: (placements ?? []) as PillowPlacementRow[],
-    items: (items ?? []).map(({ item_prices, ...item }) => ({
-      ...item,
-      msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
-    })),
+    items: items ?? [],
     coupon: resultCouponOf(row.coupon_code, row.coupon_terms),
   };
 }

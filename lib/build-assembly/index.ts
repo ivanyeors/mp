@@ -1,6 +1,5 @@
 /** Final build lines for a Result: composed non-filling + Filling Template + prefs + add-ons. */
 
-import { validateFillingOnlyLines } from "@/lib/filling-templates";
 
 export type BomLineInput = {
   item_id: number;
@@ -49,7 +48,11 @@ export function preferenceRoleOf(category: string): "cover" | "case" | null {
 export type AssembleBuildInput = {
   /** Live composed sellable BOM for assigned size×tier / length. */
   composedBomLines: BomLineInput[];
-  /** Filling Template lines (must be filling-only). */
+  /**
+   * What goes inside the pillow: the Filling Template or snapshot's pack list.
+   * `category` is `placementKind`'s: `filling`, or `neck_support` for a Cervical
+   * Neck Support placed in a premium pillow. Anything else is refused.
+   */
   fillingTemplateLines: BomLineInput[];
   /** Customer preferences: cover and case only. */
   preferenceLines: PreferenceLine[];
@@ -67,8 +70,19 @@ export type AssembleBuildResult =
  * Protector is never accepted as a customer preference.
  */
 export function assembleBuild(input: AssembleBuildInput): AssembleBuildResult {
-  const fillCheck = validateFillingOnlyLines(input.fillingTemplateLines);
-  if (!fillCheck.ok) return fillCheck;
+  // A neck support goes inside a premium pillow beside the fillings: it ships and
+  // comes out of stock with them. The placement validators already keep it off a
+  // basic pillow and a bolster, so here it only has to be let through.
+  const badFills = input.fillingTemplateLines.filter(
+    (l) => l.category !== "filling" && l.category !== "neck_support",
+  );
+  if (badFills.length > 0) {
+    const ids = badFills.map((l) => l.item_id).join(", ");
+    return {
+      ok: false,
+      error: `Fillings may only be filling items or a neck support (rejected item_id: ${ids})`,
+    };
+  }
 
   const badPrefs = input.preferenceLines.filter((l) => !PREFERENCE_CATEGORIES.has(l.category));
   if (badPrefs.length > 0) {

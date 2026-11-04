@@ -1,12 +1,12 @@
 /**
  * X-ray editor: pack-list remove, in-piece labels, family colors, and the
- * Cervical Neck Support — placeable, drawn as a pill, and charged at its MSRP.
+ * Cervical Neck Support — placeable and drawn as a pill. Its price is the
+ * pillow's: `lib/results/__tests__/assigned-build-neck-support.test.ts`.
  */
 
 import { describe, expect, it } from "vitest";
 
 import { removeFilling } from "@/lib/configurator/staff-assist";
-import { placedChargeLines, priceComposedBuild, UNKEYED } from "@/lib/pricing/composed-price";
 import { pouchOutline, type Pt } from "../conform";
 import {
   flattenToPackList,
@@ -141,36 +141,6 @@ describe("Cervical Neck Support", () => {
     expect(basic).toEqual({ ok: false, error: "A Cervical Neck Support is for premium pillows only" });
     expect(validateBolsterPlacements([{ slot: 1, itemId: 61 }], kinds).ok).toBe(false);
     expect(validateBolsterPlacements([{ slot: 1, itemId: 55 }], kinds)).toEqual({ ok: true });
-  });
-
-  it("is charged at its MSRP per piece; fillings add nothing", () => {
-    const items = new Map([
-      [55, { category: "filling", name: "6D" }],
-      [61, { category: "accessories", name: "Cervical Neck Support" }],
-    ]);
-    const lines = placedChargeLines(
-      [
-        { item_id: 55, count: 3 },
-        { item_id: 61, count: 2 },
-      ],
-      items,
-      new Map([[61, 38]]),
-    );
-    expect(lines).toEqual([{ msrp: 38, quantity: 2 }]);
-
-    const base = {
-      msrpByFamily: { [UNKEYED]: 170 },
-      defaultCover: null,
-      defaultCase: null,
-      caseOptions: [],
-      chosenCover: null,
-      chosenCase: null,
-    };
-    const priced = priceComposedBuild({ ...base, addonLines: lines });
-    expect(priced.ok && priced.subtotal).toBe(170 + 76);
-    // Unpriced → refused, never free.
-    const unpriced = placedChargeLines([{ item_id: 61, count: 1 }], items, new Map());
-    expect(priceComposedBuild({ ...base, addonLines: unpriced }).ok).toBe(false);
   });
 
   it("is a full capsule of its rect: the registry footprint, round ends, no aspect cap (slice 02)", () => {

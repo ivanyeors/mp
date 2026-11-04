@@ -143,7 +143,7 @@ export function bolsterPlacementsToRows(placements: BolsterPlacement[]): Bolster
 
 /**
  * What an Item is to the validators below: "filling", "neck_support" for a
- * Cervical Neck Support accessory (placeable, and charged), else its category.
+ * Cervical Neck Support accessory (placeable, priced inside the pillow), else its category.
  */
 export function placementKind(item: { category: string; name: string }): string {
   return isNeckSupportItem(item) ? "neck_support" : item.category;

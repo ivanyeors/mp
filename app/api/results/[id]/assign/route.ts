@@ -13,6 +13,7 @@ import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
   MAX_OFFSET_MM,
+  placementKind,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -22,7 +23,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
 import { priceResult } from "@/lib/result-pricing";
-import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { pairAuthorized, pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { resultShippingAmount } from "@/lib/results/shipping";
@@ -320,11 +321,11 @@ export async function POST(
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  const fillingTemplateLines = fillPack.map((l) => ({
-    item_id: l.item_id,
-    quantity: l.count,
-    category: itemById.get(l.item_id)?.category ?? "unknown",
-  }));
+  // `placementKind` tells a placed neck support from a filling: both go inside.
+  const fillingTemplateLines = fillPack.map((l) => {
+    const item = itemById.get(l.item_id);
+    return { item_id: l.item_id, quantity: l.count, category: item ? placementKind(item) : "unknown" };
+  });
 
   const assembled = assembleBuild({
     composedBomLines: composedBomRaw,
@@ -375,13 +376,11 @@ export async function POST(
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    addonLines: [
-      ...addonLines.map((l) => ({
-        msrp: msrpByItem.get(l.item_id) ?? null,
-        quantity: l.quantity,
-      })),
-      ...placedChargeLines(fillPack, itemById, msrpByItem),
-    ],
+    // Add-ons only: a placed neck support is in the pillow's MSRP, like the fillings.
+    addonLines: addonLines.map((l) => ({
+      msrp: msrpByItem.get(l.item_id) ?? null,
+      quantity: l.quantity,
+    })),
   });
   if (!goods.ok) {
     console.error(`[results/assign] pricing not usable (${goods.code}): ${goods.error}`);
