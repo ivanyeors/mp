@@ -837,11 +837,12 @@ Changed from pages: `/settings/partner-commissions`
 ### mp_config_response_photos
 Defined in supabase/migrations/0024_mp_config_response_photos.sql:7
 References: `mp_config_responses`
-Changed from pages: `/mp-basic`, `/mp-config`
+Changed from pages: `/mp-basic`, `/mp-config`, `/settings/orders/[id]`, `/settings/results`, `/settings/results/[id]`
 - Written by:
-  - `POST()` [upsert] — app/api/mp-config/photos/route.ts:57
+  - `POST()` [upsert] — app/api/mp-config/photos/route.ts:86
+  - `sizingPhotosForTelegram()` [delete,update] — lib/results/sizing-photos.ts:54
 - Read by:
-  - `POST()` [select] — app/api/mp-config/responses/route.ts:516
+  - `POST()` [select] — app/api/mp-config/responses/route.ts:517
 
 ### mp_config_responses
 Defined in supabase/migrations/0023_mp_config_responses.sql:6
@@ -851,7 +852,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `DELETE()` [delete,select] — app/api/mp-config/responses/[id]/route.ts:72
   - `DELETE()` [update] — app/api/shop/orders/[id]/mp-config-link/route.ts:116
   - `GET()` [select,update] — app/api/cron/results-sla/route.ts:111
-  - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:324
+  - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:325
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:73
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:136
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
@@ -881,7 +882,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `GET()` [select] — app/api/results/queue-counts/route.ts:24
   - `GET()` [select] — app/api/results/route.ts:35
   - `POST()` [select] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:174
-  - `POST()` [select] — app/api/mp-config/photos/route.ts:41
+  - `POST()` [select] — app/api/mp-config/photos/route.ts:43
   - `POST()` [select] — app/api/results/[id]/reorder/route.ts:43
   - `companionLockReason()` [select] — lib/results/pair-ending.ts:94
   - `fetchLiveResultCouponUseCount()` [select] — lib/ecommerce/discounts.ts:214
@@ -908,7 +909,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
   - `updateStaffProfile()` [update] — lib/staff/admin.ts:209
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:68
-  - `POST()` [select] — app/api/mp-config/responses/route.ts:480
+  - `POST()` [select] — app/api/mp-config/responses/route.ts:481
   - `isPickableStaffProfile()` [select] — lib/staff/admin.ts:281
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:40
   - `listAssignableProfiles()` [select] — lib/crm/followups.ts:159
@@ -2775,8 +2776,8 @@ app/[lang]/settings/orders/page.tsx
 app/[lang]/settings/orders/[id]/page.tsx
 - Endpoints: `/api/mp-config/responses [GET]`, `/api/shop/orders/[id] [GET,PATCH]`, `/api/shop/orders/[id]/cancel [POST]`, `/api/shop/orders/[id]/deduct-stock [POST]`, `/api/shop/orders/[id]/easyship [GET,POST]`, `/api/shop/orders/[id]/easyship/label`, `/api/shop/orders/[id]/easyship/rates [POST]`, `/api/shop/orders/[id]/fulfill [POST]`, `/api/shop/orders/[id]/mp-config-link [DELETE,GET,POST]`, `/api/shop/orders/[id]/refund [POST]`, `/api/shop/orders/[id]/refund-request [POST]`, `/api/shop/orders/[id]/restock [POST]`, `/api/shop/orders/[id]/timeline [GET,POST]`
 - Loads: `loadAdminOrderDetail()`, `loadAdminOrderMpConfigLinks()`, `loadAdminOrderTimeline()`, `readOrderPoints()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `commissions`, `inventory_transactions`, `mp_config_responses`, `mp_staff`, `order_emails`, `order_items`, `order_shipments`, `order_timeline`, `orders`, `product_variants`, `shipping_rate_quotes`
-- Reads, through the same: `admin_roles`, `admin_users`, `api_configs`, `config_upload`, `customers`, `mp_config_response_photos`, `order_margins`, `order_payments`, `points_ledger`, `points_order_candidates`, `shipping_methods`, `site_settings`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `commissions`, `inventory_transactions`, `mp_config_response_photos`, `mp_config_responses`, `mp_staff`, `order_emails`, `order_items`, `order_shipments`, `order_timeline`, `orders`, `product_variants`, `shipping_rate_quotes`
+- Reads, through the same: `admin_roles`, `admin_users`, `api_configs`, `config_upload`, `customers`, `order_margins`, `order_payments`, `points_ledger`, `points_order_candidates`, `shipping_methods`, `site_settings`
 
 ### /settings/page-builder
 app/[lang]/settings/page-builder/page.tsx
@@ -2847,16 +2848,16 @@ app/[lang]/settings/products/[id]/page.tsx
 app/[lang]/settings/results/page.tsx
 - Endpoints: `/api/mp-config/assist-link [POST]`, `/api/mp-config/responses [GET,POST]`, `/api/mp-config/responses/[id] [DELETE]`, `/api/results/[id]/request-payment [POST]`, `/api/staff [GET]`
 - Loads: `listMpConfigResponses()`, `listStaffProfiles()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_users`, `mp_config_responses`, `mp_staff`
-- Reads, through the same: `admin_roles`, `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `config_upload`, `customers`, `email_template_copy`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `orders`, `pillow_products`, `product_prices`, `result_bolster_filling_placements`, `result_filling_placements`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `admin_users`, `mp_config_response_photos`, `mp_config_responses`, `mp_staff`
+- Reads, through the same: `admin_roles`, `bolster_bom_lines`, `bom_lines`, `bom_template_lines`, `config_upload`, `customers`, `email_template_copy`, `inventory_balances`, `item_prices`, `items`, `orders`, `pillow_products`, `product_prices`, `result_bolster_filling_placements`, `result_filling_placements`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
 
 ### /settings/results/[id]
 app/[lang]/settings/results/[id]/page.tsx
 - Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/mp-config/responses [POST]`, `/api/mp-config/responses/[id] [DELETE,GET]`, `/api/results/[id]/assign [POST]`, `/api/results/[id]/cancel [POST]`, `/api/results/[id]/filling-mix [GET,POST]`, `/api/results/[id]/request-payment [POST]`, `/api/results/assign/prep [GET]`, `/settings/inventory/configure/templates/[templateId]`
 - Loads: `customerIdForResult()`, `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `loadResultFillingMix()`, `requireAdminPage()`
 - Reads: `items`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `mp_config_responses`, `mp_staff`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `neck_support_dimension_overrides`, `orders`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `mp_config_response_photos`, `mp_config_responses`, `mp_staff`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`
+- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `neck_support_dimension_overrides`, `orders`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
 
 ### /settings/rma
 app/[lang]/settings/rma/page.tsx

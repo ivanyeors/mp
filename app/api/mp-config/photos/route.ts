@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireResultAccess } from "@/lib/results/access";
+import { clientIp, tooManyRequests } from "@/lib/rate-limit";
+import { screenSizingPhoto, screenableImage } from "@/lib/ai/photo-screening";
 
 export const runtime = "nodejs";
 
@@ -54,6 +56,33 @@ export async function POST(req: Request) {
   });
   if (!access.ok) return access.response;
 
+  const image = screenableImage(dataUrl);
+  if (!image) {
+    return NextResponse.json({ error: "Please use a JPEG or PNG photo.", screening: "rejected" }, { status: 422 });
+  }
+
+  // Each photo is a paid Claude call on a route anyone with a Draft Result can
+  // reach: a few retakes per Result, and a cap per address for a flood.
+  const limited = await tooManyRequests(
+    [
+      { bucket: "sizing-photo-screen", key: responseId, windowMs: 60 * 60_000, max: 12 },
+      { bucket: "sizing-photo-screen-ip", key: clientIp(req), windowMs: 10 * 60_000, max: 30 },
+    ],
+    "You've tried a lot of photos. Please wait a few minutes and try again.",
+  );
+  if (limited) return limited;
+
+  // ADR 0047: a photo Claude rejects is never stored. One it couldn't check is
+  // kept as `unchecked`, and Telegram leaves it out until a check passes it.
+  const screening = await screenSizingPhoto(image, view);
+  if (screening.status === "rejected") {
+    return NextResponse.json({ error: screening.reason, screening: "rejected" }, { status: 422 });
+  }
+  if (screening.status === "unchecked") {
+    console.error(`[sizing-photo] ${responseId} ${view} kept unchecked: ${screening.error}`);
+  }
+  const passed = screening.status === "passed";
+
   const { error } = await admin
     .from("mp_config_response_photos")
     .upsert(
@@ -61,11 +90,13 @@ export async function POST(req: Request) {
         response_id: responseId,
         view,
         data_url: dataUrl,
+        screening_status: screening.status,
+        screening_model: passed ? screening.model : null,
+        screened_at: passed ? new Date().toISOString() : null,
       },
       { onConflict: "response_id,view" },
     );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, screening: screening.status });
 }
-
