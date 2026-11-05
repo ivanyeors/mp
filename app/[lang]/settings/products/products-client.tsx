@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
+import { Trash2, Package, PackagePlus, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
 import { EmptyState } from "@/components/settings/empty-state";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,12 +44,14 @@ import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
 import { stripePriceIdOf, type StripeMode } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
+import { InventoryPushSheet } from "@/components/settings/inventory-push-sheet";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ProductVariant = {
     id: string;
     price: number | null;
+    cost_price?: number | string | null;
     stock_quantity: number | null;
     stock_available?: number | null;
     stripe_price_id?: string | null;
@@ -143,6 +145,17 @@ function getPriceRange(variants: ProductVariant[]): string {
     return min === max ? fmt(min) : `${fmt(min)} to ${fmt(max)}`;
 }
 
+/** "Cost $10.00 to $12.00", from the Variants' Costings mirror; null when none is known. */
+function getCostRange(variants: ProductVariant[]): string | null {
+    const costs = (variants ?? [])
+        .map((v) => (v.cost_price == null || v.cost_price === "" ? null : Number(v.cost_price)))
+        .filter((c): c is number => c != null && Number.isFinite(c));
+    if (costs.length === 0) return null;
+    const min = Math.min(...costs);
+    const max = Math.max(...costs);
+    return min === max ? `Cost ${formatCurrency(min)}` : `Cost ${formatCurrency(min)} to ${formatCurrency(max)}`;
+}
+
 function getTotalStock(variants: ProductVariant[]): { value: number; hasStockAvailable: boolean } {
     if (!variants || variants.length === 0) return { value: 0, hasStockAvailable: false };
     // Prefer stock_available (from variant_stock view) when present
@@ -197,6 +210,12 @@ export function ProductsClient({
     const router = useRouter();
 
     const [tab, setTab] = useState(initialTab);
+    // A link to `?tab=shop` from this page (the push toast) re-renders with a new prop, not a new mount.
+    const [tabFromUrl, setTabFromUrl] = useState(initialTab);
+    if (initialTab !== tabFromUrl) {
+        setTabFromUrl(initialTab);
+        setTab(initialTab);
+    }
 
     // Type filter (replaces old tab system)
     const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -226,6 +245,11 @@ export function ProductsClient({
 
     // Derived: activeTab kept for backward compat in rendering logic
     const activeTab = typeFilter === "accessory" ? "accessories" : "pillows";
+
+    // Inventory items not yet in Products, pushed through a price check.
+    const [pushSheetOpen, setPushSheetOpen] = useState(false);
+    /** Bumped by a push, so the In the shop list shows the new draft. */
+    const [shopListVersion, setShopListVersion] = useState(0);
 
     // Sync state
     const [syncing, setSyncing] = useState(false);
@@ -344,6 +368,12 @@ export function ProductsClient({
     // Phones: the header cluster moves into the bottom dock, within thumb reach.
     useMobileDockActions([
         {
+            id: "add-from-inventory",
+            title: "Add from Inventory",
+            icon: PackagePlus,
+            onClick: () => setPushSheetOpen(true),
+        },
+        {
             id: "sync-inventory",
             title: syncing ? "Syncing…" : "Sync from Inventory",
             icon: RefreshCw,
@@ -436,8 +466,8 @@ export function ProductsClient({
                     icon={Package}
                     action={
                         activeTab === "accessories" ? (
-                            <Button size="sm" variant="outline" onClick={() => setTab("shop")}>
-                                Choose what&apos;s in the shop
+                            <Button size="sm" variant="outline" onClick={() => setPushSheetOpen(true)}>
+                                Add from Inventory
                             </Button>
                         ) : undefined
                     }
@@ -446,7 +476,7 @@ export function ProductsClient({
                         ? "No products match your filters."
                         : activeTab === "pillows"
                         ? "No pillows or bolsters yet. Sync from inventory."
-                        : "Nothing is in the shop yet."}
+                        : "No accessories in Products yet."}
                 </EmptyState>
             );
         }
@@ -484,6 +514,7 @@ export function ProductsClient({
                             const thumbnailUrl = getThumbnailUrl(product.product_images);
                             const title = getProductTitle(product);
                             const priceRange = getPriceRange(product.product_variants);
+                            const costRange = getCostRange(product.product_variants);
                             const { value: stock } = getTotalStock(product.product_variants);
                             const priceWarn = hasPriceWarning(product.product_variants);
                             const stripeWarn = hasMissingStripe(product.product_variants, stripeMode);
@@ -562,6 +593,9 @@ export function ProductsClient({
                                     {/* Price range */}
                                     <TableCell className="px-4 hidden md:table-cell text-sm text-muted-foreground">
                                         <span>{priceRange}</span>
+                                        {costRange && (
+                                            <span className="block text-xs text-muted-foreground/80">{costRange}</span>
+                                        )}
                                         {priceWarn && (
                                             <Badge variant="outline" className="ml-2 text-xs text-amber-600 border-amber-300">
                                                 {product.is_auto_generated ? "No costing source" : "Price not set"}
@@ -729,7 +763,8 @@ export function ProductsClient({
             <div className="flex items-center gap-1.5">
                 <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
                 <InfoTip label="About Products">
-                    Storefront products are built from inventory and priced in Costings.
+                    Storefront products are built from inventory and priced in Costings. Push new
+                    items with Add from Inventory, then switch them on under In the shop.
                 </InfoTip>
             </div>
 
@@ -743,6 +778,14 @@ export function ProductsClient({
                 <TabsContent value="products" className="mt-6 space-y-6">
                     {/* Actions bar */}
                     <PageActions docked>
+                        <Button
+                            size="sm"
+                            className={pageActionClassName}
+                            onClick={() => setPushSheetOpen(true)}
+                        >
+                            <PackagePlus className="mr-2 h-4 w-4" />
+                            Add from Inventory
+                        </Button>
                         <Button
                             size="sm"
                             variant="outline"
@@ -810,7 +853,10 @@ export function ProductsClient({
                 </TabsContent>
 
                 <TabsContent value="shop" className="mt-6">
-                    <ShopListingToggles />
+                    <ShopListingToggles
+                        key={shopListVersion}
+                        onAddFromInventory={() => setPushSheetOpen(true)}
+                    />
                 </TabsContent>
 
                 <TabsContent value="categories" className="mt-6">
@@ -819,6 +865,14 @@ export function ProductsClient({
 
             </Tabs>
 
+            <InventoryPushSheet
+                open={pushSheetOpen}
+                onOpenChange={setPushSheetOpen}
+                onPushed={() => {
+                    void fetchProducts();
+                    setShopListVersion((v) => v + 1);
+                }}
+            />
         </div>
     );
 }

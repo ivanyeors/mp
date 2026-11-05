@@ -25,8 +25,12 @@ A shop listing (`products` + `product_variants`). A projection of inventory: aut
 _Avoid_: listing, SKU (use **Variant** for the priced unit)
 
 **Listed**:
-Whether a **Sellable item** is actually on sale in the shop. Recorded by its **Storefront product** — `products.status = 'active'` with at least one `product_variants.is_active` — which is exactly what the shop query filters on, so there is nothing else to keep in step. Operators flip it per family under Settings → Products → In the shop (`?tab=shop`), which lists every cover, case, protector and accessory in Inventory; un-listing archives to `draft` and never deletes, so re-listing restores the same product rather than minting a duplicate. Items group into one product per (category, name), with sizes as **Variant**s — one switch covers Cervical Neck Support XS–L.
+Whether a **Sellable item** is actually on sale in the shop. Recorded by its **Storefront product** — `products.status = 'active'` with at least one `product_variants.is_active` — which is exactly what the shop query filters on, so there is nothing else to keep in step. Operators flip it per product under Settings → Products → In the shop (`?tab=shop`), which lists the **Storefront product**s on the Products tab, never Inventory directly: an Item gets there by being **Pushed** first. Un-listing sets the product to `draft` and never deletes, so re-listing restores the same product rather than minting a duplicate. Items group into one product per (category, name), with sizes as **Variant**s — one switch covers Cervical Neck Support XS–L.
 _Avoid_: a `sell_as_accessory` column on `items` (a second source of truth the projection already answers); "published" (that is the one-time create, not the on/off state); deleting an un-listed product
+
+**Pushed** (to Products):
+A **Sellable item**'s family made into a **Storefront product** from Inventory, after a price check: Costings must hold a cost and an MSRP for every size, Staff confirm each size's cost, MSRP and margin, and the server refuses the push if Costings changed since (ADR 0045). A first push makes a `draft` product; a later one adds sizes new to Inventory as **Variant**s of the same product. Pushing never puts anything on sale: that is **Listed**.
+_Avoid_: "publish" for the switch that sells it; pushing an Item Costings has not finished
 
 **Variant**:
 A priced, stocked unit of a **Storefront product**, linked to inventory via `item_id`, `pillow_product_id`, and/or `price_key`.

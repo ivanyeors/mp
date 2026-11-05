@@ -7,7 +7,7 @@ import {
   type AddonProductType,
 } from "@/lib/results/addons";
 import { resolveAddonImageUrls, type AddonMediaAsset } from "@/lib/results/addon-images";
-import { familyKey } from "@/lib/ecommerce/shop-listings";
+import { familyKey } from "@/lib/ecommerce/inventory-families";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
