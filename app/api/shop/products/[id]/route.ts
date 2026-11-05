@@ -19,6 +19,8 @@ const UpdateProductSchema = z.object({
     body: z.string().optional().default(""),
     seo_title: z.string().optional().default(""),
     seo_description: z.string().optional().default(""),
+    // The answer lede under the product's title: left out here, every save from the editor erased it.
+    seo_answer: z.string().optional().default(""),
     seo_keywords: z.array(z.string()).optional().default([]),
   })).optional(),
   category_id: z.string().uuid().nullable().optional(),

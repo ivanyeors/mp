@@ -24,6 +24,8 @@ const usage: AiUsageThisMonth = {
     subjects: line(20, 38_000, 12_000, 0.392),
     preview_lines: line(16, 27_200, 4_800, 0.2048),
     rewrite: line(15, 18_000, 6_750, 0.207),
+    product_description: empty,
+    product_seo: empty,
   },
   total: line(89, 197_200, 130_560, 3.4),
   unlistedModelCalls: 0,
@@ -64,7 +66,7 @@ describe("AiWritingForm", () => {
   });
 
   it("says what switching off does", () => {
-    expect(render({ value: { ...AI_WRITING_DEFAULTS, enabled: false } })).toContain("Off. Every ✨ button in campaigns is hidden.");
+    expect(render({ value: { ...AI_WRITING_DEFAULTS, enabled: false } })).toContain("Off. Every ✨ button in campaigns and products is hidden.");
     expect(render()).toContain('aria-checked="true"');
   });
 

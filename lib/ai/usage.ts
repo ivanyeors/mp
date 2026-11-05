@@ -1,7 +1,8 @@
 /**
  * What AI writing spends (PRD-campaign-email-editor slice 16; *Open*, D). Every
  * AI writing call (✨ Generate, slice 09; the refine actions, slice 10; ✨
- * Translate, slice 17) writes one `email_campaign.ai_*` audit entry carrying
+ * Translate, slice 17; the product editor's ✨ Write and ✨ Generate SEO)
+ * writes one audit entry (`email_campaign.ai_*`, or `product.ai_*`) carrying
  * the fields of {@link AiUsageEntry}, never the brief's text. General → AI
  * writing counts this month's entries and prices their tokens from the model
  * list: an estimate, since the Anthropic Console has the bill.
@@ -13,10 +14,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_AI_MODEL_ID, aiModel, tokenCostUsd, type AiModel } from "./models";
 
 /**
- * The kinds of AI writing call. `draft` and `translate` are whole drafts; the
- * rest are quick actions. Each has its own audit action, `email_campaign.ai_<kind>`.
+ * The kinds of AI writing call. `draft` and `translate` are whole drafts, as
+ * are a product's description and its SEO; the rest are quick actions. Each
+ * has its own audit action ({@link aiUsageAction}).
  */
-export const AI_WRITING_KINDS = ["draft", "translate", "subjects", "preview_lines", "rewrite"] as const;
+export const AI_WRITING_KINDS = ["draft", "translate", "subjects", "preview_lines", "rewrite", "product_description", "product_seo"] as const;
 export type AiWritingKind = (typeof AI_WRITING_KINDS)[number];
 
 /** Which effort setting a kind runs at: whole drafts or quick actions. */
@@ -26,6 +28,8 @@ export const AI_WRITING_KIND_EFFORT: Record<AiWritingKind, "draft" | "quick"> = 
   subjects: "quick",
   preview_lines: "quick",
   rewrite: "quick",
+  product_description: "draft",
+  product_seo: "draft",
 };
 
 export const AI_WRITING_KIND_LABEL: Record<AiWritingKind, string> = {
@@ -34,11 +38,20 @@ export const AI_WRITING_KIND_LABEL: Record<AiWritingKind, string> = {
   subjects: "Subject ideas",
   preview_lines: "Preview lines",
   rewrite: "Block rewrites",
+  product_description: "Product descriptions",
+  product_seo: "Product SEO",
 };
 
-export type AiUsageAction = `email_campaign.ai_${AiWritingKind}`;
+/** The kinds the product editor asks for; the rest are a campaign's. */
+type ProductAiKind = Extract<AiWritingKind, `product_${string}`>;
 
-export const aiUsageAction = (kind: AiWritingKind): AiUsageAction => `email_campaign.ai_${kind}`;
+export type AiUsageAction =
+  | `email_campaign.ai_${Exclude<AiWritingKind, ProductAiKind>}`
+  | `product.ai_${ProductAiKind extends `product_${infer K}` ? K : never}`;
+
+/** The audit action a call of `kind` writes: `email_campaign.ai_draft`, `product.ai_seo`. */
+export const aiUsageAction = (kind: AiWritingKind): AiUsageAction =>
+  (kind.startsWith("product_") ? `product.ai_${kind.slice("product_".length)}` : `email_campaign.ai_${kind}`) as AiUsageAction;
 
 export const AI_USAGE_ACTIONS: readonly AiUsageAction[] = AI_WRITING_KINDS.map(aiUsageAction);
 
@@ -142,14 +155,16 @@ export function formatUsageCost(usd: number): string {
 
 const count = (n: number, one: string, many: string) => `${n.toLocaleString("en-SG")} ${n === 1 ? one : many}`;
 
-/** Pure — the month in one line: "38 drafts, 51 quick actions, about US$3.40". */
+/** Pure — the month in one line: "38 drafts, 51 quick actions, 6 product texts, about US$3.40". */
 export function aiUsageSummaryLine(usage: AiUsageEstimate): string {
   if (usage.total.calls === 0) return "No AI writing calls yet this month.";
   const quick = AI_WRITING_KINDS.filter((k) => AI_WRITING_KIND_EFFORT[k] === "quick").reduce((n, k) => n + usage.byKind[k].calls, 0);
+  const product = usage.byKind.product_description.calls + usage.byKind.product_seo.calls;
   const parts = [
     count(usage.byKind.draft.calls, "draft", "drafts"),
     ...(usage.byKind.translate.calls ? [count(usage.byKind.translate.calls, "translation", "translations")] : []),
     count(quick, "quick action", "quick actions"),
+    ...(product ? [count(product, "product text", "product texts")] : []),
   ];
   const cost = formatUsageCost(usage.total.costUsd);
   return `${parts.join(", ")}, ${cost.startsWith("under") ? cost : `about ${cost}`}`;

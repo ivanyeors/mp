@@ -35,10 +35,10 @@ export type AiWritingEffort = (typeof AI_WRITING_EFFORTS)[number];
 export const AI_WRITING_EFFORT_LABEL: Record<AiWritingEffort, string> = { low: "Low", medium: "Medium", high: "High" };
 
 export interface AiWritingSettings {
-  /** Off hides every ✨ button in campaigns. */
+  /** Off hides every ✨ button in campaigns and products. */
   enabled: boolean;
   model: AiModelId;
-  /** ✨ Generate and ✨ Translate. */
+  /** ✨ Generate and ✨ Translate, and a product's ✨ Write and ✨ Generate SEO. */
   effortDraft: AiWritingEffort;
   /** Subject ideas, preview lines and rewriting a block. */
   effortQuick: AiWritingEffort;

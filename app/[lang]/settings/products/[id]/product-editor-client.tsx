@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import {
     Save, Plus, Trash2, Star, Copy, ExternalLink, ChevronDown, ChevronLeft, ChevronRight, Package,
 } from "lucide-react";
@@ -33,9 +32,7 @@ import {
     Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ImagePicker } from "@/components/ui/image-picker";
-import dynamic from "next/dynamic";
-
-const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
+import { MarkdownEditor } from "@/components/markdown-editor/markdown-editor";
 
 import type {
     Product, ProductVariant, ProductImage, ProductCategory,
@@ -43,11 +40,10 @@ import type {
 } from "@/lib/types/ecommerce";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
-import {
-    MOBILE_MD_COMMANDS,
-    MOBILE_MD_EXTRA_COMMANDS,
-} from "@/components/settings/markdown-toolbar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import type { AiWritingAvailability } from "@/lib/ai/availability";
+import { PRODUCT_LOCALES, PRODUCT_SOURCE_LOCALE, type ProductLocale } from "@/lib/ecommerce/product-locales";
+import type { Locale } from "@/lib/i18n/locales";
+import { PRODUCT_SEO_TARGETS, displayWidth } from "@/lib/seo/product-seo";
 import {
     stripePriceIdColumn,
     stripePriceIdOf,
@@ -59,6 +55,8 @@ import {
     MobileStickyActionBar,
     mobileStickyActionBarSpacerClassName,
 } from "@/components/ui/mobile-sticky-action-bar";
+import { DescriptionOfferView, Meter, WriteWithClaude, useProductAi } from "./product-ai";
+import { SeoCard } from "./seo-card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -125,13 +123,15 @@ const EMPTY_CONTENT: LocalizedProductContent = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Same shape `fetchProduct` builds from a loaded row. */
+/** Same shape `fetchProduct` builds from a loaded row: one entry per language the editor has a tab for. */
 function contentFromProduct(p: LoadedProduct | null): ContentMap {
-    return {
-        "en-US": { ...EMPTY_CONTENT, ...(p?.content?.["en-US"] ?? {}) },
-        "zh-CN": { ...EMPTY_CONTENT, ...(p?.content?.["zh-CN"] ?? {}) },
-    };
+    return Object.fromEntries(
+        PRODUCT_LOCALES.map((l) => [l.code, { ...EMPTY_CONTENT, ...(p?.content?.[l.code] ?? {}) }]),
+    );
 }
+
+/** Off until the page says otherwise: no ✨ shows. */
+const AI_OFF: AiWritingAvailability = { on: false, configured: false };
 
 function slugify(str: string): string {
     return str
@@ -150,9 +150,12 @@ function formatPrice(val: number, currency = "SGD"): string {
 
 export function ProductEditorClient({
     initialData,
+    ai = AI_OFF,
     stripeMode,
 }: {
     initialData?: ProductEditorInitialData;
+    /** Whether ✨ Write and ✨ Generate SEO are on offer, read by the page. */
+    ai?: AiWritingAvailability;
     /**
      * Which Stripe account this deploy uses, read on the server from its key. The
      * browser cannot see that key, and guessing read the other account's column — so
@@ -162,8 +165,6 @@ export function ProductEditorClient({
 }) {
     const router = useRouter();
     const params = useParams();
-    const { resolvedTheme } = useTheme();
-    const isMobile = useIsMobile();
     const id = (Array.isArray(params?.id) ? params.id[0] : params?.id) ?? "new";
     const isNew = id === "new";
 
@@ -199,6 +200,8 @@ export function ProductEditorClient({
     const [content, setContent] = useState<ContentMap>(() =>
         contentFromProduct(initialProduct),
     );
+    const [contentLocale, setContentLocale] = useState<Locale>(PRODUCT_SOURCE_LOCALE);
+    const productAi = useProductAi(id);
 
     useSettingsBreadcrumbDetail(
         isNew ? "New product" : (content["en-US"]?.title?.trim() || null),
@@ -222,7 +225,6 @@ export function ProductEditorClient({
     const [variantForm, setVariantForm] = useState<VariantFormState>(EMPTY_VARIANT_FORM);
     const [variantSaving, setVariantSaving] = useState(false);
     const [variantsOpen, setVariantsOpen] = useState(true);
-    const [seoOpen, setSeoOpen] = useState(false);
 
     // ── Async flags ──
     const [loading, setLoading] = useState(!isNew && !initialData);
@@ -315,6 +317,30 @@ export function ProductEditorClient({
             ...prev,
             [locale]: { ...prev[locale], [field]: value },
         }));
+    };
+
+    // ✨ Write's words go in as one change, which the toast's Undo takes back.
+    const applyDescription = (
+        r: { locale: Locale; description: string | null; body: string | null },
+        take: { description: boolean; body: boolean },
+    ) => {
+        const before = content[r.locale] ?? EMPTY_CONTENT;
+        const fields: (keyof LocalizedProductContent)[] = [];
+        if (take.description && r.description !== null) {
+            updateContent(r.locale, "description", r.description);
+            fields.push("description");
+        }
+        if (take.body && r.body !== null) {
+            updateContent(r.locale, "body", r.body);
+            fields.push("body");
+        }
+        productAi.clear("description");
+        toast.success("Claude's words are in. Save to keep them.", {
+            action: {
+                label: "Undo",
+                onClick: () => fields.forEach((f) => updateContent(r.locale, f, (before[f] as string | undefined) ?? "")),
+            },
+        });
     };
 
     // ── Tags ──
@@ -685,10 +711,22 @@ export function ProductEditorClient({
     );
 
     // ── Locale tab content renderer ──
-    const renderLocaleTab = (locale: string) => {
+    const renderLocaleTab = (l: ProductLocale) => {
+        const locale = l.code;
         const loc = content[locale] ?? EMPTY_CONTENT;
+        const offer = productAi.description;
+        const mine = offer && offer.request.locale === locale ? offer : null;
         return (
             <div className="space-y-4 pt-4">
+                {mine ? (
+                    <DescriptionOfferView
+                        key={mine.status}
+                        offer={mine}
+                        onUse={applyDescription}
+                        onTryAgain={() => productAi.run(mine.request)}
+                        onDiscard={() => productAi.clear("description")}
+                    />
+                ) : null}
                 <div className="space-y-1.5">
                     <Label htmlFor={`title-${locale}`}>Title</Label>
                     <Input
@@ -699,27 +737,32 @@ export function ProductEditorClient({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <Label htmlFor={`desc-${locale}`}>Short description</Label>
+                    <div className="flex items-baseline justify-between gap-2">
+                        <Label htmlFor={`desc-${locale}`}>Short description</Label>
+                        <Meter
+                            n={displayWidth(loc.description ?? "")}
+                            range={PRODUCT_SEO_TARGETS.shortDescription}
+                            title={l.counts === "characters" ? "Characters, a Chinese character counting as two" : "Characters"}
+                        />
+                    </div>
                     <Textarea
                         id={`desc-${locale}`}
                         value={loc.description ?? ""}
                         onChange={(e) => updateContent(locale, "description", e.target.value)}
-                        placeholder="Brief description shown in listings"
-                        rows={3}
+                        placeholder="One or two sentences, shown on shop listings and under the title"
+                        rows={2}
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <Label htmlFor={`body-${locale}`}>Body</Label>
-                    <div data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}>
-                        <MDEditor
-                            value={loc.body ?? ""}
-                            onChange={(val) => updateContent(locale, "body", val ?? "")}
-                            height={300}
-                            preview="edit"
-                            commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
-                            extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}
-                        />
-                    </div>
+                    <Label id={`body-${locale}-label`} htmlFor={`body-${locale}`}>Body</Label>
+                    <MarkdownEditor
+                        id={`body-${locale}`}
+                        aria-labelledby={`body-${locale}-label`}
+                        value={loc.body ?? ""}
+                        onChange={(val) => updateContent(locale, "body", val)}
+                        placeholder="What it is, who it's for, how it fits and how to care for it. Shown in the Description tab."
+                        counts={l.counts}
+                    />
                 </div>
             </div>
         );
@@ -770,19 +813,37 @@ export function ProductEditorClient({
                 {/* ── LEFT COLUMN ── */}
                 <div className="lg:col-span-2 space-y-6">
 
-                    {/* Locale content tabs */}
+                    {/* Locale content tabs: one per language the shop is written in */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Content</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <Tabs defaultValue="en-US">
-                                <TabsList>
-                                    <TabsTrigger value="en-US">English</TabsTrigger>
-                                    <TabsTrigger value="zh-CN">中文</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="en-US">{renderLocaleTab("en-US")}</TabsContent>
-                                <TabsContent value="zh-CN">{renderLocaleTab("zh-CN")}</TabsContent>
+                            <Tabs value={contentLocale} onValueChange={(v) => setContentLocale(v as Locale)}>
+                                {/* The strip takes what the button leaves, and turns into a menu when the languages outgrow it. */}
+                                <div className="flex items-center gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <TabsList aria-label="Language">
+                                            {PRODUCT_LOCALES.map((l) => (
+                                                <TabsTrigger key={l.code} value={l.code}>{l.label}</TabsTrigger>
+                                            ))}
+                                        </TabsList>
+                                    </div>
+                                    {ai.on && !isNew ? (
+                                        <WriteWithClaude
+                                            key={contentLocale}
+                                            ai={ai}
+                                            locale={contentLocale}
+                                            content={content}
+                                            offer={productAi.description}
+                                            onRun={productAi.run}
+                                            onStop={() => productAi.clear("description")}
+                                        />
+                                    ) : null}
+                                </div>
+                                {PRODUCT_LOCALES.map((l) => (
+                                    <TabsContent key={l.code} value={l.code}>{renderLocaleTab(l)}</TabsContent>
+                                ))}
                             </Tabs>
                         </CardContent>
                     </Card>
@@ -1236,96 +1297,21 @@ export function ProductEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* SEO (collapsible) */}
-                    <Collapsible open={seoOpen} onOpenChange={setSeoOpen}>
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CollapsibleTrigger asChild>
-                                    <button type="button" className="flex items-center justify-between w-full text-left transition-opacity active:opacity-60 max-md:min-h-11">
-                                        <CardTitle>SEO</CardTitle>
-                                        <ChevronDown
-                                            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${seoOpen ? "rotate-180" : ""}`}
-                                        />
-                                    </button>
-                                </CollapsibleTrigger>
-                            </CardHeader>
-                            <CollapsibleContent>
-                                <CardContent className="pt-0 space-y-4">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="slug-input">Slug</Label>
-                                        <Input
-                                            id="slug-input"
-                                            value={slug}
-                                            onChange={(e) => {
-                                                setSlug(e.target.value);
-                                                setSlugManuallyEdited(true);
-                                            }}
-                                            placeholder="product-slug"
-                                            className="text-base md:text-sm"
-                                            disabled={isAutoGenerated}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="seo-title-en">SEO title (EN)</Label>
-                                        <Input
-                                            id="seo-title-en"
-                                            value={content["en-US"]?.seo_title ?? ""}
-                                            onChange={(e) => updateContent("en-US", "seo_title", e.target.value)}
-                                            placeholder="Defaults to product title"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="seo-answer-en">Answer lede (EN, 60 to 120 words)</Label>
-                                        <Textarea
-                                            id="seo-answer-en"
-                                            value={content["en-US"]?.seo_answer ?? ""}
-                                            onChange={(e) => updateContent("en-US", "seo_answer", e.target.value)}
-                                            placeholder="A direct answer shown under the product title"
-                                            rows={3}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="seo-desc-en">SEO description (EN)</Label>
-                                        <Textarea
-                                            id="seo-desc-en"
-                                            value={content["en-US"]?.seo_description ?? ""}
-                                            onChange={(e) => updateContent("en-US", "seo_description", e.target.value)}
-                                            placeholder="Defaults to short description"
-                                            rows={3}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="seo-title-zh">SEO title (ZH)</Label>
-                                        <Input
-                                            id="seo-title-zh"
-                                            value={content["zh-CN"]?.seo_title ?? ""}
-                                            onChange={(e) => updateContent("zh-CN", "seo_title", e.target.value)}
-                                            placeholder="Defaults to product title"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="seo-answer-zh">Answer lede (ZH)</Label>
-                                        <Textarea
-                                            id="seo-answer-zh"
-                                            value={content["zh-CN"]?.seo_answer ?? ""}
-                                            onChange={(e) => updateContent("zh-CN", "seo_answer", e.target.value)}
-                                            rows={3}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="seo-desc-zh">SEO description (ZH)</Label>
-                                        <Textarea
-                                            id="seo-desc-zh"
-                                            value={content["zh-CN"]?.seo_description ?? ""}
-                                            onChange={(e) => updateContent("zh-CN", "seo_description", e.target.value)}
-                                            placeholder="Defaults to short description"
-                                            rows={3}
-                                        />
-                                    </div>
-                                </CardContent>
-                            </CollapsibleContent>
-                        </Card>
-                    </Collapsible>
+                    {/* SEO: the slug, then one tab per language */}
+                    <SeoCard
+                        slug={slug}
+                        onSlug={(v) => {
+                            setSlug(v);
+                            setSlugManuallyEdited(true);
+                        }}
+                        slugLocked={isAutoGenerated}
+                        content={content}
+                        update={updateContent}
+                        ai={isNew ? AI_OFF : ai}
+                        offer={productAi.seo}
+                        onRun={productAi.run}
+                        onClear={() => productAi.clear("seo")}
+                    />
                 </div>
             </div>
 

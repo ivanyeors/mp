@@ -24,7 +24,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
   - `recordAdminAction()` [insert] — lib/auth/audit.ts:36
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:58
-  - `readAiUsageThisMonth()` [select] — lib/ai/usage.ts:177
+  - `readAiUsageThisMonth()` [select] — lib/ai/usage.ts:192
   - `readCancels()` [select] — lib/crm/timeline/sources/results.ts:178
   - `readRecentCampaignSends()` [select] — lib/customer-migration/campaign-ledger.ts:275
   - `readjustments.ts` [select] — lib/crm/timeline/sources/readjustments.ts:77
@@ -329,6 +329,7 @@ Changed from pages: `/settings/discounts/[id]`, `/settings/media`, `/settings/pr
   - `reorderCategories()` [update] — app/[lang]/settings/categories/actions.ts:26
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:373
 - Read by:
+  - `POST()` [select] — app/api/shop/products/[id]/ai/route.ts:58
   - `categories.ts` [select] — lib/ecommerce/categories.ts:8
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:995
   - `getCategoryBySlug()` [select] — lib/ecommerce/categories.ts:61
@@ -1361,8 +1362,8 @@ Defined in supabase/migrations/0028_ecommerce.sql:45
 References: `categories`
 Changed from pages: `/settings/costings`, `/settings/costings/services`, `/settings/products`, `/settings/products/[id]`
 - Written by:
-  - `DELETE()` [delete] — app/api/shop/products/[id]/route.ts:101
-  - `PATCH()` [select,update] — app/api/shop/products/[id]/route.ts:59
+  - `DELETE()` [delete] — app/api/shop/products/[id]/route.ts:103
+  - `PATCH()` [select,update] — app/api/shop/products/[id]/route.ts:61
   - `activate()` [update] — lib/ecommerce/shop-listings.ts:281
   - `adoptManualProducts()` [select,update] — lib/ecommerce/inventory-sync.ts:359
   - `archiveUnsellableItemProducts()` [select,update] — lib/ecommerce/inventory-sync.ts:331
@@ -1377,6 +1378,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
 - Read by:
   - `PATCH()` [select] — app/api/shop/products/[id]/variants/[variantId]/route.ts:43
   - `POST()` [select] — app/api/checkout/code/route.ts:129
+  - `POST()` [select] — app/api/shop/products/[id]/ai/route.ts:48
   - `POST()` [select] — app/api/shop/products/[id]/variants/route.ts:60
   - `getAdminProduct()` [select] — lib/ecommerce/admin/products.ts:92
   - `getComposedProductImageUrls()` [select] — app/[lang]/settings/inventory/actions.ts:466
@@ -2787,8 +2789,8 @@ app/[lang]/settings/products/page.tsx
 
 ### /settings/products/[id]
 app/[lang]/settings/products/[id]/page.tsx
-- Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`, `/api/shop/categories [GET]`, `/api/shop/products [POST]`, `/api/shop/products/[id] [GET,PATCH]`, `/api/shop/products/[id]/images [POST]`, `/api/shop/products/[id]/images/[imageId] [DELETE]`, `/api/shop/products/[id]/images/reorder [PUT]`, `/api/shop/products/[id]/variants [POST]`, `/api/shop/products/[id]/variants/[variantId] [DELETE,PATCH]`, `/api/stripe/payment-link [POST]`, `/api/stripe/sync [POST]`
-- Loads: `getAdminProduct()`, `requireAdminPage()`
+- Endpoints: `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`, `/api/shop/categories [GET]`, `/api/shop/products [POST]`, `/api/shop/products/[id] [GET,PATCH]`, `/api/shop/products/[id]/ai [POST]`, `/api/shop/products/[id]/images [POST]`, `/api/shop/products/[id]/images/[imageId] [DELETE]`, `/api/shop/products/[id]/images/reorder [PUT]`, `/api/shop/products/[id]/variants [POST]`, `/api/shop/products/[id]/variants/[variantId] [DELETE,PATCH]`, `/api/stripe/payment-link [POST]`, `/api/stripe/sync [POST]`
+- Loads: `getAdminProduct()`, `readAiWritingAvailability()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `categories`, `media_assets`, `media_folders`, `mp_staff`, `product_images`, `product_variants`, `products`
 - Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `bom_lines`, `email_campaigns`, `item_overlay_mappings`, `items`, `landing_sections`, `partners`, `partners_page`, `pillow_products`, `site_settings`, `variant_stock`
 

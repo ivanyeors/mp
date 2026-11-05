@@ -140,8 +140,8 @@ export function AiWritingForm({
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground">
           {value.enabled
-            ? "On. Campaigns show the ✨ buttons."
-            : "Off. Every ✨ button in campaigns is hidden."}
+            ? "On. Campaigns and products show the ✨ buttons."
+            : "Off. Every ✨ button in campaigns and products is hidden."}
         </p>
       </div>
 
@@ -162,7 +162,7 @@ export function AiWritingForm({
           </Select>
           <p className="text-xs text-muted-foreground">{price(model)}</p>
         </div>
-        {effortSelect("ai-writing-effort-draft", "Effort for whole drafts", "✨ Generate and ✨ Translate.", "effortDraft")}
+        {effortSelect("ai-writing-effort-draft", "Effort for whole drafts", "✨ Generate, ✨ Translate, and a product's ✨ Write and ✨ Generate SEO.", "effortDraft")}
         {effortSelect(
           "ai-writing-effort-quick",
           "Effort for quick actions",
@@ -286,7 +286,7 @@ export function AiWritingSection({ configured }: { configured?: boolean } = {}) 
           <h2 className="text-sm font-medium">AI writing</h2>
         </CollapsibleTrigger>
         <InfoTip label="About AI writing">
-          The ✨ buttons in the campaign editor ask Claude to write. Set the model, how hard it
+          The ✨ buttons in the campaign and product editors ask Claude to write. Set the model, how hard it
           thinks and how often each Staff member may ask. Review replies keep their own settings.
         </InfoTip>
         <CollapsibleTrigger aria-label="Toggle AI writing" className="flex flex-1 justify-end self-stretch">
