@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireResultAccess } from "@/lib/results/access";
 import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { screenSizingPhoto, screenableImage } from "@/lib/ai/photo-screening";
+import { sizingPhotoAsWebp } from "@/lib/results/sizing-photo-webp";
 
 export const runtime = "nodejs";
 
@@ -72,9 +73,15 @@ export async function POST(req: Request) {
   );
   if (limited) return limited;
 
+  // Kept as WebP; Claude checks the WebP, so it sees exactly what is stored.
+  const stored = await sizingPhotoAsWebp(image);
+  if (!stored) {
+    return NextResponse.json({ error: "We couldn't read this photo. Please take another one.", screening: "rejected" }, { status: 422 });
+  }
+
   // ADR 0047: a photo Claude rejects is never stored. One it couldn't check is
   // kept as `unchecked`, and Telegram leaves it out until a check passes it.
-  const screening = await screenSizingPhoto(image, view);
+  const screening = await screenSizingPhoto(stored.image, view);
   if (screening.status === "rejected") {
     return NextResponse.json({ error: screening.reason, screening: "rejected" }, { status: 422 });
   }
@@ -89,7 +96,7 @@ export async function POST(req: Request) {
       {
         response_id: responseId,
         view,
-        data_url: dataUrl,
+        data_url: stored.dataUrl,
         screening_status: screening.status,
         screening_model: passed ? screening.model : null,
         screened_at: passed ? new Date().toISOString() : null,

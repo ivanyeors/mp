@@ -59,14 +59,23 @@ beforeEach(() => {
 });
 
 describe("POST /api/mp-config/photos screening", () => {
-  it("keeps a photo that passed, marked with the model and when", async () => {
+  it("keeps a photo that passed as WebP, marked with the model and when", async () => {
     screenAs({ status: "passed", model: "claude-haiku-5-5" });
     const res = await post();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, screening: "passed" });
-    expect(h.screen).toHaveBeenCalledWith({ mediaType: "image/png", base64: PNG.split(",")[1] }, "side");
+    // Claude checks the WebP, and the WebP is what is stored.
+    const [screened, view] = h.screen.mock.calls[0];
+    expect(view).toBe("side");
+    expect(screened.mediaType).toBe("image/webp");
     expect(h.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ view: "side", data_url: PNG, screening_status: "passed", screening_model: "claude-haiku-5-5", screened_at: expect.any(String) }),
+      expect.objectContaining({
+        view: "side",
+        data_url: `data:image/webp;base64,${screened.base64}`,
+        screening_status: "passed",
+        screening_model: "claude-haiku-5-5",
+        screened_at: expect.any(String),
+      }),
       { onConflict: "response_id,view" },
     );
   });
@@ -87,6 +96,14 @@ describe("POST /api/mp-config/photos screening", () => {
       expect.objectContaining({ screening_status: "unchecked", screening_model: null, screened_at: null }),
       expect.anything(),
     );
+  });
+
+  it("turns down an image sharp can't read before asking Claude", async () => {
+    const res = await post(`data:image/jpeg;base64,${Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(40, 7)]).toString("base64")}`);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: "We couldn't read this photo. Please take another one.", screening: "rejected" });
+    expect(h.screen).not.toHaveBeenCalled();
+    expect(h.upsert).not.toHaveBeenCalled();
   });
 
   it("turns down a file Claude can't read before asking it", async () => {

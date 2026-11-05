@@ -36,7 +36,13 @@ what passes.**
 - **The phone makes the photo smaller first** (`lib/images/shrink-photo.ts`): at most 2,000 px on
   the long side, re-encoded as JPEG. That keeps the upload under Vercel's 4.5 MB request limit,
   which a full-size phone photo as a data URL often broke. It also gives Claude a format it reads,
-  drops the photo's metadata (including where it was taken), and keeps the check cheap.
+  drops the photo's metadata (including where it was taken), and keeps the check cheap. It is a
+  JPEG, not WebP, because not every phone browser can write WebP.
+- **The server keeps it as WebP** (`lib/results/sizing-photo-webp.ts`), through the same sharp
+  pipeline the Media library and Staff reference photos use (`optimizeImageForWeb`, quality 80,
+  long edge capped at 2,000 px again in case a browser sent its original). The conversion runs
+  before the check, so Claude screens exactly the bytes that are stored. Photos stored before this
+  are converted once by `scripts/sizing-photos-to-webp.ts`.
 - **A per-Result and per-address limit** on the route (12 checks per Result an hour, 30 per
   address per 10 minutes), since every upload is a paid call on a route guests reach.
 

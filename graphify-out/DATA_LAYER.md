@@ -839,7 +839,8 @@ Defined in supabase/migrations/0024_mp_config_response_photos.sql:7
 References: `mp_config_responses`
 Changed from pages: `/mp-basic`, `/mp-config`, `/settings/orders/[id]`, `/settings/results`, `/settings/results/[id]`
 - Written by:
-  - `POST()` [upsert] — app/api/mp-config/photos/route.ts:86
+  - `POST()` [upsert] — app/api/mp-config/photos/route.ts:93
+  - `main()` [select,update] — scripts/sizing-photos-to-webp.ts:31
   - `sizingPhotosForTelegram()` [delete,update] — lib/results/sizing-photos.ts:54
 - Read by:
   - `POST()` [select] — app/api/mp-config/responses/route.ts:517
@@ -882,7 +883,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `GET()` [select] — app/api/results/queue-counts/route.ts:24
   - `GET()` [select] — app/api/results/route.ts:35
   - `POST()` [select] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:174
-  - `POST()` [select] — app/api/mp-config/photos/route.ts:43
+  - `POST()` [select] — app/api/mp-config/photos/route.ts:44
   - `POST()` [select] — app/api/results/[id]/reorder/route.ts:43
   - `companionLockReason()` [select] — lib/results/pair-ending.ts:94
   - `fetchLiveResultCouponUseCount()` [select] — lib/ecommerce/discounts.ts:214

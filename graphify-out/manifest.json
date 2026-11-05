@@ -1914,9 +1914,9 @@
     "semantic_hash": ""
   },
   "app/api/mp-config/photos/route.ts": {
-    "mtime": 1793894534.0921023,
-    "seen": 1793895314.376658,
-    "ast_hash": "52d00882ffb9167a4be670c358642dcf",
+    "mtime": 1793895451.2712152,
+    "seen": 1793895815.1572065,
+    "ast_hash": "549101f5c3a005458c799c5cd1dfacf5",
     "semantic_hash": ""
   },
   "app/api/mp-config/responses/[id]/route.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793894707.0578597,
-    "seen": 1793895314.5317364,
-    "ast_hash": "80bac511c52d47e38e4454f8e4e0208c",
+    "mtime": 1793895526.2521443,
+    "seen": 1793895815.1616552,
+    "ast_hash": "d6ab83e6b0864ec207eb828c67e72b97",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -18096,9 +18096,9 @@
     "semantic_hash": ""
   },
   "app/api/mp-config/__tests__/photo-screening-route.test.ts": {
-    "mtime": 1793894408.052105,
-    "seen": 1793895314.3766358,
-    "ast_hash": "2c1a9a81b5d5b2ea53922fd130b66f36",
+    "mtime": 1793895490.1431592,
+    "seen": 1793895815.1571906,
+    "ast_hash": "d676447aa74f63736a75089a01e45ee8",
     "semantic_hash": ""
   },
   "lib/ai/__tests__/photo-screening.test.ts": {
@@ -18120,9 +18120,9 @@
     "semantic_hash": ""
   },
   "lib/images/shrink-photo.ts": {
-    "mtime": 1793894306.8641074,
-    "seen": 1793895314.3796346,
-    "ast_hash": "3620108175c1b92929154a65464f3e0d",
+    "mtime": 1793895451.271855,
+    "seen": 1793895815.1588025,
+    "ast_hash": "ed9c66bd1470c67b7feac746f18a21ea",
     "semantic_hash": ""
   },
   "lib/results/__tests__/sizing-photos.test.ts": {
@@ -18138,15 +18138,33 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20261105120000_sizing_photo_screening.sql": {
-    "mtime": 1793894223.5321093,
-    "seen": 1793895314.5307155,
-    "ast_hash": "b302e4a2750ba28dd6a2c27f275792f2",
+    "mtime": 1793895526.2529993,
+    "seen": 1793895815.160594,
+    "ast_hash": "f04657e573baaf07fe66c346bffe54ba",
     "semantic_hash": ""
   },
   "docs/adr/0047-sizing-photos-screened-by-claude.md": {
-    "mtime": 1793894981.121595,
-    "seen": 1793895314.5318484,
-    "ast_hash": "f0cce615773dcd1e0b2f05c4c8d8a0fd",
+    "mtime": 1793895526.247876,
+    "seen": 1793895815.1617963,
+    "ast_hash": "cb303dddf1c054b9f7d3efccd359613d",
+    "semantic_hash": ""
+  },
+  "lib/results/__tests__/sizing-photo-webp.test.ts": {
+    "mtime": 1793895478.9800806,
+    "seen": 1793895815.1591136,
+    "ast_hash": "f8435d15e2a051b1d1917a0f80cfda88",
+    "semantic_hash": ""
+  },
+  "lib/results/sizing-photo-webp.ts": {
+    "mtime": 1793895443.3160813,
+    "seen": 1793895815.1591735,
+    "ast_hash": "a38ad8cd4c24a3ca5354500d2368cbef",
+    "semantic_hash": ""
+  },
+  "scripts/sizing-photos-to-webp.ts": {
+    "mtime": 1793895471.3320808,
+    "seen": 1793895815.1598837,
+    "ast_hash": "5c5ce47a51fce9b06efab6976fbc26aa",
     "semantic_hash": ""
   }
 }

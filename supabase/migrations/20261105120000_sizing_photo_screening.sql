@@ -10,6 +10,9 @@
 --   null       Uploaded before screening existed. Treated as unchecked.
 --
 -- screening_model is the model that passed it; screened_at is when.
+--
+-- data_url now holds a WebP (lib/results/sizing-photo-webp.ts); rows from before are
+-- converted once by scripts/sizing-photos-to-webp.ts.
 
 alter table public.mp_config_response_photos
   add column if not exists screening_status text,

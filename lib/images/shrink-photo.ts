@@ -5,7 +5,9 @@
  * could not be sent at all. Redrawing it also writes a plain JPEG (one Claude
  * can read, whatever the phone saved), drops the photo's metadata, including
  * where it was taken, and keeps Claude's check cheap. 2,000 px on the long side
- * is still plenty for the build team to size from.
+ * is still plenty for the build team to size from. It is a JPEG because not
+ * every phone browser can write WebP; the server stores it as WebP
+ * (lib/results/sizing-photo-webp.ts).
  */
 
 export const SIZING_PHOTO_MAX_EDGE = 2000;
