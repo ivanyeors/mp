@@ -1,6 +1,6 @@
 "use client";
 
-import { placedChargeLines, priceComposedBuild } from "@/lib/pricing/composed-price";
+import { priceComposedBuild } from "@/lib/pricing/composed-price";
 import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
 import type { ServicePrices } from "@/lib/pricing/service-prices";
 
@@ -220,7 +220,7 @@ import {
   StaffAssistPanel,
   type FillingItem,
 } from "@/components/configurator/staff-assist-panel";
-import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
+import { isInPillowAccessory, isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
 import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
@@ -237,7 +237,6 @@ import {
 } from "@/lib/spatial-fillings/dimension-overrides";
 import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import {
-  flattenToPackList,
   pillowPlacementsToRows,
   rowsToPillowPlacements,
   type PillowPlacement,
@@ -1739,17 +1738,23 @@ export function MpConfigClient({
     }));
 
     // Templates are scoped by size, so only a size change replaces the mix.
-    const neckSupportIds = new Set(
+    const accessoryIds = new Set(
       assistItems
-        .filter((i) => isNeckSupportItem({ category: i.category, name: i.name }))
+        .filter((i) => isInPillowAccessory({ category: i.category, name: i.name }))
         .map((i) => i.id),
     );
-    const kept = mixAfterTierChange(from, next, assistPlacements, (id) => neckSupportIds.has(id));
+    const neckIds = new Set(
+      assistItems.filter((i) => isNeckSupportItem({ category: i.category, name: i.name })).map((i) => i.id),
+    );
+    const kept = mixAfterTierChange(from, next, assistPlacements, (id) => accessoryIds.has(id));
     if (kept) {
       setAssistPlacements(kept.placements);
       if (kept.removed > 0) {
-        toast.message("Neck support removed", {
-          description: "A neck support is for Premium pillows only.",
+        const onlyNeck = assistPlacements.every((p) => !accessoryIds.has(p.itemId) || neckIds.has(p.itemId));
+        toast.message(onlyNeck ? "Neck support removed" : "Accessories removed", {
+          description: onlyNeck
+            ? "A neck support is for Premium pillows only."
+            : "A neck support or ear pad is for Premium pillows only.",
         });
       }
     } else {
@@ -2747,17 +2752,6 @@ export function MpConfigClient({
     // same function, same Costings inputs. It used to show the shelf price while the
     // server charged shelf + cover + case, a 113 gap on a premium XS.
     const pricingInputs = shopRecommendation?.pricing ?? null;
-    // Placed neck supports are charged on top (the server adds the same lines).
-    const [placed, placedItems] = staffAssist
-      ? [assistPlacements, assistItems]
-      : resumeFinish
-        ? [guestPlacements, resumeFinish.items]
-        : [[], []];
-    const placedCharges = placedChargeLines(
-      flattenToPackList(placed),
-      new Map(placedItems.map((i) => [i.id, i])),
-      new Map(placedItems.flatMap((i) => (i.msrp == null ? [] : [[i.id, Number(i.msrp)] as const]))),
-    );
     const quote = pricingInputs
       ? priceComposedBuild({
           msrpByFamily: pricingInputs.msrp_by_family,
@@ -2778,7 +2772,9 @@ export function MpConfigClient({
                   item_id: selectedCase,
                   msrp: null,
                 }),
-          addonLines: placedCharges,
+          // Add-ons are added below (addonTotal). A placed neck support is in the
+          // pillow's MSRP, like the fillings, so the x-ray never moves the price.
+          addonLines: [],
         })
       : null;
     // A refused quote must NOT fall back to the shelf price. That is how the preview

@@ -59,10 +59,12 @@ describe("recipePlacements", () => {
 describe("sampleItemMaps", () => {
   it("labels the fold apart from the plain 6D and resolves each Item as the testing preview did", () => {
     const { itemSubtypes, itemSizes, itemDims } = sampleItemMaps();
-    expect([...itemSubtypes]).toEqual([[1, "6D"], [2, "6D Fold"], [3, "3D"], [4, "Cervical Neck Support"]]);
+    expect([...itemSubtypes]).toEqual([[1, "6D"], [2, "6D Fold"], [3, "3D"], [4, "Cervical Neck Support"], [5, "Ear Comfort Pad"]]);
     expect(itemSizes.get(4)).toBe("M");
-    expect([1, 2, 3, 4].map((id) => itemDims.get(id)?.key)).toEqual(["6d/s", "6d/s", "3d/s", "neck/m"]);
+    expect(itemSizes.get(5)).toBeNull();
+    expect([1, 2, 3, 4, 5].map((id) => itemDims.get(id)?.key)).toEqual(["6d/s", "6d/s", "3d/s", "neck/m", "ear/one-size"]);
     expect(itemDims.get(4)?.kind).toBe("neck");
+    expect(itemDims.get(5)).toMatchObject({ kind: "pouch", source: "fallback", dims: { widthMm: 180, lengthMm: 180, thicknessMm: 40 } });
   });
 });
 

@@ -2,7 +2,7 @@
 
 import { assembleBuild, findStockShortages, type BuildLine } from "@/lib/build-assembly";
 import { priceResult, type PriceResultOutput } from "@/lib/result-pricing";
-import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import {
   loadResultServiceLines,
   sumServiceLines,
@@ -19,6 +19,7 @@ import {
 } from "@/lib/results/composed-sellable";
 import {
   derivePackList,
+  placementKind,
   type BolsterPlacementRow,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
@@ -241,11 +242,11 @@ export async function loadAssignedBuild(
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  const fillingTemplateLines = fillPack.map((l) => ({
-    item_id: l.item_id,
-    quantity: l.count,
-    category: itemById.get(l.item_id)?.category ?? "unknown",
-  }));
+  // `placementKind` tells a placed neck support from a filling: both go inside.
+  const fillingTemplateLines = fillPack.map((l) => {
+    const item = itemById.get(l.item_id);
+    return { item_id: l.item_id, quantity: l.count, category: item ? placementKind(item) : "unknown" };
+  });
 
   const assembled = assembleBuild({
     composedBomLines: composedBomRaw,
@@ -274,13 +275,11 @@ export async function loadAssignedBuild(
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    addonLines: [
-      ...addonLines.map((l) => ({
-        msrp: msrpByItem.get(l.item_id) ?? null,
-        quantity: l.quantity,
-      })),
-      ...placedChargeLines(fillPack, itemById, msrpByItem),
-    ],
+    // Add-ons only: a placed neck support is in the pillow's MSRP, like the fillings.
+    addonLines: addonLines.map((l) => ({
+      msrp: msrpByItem.get(l.item_id) ?? null,
+      quantity: l.quantity,
+    })),
   });
   if (!goods.ok) return { ok: false, error: goods.error };
 

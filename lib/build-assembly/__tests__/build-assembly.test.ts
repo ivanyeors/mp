@@ -104,6 +104,34 @@ describe("assembleBuild", () => {
     if (result.ok) return;
     expect(result.error).toContain("2");
   });
+
+  it("ships a neck support placed in the pillow beside the fillings", () => {
+    // `placementKind` tags it `neck_support`; an Accessories line by category
+    // alone used to refuse every premium Result that had one placed.
+    const result = assembleBuild({
+      composedBomLines: [],
+      fillingTemplateLines: [
+        { item_id: 4, quantity: 2, category: "filling" },
+        { item_id: 61, quantity: 1, category: "neck_support" },
+      ],
+      preferenceLines: [],
+      addonLines: [],
+      costByItem: new Map([...costs, [61, 9]]),
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.lines.filter((l) => l.role === "filling").map((l) => l.item_id)).toEqual([4, 61]);
+    expect(result.cogs).toBe(2 * (costs.get(4) ?? 0) + 9);
+
+    const raw = assembleBuild({
+      composedBomLines: [],
+      fillingTemplateLines: [{ item_id: 61, quantity: 1, category: "accessories" }],
+      preferenceLines: [],
+      addonLines: [],
+      costByItem: costs,
+    });
+    expect(raw.ok).toBe(false);
+  });
 });
 
 describe("findStockShortages", () => {

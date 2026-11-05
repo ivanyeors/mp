@@ -3,6 +3,7 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { readAiWritingAvailability } from "@/lib/ai/page-availability";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
+import { stripeMode } from "@/lib/stripe/mode";
 import {
     ProductEditorClient,
     type LoadedProduct,
@@ -48,5 +49,7 @@ export default async function ProductEditorPage({
               }
             : undefined;
 
-    return <ProductEditorClient initialData={initialData} ai={ai} />;
+    // The browser cannot see STRIPE_SECRET_KEY, so it is told which account's ids
+    // to read rather than left to guess.
+    return <ProductEditorClient initialData={initialData} ai={ai} stripeMode={stripeMode()} />;
 }

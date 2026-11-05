@@ -8,7 +8,7 @@ import { getAuthUser } from "@/lib/auth/user";
 import { requireResultAccess } from "@/lib/results/access";
 import { priceResult } from "@/lib/result-pricing";
 import { round2 } from "@/lib/commissions";
-import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { getWorkingAs } from "@/lib/staff/working-as";
 import { createHoldCheckout } from "@/lib/authorization-hold";
@@ -74,7 +74,6 @@ import {
 import { getAdminContext } from "@/lib/auth/admin";
 import { getPublicOrigin } from "@/lib/site-url";
 import {
-  derivePackList,
   MAX_LAYERS_PER_CELL,
   MAX_OFFSET_MM,
   placementKind,
@@ -539,9 +538,7 @@ export async function POST(req: Request) {
 
   const prefIds = input.preferenceLines.map((l) => l.item_id);
   const addonIds = input.addonLines.map((l) => l.item_id);
-  // A neck support staff placed is charged, so its price is looked up with the rest.
-  const placedPack = derivePackList(input.assistFilling?.placements ?? [], []);
-  const allItemIds = [...new Set([...prefIds, ...addonIds, ...placedPack.map((l) => l.item_id)])];
+  const allItemIds = [...new Set([...prefIds, ...addonIds])];
 
   const composedKey: ComposedSellableKey =
     productType === "pillow"
@@ -655,13 +652,11 @@ export async function POST(req: Request) {
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    addonLines: [
-      ...input.addonLines.map((l) => ({
-        msrp: msrpByItem.get(l.item_id) ?? null,
-        quantity: l.quantity,
-      })),
-      ...placedChargeLines(placedPack, itemById, msrpByItem),
-    ],
+    // Add-ons only: a placed neck support is in the pillow's MSRP, like the fillings.
+    addonLines: input.addonLines.map((l) => ({
+      msrp: msrpByItem.get(l.item_id) ?? null,
+      quantity: l.quantity,
+    })),
   });
   if (!goods.ok) {
     console.error(`[results/hold] pricing not usable (${goods.code}): ${goods.error}`);

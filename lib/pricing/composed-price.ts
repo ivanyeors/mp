@@ -18,9 +18,13 @@
  * Basic and Mbolster have a single unkeyed row and reach the same answer through the
  * same path: no family row matches, the unkeyed row is used, and the baseline is the
  * BOM's own default case.
+ *
+ * Whatever goes inside the pillow is in the row. That is every filling, and a
+ * Cervical Neck Support or an Ear Comfort Pad placed in a premium pillow too:
+ * placing one or taking it out never moves the price off the pillow's MSRP. An
+ * Add-on, such as an Ear Comfort Pad picked as one, ships beside the pillow and
+ * adds its own MSRP.
  */
-
-import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 
 /** `product_prices.variant` for a pillow row — `items.price_family` of its case. */
 export type PriceFamily = string;
@@ -224,23 +228,4 @@ export function resolvePreferences(
     }
   }
   return { chosenCover, chosenCase };
-}
-
-/**
- * Add-on lines for pieces placed in the x-ray that the Costings row does not
- * cover. Fillings are part of the row, so they add nothing; a Cervical Neck
- * Support is an Accessories Item and costs its own MSRP per piece. An unpriced
- * one comes back as `msrp: null`, which priceComposedBuild refuses, never zero.
- */
-export function placedChargeLines(
-  pack: ReadonlyArray<{ item_id: number; count: number }>,
-  itemById: ReadonlyMap<number, { category?: string | null; name: string }>,
-  msrpByItem: ReadonlyMap<number, number>,
-): Array<{ msrp: number | null; quantity: number }> {
-  return pack.flatMap((l) => {
-    const item = itemById.get(l.item_id);
-    return item && isNeckSupportItem(item)
-      ? [{ msrp: msrpByItem.get(l.item_id) ?? null, quantity: l.count }]
-      : [];
-  });
 }

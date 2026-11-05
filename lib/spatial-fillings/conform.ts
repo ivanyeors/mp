@@ -152,6 +152,11 @@ const densify = (pts: Pt[], maxSeg = 8): Pt[] => {
 export const POUCH_CORNER = 0.18;
 /** A pill (the Neck support) is rounder — a firm roll — yet still fills its compartment; a full half-height would erode it to a blob under the notches. */
 export const PILL_CORNER = 0.35;
+/** An Ear Comfort Pad is a puffy square: rounder corners than a pouch's, still a square. */
+export const EAR_CORNER = 0.3;
+
+/** The corner radius of a shape, as a share of its short side. */
+const cornerOf = (shape: ShapeId) => (shape === "pill" ? PILL_CORNER : shape === "ear" ? EAR_CORNER : POUCH_CORNER);
 
 /** Drop points closer than `minSeg` to the last kept one: sub-unit steps whose direction is noise once rounded to 0.1. */
 const thin = (pts: Pt[], minSeg: number): Pt[] => {
@@ -176,8 +181,8 @@ export function pouchOutline(rect: PieceRect, arcSamples = 5, shape: ShapeId = "
   }
   const { x, y, w, h } = rect;
   const short = Math.min(w, h);
-  // A stuffed pouch: ~18% of the short side; a pill: the full capsule.
-  const r = shape === "pill" ? short / 2 : short * POUCH_CORNER;
+  // A stuffed pouch: ~18% of the short side; an ear pad ~30%; a pill: the full capsule.
+  const r = shape === "pill" ? short / 2 : short * (shape === "ear" ? EAR_CORNER : POUCH_CORNER);
   const centers: Pt[] = [
     [x + w - r, y + r],
     [x + w - r, y + h - r],
@@ -355,7 +360,7 @@ function dp(seq: Pt[], tol: number): Pt[] {
  */
 export function conformPouchPath(rect: PieceRect, regions: ConformRegion[], shape: ShapeId = "pouch"): string {
   const short = Math.min(rect.w, rect.h);
-  const r = short * (shape === "pill" ? PILL_CORNER : POUCH_CORNER);
+  const r = short * cornerOf(shape);
   const [shell, ...walls] = regions;
   let ring: Pt[] | null = shell ? insetRing(shell.poly, shell.seam) : null;
   for (const wall of walls) {

@@ -149,7 +149,7 @@ export async function loadStaffEditResult(
   const { data: items } = placedIds.length
     ? await admin
         .from("items")
-        .select("id, name, subtype, size, category, item_prices(msrp)")
+        .select("id, name, subtype, size, category")
         .in("id", placedIds)
     : { data: [] };
 
@@ -175,10 +175,7 @@ export async function loadStaffEditResult(
     placements: (placements ?? []) as PillowPlacementRow[],
     fillingTemplateId:
       row.filling_template_id != null ? Number(row.filling_template_id) : null,
-    items: (items ?? []).map(({ item_prices, ...item }) => ({
-      ...item,
-      msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
-    })),
+    items: items ?? [],
     currency: row.currency ?? "SGD",
     authorizedAmount: row.authorized_amount != null ? Number(row.authorized_amount) : null,
     finalAmount: row.final_amount != null ? Number(row.final_amount) : null,

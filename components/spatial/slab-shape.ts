@@ -11,7 +11,13 @@
  * the nearest point that margin inside, so a pouch in the front tip takes the
  * tip's shape instead of poking through it. Pure path strings in view units.
  * No rects on the x-ray family of drawings.
+ *
+ * An Ear Comfort Pad is the same cushion with a sewn well in its middle: cut
+ * through, its top dips between two rims (`wellDip`, `padRing`).
  */
+
+import { resample } from "@/lib/spatial-fillings/soft-body";
+import type { PadWell } from "@/lib/spatial-fillings/soft-body-settings";
 
 export type SlabBox = { x: number; y: number; w: number; h: number };
 
@@ -230,6 +236,8 @@ function pressIn(poly: ShellPolygon, margin: number, x: number, y: number): Pt {
 
 export type PouchShaping = {
   contacts?: SlabContacts;
+  /** An Ear Comfort Pad's sewn well: its top dips in the middle. */
+  well?: PadWell;
   /** How far its underside sags below its box, view units, at evenly spaced points front → back; empty or absent when flat. */
   sag?: readonly number[];
   /** How far its top dips, at the same points; the underside's sag when absent (it bends whole). */
@@ -237,6 +245,36 @@ export type PouchShaping = {
   /** The case to press it into, and how far inside the wall it stays (view units). */
   shell?: { polygon: ShellPolygon; margin: number };
 };
+
+/**
+ * How far an ear pad's top dips at a fraction 0…1 of the way along, as a
+ * share of its thickness: nothing outside the well, its full depth across the
+ * well's sewn floor, and a smooth rise to the rim between (the stuffing
+ * rounds over the seam).
+ */
+export function wellDip(t: number, well: PadWell): number {
+  if (well.depth <= 0 || well.width <= 0) return 0;
+  const u = Math.abs(t - 0.5) / (well.width / 2);
+  if (u >= 1) return 0;
+  const FLOOR = 0.35;
+  return u <= FLOOR ? well.depth : (well.depth * (1 + Math.cos((Math.PI * (u - FLOOR)) / (1 - FLOOR)))) / 2;
+}
+
+/** Points of a cushion in `box` pressed down by the well: the top follows the dip, the underside rests flat. */
+function dipped(pts: readonly Pt[], box: SlabBox, well: PadWell): Pt[] {
+  return pts.map(([x, y]): Pt => {
+    const t = box.w > 0 ? (x - box.x) / box.w : 0.5;
+    const v = box.h > 0 ? clamp01((y - box.y) / box.h) : 1;
+    // Only the upper half moves, most at the top: the well is sewn from above, the pad lies flat.
+    const k = clamp01(1 - v / 0.6);
+    return [x, y + wellDip(t, well) * box.h * k];
+  });
+}
+
+/** An ear pad's cushion as `n` evenly spaced points: the rest shape it remembers in the soft cut. */
+export function padRing(box: SlabBox, well: PadWell, n: number): Pt[] {
+  return resample(dipped(sampleCubics(cushion(box, 1, FREE), Math.max(Math.min(box.h / 6, 4), 1)), box, well), n);
+}
 
 /** The sag at a fraction 0…1 of the way along, linearly between samples. */
 function sagAt(sag: readonly number[], t: number): number {
@@ -254,10 +292,13 @@ export function pouchPath(box: SlabBox, puff = 1, shaping: PouchShaping = {}): s
   const cubics = cushion(box, puff, shaping.contacts ?? FREE);
   const sag = shaping.sag && shaping.sag.length > 1 && shaping.sag.some((v) => v > 0.05) ? shaping.sag : null;
   const shell = shaping.shell && shaping.shell.polygon.length > 2 ? shaping.shell : null;
-  if (!sag && !shell) return pathOf(cubics);
-  const pts = sampleCubics(cubics, Math.max(Math.min(box.h / 3, 10), 3));
+  const well = shaping.well && wellDip(0.5, shaping.well) > 0 ? shaping.well : null;
+  if (!sag && !shell && !well) return pathOf(cubics);
+  // A well needs points close enough to draw its rims round.
+  const raw = sampleCubics(cubics, well ? Math.max(Math.min(box.h / 6, 4), 1) : Math.max(Math.min(box.h / 3, 10), 3));
+  const pts = well ? dipped(raw, box, well) : raw;
   const sagTop = sag && shaping.sagTop && shaping.sagTop.length === sag.length ? shaping.sagTop : sag;
-  let moved = false;
+  let moved = well !== null;
   const out = pts.map(([x, y]): Pt => {
     let py = y;
     if (sag && sagTop) {

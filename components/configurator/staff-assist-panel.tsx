@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { StaffToolbox, type ToolSpec } from "@/components/configurator/staff-toolbox";
 import { SaveFillingTemplate } from "@/components/configurator/save-filling-template";
-import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
+import { isInPillowAccessory } from "@/lib/spatial-fillings/filling-groups";
 import {
   confirmGate,
   PILLOW_SIZES,
@@ -43,9 +43,8 @@ export type FillingItem = {
   name: string;
   subtype: string | null;
   size: string | null;
-  /** Set by the assist route: a neck support ("accessories") is charged at its MSRP. */
+  /** Set by the assist route: "accessories" marks a neck support, premium only. */
   category?: string;
-  msrp?: number | null;
 };
 type TemplateRow = { id: number; name: string };
 
@@ -123,9 +122,9 @@ export function StaffAssistPanel({
           dimensionOverrides?: DimensionOverridesPayload;
         }) => {
           if (cancelled) return;
-          // A neck support is for premium pillows only — basic never offers it.
+          // A neck support or an ear pad is for premium pillows only — basic never offers one.
           const offered = (d.items ?? []).filter(
-            (i) => current.tier === "premium" || !isNeckSupportItem({ category: i.category, name: i.name }),
+            (i) => current.tier === "premium" || !isInPillowAccessory({ category: i.category, name: i.name }),
           );
           setTemplates(d.templates ?? []);
           onItemsChange?.(offered);
