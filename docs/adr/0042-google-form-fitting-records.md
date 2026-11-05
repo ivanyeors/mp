@@ -2,7 +2,8 @@
 
 Status: Accepted (owner, 2026-10-31). Amended (owner, 2026-11-01): the customer sees their own
 Fitting records on their Profile, without the Drive photos (h); and one person's many visits,
-each with its own measurements, all land on one Customer (c, i).
+each with its own measurements, all land on one Customer (c, i). Amended (owner, 2026-11-05): the
+Customer page draws the pillow a fitting names in the x-ray, and Staff can link another (j).
 
 Before this platform, every in-store fitting was typed into a Google Form: the customer's name,
 mobile and email, the four measurements (A to D, in inches), the recommended pillow size, the
@@ -90,6 +91,21 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   for Staff and on the Profile, lists one person's visits newest first. With more than one, the
   newest is marked Latest, and each measurement that changed shows what it was at the visit
   before.
+- **(j) The Customer page draws their pillow in the x-ray** (owner, 2026-11-05): the **Pillow on
+  record**. The form's configuration types are the catalog's Filling Templates by name (`T12` is
+  `Type-12`, `8A` is `Type-8a`), and a profile side ending `-SN` is a template's `(Short Neck)`
+  variant, so the latest fitting that names a type is read as the active pillow template of that
+  type and neck serving the fitting's size (`lib/customer-pillow/match.ts`). This narrows the
+  Context's "not modelled here": the codes stay on the record as typed, and the match is worked
+  out on every read and never stored, so a template renamed, added or given another size is
+  picked up at once. When no template is exactly that, the nearest is drawn — another size's
+  (the most common case: `Type-12` and `Type-15` serve L and XL, while most fittings recorded S
+  or M) or the other neck's — and the card says so. A Staff member holding `customers-edit` can
+  link a size and template instead, or a size alone, for any Customer, a Shopify one with no
+  fitting included; the link is one row in `customer_pillows`, service-role only like
+  `customer_fittings`, and removing it goes back to the fitting's. The template is drawn as it
+  is now: this describes the pillow they have, it is not a Result, and it reaches no price,
+  stock or analytics. Staff-only; the Profile does not show it.
 
 ## Considered options
 

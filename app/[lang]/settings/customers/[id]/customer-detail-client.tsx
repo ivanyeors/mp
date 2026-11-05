@@ -61,6 +61,8 @@ import { PointsCard } from "./points-card";
 import { CustomerFollowUpsCard } from "./customer-followups-card";
 import { CustomerReviewsCard } from "./customer-reviews-card";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
+import { CustomerPillowCard } from "./customer-pillow-card";
+import type { CustomerPillowResult } from "@/lib/customer-pillow/view";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import type { CustomerUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
 import type { NextStep } from "@/lib/crm/next-step";
@@ -145,6 +147,8 @@ export type CustomerDetailInitialData = {
     nextStep?: NextStep | null;
     /** Fitting records from the old Google Form (ADR 0042); null when they could not be read. */
     fittings?: CustomerFittingsResult;
+    /** Their pillow, drawn in the x-ray (ADR 0042 j); null when it could not be read. */
+    pillow?: CustomerPillowResult;
 };
 
 const emptyAddress: AddressFormState = {
@@ -946,6 +950,9 @@ export function CustomerDetailClient({
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Pillow (ADR 0042 j): the x-ray of what they have, from a Staff link or their latest fitting */}
+                    <CustomerPillowCard customerId={customer.id} pillow={initialData?.pillow} canEdit={canEdit} />
 
                     {/* Fitting history (ADR 0042): in-store fittings from the old Google Form, with their Drive photos */}
                     <CustomerFittingsCard customerId={customer.id} fittings={initialData?.fittings} />

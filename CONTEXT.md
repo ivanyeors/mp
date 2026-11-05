@@ -410,6 +410,10 @@ _Avoid_: calling it a **Result** (it never had a hold, a build or a payment), an
 One run of **Admin Panel** → Customers → Import fittings: the owner's Google Form CSV, read in the browser and sent a chunk of rows at a time, like an **Import batch**. One person's visits all land on one **Customer**, each its own **Fitting record** (ADR 0042 c). A row attaches to the **Customer** with its email. Under an email nobody has, it attaches to the one Customer with the same mobile and name, or creates one. A row with no email attaches to the one **Customer** with its mobile, or the one of several with the same name, or is skipped and listed. Rows with an email go first, so a mobile-only visit finds the Customer another visit creates. Importing the same file twice creates nothing, and Undo removes the batch's **Fitting records** and the Customers it created that nobody has signed in to or referenced since.
 _Avoid_: "upload" (the file is never uploaded or stored); creating a phone-only **Customer**
 
+**Pillow on record**:
+The pillow a **Customer** has, drawn in the x-ray on their Customer page: a size and a **Filling Template** (ADR 0042 j). A **Staff** link (`customer_pillows`, one per Customer, set under `customers-edit`) wins. Without one it is read from their latest **Fitting record** that names a configuration type: the form's `T12` is the template named `Type-12`, a profile side ending `-SN` its `(Short Neck)` variant, and the fitting's size picks among them by **Size membership**. Worked out on every read and never stored. When no template is exactly that, the nearest is drawn (another size's, or the other neck's) and the card says what it gave up. The template is drawn as it is now. Staff-only; the Customer does not see it.
+_Avoid_: calling it a **Result**, a build or a **Filling configuration** (no snapshot, no money path, no stock); storing the fitting's match; reading the form's codes as anything but template names
+
 ## Rules Engine (recommendations)
 
 **Rules Engine**:

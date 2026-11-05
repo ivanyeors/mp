@@ -60,6 +60,7 @@ Changed from pages: `/settings/results`, `/settings/users`
   - `getStaffByAssistCode()` [select] — lib/assist-link/index.ts:35
   - `invitedTarget()` [select] — lib/auth/members.ts:334
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:47
+  - `linkedByName()` [select] — lib/customer-pillow/load.ts:69
   - `listAssignableProfiles()` [select] — lib/crm/followups.ts:169
   - `listMembers()` [select] — lib/auth/members.ts:103
   - `listRoles()` [select] — lib/auth/members.ts:118
@@ -197,7 +198,7 @@ Defined in supabase/migrations/0029_ecommerce_inventory_bridge.sql:88
 ### bolster_length_config
 Defined in supabase/migrations/20260705120000_default_filling_template.sql:13
 References: `bom_templates`
-Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/product-builder/rules-engine/[flow]`, `/settings/results/[id]`
+Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/customers/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/product-builder/rules-engine/[flow]`, `/settings/results/[id]`
 - Written by:
   - `clearDefaultsOutsideMembership()` [select,update] — lib/filling-templates/membership.ts:170
   - `setDefaultFillingTemplateId()` [update] — lib/results/composed-sellable.ts:401
@@ -210,7 +211,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
 ### bolster_template_placements
 Defined in supabase/migrations/20260719000001_spatial_filling_placements.sql:18
 References: `bom_templates`, `items`
-Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/results/[id]`
+Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/customers/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/results/[id]`
 - Written by:
   - `POST()` [insert,select] — app/[lang]/settings/inventory/configure/templates/[templateId]/fork/route.ts:151
   - `POST()` [delete,insert] — app/api/mp-config/assist/route.ts:310
@@ -248,7 +249,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
 ### bom_template_keys
 Defined in supabase/migrations/20260915100000_filling_template_size_membership.sql:15
 References: `bom_templates`
-Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/product-builder/rules-engine/[flow]`, `/settings/results/[id]`
+Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/customers/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/product-builder/rules-engine/[flow]`, `/settings/results/[id]`
 - Written by:
   - `setTemplateKeys()` [delete,select,upsert] — lib/filling-templates/membership.ts:114
 - Read by:
@@ -278,7 +279,7 @@ Changed from pages: `/settings/inventory`, `/settings/inventory/configure/[card]
 
 ### bom_templates
 Defined in supabase/migrations/0011_bom_templates.sql:3
-Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/product-builder/rules-engine/[flow]`, `/settings/results/[id]`
+Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/customers/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/product-builder/rules-engine/[flow]`, `/settings/results/[id]`
 - Written by:
   - `DELETE()` [delete] — app/[lang]/settings/inventory/configure/templates/route.ts:371
   - `POST()` [insert,select] — app/[lang]/settings/inventory/configure/templates/[templateId]/fork/route.ts:69
@@ -298,6 +299,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:23
   - `POST()` [select] — app/api/results/[id]/accept/route.ts:575
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:179
+  - `PUT()` [select] — app/api/shop/customers/[id]/pillow/route.ts:59
   - `assertTemplateNameFree()` [select] — lib/filling-templates/membership.ts:75
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:80
   - `getBomTemplates()` [select] — lib/shop/customization-llm.ts:86
@@ -305,7 +307,9 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `listFillingTemplates()` [select] — app/[lang]/settings/inventory/actions.ts:331
   - `listTemplates()` [select] — app/[lang]/settings/inventory/actions.ts:300
   - `loadAssignPrep()` [select] — lib/results/assign-prep.ts:108
+  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:107
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:18
+  - `loadPillowTemplates()` [select] — lib/customer-pillow/load.ts:40
   - `loadTemplateFingerprints()` [select] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:67
   - `setDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:360
   - `templateBuildSaleRows()` [select] — app/[lang]/settings/inventory/actions.ts:209
@@ -450,6 +454,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `authorizeResultAccess()` [select] — lib/results/access.ts:24
   - `confirmationPoints()` [select] — lib/email/index.ts:284
   - `countNewCustomers()` [select] — lib/crm/telegram-update-sources.ts:64
+  - `customerExists()` [select] — app/api/shop/customers/[id]/pillow/route.ts:31
   - `customerIdForResult()` [select] — lib/crm/customer-link.ts:22
   - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:8
   - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:106
@@ -554,7 +559,7 @@ Changed from pages: `/settings/inventory/configure`
   - `GET()` [select] — app/api/mp-config/assist/route.ts:124
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:120
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:256
-  - `loadResultFillingMix()` [select] — lib/results/admin/filling-mix.ts:49
+  - `loadXrayOverrides()` [select] — lib/results/admin/filling-mix.ts:79
 
 ### filling_dimension_overrides
 Defined in supabase/migrations/20260925090000_dimension_overrides.sql:7
@@ -569,7 +574,7 @@ Changed from pages: `/settings/inventory/configure`
 ### filling_template_placements
 Defined in supabase/migrations/20260719000001_spatial_filling_placements.sql:5
 References: `bom_templates`, `items`
-Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/results/[id]`
+Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/customers/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/results/[id]`
 - Written by:
   - `POST()` [insert,select] — app/[lang]/settings/inventory/configure/templates/[templateId]/fork/route.ts:151
   - `POST()` [delete,insert] — app/api/mp-config/assist/route.ts:310
@@ -586,6 +591,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:202
   - `POST()` [select] — app/api/results/hold/route.ts:500
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:382
+  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:118
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
 
@@ -753,7 +759,7 @@ Changed from pages: `/settings/inventory`
   - `loadItems()` [select] — lib/analytics/sales-report.ts:46
   - `loadPayload()` [select] — app/[lang]/settings/product-builder/dimensions/route.ts:36
   - `loadPillowComponents()` [select] — lib/results/composed-sellable.ts:103
-  - `loadResultFillingMix()` [select] — lib/results/admin/filling-mix.ts:63
+  - `loadPlacedItems()` [select] — lib/results/admin/filling-mix.ts:97
   - `loadResumeFinish()` [select] — lib/results/resume-finish.ts:63
   - `loadStaffEditResult()` [select] — lib/results/staff-edit.ts:150
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:75
@@ -911,6 +917,7 @@ Changed from pages: `/`, `/account/login`, `/mbolster-config`, `/mp-basic`, `/mp
   - `POST()` [select] — app/api/mp-config/responses/route.ts:480
   - `isPickableStaffProfile()` [select] — lib/staff/admin.ts:281
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:40
+  - `linkedByName()` [select] — lib/customer-pillow/load.ts:65
   - `listAssignableProfiles()` [select] — lib/crm/followups.ts:159
   - `listCustomerFittings()` [select] — lib/fitting-import/records.ts:132
   - `listStaffProfiles()` [select] — lib/staff/admin.ts:58
@@ -1210,7 +1217,7 @@ Changed from pages: `/settings/media`, `/settings/partners`
 ### pillow_products
 Defined in supabase/migrations/0001_inventory.sql:15
 References: `bom_templates`
-Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/product-builder/rules-engine/[flow]`, `/settings/results/[id]`
+Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/customers/[id]`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/product-builder/rules-engine/[flow]`, `/settings/results/[id]`
 - Written by:
   - `clearDefaultsOutsideMembership()` [select,update] — lib/filling-templates/membership.ts:189
   - `setDefaultFillingTemplateId()` [select,update] — lib/results/composed-sellable.ts:379
@@ -1574,6 +1581,16 @@ Changed from pages: `/settings/customers/import`
 Defined in supabase/migrations/20261020100000_customer_import.sql:82
 - Called by:
   - `previewShopifyImport()` — app/[lang]/settings/customers/import/actions.ts:68
+
+### customer_pillows
+Defined in supabase/migrations/20261105100000_customer_pillows.sql:24
+References: `bom_templates`, `customers`, `mp_staff`
+Changed from pages: `/settings/customers/[id]`
+- Written by:
+  - `DELETE()` [delete] — app/api/shop/customers/[id]/pillow/route.ts:117
+  - `PUT()` [select,upsert] — app/api/shop/customers/[id]/pillow/route.ts:70
+- Read by:
+  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:81
 
 ### customer_preference_events
 Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:35
@@ -2587,10 +2604,10 @@ app/[lang]/settings/customers/page.tsx
 
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
-- Endpoints: `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
-- Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerFittings()`, `listCustomerNotes()`, `readContactFacts()`, `readCustomerUnsubscribeReason()`, `readNextStepFacts()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `customer_addresses`, `customer_followups`, `customer_notes`, `customers`, `inventory_transactions`, `mp_staff`, `order_items`, `order_timeline`, `orders`, `product_variants`
-- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `customer_consent_events`, `customer_fittings`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_unsubscribe_reasons`, `customer_whatsapp`, `item_prices`, `migrated_customers`, `mp_config_responses`, `order_margins`, `pillow_products`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
+- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/pillow`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
+- Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerFittings()`, `listCustomerNotes()`, `loadCustomerPillow()`, `readContactFacts()`, `readCustomerUnsubscribeReason()`, `readNextStepFacts()`, `requireAdminPage()`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_templates`, `customer_addresses`, `customer_followups`, `customer_notes`, `customer_pillows`, `customers`, `filling_template_placements`, `inventory_transactions`, `mp_staff`, `order_items`, `order_timeline`, `orders`, `pillow_products`, `product_variants`
+- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `bolster_bom_lines`, `bom_lines`, `customer_consent_events`, `customer_fittings`, `customer_google_reviews`, `customer_preference_events`, `customer_review_requests`, `customer_unsubscribe_reasons`, `customer_whatsapp`, `filling_color_overrides`, `filling_dimension_overrides`, `item_prices`, `items`, `migrated_customers`, `mp_config_responses`, `neck_support_dimension_overrides`, `order_margins`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`
 
 ### /settings/customers/filters
 app/[lang]/settings/customers/filters/page.tsx
