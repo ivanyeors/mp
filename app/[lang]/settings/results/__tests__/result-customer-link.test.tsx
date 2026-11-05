@@ -31,8 +31,12 @@ vi.mock("@/lib/results/admin/response-detail", () => ({
 }));
 vi.mock("@/lib/results/admin/detail-prep", () => ({
   canAssignResult: () => false,
+  canEditFillingMix: () => false,
   loadFillingItems: vi.fn(),
   loadResultAssignPrep: vi.fn(),
+}));
+vi.mock("@/lib/results/admin/filling-mix", () => ({
+  loadResultFillingMix: vi.fn(async () => ({ ok: false, error: "not under test" })),
 }));
 vi.mock("../[id]/result-detail-client", () => ({
   default: (props: unknown) => {

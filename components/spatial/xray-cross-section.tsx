@@ -762,6 +762,11 @@ export function XrayCrossSection({
   softBody = SOFT_BODY_DEFAULTS,
   themed = true,
   collapsible = true,
+  tabs = true,
+  title,
+  compact,
+  onReadout,
+  onDropSection,
   className,
 }: {
   fit: PillowFit;
@@ -786,9 +791,27 @@ export function XrayCrossSection({
   themed?: boolean;
   /** Phones collapse it under a "Cross-section" disclosure, closed by default. */
   collapsible?: boolean;
+  /**
+   * The Section tabs. Off for a cut pinned to one Section beside its two
+   * siblings (`XrayCrossSectionStrip`): it still edits, and a pouch dropped on
+   * a sibling panel moves to that Section, as onto its tab.
+   */
+  tabs?: boolean;
+  /** Drawn where the tabs would be when they are off: the pinned Section's name. */
+  title?: ReactNode;
+  /** The narrow layout with larger type; phones by default, and any cut drawn in a narrow column. */
+  compact?: boolean;
+  /**
+   * Hand the line under the cut to the host instead of drawing it — the strip
+   * shows one line for all three. The idle hint is not reported (null).
+   */
+  onReadout?: (readout: CutReadoutValue | null) => void;
+  /** The other Section a held pouch would drop into (a sibling panel or tab), so the host can mark it. */
+  onDropSection?: (section: Section | null) => void;
   className?: string;
 }) {
   const isMobile = useIsMobile();
+  const compactLayout = compact ?? isMobile;
   const editable = Boolean(placements && onPlacementsChange && onCutChange);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const ghostRef = useRef<SVGGElement | null>(null);
@@ -811,7 +834,7 @@ export function XrayCrossSection({
   const columns = useMemo(() => crossSectionSlabs(fit, cut), [fit, cut]);
   const slabs = useMemo(() => alongSlabs(fit, cut.section), [fit, cut.section]);
   const tallest = tallestMm(columns);
-  const frame = frameFor(fit, cut, isMobile, tallest);
+  const frame = frameFor(fit, cut, compactLayout, tallest);
 
   const labelOf = useCallback(
     (itemId: number) => {
@@ -891,6 +914,8 @@ export function XrayCrossSection({
 
   /** Rest on a tab long enough and the cut opens that Section, so the drop can be placed there exactly. */
   const armSpring = (section: Section) => {
+    // A pinned cut has no tab to open: its siblings are already on screen.
+    if (!tabs) return;
     if (section === cut.section) {
       disarmSpring();
       return;
@@ -910,7 +935,9 @@ export function XrayCrossSection({
 
   /** What the pointer is over: a Section tab, a column and height of the cut, or nothing. */
   const targetAt = (hold: SlabHold, clientX: number, clientY: number): SlabDropTarget | null => {
-    const tab = document.elementFromPoint(clientX, clientY)?.closest?.("[data-drop-section]");
+    const hit = document.elementFromPoint(clientX, clientY)?.closest?.("[data-drop-section]");
+    // A strip panel is a drop target for its siblings; this cut's own panel is the cut itself.
+    const tab = hit && svgRef.current && hit.contains(svgRef.current) ? null : hit;
     setOverTab(Boolean(tab));
     if (tab) {
       const section = tab.getAttribute("data-drop-section") as Section;
@@ -1152,7 +1179,8 @@ export function XrayCrossSection({
         text: `${labelOf(slab.itemId)} · ${ref.section} ${ref.subSection} · layer ${slab.depth + 1} — ${slabThicknessNote(slab, fit.size, itemDims?.get(slab.itemId))}`,
       };
     }
-    if (!editable) return null;
+    // The idle hint is the host's to show when it draws the line itself.
+    if (!editable || onReadout) return null;
     return {
       tone: "muted" as const,
       text: isMobile
@@ -1161,29 +1189,43 @@ export function XrayCrossSection({
     };
   })();
 
+  // Reported by value, so a re-render with the same line does not re-render the host.
+  const readoutTone = readout?.tone ?? null;
+  const readoutText = readout?.text ?? null;
+  useEffect(() => {
+    if (!onReadout) return;
+    onReadout(readoutTone && readoutText ? { tone: readoutTone, text: readoutText } : null);
+  }, [onReadout, readoutTone, readoutText]);
+  const dropSection = dropTarget && dropTarget.section !== cut.section ? dropTarget.section : null;
+  useEffect(() => {
+    onDropSection?.(dropSection);
+  }, [onDropSection, dropSection]);
+
   const body = (
     <div className={`space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel>
-      {onCutChange && (
+      {onCutChange && tabs ? (
         <CutControls
           cut={cut}
           onCutChange={onCutChange}
           fit={fit}
           dragging={Boolean(held)}
           springSection={springSection}
-          dropSection={dropTarget && dropTarget.section !== cut.section ? dropTarget.section : null}
+          dropSection={dropSection}
         />
+      ) : (
+        title
       )}
       <CrossSectionSvg
         fit={preview?.fit ?? fit}
         cut={cut}
         itemSubtypes={itemSubtypes}
         itemSizes={itemSizes}
-        compact={isMobile}
+        compact={compactLayout}
         scaleMm={held ? tallest : undefined}
         editor={editor}
         softBody={softBody}
       />
-      {readout && <CutReadout tone={readout.tone}>{readout.text}</CutReadout>}
+      {readout && !onReadout && <CutReadout tone={readout.tone}>{readout.text}</CutReadout>}
     </div>
   );
   if (collapsible && isMobile) {
@@ -1207,8 +1249,11 @@ const READOUT_TONE = {
   over: "text-amber-600 dark:text-amber-300",
 } as const;
 
+/** The line under a cut: the pending drop, or why the pouch in hand is as thick as it draws. */
+export type CutReadoutValue = { tone: keyof typeof READOUT_TONE; text: string };
+
 /** One line under the cut, announced politely: the pending drop, or the thickness of the pouch in hand. */
-function CutReadout({ tone, children }: { tone: keyof typeof READOUT_TONE; children: ReactNode }) {
+export function CutReadout({ tone, children }: { tone: keyof typeof READOUT_TONE; children: ReactNode }) {
   return (
     <p className={cn("min-h-8 px-1 text-[11px] leading-4 text-[color:var(--xray-shell,rgba(255,255,255,0.9))]", READOUT_TONE[tone])} aria-live="polite" data-xray-cut-readout>
       {children}

@@ -128,8 +128,17 @@ goods, and every other call sees it set and stops.
 ADR 0002: stock is validated at assign and Accept, and deducted only on
 successful capture, never at hold.
 
+0. **Draft mix** (`POST /api/results/[id]/filling-mix`, Staff, from Admin
+   Panel → Results, optional). Before the customer submits, Staff may lay
+   out the fillings on the Draft Result (status null) and save them into
+   `result_filling_placements`, with `filling_fingerprint` /
+   `filling_template_id` on the row. Nothing else moves: no status, price,
+   hold or email, and no stock is read. Mpillow only: the Mbolster
+   configurator creates no Draft Result.
 1. **Hold** (`POST /api/results/hold`) places the Stripe authorization hold
-   and inserts the Result as `held`. It reads stock only to set sticky
+   and inserts the Result as `held`. It replaces the Result's filling
+   snapshot only when the configurator sends a Staff assist mix, so a mix
+   saved on the draft survives a customer's submit. It reads stock only to set sticky
    `is_pre_order`. A discount code is checked here and its terms kept on the
    Result (`coupon_terms`); every later repricing takes them off the goods
    (ADR 0033). A partner's code typed on a customised premium pillow does

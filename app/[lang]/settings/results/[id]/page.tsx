@@ -4,10 +4,11 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { customerIdForResult } from "@/lib/crm/customer-link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
-  canAssignResult,
+  canEditFillingMix,
   loadFillingItems,
   loadResultAssignPrep,
 } from "@/lib/results/admin/detail-prep";
+import { loadResultFillingMix } from "@/lib/results/admin/filling-mix";
 import { loadMpConfigResponseDetail } from "@/lib/results/admin/response-detail";
 import ResultDetailPage, { type ResultDetailInitialData } from "./result-detail-client";
 
@@ -17,8 +18,10 @@ export const runtime = "nodejs";
  * Server shell for the result detail page. This replaces a three-step client
  * waterfall: the response row, then the assignment preview once the row
  * arrived, then the filling items. The row is loaded first (the other two
- * depend on it) and — only when the row is assignable, the same `canAssign`
- * gate the client applies — the preview and the filling items resolve together.
+ * depend on it) and — only when the page edits the filling mix (a held Result,
+ * or a Draft Result laid out ahead of the customer) — the preview and the
+ * filling items resolve together. The Result's own saved mix loads for every
+ * Result: after assignment it is shown read-only.
  */
 export default async function ResultDetailRoute({
   params,
@@ -42,8 +45,19 @@ export default async function ResultDetailRoute({
         }).catch(() => null)
       : Promise.resolve(null);
 
-  const [[assignPrep, fillingItems], customerId] = await Promise.all([
-    response && canAssignResult(response)
+  const fillingMixPromise = response
+    ? loadResultFillingMix(
+        supabaseAdmin(),
+        String(response.id),
+        response.product_type === "bolster" ? "bolster" : "pillow",
+      )
+        .then((r) => (r.ok ? r.mix : null))
+        // Like the customer lookup, a failed read never fails the page: the client refetches it.
+        .catch(() => null)
+    : Promise.resolve(null);
+
+  const [[assignPrep, fillingItems], customerId, fillingMix] = await Promise.all([
+    response && canEditFillingMix(response)
       ? Promise.all([
           loadResultAssignPrep(
             response,
@@ -53,6 +67,7 @@ export default async function ResultDetailRoute({
         ])
       : Promise.resolve([null, null] as const),
     customerIdPromise,
+    fillingMixPromise,
   ]);
 
   const initialData: ResultDetailInitialData = {
@@ -62,6 +77,7 @@ export default async function ResultDetailRoute({
         : null,
     assignPrep: assignPrep as ResultDetailInitialData["assignPrep"],
     fillingItems,
+    fillingMix,
     customerId,
   };
 

@@ -120,6 +120,19 @@ for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   assert.ok(src.includes("<XrayCrossSection"), `${surface} mounts the cross-section`);
   assert.ok(src.includes("useCut()"), `${surface} holds the cut in the shared hook`);
 }
+// The Result detail page shows left, center and right at once (2026-11-05): three
+// XrayCrossSection cuts, each pinned to its Section — a layout, never a second cross-section.
+const resultDetail = readFileSync(EDITING_SURFACES["Result detail → assign"].path, "utf8");
+assert.ok(resultDetail.includes("<XrayCrossSectionStrip"), "Result detail shows all three cuts together");
+const strip = readFileSync("components/spatial/xray-cross-section-strip.tsx", "utf8");
+assert.ok(
+  strip.includes("SECTIONS.map") && strip.includes("<XrayCrossSection") && strip.includes("tabs={false}"),
+  "the strip is one pinned XrayCrossSection per Section",
+);
+assert.ok(
+  !strip.includes("<CrossSectionSvg") && !strip.includes("crossSectionSlabs(") && !strip.includes("applySlabDrop("),
+  "the strip draws and moves nothing itself",
+);
 const configurator = readFileSync(EDITING_SURFACES["configurator (Staff assist mode)"].path, "utf8");
 assert.ok(
   configurator.includes("onCutChange={staffAssist ? setCut : undefined}"),

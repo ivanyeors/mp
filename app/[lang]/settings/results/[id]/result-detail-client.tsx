@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/page-actions";
 import { useMobileDockActions } from "@/components/ui/page-dock-actions";
 import type { DockAction } from "@/components/ui/app-dock-actions";
-import { Ban, RefreshCw, Save, SlidersHorizontal } from "lucide-react";
+import { Ban, ChevronDown, RefreshCw, Save, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -28,7 +28,12 @@ import { useBolsterFit, useCut, useItemMaps, usePillowFit } from "@/components/s
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { InsertOrderList } from "@/components/spatial/insert-order-list";
+import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { EAR_PAD, fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
+import { useElementWidth } from "@/hooks/use-element-width";
+import { fillingMixMode } from "@/lib/results/filling-mix";
+import type { ResultFillingMixPayload } from "@/lib/results/admin/filling-mix";
+import { FillingMixWorkbench, WorkbenchTile } from "./filling-mix-workbench";
 
 /**
  * The x-ray editor and the cross-section load on demand, as on the Configure
@@ -41,8 +46,9 @@ const XrayEditor = dynamic(
   () => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor),
   { ssr: false, loading: () => <Skeleton className="aspect-[664/374] w-full rounded-lg" /> },
 );
-const XrayCrossSection = dynamic(
-  () => import("@/components/spatial/xray-cross-section").then((m) => m.XrayCrossSection),
+// Left, center and right at once: three pinned XrayCrossSection cuts (xray-cross-section-strip.tsx).
+const XrayCrossSectionStrip = dynamic(
+  () => import("@/components/spatial/xray-cross-section-strip").then((m) => m.XrayCrossSectionStrip),
   { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
 );
 const BolsterCrossSection = dynamic(
@@ -61,12 +67,14 @@ import { BolsterCompartmentList, type BolsterListItem } from "@/components/spati
 import {
   bolsterPlacementsToRows,
   pillowPlacementsToRows,
+  placementsExactMatch,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   type BolsterPlacement,
   type BolsterPlacementRow,
   type PillowPlacement,
   type PillowPlacementRow,
+  type Section,
 } from "@/lib/spatial-fillings/core";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatAdminDateTime } from "@/lib/format/admin-date";
@@ -257,6 +265,12 @@ export type ResultDetailInitialData = {
   assignPrep: AssignPrepData | null;
   fillingItems: BolsterListItem[] | null;
   /**
+   * The Result's own saved Filling configuration with the colours and
+   * dimensions the x-ray draws in (`lib/results/admin/filling-mix.ts`). The
+   * editor opens on it, not on a template, whenever it has pieces.
+   */
+  fillingMix?: ResultFillingMixPayload | null;
+  /**
    * The Customer this Result belongs to, for *Open customer*
    * (PRD-crm-retention-loop slice 02). Null when the viewer lacks `customers`
    * or no single Customer matches.
@@ -320,6 +334,28 @@ function deriveSeed(initialData: ResultDetailInitialData | undefined) {
         }))
       : [],
     fillingItems: initialData?.fillingItems ?? [],
+    savedMix: savedMixOf(initialData?.fillingMix ?? null),
+    colorOverrides: initialData?.fillingMix?.colorOverrides ?? [],
+    dimensionOverrides: initialData?.fillingMix?.dimensionOverrides,
+  };
+}
+
+/** The Result's saved snapshot as editor placements, per kind, with the Items it places. */
+type SavedMix = {
+  pillow: PillowPlacement[];
+  bolster: BolsterPlacement[];
+  /** Placed Items, labelled for the lists — merged into the editor's Items so a retired piece still has a name. */
+  items: BolsterListItem[];
+};
+
+const EMPTY_SAVED_MIX: SavedMix = { pillow: [], bolster: [], items: [] };
+
+function savedMixOf(mix: ResultFillingMixPayload | null): SavedMix {
+  if (!mix) return EMPTY_SAVED_MIX;
+  return {
+    pillow: mix.productType === "pillow" ? rowsToPillowPlacements(mix.placements as PillowPlacementRow[]) : [],
+    bolster: mix.productType === "bolster" ? rowsToBolsterPlacements(mix.placements as BolsterPlacementRow[]) : [],
+    items: mix.items.map((i) => ({ id: i.id, label: fillingLabel(i), name: i.name, subtype: i.subtype, size: i.size })),
   };
 }
 
@@ -364,13 +400,21 @@ export default function ResultDetailPage({
     seed.fillingTemplates,
   );
   const [assignPrep, setAssignPrep] = useState<AssignPrepData | null>(seed.assignPrep);
-  // Spatial editor state: confirmed template's placements, editable. Pillow =
-  // per-cell grid; bolster = single-compartment slot list (own schema, no cap).
-  const [placements, setPlacements] = useState<PillowPlacement[]>([]);
-  const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
+  // The Result's own saved mix, and the editor's working copy. The editor opens
+  // on the saved mix when it has pieces (a template is then only the reference
+  // Save assignment names); otherwise on the recommended template. Pillow =
+  // spatial cells; bolster = single-compartment slot list (own schema, no cap).
+  const [savedMix, setSavedMix] = useState<SavedMix>(seed.savedMix);
+  const [placements, setPlacements] = useState<PillowPlacement[]>(seed.savedMix.pillow);
+  const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>(seed.savedMix.bolster);
+  /** Where the editor's mix came from: the Result's saved snapshot, or the template last picked. */
+  const [mixOrigin, setMixOrigin] = useState<"saved" | "template">(
+    seed.savedMix.pillow.length || seed.savedMix.bolster.length ? "saved" : "template",
+  );
+  const [savingMix, setSavingMix] = useState(false);
   const [templateHadPlacements, setTemplateHadPlacements] = useState(true);
-  const [colorOverrides, setColorOverrides] = useState<ColorOverrideRow[]>([]);
-  const [dimensionOverrides, setDimensionOverrides] = useState<DimensionOverridesPayload | undefined>(undefined);
+  const [colorOverrides, setColorOverrides] = useState<ColorOverrideRow[]>(seed.colorOverrides);
+  const [dimensionOverrides, setDimensionOverrides] = useState<DimensionOverridesPayload | undefined>(seed.dimensionOverrides);
   const [templateLegacyLines, setTemplateLegacyLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [templateNotes, setTemplateNotes] = useState("");
   const [fillingItems, setFillingItems] = useState<BolsterListItem[]>(seed.fillingItems);
@@ -444,7 +488,14 @@ export default function ResultDetailPage({
 
   const productType = row?.product_type === "bolster" ? "bolster" : "pillow";
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
-  const canAssign = row?.status === "held";
+  /**
+   * What the page does with the Result's filling mix (`lib/results/filling-mix.ts`):
+   * `assign` on a held Result (Save assignment), `draft` on a Draft Result Staff
+   * lay out ahead of the customer (Save mix), `view` once it is assigned or later.
+   */
+  const mixMode = row ? fillingMixMode(row) : "view";
+  const canEditMix = mixMode !== "view";
+  const hasSavedMix = savedMix.pillow.length > 0 || savedMix.bolster.length > 0;
   /**
    * Re-open this build in the configurator (`lib/results/staff-edit.ts`) rather
    * than growing a second editor here. Mirrors `staffEditableResult`: the two
@@ -482,7 +533,7 @@ export default function ResultDetailPage({
   }, [row, productType, assignLength, assignSize, assignTier]);
 
   const loadAssignPrep = useCallback(async () => {
-    if (!canAssign || !sizeKey) {
+    if (!canEditMix || !sizeKey) {
       setAssignPrep(null);
       setFillingTemplates([]);
       return;
@@ -538,7 +589,7 @@ export default function ResultDetailPage({
       setTemplatesLoading(false);
     }
   }, [
-    canAssign,
+    canEditMix,
     sizeKey,
     productType,
     assignLength,
@@ -549,8 +600,17 @@ export default function ResultDetailPage({
     hasAssistSnapshot,
   ]);
 
-  // Size×tier (or length) change clears the filling pick + placements; the prep
-  // effect below reloads the Default Filling Template hint for the new key.
+  // Read by the size-change effect without re-running it when the origin moves.
+  const mixOriginRef = useRef(mixOrigin);
+  useEffect(() => {
+    mixOriginRef.current = mixOrigin;
+  }, [mixOrigin]);
+
+  // Size×tier (or length) change clears the filling pick; the prep effect below
+  // reloads the Default Filling Template hint for the new key. A template's mix
+  // is cleared with it and re-seeded from the new hint. The Result's own saved
+  // mix stays: nothing in a recipe is size-specific, and the fit redraws it at
+  // the new Size.
   useEffect(() => {
     // Seeded state is already in sync on mount — only a real size/tier/length
     // change should clear the operator's pick.
@@ -561,8 +621,10 @@ export default function ResultDetailPage({
     setFillingTemplateId("");
     // The old size's hint must not re-seed the mix before the new prep lands.
     setAssignPrep(null);
-    setPlacements([]);
-    setBolsterMix([]);
+    if (mixOriginRef.current !== "saved") {
+      setPlacements([]);
+      setBolsterMix([]);
+    }
     setTemplateHadPlacements(true);
     setTemplateLegacyLines([]);
   }, [assignSize, assignTier, assignLength, productType]);
@@ -572,9 +634,9 @@ export default function ResultDetailPage({
       skipPrepFetch.current = false;
       return;
     }
-    if (!row || !canAssign) return;
+    if (!row || !canEditMix) return;
     void loadAssignPrep();
-  }, [row, canAssign, loadAssignPrep]);
+  }, [row, canEditMix, loadAssignPrep]);
 
   // Filling Items for the spatial editor (pillow cells or bolster compartment).
   useEffect(() => {
@@ -582,7 +644,7 @@ export default function ResultDetailPage({
       skipFillingItemsFetch.current = false;
       return;
     }
-    if (!canAssign) return;
+    if (!canEditMix) return;
     let cancelled = false;
     (async () => {
       const { supabaseClient } = await import("@/lib/supabase/client");
@@ -608,13 +670,20 @@ export default function ResultDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [canAssign, productType]);
+  }, [canEditMix, productType]);
 
+  /**
+   * Load a template. Picking one starts the mix over from it; `keepMix` loads
+   * only what describes it (notes, legacy lines) and leaves the editor on the
+   * Result's own saved mix, which the template is then just the reference for.
+   */
   const loadSelectedFillingPreview = useCallback(
-    async (templateId: string) => {
+    async (templateId: string, opts: { keepMix?: boolean } = {}) => {
       if (!templateId) {
-        setPlacements([]);
-        setBolsterMix([]);
+        if (!opts.keepMix) {
+          setPlacements([]);
+          setBolsterMix([]);
+        }
         setTemplateHadPlacements(true);
         setTemplateLegacyLines([]);
         setTemplateNotes("");
@@ -636,13 +705,14 @@ export default function ResultDetailPage({
         // Bolster rows are slot-only — never the pillow enums.
         if (productType === "pillow") {
           const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
-          setPlacements(rowsToPillowPlacements(placementRows));
+          if (!opts.keepMix) setPlacements(rowsToPillowPlacements(placementRows));
           setTemplateHadPlacements(placementRows.length > 0);
         } else {
           const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
-          setBolsterMix(rowsToBolsterPlacements(placementRows));
+          if (!opts.keepMix) setBolsterMix(rowsToBolsterPlacements(placementRows));
           setTemplateHadPlacements(placementRows.length > 0);
         }
+        if (!opts.keepMix) setMixOrigin("template");
         setTemplateLegacyLines(lines);
         setTemplateNotes(String(payload?.template?.notes ?? ""));
         // Product Builder colours for the x-ray — same server route as Configure,
@@ -650,6 +720,8 @@ export default function ResultDetailPage({
         setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
         setDimensionOverrides((payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined);
       } catch {
+        // A template that will not load never wipes the Result's own mix.
+        if (opts.keepMix) return;
         setPlacements([]);
         setBolsterMix([]);
       }
@@ -657,17 +729,113 @@ export default function ResultDetailPage({
     [productType, to],
   );
 
-  // Open the Filling mix pre-filled: load the recommended (engine or size-default)
-  // template straight into the x-ray, so Staff confirm or adjust a real mix
-  // instead of starting from a hidden editor. Re-seeds after a size/tier change,
-  // which clears the pick and reloads the prep.
+  // Open the Filling mix pre-filled. A Result with its own saved mix opens on
+  // it, and the template select names the template it still matches (else the
+  // recommendation) as the reference Save assignment needs. Otherwise the
+  // recommended (engine or size-default) template loads straight into the
+  // x-ray, so Staff confirm or adjust a real mix instead of starting from a
+  // hidden editor. Re-seeds after a size/tier change, which clears the pick and
+  // reloads the prep.
+  const ownTemplateId = row?.filling_template_id ?? null;
   useEffect(() => {
-    const hint = assignPrep?.defaultFillingTemplate;
-    if (!canAssign || fillingTemplateId || !hint) return;
-    const next = String(hint.id);
+    if (!canEditMix || fillingTemplateId || !assignPrep) return;
+    const own =
+      ownTemplateId != null && assignPrep.fillingTemplates.some((t) => t.id === ownTemplateId) ? ownTemplateId : null;
+    // Save assignment needs a template to name even when the mix is the Result's
+    // own; with no recommendation for this size, the first one serves (the server
+    // keeps it on the Result only if the mix still matches it exactly).
+    const fallback = mixMode === "assign" && mixOriginRef.current === "saved" ? (assignPrep.fillingTemplates[0]?.id ?? null) : null;
+    const pick = own ?? assignPrep.defaultFillingTemplate?.id ?? fallback;
+    if (pick == null) return;
+    const next = String(pick);
     setFillingTemplateId(next);
-    void loadSelectedFillingPreview(next);
-  }, [canAssign, fillingTemplateId, assignPrep, loadSelectedFillingPreview]);
+    void loadSelectedFillingPreview(next, { keepMix: mixOriginRef.current === "saved" });
+  }, [canEditMix, mixMode, fillingTemplateId, assignPrep, ownTemplateId, loadSelectedFillingPreview]);
+
+  /** Re-read the Result's saved mix (after a save, or when the page loaded without it) and open the editor on it. */
+  const loadFillingMix = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/results/${encodeURIComponent(id)}/filling-mix`, { cache: "no-store" });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the filling mix.");
+      const mix = payload as ResultFillingMixPayload;
+      const next = savedMixOf(mix);
+      setSavedMix(next);
+      setColorOverrides(mix.colorOverrides ?? []);
+      setDimensionOverrides(mix.dimensionOverrides);
+      if (next.pillow.length || next.bolster.length) {
+        setPlacements(next.pillow);
+        setBolsterMix(next.bolster);
+        setMixOrigin("saved");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't load the filling mix.");
+    }
+  }, [id]);
+
+  // Rendered without the server's first paint (a client navigation fallback): fetch the saved mix too.
+  const skipFillingMixFetch = useRef(initialData?.fillingMix !== undefined);
+  useEffect(() => {
+    if (skipFillingMixFetch.current) return;
+    skipFillingMixFetch.current = true;
+    void loadFillingMix();
+  }, [loadFillingMix]);
+
+  /** Put the Result's saved mix back in the editor after trying a template. */
+  const restoreSavedMix = useCallback(() => {
+    setPlacements(savedMix.pillow);
+    setBolsterMix(savedMix.bolster);
+    setMixOrigin("saved");
+  }, [savedMix]);
+
+  /**
+   * Draft Result: save the mix onto it ahead of the customer submitting
+   * (`/api/results/[id]/filling-mix`). No status, price or email moves; the
+   * hold keeps it, and Save assignment confirms it once they have submitted.
+   */
+  const saveDraftMix = useCallback(async () => {
+    if (!id) return;
+    setSavingMix(true);
+    try {
+      const res = await fetch(`/api/results/${encodeURIComponent(id)}/filling-mix`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tier: assignTier,
+          fillingTemplateId: fillingTemplateId ? Number(fillingTemplateId) : null,
+          placements: pillowPlacementsToRows(placements),
+        }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = typeof payload?.error === "string" ? payload.error : "Couldn't save the mix.";
+        throw new Error(message);
+      }
+      toast.success(
+        payload?.pieces
+          ? "Mix saved on this result. It waits for the customer to submit."
+          : "Mix cleared from this result",
+      );
+      // Only the snapshot moved, so only it is re-read. A full reload would reset
+      // the size and the template pick to the row's and re-seed a template over
+      // the mix just saved.
+      setRow((prev) =>
+        prev
+          ? {
+              ...prev,
+              filling_fingerprint: (payload?.fillingFingerprint as string | null | undefined) ?? null,
+              filling_template_id: (payload?.fillingTemplateId as number | null | undefined) ?? null,
+            }
+          : prev,
+      );
+      await loadFillingMix();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't save the mix.");
+    } finally {
+      setSavingMix(false);
+    }
+  }, [id, assignTier, fillingTemplateId, placements, loadFillingMix]);
 
   const assign = useCallback(async () => {
     if (!id) return;
@@ -703,7 +871,8 @@ export default function ResultDetailPage({
           ? "Assigned and emailed to the customer"
           : "Assigned",
       );
-      await load();
+      // The assigned snapshot is now the Result's own mix: the read-only view draws it.
+      await Promise.all([load(), loadFillingMix()]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save the assignment.");
     } finally {
@@ -719,6 +888,7 @@ export default function ResultDetailPage({
     placements,
     bolsterMix,
     load,
+    loadFillingMix,
   ]);
 
   // Re-send the priced email and fetch the customer's link. The route reprices
@@ -783,23 +953,50 @@ export default function ResultDetailPage({
     load();
   }, [load]);
 
+  // Every Item the mix draws: the active placeable Items, plus any piece the
+  // saved mix places that they no longer list (a read-only build loads only those).
+  const mixItems = useMemo(() => {
+    const known = new Set(fillingItems.map((i) => i.id));
+    const extra = savedMix.items.filter((i) => !known.has(i.id));
+    return extra.length ? [...fillingItems, ...extra] : fillingItems;
+  }, [fillingItems, savedMix.items]);
   const fillingLabelById = useMemo(
-    () => new Map(fillingItems.map((i) => [i.id, i.label])),
-    [fillingItems],
+    () => new Map(mixItems.map((i) => [i.id, i.label])),
+    [mixItems],
   );
-  // A neck support or an ear pad is for premium pillows only — never offered on basic or a bolster.
-  const pickerItems = useMemo(
-    () =>
-      productType === "pillow" && assignTier === "premium"
-        ? fillingItems
-        : fillingItems.filter((i) => !NECK_SUPPORT.test(i.name) && !EAR_PAD.test(i.name)),
-    [fillingItems, productType, assignTier],
-  );
+  // A neck support or an ear pad is for premium pillows only — never offered on
+  // basic or a bolster. A piece the saved mix already places stays drawable.
+  const pickerItems = useMemo(() => {
+    if (productType === "pillow" && assignTier === "premium") return mixItems;
+    const placed = new Set(savedMix.items.map((i) => i.id));
+    return mixItems.filter((i) => placed.has(i.id) || (!NECK_SUPPORT.test(i.name) && !EAR_PAD.test(i.name)));
+  }, [mixItems, savedMix.items, productType, assignTier]);
   // Slice 04: the physical fit of the assignment at its Size — one object for
   // the x-ray, the save confirm and the cross-section.
   const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
-  // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
-  const { cut, setCut, onDiveChange } = useCut();
+  // Slice 05: the cross-sections under the x-ray; the dived Section's cut is ringed.
+  const { setCut, onDiveChange } = useCut();
+  const [divedSection, setDivedSection] = useState<Section | null>(null);
+  const onXrayDive = useCallback(
+    (section: Section | null) => {
+      onDiveChange(section);
+      setDivedSection(section);
+    },
+    [onDiveChange],
+  );
+  // The workbench follows the card's width (a sidebar can be open or collapsed):
+  // wide, the dived Section's controls dock in the rail beside the x-ray.
+  const [workbenchRef, workbenchWidth] = useElementWidth<HTMLDivElement>();
+  const wideWorkbench = workbenchWidth >= 760;
+  const [controlsSlot, setControlsSlot] = useState<HTMLElement | null>(null);
+  // Whether the editor still shows exactly what is saved on the Result.
+  const mixDirty = useMemo(
+    () =>
+      productType === "bolster"
+        ? !placementsExactMatch(bolsterMix, savedMix.bolster)
+        : !placementsExactMatch(placements, savedMix.pillow),
+    [productType, placements, bolsterMix, savedMix],
+  );
   const { itemSubtypes: pickerItemSubtypes, itemSizes: pickerItemSizes, itemDims: pickerItemDims } = useItemMaps(pickerItems, dimensionOverrides);
   // ADR 0025: the soft cut draws with the settings Staff saved, carried by the same payload.
   const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
@@ -961,6 +1158,308 @@ export default function ResultDetailPage({
       </div>
     );
   }
+
+  const sizeTierFields = (
+    <>
+      <Field label="Size">
+        <Select value={assignSize} onValueChange={(v) => setAssignSize(v as PillowSize)}>
+          <SelectTrigger className="max-md:w-full max-md:min-w-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(["XS", "S", "M", "L", "XL"] as const).map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Tier">
+        <Select value={assignTier} onValueChange={(v) => setAssignTier(v as PillowTier)}>
+          <SelectTrigger className="max-md:w-full max-md:min-w-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="basic">Basic</SelectItem>
+            <SelectItem value="premium">Premium</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+    </>
+  );
+
+  // The short state beside the Filling mix title.
+  const mixStatusLabel =
+    mixMode === "view"
+      ? "Read-only"
+      : mixMode === "draft"
+        ? !hasSavedMix
+          ? placements.length
+            ? "Not saved yet"
+            : "Nothing placed yet"
+          : mixDirty
+            ? "Unsaved changes"
+            : "Saved on this result"
+        : hasSavedMix && mixOrigin === "saved"
+          ? mixDirty
+            ? "Saved mix, edited"
+            : "Saved on this result"
+          : fillingTemplateId
+            ? "From a template"
+            : "Needs confirming";
+
+  /**
+   * One Filling mix workbench for every state (`filling-mix-workbench.tsx`):
+   * editable on a held Result (Save assignment) and a Draft Result (Save mix),
+   * read-only after. Rendered in one place at a time, so the width measure
+   * and the dock slot belong to whichever card shows it.
+   */
+  const renderFillingMix = () => {
+    const editable = canEditMix;
+    const isPillow = productType === "pillow";
+    const hint = assignPrep?.defaultFillingTemplate ?? null;
+    const pieceCount = isPillow ? placements.length : bolsterMix.length;
+
+    const notices: ReactNode[] = [];
+    if (editable && hasSavedMix) {
+      notices.push(
+        <div
+          key="saved"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+        >
+          <span className="min-w-0 flex-1">
+            {mixOrigin === "saved"
+              ? mixMode === "assign"
+                ? "Showing the mix saved on this result. Save assignment confirms it; the template is only a reference."
+                : "Showing the mix saved on this result."
+              : "Showing the template. The mix saved on this result is kept until you save."}
+          </span>
+          {mixOrigin === "template" && (
+            <Button type="button" size="sm" variant="outline" onClick={restoreSavedMix}>
+              Back to the saved mix
+            </Button>
+          )}
+        </div>,
+      );
+    }
+    if (editable && mixOrigin === "template" && !templateHadPlacements && templateLegacyLines.length > 0) {
+      notices.push(
+        <div key="legacy" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          <div className="font-medium">Legacy flat recipe. Saving gives each piece a placement.</div>
+          <ul className="mt-1 list-inside list-disc text-muted-foreground">
+            {templateLegacyLines.map((l) => (
+              <li key={l.item_id}>
+                {fillingLabelById.get(l.item_id) ?? `Item #${l.item_id}`} × {l.quantity}
+              </li>
+            ))}
+          </ul>
+        </div>,
+      );
+    }
+    if (editable && isPillow && placements.length > 0 && !isSpatiallyAuthored(placements)) {
+      notices.push(
+        <div key="unauthored" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          <div className="font-medium">Not spatially authored.</div>
+          <p className="mt-1 text-muted-foreground">
+            {unauthoredReason(placements.map((p) => p.section))}{" "}
+            {looksLikeLegacyImport(placements.map((p) => p.section))
+              ? "These placements were auto-generated from a legacy flat recipe. "
+              : ""}
+            Lay the pieces out before confirming the build.
+          </p>
+        </div>,
+      );
+    }
+
+    const picker = editable ? (
+      <div className="space-y-1.5">
+        <Field label="Filling template">
+          <Select
+            value={fillingTemplateId}
+            onValueChange={(value) => {
+              setFillingTemplateId(value);
+              void loadSelectedFillingPreview(value);
+            }}
+          >
+            <SelectTrigger className="w-full min-w-0" disabled={templatesLoading || !sizeKey}>
+              <SelectValue
+                placeholder={
+                  templatesLoading
+                    ? "Loading…"
+                    : fillingTemplates.length
+                      ? "Choose a template…"
+                      : "No templates for this size"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {fillingTemplates.map((t) => (
+                <SelectItem key={t.id} value={String(t.id)}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <p className="text-xs text-muted-foreground">
+          {prepLoading ? (
+            "Loading the recommendation…"
+          ) : hint ? (
+            <>
+              {assignPrep?.hintSource === "engine" ? "Engine pick" : "Size default"}:{" "}
+              <span className="font-medium text-foreground">{hint.name}</span>
+              {engineRecord && assignPrep?.hintSource === "engine" ? <> · {plainLanguageWhy(engineRecord)}</> : null}
+            </>
+          ) : (
+            "No default template for this size."
+          )}
+        </p>
+      </div>
+    ) : (
+      <p className="text-sm text-muted-foreground">
+        {row.filling_template_id != null ? `From template #${row.filling_template_id}` : "Custom mix"}
+        {pieceCount ? ` · ${pieceCount} piece${pieceCount === 1 ? "" : "s"}` : ""}
+      </p>
+    );
+
+    const xray = isPillow ? (
+      <div className="mx-auto w-full max-w-[52rem]">
+        <XrayEditor
+          placements={placements}
+          onPlacementsChange={editable ? setPlacements : undefined}
+          items={pickerItems}
+          pillowSize={assignSize}
+          colorOverrides={colorOverrides}
+          dimensionOverrides={dimensionOverrides}
+          fit={fit}
+          onDiveChange={onXrayDive}
+          controlsSlot={editable && wideWorkbench ? controlsSlot : null}
+        />
+      </div>
+    ) : editable ? (
+      // Mbolster: single compartment — ordered list, no cap, never the 3×3 grid.
+      <BolsterCompartmentList value={bolsterMix} onChange={setBolsterMix} items={pickerItems} />
+    ) : null;
+
+    const cuts = isPillow ? (
+      <XrayCrossSectionStrip
+        fit={fit}
+        active={divedSection}
+        onActiveChange={editable ? setCut : undefined}
+        itemSubtypes={pickerItemSubtypes}
+        itemSizes={pickerItemSizes}
+        itemDims={pickerItemDims}
+        placements={placements}
+        onPlacementsChange={editable ? setPlacements : undefined}
+        items={pickerItems}
+        colorOverrides={colorOverrides}
+        softBody={softBody}
+      />
+    ) : (
+      <BolsterCrossSection fit={bolsterFit} itemSubtypes={pickerItemSubtypes} colorOverrides={colorOverrides} />
+    );
+
+    const dock =
+      editable && isPillow && wideWorkbench ? (
+        <XraySectionDock dived={divedSection} onSlot={setControlsSlot} className="flex max-h-[28rem]" />
+      ) : null;
+
+    const actions =
+      mixMode === "assign" ? (
+        <Button
+          className="w-full"
+          onClick={() => {
+            // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
+            if (productType === "pillow" && !confirmSaveWithOverCells(fit, "Save assignment")) return;
+            if (productType === "bolster" && !confirmSaveWithBolsterFit(bolsterFit, "Save assignment")) return;
+            void assign();
+          }}
+          disabled={assigning || !fillingTemplateId}
+        >
+          {assigning ? "Assigning…" : "Save assignment"}
+        </Button>
+      ) : mixMode === "draft" ? (
+        <Button
+          className="w-full"
+          onClick={() => {
+            if (!confirmSaveWithOverCells(fit, "Save mix")) return;
+            void saveDraftMix();
+          }}
+          disabled={savingMix || !mixDirty}
+        >
+          {savingMix ? "Saving…" : mixDirty || !hasSavedMix ? "Save mix" : "Mix saved"}
+        </Button>
+      ) : canReconfigure ? (
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() => router.push(to(`/mp-config?result=${encodeURIComponent(row.id)}&edit=1`))}
+        >
+          Edit configuration
+        </Button>
+      ) : null;
+
+    const packList = (
+      <WorkbenchTile
+        title="Derived pack list"
+        aside={<span className="tabular-nums">{pieceCount} piece{pieceCount === 1 ? "" : "s"}</span>}
+      >
+        {isPillow ? (
+          <XrayPackList placements={placements} onPlacementsChange={editable ? setPlacements : undefined} items={mixItems} />
+        ) : (
+          <XrayPackList placements={bolsterMix} onPlacementsChange={editable ? setBolsterMix : undefined} items={mixItems} />
+        )}
+      </WorkbenchTile>
+    );
+
+    const notes =
+      templateNotes && mixOrigin === "template" ? (
+        <div className="mt-3 border-t pt-2">
+          <div className="text-xs text-muted-foreground mb-1">Assembly notes</div>
+          <p className="whitespace-pre-wrap text-sm">{templateNotes}</p>
+        </div>
+      ) : null;
+    const insertSteps = isPillow ? (
+      <InsertOrderList placements={placements} onPlacementsChange={editable ? setPlacements : undefined} items={mixItems} />
+    ) : null;
+    // The insert order folds away: one row per piece runs far longer than the
+    // pack list beside it, and the build team reads it after the pack list.
+    const insertOrder = isPillow ? (
+      <Collapsible className="min-w-0 rounded-md border">
+        <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted/50 active:bg-press [&[data-state=open]>svg]:rotate-180">
+          <span>
+            Insert order
+            <span className="ml-2 text-xs font-normal text-muted-foreground tabular-nums">
+              {pieceCount} step{pieceCount === 1 ? "" : "s"}
+            </span>
+          </span>
+          <ChevronDown className="size-4 transition-transform" aria-hidden />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-t px-3 py-3">
+          {insertSteps}
+          {notes}
+        </CollapsibleContent>
+      </Collapsible>
+    ) : notes ? (
+      <WorkbenchTile title="Assembly notes">{notes}</WorkbenchTile>
+    ) : undefined;
+
+    return (
+      <FillingMixWorkbench
+        measureRef={workbenchRef}
+        wide={wideWorkbench}
+        notice={notices.length ? <div className="space-y-2">{notices}</div> : undefined}
+        picker={picker}
+        xray={xray}
+        dock={dock}
+        actions={actions}
+        cuts={cuts}
+        packList={packList}
+        insertOrder={insertOrder}
+      />
+    );
+  };
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -1182,6 +1681,18 @@ export default function ResultDetailPage({
                   the build-ready email.
                 </p>
               </div>
+
+              {hasSavedMix && (
+                <Collapsible defaultOpen className="rounded-lg border">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted/50 active:bg-press">
+                    Filling mix
+                    <span className="text-xs font-normal text-muted-foreground">{mixStatusLabel}</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="border-t px-4 py-3 max-md:px-3">
+                    {renderFillingMix()}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </>
           ) : (
             <div className="space-y-4">
@@ -1205,39 +1716,7 @@ export default function ResultDetailPage({
                     </Select>
                   </Field>
                 ) : (
-                  <>
-                    <Field label="Size">
-                      <Select
-                        value={assignSize}
-                        onValueChange={(v) => setAssignSize(v as PillowSize)}
-                      >
-                        <SelectTrigger className="max-md:w-full max-md:min-w-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(["XS", "S", "M", "L", "XL"] as const).map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field label="Tier">
-                      <Select
-                        value={assignTier}
-                        onValueChange={(v) => setAssignTier(v as PillowTier)}
-                      >
-                        <SelectTrigger className="max-md:w-full max-md:min-w-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="basic">Basic</SelectItem>
-                          <SelectItem value="premium">Premium</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  </>
+                  sizeTierFields
                 )}
               </div>
 
@@ -1279,183 +1758,10 @@ export default function ResultDetailPage({
               <Collapsible defaultOpen className="rounded-lg border">
                 <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted/50 active:bg-press">
                   Filling mix
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {fillingTemplateId ? "Selected" : "Needs confirming"}
-                  </span>
+                  <span className="text-xs font-normal text-muted-foreground">{mixStatusLabel}</span>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-3 border-t px-4 py-3">
-                  {hasAssistSnapshot ? (
-                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Staff assist mix (saved on this result)
-                      </div>
-                      <p className="text-muted-foreground">
-                        This result already has a filling mix from staff assist mode. You
-                        still need to confirm it below. The engine&apos;s pick is only a reference.
-                      </p>
-                    </div>
-                  ) : null}
-                  <div className={cn(valueTileClassName, "text-sm")}>
-                    <div className="text-xs text-muted-foreground mb-1">
-                      {assignPrep?.hintSource === "engine"
-                        ? "Engine recommendation"
-                        : "Suggested default"}
-                    </div>
-                    {prepLoading ? (
-                      <p className="text-muted-foreground">Loading…</p>
-                    ) : assignPrep?.defaultFillingTemplate ? (
-                      <>
-                        <p className="font-medium">{assignPrep.defaultFillingTemplate.name}</p>
-                        {engineRecord && assignPrep.hintSource === "engine" ? (
-                          <p className="mt-1 text-muted-foreground">
-                            {plainLanguageWhy(engineRecord)}
-                          </p>
-                        ) : null}
-                        {assignPrep.defaultFillingTemplate.preview.length ? (
-                          <ul className="mt-1 text-muted-foreground space-y-0.5">
-                            {assignPrep.defaultFillingTemplate.preview.map((line, idx) => (
-                              <li key={idx}>
-                                {line.variant} ×{line.qty}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-muted-foreground">This suggestion has no fillings.</p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-muted-foreground">No default set</p>
-                    )}
-                  </div>
-
-                  <Field label="Filling template">
-                    <Select
-                      value={fillingTemplateId}
-                      onValueChange={(value) => {
-                        setFillingTemplateId(value);
-                        void loadSelectedFillingPreview(value);
-                      }}
-                    >
-                      <SelectTrigger disabled={templatesLoading || !sizeKey}>
-                        <SelectValue
-                          placeholder={
-                            templatesLoading
-                              ? "Loading…"
-                              : fillingTemplates.length
-                                ? "Choose a template…"
-                                : "No templates for this size"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {fillingTemplates.map((t) => (
-                          <SelectItem key={t.id} value={String(t.id)}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-
-                  {fillingTemplateId && (
-                    <div className="space-y-3">
-                      {!templateHadPlacements && templateLegacyLines.length > 0 && (
-                        <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-                          <div className="font-medium">
-                            Legacy flat recipe. Saving gives each piece a placement.
-                          </div>
-                          <ul className="mt-1 list-inside list-disc text-muted-foreground">
-                            {templateLegacyLines.map((l) => (
-                              <li key={l.item_id}>
-                                {fillingLabelById.get(l.item_id) ?? `Item #${l.item_id}`} × {l.quantity}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {productType === "pillow" ? (
-                        <>
-                          {placements.length > 0 && !isSpatiallyAuthored(placements) && (
-                            <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-                              <div className="font-medium">Not spatially authored.</div>
-                              <p className="mt-1 text-muted-foreground">
-                                {unauthoredReason(placements.map((p) => p.section))}{" "}
-                                {looksLikeLegacyImport(placements.map((p) => p.section))
-                                  ? "These placements were auto-generated from a legacy flat recipe. "
-                                  : ""}
-                                Lay the pieces out before confirming the build.
-                              </p>
-                            </div>
-                          )}
-                          <XrayEditor
-                            placements={placements}
-                            onPlacementsChange={setPlacements}
-                            items={pickerItems}
-                            pillowSize={assignSize}
-                            colorOverrides={colorOverrides}
-                            dimensionOverrides={dimensionOverrides}
-                            fit={fit}
-                            onDiveChange={onDiveChange}
-                          />
-                          <XrayCrossSection
-                            fit={fit}
-                            cut={cut}
-                            onCutChange={setCut}
-                            itemSubtypes={pickerItemSubtypes}
-                            itemSizes={pickerItemSizes}
-                            itemDims={pickerItemDims}
-                            placements={placements}
-                            onPlacementsChange={setPlacements}
-                            items={pickerItems}
-                            colorOverrides={colorOverrides}
-                            softBody={softBody}
-                          />
-                        </>
-                      ) : (
-                        // Mbolster: single compartment — ordered list, no cap, never the 3×3 grid.
-                        <>
-                          <BolsterCompartmentList
-                            value={bolsterMix}
-                            onChange={setBolsterMix}
-                            items={pickerItems}
-                          />
-                          <BolsterCrossSection fit={bolsterFit} itemSubtypes={pickerItemSubtypes} colorOverrides={colorOverrides} />
-                        </>
-                      )}
-                      <div className={cn(valueTileClassName, "text-sm")}>
-                        <div className="text-xs text-muted-foreground mb-1">Derived pack list</div>
-                        {productType === "pillow" ? (
-                          <XrayPackList placements={placements} onPlacementsChange={setPlacements} items={fillingItems} />
-                        ) : (
-                          <XrayPackList placements={bolsterMix} onPlacementsChange={setBolsterMix} items={fillingItems} />
-                        )}
-                      </div>
-                      {productType === "pillow" && (
-                        <div className={cn(valueTileClassName, "text-sm")}>
-                          <div className="text-xs text-muted-foreground mb-1">Insert order</div>
-                          <InsertOrderList placements={placements} onPlacementsChange={setPlacements} items={fillingItems} />
-                        </div>
-                      )}
-                      {templateNotes && (
-                        <div className={cn(valueTileClassName, "text-sm")}>
-                          <div className="text-xs text-muted-foreground mb-1">Assembly notes</div>
-                          <p className="whitespace-pre-wrap">{templateNotes}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={() => {
-                      // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
-                      if (productType === "pillow" && !confirmSaveWithOverCells(fit, "Save assignment")) return;
-                      if (productType === "bolster" && !confirmSaveWithBolsterFit(bolsterFit, "Save assignment")) return;
-                      void assign();
-                    }}
-                    disabled={assigning || !fillingTemplateId}
-                  >
-                    {assigning ? "Assigning…" : "Save assignment"}
-                  </Button>
+                <CollapsibleContent className="border-t px-4 py-3 max-md:px-3">
+                  {renderFillingMix()}
                 </CollapsibleContent>
               </Collapsible>
             </div>
@@ -1552,6 +1858,30 @@ export default function ResultDetailPage({
               </div>
             </div>
           )}
+        </Card>
+      )}
+
+      {/* The filling mix outside the Assignment card: a Draft Result Staff lay out
+          ahead of the customer, or a settled build's mix, read-only. */}
+      {(mixMode === "draft" || (hasSavedMix && row.status !== "held" && row.status !== "assigned")) && (
+        <Card id="filling-mix" className="p-4 space-y-4 scroll-mt-20">
+          <div>
+            <div className="flex items-baseline justify-between gap-4">
+              <div className="text-sm font-medium">Filling mix</div>
+              <span className="text-xs text-muted-foreground">{mixStatusLabel}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {mixMode === "draft"
+                ? "The customer hasn't submitted yet. Lay their fillings out now: the mix is saved on this result and is ready to confirm when it arrives in Needs assign. Saving it emails no one and doesn't change the price."
+                : "The fillings this build was made with."}
+            </p>
+          </div>
+          {mixMode === "draft" && (
+            <div className="grid grid-cols-2 gap-3 sm:max-w-md sm:gap-4">
+              {sizeTierFields}
+            </div>
+          )}
+          {renderFillingMix()}
         </Card>
       )}
 

@@ -554,6 +554,7 @@ Changed from pages: `/settings/inventory/configure`
   - `GET()` [select] — app/api/mp-config/assist/route.ts:124
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:120
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:256
+  - `loadResultFillingMix()` [select] — lib/results/admin/filling-mix.ts:49
 
 ### filling_dimension_overrides
 Defined in supabase/migrations/20260925090000_dimension_overrides.sql:7
@@ -581,6 +582,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `GET()` [select] — app/api/mp-config/assist/route.ts:79
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:115
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:225
+  - `POST()` [select] — app/api/results/[id]/filling-mix/route.ts:114
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:202
   - `POST()` [select] — app/api/results/hold/route.ts:500
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:382
@@ -715,7 +717,7 @@ Changed from pages: `/settings/inventory`
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:204
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:394
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:57
-  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:589
+  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:651
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
   - `GET()` [select] — app/api/mp-config/assist/route.ts:116
   - `GET()` [select] — app/api/results/addons/route.ts:41
@@ -747,10 +749,11 @@ Changed from pages: `/settings/inventory`
   - `loadAssignPrep()` [select] — lib/results/assign-prep.ts:157
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:207
   - `loadCostingsPriceMaps()` [select] — lib/shop/price-sync.ts:135
-  - `loadFillingItems()` [select] — lib/results/admin/detail-prep.ts:133
+  - `loadFillingItems()` [select] — lib/results/admin/detail-prep.ts:145
   - `loadItems()` [select] — lib/analytics/sales-report.ts:46
   - `loadPayload()` [select] — app/[lang]/settings/product-builder/dimensions/route.ts:36
   - `loadPillowComponents()` [select] — lib/results/composed-sellable.ts:103
+  - `loadResultFillingMix()` [select] — lib/results/admin/filling-mix.ts:63
   - `loadResumeFinish()` [select] — lib/results/resume-finish.ts:63
   - `loadStaffEditResult()` [select] — lib/results/staff-edit.ts:150
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:75
@@ -853,6 +856,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:136
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
   - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:40
+  - `POST()` [select,update] — app/api/results/[id]/filling-mix/route.ts:92
   - `POST()` [select,update] — app/api/results/[id]/finish/route.ts:53
   - `POST()` [select,update] — app/api/results/[id]/reconfigure/route.ts:113
   - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:48
@@ -872,6 +876,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `/results` (page) [select] — app/[lang]/results/page.tsx:30
   - `GET()` [select] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:122
   - `GET()` [select] — app/api/mp-config/responses/[id]/route.ts:37
+  - `GET()` [select] — app/api/results/[id]/filling-mix/route.ts:57
   - `GET()` [select] — app/api/results/[id]/route.ts:301
   - `GET()` [select] — app/api/results/queue-counts/route.ts:24
   - `GET()` [select] — app/api/results/route.ts:35
@@ -2006,6 +2011,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id
   - `reorderResult` [insert,select] — lib/results/reorder.ts:224
 - Read by:
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:142
+  - `loadResultFillingMix()` [select] — lib/results/admin/filling-mix.ts:40
 
 ### result_filling_placements
 Defined in supabase/migrations/20260719000002_result_filling_placements.sql:6
@@ -2013,12 +2019,14 @@ References: `items`, `mp_config_responses`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/results/[id]`
 - Written by:
   - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:514
+  - `POST()` [delete,insert] — app/api/results/[id]/filling-mix/route.ts:142
   - `POST()` [delete,insert] — app/api/results/[id]/reconfigure/route.ts:316
   - `POST()` [delete,insert] — app/api/results/hold/route.ts:1208
   - `reorderResult` [insert,select] — lib/results/reorder.ts:224
 - Read by:
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:69
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:142
+  - `loadResultFillingMix()` [select] — lib/results/admin/filling-mix.ts:41
   - `loadResumeFinish()` [select] — lib/results/resume-finish.ts:55
   - `loadStaffEditResult()` [select] — lib/results/staff-edit.ts:142
 
@@ -2804,8 +2812,8 @@ app/[lang]/settings/results/page.tsx
 
 ### /settings/results/[id]
 app/[lang]/settings/results/[id]/page.tsx
-- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/mp-config/responses [POST]`, `/api/mp-config/responses/[id] [DELETE,GET]`, `/api/results/[id]/assign [POST]`, `/api/results/[id]/cancel [POST]`, `/api/results/[id]/request-payment [POST]`, `/api/results/assign/prep [GET]`, `/settings/inventory/configure/templates/[templateId]`
-- Loads: `customerIdForResult()`, `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `requireAdminPage()`
+- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/mp-config/responses [POST]`, `/api/mp-config/responses/[id] [DELETE,GET]`, `/api/results/[id]/assign [POST]`, `/api/results/[id]/cancel [POST]`, `/api/results/[id]/filling-mix [GET,POST]`, `/api/results/[id]/request-payment [POST]`, `/api/results/assign/prep [GET]`, `/settings/inventory/configure/templates/[templateId]`
+- Loads: `customerIdForResult()`, `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `loadResultFillingMix()`, `requireAdminPage()`
 - Reads: `items`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `mp_config_responses`, `mp_staff`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`
 - Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `mp_config_response_photos`, `neck_support_dimension_overrides`, `orders`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
