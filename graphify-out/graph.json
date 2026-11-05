@@ -249609,40 +249609,40 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261105100000_customer_pillows",
-      "label": "20261105100000_customer_pillows.sql",
+      "id": "supabase_migrations_20261105155549_customer_pillows",
+      "label": "20261105155549_customer_pillows.sql",
       "_origin": "ast",
       "community": 969,
       "community_name": "public.customer_pillows",
       "file_type": "code",
-      "norm_label": "20261105100000_customer_pillows.sql",
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "norm_label": "20261105155549_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20261105100000_customer_pillows_customer_pillows_template_idx",
+      "id": "supabase_migrations_20261105155549_customer_pillows_customer_pillows_template_idx",
       "label": "customer_pillows_template_idx",
       "_origin": "ast",
       "community": 969,
       "community_name": "public.customer_pillows",
       "file_type": "code",
       "norm_label": "customer_pillows_template_idx",
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L35"
     },
     {
-      "id": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "id": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "label": "public.customer_pillows",
       "_origin": "ast",
       "community": 969,
       "community_name": "public.customer_pillows",
       "file_type": "code",
       "norm_label": "public.customer_pillows",
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L24"
     },
     {
-      "id": "supabase_migrations_20261105100000_customer_pillows_sql_auth_users",
+      "id": "supabase_migrations_20261105155549_customer_pillows_sql_auth_users",
       "label": "auth.users",
       "_origin": "ast",
       "community": 969,
@@ -249653,7 +249653,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261105100000_customer_pillows_sql_public_customers",
+      "id": "supabase_migrations_20261105155549_customer_pillows_sql_public_customers",
       "label": "public.customers",
       "_origin": "ast",
       "community": 969,
@@ -249664,7 +249664,7 @@
       "source_location": ""
     },
     {
-      "id": "supabase_migrations_20261105100000_customer_pillows_sql_public_mp_staff",
+      "id": "supabase_migrations_20261105155549_customer_pillows_sql_public_mp_staff",
       "label": "public.mp_staff",
       "_origin": "ast",
       "community": 969,
@@ -769082,24 +769082,24 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows",
-      "target": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "source": "supabase_migrations_20261105155549_customer_pillows",
+      "target": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L24",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows",
-      "target": "supabase_migrations_20261105100000_customer_pillows_customer_pillows_template_idx",
+      "source": "supabase_migrations_20261105155549_customer_pillows",
+      "target": "supabase_migrations_20261105155549_customer_pillows_customer_pillows_template_idx",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L35",
       "weight": 1.0
     },
@@ -776594,13 +776594,13 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows_customer_pillows_template_idx",
-      "target": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "source": "supabase_migrations_20261105155549_customer_pillows_customer_pillows_template_idx",
+      "target": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "relation": "indexes",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L35",
       "weight": 1.0
     },
@@ -790927,46 +790927,46 @@
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "source": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "target": "public_bom_templates",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L24",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
-      "target": "supabase_migrations_20261105100000_customer_pillows_sql_auth_users",
+      "source": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
+      "target": "supabase_migrations_20261105155549_customer_pillows_sql_auth_users",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L24",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
-      "target": "supabase_migrations_20261105100000_customer_pillows_sql_public_customers",
+      "source": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
+      "target": "supabase_migrations_20261105155549_customer_pillows_sql_public_customers",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L24",
       "weight": 1.0
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
-      "target": "supabase_migrations_20261105100000_customer_pillows_sql_public_mp_staff",
+      "source": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
+      "target": "supabase_migrations_20261105155549_customer_pillows_sql_public_mp_staff",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L24",
       "weight": 1.0
     },
@@ -818695,7 +818695,7 @@
     },
     {
       "source": "app_api_shop_customers_id_pillow_route_delete",
-      "target": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "target": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "relation": "writes_to",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -818719,7 +818719,7 @@
     },
     {
       "source": "app_api_shop_customers_id_pillow_route_put",
-      "target": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "target": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "relation": "writes_to",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -837665,7 +837665,7 @@
     },
     {
       "source": "lib_customer_pillow_load_loadcustomerpillow",
-      "target": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "target": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
@@ -845404,42 +845404,42 @@
       "context": "foreign_key"
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "source": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "target": "supabase_migrations_0011_bom_templates_bom_templates",
       "relation": "references",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L28",
       "weight": 1.0,
       "context": "foreign_key"
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "source": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "target": "supabase_migrations_0025_staff_management_mp_staff",
       "relation": "references",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L31",
       "weight": 1.0,
       "context": "foreign_key"
     },
     {
-      "source": "supabase_migrations_20261105100000_customer_pillows_public_customer_pillows",
+      "source": "supabase_migrations_20261105155549_customer_pillows_public_customer_pillows",
       "target": "supabase_migrations_0028_ecommerce_customers",
       "relation": "references",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "supabase/migrations/20261105100000_customer_pillows.sql",
+      "source_file": "supabase/migrations/20261105155549_customer_pillows.sql",
       "source_location": "L25",
       "weight": 1.0,
       "context": "foreign_key"
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5fabae48dddca2531964eea69604e5158aa1be36"
+  "built_at_commit": "2e52194a52759600ecbec6e9f056e9caf769b18b"
 }

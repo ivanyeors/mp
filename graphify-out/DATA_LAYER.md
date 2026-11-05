@@ -1585,7 +1585,7 @@ Defined in supabase/migrations/20261020100000_customer_import.sql:82
   - `previewShopifyImport()` — app/[lang]/settings/customers/import/actions.ts:68
 
 ### customer_pillows
-Defined in supabase/migrations/20261105100000_customer_pillows.sql:24
+Defined in supabase/migrations/20261105155549_customer_pillows.sql:24
 References: `bom_templates`, `customers`, `mp_staff`
 Changed from pages: `/settings/customers/[id]`
 - Written by:

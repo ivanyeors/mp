@@ -18035,12 +18035,6 @@
     "ast_hash": "a036e47d5e867aabb2fe786de255faa0",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261105100000_customer_pillows.sql": {
-    "mtime": 1793879519.9123762,
-    "seen": 1793881025.3866234,
-    "ast_hash": "4a35170f3e8995d59525d7a741e9042f",
-    "semantic_hash": ""
-  },
   "lib/customer-pillow/__tests__/bought.test.ts": {
     "mtime": 1793893034.386495,
     "seen": 1793893434.7297487,
@@ -18063,6 +18057,12 @@
     "mtime": 1793892930.916521,
     "seen": 1793893434.729757,
     "ast_hash": "1dd55e14fb34378e7edb586de8019857",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261105155549_customer_pillows.sql": {
+    "mtime": 1793879519.9123762,
+    "seen": 1793894314.1537879,
+    "ast_hash": "4a35170f3e8995d59525d7a741e9042f",
     "semantic_hash": ""
   }
 }
