@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1793880940.898284,
-    "seen": 1793881025.3874748,
-    "ast_hash": "1b9d65474d06b145f5214629c25d7302",
+    "mtime": 1793893094.4704988,
+    "seen": 1793893434.7327487,
+    "ast_hash": "47582ed22ab764716ad04bb2479b622b",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -16980,9 +16980,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/crm.mjs": {
-    "mtime": 1793878933.1243412,
-    "seen": 1793881025.3832738,
-    "ast_hash": "61bfc0d2b6c9065c287565151beff05e",
+    "mtime": 1793893120.7720695,
+    "seen": 1793893434.7282581,
+    "ast_hash": "7f120b5ff1e4c0761b1ae1bb4ccc22aa",
     "semantic_hash": ""
   },
   "app/[lang]/settings/campaigns/__tests__/audience-never-sends-actions.test.ts": {
@@ -17616,9 +17616,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0042-google-form-fitting-records.md": {
-    "mtime": 1793880940.8990536,
-    "seen": 1793881025.3875537,
-    "ast_hash": "2fd7c3519268aebc7494a98938fb662c",
+    "mtime": 1793893094.4682474,
+    "seen": 1793893434.7328458,
+    "ast_hash": "a34d3c53b1a927dab5e58c84869d0c73",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/engagement-sql.test.ts": {
@@ -17988,9 +17988,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/customer-pillows.mjs": {
-    "mtime": 1793880107.3804111,
-    "seen": 1793881025.3832793,
-    "ast_hash": "1b546c3b8ff0d1a8cbcf80f718d2dd30",
+    "mtime": 1793893145.9629822,
+    "seen": 1793893434.7282667,
+    "ast_hash": "35d20d62f42ed986445a4897038545b4",
     "semantic_hash": ""
   },
   "app/api/shop/customers/[id]/pillow/route.ts": {
@@ -18012,9 +18012,9 @@
     "semantic_hash": ""
   },
   "lib/customer-pillow/load.ts": {
-    "mtime": 1793879586.466221,
-    "seen": 1793881025.384768,
-    "ast_hash": "82b0b2fe706f050ca5242a61301a846a",
+    "mtime": 1793892930.9160445,
+    "seen": 1793893434.7297547,
+    "ast_hash": "3906a04a1146a5bc9488f162aa856145",
     "semantic_hash": ""
   },
   "lib/customer-pillow/match.ts": {
@@ -18030,15 +18030,39 @@
     "semantic_hash": ""
   },
   "lib/customer-pillow/view.ts": {
-    "mtime": 1793879541.5003774,
-    "seen": 1793881025.3847713,
-    "ast_hash": "7235e1da2427b49004c59247c5a939d2",
+    "mtime": 1793892880.5372531,
+    "seen": 1793893434.7297587,
+    "ast_hash": "a036e47d5e867aabb2fe786de255faa0",
     "semantic_hash": ""
   },
   "supabase/migrations/20261105100000_customer_pillows.sql": {
     "mtime": 1793879519.9123762,
     "seen": 1793881025.3866234,
     "ast_hash": "4a35170f3e8995d59525d7a741e9042f",
+    "semantic_hash": ""
+  },
+  "lib/customer-pillow/__tests__/bought.test.ts": {
+    "mtime": 1793893034.386495,
+    "seen": 1793893434.7297487,
+    "ast_hash": "f07c163cea51b45a94e7aad0d2e9c4cf",
+    "semantic_hash": ""
+  },
+  "lib/customer-pillow/__tests__/own.test.ts": {
+    "mtime": 1793893057.2944965,
+    "seen": 1793893434.7297523,
+    "ast_hash": "f6c55ce2f8704e06318adbccd38569a3",
+    "semantic_hash": ""
+  },
+  "lib/customer-pillow/bought.ts": {
+    "mtime": 1793892864.586485,
+    "seen": 1793893434.7297533,
+    "ast_hash": "0dfc9503c49e4a6964422a54da2a6e02",
+    "semantic_hash": ""
+  },
+  "lib/customer-pillow/own.ts": {
+    "mtime": 1793892930.916521,
+    "seen": 1793893434.729757,
+    "ast_hash": "1dd55e14fb34378e7edb586de8019857",
     "semantic_hash": ""
   }
 }

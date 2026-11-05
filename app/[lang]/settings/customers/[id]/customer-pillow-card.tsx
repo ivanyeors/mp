@@ -1,12 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import dynamic from "next/dynamic";
-import { BedDouble, ChevronDown, Link2, Loader2, TriangleAlert } from "lucide-react";
+import { BedDouble, Eye, EyeOff, Link2, Loader2, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
     Dialog,
     DialogContent,
@@ -17,8 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroupLabel, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { PillowContents, PillowXray } from "@/components/customer-pillow/pillow-drawing";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { formatTemplateKeys, PILLOW_TEMPLATE_KEYS } from "@/lib/filling-templates/keys";
 import { rowsToPillowPlacements } from "@/lib/spatial-fillings/core";
@@ -26,23 +23,19 @@ import type { MatchableTemplate, PillowSizeKey } from "@/lib/customer-pillow/mat
 import { matchNotices } from "@/lib/customer-pillow/notices";
 import type { CustomerPillowResult, CustomerPillowView } from "@/lib/customer-pillow/view";
 
-// The x-ray brings @dnd-kit and the sunburst picker with it; nothing to render on the server.
-const XrayEditor = dynamic(() => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor), {
-    ssr: false,
-    loading: () => <Skeleton className="aspect-[664/374] w-full rounded-lg" />,
-});
-
 /** No template chosen: the size is known, the filling is not. */
 const NO_TEMPLATE = "none";
 
 /**
  * The Customer's pillow (ADR 0042 j): the x-ray of the Filling Template they
- * have, at their size. For a customer from before this platform it is read
- * from their latest Fitting record, the old form's size and configuration
- * type (`S · T12`) matched to the template of that type (`Type-12`); a Staff
- * member holding `customers-edit` can link another size or template, or one
- * for a customer with no fitting. Read-only: it shows a recipe, it does not
- * build one, and nothing here reaches a Result, stock or a price.
+ * have, at their size. A pillow bought here is drawn as its order line froze
+ * it. For a customer from before this platform it is read from their latest
+ * Fitting record, the old form's size and configuration type (`S · T12`)
+ * matched to the template of that type (`Type-12`); a Staff member holding
+ * `customers-edit` can link another size or template, or one for a customer
+ * with no fitting. Read-only: it shows a recipe, it does not build one, and
+ * nothing here reaches a Result, stock or a price. It says whether the
+ * customer's own Profile shows it too (k).
  */
 export function CustomerPillowCard({
     customerId,
@@ -92,6 +85,7 @@ export function CustomerPillowCard({
                         </Button>
                     )}
                 </div>
+                <ProfileLine pillow={pillow} />
             </CardHeader>
             {pillow.source !== "none" && (
                 <CardContent className="space-y-4">
@@ -115,12 +109,33 @@ export function CustomerPillowCard({
     );
 }
 
+/** An order's pillow in a few words: `M · Type-12`, or `M · custom mix`. */
+function orderLabel(order: NonNullable<CustomerPillowView["order"]>) {
+    return `${order.size ?? "Size not recorded"} · ${order.templateName ?? "custom mix"}`;
+}
+
+function boughtOn(order: NonNullable<CustomerPillowView["order"]>) {
+    return `${formatAdminDateMY(order.paidAt)}${order.orderNumber ? `, order ${order.orderNumber}` : ""}`;
+}
+
 /** Where the pillow drawn comes from, in one line. */
 function Source({ pillow }: { pillow: CustomerPillowView }) {
     if (pillow.source === "linked" && pillow.link) {
         return (
             <>
                 Linked{pillow.link.linkedBy ? ` by ${pillow.link.linkedBy}` : ""} on {formatAdminDateMY(pillow.link.linkedAt)}.
+                {pillow.order
+                    ? ` Bought here on ${boughtOn(pillow.order)}: ${orderLabel(pillow.order)}.`
+                    : pillow.fitting
+                      ? ` The fitting on ${formatAdminDateMY(pillow.fitting.fittedAt)} recorded ${pillow.fitting.label}.`
+                      : ""}
+            </>
+        );
+    }
+    if (pillow.source === "order" && pillow.order) {
+        return (
+            <>
+                Bought here on {boughtOn(pillow.order)}, drawn as it was built.
                 {pillow.fitting ? ` The fitting on ${formatAdminDateMY(pillow.fitting.fittedAt)} recorded ${pillow.fitting.label}.` : ""}
             </>
         );
@@ -144,22 +159,48 @@ function Source({ pillow }: { pillow: CustomerPillowView }) {
     return <>No pillow on record: no fitting names one, and none is linked.</>;
 }
 
+/** Whether the customer's own Profile shows it (ADR 0042 k). Nothing to say while there is nothing drawn. */
+function ProfileLine({ pillow }: { pillow: CustomerPillowView }) {
+    if (pillow.placements.length === 0) return null;
+    const shown = pillow.onProfile;
+    const Icon = shown ? Eye : EyeOff;
+    return (
+        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Icon className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>
+                {shown
+                    ? "Their Profile shows it too."
+                    : "Not on their Profile until they buy a pillow here, or one is linked."}
+            </span>
+        </p>
+    );
+}
+
 function Drawing({ pillow }: { pillow: CustomerPillowView }) {
     const placements = useMemo(() => rowsToPillowPlacements(pillow.placements), [pillow.placements]);
     const notices = pillow.source === "fitting" ? matchNotices(pillow.match) : [];
     if (pillow.source === "linked" && pillow.template && !pillow.templates.some((t) => t.id === pillow.template?.id)) {
         notices.push(`${pillow.template.name} is no longer active in Configure.`);
     }
+    if (pillow.source === "linked" && pillow.link && pillow.order && Date.parse(pillow.order.paidAt) > Date.parse(pillow.link.linkedAt)) {
+        notices.push(
+            `They bought a pillow here on ${formatAdminDateMY(pillow.order.paidAt)}, after this link. Use the order's to draw it as it was built.`,
+        );
+    }
     const pieces = placements.length;
+    // An order's custom mix has no template, and is still drawn.
+    const drawn = pillow.template !== null || pieces > 0;
     return (
         <>
             <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">Size {pillow.size ?? "not recorded"}</Badge>
-                <span className="font-medium">{pillow.template?.name ?? "No Filling Template"}</span>
-                {pillow.template && (
+                <span className="font-medium">
+                    {pillow.template?.name ?? (pillow.source === "order" ? "Custom mix" : "No Filling Template")}
+                </span>
+                {drawn && (
                     <span className="text-xs text-muted-foreground">
                         {pieces} piece{pieces === 1 ? "" : "s"}
-                        {pillow.template.keys.length ? ` · serves ${formatTemplateKeys("pillow", pillow.template.keys)}` : ""}
+                        {pillow.template?.keys.length ? ` · serves ${formatTemplateKeys("pillow", pillow.template.keys)}` : ""}
                     </span>
                 )}
             </div>
@@ -173,34 +214,19 @@ function Drawing({ pillow }: { pillow: CustomerPillowView }) {
                     ))}
                 </ul>
             )}
-            {pillow.template && (
+            {drawn && (
                 <>
-                    <div className="mx-auto w-full max-w-[52rem]">
-                        <XrayEditor
-                            placements={placements}
-                            items={pillow.items}
-                            pillowSize={pillow.size}
-                            colorOverrides={pillow.colorOverrides}
-                            dimensionOverrides={pillow.dimensionOverrides}
-                        />
-                    </div>
+                    <PillowXray
+                        placements={placements}
+                        items={pillow.items}
+                        size={pillow.size}
+                        colorOverrides={pillow.colorOverrides}
+                        dimensionOverrides={pillow.dimensionOverrides}
+                    />
                     {pieces > 0 ? (
-                        <Collapsible className="rounded-md border">
-                            <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted/50 max-md:min-h-11 [&[data-state=open]>svg]:rotate-180">
-                                <span>
-                                    Derived pack list
-                                    <span className="ml-2 text-xs font-normal text-muted-foreground tabular-nums">
-                                        {pieces} piece{pieces === 1 ? "" : "s"}
-                                    </span>
-                                </span>
-                                <ChevronDown className="size-4 transition-transform" aria-hidden />
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="border-t">
-                                <XrayPackList placements={placements} items={pillow.items} />
-                            </CollapsibleContent>
-                        </Collapsible>
+                        <PillowContents label="Derived pack list" placements={placements} items={pillow.items} />
                     ) : (
-                        <p className="text-sm text-muted-foreground">{pillow.template.name} has no placements laid out yet.</p>
+                        <p className="text-sm text-muted-foreground">{pillow.template?.name} has no placements laid out yet.</p>
                     )}
                 </>
             )}
@@ -279,8 +305,8 @@ function LinkDialog({
                 <DialogHeader>
                     <DialogTitle>{pillow.source === "none" ? "Link a pillow" : "Change the pillow"}</DialogTitle>
                     <DialogDescription>
-                        The size and Filling Template this customer has. It replaces what the fitting records on this page, and
-                        changes no Result, order or stock.
+                        The size and Filling Template this customer has. It replaces what their order or fitting records on this
+                        page, shows on their Profile too, and changes no Result, order or stock.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -327,7 +353,7 @@ function LinkDialog({
                     {pillow.source === "linked" ? (
                         <Button variant="ghost" onClick={() => void send("unlink")} disabled={saving !== null}>
                             {saving === "unlink" && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                            {pillow.fitting ? "Use the fitting's" : "Remove link"}
+                            {pillow.order ? "Use the order's" : pillow.fitting ? "Use the fitting's" : "Remove link"}
                         </Button>
                     ) : (
                         <span className="max-sm:hidden" />
