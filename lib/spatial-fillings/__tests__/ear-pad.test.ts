@@ -1,6 +1,7 @@
 /**
  * The Ear Comfort Pad in the x-ray: placeable like a Neck support (premium
- * pillows only, inside the pillow's MSRP and its stock), measured as a pouch, drawn as a puffy
+ * pillows only, shipped inside the pillow out of its own stock, and charged at its
+ * own MSRP on top of the pillow's), measured as a pouch, drawn as a puffy
  * square with a sewn well from above and as a cushion dipping between two rims
  * side-on, settled at its own firmness.
  */
@@ -8,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import { assembleBuild } from "@/lib/build-assembly";
+import { placedChargeLines, priceComposedBuild, UNKEYED } from "@/lib/pricing/composed-price";
 import { padRing, pouchPath, wellDip } from "@/components/spatial/slab-shape";
 import { earWellCircle } from "@/components/spatial/xray-pillow";
 import { pouchOutline } from "../conform";
@@ -81,8 +83,45 @@ describe("placing an Ear Comfort Pad", () => {
     expect(validateBolsterPlacements([{ slot: 1, itemId: 41 }], kinds).ok).toBe(false);
   });
 
+  it("adds its own MSRP per piece on top of the pillow's; fillings and a neck support add nothing", () => {
+    const items = new Map([
+      [55, { category: "filling", name: "6D" }],
+      [61, { category: "accessories", name: "Cervical Neck Support" }],
+      [41, EAR],
+    ]);
+    const msrps = new Map([
+      [55, 12],
+      [61, 38],
+      [41, 60],
+    ]);
+    const lines = placedChargeLines(
+      [
+        { item_id: 55, count: 3 },
+        { item_id: 61, count: 1 },
+        { item_id: 41, count: 2 },
+      ],
+      items,
+      msrps,
+    );
+    expect(lines).toEqual([{ msrp: 60, quantity: 2 }]);
+
+    const base = {
+      msrpByFamily: { [UNKEYED]: 360 },
+      defaultCover: null,
+      defaultCase: null,
+      caseOptions: [],
+      chosenCover: null,
+      chosenCase: null,
+    };
+    const priced = priceComposedBuild({ ...base, addonLines: lines });
+    expect(priced.ok && priced.subtotal).toBe(360 + 2 * 60);
+    // Unpriced → refused, never free.
+    const unpriced = placedChargeLines([{ item_id: 41, count: 1 }], items, new Map());
+    expect(priceComposedBuild({ ...base, addonLines: unpriced }).ok).toBe(false);
+  });
+
   it("ships inside the pillow beside the fillings, out of stock and into its cost", () => {
-    // Priced inside the pillow's MSRP, as a placed neck support is: the build ships it as a filling line.
+    // The build ships it as a filling line; its price is added on top (above).
     const costs = new Map([
       [55, 4],
       [41, 15],

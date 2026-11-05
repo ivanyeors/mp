@@ -18,6 +18,7 @@ const NATURAL_WHITE_LINEN = 6;
 const FILL_6D_S = 10;
 const FILL_6D_L = 11;
 const NECK = 20;
+const EAR_PAD = 21;
 
 const costByItem = new Map<number, number | null>([
   [COVER, 370],
@@ -29,6 +30,7 @@ const costByItem = new Map<number, number | null>([
   [FILL_6D_S, 160],
   [FILL_6D_L, 230],
   [NECK, 300],
+  [EAR_PAD, 1500],
 ]);
 
 const BOM = [
@@ -89,6 +91,7 @@ describe("buildCostOptions", () => {
     { id: 102, name: "Type-5", pack: [{ itemId: FILL_6D_S, count: 3 }] },
   ];
   const neckSupportItemIds = new Set([NECK]);
+  const earPadMsrpByItem = new Map<number, number | null>([[EAR_PAD, 6000]]);
 
   it("costs every template on top of the base, default first then cheapest", () => {
     const result = buildCostOptions({
@@ -97,6 +100,7 @@ describe("buildCostOptions", () => {
       defaultTemplateId: 100,
       costByItem,
       neckSupportItemIds,
+      earPadMsrpByItem,
       allowNeckSupport: true,
     });
     expect(result.baseCents).toBe(2950);
@@ -107,6 +111,41 @@ describe("buildCostOptions", () => {
     // The neck support's cost is COGS; the price is the row's, with nothing on top.
     expect(neck).toMatchObject({ neckSupport: "included", pieces: 3, fillingCents: 620, buildCents: 3570 });
     expect(neck.uncostedItemIds).toEqual([ZIP_LOCK]);
+    expect(neck).toMatchObject({ earPad: "none", extraChargeCents: 0 });
+  });
+
+  const earTemplates = [{ id: 103, name: "Side sleeper", pack: [{ itemId: FILL_6D_S, count: 2 }, { itemId: EAR_PAD, count: 2 }] }];
+  const earOption = (allowNeckSupport: boolean, msrps = earPadMsrpByItem) =>
+    buildCostOptions({
+      baseComponents: BOM,
+      templates: earTemplates,
+      defaultTemplateId: 103,
+      costByItem,
+      neckSupportItemIds,
+      earPadMsrpByItem: msrps,
+      allowNeckSupport,
+    }).options[0];
+
+  it("charges each Ear Comfort Pad placed inside at its own MSRP, its cost in the build", () => {
+    expect(earOption(true)).toMatchObject({
+      earPad: "charged",
+      neckSupport: "none",
+      extraChargeCents: 2 * 6000,
+      pieces: 4,
+      fillingCents: 2 * 160 + 2 * 1500,
+      buildCents: 2950 + 2 * 160 + 2 * 1500,
+    });
+    // An unpriced ear pad is never free: the margin has nothing to count.
+    expect(earOption(true, new Map([[EAR_PAD, null]])).extraChargeCents).toBeNull();
+  });
+
+  it("builds an ear pad template without them where the build takes none", () => {
+    expect(earOption(false)).toMatchObject({
+      earPad: "left_out",
+      extraChargeCents: 0,
+      lines: [{ itemId: FILL_6D_S, quantity: 2 }],
+      pieces: 2,
+    });
   });
 
   it("builds a Neck support template without it where the build takes none", () => {
@@ -116,6 +155,7 @@ describe("buildCostOptions", () => {
       defaultTemplateId: 101,
       costByItem,
       neckSupportItemIds,
+      earPadMsrpByItem,
       allowNeckSupport: false,
     });
     const neck = result.options.find((o) => o.templateId === 101)!;

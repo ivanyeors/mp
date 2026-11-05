@@ -23,7 +23,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
 import { priceResult } from "@/lib/result-pricing";
-import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { pairAuthorized, pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
 import { resultShippingAmount } from "@/lib/results/shipping";
@@ -376,11 +376,15 @@ export async function POST(
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    // Add-ons only: a placed neck support is in the pillow's MSRP, like the fillings.
-    addonLines: addonLines.map((l) => ({
-      msrp: msrpByItem.get(l.item_id) ?? null,
-      quantity: l.quantity,
-    })),
+    // Add-ons, plus each Ear Comfort Pad placed inside: a placed neck support is
+    // in the pillow's MSRP, like the fillings, but an ear pad adds its own.
+    addonLines: [
+      ...addonLines.map((l) => ({
+        msrp: msrpByItem.get(l.item_id) ?? null,
+        quantity: l.quantity,
+      })),
+      ...placedChargeLines(fillPack, itemById, msrpByItem),
+    ],
   });
   if (!goods.ok) {
     console.error(`[results/assign] pricing not usable (${goods.code}): ${goods.error}`);

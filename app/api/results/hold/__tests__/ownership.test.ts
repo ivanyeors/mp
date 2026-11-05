@@ -93,6 +93,7 @@ vi.mock("@/lib/results/composed-sellable", () => ({
   }),
 }));
 vi.mock("@/lib/pricing/composed-price", () => ({
+  placedChargeLines: () => [],
   resolvePreferences: () => ({ chosenCover: null, chosenCase: null }),
   priceComposedBuild: () => ({ ok: true, subtotal: 200 }),
 }));
