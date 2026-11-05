@@ -6,11 +6,12 @@ Parent PRD: `.claude/PRD-product-slide-sections/product-slide-sections-prd.md`
 
 ## Hard rules
 
-1. **Do not modify** landing pages (`components/sections/landing/`), homepage page builder, or `landing_sections` data.
+1. **Do not modify** landing pages (`components/sections/landing/`) or `landing_sections` data from slide-in work.
 2. **Do not change** slide-in shell chrome (sticky header, progress bar, close button, sticky footer structure).
 3. **Do not delete** existing i18n copy, images, videos, or tables — refactor is layout extraction only; reorder per approved recipes is allowed.
 4. **No product copy inside templates** — templates receive JSON-serializable `content` props; copy lives in `m.slides.*` i18n.
 5. **Media in config, copy in i18n** — image paths, video IDs, and CTA `href` values belong in per-product section config files, not locale files.
+6. **Every config entry has a stable `key`** — Staff edits in the Page Builder (`slide_in_sections`) are keyed on it. Renaming a key orphans those edits; treat it like a database key (ADR 0046).
 
 ## Architecture
 
@@ -51,6 +52,9 @@ Slide-in files stay thin shells: existing Sheet wrapper + `<ProductSlideSectionR
 | `help_contact` | Title + contact line | slice 03 |
 | `purchase_panel` | **Complex** — Mbolster gallery/price/selectors | slice 05 |
 | `measurement_grid` | **Complex** — Premium 4-step measurement cards | slice 03 |
+| `press_quote` | Large centred quote that decrypts into view | yes (Size Matters) |
+| `measure_carousel` | Measurement cards with icons in a carousel | yes (Size Matters) |
+| `typed_quote` | Testimonial typed out on view | yes (Ambassadors) |
 
 ## Approved recipes (section order)
 
@@ -62,6 +66,18 @@ Slide-in files stay thin shells: existing Sheet wrapper + `<ProductSlideSectionR
 
 **Cervical Neck Support:** `media_intro` → `split_hero`(why) → `full_bleed_media`(comparison) → `feature_card_grid`(benefits) → `text_callout_block`(difference)
 
+**Size Matters:** `press_quote` → `split_hero`(size matters, natural image) → `measure_carousel` → `split_hero`(head shapes) → `split_hero` ×3
+
+**Ambassadors:** `split_hero`(hero) → `split_hero`(all builds) → `split_hero`(collapsible awards) → `typed_quote` → `video_section`(split)
+
+## Page Builder (sub pages)
+
+All six slide-ins are sub pages in Settings → Page Builder (page picker). `lib/slide-in-pages/` holds the
+registry (`pages.ts`), the merge of stored rows over the config (`sections.ts`), the override rules
+(`content.ts`) and which fields each template lets Staff edit (`fields.ts`). Shells render
+`<SlideInPageSections page="…" />` and `useSlideInHeader(page)`; never pass a config to the renderer
+directly, or Staff edits stop showing. A new template needs its editable fields in `COPY_FIELDS`.
+
 ## Adding a section
 
 1. Define or extend the content interface in `types.ts`.
@@ -69,8 +85,9 @@ Slide-in files stay thin shells: existing Sheet wrapper + `<ProductSlideSectionR
 3. Add an extractor in `resolve-slide-content.ts` (pure — no React).
 4. Build the template in `components/product-sections/` using `ProductSlideSection` wrapper.
 5. Register dispatch in `product-slide-section-renderer.tsx` and append to `IMPLEMENTED_SECTION_TYPES`.
-6. Add config row to the product's section config file with `contentKey` + media props.
-7. Run `npm test` — resolver/dispatch tests should cover new extractors.
+6. Add config row to the product's section config file with a new `key`, `contentKey` + media props.
+7. List the template's editable copy fields in `COPY_FIELDS` (`lib/slide-in-pages/fields.ts`).
+8. Run `npm test` — resolver/dispatch tests and the sub page render test cover new extractors.
 
 ## `split_hero` contentKey extractors (current)
 
@@ -88,6 +105,7 @@ Slide-in files stay thin shells: existing Sheet wrapper + `<ProductSlideSectionR
 
 ```ts
 {
+  key: "hero",
   type: "split_hero",
   contentKey: "hero",
   image: { src: "/m-pillow-518001-final-WEB.webp", alt: "Basic Mpillow" },
@@ -101,6 +119,6 @@ Slide-in files stay thin shells: existing Sheet wrapper + `<ProductSlideSectionR
 - Footer actions unchanged.
 - Open triggers unchanged (Sheet trigger, controlled open, cervical event).
 
-## Future settings (not built now)
+## Settings
 
-Config shapes mirror future JSONB rows (`{ section_type, content, position }`). Same renderer can power a settings page builder later — no DB work in this PRD.
+Built: see **Page Builder (sub pages)** above and ADR 0046.

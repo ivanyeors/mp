@@ -36,9 +36,12 @@ export function PublishHistory({
   open: openProp,
   onOpenChange,
   triggerClassName,
+  endpoint = "/api/landing-sections/history",
 }: {
   pending: PendingSummary;
   onRestored: () => void;
+  /** List (GET) and restore (POST) for this page. Defaults to the landing page. */
+  endpoint?: string;
   /** Controlled open state, for opening the history from elsewhere (the phone ⋯ menu). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -54,7 +57,7 @@ export function PublishHistory({
   const load = useCallback(async () => {
     setRows(null);
     try {
-      const res = await fetch("/api/landing-sections/history");
+      const res = await fetch(endpoint);
       if (!res.ok) throw new Error("Failed to load history");
       const body = await res.json();
       setRows(body.snapshots ?? []);
@@ -62,7 +65,7 @@ export function PublishHistory({
       toast.error("Couldn't load the publish history.");
       setRows([]);
     }
-  }, []);
+  }, [endpoint]);
 
   useEffect(() => {
     if (open) load();
@@ -71,7 +74,7 @@ export function PublishHistory({
   const restore = async (snapshot: SnapshotRow) => {
     setBusy(true);
     try {
-      const res = await fetch("/api/landing-sections/history", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snapshotId: snapshot.id }),

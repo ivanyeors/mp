@@ -770,6 +770,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                     blogInline: number;
                     landingSlots: string[];
                     landingSections: number;
+                    slideInSections?: number;
                     productImages: number;
                     productVariants: number;
                     categories: number;
@@ -781,6 +782,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 if (s.blogInline > 0) parts.push(`${s.blogInline} blog inline`);
                 if (s.landingSlots?.length > 0) parts.push(`${s.landingSlots.length} landing slot${s.landingSlots.length > 1 ? "s" : ""}`);
                 if (s.landingSections > 0) parts.push(`${s.landingSections} page builder`);
+                if ((s.slideInSections ?? 0) > 0) parts.push(`${s.slideInSections} sub page section${s.slideInSections! > 1 ? "s" : ""}`);
                 if (s.productImages > 0) parts.push(`${s.productImages} product image${s.productImages > 1 ? "s" : ""}`);
                 if (s.productVariants > 0) parts.push(`${s.productVariants} variant${s.productVariants > 1 ? "s" : ""}`);
                 if (s.categories > 0) parts.push(`${s.categories} categor${s.categories > 1 ? "ies" : "y"}`);
@@ -827,6 +829,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 return <Newspaper className="h-3.5 w-3.5 shrink-0" />;
             case "landing_slot":
             case "landing_section":
+            case "slide_in_section":
             case "partners_page":
                 return <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />;
             case "email_campaign":
@@ -842,6 +845,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             case "blog_inline": return "Inline in";
             case "landing_slot": return "Landing page";
             case "landing_section": return "Page builder";
+            case "slide_in_section": return "Sub page";
             case "product_image": return "Product";
             case "product_variant": return "Variant";
             case "category": return "Category";

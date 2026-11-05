@@ -3,6 +3,7 @@ import { slideImage } from "@/lib/media/slide-media";
 
 export const premiumMpillowSlideSections = [
   {
+    key: "hero",
     type: "split_hero_dual_media",
     contentKey: "premiumHero",
     heroImage: slideImage("/m-pillow-317460-final---H-WEB.webp", { alt: "Premium Mpillow hero" }),
@@ -15,8 +16,9 @@ export const premiumMpillowSlideSections = [
       { mode: "range", value: [25, 35], label: "25–35%", titleKey: "firmnessBasicLabel" },
     ],
   },
-  { type: "trust_strip", contentKey: "trust" },
+  { type: "trust_strip", key: "trust", contentKey: "trust" },
   {
+    key: "overseas",
     type: "split_hero",
     contentKey: "overseas",
     image: slideImage("/m-pillow-417953-web.webp", {
@@ -25,8 +27,9 @@ export const premiumMpillowSlideSections = [
     }),
     cta: { href: "/mp-config", labelKey: "customise", labelScope: "common", closeSheet: true },
   },
-  { type: "icon_list", contentKey: "whoItsFor" },
+  { type: "icon_list", key: "who-its-for", contentKey: "whoItsFor" },
   {
+    key: "features",
     type: "feature_carousel",
     contentKey: "features",
     images: [
@@ -38,11 +41,13 @@ export const premiumMpillowSlideSections = [
     ],
   },
   {
+    key: "firmness",
     type: "firmness_compare",
     contentKey: "firmness",
     scales: [{ mode: "range", value: [40, 85], label: "40–85%", titleKey: "title" }],
   },
   {
+    key: "accessory",
     type: "split_hero",
     contentKey: "accessory",
     image: slideImage("/mpillow-cervical-neck.webp", {
@@ -52,6 +57,7 @@ export const premiumMpillowSlideSections = [
     buttonAction: { labelKey: "accessoryButton", action: "openCervical" },
   },
   {
+    key: "pricing",
     type: "spec_table",
     contentKey: "pricing",
     rows: [
@@ -63,6 +69,7 @@ export const premiumMpillowSlideSections = [
     ],
   },
   {
+    key: "measurements",
     type: "measurement_grid",
     contentKey: "measurements",
     stepImages: [
@@ -73,6 +80,7 @@ export const premiumMpillowSlideSections = [
     ],
   },
   {
+    key: "package",
     type: "packaging_block",
     contentKey: "premiumPackage",
     image: slideImage("/m-pillow-417804-final-WEB.webp", {
@@ -80,9 +88,10 @@ export const premiumMpillowSlideSections = [
       sizes: "(min-width: 768px) 70vw, 100vw",
     }),
   },
-  { type: "video_section", contentKey: "customisation", videoId: "V2H03lq9IYU" },
-  { type: "video_section", contentKey: "aftercare", videoId: "LxtHJL9s58E" },
+  { type: "video_section", key: "customisation-video", contentKey: "customisation", videoId: "V2H03lq9IYU" },
+  { type: "video_section", key: "aftercare-video", contentKey: "aftercare", videoId: "LxtHJL9s58E" },
   {
+    key: "commitment",
     type: "commitment_cards",
     contentKey: "commitment",
     image: slideImage("/DSC03705.webp", {
@@ -90,5 +99,5 @@ export const premiumMpillowSlideSections = [
       sizes: "(min-width: 768px) 70vw, 100vw",
     }),
   },
-  { type: "help_contact", contentKey: "help" },
+  { type: "help_contact", key: "help", contentKey: "help" },
 ] satisfies readonly ProductSlideSectionConfig[];

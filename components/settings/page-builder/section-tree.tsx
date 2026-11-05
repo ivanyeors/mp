@@ -39,22 +39,44 @@ export const SECTION_TYPE_LABELS: Record<string, string> = {
   delivery_estimator: "Delivery estimator",
 };
 
-export function sectionTitle(section: LandingSection): string {
+export function sectionTitle(section: Pick<LandingSection, "slug">): string {
   return section.slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-interface RowProps {
-  section: LandingSection;
+/** What the tree needs of a section — a Landing section or a sub page's Slide-in section. */
+export interface TreeSection {
+  id: string;
+  slug: string;
+  section_type: string;
+  visible: boolean;
+}
+
+/**
+ * Landing sections: derived from the same list the Add dialog offers, so it cannot drift
+ * from the server's delete guard the way a hand-maintained copy would.
+ */
+function isCustomLandingSection(section: TreeSection): boolean {
+  return CUSTOM_SECTION_TEMPLATES.some((t) => t.type === section.section_type);
+}
+
+function landingTypeLabel(section: TreeSection): string {
+  return SECTION_TYPE_LABELS[section.section_type] ?? section.section_type;
+}
+
+interface RowProps<T extends TreeSection> {
+  section: T;
   index: number;
   total: number;
   selected: boolean;
   onSelect: (slug: string) => void;
-  onToggleVisibility: (section: LandingSection) => void;
-  onDelete: (section: LandingSection) => void;
-  onMove: (section: LandingSection, direction: -1 | 1) => void;
+  onToggleVisibility: (section: T) => void;
+  onDelete: (section: T) => void;
+  onMove: (section: T, direction: -1 | 1) => void;
+  canDelete: (section: T) => boolean;
+  typeLabel: (section: T) => string;
 }
 
-function SectionRow({
+function SectionRow<T extends TreeSection>({
   section,
   index,
   total,
@@ -63,12 +85,12 @@ function SectionRow({
   onToggleVisibility,
   onDelete,
   onMove,
-}: RowProps) {
+  canDelete,
+  typeLabel,
+}: RowProps<T>) {
   const { ref, isDragging, handleRef } = useSortable({ id: section.id, index });
-  // Derived from the same list the Add dialog offers, so it cannot drift from the
-  // server's delete guard the way a hand-maintained copy would.
-  const isCustom = CUSTOM_SECTION_TEMPLATES.some((t) => t.type === section.section_type);
-  const label = SECTION_TYPE_LABELS[section.section_type] ?? section.section_type;
+  const isCustom = canDelete(section);
+  const label = typeLabel(section);
   const title = sectionTitle(section);
 
   return (
@@ -185,18 +207,66 @@ function SectionRow({
   );
 }
 
-export interface SectionTreeProps {
-  sections: LandingSection[];
+export interface SectionTreeProps<T extends TreeSection> {
+  sections: T[];
   selectedSlug: string | null;
   onSelect: (slug: string) => void;
-  onToggleVisibility: (section: LandingSection) => void;
-  onDelete: (section: LandingSection) => void;
-  onMove: (section: LandingSection, direction: -1 | 1) => void;
+  onToggleVisibility: (section: T) => void;
+  onDelete?: (section: T) => void;
+  onMove: (section: T, direction: -1 | 1) => void;
   onDragEnd: (event: SortableDragEndEvent) => void;
+  /** Which sections may be removed. Defaults to the landing page's custom sections. */
+  canDelete?: (section: T) => boolean;
+  /** The type badge. Defaults to the landing page's section type labels. */
+  typeLabel?: (section: T) => string;
+  /**
+   * A row above the list that is always there and always shown — a sub page's sheet
+   * header. It can be selected for editing but not moved, hidden or removed.
+   */
+  pinned?: { slug: string; title: string; label: string };
 }
 
-/** Ordered list of Landing sections — the builder's left pane. */
-export function SectionTree({
+/** A pinned row: selectable only. */
+function PinnedRow({
+  slug,
+  title,
+  label,
+  selected,
+  onSelect,
+}: {
+  slug: string;
+  title: string;
+  label: string;
+  selected: boolean;
+  onSelect: (slug: string) => void;
+}) {
+  return (
+    <div
+      data-section-row={slug}
+      className={`rounded-lg border ${selected ? "border-primary bg-primary/5" : "bg-card"}`}
+    >
+      <div className="flex items-center gap-1 px-2 py-1.5 max-md:gap-2 max-md:px-1 max-md:py-1">
+        <span className="inline-flex min-h-8 min-w-6 items-center justify-center text-muted-foreground/40 max-md:size-11" aria-hidden="true">
+          <GripVertical className="h-4 w-4" />
+        </span>
+        <button
+          onClick={() => onSelect(slug)}
+          aria-current={selected ? "true" : undefined}
+          className="min-w-0 flex-1 truncate px-1 text-left text-sm font-medium max-md:min-h-11 max-md:rounded-md max-md:py-1 max-md:transition-colors max-md:active:bg-press"
+        >
+          <span className="max-md:block max-md:truncate">{title}</span>
+          <span className="block truncate text-xs font-normal text-muted-foreground md:hidden">{label}</span>
+        </button>
+        <Badge variant="outline" className="shrink-0 text-[10px] max-md:hidden">
+          {label}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
+/** Ordered list of sections — the builder's left pane. */
+export function SectionTree<T extends TreeSection>({
   sections,
   selectedSlug,
   onSelect,
@@ -204,7 +274,16 @@ export function SectionTree({
   onDelete,
   onMove,
   onDragEnd,
-}: SectionTreeProps) {
+  canDelete,
+  typeLabel,
+  pinned,
+}: SectionTreeProps<T>) {
+  const deletable = canDelete ?? (onDelete ? isCustomLandingSection : () => false);
+  const label = typeLabel ?? landingTypeLabel;
+  const pinnedRow = pinned ? (
+    <PinnedRow {...pinned} selected={selectedSlug === pinned.slug} onSelect={onSelect} />
+  ) : null;
+
   if (sections.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -216,6 +295,7 @@ export function SectionTree({
   return (
     <DragDropProvider onDragEnd={onDragEnd}>
       <div className="space-y-1.5 max-md:space-y-2">
+        {pinnedRow}
         {sections.map((section, index) => (
           <SectionRow
             key={section.id}
@@ -225,8 +305,10 @@ export function SectionTree({
             selected={selectedSlug === section.slug}
             onSelect={onSelect}
             onToggleVisibility={onToggleVisibility}
-            onDelete={onDelete}
+            onDelete={onDelete ?? (() => {})}
             onMove={onMove}
+            canDelete={deletable}
+            typeLabel={label}
           />
         ))}
       </div>

@@ -3,14 +3,10 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, Carousel, MeasureTile } from "@/components/ui/apple-cards-carousel";
-import { CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
-import DecryptedText from "@/components/effects/DecryptedText";
-import { LeftContentRightImgSection } from "@/components/sections/left-content-right-img-section";
-import SpotlightCard from "@/components/effects/SpotlightCard";
+import { SlideInPageSections, useSlideInHeader } from "@/components/slide-in-pages/slide-in-content";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
@@ -20,6 +16,7 @@ type Props = {
 
 export function SizeMattersSlideIn({ className }: Props) {
   const { m } = useI18n();
+  const header = useSlideInHeader("size-matters");
   const [progress, setProgress] = React.useState(0);
   const [viewportEl, setViewportEl] = React.useState<HTMLDivElement | null>(null);
 
@@ -77,8 +74,8 @@ export function SizeMattersSlideIn({ className }: Props) {
         <div className="flex h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-background md:rounded-2xl md:border md:shadow-sm">
           <div className={sheetStickyTopClassName}>
             <SheetHeader className="relative px-3 py-3 md:px-8 md:py-6 md:pr-12">
-              <SheetTitle>{m.slides.sizeMatters.title}</SheetTitle>
-              <SheetDescription>{m.slides.sizeMatters.description}</SheetDescription>
+              <SheetTitle>{header.title}</SheetTitle>
+              <SheetDescription>{header.description}</SheetDescription>
 
               <SheetClose asChild>
                 <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
@@ -90,200 +87,10 @@ export function SizeMattersSlideIn({ className }: Props) {
           </div>
 
           <div ref={setViewportNode} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="min-w-0 px-3 py-3 pb-20 md:px-6 md:py-6">
-              <main className="min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
-                <section
-                  aria-labelledby="press-quote-heading"
-                  className="mx-auto max-w-3xl py-[42px] animate-in fade-in duration-700 space-y-3 text-center"
-                >
-                  <h2 id="press-quote-heading" className="sr-only">
-                    Press quote
-                  </h2>
-                  <p className="text-2xl font-semibold leading-relaxed tracking-tight sm:text-2xl md:text-4xl">
-                    <DecryptedText
-                      text={m.slides.sizeMatters.pressQuote.text}
-                      animateOn="view"
-                      sequential
-                      speed={20}
-                      loop
-                      loopDelay={5000}
-                    />
-                  </p>
-                  <footer className="text-sm text-muted-foreground">{m.slides.sizeMatters.pressQuote.attribution}</footer>
-                </section>
-
-                <section aria-labelledby="size-matters-heading" className="grid gap-6 md:grid-cols-2 md:items-center">
-                  <div className="space-y-2">
-                    <h2 id="size-matters-heading" className="text-lg font-semibold leading-tight">
-                      {m.slides.sizeMatters.sectionSizeMattersTitle}
-                    </h2>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {m.slides.sizeMatters.sectionSizeMattersDescription}
-                    </p>
-                  </div>
-                  <div className="overflow-hidden rounded-xl bg-muted/20">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/sizecomparison.webp"
-                      alt="Mpillow sizing and fit"
-                      className="block w-full h-auto"
-                      loading="lazy"
-                    />
-                  </div>
-                </section>
-
-                <section aria-labelledby="measurements-heading">
-                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
-                    <CardHeader className="px-0">
-                      <h2 id="measurements-heading" className="leading-none font-semibold">
-                        {m.slides.sizeMatters.measurementsTitle}
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="px-0 space-y-4">
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        {m.slides.sizeMatters.measurementsIntro}
-                      </p>
-                      <Carousel
-                        itemsContainerClassName="w-full px-0 mx-0 max-w-none"
-                        items={[
-                          <SpotlightCard
-                            key="measure-shoulder"
-                            className="flex w-[min(100%,22rem)] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
-                            data-ui="size-matters-measurement-card"
-                          >
-                            <MeasureTile
-                              iconSrc="/shoulder-length.svg"
-                              title={m.slides.sizeMatters.measurementCards[0]?.title ?? ""}
-                              description={m.slides.sizeMatters.measurementCards[0]?.description ?? ""}
-                            />
-                          </SpotlightCard>,
-                          <SpotlightCard
-                            key="measure-neck-length"
-                            className="flex w-[min(100%,22rem)] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
-                            data-ui="size-matters-measurement-card"
-                          >
-                            <MeasureTile
-                              iconSrc="/neck-length.svg"
-                              title={m.slides.sizeMatters.measurementCards[1]?.title ?? ""}
-                              description={m.slides.sizeMatters.measurementCards[1]?.description ?? ""}
-                            />
-                          </SpotlightCard>,
-                          <SpotlightCard
-                            key="measure-neck-depth"
-                            className="flex w-[min(100%,22rem)] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
-                            data-ui="size-matters-measurement-card"
-                          >
-                            <MeasureTile
-                              iconSrc="/neck-to-back.svg"
-                              title={m.slides.sizeMatters.measurementCards[2]?.title ?? ""}
-                              description={m.slides.sizeMatters.measurementCards[2]?.description ?? ""}
-                            />
-                          </SpotlightCard>,
-                          <SpotlightCard
-                            key="measure-head-depth"
-                            className="flex w-[min(100%,22rem)] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
-                            data-ui="size-matters-measurement-card"
-                          >
-                            <MeasureTile
-                              iconSrc="/head-to-back.svg"
-                              title={m.slides.sizeMatters.measurementCards[3]?.title ?? ""}
-                              description={m.slides.sizeMatters.measurementCards[3]?.description ?? ""}
-                            />
-                          </SpotlightCard>,
-                        ]}
-                      />
-                    </CardContent>
-                  </Card>
-                </section>
-
-                <section aria-labelledby="head-shapes-heading">
-                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
-                    <CardContent className="px-0 space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2 md:items-center">
-                        <div className="space-y-2">
-                          <h2 id="head-shapes-heading" className="leading-none font-semibold">
-                            {m.slides.sizeMatters.headShapesTitle}
-                          </h2>
-                          <p className="text-sm leading-relaxed text-muted-foreground">
-                            {m.slides.sizeMatters.headShapesDescription}
-                          </p>
-                        </div>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src="/Head-Shapes-GIF.gif"
-                          alt="Head shapes and support examples"
-                          className="w-full h-auto rounded-xl bg-muted/20"
-                          loading="lazy"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </section>
-
-                <LeftContentRightImgSection
-                  sectionProps={{ "aria-labelledby": "why-unique-heading", className: "px-0 md:px-0 space-y-0" }}
-                  headerClassName="space-y-2"
-                  titleAs="h2"
-                  title={m.slides.sizeMatters.whyUniqueTitle}
-                  titleProps={{ id: "why-unique-heading" }}
-                  titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
-                  description={
-                    <>
-                      <p>{m.slides.sizeMatters.whyUniqueDescription}</p>
-                    </>
-                  }
-                  image={{
-                    src: "/five-sizes.webp",
-                    alt: "Five Mpillow size options",
-                    sizes: "(min-width: 768px) 50vw, 100vw",
-                  }}
-                  imageWrapperClassName="border-0 bg-muted/20"
-                />
-
-                <LeftContentRightImgSection
-                  sectionProps={{ "aria-labelledby": "sleep-position-heading", className: "px-0 md:px-0 space-y-0" }}
-                  headerClassName="space-y-2"
-                  titleAs="h2"
-                  title={m.slides.sizeMatters.sleepPositionTitle}
-                  titleProps={{ id: "sleep-position-heading" }}
-                  titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
-                  description={
-                    <>
-                      <p>{m.slides.sizeMatters.sleepPositionParagraphs[0]}</p>
-                      <p>{m.slides.sizeMatters.sleepPositionParagraphs[1]}</p>
-                    </>
-                  }
-                  image={{
-                    src: "/stitch-inner-component.webp",
-                    alt: "Mpillow inner component stitching",
-                    sizes: "(min-width: 768px) 50vw, 100vw",
-                  }}
-                  imageWrapperClassName="border-0 bg-muted/20"
-                />
-
-                <LeftContentRightImgSection
-                  sectionProps={{ "aria-labelledby": "unique-configurations-heading", className: "px-0 md:px-0 space-y-0" }}
-                  headerClassName="space-y-2"
-                  titleAs="h2"
-                  title={m.slides.sizeMatters.configurationsTitle}
-                  titleProps={{ id: "unique-configurations-heading" }}
-                  titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
-                  description={
-                    <>
-                      <p>{m.slides.sizeMatters.configurationsParagraphs[0]}</p>
-                      <p>{m.slides.sizeMatters.configurationsParagraphs[1]}</p>
-                    </>
-                  }
-                  image={{
-                    src: "/diff-body-back-sleep.webp",
-                    alt: "Different body types and back sleeping support",
-                    sizes: "(min-width: 768px) 50vw, 100vw",
-                  }}
-                  imageWrapperClassName="border-0 bg-muted/20"
-                />
-
-              </main>
-            </div>
+            {/* Sections and copy are Page Builder–editable (CONTEXT.md — Slide-in section). */}
+            <main className="min-w-0 pb-20" aria-label="Mpillow sizing and fit">
+              <SlideInPageSections page="size-matters" />
+            </main>
           </div>
 
           <div className={cn(sheetStickyBottomClassName, "flex items-center justify-end gap-1.5 px-3 py-2.5 md:hidden")}>

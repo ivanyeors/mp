@@ -17,17 +17,20 @@ const MBOLSTER_GALLERY = [
 
 export const mbolsterSlideSections = [
   {
+    key: "purchase",
     type: "purchase_panel",
     heroImage: slideImage("/808907f4-ac2b-499a-ace6-69933883b2f5.webp", { alt: "Mbolster" }),
     gallery: [...MBOLSTER_GALLERY],
     price: "$135.00 SGD",
   },
   {
+    key: "about",
     type: "split_hero",
     contentKey: "mbolsterAbout",
     borderTop: true,
   },
   {
+    key: "size-guide",
     type: "size_guide_split",
     contentKey: "mbolsterSizeGuide",
     image: slideImage("/bolster_mbolster_size.webp", {
@@ -37,9 +40,10 @@ export const mbolsterSlideSections = [
     imageWrapperClassName: "aspect-video",
     borderTop: true,
   },
-  { type: "packaging_block", contentKey: "mbolsterPackage", borderTop: true },
-  { type: "outcome_grid", contentKey: "sizeOutcomes", borderTop: true },
+  { type: "packaging_block", key: "package", contentKey: "mbolsterPackage", borderTop: true },
+  { type: "outcome_grid", key: "size-outcomes", contentKey: "sizeOutcomes", borderTop: true },
   {
+    key: "reviews",
     type: "testimonial_card",
     contentKey: "reviews",
     image: slideImage("/IMG_5110.webp", {
@@ -56,6 +60,7 @@ export const mbolsterSlideSections = [
     borderTop: true,
   },
   {
+    key: "story",
     type: "feature_carousel",
     contentKey: "story",
     images: [
@@ -66,6 +71,7 @@ export const mbolsterSlideSections = [
     borderTop: true,
   },
   {
+    key: "discover",
     type: "split_hero",
     contentKey: "mbolsterDiscover",
     stacked: true,

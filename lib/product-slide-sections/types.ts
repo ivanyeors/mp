@@ -37,6 +37,8 @@ export type SplitHeroContent = {
   table?: SizeTableContent;
   /** Stacked layout: paragraphs[0], image[0], paragraphs[1..], image[1..] */
   stackedParagraphs?: string[];
+  /** Button label that shows and hides the list, when the config makes it collapsible. */
+  listToggle?: string;
 };
 
 export type SplitHeroDualMediaContent = {
@@ -139,6 +141,26 @@ export type HelpContactContent = {
   description: string;
 };
 
+/** A large centred quote that decrypts into view (Size Matters' press quote). */
+export type PressQuoteContent = {
+  text: string;
+  attribution?: string;
+};
+
+/** Measurement cards with an icon each, in a swipe carousel (Size Matters). */
+export type MeasureCarouselContent = {
+  title: string;
+  intro?: string;
+  cards: Array<{ title: string; description: string }>;
+};
+
+/** A testimonial typed out as it scrolls into view (Ambassadors). */
+export type TypedQuoteContent = {
+  title: string;
+  quote: string;
+  attribution?: string;
+};
+
 /** v1 template IDs — renderer implements incrementally per slice. */
 export const PRODUCT_SLIDE_SECTION_TYPES = [
   "split_hero",
@@ -161,6 +183,9 @@ export const PRODUCT_SLIDE_SECTION_TYPES = [
   "help_contact",
   "purchase_panel",
   "measurement_grid",
+  "press_quote",
+  "measure_carousel",
+  "typed_quote",
 ] as const;
 
 export type ProductSlideSectionType = (typeof PRODUCT_SLIDE_SECTION_TYPES)[number];
@@ -186,4 +211,7 @@ export type SectionContentByType = {
   help_contact: HelpContactContent;
   purchase_panel: Record<string, never>;
   measurement_grid: Record<string, never>;
+  press_quote: PressQuoteContent;
+  measure_carousel: MeasureCarouselContent;
+  typed_quote: TypedQuoteContent;
 };

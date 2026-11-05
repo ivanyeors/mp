@@ -17,6 +17,7 @@ import { JourneyTracker } from "@/components/analytics/journey-tracker";
 import { AnalyticsNoticeBar } from "@/components/analytics/analytics-notice-bar";
 import { TopLoadingBar } from "@/components/ui/top-loading-bar";
 import { BookAppointmentOverlay } from "@/components/slide-in-pages/book-appointment-overlay";
+import { SlideInContentProvider } from "@/components/slide-in-pages/slide-in-content";
 import { SupportChatRoot } from "@/components/support/support-chat-root";
 import { GoogleAnalytics } from "@/components/seo/google-analytics";
 import { Haptics } from "@/components/haptics";
@@ -26,6 +27,7 @@ import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 import { getSiteOrigin } from "@/lib/site-url";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo/metadata";
+import { getPublishedSlideInRows } from "@/lib/slide-in-pages/store";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteOrigin()),
@@ -90,6 +92,9 @@ export default async function RootLayout({
   const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
   const lang = isSupportedLocale(cookieLocale ?? "") ? cookieLocale : DEFAULT_LOCALE;
   const isProd = process.env.NODE_ENV === "production";
+  // The learn-more slide-ins open from any page (the app dock carries three), so their
+  // published Page Builder edits travel with the layout. Cached; empty on any failure.
+  const slideInRows = await getPublishedSlideInRows();
 
   return (
     <html lang={lang} className={figtree.variable} suppressHydrationWarning>
@@ -120,18 +125,20 @@ export default async function RootLayout({
             because a second nested CartProvider would be a second cart state
             racing the first over the same `mp_cart` localStorage key.
           */}
-          <CurrencyProvider>
-            <CartProvider>
-              <HomeHeader />
-              <RouteScope>{children}</RouteScope>
-              <MarketingFooter />
-              <BookAppointmentOverlay />
-              <AppDock />
-              <CartShell />
-              {/* The website chat: up here so a chat started on /support follows the visitor between pages. */}
-              <SupportChatRoot />
-            </CartProvider>
-          </CurrencyProvider>
+          <SlideInContentProvider rows={slideInRows}>
+            <CurrencyProvider>
+              <CartProvider>
+                <HomeHeader />
+                <RouteScope>{children}</RouteScope>
+                <MarketingFooter />
+                <BookAppointmentOverlay />
+                <AppDock />
+                <CartShell />
+                {/* The website chat: up here so a chat started on /support follows the visitor between pages. */}
+                <SupportChatRoot />
+              </CartProvider>
+            </CurrencyProvider>
+          </SlideInContentProvider>
           {/* After the page in reading order: screen readers meet it where it appears. */}
           <DropOffQuestionMount />
           <SonnerProvider />
