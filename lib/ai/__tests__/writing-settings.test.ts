@@ -116,7 +116,10 @@ describe("the next call", () => {
     const s = { ...AI_WRITING_DEFAULTS, effortDraft: "high" as const, effortQuick: "medium" as const };
     expect(aiWritingRequest(s, "draft")).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "high" });
     expect(aiWritingRequest(s, "translate")).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "high" });
-    for (const kind of AI_WRITING_KINDS.filter((k) => k !== "draft" && k !== "translate")) {
+    // A product's description and its SEO are whole pieces of writing, as a draft is.
+    expect(aiWritingRequest(s, "product_description")).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "high" });
+    expect(aiWritingRequest(s, "product_seo")).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "high" });
+    for (const kind of AI_WRITING_KINDS.filter((k) => k !== "draft" && k !== "translate" && !k.startsWith("product_"))) {
       expect(aiWritingRequest(s, kind)).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "medium" });
     }
   });

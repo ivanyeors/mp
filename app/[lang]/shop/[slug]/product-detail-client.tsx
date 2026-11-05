@@ -15,6 +15,8 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { PRODUCT_BODY_STYLE } from "@/components/markdown-editor/body-style";
+import { fixEmphasisFlanking } from "@/lib/markdown/emphasis";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -525,8 +527,8 @@ export function ProductDetailClient({
 
             <TabsContent value="description" className="pt-6" id="description" data-section="description">
               {body ? (
-                <div className="prose prose-neutral dark:prose-invert max-w-none">
-                  <ReactMarkdown>{body}</ReactMarkdown>
+                <div className={PRODUCT_BODY_STYLE}>
+                  <ReactMarkdown>{fixEmphasisFlanking(body)}</ReactMarkdown>
                 </div>
               ) : description ? (
                 <p className="text-muted-foreground leading-relaxed">{description}</p>

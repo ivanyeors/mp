@@ -42,7 +42,6 @@ const toolbar = read("components/settings/markdown-toolbar.ts");
 assert.match(toolbar, /MOBILE_MD_EXTRA_COMMANDS: ICommand\[\] = \[codeEdit, codePreview\]/);
 for (const file of [
   "app/[lang]/settings/blogs/[id]/blog-editor-client.tsx",
-  "app/[lang]/settings/products/[id]/product-editor-client.tsx",
   "app/[lang]/settings/partners/partners-client.tsx",
 ]) {
   const src = read(file);
@@ -50,6 +49,11 @@ for (const file of [
   assert.match(src, /extraCommands=\{isMobile \? MOBILE_MD_EXTRA_COMMANDS : undefined\}/, file);
   assert.doesNotMatch(src, /const MOBILE_MD_COMMANDS/, file);
 }
+// A product's body has its own editor (components/markdown-editor): 44px tools and mode buttons on a phone.
+const productBody = read("components/markdown-editor/markdown-editor-impl.tsx");
+assert.match(productBody, /const TOOL =\s*"[^"]*max-md:h-11 max-md:min-w-11"/);
+assert.match(productBody, /max-md:h-11 max-md:px-3/);
+assert.match(read("app/[lang]/settings/products/[id]/product-editor-client.tsx"), /from "@\/components\/markdown-editor\/markdown-editor"/);
 const css = read("app/globals.css");
 assert.match(css, /\.w-md-editor \.w-md-editor-toolbar li > button:active \{\s*background-color: var\(--press\);/);
 assert.match(css, /@media \(max-width: 767px\) \{\s*\.w-md-editor \.w-md-editor-toolbar \{[\s\S]{0,200}width: 44px;\s*height: 44px;/);

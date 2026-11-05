@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { readAiWritingAvailability } from "@/lib/ai/page-availability";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
 import { stripeMode } from "@/lib/stripe/mode";
@@ -16,6 +17,9 @@ export const runtime = "nodejs";
  * (`GET /api/shop/products/[id]` and `GET /api/shop/categories`) are read here
  * instead, so the form renders populated in the first paint.
  *
+ * Whether ✨ Write and ✨ Generate SEO are on offer is read here too, as the
+ * campaign editor reads it; each call checks again on the server.
+ *
  * `id === "new"` is the retired free-form creation route: the client toasts and
  * redirects, so nothing is loaded for it. A row that cannot be read is left to
  * the client's own fetch, which keeps the existing "Product not found" toast.
@@ -31,9 +35,10 @@ export default async function ProductEditorPage({
     await requireAdminPage("products", locale);
 
     const isNew = id === "new";
-    const [product, categoryTree] = await Promise.all([
+    const [product, categoryTree, ai] = await Promise.all([
         isNew ? null : getAdminProduct(id),
         getCategoryTree(),
+        readAiWritingAvailability(),
     ]);
 
     const initialData: ProductEditorInitialData | undefined =
@@ -46,5 +51,5 @@ export default async function ProductEditorPage({
 
     // The browser cannot see STRIPE_SECRET_KEY, so it is told which account's ids
     // to read rather than left to guess.
-    return <ProductEditorClient initialData={initialData} stripeMode={stripeMode()} />;
+    return <ProductEditorClient initialData={initialData} ai={ai} stripeMode={stripeMode()} />;
 }
