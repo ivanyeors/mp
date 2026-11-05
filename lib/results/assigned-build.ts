@@ -2,7 +2,7 @@
 
 import { assembleBuild, findStockShortages, type BuildLine } from "@/lib/build-assembly";
 import { priceResult, type PriceResultOutput } from "@/lib/result-pricing";
-import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import {
   loadResultServiceLines,
   sumServiceLines,
@@ -275,11 +275,15 @@ export async function loadAssignedBuild(
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    // Add-ons only: a placed neck support is in the pillow's MSRP, like the fillings.
-    addonLines: addonLines.map((l) => ({
-      msrp: msrpByItem.get(l.item_id) ?? null,
-      quantity: l.quantity,
-    })),
+    // Add-ons, plus each Ear Comfort Pad placed inside: a placed neck support is
+    // in the pillow's MSRP, like the fillings, but an ear pad adds its own.
+    addonLines: [
+      ...addonLines.map((l) => ({
+        msrp: msrpByItem.get(l.item_id) ?? null,
+        quantity: l.quantity,
+      })),
+      ...placedChargeLines(fillPack, itemById, msrpByItem),
+    ],
   });
   if (!goods.ok) return { ok: false, error: goods.error };
 

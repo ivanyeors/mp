@@ -30,7 +30,7 @@ export type BuildCostOption = {
   templateId: number;
   name: string;
   isDefault: boolean;
-  /** The filling lines this build ships: the pack list, less any Neck support it cannot take. */
+  /** The filling lines this build ships: the pack list, less any Neck support or ear pad it cannot take. */
   lines: CostComponent[];
   pieces: number;
   fillingCents: number;
@@ -40,6 +40,14 @@ export type BuildCostOption = {
    * (CONTEXT.md). `left_out`: the template holds one this build cannot take.
    */
   neckSupport: "none" | "included" | "left_out";
+  /** `charged`: shipped inside the pillow at its own MSRP on top. `left_out`: as for a Neck support. */
+  earPad: "none" | "charged" | "left_out";
+  /**
+   * MSRP charged on top of the Costings row for the Ear Comfort Pads placed in this
+   * template (CONTEXT.md). `null` when one has no MSRP, which the money path
+   * refuses rather than charging nothing.
+   */
+  extraChargeCents: number | null;
   /** Items in the build with no cost price. They add 0 here, so the cost is a floor. */
   uncostedItemIds: number[];
 };
@@ -111,8 +119,10 @@ export function buildCostOptions(input: {
   templates: FillingTemplateRecipe[];
   defaultTemplateId: number | null;
   costByItem: ReadonlyMap<number, number | null>;
-  /** Item ids of the accessories placed in the pillow: Neck supports and Ear Comfort Pads (`isInPillowAccessory`). */
+  /** Neck support item ids. */
   neckSupportItemIds: ReadonlySet<number>;
+  /** Ear Comfort Pad items, with their MSRP (`null` when unpriced). */
+  earPadMsrpByItem: ReadonlyMap<number, number | null>;
   /**
    * Basic Mpillow takes no Neck support or ear pad: its pieces come out of the
    * mix, as `mixAfterTierChange` takes them out of a session's, and the rest
@@ -125,10 +135,19 @@ export function buildCostOptions(input: {
 
   for (const template of input.templates) {
     const isNeck = (l: { itemId: number }) => input.neckSupportItemIds.has(l.itemId);
+    const isEar = (l: { itemId: number }) => input.earPadMsrpByItem.has(l.itemId);
     const hasNeck = template.pack.some(isNeck);
-    const shipped = input.allowNeckSupport ? template.pack : template.pack.filter((l) => !isNeck(l));
+    const earLines = template.pack.filter(isEar);
+    const shipped = input.allowNeckSupport ? template.pack : template.pack.filter((l) => !isNeck(l) && !isEar(l));
     const lines = shipped.map((l) => ({ itemId: l.itemId, quantity: l.count }));
     const filling = componentsCostCents(lines, input.costByItem);
+    let extraChargeCents: number | null = 0;
+    if (input.allowNeckSupport) {
+      for (const l of earLines) {
+        const msrp = input.earPadMsrpByItem.get(l.itemId) ?? null;
+        extraChargeCents = msrp == null || extraChargeCents == null ? null : extraChargeCents + msrp * l.count;
+      }
+    }
     options.push({
       templateId: template.id,
       name: template.name,
@@ -138,6 +157,8 @@ export function buildCostOptions(input: {
       fillingCents: filling.cents,
       buildCents: base.cents + filling.cents,
       neckSupport: !hasNeck ? "none" : input.allowNeckSupport ? "included" : "left_out",
+      earPad: earLines.length === 0 ? "none" : input.allowNeckSupport ? "charged" : "left_out",
+      extraChargeCents,
       uncostedItemIds: [...new Set([...base.uncostedItemIds, ...filling.uncostedItemIds])],
     });
   }

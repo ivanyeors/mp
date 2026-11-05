@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
@@ -65,7 +65,8 @@ import {
   type BuildCostOption,
   type BuildCosts,
 } from "@/lib/costings/build-costs";
-import { isInPillowAccessory } from "@/lib/spatial-fillings/filling-groups";
+import { isEarPadItem, isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
+import { parseCostingsItems } from "@/lib/ecommerce/inventory-families";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
@@ -369,9 +370,15 @@ const formatMarginRange = (values: Array<number | null>): string | null => {
   return min === max ? `${min}%` : `${min}% to ${max}%`;
 };
 
-/** Margin of one build at a row's MSRP. A Neck support inside it is in that price, and its cost in the build. */
-const optionMargin = (option: BuildCostOption, msrpCents: number | null): number | null =>
-  marginPct(msrpCents, option.buildCents);
+/**
+ * Margin of one build at a row's MSRP. A Neck support inside it is in that price,
+ * and its cost in the build; an Ear Comfort Pad inside it is sold at its own MSRP
+ * on top, so that counts too.
+ */
+const optionMargin = (option: BuildCostOption, msrpCents: number | null): number | null => {
+  if (msrpCents === null || option.extraChargeCents === null) return null;
+  return marginPct(msrpCents + option.extraChargeCents, option.buildCents);
+};
 
 /** What a price row's builds cost; none when the row cannot be built at all. */
 const buildCostCents = (build: FamilyBuild): number[] => {
@@ -395,6 +402,10 @@ const BASELINE_FIELD: Record<keyof DraftRow, "cost" | "msrp" | "compareAt"> = {
   compareAt: "compareAt",
 };
 
+/** The query string never changes under this page except through `clearFocus`, which also sets state. */
+const subscribeToNothing = () => () => {};
+const readLocationSearch = () => window.location.search;
+
 export default function CostingsPage() {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -409,6 +420,17 @@ export default function CostingsPage() {
   const [committedDraft, setCommittedDraft] = useState<DraftState>({});
   const [baseline, setBaseline] = useState<BaselineState>({});
   const [partFilters, setPartFilters] = useState<string[]>([]);
+  /**
+   * Items the Inventory page sent here (`?items=`) to be priced: the parts list
+   * shows just these until Staff ask for everything. Read from the URL after
+   * mount, so the page needs no Suspense boundary for `useSearchParams`.
+   */
+  const search = useSyncExternalStore(subscribeToNothing, readLocationSearch, () => "");
+  const [showAllParts, setShowAllParts] = useState(false);
+  const focusItemIds = useMemo(
+    () => (showAllParts ? [] : parseCostingsItems(search)),
+    [search, showAllParts],
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productSheetKey, setProductSheetKey] = useState<string | null>(null);
@@ -952,10 +974,29 @@ export default function CostingsPage() {
   }, [hasActiveFilters]);
 
   const filteredGroups = useMemo(() => {
-    if (partFilters.length === 0) return grouped;
     const selected = new Set(partFilters);
-    return grouped.filter((group) => selected.has(group.category));
-  }, [grouped, partFilters]);
+    const byCategory = partFilters.length === 0 ? grouped : grouped.filter((group) => selected.has(group.category));
+    if (focusItemIds.length === 0) return byCategory;
+    const focus = new Set(focusItemIds);
+    return byCategory
+      .map((group) => ({ ...group, items: group.items.filter((item) => focus.has(item.id)) }))
+      .filter((group) => group.items.length > 0);
+  }, [grouped, partFilters, focusItemIds]);
+
+  const clearFocus = useCallback(() => {
+    setShowAllParts(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("items");
+    window.history.replaceState(window.history.state, "", url);
+  }, []);
+
+  // Land on the parts the Inventory page sent, not the product cards above them.
+  const focusedOnce = useRef(false);
+  useEffect(() => {
+    if (loading || focusItemIds.length === 0 || focusedOnce.current) return;
+    focusedOnce.current = true;
+    document.getElementById("costings-parts")?.scrollIntoView({ block: "start" });
+  }, [loading, focusItemIds]);
 
   const itemCostByIdFromDraft = useMemo(() => {
     const map = new Map<number, number | null>();
@@ -1004,8 +1045,11 @@ export default function CostingsPage() {
   // MSRP moves every build that uses it as soon as the debounce lands.
   const cardBuilds = useMemo(() => {
     const msrpCentsOf = (itemId: number) => parseToCents(committedDraft[itemKey(itemId)]?.msrp ?? "");
-    // Every accessory placed in the pillow (a Neck support, an Ear Comfort Pad) is in its price.
-    const neckSupportItemIds = new Set(items.filter((item) => isInPillowAccessory(item)).map((item) => item.id));
+    // A Neck support placed in the pillow is in its price; an Ear Comfort Pad adds its own MSRP.
+    const neckSupportItemIds = new Set(items.filter((item) => isNeckSupportItem(item)).map((item) => item.id));
+    const earPadMsrpByItem = new Map<number, number | null>(
+      items.filter((item) => isEarPadItem(item)).map((item) => [item.id, msrpCentsOf(item.id)]),
+    );
     const caseItems = items.filter((item) => CASE_CATEGORIES.has(item.category));
     const map = new Map<string, CardBuild>();
     for (const card of productCards) {
@@ -1048,6 +1092,7 @@ export default function CostingsPage() {
             defaultTemplateId: card.defaultFillingTemplateId,
             costByItem: itemCostByIdFromDraft,
             neckSupportItemIds,
+            earPadMsrpByItem,
             allowNeckSupport: card.kind === "pillow" && card.pillowKind === "premium",
           }),
         };
@@ -1590,13 +1635,30 @@ export default function CostingsPage() {
           </section>
         )}
 
-        <section className="space-y-4">
+        <section id="costings-parts" className="scroll-mt-20 space-y-4">
           <div className="flex items-center gap-1.5">
             <h2>Parts</h2>
             <InfoTip label="About Parts">
               Enter dollars. Leave a field blank to clear it.
             </InfoTip>
           </div>
+          {focusItemIds.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                Showing {focusItemIds.length === 1 ? "the item" : `${focusItemIds.length} items`} from
+                Inventory. Enter the cost and MSRP, then save. Back in Inventory, the item is ready to
+                push to Products.
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={settingsPath("/settings/inventory")}>Back to Inventory</Link>
+                </Button>
+                <Button size="sm" variant="ghost" onClick={clearFocus}>
+                  Show all parts
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1899,8 +1961,9 @@ export default function CostingsPage() {
                           <h3 className="text-sm font-medium">Build cost by filling template</h3>
                           <InfoTip label="About build cost">
                             A build costs its parts plus the filling template it is assigned. A neck support inside a
-                            Premium Mpillow is in its price: it adds to the cost, never to the price. Basic Mpillow is
-                            built without one.
+                            Premium Mpillow is in its price: it adds to the cost, never to the price. An ear pad inside
+                            one is charged at its own MSRP, so its margin counts that too. Basic Mpillow is built
+                            without either.
                           </InfoTip>
                         </div>
                         {activeOptions.length > 1 ? (
@@ -1949,11 +2012,18 @@ export default function CostingsPage() {
                                   {option.pieces === 1 ? "piece" : "pieces"}
                                 </div>
                                 {option.neckSupport === "included" ? (
-                                  <div className="text-xs text-muted-foreground">
-                                    Accessories inside are included in the price
-                                  </div>
+                                  <div className="text-xs text-muted-foreground">Neck support included in the price</div>
                                 ) : option.neckSupport === "left_out" ? (
-                                  <div className="text-xs text-muted-foreground">Built without the accessories inside it</div>
+                                  <div className="text-xs text-muted-foreground">Built without its neck support</div>
+                                ) : null}
+                                {option.earPad === "charged" ? (
+                                  <div className="text-xs text-muted-foreground">
+                                    {option.extraChargeCents === null
+                                      ? "Its ear pad has no MSRP"
+                                      : `Ear pad charge adds ${formatCentsLabel(option.extraChargeCents)} to the price`}
+                                  </div>
+                                ) : option.earPad === "left_out" ? (
+                                  <div className="text-xs text-muted-foreground">Built without its ear pads</div>
                                 ) : null}
                               </button>
                             );

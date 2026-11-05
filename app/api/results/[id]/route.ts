@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
 import { attachHoldPaymentIntent } from "@/lib/authorization-hold";
 import { priceResult } from "@/lib/result-pricing";
-import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, quotedServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
 import { pickPartner, shipsWithAnchor } from "@/lib/results/paired-build";
@@ -157,6 +157,7 @@ async function buildPublicSummary(row: {
         const prefAddonIds = [
           ...preferenceLines.map((l) => l.item_id),
           ...addonLines.map((l) => l.item_id),
+          ...fillIds,
         ];
         const { data: prices } = prefAddonIds.length
           ? await admin.from("item_prices").select("item_id, msrp").in("item_id", prefAddonIds)
@@ -180,11 +181,19 @@ async function buildPublicSummary(row: {
           caseOptions: composed.sellable.caseOptions,
           chosenCover,
           chosenCase,
-          // Add-ons only: a placed neck support is in the pillow's MSRP, like the fillings.
-          addonLines: addonLines.map((l) => ({
-            msrp: msrpByItem.get(l.item_id) ?? null,
-            quantity: l.quantity,
-          })),
+          // Add-ons, plus each Ear Comfort Pad placed inside: a placed neck support
+          // is in the pillow's MSRP, like the fillings, but an ear pad adds its own.
+          addonLines: [
+            ...addonLines.map((l) => ({
+              msrp: msrpByItem.get(l.item_id) ?? null,
+              quantity: l.quantity,
+            })),
+            ...placedChargeLines(
+              fillLines.map((l) => ({ item_id: l.item_id, count: l.quantity })),
+              new Map((items ?? []).map((i) => [i.id as number, i as { category?: string; name: string }])),
+              msrpByItem,
+            ),
+          ],
         });
         const serviceLines = goods.ok
           ? await loadResultServiceLines(admin, {
