@@ -32,17 +32,41 @@ then write with the service-role client. Permissions are code; roles are data
 
 | Page | Calls | Writes |
 |---|---|---|
-| **Inventory** `/settings/inventory` | Server actions `receiveStock`, `sellCart`, `sellPart`, `addInventoryItem`, `deleteInventoryItem`, image setters. Reads `items`, `inventory_balances`, `pillow_products`, `bom_lines`, `bolster_bom_lines` directly. | `inventory_transactions`, `items`, `item_prices` (opening price; removed when an Item is deactivated), product/variant images |
+| **Inventory** `/settings/inventory` | Server actions `receiveStock`, `sellCart`, `sellPart`, `addInventoryItem`, `deleteInventoryItem`, `getInventoryCostingState`, image setters. Reads `items`, `inventory_balances`, `pillow_products`, `bom_lines`, `bolster_bom_lines` directly. The parts drawer links an unpriced family to Costings and pushes a priced one through `/api/shop/products/from-inventory` (below). | `inventory_transactions`, `items`, `item_prices` (opening price; removed when an Item is deactivated), product/variant images |
 | **Configure** `/settings/inventory/configure`, `/settings/inventory/configure/[card]` | `…/configure/save`, `…/configure/templates`, `…/templates/[templateId]`, `…/fork`, `…/templates/apply`, `…/unpromoted` | `bom_lines`, `bolster_bom_lines` (fillings stripped, ADR 0003), the Default Filling Template, `bom_templates`, `bom_template_lines`, `filling_template_placements` / `bolster_template_placements` |
-| **Costings** `/settings/costings` | `/settings/costings/save`; reads `/settings/costings/builds` | `item_prices`, `product_prices` → `product_variants` price fields → Stripe (below) |
+| **Costings** `/settings/costings` | `/settings/costings/save`; reads `/settings/costings/builds`. `?items=1,2` shows only those parts (the Inventory page's Add cost link). | `item_prices`, `product_prices` → `product_variants` price fields → Stripe (below) |
 | **Costings → Services** `/settings/costings/services` | `/settings/costings/save` | `service_prices`, the re-adjustment policy in `site_settings` |
-| **Products** `/settings/products` | `/api/shop/products/sync-inventory`, `/api/shop/products/resync-prices`, `/api/shop/products/accessory-listings` | `products`, `product_options`, `product_variants`: the inventory projection and the **Listed** switch |
+| **Products** `/settings/products` | `/api/shop/products/sync-inventory`, `/api/shop/products/resync-prices`, `/api/shop/products/from-inventory` (Add from Inventory: the push), `/api/shop/products/listings` (In the shop) | `products`, `product_options`, `product_variants`: the inventory projection, the push and the **Listed** switch |
 | **Product editor** `/settings/products/[id]` | `/api/shop/products/[id]`, `…/variants`, `…/variants/[variantId]`, images | `products`, `product_variants` (`stock_quantity`, `track_inventory`), `product_images` |
 | **Orders** `/settings/orders` | `/api/shop/orders` (list, dashboard) | Nothing |
 | **Order detail** `/settings/orders/[id]` | `/api/shop/orders/[id]` (status), `/api/shop/orders/[id]/{deduct-stock, refund, cancel, refund-request, restock, fulfill, easyship, …}` | A status change that makes the Order sold, `deduct-stock`, `fulfill` and the courier's first scan of an Easyship label (the webhook ships the Order, ADR 0044) deduct its goods once (`inventory_transactions`, `orders.inventory_deducted_at`). `refund` (full, chosen lines or an amount, ADR 0038) asks Stripe for the money on every intent the Order was paid on and writes only `order_timeline` and `admin_audit_log`; the `charge.refunded` webhook writes `order_payments`. `restock` writes `inventory_transactions` + `order_items.returned_quantity`. The "Inventory deducted" badge and the Stock row read `orders.inventory_deducted_at`. |
 | **Result detail** `/settings/results/[id]` | `/api/results/assign/prep`, `/api/results/[id]/assign`, `/api/results/[id]/cancel`, `/api/results/[id]/request-payment` | `mp_config_responses`, `result_filling_placements` / `result_bolster_filling_placements`. Stock is checked but not written. |
 | **Integrations → Shopify** `/settings/integrations/shopify` | `fullShopifySync`, mapping and override actions | `shopify_variant_mappings`, `shopify_variant_overrides`; pushes stock and prices to Shopify |
 | **Analytics** `/settings/analytics` | `getSalesReport`, `getInventoryMovementWaterfall` and other read actions | Reads Orders Stripe charged (money ledger) and the stock ledger ([analytics.md](analytics.md)); writes only SEO annotations and target queries |
+
+## From Inventory to the shop
+
+ADR 0045. An Item reaches the shop in four steps, one per page:
+
+```mermaid
+flowchart LR
+  inv["Inventory<br/>addInventoryItem"] -->|"no cost or MSRP:<br/>Add cost button"| cost["Costings<br/>?items=…"]
+  cost -->|"item_prices"| ready["Inventory: Push<br/>Products: Add from Inventory"]
+  ready -->|"price check<br/>POST /api/shop/products/from-inventory"| draft["draft product<br/>(or new Variants)"]
+  draft -->|"In the shop switch<br/>PATCH /api/shop/products/listings"| live["status active: Listed"]
+```
+
+- **Costings first.** `costingGaps` (`lib/ecommerce/inventory-families.ts`): a sellable Item needs
+  a cost and an MSRP, a build input a cost. Until then Inventory shows Add cost, which opens
+  Costings on those Items.
+- **The push** (`pushFamilyToProducts`, `lib/ecommerce/shop-listings.ts`) reloads the family by
+  category and name, and `checkPushPrices` refuses it unless every size being pushed has both
+  prices and Staff confirmed exactly those. A new family becomes a draft product
+  (`publishAccessoryFamily`); a size new to Inventory becomes a Variant of the family's product
+  (`addSizesToProduct`). Variant prices then come from Costings through `price_key`.
+- **In the shop** (`listShopProducts`, `setProductListed`) lists the shop's products, not
+  Inventory, and switches `products.status`. Listing re-syncs prices from Costings first and
+  refuses an unpriced Variant.
 
 How a sale and a restock move stock is in
 [purchases-to-inventory.md](purchases-to-inventory.md) and

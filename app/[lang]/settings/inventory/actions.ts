@@ -14,6 +14,8 @@ import { alterationBaseId, assertConvertible, stockInRows, type StockItem } from
 import { reResolveShopifyLineCosts } from '@/lib/shopify/order-mirror-ingest'
 import { setProductBaseImage, syncItemImageToProducts } from '@/lib/ecommerce/item-image-sync'
 import { resolveAddonImageUrls } from '@/lib/results/addon-images'
+import { listInventoryFamilies } from '@/lib/ecommerce/shop-listings'
+import { toCents, type CostingPrices, type InventoryFamily } from '@/lib/ecommerce/inventory-families'
 
 function scheduleMirrorReResolve(variantIds: number[]) {
   after(() => {
@@ -434,6 +436,29 @@ export async function getItemImageUrls(): Promise<Record<number, string>> {
     .in('id', assetIds)
   if (aErr) throw new Error(aErr.message)
   return Object.fromEntries(resolveAddonImageUrls(items ?? [], assets ?? []))
+}
+
+/**
+ * Where each Item stands after Inventory: its Costings prices (so the page can
+ * offer "Add cost" until it has them) and, for the families the shop can sell,
+ * whether they have been pushed to Products.
+ */
+export async function getInventoryCostingState(): Promise<{
+  prices: Record<number, CostingPrices>
+  families: InventoryFamily[]
+}> {
+  await assertAdmin('inventory')
+  const admin = supabaseAdmin()
+  const [{ data, error }, families] = await Promise.all([
+    admin.from('item_prices').select('item_id, cost_price, msrp'),
+    listInventoryFamilies(),
+  ])
+  if (error) throw new Error(error.message)
+  const prices: Record<number, CostingPrices> = {}
+  for (const row of data ?? []) {
+    prices[Number(row.item_id)] = { costCents: toCents(row.cost_price), msrpCents: toCents(row.msrp) }
+  }
+  return { prices, families }
 }
 
 const COMPOSED_PRODUCT_SLUGS = ['mpillow-basic', 'mpillow-premium', 'mbolster'] as const
