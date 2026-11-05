@@ -786,6 +786,8 @@ export async function planWave(
     holdout: Boolean(campaign.keepSending?.holdoutAt),
     // Slice 12: a win-back reaches the Unengaged; every other campaign leaves them out.
     includeUnengaged: campaign.includeUnengaged,
+    // The run's clock, so the Rest period is judged at the same moment as the rest of the wave.
+    now: setup.now?.(),
   });
   const wanted = Math.min(n, plan.eligible);
   const customerIds = selection.map((c) => c.customerId);
