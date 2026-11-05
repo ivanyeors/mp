@@ -100,7 +100,7 @@ Defined in supabase/migrations/20260715090000_analytics_journey_schema.sql:3
   - `persistJourneyIngest()` [update,upsert] — lib/analytics/journey/ingest.ts:201
   - `stampVisitorRef()` [upsert] — lib/referrals/index.ts:176
 - Read by:
-  - `POST()` [select] — app/api/results/hold/route.ts:690
+  - `POST()` [select] — app/api/results/hold/route.ts:697
   - `stitchUnlinkedGaEvents()` [select] — lib/analytics/journey/ga-sync.ts:183
 
 ### analytics_visits
@@ -174,7 +174,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/save/route.ts:56
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:87
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:530
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:536
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:184
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:488
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:154
@@ -202,7 +202,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `clearDefaultsOutsideMembership()` [select,update] — lib/filling-templates/membership.ts:170
   - `setDefaultFillingTemplateId()` [update] — lib/results/composed-sellable.ts:401
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:532
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:538
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:397
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:155
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:344
@@ -213,13 +213,13 @@ References: `bom_templates`, `items`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/results/[id]`
 - Written by:
   - `POST()` [insert,select] — app/[lang]/settings/inventory/configure/templates/[templateId]/fork/route.ts:151
-  - `POST()` [delete,insert] — app/api/mp-config/assist/route.ts:305
+  - `POST()` [delete,insert] — app/api/mp-config/assist/route.ts:310
   - `PUT()` [delete,insert] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:281
 - Read by:
   - `GET()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:79
   - `GET()` [select] — app/api/mp-config/assist/route.ts:79
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:225
-  - `POST()` [select] — app/api/results/hold/route.ts:480
+  - `POST()` [select] — app/api/results/hold/route.ts:481
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:251
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
 
@@ -231,7 +231,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `POST()` [delete,select,upsert] — app/[lang]/settings/inventory/configure/save/route.ts:88
   - `POST()` [delete,upsert] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:70
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:529
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:535
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:183
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:84
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:396
@@ -284,7 +284,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [insert,select] — app/[lang]/settings/inventory/configure/templates/[templateId]/fork/route.ts:69
   - `POST()` [insert,select,update] — app/[lang]/settings/inventory/configure/templates/route.ts:260
   - `POST()` [insert] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:207
-  - `POST()` [insert,select] — app/api/mp-config/assist/route.ts:224
+  - `POST()` [insert,select] — app/api/mp-config/assist/route.ts:229
   - `PUT()` [select,update] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:169
   - `setTemplateKeys()` [update] — lib/filling-templates/membership.ts:140
 - Read by:
@@ -441,7 +441,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `updateCustomerStats()` [update] — lib/ecommerce/customers.ts:82
 - Read by:
   - `GET()` [select] — app/api/settings/customers/[id]/timeline/route.ts:47
-  - `POST()` [select] — app/api/results/hold/route.ts:878
+  - `POST()` [select] — app/api/results/hold/route.ts:885
   - `POST()` [select] — app/api/shop/customers/[id]/addresses/route.ts:53
   - `POST()` [select] — app/api/shop/customers/[id]/followups/route.ts:65
   - `POST()` [select] — app/api/shop/customers/[id]/notes/route.ts:45
@@ -569,7 +569,7 @@ References: `bom_templates`, `items`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/inventory`, `/settings/inventory/configure`, `/settings/inventory/configure/[card]`, `/settings/results/[id]`
 - Written by:
   - `POST()` [insert,select] — app/[lang]/settings/inventory/configure/templates/[templateId]/fork/route.ts:151
-  - `POST()` [delete,insert] — app/api/mp-config/assist/route.ts:305
+  - `POST()` [delete,insert] — app/api/mp-config/assist/route.ts:310
   - `PUT()` [delete,insert] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:281
 - Read by:
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:47
@@ -580,7 +580,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:115
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:225
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:202
-  - `POST()` [select] — app/api/results/hold/route.ts:499
+  - `POST()` [select] — app/api/results/hold/route.ts:500
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:382
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
@@ -618,7 +618,7 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
 ### inventory_balances
 Defined in supabase/migrations/0001_inventory.sql:45
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:534
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:540
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:181
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:301
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:267
@@ -671,10 +671,10 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`, `/setti
 - Read by:
   - `GET()` [select] — app/api/results/addons/route.ts:77
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:304
-  - `POST()` [select] — app/api/results/hold/route.ts:568
+  - `POST()` [select] — app/api/results/hold/route.ts:571
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:368
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:311
-  - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:162
+  - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:163
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:670
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:277
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:170
@@ -708,7 +708,7 @@ Changed from pages: `/settings/inventory`
   - `renameInventoryItem()` [update] — app/[lang]/settings/inventory/actions.ts:368
   - `setItemsPrimaryImage()` [select,update] — app/[lang]/settings/inventory/actions.ts:400
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:516
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:522
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:177
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:394
@@ -720,7 +720,7 @@ Changed from pages: `/settings/inventory`
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:298
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:94
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:140
-  - `POST()` [select] — app/api/results/hold/route.ts:460
+  - `POST()` [select] — app/api/results/hold/route.ts:461
   - `adoptManualProducts()` [select] — lib/ecommerce/inventory-sync.ts:367
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:310
   - `assertFillingLines()` [select] — app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts:37
@@ -854,7 +854,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/finish/route.ts:53
   - `POST()` [select,update] — app/api/results/[id]/reconfigure/route.ts:113
   - `POST()` [select,update] — app/api/results/[id]/request-payment/route.ts:48
-  - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:344
+  - `POST()` [delete,insert,select,update] — app/api/results/hold/route.ts:345
   - `POST()` [insert,update] — app/api/shop/orders/[id]/mp-config-link/route.ts:60
   - `POST()` [update] — app/api/stripe/webhook/route.ts:211
   - `attachHoldPaymentIntent()` [select,update] — lib/authorization-hold/index.ts:41
@@ -870,7 +870,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `/results` (page) [select] — app/[lang]/results/page.tsx:30
   - `GET()` [select] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:122
   - `GET()` [select] — app/api/mp-config/responses/[id]/route.ts:37
-  - `GET()` [select] — app/api/results/[id]/route.ts:292
+  - `GET()` [select] — app/api/results/[id]/route.ts:301
   - `GET()` [select] — app/api/results/queue-counts/route.ts:24
   - `GET()` [select] — app/api/results/route.ts:35
   - `POST()` [select] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:174
@@ -1208,7 +1208,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/settings/in
   - `clearDefaultsOutsideMembership()` [select,update] — lib/filling-templates/membership.ts:189
   - `setDefaultFillingTemplateId()` [select,update] — lib/results/composed-sellable.ts:379
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:524
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:530
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:182
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:80
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:395
@@ -1284,7 +1284,7 @@ Changed from pages: `/settings/costings`, `/settings/costings/services`
 - Written by:
   - `POST()` [delete,upsert] — app/[lang]/settings/costings/save/route.ts:405
 - Read by:
-  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:531
+  - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:537
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:669
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:164
   - `getBolsterFromPriceLabel()` [select] — lib/landing-page-data.ts:96
@@ -1998,8 +1998,8 @@ Defined in supabase/migrations/20260719000002_result_filling_placements.sql:16
 References: `items`, `mp_config_responses`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/results/[id]`
 - Written by:
-  - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:510
-  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1184
+  - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:514
+  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1191
   - `reorderResult` [insert,select] — lib/results/reorder.ts:224
 - Read by:
   - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:142
@@ -2009,9 +2009,9 @@ Defined in supabase/migrations/20260719000002_result_filling_placements.sql:6
 References: `items`, `mp_config_responses`
 Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/results/[id]`
 - Written by:
-  - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:510
+  - `POST()` [delete,insert] — app/api/results/[id]/assign/route.ts:514
   - `POST()` [delete,insert] — app/api/results/[id]/reconfigure/route.ts:316
-  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1201
+  - `POST()` [delete,insert] — app/api/results/hold/route.ts:1208
   - `reorderResult` [insert,select] — lib/results/reorder.ts:224
 - Read by:
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:69
@@ -2121,15 +2121,15 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `PATCH()` [update] — app/api/shop/shipping/[id]/route.ts:45
   - `POST()` [insert] — app/api/shop/shipping/route.ts:84
 - Read by:
-  - `POST()` [select] — app/api/results/[id]/assign/route.ts:417
+  - `POST()` [select] — app/api/results/[id]/assign/route.ts:421
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:95
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:143
-  - `POST()` [select] — app/api/results/hold/route.ts:571
+  - `POST()` [select] — app/api/results/hold/route.ts:574
   - `POST()` [select] — app/api/shop/checkout/route.ts:511
-  - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:206
+  - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:215
   - `getActiveShippingMethods()` [select] — lib/ecommerce/shipping.ts:7
   - `getAllShippingMethods()` [select] — lib/ecommerce/shipping.ts:20
-  - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:304
+  - `loadAssignedBuild()` [select] — lib/results/assigned-build.ts:308
   - `loadOrderShippingMethod()` [select] — lib/shipping/order-shipment.ts:97
   - `shipping-methods.ts` [select] — lib/shop/shipping-methods.ts:14
 

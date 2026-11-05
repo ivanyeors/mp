@@ -43,8 +43,10 @@ export type FillingItem = {
   name: string;
   subtype: string | null;
   size: string | null;
-  /** Set by the assist route: "accessories" marks a neck support, premium only. */
+  /** Set by the assist route: "accessories" marks a neck support or an ear pad, premium only. */
   category?: string;
+  /** Set by the assist route: a placed Ear Comfort Pad is charged at its MSRP. */
+  msrp?: number | null;
 };
 type TemplateRow = { id: number; name: string };
 

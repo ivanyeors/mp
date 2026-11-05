@@ -77,8 +77,9 @@ flowchart TD
   Template serving its size: the composed BOM plus that template's Derived pack
   list, the sum `assembleBuild` makes. A premium fabric's build ships that
   fabric's case, and a Basic build leaves out a template's neck support and
-  ear pad. On a Premium build either one ships inside the pillow's MSRP: its
-  cost counts, its price adds nothing.
+  ear pad. On a Premium build both ship inside the pillow and their cost
+  counts. A neck support's price is in the pillow's MSRP; an ear pad adds its
+  own MSRP on top, and the margin counts it.
   `GET /settings/costings/builds` supplies the pack lists, because the
   placement tables are service-role only. `lib/costings/build-costs.ts` does
   the arithmetic.

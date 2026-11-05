@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
       : Promise.resolve({ data: [], error: null }),
     admin
       .from("items")
-      .select("id,name,subtype,size,category")
+      .select("id,name,subtype,size,category,item_prices(msrp)")
       // Neck supports are pillow-only (premium; the panel hides them on basic).
       .or(scope.kind === "bolster" ? "category.eq.filling" : PLACEABLE_ITEMS_OR)
       .eq("is_active", true)
@@ -132,7 +132,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     templates: templates ?? [],
-    items: items ?? [],
+    // Flattened MSRP: a placed Ear Comfort Pad is charged, and the staff preview
+    // quotes the same number the hold authorises.
+    items: (items ?? []).map(({ item_prices, ...item }) => ({
+      ...item,
+      msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
+    })),
     colorOverrides: colorOverrides ?? [],
     dimensionOverrides,
   });

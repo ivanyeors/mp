@@ -1,6 +1,6 @@
 "use client";
 
-import { priceComposedBuild } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild } from "@/lib/pricing/composed-price";
 import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
 import type { ServicePrices } from "@/lib/pricing/service-prices";
 
@@ -237,6 +237,7 @@ import {
 } from "@/lib/spatial-fillings/dimension-overrides";
 import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import {
+  flattenToPackList,
   pillowPlacementsToRows,
   rowsToPillowPlacements,
   type PillowPlacement,
@@ -2752,6 +2753,17 @@ export function MpConfigClient({
     // same function, same Costings inputs. It used to show the shelf price while the
     // server charged shelf + cover + case, a 113 gap on a premium XS.
     const pricingInputs = shopRecommendation?.pricing ?? null;
+    // Placed Ear Comfort Pads are charged on top (the server adds the same lines).
+    const [placed, placedItems] = staffAssist
+      ? [assistPlacements, assistItems]
+      : resumeFinish
+        ? [guestPlacements, resumeFinish.items]
+        : [[], []];
+    const placedCharges = placedChargeLines(
+      flattenToPackList(placed),
+      new Map(placedItems.map((i) => [i.id, i])),
+      new Map(placedItems.flatMap((i) => (i.msrp == null ? [] : [[i.id, Number(i.msrp)] as const]))),
+    );
     const quote = pricingInputs
       ? priceComposedBuild({
           msrpByFamily: pricingInputs.msrp_by_family,
@@ -2773,8 +2785,8 @@ export function MpConfigClient({
                   msrp: null,
                 }),
           // Add-ons are added below (addonTotal). A placed neck support is in the
-          // pillow's MSRP, like the fillings, so the x-ray never moves the price.
-          addonLines: [],
+          // pillow's MSRP, like the fillings; a placed ear pad adds its own.
+          addonLines: placedCharges,
         })
       : null;
     // A refused quote must NOT fall back to the shelf price. That is how the preview
