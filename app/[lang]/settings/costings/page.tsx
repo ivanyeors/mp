@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
@@ -66,6 +66,7 @@ import {
   type BuildCosts,
 } from "@/lib/costings/build-costs";
 import { isInPillowAccessory } from "@/lib/spatial-fillings/filling-groups";
+import { parseCostingsItems } from "@/lib/ecommerce/inventory-families";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
@@ -395,6 +396,10 @@ const BASELINE_FIELD: Record<keyof DraftRow, "cost" | "msrp" | "compareAt"> = {
   compareAt: "compareAt",
 };
 
+/** The query string never changes under this page except through `clearFocus`, which also sets state. */
+const subscribeToNothing = () => () => {};
+const readLocationSearch = () => window.location.search;
+
 export default function CostingsPage() {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -409,6 +414,17 @@ export default function CostingsPage() {
   const [committedDraft, setCommittedDraft] = useState<DraftState>({});
   const [baseline, setBaseline] = useState<BaselineState>({});
   const [partFilters, setPartFilters] = useState<string[]>([]);
+  /**
+   * Items the Inventory page sent here (`?items=`) to be priced: the parts list
+   * shows just these until Staff ask for everything. Read from the URL after
+   * mount, so the page needs no Suspense boundary for `useSearchParams`.
+   */
+  const search = useSyncExternalStore(subscribeToNothing, readLocationSearch, () => "");
+  const [showAllParts, setShowAllParts] = useState(false);
+  const focusItemIds = useMemo(
+    () => (showAllParts ? [] : parseCostingsItems(search)),
+    [search, showAllParts],
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productSheetKey, setProductSheetKey] = useState<string | null>(null);
@@ -952,10 +968,29 @@ export default function CostingsPage() {
   }, [hasActiveFilters]);
 
   const filteredGroups = useMemo(() => {
-    if (partFilters.length === 0) return grouped;
     const selected = new Set(partFilters);
-    return grouped.filter((group) => selected.has(group.category));
-  }, [grouped, partFilters]);
+    const byCategory = partFilters.length === 0 ? grouped : grouped.filter((group) => selected.has(group.category));
+    if (focusItemIds.length === 0) return byCategory;
+    const focus = new Set(focusItemIds);
+    return byCategory
+      .map((group) => ({ ...group, items: group.items.filter((item) => focus.has(item.id)) }))
+      .filter((group) => group.items.length > 0);
+  }, [grouped, partFilters, focusItemIds]);
+
+  const clearFocus = useCallback(() => {
+    setShowAllParts(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("items");
+    window.history.replaceState(window.history.state, "", url);
+  }, []);
+
+  // Land on the parts the Inventory page sent, not the product cards above them.
+  const focusedOnce = useRef(false);
+  useEffect(() => {
+    if (loading || focusItemIds.length === 0 || focusedOnce.current) return;
+    focusedOnce.current = true;
+    document.getElementById("costings-parts")?.scrollIntoView({ block: "start" });
+  }, [loading, focusItemIds]);
 
   const itemCostByIdFromDraft = useMemo(() => {
     const map = new Map<number, number | null>();
@@ -1590,13 +1625,30 @@ export default function CostingsPage() {
           </section>
         )}
 
-        <section className="space-y-4">
+        <section id="costings-parts" className="scroll-mt-20 space-y-4">
           <div className="flex items-center gap-1.5">
             <h2>Parts</h2>
             <InfoTip label="About Parts">
               Enter dollars. Leave a field blank to clear it.
             </InfoTip>
           </div>
+          {focusItemIds.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                Showing {focusItemIds.length === 1 ? "the item" : `${focusItemIds.length} items`} from
+                Inventory. Enter the cost and MSRP, then save. Back in Inventory, the item is ready to
+                push to Products.
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={settingsPath("/settings/inventory")}>Back to Inventory</Link>
+                </Button>
+                <Button size="sm" variant="ghost" onClick={clearFocus}>
+                  Show all parts
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

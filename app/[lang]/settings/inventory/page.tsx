@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { collectLowStockCategories } from "@/lib/inventory/part-category-low-stock";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, ImageIcon, Plus, RotateCw, ShoppingCart, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleDollarSign, ImageIcon, Package, PackagePlus, Plus, RotateCw, ShoppingCart, Trash2 } from "lucide-react";
 import {
   sellPart,
   receiveStock,
@@ -30,8 +32,24 @@ import {
   getItemImageUrls,
   setComposedProductImage,
   getComposedProductImageUrls,
+  getInventoryCostingState,
   type ComposedProductSlug,
 } from "./actions";
+import { PushToProductsDialog } from "@/components/settings/push-to-products-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatCurrency } from "@/lib/i18n/currencies";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import {
+  costingGaps,
+  costingsHrefFor,
+  describeCostingGaps,
+  familyKey,
+  needsCosting,
+  unsyncedSizes,
+  type CostingPrices,
+  type InventoryFamily,
+} from "@/lib/ecommerce/inventory-families";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -108,6 +126,9 @@ type AddInventoryEntry = {
   msrp: string;
 };
 type Group = { key: string; title: string; items: Item[] };
+/** Each Item's Costings prices, and the sellable families with their Products state. Null until loaded. */
+type CostingState = { prices: Record<number, CostingPrices>; families: InventoryFamily[] };
+const NO_PRICES: CostingPrices = { costCents: null, msrpCents: null };
 
 const createDefaultEntry = (): AddInventoryEntry => ({
   category: "cover",
@@ -123,7 +144,12 @@ const createDefaultEntry = (): AddInventoryEntry => ({
 });
 
 export default function InventoryPage() {
+  const pathname = usePathname() ?? "/";
+  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
+  const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
+  const [costing, setCosting] = useState<CostingState | null>(null);
+  const [pushFamily, setPushFamily] = useState<InventoryFamily | null>(null);
   const [balances, setBalances] = useState<Record<number, number>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [buildable, setBuildable] = useState<Record<string, number>>({});
@@ -167,6 +193,7 @@ export default function InventoryPage() {
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
     void getComposedProductImageUrls().then(setComposedImageUrls).catch(() => {});
+    void getInventoryCostingState().then(setCosting).catch(() => {});
     const [
       { data: itemsData },
       { data: balancesData },
@@ -419,9 +446,9 @@ export default function InventoryPage() {
     setSellDrawerFillingTemplateName(name);
   }, []);
 
-  const handleCreateItem = async (draft: AddInventoryDraft) => {
+  const handleCreateItem = async (draft: AddInventoryDraft): Promise<number> => {
     try {
-      await addInventoryItem({
+      const { item } = await addInventoryItem({
         category: draft.category,
         name: draft.name,
         size: draft.size,
@@ -432,14 +459,47 @@ export default function InventoryPage() {
         costPrice: draft.costPrice,
         msrp: draft.msrp,
       });
-      toast.success("Inventory item added");
       await load();
       notifyInventoryChange();
+      return Number(item.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Couldn't add the inventory item.";
       throw new Error(message);
     }
   };
+
+  /** After the Add drawer: one toast, with the way to Costings when the new items still need prices. */
+  const handleItemsCreated = (created: Array<{ id: number; draft: AddInventoryDraft }>) => {
+    const unpriced = created.filter(({ draft }) =>
+      needsCosting(draft.category, {
+        costCents: draft.costPrice == null ? null : Math.round(draft.costPrice * 100),
+        msrpCents: draft.msrp == null ? null : Math.round(draft.msrp * 100),
+      }),
+    );
+    const added = created.length === 1 ? "Inventory item added" : `${created.length} inventory items added`;
+    if (unpriced.length === 0) {
+      toast.success(added);
+      return;
+    }
+    toast.success(added, {
+      description: "Add its cost and MSRP in Costings next. Products can't sell it until then.",
+      action: {
+        label: "Add cost",
+        onClick: () => router.push(withLocale(costingsHrefFor(unpriced.map((c) => c.id)), locale)),
+      },
+    });
+  };
+
+  const pricesOf = useCallback((itemId: number) => costing?.prices[itemId] ?? NO_PRICES, [costing]);
+
+  // Prices are saved on the Costings page, often in another tab: pick them up on return.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void getInventoryCostingState().then(setCosting).catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -889,6 +949,9 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             const totalOnHand = group.items.reduce((sum, it) => sum + (Number(balances[it.id] ?? 0)), 0);
             const category = group.key.startsWith("category:") ? group.key.slice("category:".length) : null;
             const hasLowStock = category != null && lowStockCategories.has(category);
+            const unpricedCount = costing
+              ? group.items.filter((it) => needsCosting(it.category, pricesOf(it.id))).length
+              : 0;
             return (
               <div
                 key={group.key}
@@ -903,7 +966,17 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                     <div className="font-medium">{group.title}</div>
                     <div className="text-xs text-muted-foreground">On hand: {totalOnHand}</div>
                   </div>
-                  {hasLowStock ? <Badge variant="destructive">Low stock</Badge> : null}
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {unpricedCount > 0 ? (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300"
+                      >
+                        {unpricedCount} need{unpricedCount === 1 ? "s" : ""} a cost
+                      </Badge>
+                    ) : null}
+                    {hasLowStock ? <Badge variant="destructive">Low stock</Badge> : null}
+                  </div>
                 </div>
               </div>
             );
@@ -1135,7 +1208,15 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         open={addDrawerOpen}
         onOpenChange={setAddDrawerOpen}
         onCreate={handleCreateItem}
+        onCreated={handleItemsCreated}
         items={items}
+      />
+
+      <PushToProductsDialog
+        family={pushFamily}
+        open={pushFamily !== null}
+        onOpenChange={(open) => { if (!open) setPushFamily(null); }}
+        onPushed={() => { void getInventoryCostingState().then(setCosting).catch(() => {}); }}
       />
 
       {/* Part Drawer */}
@@ -1154,6 +1235,8 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         onSelectVariant={(id) => incrementPartSelection(id)}
         onDelete={handleDeleteItem}
         onRename={handleRenameItem}
+        costing={costing}
+        onPush={setPushFamily}
       />
 
       {/* Custom Pillow Drawer */}
@@ -1191,10 +1274,13 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
   );
 }
 
-function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
+function AddInventoryDrawer({ open, onOpenChange, onCreate, onCreated, items }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (draft: AddInventoryDraft) => Promise<void>;
+  /** Creates one item and resolves to its id. */
+  onCreate: (draft: AddInventoryDraft) => Promise<number>;
+  /** Once every entry is saved, so the page can say so in one toast. */
+  onCreated: (created: Array<{ id: number; draft: AddInventoryDraft }>) => void;
   items: Item[];
 }) {
   const [entries, setEntries] = useState<AddInventoryEntry[]>([createDefaultEntry()]);
@@ -1411,9 +1497,10 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
     }
 
     setSaving(true);
+    const created: Array<{ id: number; draft: AddInventoryDraft }> = [];
     try {
       for (const payload of payloads) {
-        await onCreate(payload);
+        created.push({ id: await onCreate(payload), draft: payload });
       }
       onOpenChange(false);
     } catch (err) {
@@ -1422,6 +1509,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
       toast.error(message);
     } finally {
       setSaving(false);
+      if (created.length > 0) onCreated(created);
     }
   };
 
@@ -2382,7 +2470,113 @@ function ComposedSectionHeading({ label, slug, imageUrls, setImageUrls }: {
   );
 }
 
-function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, onSelectVariant, onDelete, onRename }: {
+/** "Cost $10.00, MSRP $38.00", or what Costings still needs. */
+function CostingLine({ item, prices }: { item: Item; prices: CostingPrices }) {
+  const gaps = costingGaps(item.category, prices);
+  const money = (cents: number) => formatCurrency(cents / 100);
+  const known = [
+    prices.costCents != null ? `Cost ${money(prices.costCents)}` : null,
+    prices.msrpCents != null ? `MSRP ${money(prices.msrpCents)}` : null,
+  ].filter(Boolean);
+  if (gaps.length === 0) {
+    return <div className="text-xs text-muted-foreground">{known.join(", ")}</div>;
+  }
+  return (
+    <div className="text-xs text-amber-700 dark:text-amber-300">
+      Needs {describeCostingGaps(gaps)} in Costings
+    </div>
+  );
+}
+
+const productStateLabel: Record<string, string> = {
+  active: "in the shop",
+  draft: "in Products, not in the shop",
+  archived: "archived in Products",
+};
+
+/**
+ * The icon buttons beside a family in the parts drawer: "Add cost" while
+ * Costings lacks a price (it goes away once they are saved), and the product
+ * the family sells as once it is pushed.
+ */
+function FamilyPipelineActions({ name, variants, prices, family, to }: {
+  name: string;
+  variants: Item[];
+  prices: Record<number, CostingPrices> | null;
+  family: InventoryFamily | null;
+  to: (href: string) => string;
+}) {
+  if (!prices) return null;
+  const unpriced = variants.filter((v) => needsCosting(v.category, prices[v.id] ?? NO_PRICES));
+  const iconButton =
+    "flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded hover:bg-muted/40 active:bg-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  return (
+    <>
+      {unpriced.length > 0 ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href={to(costingsHrefFor(unpriced.map((v) => v.id)))}
+              className={cn(iconButton, "text-amber-600 dark:text-amber-400")}
+              aria-label={`Add cost for ${name} in Costings`}
+            >
+              <CircleDollarSign className="h-4 w-4" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Add cost and MSRP in Costings</TooltipContent>
+        </Tooltip>
+      ) : null}
+      {family?.productId ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href={to(`/settings/products/${family.productId}`)}
+              className={cn(iconButton, "text-muted-foreground")}
+              aria-label={`Open ${family.title} in Products`}
+            >
+              <Package className="h-4 w-4" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Open in Products</TooltipContent>
+        </Tooltip>
+      ) : null}
+    </>
+  );
+}
+
+/** Under a family that Costings has finished and Products lacks: the push, with what it will do. */
+function FamilyPushBar({ name, family, onPush }: {
+  name: string;
+  family: InventoryFamily | null;
+  onPush: (family: InventoryFamily) => void;
+}) {
+  if (!family || family.push === "pushed") return null;
+  if (unsyncedSizes(family.category, family.sizes).length > 0) return null;
+  const partial = family.push === "partial";
+  const newSizes = family.sizes.filter((s) => s.productId == null).length;
+  return (
+    <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-3 py-2">
+      <p className="text-xs text-muted-foreground">
+        {partial
+          ? `${newSizes} new size${newSizes === 1 ? " isn't" : "s aren't"} in Products yet.`
+          : "Priced in Costings. Ready for Products."}
+      </p>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-8 shrink-0 gap-1.5 px-2.5"
+        aria-label={partial ? `Add new sizes of ${name} to Products` : `Push ${name} to Products`}
+        onClick={() => onPush(family)}
+      >
+        <PackagePlus className="h-4 w-4" />
+        {partial ? "Add sizes" : "Push to Products"}
+      </Button>
+    </div>
+  );
+}
+
+function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, onSelectVariant, onDelete, onRename, costing, onPush }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   group: Group | null;
@@ -2392,7 +2586,22 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
   onSelectVariant: (itemId: number) => void;
   onDelete: (itemId: number) => Promise<void>;
   onRename: (itemId: number, name: string) => Promise<void>;
+  costing: CostingState | null;
+  onPush: (family: InventoryFamily) => void;
 }) {
+  const pathname = usePathname() ?? "/";
+  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
+  const to = useCallback((href: string) => withLocale(href, locale), [locale]);
+  const familiesByKey = useMemo(
+    () => new Map((costing?.families ?? []).map((f) => [f.key, f])),
+    [costing],
+  );
+  /** The one sellable family a drawer group is, or null (a build input, or names that merged across categories). */
+  const familyOf = (variants: Item[]): InventoryFamily | null => {
+    const keys = new Set(variants.map((v) => familyKey(v.category, v.name)));
+    if (keys.size !== 1) return null;
+    return familiesByKey.get([...keys][0]!) ?? null;
+  };
   const [qtyByItem, setQtyByItem] = useState<Record<number, string>>({});
   const [outQtyByItem, setOutQtyByItem] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
@@ -2582,10 +2791,24 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                       </div>
                       <div className="mt-0.5 text-xs text-muted-foreground">
                         {variants.length} item{variants.length === 1 ? "" : "s"}, {totalOnHand} on hand
+                        {(() => {
+                          const family = familyOf(variants);
+                          if (!family) return null;
+                          if (!family.productStatus) return ", not in Products";
+                          const state = productStateLabel[family.productStatus] ?? "in Products";
+                          return family.push === "partial" ? `, ${state}, new sizes not added` : `, ${state}`;
+                        })()}
                       </div>
                     </div>
                   </button>
                 </CollapsibleTrigger>
+                <FamilyPipelineActions
+                  name={name}
+                  variants={variants}
+                  prices={costing?.prices ?? null}
+                  family={familyOf(variants)}
+                  to={to}
+                />
                 <FamilyImageControl
                   name={name}
                   itemIds={variants.map((v) => v.id)}
@@ -2602,6 +2825,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                   </button>
                 </CollapsibleTrigger>
                 </div>
+                <FamilyPushBar name={name} family={familyOf(variants)} onPush={onPush} />
                 <CollapsibleContent>
                   <div className="space-y-3 border-t p-3">
                     {variants.map((variant) => {
@@ -2647,6 +2871,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                                 <InventoryItemLabel item={variant} />
                               )}
                               <div className="mt-1 text-xs text-muted-foreground">On hand: {onHand}</div>
+                              {costing ? <CostingLine item={variant} prices={costing.prices[variant.id] ?? NO_PRICES} /> : null}
                             </div>
                             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                               {isRenaming ? (
