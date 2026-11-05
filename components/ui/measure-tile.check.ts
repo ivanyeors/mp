@@ -8,10 +8,9 @@ import { join } from "node:path";
 
 const ROOT = process.cwd();
 const carousel = readFileSync(join(ROOT, "components/ui/apple-cards-carousel.tsx"), "utf8");
-const slideIn = readFileSync(
-  join(ROOT, "components/slide-in-pages/size-matters-slide-in.tsx"),
-  "utf8",
-);
+// Size Matters' measurement cards moved onto a section template; the icons are config.
+const template = readFileSync(join(ROOT, "components/product-sections/measure-carousel-section.tsx"), "utf8");
+const config = readFileSync(join(ROOT, "lib/product-slide-sections/configs/size-matters.ts"), "utf8");
 
 const tile = carousel.match(
   /export function MeasureTile\([\s\S]*?\n\}/,
@@ -23,6 +22,7 @@ assert.match(tile, /max-w-\[150px\]/);
 assert.match(tile, /\{title\}/);
 assert.match(tile, /\{description\}/);
 
-assert.equal([...slideIn.matchAll(/<MeasureTile\b/g)].length, 4);
+assert.match(template, /<MeasureTile\b/);
+assert.equal([...config.matchAll(/"\/[a-z-]+\.svg"/g)].length, 4);
 
 console.log("measure-tile.check.ts: ok");

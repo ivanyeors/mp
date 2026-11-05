@@ -176,6 +176,7 @@ describe("buildUsageMap over the trimmed selects", () => {
       "product_images",
       "product_variants",
       "site_settings",
+      "slide_in_sections",
     ]);
     const variants = fake.log.find((q) => q.table === "product_variants");
     expect(variants?.select).toBe("id, image_url");

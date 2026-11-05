@@ -3,6 +3,7 @@ import { slideImage } from "@/lib/media/slide-media";
 
 export const cervicalNeckSupportSlideSections = [
   {
+    key: "hero",
     type: "media_intro",
     contentKey: "hero",
     image: slideImage("/bev-back-sleep.png", {
@@ -11,8 +12,9 @@ export const cervicalNeckSupportSlideSections = [
     }),
   },
   // Tech Neck persona weave (slice 02) — after hero, before why
-  { type: "split_hero", contentKey: "techNeck", titleAs: "h2" },
+  { type: "split_hero", key: "tech-neck", contentKey: "techNeck", titleAs: "h2" },
   {
+    key: "why",
     type: "split_hero",
     contentKey: "why",
     image: slideImage("/cns-pouch.png", {
@@ -21,6 +23,7 @@ export const cervicalNeckSupportSlideSections = [
     }),
   },
   {
+    key: "comparison",
     type: "full_bleed_media",
     image: slideImage("/round-flat-head-comp.png", {
       alt: "Round head vs flat head comparison",
@@ -29,6 +32,7 @@ export const cervicalNeckSupportSlideSections = [
     }),
   },
   {
+    key: "benefits",
     type: "feature_card_grid",
     contentKey: "benefits",
     cardImages: [
@@ -37,5 +41,5 @@ export const cervicalNeckSupportSlideSections = [
       slideImage("/cns-contact-point.png", { alt: "Contact point support diagram" }),
     ],
   },
-  { type: "text_callout_block", contentKey: "difference" },
+  { type: "text_callout_block", key: "difference", contentKey: "difference" },
 ] satisfies readonly ProductSlideSectionConfig[];

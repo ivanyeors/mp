@@ -13,6 +13,7 @@ const home = read("app/[lang]/page.tsx");
 const marquee = read("components/sections/landing/marquee-section.tsx");
 const carousel = read("components/ui/apple-cards-carousel.tsx");
 const sizeMatters = read("components/slide-in-pages/size-matters-slide-in.tsx");
+const measureCarousel = read("components/product-sections/measure-carousel-section.tsx");
 const settingsNav = read("components/settings/settings-sidebar-nav.tsx");
 const settingsGeneral = read("app/[lang]/settings/general/general-client.tsx");
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
@@ -34,7 +35,7 @@ assert.match(carousel, /overscroll-x-contain/);
 
 // Size Matters sheet: X clipped in the scroll viewport
 assert.match(sizeMatters, /min-w-0 flex-1 overflow-y-auto overflow-x-hidden/);
-assert.match(sizeMatters, /<Carousel\b/);
+assert.match(measureCarousel, /<Carousel\b/);
 
 // Configurators: page roots clamp width with `overflow-x-clip`. `-hidden` would
 // make each root a scroll container, and the sticky header and Paired stepper

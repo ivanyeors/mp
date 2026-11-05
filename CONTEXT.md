@@ -1049,12 +1049,25 @@ surface); Next draft mode (it would drop the Data Cache and bill a reviews call 
 bypass cookie is browser-wide); the retired "Preview" link that opened the published site in a new tab
 
 **Learn-more slide-in**:
-The full-height sheet opened from landing-page "Learn more" CTAs (Basic Mpillow, Premium Mpillow, Mbolster). Primary job: product story + route to customisation or book appointment. Layout redesign target: reuse shared section templates across the three slide-ins with minimal hard-coded layout.
+The full-height sheet opened from landing-page "Learn more" CTAs (Size Matters, Ambassadors, Basic Mpillow, Premium Mpillow, Cervical Neck Support, Mbolster) — the landing page's **sub pages**. Primary job: product story + route to customisation or book appointment. All six are composed from shared section templates and are editable in the Page Builder (**Slide-in section**).
 _Avoid_: conflating with standalone routes like `/mbolster` or the `/mp-basic` / `/mp-config` wizards
 
 **Product section template**:
 A layout primitive reused across learn-more slide-ins. Each template accepts content props (title, description, image, items, etc.) — no product-specific copy inside the component. Agents compose slide-ins by ordering templates with i18n-backed content. Shell (header, progress, sticky CTA) is out of scope for layout redesign.
 _Avoid_: one-off inline layout duplicated per slide-in file; hard-coded product copy inside templates
+
+**Slide-in section**:
+One section of a landing **sub page** — a **Learn-more slide-in** (Size Matters, Ambassadors, Basic
+Mpillow, Premium Mpillow, Cervical Neck Support, Mbolster) — as the Page Builder edits it: a
+**Product slide section config** entry, named by its stable `key`, plus an optional
+`slide_in_sections` row of Staff overrides (position, visibility, and `content` — copy per locale
+as a whole record, media shared by both). The config decides which sections exist; a section with
+no row renders its code default. Staff reorder, hide and edit sections but cannot add or remove
+them. The sheet header (title and the line under it) is a pinned pseudo-section. Drafts, **Publish**,
+Discard and **Publish snapshot** history work per sub page, as for the landing page. ADR 0046.
+_Avoid_: **Landing section** (the landing page's own catalog and table); deleting a section to
+hide it; editing a price here (Costings is the single source of sell price); renaming a config
+`key`, which orphans its edits
 
 **Product slide section config**:
 A typed array declaring section order for one learn-more slide-in. Each entry: `{ type, contentKey?, ...mediaProps }`. A `ProductSlideSectionRenderer` maps `type` → template component. Simple sections are fully config-driven; complex sections (purchase panel, measurement grid) are named components referenced by type. Adding a new product = new config file + i18n keys — no new template code unless a novel layout pattern is needed.
@@ -1076,7 +1089,11 @@ _Avoid_: inline copy in config files; untyped i18n blobs wired to templates
 
 **Content preservation (non-negotiable)**: Refactor is layout/template extraction only. All existing i18n copy, images, videos, and section content must be retained — reorder allowed per approved recipes; do not delete or omit content that exists today.
 
-**Agent catalog**: TypeScript types in `lib/product-slide-sections/` (source of truth) + agent playbook at `.cursor/marketing-page/product-slide-sections.md`. Templates are reusable code blocks; future scope (not now) may expose them in settings for drag/edit like the landing page builder.
+**Agent catalog**: TypeScript types in `lib/product-slide-sections/` (source of truth) + agent playbook at `.cursor/marketing-page/product-slide-sections.md`. Templates are reusable code blocks; Staff reorder, hide and edit them per sub page in the Page Builder (**Slide-in section**, ADR 0046).
+
+**Size Matters**: `press_quote` → `split_hero`(size matters) → `measure_carousel` → `split_hero`(head shapes) → `split_hero`(why unique) → `split_hero`(sleep position) → `split_hero`(configurations)
+
+**Ambassadors**: `split_hero`(hero) → `split_hero`(all builds) → `split_hero`(ambassadors, collapsible awards) → `typed_quote` → `video_section`(split)
 
 **Answer lede**:
 A direct-answer block immediately after the page H1 (or H2 on sectioned pages). Stored as optional `seo_answer` on **Storefront product** and blog content; falls back to `seo_description` then `description`. Primary pattern for AEO/GEO fact density. Industry “TL;DR” / key-takeaways guidance maps to **Answer lede** — same field, same placement; do not add a second summary UI.

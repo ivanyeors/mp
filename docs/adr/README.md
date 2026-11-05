@@ -51,3 +51,4 @@ one is amended to point at it.
 | [0043](0043-method-delivery-time-and-label-courier.md) | A method's own delivery time is what shoppers see, and every label opens on the customer's courier |
 | [0044](0044-labels-made-at-payment-shipped-at-pickup.md) | The label is made when the order is paid, and the order ships when the courier collects it |
 | [0045](0045-inventory-reaches-the-shop-through-products.md) | An Item reaches the shop through Products: costed in Costings, pushed with a price check, then listed |
+| [0046](0046-sub-pages-are-overrides-over-code-sections.md) | The landing page's sub pages are edited in the Page Builder as overrides over code-defined sections |

@@ -24,12 +24,14 @@ import { SectionEditor } from "@/components/settings/page-builder/section-editor
 import { SectionTree, SECTION_TYPE_LABELS, sectionTitle } from "@/components/settings/page-builder/section-tree";
 import { PreviewFrame } from "@/components/settings/page-builder/preview-frame";
 import { PublishHistory } from "@/components/settings/page-builder/publish-history";
-import { ExternalLink, Eye, History, Loader2, MoreHorizontal, Plus, Undo2, UploadCloud } from "lucide-react";
+import { EMPTY_PENDING, PublishBar } from "@/components/settings/page-builder/publish-bar";
+import { LANDING_PAGE_KEY, PagePicker } from "@/components/settings/page-builder/page-picker";
+import { ExternalLink, Eye, History, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
-import { describePending, type PendingSummary } from "@/lib/page-builder/draft";
+import type { PendingSummary } from "@/lib/page-builder/draft";
 import type { LandingSection } from "@/lib/types/landing-sections";
 import { CUSTOM_SECTION_TEMPLATES } from "@/lib/types/landing-sections";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -128,126 +130,6 @@ function AddSectionDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// --- Publish bar ---
-
-const EMPTY_PENDING: PendingSummary = {
-  total: 0,
-  content: 0,
-  position: 0,
-  visibility: 0,
-  removal: 0,
-  slugs: [],
-};
-
-/**
- * Draft state and the one action that reaches shoppers.
- *
- * Every edit lands in a Section draft; nothing is live until Publish. Discard is the
- * mirror — it clears pending edits and leaves published content untouched.
- */
-function PublishBar({
-  pending,
-  onPublished,
-  onDiscarded,
-}: {
-  pending: PendingSummary;
-  onPublished: () => void;
-  onDiscarded: () => void;
-}) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const dirty = pending.total > 0;
-
-  const run = async (method: "POST" | "DELETE") => {
-    setBusy(true);
-    try {
-      const res = await fetch("/api/landing-sections/publish", { method });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error ?? "Something went wrong.");
-      if (method === "POST") {
-        toast.success("Published to the live site");
-        onPublished();
-      } else {
-        toast.success("Draft discarded");
-        onDiscarded();
-      }
-      setConfirmOpen(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const parts = [
-    pending.content > 0 ? `${pending.content} edited` : null,
-    pending.position > 0 ? `${pending.position} moved` : null,
-    pending.visibility > 0 ? `${pending.visibility} shown/hidden` : null,
-    pending.removal > 0 ? `${pending.removal} removed` : null,
-  ].filter(Boolean);
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 max-md:w-full">
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium max-md:mr-auto ${
-          dirty ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground"
-        }`}
-        data-page-builder-draft-state=""
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${dirty ? "bg-amber-500" : "bg-muted-foreground/50"}`} />
-        {describePending(pending)}
-      </span>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={!dirty || busy}
-        onClick={() => run("DELETE")}
-      >
-        <Undo2 className="mr-1.5 h-3.5 w-3.5" />
-        Discard
-      </Button>
-
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm" disabled={!dirty || busy}>
-            <UploadCloud className="mr-1.5 h-3.5 w-3.5" />
-            Publish
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Publish to the live site?</DialogTitle>
-            <DialogDescription>
-              {parts.length > 0
-                ? `${parts.join(", ")}. This is what shoppers will see.`
-                : "This is what shoppers will see."}
-            </DialogDescription>
-          </DialogHeader>
-          {pending.slugs.length > 0 && (
-            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
-              {pending.slugs.map((slug) => (
-                <li key={slug} className="text-muted-foreground">
-                  {slug}
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={busy}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={() => run("POST")} disabled={busy}>
-              {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Publish
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
   );
 }
 
@@ -502,11 +384,20 @@ export default function PageBuilderPage({
   const header = (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">Page Builder</h1>
           <InfoTip label="About Page Builder">
-            <p>Drag to reorder, toggle visibility, and edit section content. Changes stay in a draft until you publish.</p>
+            <p>
+              Drag to reorder, toggle visibility, and edit section content. Changes stay in a draft until you publish.
+              Pick a sub page to edit the sheets the landing page opens.
+            </p>
           </InfoTip>
+          <PagePicker
+            value={LANDING_PAGE_KEY}
+            confirmLeave={() =>
+              !inspectorDirty.current || window.confirm("Discard your unsaved edits to this section?")
+            }
+          />
         </div>
       </div>
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">

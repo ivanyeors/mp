@@ -4,7 +4,10 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SheetClose } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { ImageMediaConfig, SectionCtaConfig, SplitHeroContent } from "@/lib/product-slide-sections/types";
@@ -17,6 +20,10 @@ type SplitHeroSectionProps = {
   flip?: boolean;
   stacked?: boolean;
   stackedImages?: ImageMediaConfig[];
+  /** Show the image at its own aspect ratio instead of cropping it into the frame. */
+  naturalImage?: boolean;
+  /** Put the list behind a button labelled `content.listToggle`, open to start with. */
+  collapsibleList?: boolean;
   cta?: SectionCtaConfig;
   buttonLabel?: string;
   onButtonClick?: () => void;
@@ -52,6 +59,51 @@ function CtaButton({
   }
 
   return <div className="pt-1">{link}</div>;
+}
+
+/** The list under the paragraphs, behind a show/hide button when the config asks. */
+function HeroList({ content, collapsible }: { content: SplitHeroContent; collapsible?: boolean }) {
+  const [open, setOpen] = React.useState(true);
+  if (!content.listItems?.length) return null;
+
+  const list = (
+    <ul className="space-y-1.5">
+      {content.listItems.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+
+  if (collapsible) {
+    return (
+      <div className="space-y-2 pt-2">
+        {content.listTitle ? (
+          <div className="text-sm font-semibold text-foreground">{content.listTitle}</div>
+        ) : null}
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="w-full justify-between">
+              {content.listToggle ?? content.listTitle}
+              {open ? (
+                <ChevronUp className="size-4 text-muted-foreground" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3">{list}</CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  }
+
+  if (!content.listTitle) return null;
+  return (
+    <div className="space-y-2 pt-2">
+      <div className="text-sm font-semibold text-foreground">{content.listTitle}</div>
+      {list}
+    </div>
+  );
 }
 
 function StackedHeroBody({
@@ -108,6 +160,8 @@ export function SplitHeroSection({
   flip,
   stacked,
   stackedImages,
+  naturalImage,
+  collapsibleList,
   cta,
   buttonLabel,
   onButtonClick,
@@ -170,16 +224,7 @@ export function SplitHeroSection({
               <p key={text}>{text}</p>
             ))}
 
-            {content.listTitle && content.listItems?.length ? (
-              <div className="space-y-2 pt-2">
-                <div className="text-sm font-semibold text-foreground">{content.listTitle}</div>
-                <ul className="space-y-1.5">
-                  {content.listItems.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+            <HeroList content={content} collapsible={collapsibleList} />
 
             {content.table ? (
               <div className="overflow-hidden rounded-xl">
@@ -215,21 +260,35 @@ export function SplitHeroSection({
         </header>
 
         <div className={cn(flip ? "md:order-1" : null)}>
-          <div
-            className={cn(
-              "relative aspect-[4/3] overflow-hidden rounded-xl border bg-card",
-              imageWrapperClassName,
-            )}
-          >
-            <Image
-              src={image.src}
-              alt={image.alt}
-              fill
-              className={cn("object-cover", image.className)}
-              sizes={image.sizes ?? "(min-width: 768px) 50vw, 100vw"}
-              priority={image.priority}
-            />
-          </div>
+          {naturalImage ? (
+            // Animated GIFs and tall charts keep their own shape; a fixed frame would crop
+            // them. A plain <img>: next/image needs dimensions, and serves GIFs unoptimised.
+            <div className={cn("overflow-hidden rounded-xl bg-muted/20", imageWrapperClassName)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={image.src}
+                alt={image.alt}
+                className={cn("block h-auto w-full", image.className)}
+                loading="lazy"
+              />
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "relative aspect-[4/3] overflow-hidden rounded-xl border bg-card",
+                imageWrapperClassName,
+              )}
+            >
+              <Image
+                src={image.src}
+                alt={image.alt}
+                fill
+                className={cn("object-cover", image.className)}
+                sizes={image.sizes ?? "(min-width: 768px) 50vw, 100vw"}
+                priority={image.priority}
+              />
+            </div>
+          )}
         </div>
       </div>
     </ProductSlideSection>
