@@ -10,12 +10,14 @@ import {
   selectAssignHintSource,
 } from "@/lib/rules-engine";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { fillingMixMode } from "@/lib/results/filling-mix";
 
 const PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 
 /** The subset of the response row the assignment panel derives its state from. */
 export interface AssignSeedRow {
   status?: string | null;
+  order_id?: string | null;
   product_type?: string | null;
   suggested_size?: string | null;
   suggested_tier?: string | null;
@@ -36,6 +38,16 @@ export function canAssignResult(row: AssignSeedRow | null | undefined): boolean 
 }
 
 /**
+ * True when the page mounts the filling mix as an editor: the assignable
+ * `held` Result, and a Draft Result Staff lay out ahead of the customer
+ * (`lib/results/filling-mix.ts`). Both need the template list and the Items.
+ */
+export function canEditFillingMix(row: AssignSeedRow | null | undefined): boolean {
+  if (!row) return false;
+  return fillingMixMode({ status: row.status, order_id: row.order_id, product_type: row.product_type }) !== "view";
+}
+
+/**
  * Reproduces the assign-panel state the client derives on first render
  * (size/tier/length fall back suggested → engine recommendation) and turns it
  * into the `/api/results/assign/prep` request it would have fired. Returns
@@ -47,7 +59,7 @@ function resolveAssignPrepRequest(
   row: AssignSeedRow,
   recommended: { size: string; tier: string } | null,
 ): { key: ComposedSellableKey; preferredTemplateId: number | null; hintSource: "engine" | "default" } | null {
-  if (!canAssignResult(row)) return null;
+  if (!canEditFillingMix(row)) return null;
 
   const productType = row.product_type === "bolster" ? "bolster" : "pillow";
   const size = row.assigned_size ?? row.suggested_size ?? recommended?.size ?? "M";
