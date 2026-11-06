@@ -8,6 +8,8 @@ import { getAdminCustomer, getAdminCustomerLifecycle } from "@/lib/ecommerce/adm
 import { listCustomerNotes } from "@/lib/crm/notes";
 import { getMigratedCustomer } from "@/lib/customer-migration/overview";
 import { listCustomerFittings } from "@/lib/fitting-import/records";
+import { loadCustomerPillow } from "@/lib/customer-pillow/load";
+import type { CustomerPillowResult } from "@/lib/customer-pillow/view";
 import { readContactFacts } from "@/lib/crm/contact-facts";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -25,7 +27,9 @@ export const runtime = "nodejs";
  * Shopify import holds for them (the From Shopify card, migration slice 12).
  * The **Lifecycle stage** (PRD-crm-retention-loop slice 03) is read from the
  * overview, and a failed read only leaves it out. So are the Customer's
- * **Fitting records** (ADR 0042), whose card says when they could not be read.
+ * **Fitting records** (ADR 0042), whose card says when they could not be read,
+ * and their pillow (ADR 0042 j): a Staff link, else the latest fitting's
+ * configuration type matched to its Filling Template, drawn in the x-ray.
  * The Contact and sign-in card (CRM slice 11) reads the customer row itself;
  * what is matched by phone (WhatsApp, the other numbers seen) is read here
  * once the row's number is known. The orders
@@ -63,6 +67,11 @@ export default async function CustomerDetailPage({
             .catch(() => null),
     ]);
 
+    // Both need what the reads above returned; neither waits for the other.
+    const [pillow, contact] = customer.ok
+        ? await Promise.all([readPillow(id, fittings), readContact(customer.row as Customer, ctx)])
+        : [undefined, undefined];
+
     const initialData: CustomerDetailInitialData = {
         customer: customer.ok
             ? { ok: true, row: customer.row as Customer }
@@ -73,7 +82,8 @@ export default async function CustomerDetailPage({
         unsubscribeReason,
         nextStep: next,
         fittings,
-        contact: customer.ok ? await readContact(customer.row as Customer, ctx) : undefined,
+        pillow,
+        contact,
     };
 
     return (
@@ -84,6 +94,19 @@ export default async function CustomerDetailPage({
             viewer={{ userId: ctx.userId, grantsAll: ctx.grantsAll }}
         />
     );
+}
+
+/** The pillow, read after the fittings it is matched from. A failed read says so on the card. */
+async function readPillow(
+    customerId: string,
+    fittings: Awaited<ReturnType<typeof listCustomerFittings>> | null,
+): Promise<CustomerPillowResult> {
+    try {
+        const loaded = await loadCustomerPillow(supabaseAdmin(), customerId, fittings ?? []);
+        return loaded.ok ? loaded.pillow : null;
+    } catch {
+        return null;
+    }
 }
 
 /**

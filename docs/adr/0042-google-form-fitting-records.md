@@ -2,7 +2,10 @@
 
 Status: Accepted (owner, 2026-10-31). Amended (owner, 2026-11-01): the customer sees their own
 Fitting records on their Profile, without the Drive photos (h); and one person's many visits,
-each with its own measurements, all land on one Customer (c, i).
+each with its own measurements, all land on one Customer (c, i). Amended (owner, 2026-11-05): the
+Customer page draws the pillow a fitting names in the x-ray, and Staff can link another (j); the
+customer sees it on their Profile once something says they bought it, and a pillow bought here is
+drawn as it was built (k).
 
 Before this platform, every in-store fitting was typed into a Google Form: the customer's name,
 mobile and email, the four measurements (A to D, in inches), the recommended pillow size, the
@@ -90,6 +93,41 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   for Staff and on the Profile, lists one person's visits newest first. With more than one, the
   newest is marked Latest, and each measurement that changed shows what it was at the visit
   before.
+- **(j) The Customer page draws their pillow in the x-ray** (owner, 2026-11-05): the **Pillow on
+  record**. The form's configuration types are the catalog's Filling Templates by name (`T12` is
+  `Type-12`, `8A` is `Type-8a`), and a profile side ending `-SN` is a template's `(Short Neck)`
+  variant, so the latest fitting that names a type is read as the active pillow template of that
+  type and neck serving the fitting's size (`lib/customer-pillow/match.ts`). This narrows the
+  Context's "not modelled here": the codes stay on the record as typed, and the match is worked
+  out on every read and never stored, so a template renamed, added or given another size is
+  picked up at once. When no template is exactly that, the nearest is drawn — another size's
+  (the most common case: `Type-12` and `Type-15` serve L and XL, while most fittings recorded S
+  or M) or the other neck's — and the card says so. A Staff member holding `customers-edit` can
+  link a size and template instead, or a size alone, for any Customer, a Shopify one with no
+  fitting included; the link is one row in `customer_pillows`, service-role only like
+  `customer_fittings`, and removing it goes back to the fitting's. The template is drawn as it
+  is now: this describes the pillow they have, it is not a Result, and it reaches no price,
+  stock or analytics. The Profile shows it only as (k) says.
+- **(k) The customer sees their pillow on their Profile once they bought it** (owner,
+  2026-11-05). Something must say they bought one (`pillowOwnership`,
+  `lib/customer-pillow/bought.ts`):
+  - a pillow on a counted Order here (`customer_purchase_lines`) with a unit not returned;
+  - a Staff link, which records the pillow they have; or
+  - from before this platform, a Fitting record and at least one Shopify order on their
+    **Migrated customer** row. The Shopify export counts orders and spend, not what was in
+    them, and the Shopify order mirror has no customer, so this is the one Shopify-era fact
+    there is. A fitting with an order is read as the in-store purchase it almost always was
+    (in production, 1,238 of the 1,419 fitted customers, median Shopify spend $480).
+
+  A fitting alone, or Shopify orders alone, is not enough, and neither is a Result that was
+  never paid. A pillow bought here also becomes the **Pillow on record**: after a Staff link and
+  before the fitting, it is the latest such pillow, drawn from the build its order line froze at
+  Accept (`filling_placements`, its size and template name), not from the template as it is now.
+  The Profile reads it with the service role, by the **Customer** the session is linked to, and
+  copies it field by field into a view with the size, the template's name, the order number or
+  fitting date, the placements and the placed Items' names (`ownPillowView`). Not who linked it,
+  the match notices, the fitting's codes, the templates Change offers, or any cost. It is drawn
+  read-only in the same x-ray as the Customer page, which says whether the Profile shows it.
 
 ## Considered options
 
@@ -106,6 +144,10 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   reader that assumes an email, and such a Customer could never sign in.
 - **Keeping the records from the customer** — the first version (2026-10-31). Reversed by the
   owner: the customer should see what they told us at each fitting (h).
+- **Showing every customer their pillow, bought or not** — rejected by the owner (k): the
+  filling is what they pay for. **Only pillows bought here**, or **only those and Staff
+  links**, were also offered: nobody has bought a pillow here yet, so either would hide it from
+  every customer who bought before the switch.
 - **Showing the customer their photos too** — rejected by the owner. The files live in the form
   owner's Drive, and the route that previews them is for Staff.
 - **Copying the photos into Storage** — rejected for now. Previews from Drive need no storage, no

@@ -183,6 +183,35 @@ function outcomesOf(t, outcomes) {
 /** When they last bought, in days, or null: as the overview's `last_purchase_at`. */
 const lastBoughtDays = (p) => (p.purchases ? (p.lastBought ?? (p.stage === "at_risk" ? 800 : 40)) : null);
 
+/**
+ * customer_purchase_lines' rule for a Result line: a goods line of a paid,
+ * counted Order with a Customer, whose snapshot is a Result's pillow or bolster.
+ */
+function resultPurchaseLines(t) {
+  const counted = new Map(
+    (t.orders ?? [])
+      .filter((o) => o.customer_id && o.paid_at && !["pending", "cancelled", "refunded", "payment_failed"].includes(o.status))
+      .map((o) => [o.id, o]),
+  );
+  return (t.order_items ?? []).flatMap((i) => {
+    const o = counted.get(i.order_id);
+    const s = i.customization_snapshot;
+    if (!o || i.kind !== "goods" || typeof s?.result_id !== "string" || !["pillow", "bolster"].includes(s.product_type)) return [];
+    const pillow = s.product_type === "pillow";
+    return [
+      {
+        customer_id: o.customer_id,
+        order_id: o.id,
+        order_item_id: i.id,
+        paid_at: o.paid_at,
+        product_type: s.product_type,
+        tier: pillow && ["basic", "premium"].includes(s.assigned_tier) ? s.assigned_tier : null,
+        size: pillow && typeof s.assigned_size === "string" ? s.assigned_size : null,
+      },
+    ];
+  });
+}
+
 export default function crm({ now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
   // Today's kept-sending Wave, as the daily job labels it: Singapore's date.
@@ -624,8 +653,11 @@ export default function crm({ now }) {
         });
       },
       // 20261031144619: each pillow line, for *Your pillow* (slice 09): one a Customer, of their Tier and first size.
-      customer_purchase_lines: (t) =>
-        (t.customers ?? []).flatMap((c) => {
+      // Plus, as the view reads them, the Result lines of sample Orders that name a Customer
+      // (customer-pillows.mjs), so the Profile's pillow (ADR 0042 k) finds what they bought.
+      customer_purchase_lines: (t) => [
+        ...resultPurchaseLines(t),
+        ...(t.customers ?? []).flatMap((c) => {
           const p = PEOPLE.find((x) => c.email.startsWith(`${x.first.toLowerCase().replace(/\s/g, "")}.`));
           const tier = p?.bought.find((b) => b === "premium" || b === "basic");
           if (!p || !tier) return [];
@@ -641,6 +673,7 @@ export default function crm({ now }) {
             },
           ];
         }),
+      ],
       admin_customer_overview: (t) =>
         (t.customers ?? []).map((c) => {
           const i = PEOPLE.findIndex((p) => c.email.startsWith(`${p.first.toLowerCase().replace(/\s/g, "")}.`));

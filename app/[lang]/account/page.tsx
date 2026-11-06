@@ -8,7 +8,10 @@ import { readProfileAftercare } from "@/lib/aftercare/preferences";
 import { AccountSecurity } from "@/components/auth/account-security";
 import { PointsCard, PointsComingSoonCard } from "@/components/account/points-card";
 import { OwnFittingsCard } from "@/components/account/fittings-card";
+import { OwnPillowCard } from "@/components/account/pillow-card";
 import { listOwnFittings } from "@/lib/fitting-import/records";
+import type { FittingAnswersView } from "@/lib/fitting-import/view";
+import { loadOwnPillow } from "@/lib/customer-pillow/own";
 import { isPartnerCustomer, readMilestoneStanding, readPendingOrders, readPointsBalance, readPointsSettings } from "@/lib/points/server";
 import { profilePointsView } from "@/lib/points/settings";
 import { AftercarePreferences } from "./aftercare-preferences";
@@ -56,6 +59,23 @@ async function readOwnPoints(admin: ReturnType<typeof supabaseAdmin>, customerId
   }
 }
 
+/**
+ * The session's own pillow (ADR 0042 k): what the Customer page draws, once
+ * something says they bought it, copied to what is theirs. Keyed by the
+ * Customer this session just linked; a failed read hides the card.
+ */
+async function readOwnPillow(
+  admin: ReturnType<typeof supabaseAdmin>,
+  customerId: string,
+  fittings: FittingAnswersView[] | null,
+) {
+  try {
+    return await loadOwnPillow(admin, customerId, fittings ?? []);
+  } catch {
+    return null;
+  }
+}
+
 export default async function AccountProfilePage({
   params,
 }: {
@@ -83,11 +103,14 @@ export default async function AccountProfilePage({
   // hides the card. Marketing consent (migration slice 07) is read the same
   // way as the aftercare switches. Fitting records (ADR 0042 h) are the
   // session's own, without their Drive files; a failed read hides the card.
-  const [aftercare, marketingEmail, points, fittings] = await Promise.all([
+  // Their pillow (k) is read from those records once they are in.
+  const ownFittings = listOwnFittings(customer.id).catch(() => null);
+  const [aftercare, marketingEmail, points, fittings, pillow] = await Promise.all([
     readProfileAftercare(admin, customer.id).catch(() => null),
     readMarketingEmailState(admin, customer.id).catch(() => null),
     readOwnPoints(admin, customer.id),
-    listOwnFittings(customer.id).catch(() => null),
+    ownFittings,
+    ownFittings.then((f) => readOwnPillow(admin, customer.id, f)),
   ]);
 
   return (
@@ -129,6 +152,8 @@ export default async function AccountProfilePage({
           termsHref={withLocale("/points", locale)}
         />
       ) : null}
+
+      {pillow ? <OwnPillowCard pillow={pillow} /> : null}
 
       {fittings?.length ? <OwnFittingsCard fittings={fittings} /> : null}
 
