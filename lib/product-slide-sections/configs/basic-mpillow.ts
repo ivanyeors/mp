@@ -3,6 +3,7 @@ import { slideImage } from "@/lib/media/slide-media";
 
 export const basicMpillowSlideSections = [
   {
+    key: "hero",
     type: "split_hero",
     contentKey: "hero",
     image: slideImage("/m-pillow-518001-final-WEB.webp", {
@@ -12,6 +13,7 @@ export const basicMpillowSlideSections = [
     cta: { href: "/mp-basic", labelKey: "bottomCustomise" },
   },
   {
+    key: "firmness",
     type: "firmness_compare",
     contentKey: "firmness",
     scales: [
@@ -20,6 +22,7 @@ export const basicMpillowSlideSections = [
     ],
   },
   {
+    key: "features",
     type: "feature_carousel",
     contentKey: "features",
     images: [
@@ -30,6 +33,7 @@ export const basicMpillowSlideSections = [
     ],
   },
   {
+    key: "size-guide",
     type: "size_guide_split",
     contentKey: "sizeGuide",
     flip: true,
@@ -46,6 +50,7 @@ export const basicMpillowSlideSections = [
     }),
   },
   {
+    key: "sizing-video",
     type: "video_section",
     contentKey: "sizingChart",
     videoId: "r9XfezALQhA",

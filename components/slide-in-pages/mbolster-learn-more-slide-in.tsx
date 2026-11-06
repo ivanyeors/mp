@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { ProductSlideSectionRenderer } from "@/components/product-sections/product-slide-section-renderer";
+import { SlideInPageSections, useSlideInHeader } from "@/components/slide-in-pages/slide-in-content";
 import { PageFaqAccordion } from "@/components/page-faq/page-faq-accordion";
 import type { PageFaqSectionItem } from "@/components/page-faq/page-faq-section";
 import { openBookAppointment } from "@/lib/book-appointment";
@@ -16,7 +16,6 @@ import { PAGE_FAQ_DEFAULTS } from "@/lib/page-faq/defaults";
 import type { Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
-import { mbolsterSlideSections } from "@/lib/product-slide-sections/configs/mbolster";
 
 export type MbolsterLearnMoreFaq = {
   title: string;
@@ -62,6 +61,7 @@ function resolveMbolsterFaq(locale: Locale, faq?: MbolsterLearnMoreFaq | null): 
 
 function MbolsterLearnMoreSheetInner({ faq }: { faq?: MbolsterLearnMoreFaq | null }) {
   const { m, locale } = useI18n();
+  const header = useSlideInHeader("mbolster");
   const to = React.useCallback((href: string) => withLocale(href, locale), [locale]);
   const resolvedFaq = React.useMemo(() => resolveMbolsterFaq(locale, faq), [locale, faq]);
 
@@ -114,8 +114,8 @@ function MbolsterLearnMoreSheetInner({ faq }: { faq?: MbolsterLearnMoreFaq | nul
       <div className="flex h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-background md:rounded-2xl md:border md:shadow-sm">
         <div className={sheetStickyTopClassName}>
           <SheetHeader className="relative px-3 py-3 md:px-8 md:py-6 md:pr-12">
-            <SheetTitle>{m.slides.mbolster.title}</SheetTitle>
-            <SheetDescription>{m.slides.mbolster.description}</SheetDescription>
+            <SheetTitle>{header.title}</SheetTitle>
+            <SheetDescription>{header.description}</SheetDescription>
 
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
@@ -129,12 +129,7 @@ function MbolsterLearnMoreSheetInner({ faq }: { faq?: MbolsterLearnMoreFaq | nul
 
         <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
           <div className="pb-20">
-            <ProductSlideSectionRenderer
-              sections={mbolsterSlideSections}
-              messages={m.slides.mbolster}
-              commonMessages={m.common}
-              resolveHref={to}
-            />
+            <SlideInPageSections page="mbolster" resolveHref={to} />
             {resolvedFaq ? (
               <section className="mx-auto w-full max-w-6xl px-4 py-10 md:px-8 md:py-12">
                 <div className="mb-6 flex flex-wrap items-end justify-between gap-3">

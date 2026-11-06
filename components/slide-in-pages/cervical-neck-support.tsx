@@ -3,14 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { ProductSlideSectionRenderer } from "@/components/product-sections/product-slide-section-renderer";
+import { SlideInPageSections, useSlideInHeader } from "@/components/slide-in-pages/slide-in-content";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
-import { cervicalNeckSupportSlideSections } from "@/lib/product-slide-sections/configs/cervical-neck-support";
 
 const OPEN_CERVICAL_NECK_SUPPORT_EVENT = "mpillow:open-cervical-neck-support";
 
@@ -31,6 +30,7 @@ export function openCervicalNeckSupportSheet() {
 
 function CervicalNeckSupportSheetInner() {
   const { m, locale } = useI18n();
+  const header = useSlideInHeader("cervical-neck-support");
   const shopHref = withLocale("/shop/cervical-neck-support", locale);
 
   const [progress, setProgress] = React.useState(0);
@@ -82,8 +82,8 @@ function CervicalNeckSupportSheetInner() {
       <div className="flex h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-background md:rounded-2xl md:border md:shadow-sm">
         <div className={sheetStickyTopClassName}>
           <SheetHeader className="relative px-3 py-3 md:px-8 md:py-6 md:pr-12">
-            <SheetTitle>{m.slides.cervicalNeckSupport.title}</SheetTitle>
-            <SheetDescription>{m.slides.cervicalNeckSupport.description}</SheetDescription>
+            <SheetTitle>{header.title}</SheetTitle>
+            <SheetDescription>{header.description}</SheetDescription>
 
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
@@ -97,10 +97,7 @@ function CervicalNeckSupportSheetInner() {
 
         <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="space-y-10 pb-20">
-            <ProductSlideSectionRenderer
-              sections={cervicalNeckSupportSlideSections}
-              messages={m.slides.cervicalNeckSupport}
-            />
+            <SlideInPageSections page="cervical-neck-support" />
           </div>
         </div>
 

@@ -28,7 +28,9 @@ assert.match(shellCode, /<SectionEditor/, "right pane is the inspector");
 // Slice 09 routed selection through a guard that asks before discarding unsaved edits.
 assert.match(shellCode, /onSelect=\{selectSection\}/, "the tree selects");
 assert.match(frameCode, /onSelect\(hit\.slug\)/, "the preview selects");
-assert.match(frameCode, /getElementById\(selectedSlug\)\?\.scrollIntoView/, "tree selection scrolls the preview");
+assert.match(frameCode, /getElementById\(selectedSlug\)/, "tree selection finds the landing section");
+assert.match(frameCode, /data-builder-section="\$\{CSS\.escape\(selectedSlug\)\}"/, "tree selection finds a sub page section");
+assert.match(frameCode, /target\?\.scrollIntoView/, "tree selection scrolls the preview");
 assert.match(frameCode, /closest\("\[data-section\]"\)/, "selection reads the existing section anchors");
 
 // --- Same-origin: no message protocol, no library ---
@@ -64,7 +66,8 @@ assert.match(frameCode, /classList\.toggle\("dark", dark\)/, "theme is set on th
 assert.doesNotMatch(frameCode, /useTheme|next-themes/, "next-themes is not used — it shares this origin's storage");
 
 // --- Locale switch ---
-assert.match(frameCode, /\/\$\{locale\}\$\{PAGE_BUILDER_PREVIEW_PATH\}/, "the frame loads the chosen locale");
+assert.match(frameCode, /\/\$\{locale\}\$\{previewPath\}/, "the frame loads the chosen locale");
+assert.match(frameCode, /previewPath = PAGE_BUILDER_PREVIEW_PATH/, "the landing page is the default preview");
 
 // --- Reload after an edit ---
 assert.match(frameCode, /refreshKey/, "an edit re-renders the preview");
@@ -121,7 +124,9 @@ assert.match(frameCode, /prefers-color-scheme: dark/, "theme survives an OS them
 assert.match(frameCode, /prev\.slug === next\.slug/, "hover state bails when nothing changed");
 
 // A cancelled drag must not persist a reorder.
-assert.match(shellCode, /if \(event\.canceled\) return;/, "Escape mid-drag does not reorder");
+// The guard lives in the shared helper both builders reorder through (#105).
+assert.match(read("lib/dnd/sortable-move.ts"), /event\.canceled/, "Escape mid-drag does not reorder");
+assert.match(shellCode, /sortableMove\(/, "the landing builder reorders through it");
 
 // The 768-1023 band must get one of the two layouts, not neither.
 assert.match(shellCode, /max-width: 1023px/, "the shell switches at the same breakpoint as its grid");

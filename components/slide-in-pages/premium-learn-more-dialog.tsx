@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { ProductSlideSectionRenderer } from "@/components/product-sections/product-slide-section-renderer";
+import { SlideInPageSections, useSlideInHeader } from "@/components/slide-in-pages/slide-in-content";
 import { openBookAppointment } from "@/lib/book-appointment";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,7 +12,6 @@ import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { cn } from "@/lib/utils";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
-import { premiumMpillowSlideSections } from "@/lib/product-slide-sections/configs/premium-mpillow";
 
 type Props = {
   className?: string;
@@ -24,6 +23,7 @@ type Props = {
 
 function PremiumLearnMoreSheetInner() {
   const { m, locale } = useI18n();
+  const header = useSlideInHeader("premium-mpillow");
   const to = React.useCallback((href: string) => withLocale(href, locale), [locale]);
 
   const [progress, setProgress] = React.useState(0);
@@ -75,8 +75,8 @@ function PremiumLearnMoreSheetInner() {
       <div className="flex h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-background md:rounded-2xl md:border md:shadow-sm">
         <div className={sheetStickyTopClassName}>
           <SheetHeader className="relative px-3 py-3 md:px-8 md:py-6 md:pr-12">
-            <SheetTitle>{m.slides.premiumMpillow.title}</SheetTitle>
-            <SheetDescription>{m.slides.premiumMpillow.description}</SheetDescription>
+            <SheetTitle>{header.title}</SheetTitle>
+            <SheetDescription>{header.description}</SheetDescription>
 
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
@@ -90,13 +90,7 @@ function PremiumLearnMoreSheetInner() {
 
         <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="space-y-10 pb-20">
-            <ProductSlideSectionRenderer
-              sections={premiumMpillowSlideSections}
-              messages={m.slides.premiumMpillow}
-              commonMessages={m.common}
-              auxMessages={m.slides.basicMpillow}
-              resolveHref={to}
-            />
+            <SlideInPageSections page="premium-mpillow" resolveHref={to} />
           </div>
         </div>
 

@@ -53,6 +53,26 @@ interface PreviewFrameProps {
   refreshKey: number;
   /** Narrow screens open on the phone preset rather than a scaled-down desktop. */
   initialDevice?: PreviewDevice;
+  /**
+   * The preview route to frame, under the locale. Defaults to the landing page; a sub
+   * page passes `/page-builder-preview/<page>`.
+   */
+  previewPath?: string;
+  /** Accessible name for the frame. */
+  title?: string;
+}
+
+/**
+ * The selectable section under an element. Sub page previews mark their wrappers with
+ * `data-builder-section`, because some slide-in templates carry their own analytics
+ * `data-section` inside; the landing page's wrappers are `data-section`.
+ */
+function sectionElement(el: Element | null): HTMLElement | null {
+  return (el?.closest("[data-builder-section]") ?? el?.closest("[data-section]")) as HTMLElement | null;
+}
+
+function sectionSlug(el: HTMLElement): string {
+  return el.dataset.builderSection ?? el.dataset.section ?? "";
 }
 
 export function PreviewFrame({
@@ -62,6 +82,8 @@ export function PreviewFrame({
   onSelect,
   refreshKey,
   initialDevice = "desktop",
+  previewPath = PAGE_BUILDER_PREVIEW_PATH,
+  title = "Landing page preview",
 }: PreviewFrameProps) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -75,7 +97,7 @@ export function PreviewFrame({
   const [loadedAt, setLoadedAt] = useState(0);
 
   const width = DEVICE_WIDTH[device];
-  const src = `/${locale}${PAGE_BUILDER_PREVIEW_PATH}`;
+  const src = `/${locale}${previewPath}`;
 
   // Scale the logical width down to whatever the pane actually offers.
   //
@@ -157,7 +179,10 @@ export function PreviewFrame({
   useEffect(() => {
     if (!selectedSlug) return;
     const doc = previewDoc();
-    doc?.getElementById(selectedSlug)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const target =
+      doc?.querySelector(`[data-builder-section="${CSS.escape(selectedSlug)}"]`) ??
+      doc?.getElementById(selectedSlug);
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [selectedSlug, previewDoc, loadedAt]);
 
   /**
@@ -188,11 +213,11 @@ export function PreviewFrame({
       const box = stage.getBoundingClientRect();
       const x = (clientX - box.left) / scale;
       const y = (clientY - box.top) / scale;
-      const el = doc.elementFromPoint(x, y)?.closest("[data-section]") as HTMLElement | null;
+      const el = sectionElement(doc.elementFromPoint(x, y));
       if (!el) return null;
       const rect = el.getBoundingClientRect();
       return {
-        slug: el.dataset.section ?? "",
+        slug: sectionSlug(el),
         top: rect.top * scale,
         left: rect.left * scale,
         width: rect.width * scale,
@@ -298,7 +323,7 @@ export function PreviewFrame({
           <iframe
             ref={frameRef}
             src={src}
-            title="Landing page preview"
+            title={title}
             onLoad={() => setLoadedAt(Date.now())}
             className="origin-top-left border-0"
             style={{ width, height: `calc((100vh - 15rem) / ${scale})`, transform: `scale(${scale})` }}

@@ -16,6 +16,7 @@ export type ImageUsageEntry = {
     | "blog_inline"
     | "landing_slot"
     | "landing_section"
+    | "slide_in_section"
     | "product_image"
     | "product_variant"
     | "category"
@@ -50,6 +51,11 @@ export type UsageConsumerRows = {
   }>;
   settings?: Array<{ key: string; value: string }>;
   landingSections?: Array<{ id: string; slug: string; content: unknown }>;
+  /**
+   * The landing page's sub pages (CONTEXT.md — **Slide-in section**). Draft content is
+   * matched too: an image only a pending draft uses still counts as Used.
+   */
+  slideInSections?: Array<{ id: string; page: string; slug: string; content: unknown; draft_content?: unknown }>;
   productImages?: Array<{
     id: string;
     product_id: string;
@@ -104,6 +110,16 @@ export type UsageConsumerRows = {
   /** Intentionally unused — order snapshots must never count as usage. */
   orderItems?: Array<{ id: string; image_url: string | null }>;
 };
+
+/**
+ * "Basic Mpillow · hero" — the sub page, then the section. Spelled from the page key
+ * rather than the slide-in registry, which would pull every slide config (and its
+ * media map) into this module.
+ */
+function slideInUsageLabel(section: { page: string; slug: string }): string {
+  const page = section.page.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return `${page} · ${section.slug}`;
+}
 
 const SLOT_LABELS: Record<string, string> = {
   landing_hero: "Hero",
@@ -263,6 +279,12 @@ export function resolveUsages(
         label: section.slug,
         ref_id: section.id,
       });
+    }
+  }
+
+  for (const section of rows.slideInSections ?? []) {
+    if (jsonRefsAsset(section.content, asset) || jsonRefsAsset(section.draft_content, asset)) {
+      usages.push({ type: "slide_in_section", label: slideInUsageLabel(section), ref_id: section.id });
     }
   }
 
@@ -664,6 +686,13 @@ export function indexUsages(
     emit(keys, () => ({ type: "landing_section", label: section.slug, ref_id: section.id }));
   }
 
+  for (const section of rows.slideInSections ?? []) {
+    const keys = new Set<AssetKey>();
+    collectJsonRefKeys(section.content, index, keys);
+    collectJsonRefKeys(section.draft_content, index, keys);
+    emit(keys, () => ({ type: "slide_in_section", label: slideInUsageLabel(section), ref_id: section.id }));
+  }
+
   for (const img of rows.productImages ?? []) {
     const keys = new Set<AssetKey>();
     addExactId(index, img.media_asset_id, keys);
@@ -761,6 +790,7 @@ export type ConsumerTable =
   | "blog_posts"
   | "site_settings"
   | "landing_sections"
+  | "slide_in_sections"
   | "product_images"
   | "product_variants"
   | "categories"
@@ -783,6 +813,7 @@ const CONSUMER_SELECT: Record<ConsumerTable, string> = {
   // draft_content included so an image referenced only by a pending Section draft
   // still reports as Used — CONTEXT.md is explicit that drafts count.
   landing_sections: "id, slug, content, draft_content",
+  slide_in_sections: "id, page, slug, content, draft_content",
   product_images: "id, product_id, url, media_asset_id",
   // product_id was selected but never read — the label is `Variant ${id}`.
   product_variants: "id, image_url",
@@ -845,6 +876,15 @@ export function usagePredicateTerms(
       return terms;
     }
     case "landing_sections": {
+      if (!byId) return [];
+      const terms = [contains("content::text", id), contains("draft_content::text", id)];
+      if (url) {
+        terms.push(contains("content::text", url));
+        terms.push(contains("draft_content::text", url));
+      }
+      return terms;
+    }
+    case "slide_in_sections": {
       if (!byId) return [];
       const terms = [contains("content::text", id), contains("draft_content::text", id)];
       if (url) {
@@ -964,6 +1004,7 @@ async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageCo
     blogs,
     settings,
     landingSections,
+    slideInSections,
     productImages,
     variants,
     categories,
@@ -984,6 +1025,9 @@ async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageCo
     ),
     scanConsumer("landing_sections", asset, (t) =>
       applyTerms(admin.from("landing_sections").select(CONSUMER_SELECT.landing_sections), t),
+    ),
+    scanConsumer("slide_in_sections", asset, (t) =>
+      applyTerms(admin.from("slide_in_sections").select(CONSUMER_SELECT.slide_in_sections), t),
     ),
     scanConsumer("product_images", asset, (t) =>
       applyTerms(admin.from("product_images").select(CONSUMER_SELECT.product_images), t),
@@ -1025,6 +1069,7 @@ async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageCo
     blogs: blogs as UsageConsumerRows["blogs"],
     settings: settings as UsageConsumerRows["settings"],
     landingSections: landingSections as UsageConsumerRows["landingSections"],
+    slideInSections: slideInSections as UsageConsumerRows["slideInSections"],
     productImages: productImages as UsageConsumerRows["productImages"],
     variants: variants as UsageConsumerRows["variants"],
     categories: categories as UsageConsumerRows["categories"],

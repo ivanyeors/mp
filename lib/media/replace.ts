@@ -31,6 +31,8 @@ export type ReplaceSummary = {
   blogInline: number;
   landingSlots: string[];
   landingSections: number;
+  /** The landing page's sub pages (CONTEXT.md — **Slide-in section**). */
+  slideInSections: number;
   productImages: number;
   productVariants: number;
   categories: number;
@@ -44,6 +46,7 @@ export function emptyReplaceSummary(): ReplaceSummary {
     blogInline: 0,
     landingSlots: [],
     landingSections: 0,
+    slideInSections: 0,
     productImages: 0,
     productVariants: 0,
     categories: 0,
@@ -120,6 +123,7 @@ export type ReplacePlanRows = {
   }>;
   settings?: Array<{ key: string; value: string }>;
   landingSections?: Array<{ id: string; content: unknown; draft_content: unknown }>;
+  slideInSections?: Array<{ id: string; content: unknown; draft_content: unknown }>;
   productImages?: Array<{
     id: string;
     url: string;
@@ -256,6 +260,16 @@ export function planReplaceEverywhere(
     });
   }
 
+  if (rows.slideInSections) {
+    out.slideInSections = rows.slideInSections.map((section) => {
+      // Drafts too, for the same reason as Landing sections.
+      const r = replaceJsonRefs(section.content, input);
+      const d = replaceJsonRefs(section.draft_content, input);
+      if (r.changed || d.changed) summary.slideInSections++;
+      return { ...section, content: r.value, draft_content: d.value };
+    });
+  }
+
   if (rows.productImages) {
     out.productImages = rows.productImages.map((img) => {
       let url = img.url;
@@ -364,6 +378,7 @@ export async function runReplaceEverywhere(
     categoriesRes,
     partnersRes,
     partnersPagesRes,
+    slideInRes,
   ] = await Promise.all([
     admin.from("blog_posts").select("id, image_url, content, media_asset_id"),
     admin.from("site_settings").select("key, value").like("key", "landing_%"),
@@ -373,6 +388,7 @@ export async function runReplaceEverywhere(
     admin.from("categories").select("id, image_url, media_asset_id"),
     admin.from("partners").select("id, logo_url, media_asset_id"),
     admin.from("partners_page").select("id, content"),
+    admin.from("slide_in_sections").select("id, content, draft_content"),
   ]);
 
   for (const res of [
@@ -384,6 +400,7 @@ export async function runReplaceEverywhere(
     categoriesRes,
     partnersRes,
     partnersPagesRes,
+    slideInRes,
   ]) {
     if (res.error) throw new Error(res.error.message);
   }
@@ -397,6 +414,7 @@ export async function runReplaceEverywhere(
     categories: (categoriesRes.data ?? []) as ReplacePlanRows["categories"],
     partners: (partnersRes.data ?? []) as ReplacePlanRows["partners"],
     partnersPages: (partnersPagesRes.data ?? []) as ReplacePlanRows["partnersPages"],
+    slideInSections: (slideInRes.data ?? []) as ReplacePlanRows["slideInSections"],
   };
 
   const { rows, summary } = planReplaceEverywhere(before, input);
@@ -444,6 +462,27 @@ export async function runReplaceEverywhere(
       .update({ content: next.content, draft_content: next.draft_content, updated_at: now })
       .eq("id", next.id);
     if (error) throw new Error(error.message);
+  }
+
+  let slideInChanged = false;
+  for (let i = 0; i < (before.slideInSections?.length ?? 0); i++) {
+    const prev = before.slideInSections![i];
+    const next = rows.slideInSections![i];
+    const contentSame = JSON.stringify(prev.content) === JSON.stringify(next.content);
+    const draftSame = JSON.stringify(prev.draft_content) === JSON.stringify(next.draft_content);
+    if (contentSame && draftSame) continue;
+    const { error } = await admin
+      .from("slide_in_sections")
+      .update({ content: next.content, draft_content: next.draft_content, updated_at: now })
+      .eq("id", next.id);
+    if (error) throw new Error(error.message);
+    if (!contentSame) slideInChanged = true;
+  }
+  // Live sub pages are served from a cache; a replaced published image must show now.
+  if (slideInChanged) {
+    const { invalidateTag } = await import("@/lib/cache/invalidate");
+    const { SLIDE_IN_SECTIONS_TAG } = await import("@/lib/slide-in-pages/store");
+    invalidateTag(SLIDE_IN_SECTIONS_TAG);
   }
 
   for (let i = 0; i < (before.productImages?.length ?? 0); i++) {

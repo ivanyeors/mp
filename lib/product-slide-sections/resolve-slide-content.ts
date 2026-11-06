@@ -5,9 +5,11 @@ import type {
   FirmnessCompareContent,
   HelpContactContent,
   IconListContent,
+  MeasureCarouselContent,
   MediaIntroContent,
   OutcomeGridContent,
   PackagingBlockContent,
+  PressQuoteContent,
   ProductSlideSectionType,
   SectionContentByType,
   SpecTableContent,
@@ -16,6 +18,7 @@ import type {
   TestimonialCardContent,
   TextCalloutBlockContent,
   TrustStripContent,
+  TypedQuoteContent,
   VideoSectionContent,
 } from "./types";
 
@@ -82,6 +85,59 @@ const SPLIT_HERO_EXTRACTORS: Record<string, SplitHeroExtractor> = {
       title: requireString(messages, "sizeTitle"),
       paragraphs: [requireString(messages, "sizeDescription")],
       table: requireTable(messages, "sizeTable"),
+    };
+  },
+  // Size Matters
+  sizeMattersIntro(messages) {
+    return {
+      title: requireString(messages, "sectionSizeMattersTitle"),
+      paragraphs: [requireString(messages, "sectionSizeMattersDescription")],
+    };
+  },
+  headShapes(messages) {
+    return {
+      title: requireString(messages, "headShapesTitle"),
+      paragraphs: [requireString(messages, "headShapesDescription")],
+    };
+  },
+  whyUnique(messages) {
+    return {
+      title: requireString(messages, "whyUniqueTitle"),
+      paragraphs: [requireString(messages, "whyUniqueDescription")],
+    };
+  },
+  sleepPosition(messages) {
+    return {
+      title: requireString(messages, "sleepPositionTitle"),
+      paragraphs: requireStringArray(messages, "sleepPositionParagraphs"),
+    };
+  },
+  configurations(messages) {
+    return {
+      title: requireString(messages, "configurationsTitle"),
+      paragraphs: requireStringArray(messages, "configurationsParagraphs"),
+    };
+  },
+  // Ambassadors
+  ambassadorsHero(messages) {
+    return {
+      eyebrow: optionalString(messages, "heroLabel"),
+      title: requireString(messages, "title"),
+      paragraphs: [requireString(messages, "heroDescription")],
+    };
+  },
+  allBuilds(messages) {
+    return {
+      title: requireString(messages, "allBuildsTitle"),
+      paragraphs: requireStringArray(messages, "allBuildsParagraphs"),
+    };
+  },
+  ambassadorsAwards(messages) {
+    return {
+      title: requireString(messages, "ambassadorsTitle"),
+      listTitle: optionalString(messages, "awardsIntro"),
+      listToggle: optionalString(messages, "awardsButton"),
+      listItems: requireStringArray(messages, "awards"),
     };
   },
 };
@@ -244,6 +300,12 @@ function resolveVideoSection(messages: MessagesSlice, contentKey: string): Video
       description: optionalString(messages, "aftercareDescription"),
     };
   }
+  if (contentKey === "ambassadorsVideo") {
+    return {
+      title: requireString(messages, "videoTitle"),
+      description: optionalString(messages, "videoDescription"),
+    };
+  }
   throw new Error(`resolve-slide-content: no video_section extractor for "${contentKey}"`);
 }
 
@@ -357,6 +419,50 @@ function resolveTestimonialCard(messages: MessagesSlice, contentKey: string): Te
   };
 }
 
+function resolvePressQuote(messages: MessagesSlice, contentKey: string): PressQuoteContent {
+  if (contentKey !== "pressQuote") {
+    throw new Error(`resolve-slide-content: no press_quote extractor for "${contentKey}"`);
+  }
+  const quote = messages.pressQuote;
+  if (!quote || typeof quote !== "object") {
+    throw new Error(`resolve-slide-content: missing pressQuote`);
+  }
+  const record = quote as MessagesSlice;
+  return {
+    text: requireString(record, "text"),
+    attribution: optionalString(record, "attribution"),
+  };
+}
+
+function resolveMeasureCarousel(messages: MessagesSlice, contentKey: string): MeasureCarouselContent {
+  if (contentKey !== "measurements") {
+    throw new Error(`resolve-slide-content: no measure_carousel extractor for "${contentKey}"`);
+  }
+  const cards = messages.measurementCards;
+  if (!Array.isArray(cards) || cards.length === 0) {
+    throw new Error(`resolve-slide-content: missing measurementCards array`);
+  }
+  return {
+    title: requireString(messages, "measurementsTitle"),
+    intro: optionalString(messages, "measurementsIntro"),
+    cards: (cards as Array<Record<string, unknown>>).map((card) => ({
+      title: String(card.title ?? ""),
+      description: String(card.description ?? ""),
+    })),
+  };
+}
+
+function resolveTypedQuote(messages: MessagesSlice, contentKey: string): TypedQuoteContent {
+  if (contentKey !== "testimonial") {
+    throw new Error(`resolve-slide-content: no typed_quote extractor for "${contentKey}"`);
+  }
+  return {
+    title: requireString(messages, "testimonialTitle"),
+    quote: requireString(messages, "testimonialQuote"),
+    attribution: optionalString(messages, "testimonialAttribution"),
+  };
+}
+
 export function resolveSlideContent<T extends ProductSlideSectionType>(
   messages: MessagesSlice,
   sectionType: T,
@@ -416,6 +522,15 @@ export function resolveSlideContent<T extends ProductSlideSectionType>(
   }
   if (sectionType === "testimonial_card") {
     return resolveTestimonialCard(messages, contentKey) as SectionContentByType[T];
+  }
+  if (sectionType === "press_quote") {
+    return resolvePressQuote(messages, contentKey) as SectionContentByType[T];
+  }
+  if (sectionType === "measure_carousel") {
+    return resolveMeasureCarousel(messages, contentKey) as SectionContentByType[T];
+  }
+  if (sectionType === "typed_quote") {
+    return resolveTypedQuote(messages, contentKey) as SectionContentByType[T];
   }
   if (sectionType === "full_bleed_media" || sectionType === "measurement_grid" || sectionType === "purchase_panel") {
     return {} as SectionContentByType[T];

@@ -18,11 +18,10 @@ import {
   sheetStickyTopClassName,
 } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
-import { ProductSlideSectionRenderer } from "@/components/product-sections/product-slide-section-renderer";
+import { SlideInPageSections, useSlideInHeader } from "@/components/slide-in-pages/slide-in-content";
 import { cn } from "@/lib/utils";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
-import { basicMpillowSlideSections } from "@/lib/product-slide-sections/configs/basic-mpillow";
 
 type Props = {
   className?: string;
@@ -34,6 +33,7 @@ type Props = {
 
 function BasicMpillowLearnMoreSheetInner() {
   const { m, locale } = useI18n();
+  const header = useSlideInHeader("basic-mpillow");
   const to = React.useCallback((href: string) => withLocale(href, locale), [locale]);
 
   const [progress, setProgress] = React.useState(0);
@@ -85,8 +85,8 @@ function BasicMpillowLearnMoreSheetInner() {
       <div className="flex h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-background md:rounded-2xl md:border md:shadow-sm">
         <div className={sheetStickyTopClassName}>
           <SheetHeader className="relative px-3 py-3 md:px-8 md:py-6 md:pr-12">
-            <SheetTitle>{m.slides.basicMpillow.title}</SheetTitle>
-            <SheetDescription>{m.slides.basicMpillow.description}</SheetDescription>
+            <SheetTitle>{header.title}</SheetTitle>
+            <SheetDescription>{header.description}</SheetDescription>
 
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
@@ -100,11 +100,7 @@ function BasicMpillowLearnMoreSheetInner() {
 
         <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="space-y-10 pb-20">
-            <ProductSlideSectionRenderer
-              sections={basicMpillowSlideSections}
-              messages={m.slides.basicMpillow}
-              resolveHref={to}
-            />
+            <SlideInPageSections page="basic-mpillow" resolveHref={to} />
           </div>
         </div>
 
