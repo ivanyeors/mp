@@ -32,6 +32,16 @@ describe("optimizeImageForWeb", () => {
     expect(meta.format).toBe("webp");
   });
 
+  it("caps the long edge of a photo stored sideways, keeping its shape", async () => {
+    // Stored 3200×2000 with an EXIF note to turn it a quarter: upright it is 2000×3200.
+    const input = await sharp({ create: { width: 3200, height: 2000, channels: 3, background: { r: 180, g: 90, b: 40 } } })
+      .jpeg()
+      .withMetadata({ orientation: 6 })
+      .toBuffer();
+    const out = await optimizeImageForWeb(input);
+    expect([out.width, out.height]).toEqual([1500, IMAGE_LONG_EDGE_CAP]);
+  });
+
   it("optimizedStorageName ends with .webp", () => {
     expect(optimizedStorageName("Hero Shot.PNG")).toMatch(/\.webp$/);
   });

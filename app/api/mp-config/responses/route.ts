@@ -19,6 +19,7 @@ import { requireResultAccess } from "@/lib/results/access";
 import { clientIp, rateLimitExceeded } from "@/lib/rate-limit";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
+import { sizingPhotosForTelegram } from "@/lib/results/sizing-photos";
 import { getPublicOrigin } from "@/lib/site-url";
 import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 
@@ -490,7 +491,7 @@ export async function POST(req: Request) {
         measuredByLabel = "by user";
       }
 
-      const text = [
+      const lines = [
         `💤 Custom Mpillow created on ${ts}`,
         `Name: ${d.name || "—"}`,
         `Gender: ${d.gender || "—"}`,
@@ -508,19 +509,20 @@ export async function POST(req: Request) {
         `- Bed firmness: ${d.bedFirmness || "—"}`,
         `- Acid Reflux: ${yesNo(String(d.acidReflux ?? ""))}`,
         "",
-        `View more: ${origin}/settings/results/${id}`,
-      ].join("\n");
+      ];
+      const viewMore = `View more: ${origin}/settings/results/${id}`;
 
       try {
         // Try attaching photos (front/side). Falls back to text-only message if missing.
         const { data: photos, error: pErr } = await admin
           .from("mp_config_response_photos")
-          .select("view,data_url")
+          .select("view,data_url,screening_status")
           .eq("response_id", id);
         if (pErr) console.error("Failed to load mp-config photos", pErr.message);
 
-        const front = (photos ?? []).find((p) => p.view === "front")?.data_url ?? null;
-        const side = (photos ?? []).find((p) => p.view === "side")?.data_url ?? null;
+        // ADR 0047: only photos Claude passed are attached; the message says what it left out.
+        const { front, side, notes } = await sizingPhotosForTelegram(admin, id, photos ?? []);
+        const text = [...lines, ...(notes.length ? [...notes, ""] : []), viewMore].join("\n");
 
         const refs = await listConfigUploads(id).catch(() => []);
         const referenceUrls = refs.map((r) => r.hostedUrl);

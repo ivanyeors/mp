@@ -75,7 +75,7 @@ Staff-uploaded imagery attached to a **Customisation session** (`config_upload` 
 _Avoid_: **Sizing photo** (the customer's own front/side photos — a separate, untouched feature)
 
 **Sizing photo**:
-The customer's own front/side body photos captured in the configurator to size a build (`mp_config_response_photos`, base64 data URLs, Telegram-only). A separate, pre-existing feature that this work does **not** change.
+The customer's own front/side body photos captured in the configurator to size a build (`mp_config_response_photos`, WebP base64 data URLs, Telegram-only). Screened by Claude before it is kept (ADR 0047): a rejected photo is never stored, and only a photo whose `screening_status` is `passed` is attached on Telegram. Separate from **Reference photos**, which are not screened.
 _Avoid_: **Reference photo** (staff-uploaded build references in `config_upload`)
 
 **Discovery source**:

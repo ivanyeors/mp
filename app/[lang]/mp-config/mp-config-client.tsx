@@ -15,6 +15,7 @@ import {
 } from "react";
 import Image from "next/image";
 import { LOGO_SRC } from "@/lib/brand-logo";
+import { shrinkPhoto } from "@/lib/images/shrink-photo";
 import { usePathname, useRouter } from "next/navigation";
 import { cn, getApiErrorMessage } from "@/lib/utils";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
@@ -747,6 +748,11 @@ export function MpConfigClient({
   const [photoUploading, setPhotoUploading] = useState<{ front: boolean; side: boolean }>({
     front: false,
     side: false,
+  });
+  /** Why the last photo for a view wasn't kept (ADR 0047), shown under its card. */
+  const [photoProblems, setPhotoProblems] = useState<{ front: string | null; side: string | null }>({
+    front: null,
+    side: null,
   });
 
   const stepOrder = (postUpsellSteps ?? stepOrderFor(variant)) as Step[];
@@ -1547,16 +1553,28 @@ export function MpConfigClient({
       return;
     }
 
-    // Guardrail: keep uploads reasonable since we're storing a data URL temporarily.
-    const maxBytes = 5 * 1024 * 1024;
+    // The photo is made smaller before it is sent, so a phone's full-size photo is fine.
+    const maxBytes = 30 * 1024 * 1024;
     if (file.size > maxBytes) {
-      toast.error("Image too large. Please use a smaller photo (max 5MB).");
+      toast.error("Image too large. Please use a smaller photo.");
       return;
     }
 
+    // A photo Claude turns down is never kept, so the card goes back to the last one that was.
+    const previous = photoDataUrls[view];
     setPhotoUploading((p) => ({ ...p, [view]: true }));
+    setPhotoProblems((p) => ({ ...p, [view]: null }));
     try {
-      const dataUrl = await fileToDataUrl(file);
+      let dataUrl: string;
+      try {
+        dataUrl = await shrinkPhoto(file);
+      } catch {
+        // A browser that can't redraw this file: send it as it is if it's small enough to.
+        if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type) || file.size > 3 * 1024 * 1024) {
+          throw new Error("We couldn't read this photo. Please use a JPEG or PNG photo.");
+        }
+        dataUrl = await fileToDataUrl(file);
+      }
       setPhotoDataUrls((p) => ({ ...p, [view]: dataUrl }));
 
       // The photo route refuses an unknown responseId, so make sure the Draft
@@ -1570,10 +1588,15 @@ export function MpConfigClient({
         body: JSON.stringify({ responseId, view, dataUrl, token: readToken(tokenStorageKey) }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to save photo");
+      if (!res.ok) {
+        throw new Error(typeof payload?.error === "string" ? payload.error : "Failed to save photo");
+      }
       toast.success(view === "front" ? "Front view saved" : "Side view saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save photo");
+      const message = e instanceof Error ? e.message : "Failed to save photo";
+      setPhotoDataUrls((p) => ({ ...p, [view]: previous }));
+      setPhotoProblems((p) => ({ ...p, [view]: message }));
+      toast.error(message);
     } finally {
       setPhotoUploading((p) => ({ ...p, [view]: false }));
     }
@@ -4778,7 +4801,8 @@ export function MpConfigClient({
                       <DialogHeader className="text-left sm:text-left">
                         <DialogTitle>Photo tips</DialogTitle>
                         <DialogDescription>
-                          Follow these examples for clear front and side view photos.
+                          Follow these examples for clear front and side view photos. Each photo is
+                          checked automatically before it&apos;s saved.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 sm:grid-cols-2">
@@ -4850,7 +4874,7 @@ export function MpConfigClient({
                         className="w-full"
                       >
                         <Camera className="mr-2 h-4 w-4" />
-                        {photoUploading.front ? "Saving…" : photoDataUrls.front ? "Retake" : "Take photo"}
+                        {photoUploading.front ? "Checking photo…" : photoDataUrls.front ? "Retake" : "Take photo"}
                       </Button>
                       <input
                         ref={frontInputRef}
@@ -4865,6 +4889,11 @@ export function MpConfigClient({
                         }}
                       />
                     </div>
+                    {photoProblems.front && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {photoProblems.front}
+                      </p>
+                    )}
                   </div>
 
                   <div className="rounded-lg border bg-background/60 p-3 space-y-3">
@@ -4894,7 +4923,7 @@ export function MpConfigClient({
                         className="w-full"
                       >
                         <Camera className="mr-2 h-4 w-4" />
-                        {photoUploading.side ? "Saving…" : photoDataUrls.side ? "Retake" : "Take photo"}
+                        {photoUploading.side ? "Checking photo…" : photoDataUrls.side ? "Retake" : "Take photo"}
                       </Button>
                       <input
                         ref={sideInputRef}
@@ -4909,6 +4938,11 @@ export function MpConfigClient({
                         }}
                       />
                     </div>
+                    {photoProblems.side && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {photoProblems.side}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

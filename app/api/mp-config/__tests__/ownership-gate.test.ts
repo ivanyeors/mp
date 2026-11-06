@@ -36,6 +36,11 @@ vi.mock("@/lib/supabase/server", () => ({
     return b;
   },
 }));
+// The photo route screens what it keeps (ADR 0047); this file is about who may write, not what.
+vi.mock("@/lib/ai/photo-screening", async (orig) => ({
+  ...(await orig<typeof import("@/lib/ai/photo-screening")>()),
+  screenSizingPhoto: async () => ({ status: "passed", model: "claude-haiku-5-5" }),
+}));
 vi.mock("@/lib/results/admin/response-detail", async (orig) => ({
   ...(await orig<typeof import("@/lib/results/admin/response-detail")>()),
   loadMpConfigResponseDetail: h.loadDetail,
@@ -142,7 +147,7 @@ describe("POST /api/mp-config/photos", () => {
     body: JSON.stringify({
       responseId: ID,
       view: "front",
-      dataUrl: `data:image/png;base64,${"A".repeat(64)}`,
+      dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
       ...extra,
     }),
   });
