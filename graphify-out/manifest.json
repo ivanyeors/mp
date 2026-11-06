@@ -786,9 +786,9 @@
     "semantic_hash": ""
   },
   "lib/media-assets/__tests__/optimize.test.ts": {
-    "mtime": 1793431614.581094,
-    "seen": 1793895314.3797374,
-    "ast_hash": "c68f725a3d39555dfdcaa3286d642c20",
+    "mtime": 1793928782.764271,
+    "seen": 1793928922.6513803,
+    "ast_hash": "241e427c63fa0205471f71279f0fd17e",
     "semantic_hash": ""
   },
   "lib/media-assets/drive.ts": {
@@ -816,9 +816,9 @@
     "semantic_hash": ""
   },
   "lib/media-assets/optimize.ts": {
-    "mtime": 1793431614.581094,
-    "seen": 1793895314.379753,
-    "ast_hash": "0b1735d84d1d8697988e2ddb2378d87a",
+    "mtime": 1793928780.304271,
+    "seen": 1793928922.6513917,
+    "ast_hash": "52f6b97e741b4fd7ec3be1d3066fed22",
     "semantic_hash": ""
   },
   "lib/media-assets/types.ts": {
@@ -18144,15 +18144,15 @@
     "semantic_hash": ""
   },
   "docs/adr/0047-sizing-photos-screened-by-claude.md": {
-    "mtime": 1793895526.247876,
-    "seen": 1793895815.1617963,
-    "ast_hash": "cb303dddf1c054b9f7d3efccd359613d",
+    "mtime": 1793928858.2802756,
+    "seen": 1793928922.6534371,
+    "ast_hash": "efe3de1a423cd17988ae44e676d36d65",
     "semantic_hash": ""
   },
   "lib/results/__tests__/sizing-photo-webp.test.ts": {
-    "mtime": 1793895478.9800806,
-    "seen": 1793895815.1591136,
-    "ast_hash": "f8435d15e2a051b1d1917a0f80cfda88",
+    "mtime": 1793928752.6802692,
+    "seen": 1793928922.651641,
+    "ast_hash": "fa7a73f08aadb32c07153e3dbd32896c",
     "semantic_hash": ""
   },
   "lib/results/sizing-photo-webp.ts": {

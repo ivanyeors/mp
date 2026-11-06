@@ -27,6 +27,32 @@ describe("sizingPhotoAsWebp", () => {
     expect(stored!.byteSize).toBeLessThan(Buffer.byteLength(base64, "base64"));
   });
 
+  it.each([
+    ["landscape", 2400, 1800, 2000, 1500],
+    ["portrait", 1800, 2400, 1500, 2000],
+    ["wide", 3000, 1350, 2000, 900],
+    ["already small", 1200, 900, 1200, 900],
+  ])("keeps a %s photo's shape: %i×%i becomes %i×%i", async (_, width, height, outWidth, outHeight) => {
+    const base64 = (await sharp({ create: { width, height, channels: 3, background: "#a86" } }).jpeg().toBuffer()).toString("base64");
+    const stored = await sizingPhotoAsWebp({ mediaType: "image/jpeg", base64 });
+    const meta = await sharp(Buffer.from(stored!.image.base64, "base64")).metadata();
+    expect([meta.width, meta.height]).toEqual([outWidth, outHeight]);
+  });
+
+  it("turns a photo the phone saved sideways upright, keeping its shape", async () => {
+    // Stored 2400×1800 with an EXIF note to turn it a quarter: it is a 1800×2400 portrait.
+    const base64 = (
+      await sharp({ create: { width: 2400, height: 1800, channels: 3, background: "#a86" } })
+        .jpeg()
+        .withMetadata({ orientation: 6 })
+        .toBuffer()
+    ).toString("base64");
+    const stored = await sizingPhotoAsWebp({ mediaType: "image/jpeg", base64 });
+    const meta = await sharp(Buffer.from(stored!.image.base64, "base64")).metadata();
+    expect([meta.width, meta.height]).toEqual([1500, 2000]);
+    expect(meta.orientation).toBeUndefined();
+  });
+
   it("drops the photo's metadata, location included", async () => {
     const base64 = (
       await sharp(Buffer.from(await jpeg(400, 300), "base64"))

@@ -43,6 +43,10 @@ what passes.**
   long edge capped at 2,000 px again in case a browser sent its original). The conversion runs
   before the check, so Claude screens exactly the bytes that are stored. Photos stored before this
   are converted once by `scripts/sizing-photos-to-webp.ts`.
+- **Neither step changes the photo's shape.** Both scale it down to fit 2,000 px on its long side
+  and never crop or stretch it, so the build team sizes from the proportions the customer took.
+  Both turn a photo the phone saved sideways upright first, so the cap lands on the edge that is
+  long once it's upright.
 - **A per-Result and per-address limit** on the route (12 checks per Result an hour, 30 per
   address per 10 minutes), since every upload is a paid call on a route guests reach.
 

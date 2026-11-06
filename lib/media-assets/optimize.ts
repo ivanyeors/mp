@@ -31,12 +31,10 @@ export async function optimizeImageForWeb(
 
   let img = sharp(input, { failOn: "none" }).rotate();
   if (longEdge > longEdgeCap && longEdge > 0) {
-    img = img.resize({
-      width: w >= h ? longEdgeCap : undefined,
-      height: h > w ? longEdgeCap : undefined,
-      fit: "inside",
-      withoutEnlargement: true,
-    });
+    // Fit inside a square so the shape is kept and whichever edge is long once
+    // the photo is upright is capped. `metadata()` gives the size before
+    // `.rotate()` turns it, so it can't say which edge that is.
+    img = img.resize({ width: longEdgeCap, height: longEdgeCap, fit: "inside", withoutEnlargement: true });
   }
 
   const buffer = await img.webp({ quality, effort: 4 }).toBuffer();

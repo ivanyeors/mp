@@ -3459,7 +3459,7 @@
       "file_type": "code",
       "norm_label": "emailrenditionimage",
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L60"
+      "source_location": "L58"
     },
     {
       "id": "lib_media_assets_optimize_optimizedimage",
@@ -41835,7 +41835,7 @@
       "file_type": "code",
       "norm_label": "makeemailrendition()",
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L78"
+      "source_location": "L76"
     },
     {
       "id": "lib_media_assets_optimize_optimizeimageforweb",
@@ -93291,7 +93291,7 @@
       "file_type": "code",
       "norm_label": "optimizedstoragename()",
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L110"
+      "source_location": "L108"
     },
     {
       "id": "lib_media_assets_tests_import_drive_test_asset",
@@ -116289,7 +116289,7 @@
       "node_kind": "heading",
       "norm_label": "consequences",
       "source_file": "docs/adr/0047-sizing-photos-screened-by-claude.md",
-      "source_location": "L49"
+      "source_location": "L53"
     },
     {
       "id": "docs_adr_0047_sizing_photos_screened_by_claude_decision",
@@ -121835,7 +121835,7 @@
       "file_type": "code",
       "norm_label": "email_rendition_jpeg_quality",
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L56"
+      "source_location": "L54"
     },
     {
       "id": "lib_media_assets_optimize_email_rendition_target_bytes",
@@ -121846,7 +121846,7 @@
       "file_type": "code",
       "norm_label": "email_rendition_target_bytes",
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L58"
+      "source_location": "L56"
     },
     {
       "id": "lib_media_assets_optimize_email_rendition_width",
@@ -121857,7 +121857,7 @@
       "file_type": "code",
       "norm_label": "email_rendition_width",
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L55"
+      "source_location": "L53"
     },
     {
       "id": "lib_media_assets_optimize_image_long_edge_cap",
@@ -661475,7 +661475,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0047-sizing-photos-screened-by-claude.md",
-      "source_location": "L49",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -721425,7 +721425,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L110",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -721469,7 +721469,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L55",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -721480,12 +721480,23 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L56",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
       "source": "lib_media_assets_optimize",
       "target": "lib_media_assets_optimize_email_rendition_target_bytes",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/media-assets/optimize.ts",
+      "source_location": "L56",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_media_assets_optimize",
+      "target": "lib_media_assets_optimize_emailrenditionimage",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -721507,24 +721518,13 @@
     },
     {
       "source": "lib_media_assets_optimize",
-      "target": "lib_media_assets_optimize_emailrenditionimage",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L60",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_media_assets_optimize",
       "target": "lib_media_assets_optimize_makeemailrendition",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/media-assets/optimize.ts",
-      "source_location": "L78",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -851079,5 +851079,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "1ef85073e31aafabf0d430cb402b41cc90ffb7d8"
+  "built_at_commit": "64fe6bbfc3f9712493a04bc4572a9fc7672df73a"
 }
