@@ -188,9 +188,9 @@ const sameCellRef = (p: Cell, q: Cell) => p.section === q.section && p.subSectio
 // 11px with ~28px icon buttons — the largest that still fits three per cell.
 // Docked beside the pillow on a desktop (`md:dock:`), nothing constrains them
 // but the panel's width: 14px text and 32px buttons.
-const CHIP_CLASS = "rounded border bg-background/90 shadow-sm text-[9px] leading-4 max-md:text-[11px] max-md:leading-5 md:dock:text-sm md:dock:leading-6";
-const CHIP_ICON_CLASS = "size-2.5 max-md:size-3.5 md:dock:size-4";
-const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-md:items-center max-md:justify-center md:dock:flex md:dock:size-8 md:dock:items-center md:dock:justify-center";
+export const CHIP_CLASS = "rounded border bg-background/90 shadow-sm text-[9px] leading-4 max-md:text-[11px] max-md:leading-5 md:dock:text-sm md:dock:leading-6";
+export const CHIP_ICON_CLASS = "size-2.5 max-md:size-3.5 md:dock:size-4";
+export const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-md:items-center max-md:justify-center md:dock:flex md:dock:size-8 md:dock:items-center md:dock:justify-center";
 
 // Layer rows are the one control staff DRAG, and a grab that misses scrolls the
 // page instead — so they get their own, larger scale rather than the read-mostly
@@ -202,8 +202,8 @@ const LAYER_ROW_CLASS =
 const LAYER_ICON_CLASS = "size-3 max-md:size-4 md:dock:size-4";
 const LAYER_ICON_BUTTON_CLASS =
   "flex size-5 shrink-0 items-center justify-center rounded max-md:size-11 md:dock:size-9";
-/** The add picker's diameter when the dive controls are slotted beside the pillow (desktop). */
-const SLOTTED_BLOOM_PX = 300;
+/** The add picker's diameter when the editor's controls are slotted beside the art (desktop); the Mbolster's too. */
+export const SLOTTED_BLOOM_PX = 300;
 const easeOut = (t: number) => t * (2 - t);
 
 /**
@@ -413,14 +413,25 @@ export function MorphPiece({
  * not act on; the word is what they need (owner, 7-11-2026).
  */
 function CellFitNote({ cell, size, className = "" }: { cell: CellFit; size: string; className?: string }) {
-  if (cell.status === "ok") return null;
+  return <FitNote status={cell.status} message={fitMessage(cell, size)} className={className} data-xray-cell-fit={cell.status} />;
+}
+
+/** A fit problem in a word ("Compressed", "Over") with the numbers in its triangle's tooltip; nothing when it fits. The Mbolster's compartment says it the same way. */
+export function FitNote({
+  status,
+  message,
+  className = "",
+  ...data
+}: {
+  status: FitStatus;
+  message: string;
+  className?: string;
+} & { [attr: `data-${string}`]: string }) {
+  if (status === "ok") return null;
   return (
-    <span
-      className={`flex items-center gap-1 font-medium capitalize ${FIT_TONE[cell.status]} ${className}`}
-      data-xray-cell-fit={cell.status}
-    >
-      <FitWarning status={cell.status} message={fitMessage(cell, size)} />
-      {cell.status}
+    <span className={`flex items-center gap-1 font-medium capitalize ${FIT_TONE[status]} ${className}`} {...data}>
+      <FitWarning status={status} message={message} />
+      {status}
     </span>
   );
 }

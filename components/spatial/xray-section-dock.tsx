@@ -8,6 +8,10 @@
  * One component for Configure → Filling Template and the configurator's Staff
  * assist stage, so Staff find the controls in the same place on both. The host
  * owns placement (sticky column, panel under the x-ray) through `className`.
+ *
+ * The Mbolster docks its one compartment's controls here too (XrayBolster's
+ * `controlsSlot`). It has no dive, so its host passes `dived="compartment"`:
+ * the controls are always there and bring their own header.
  */
 
 import { cn } from "@/lib/utils";
@@ -17,7 +21,7 @@ export function XraySectionDock({
   onSlot,
   className,
 }: {
-  /** The dived Section, as the x-ray reports it through `onDiveChange`. */
+  /** The dived Section, as the x-ray reports it through `onDiveChange` ("compartment" for the Mbolster). */
   dived: string | null;
   /** Ref callback for the slot element, handed to XrayEditor / XrayPillow as `controlsSlot`. */
   onSlot: (el: HTMLElement | null) => void;

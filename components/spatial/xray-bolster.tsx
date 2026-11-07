@@ -11,19 +11,21 @@
  * compression limit, red when the pack cannot fit, and an add that would not
  * fit is refused with the numbers — never a slot count. Staff-only editing:
  * callers mount the picker behind the staff assist gate.
+ *
+ * The editor speaks the pillow dive editor's language: the same chips, the
+ * same family → variant add picker (blooming over the capsule, which is also
+ * its trigger), and a fit problem said in a word, never a used / length mm
+ * bar. On a desktop a host can dock the controls off the art (`controlsSlot`,
+ * an XraySectionDock), where they grow to the pillow dock's size.
  */
 
 import { useId, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SunburstMenu } from "@/components/ui/sunburst-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { addBolsterPiece, removeBolsterPiece } from "@/lib/configurator/staff-assist";
 import type { BolsterPlacement } from "@/lib/spatial-fillings/core";
@@ -36,8 +38,18 @@ import {
   makeRegion,
 } from "@/lib/spatial-fillings/conform";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
-import { FitWarning, MorphPiece, PieceLabel, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
-import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
+import {
+  CHIP_CLASS,
+  CHIP_ICON_BUTTON_CLASS,
+  CHIP_ICON_CLASS,
+  FitNote,
+  MorphPiece,
+  PieceLabel,
+  SLOTTED_BLOOM_PX,
+  XRAY_INTERIOR,
+  XRAY_SHELL,
+} from "./xray-pillow";
+import { fillingItemsToSunburst, fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath, SHELL_SEAM, XRAY_VIEW } from "./xray-assets";
 
 // Pouches deform to stay a seam inside the capsule (see conform.ts).
@@ -50,35 +62,6 @@ const SHELL_REGIONS = {
 // The pillow's status paint (slice 04): amber at the limit and when it cannot fit — nothing turns red (Ivan, 1-11-2026).
 const RING_COMPRESSED = "#f59e0b";
 
-/** The capsule gauge (slice 09): used / length mm, a bar, and the fit message when the pack is not ok. */
-export function BolsterGauge({ fit, label }: { fit: BolsterFit; label: (itemId: number) => string }) {
-  const pct = Math.min(fit.usedMm / Math.max(fit.lengthMm, 1), 1) * 100;
-  const bar = fit.status === "ok" ? "bg-emerald-500" : "bg-amber-500";
-  const tone = "text-amber-600 dark:text-amber-400";
-  return (
-    <div
-      className="flex w-full max-w-sm flex-col gap-0.5 rounded border bg-background/90 px-1.5 py-0.5 text-[10px] leading-4 shadow-sm"
-      role="meter"
-      aria-valuemin={0}
-      aria-valuemax={fit.lengthMm}
-      aria-valuenow={fit.usedMm}
-      aria-label="Mbolster length used"
-      data-xray-bolster-gauge={fit.status}
-    >
-      <div className="flex items-center gap-1 tabular-nums">
-        <span>
-          {Math.round(fit.usedMm)} / {Math.round(fit.lengthMm)} mm
-        </span>
-        {fit.status !== "ok" && <span className={`capitalize ${tone}`}>{fit.status}</span>}
-        {fit.status !== "ok" && <FitWarning status={fit.status} message={bolsterFitMessage(fit, label)} className="ml-auto" />}
-      </div>
-      <div className="h-1 w-full overflow-hidden rounded bg-muted">
-        <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
 export function XrayBolster({
   placements,
   length,
@@ -88,6 +71,7 @@ export function XrayBolster({
   fit: fitProp,
   items,
   onPlacementsChange,
+  controlsSlot,
   className,
 }: {
   placements: BolsterPlacement[];
@@ -105,11 +89,18 @@ export function XrayBolster({
   items?: FillingItem[];
   /** Lifted session-mix state (never forked). */
   onPlacementsChange?: (next: BolsterPlacement[]) => void;
+  /** Desktop: where the compartment controls render instead of over the capsule. */
+  controlsSlot?: HTMLElement | null;
   className?: string;
 }) {
   const uid = useId();
   const [hovered, setHovered] = useState(false);
+  const [picking, setPicking] = useState(false);
   const editable = Boolean(items && onPlacementsChange);
+  const isMobile = useIsMobile();
+  const slotted = Boolean(controlsSlot) && !isMobile;
+  // The pillow's add picker tree: family first, then only the variant ("S", "Fold S").
+  const fillingTree = useMemo(() => fillingItemsToSunburst(items ?? []), [items]);
   const capsule = bolsterCapsulePath(length);
   // The fit (slice 09) once per change; the layout draws its settled, squeezed widths.
   const fit = useMemo(() => fitProp ?? fitBolster(placements, length, { dims: itemDims }), [fitProp, placements, length, itemDims]);
@@ -141,9 +132,48 @@ export function XrayBolster({
       toast.error("Unknown filling item");
       return;
     }
-    // Fit never refuses: an overfull pack turns its ring red and the gauge warns.
+    // Fit never refuses: an overfull pack turns its ring amber and the fit note warns.
     onPlacementsChange?.(addBolsterPiece(placements, itemId));
   };
+
+  const ordered = [...placements].sort((a, b) => a.slot - b.slot);
+  // Said only when there is a problem (FitNote renders nothing for "ok"; the overlay's chip wrapper must not either).
+  const fitNote = placements.length > 0 && fit.status !== "ok" && (
+    <FitNote
+      status={fit.status}
+      message={bolsterFitMessage(fit, pieceLabel)}
+      className="text-[11px] md:dock:text-sm"
+      data-xray-bolster-fit={fit.status}
+    />
+  );
+  const addButton = (
+    <button
+      type="button"
+      className={`pointer-events-auto flex shrink-0 items-center gap-0.5 whitespace-nowrap px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 md:dock:min-h-9 md:dock:gap-1.5 md:dock:px-3 ${CHIP_CLASS}`}
+      aria-label="Add filling to bolster"
+      onClick={() => setPicking(true)}
+    >
+      <Plus className={CHIP_ICON_CLASS} />
+      Add filling
+    </button>
+  );
+  // One chip per pouch, in capsule order (end to end): the label, and a remove.
+  const chips = ordered.map((p) => (
+    <span
+      key={p.slot}
+      className={`pointer-events-auto flex items-center gap-0.5 px-1 md:dock:pl-2 md:dock:pr-0.5 ${CHIP_CLASS}`}
+    >
+      <span className="max-w-24 truncate md:dock:max-w-44">{pieceLabel(p.itemId)}</span>
+      <button
+        type="button"
+        className={`${CHIP_ICON_BUTTON_CLASS} hover:bg-destructive/20`}
+        aria-label={`Remove ${pieceLabel(p.itemId)} from bolster`}
+        onClick={() => onPlacementsChange?.(removeBolsterPiece(placements, p.slot))}
+      >
+        <X className={CHIP_ICON_CLASS} />
+      </button>
+    </span>
+  ));
 
   return (
     <div className={className} style={{ pointerEvents: "none" }}>
@@ -190,19 +220,31 @@ export function XrayBolster({
               lines={pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null)}
             />
           ))}
-          {hovered && editable && <path d={capsule} fill="white" fillOpacity={0.15} />}
+          {(hovered || picking) && editable && <path d={capsule} fill="white" fillOpacity={0.15} />}
         </g>
 
-        <path
-          d={capsule}
-          fill="none"
-          stroke={XRAY_SHELL}
-          strokeWidth={3}
-          vectorEffect="non-scaling-stroke"
-          style={{ pointerEvents: "auto" }}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-        />
+        <path d={capsule} fill="none" stroke={XRAY_SHELL} strokeWidth={3} vectorEffect="non-scaling-stroke" />
+        {/* The capsule is the add picker's trigger, as a pillow cell is: the picker blooms over it. */}
+        {editable && (
+          <path
+            d={capsule}
+            fill="transparent"
+            className="cursor-pointer outline-none"
+            style={{ pointerEvents: "auto" }}
+            role="button"
+            tabIndex={0}
+            aria-label="Add filling to bolster"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onClick={() => setPicking(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setPicking(true);
+              }
+            }}
+          />
+        )}
         {/* Capsule status ring (slice 09): amber at the compression limit and
             when the pack cannot fit — a stroke on the capsule path itself. */}
         {fit.status !== "ok" && (
@@ -218,46 +260,62 @@ export function XrayBolster({
         )}
       </svg>
 
-      {/* Single compartment — pieces edit inline, no dive step */}
-      {editable && (
+      {/* Single compartment — pieces edit inline, no dive step. Without a slot (phones, a narrow host)
+          the controls sit in the frame under the capsule. */}
+      {editable && !slotted && (
         <div
           className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-1 p-2"
-          style={{ pointerEvents: "auto" }}
+          style={{ pointerEvents: "none" }}
           data-xray-bolster-editor
         >
-          {placements.length > 0 && <BolsterGauge fit={fit} label={pieceLabel} />}
-          <div className="flex max-w-full flex-wrap items-center justify-center gap-0.5">
-            {[...placements]
-              .sort((a, b) => a.slot - b.slot)
-              .map((p) => (
-                <button
-                  key={p.slot}
-                  type="button"
-                  className="flex items-center gap-0.5 rounded border bg-background/85 px-1 text-[9px] leading-4 hover:bg-destructive/20"
-                  aria-label={`Remove ${pieceLabel(p.itemId)} from bolster`}
-                  onClick={() => onPlacementsChange?.(removeBolsterPiece(placements, p.slot))}
-                >
-                  <span className="max-w-24 truncate">{pieceLabel(p.itemId)}</span>
-                  <X className="size-2.5 shrink-0" />
-                </button>
-              ))}
+          {chips.length > 0 && <div className="flex max-w-full flex-wrap items-center justify-center gap-1">{chips}</div>}
+          <div className="flex items-center gap-2">
+            {fitNote && <span className={`pointer-events-auto px-1 ${CHIP_CLASS}`}>{fitNote}</span>}
+            {addButton}
           </div>
-          <Select value="" onValueChange={(v) => addItem(Number(v))}>
-            <SelectTrigger
-              size="sm"
-              className="h-6 w-48 min-w-0 bg-background/85 text-[10px]"
-              aria-label="Add filling to bolster"
-            >
-              <SelectValue placeholder="Add filling…" />
-            </SelectTrigger>
-            <SelectContent>
-              {(items ?? []).map((i) => (
-                <SelectItem key={i.id} value={String(i.id)}>
-                  {itemLabel(i)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        </div>
+      )}
+      {/* Host-provided slot (desktop): the same controls beside the capsule, at the pillow dock's size. */}
+      {editable &&
+        slotted &&
+        createPortal(
+          <div data-xray-dive-dock data-xray-bolster-editor className="flex flex-col gap-2 px-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold md:dock:text-base">Compartment</span>
+              {fitNote}
+              <span className="ml-auto">{addButton}</span>
+            </div>
+            {chips.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1.5">{chips}</div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Click the capsule or Add filling to add a pouch.</p>
+            )}
+          </div>,
+          controlsSlot!,
+        )}
+
+      {/* Add-filling picker: blooms over the capsule's middle. Slotted, nothing else sits on the art, so it
+          grows to the pillow's slotted size with phone-sized labels; phones size it to the frame. */}
+      {editable && picking && (
+        <div
+          className="absolute left-1/2 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2"
+          style={{ width: isMobile ? "100%" : slotted ? SLOTTED_BLOOM_PX : 220, pointerEvents: "auto" }}
+        >
+          <SunburstMenu
+            open
+            root={fillingTree}
+            display="text"
+            size={isMobile ? 280 : slotted ? SLOTTED_BLOOM_PX : 220}
+            ringWidth={isMobile ? 48 : slotted ? 56 : 40}
+            holeRadius={isMobile ? 26 : slotted ? 24 : 18}
+            largeLabels={slotted}
+            centerIcon={Plus}
+            ariaLabel="Add filling to bolster"
+            onOpenChange={(o) => {
+              if (!o) setPicking(false);
+            }}
+            onSelect={(leaf) => addItem(Number(leaf.id))}
+          />
         </div>
       )}
     </div>

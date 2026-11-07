@@ -838445,7 +838445,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mbolster-config/mbolster-config-client.tsx",
-      "source_location": "L996",
+      "source_location": "L999",
       "weight": 1.0,
       "context": "GET"
     },
@@ -838457,7 +838457,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mbolster-config/mbolster-config-client.tsx",
-      "source_location": "L1176",
+      "source_location": "L1179",
       "weight": 1.0,
       "context": "POST"
     },
@@ -838481,7 +838481,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mbolster-config/mbolster-config-client.tsx",
-      "source_location": "L907",
+      "source_location": "L910",
       "weight": 1.0,
       "context": "POST"
     },

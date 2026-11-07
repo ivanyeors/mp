@@ -137,10 +137,11 @@ assert.doesNotMatch(renderer, /<rect/, "still no box crops (ADR 0009 guardrail 1
 // cell says only that it is compressed or over, with the numbers in its tooltip.
 assert.doesNotMatch(renderer, /LoftGauge|role="meter"/, "no used / max mm gauge on any cell");
 assert.equal(renderer.match(/<CellFitNote/g)?.length, 2, "the fit note is mounted once in the desktop panel and once in the docks");
-assert.match(renderer, /if \(cell\.status === "ok"\) return null;/, "a cell that fits says nothing");
+assert.match(renderer, /export function FitNote\([\s\S]*?if \(status === "ok"\) return null;/, "a cell that fits says nothing");
 assert.match(renderer, /fitMessage\(cell, size\)/, "the note's tooltip is the pure fitMessage — the three numbers and the Size");
 assert.doesNotMatch(renderer, /status === "over"\) \{\s*toast\.error/, "fit never refuses an add or a move — it warns");
-assert.match(renderer, /<FitWarning status=\{cell\.status\} message=\{fitMessage\(cell, size\)\}/, "the gauge's fit message lives in its warning tooltip");
+assert.match(renderer, /<FitNote status=\{cell\.status\} message=\{fitMessage\(cell, size\)\}/, "the cell's fit message lives in its note's warning tooltip");
+assert.match(renderer, /<FitWarning status=\{status\} message=\{message\} \/>/, "the note's word comes with the warning triangle");
 assert.equal(renderer.match(/warning=\{layerWarning\(subSection, depth\)\}/g)?.length, 2, "each layer row warns with its own width message, in the panel and in the dock");
 assert.match(renderer, /layerFitMessage\(cell, layer\)/, "a row's tooltip is the pure per-layer message");
 
