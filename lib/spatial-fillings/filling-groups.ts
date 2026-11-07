@@ -105,12 +105,31 @@ export function fillingLabel(item: FillingItemLike): string {
   return fillingLabelLines(fillingDescriptor(item), item.size).join(" ") || `Item #${item.id}`;
 }
 
-/** Variant within a family: the parenthetical, else the descriptor minus its density. */
-function variantLabel(descriptor: string): string {
+/** Variant within a family: the parenthetical, else the descriptor minus its density ("" when that is all it was). */
+function variantName(descriptor: string): string {
   const paren = descriptor.match(/\(([^)]+)\)/)?.[1];
   if (paren) return paren.trim();
-  const stripped = descriptor.replace(DENSITY, "").replace(/^[\s\-+]+/, "").trim();
-  return stripped || descriptor.trim();
+  return descriptor.replace(DENSITY, "").replace(/^[\s\-+]+/, "").trim();
+}
+
+/**
+ * A leaf's label once its family has been picked: what tells it apart inside
+ * that family, never the family again. Live inventory names the type and keeps
+ * the size apart (`6D` + `L`, `6D Fold` + `S`), so under 6D the leaves read
+ * `L`, `Fold S` — not `6D`, `6D (S)` (owner, 7-11-2026: save the wedge's space).
+ */
+function variantLabel(item: FillingItemLike): string {
+  const variant = variantName(fillingDescriptor(item));
+  return fillingLabelLines(variant || null, item.size).join(" ") || item.size?.trim() || "";
+}
+
+const SIZE_ORDER = ["XS", "S", "M", "L", "XL"];
+/** Leaf order inside a family: plain sizes smallest first, then each named variant (Fold, Round…) by size. */
+function leafRank(label: string): [string, number] {
+  const words = label.split(" ");
+  const size = SIZE_ORDER.indexOf(words.at(-1)!.toUpperCase());
+  const variant = size >= 0 ? words.slice(0, -1).join(" ") : label;
+  return [variant, size >= 0 ? size : SIZE_ORDER.length];
 }
 
 /** Sort rank: 3D < 6D < 6D+ < Neck support < Ear pad < Other. */
@@ -145,18 +164,25 @@ export function fillingItemsToSunburst(items: FillingItemLike[]): SunburstNode[]
     const isOther = key === "other";
     const usedLabels = new Set<string>();
     const leaves: SunburstNode[] = sorted.map((item) => {
-      // Real family → show the variant (S/M/L/Folded…); Other → the item name;
+      // Real family → show the variant and size (S/M/L/Fold S…); Other → the item name;
       // neck supports and ear pads differ only by size (an unsized ear pad is its name).
       let label = isOther
         ? item.name.trim()
         : key === "neck" || key === "ear"
           ? (item.size?.trim() ?? "")
-          : variantLabel(fillingDescriptor(item));
+          : variantLabel(item);
       if (!label) label = item.name.trim() || `Item #${item.id}`;
       if (usedLabels.has(label)) label = `${label}${item.size ? ` (${item.size})` : ` #${item.id}`}`;
       usedLabels.add(label);
       return { id: String(item.id), label };
     });
+    if (!isOther) {
+      leaves.sort((a, b) => {
+        const [va, sa] = leafRank(a.label);
+        const [vb, sb] = leafRank(b.label);
+        return va === vb ? sa - sb : va === "" ? -1 : vb === "" ? 1 : va.localeCompare(vb);
+      });
+    }
 
     if (leaves.length > 0) nodes.push({ id: `fam:${key}`, label: g.label, children: leaves });
   }
