@@ -5,7 +5,8 @@
  *
  * ← → reorder in the Layer · ↑ ↓ to the front / back sub-section ·
  * [ ] one Layer up / down · Shift + ← → to the neighbouring Section ·
- * Alt + arrows nudge it NUDGE_STEP_MM within its cell (`nudgeKeyFor`).
+ * Alt + arrows nudge it NUDGE_STEP_MM within its cell, Alt + Shift + arrows
+ * FINE_STEP_MM for the last millimetre (`nudgeKeyFor`).
  */
 
 export type MoveKind =
@@ -62,22 +63,26 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 
 /** One Alt + arrow step of the fine nudge (slice 08), mm. */
 export const NUDGE_STEP_MM = 5;
+/** One Alt + Shift + arrow step: the last millimetre (linked views, 7-11-2026). */
+export const FINE_STEP_MM = 1;
 
 /**
  * The fine nudge a keydown asks for — Alt + an arrow moves the selected pouch
- * NUDGE_STEP_MM within its cell (+x right, +y toward the back) — or null.
+ * NUDGE_STEP_MM within its cell (+x right, +y toward the back), Alt + Shift +
+ * an arrow FINE_STEP_MM — or null.
  */
 export function nudgeKeyFor(e: { key: string; shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }): { xMm: number; yMm: number } | null {
-  if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return null;
+  if (!e.altKey || e.ctrlKey || e.metaKey) return null;
+  const step = e.shiftKey ? FINE_STEP_MM : NUDGE_STEP_MM;
   switch (e.key) {
     case "ArrowLeft":
-      return { xMm: -NUDGE_STEP_MM, yMm: 0 };
+      return { xMm: -step, yMm: 0 };
     case "ArrowRight":
-      return { xMm: NUDGE_STEP_MM, yMm: 0 };
+      return { xMm: step, yMm: 0 };
     case "ArrowUp":
-      return { xMm: 0, yMm: -NUDGE_STEP_MM };
+      return { xMm: 0, yMm: -step };
     case "ArrowDown":
-      return { xMm: 0, yMm: NUDGE_STEP_MM };
+      return { xMm: 0, yMm: step };
     default:
       return null;
   }

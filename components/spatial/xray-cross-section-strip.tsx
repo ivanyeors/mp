@@ -110,7 +110,7 @@ export function XrayCrossSectionStrip({
   const idleHint = editable
     ? isMobile
       ? "Drag a filling and it lands where you let go; drop it on another cut to move it to that Section."
-      : "Drag a filling within a cut and it lands where you let go, or onto another cut to move it to that Section. Keys: ← → front / back · Alt ← → nudge · ↑ ↓ layer · Shift ← → Section."
+      : "Drag a filling within a cut and it lands where you let go, or onto another cut to move it to that Section. Keys: ← → front / back · Alt ← → nudge (+ Shift: 1 mm) · ↑ ↓ layer · Shift ← → Section."
     : null;
 
   const titleFor = useCallback(

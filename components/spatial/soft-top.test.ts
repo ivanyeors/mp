@@ -99,9 +99,10 @@ describe("soft top view", () => {
   });
 
   it("keeps a pouch nudged by hand where it was put: its neighbours make room", () => {
-    // Type 11's middle top 6D shares its Layer with the front and back pouches; nudged, it is held, they give.
+    // Type 11's middle top 6D shares its Layer with the front pouch; nudged, it is held, its neighbour gives. The back is
+    // left empty so a nudge toward it has room (between full neighbours of its own Layer a 6D has none, in both views).
     const centreOf = (offset: { offsetXMm?: number; offsetYMm?: number }) => {
-      const placements: PillowPlacement[] = SUB_SECTIONS.flatMap((subSection) =>
+      const placements: PillowPlacement[] = SUB_SECTIONS.filter((subSection) => subSection !== "back").flatMap((subSection) =>
         RECIPES["11"][subSection].map((itemId, row) => ({ section: "center" as const, subSection, slot: row + 1, itemId, row, ...(subSection === "middle" && row === 0 ? offset : {}) })),
       );
       const stage = stageGeometry("M");
@@ -117,17 +118,23 @@ describe("soft top view", () => {
           d: conformPouchPath(p.settled, [regions.sil, regions.sections.center], shapeOf(p.itemId)),
           rect: p.settled,
           shape: shapeOf(p.itemId),
-          held: p.x !== p.home.x || p.y !== p.home.y,
+          held: p.nudged,
         })),
       };
       const ring = settleTop([plane], SOFT_BODY_DEFAULTS, XRAY_VIEW).get("center/middle/1")!;
-      return [ring.reduce((a, q) => a + q[0], 0) / ring.length / stage.k, ring.reduce((a, q) => a + q[1], 0) / ring.length / stage.k];
+      const rect = list.find((p) => p.key === "center/middle/1")!.settled;
+      return {
+        soft: [ring.reduce((a, q) => a + q[0], 0) / ring.length / stage.k, ring.reduce((a, q) => a + q[1], 0) / ring.length / stage.k],
+        rect: [(rect.x + rect.w / 2) / stage.k, (rect.y + rect.h / 2) / stage.k],
+      };
     };
     const home = centreOf({});
     const back = centreOf({ offsetYMm: 20 });
     const left = centreOf({ offsetXMm: -20 });
-    expect(back[1] - home[1]).toBeGreaterThan(15);
-    expect(left[0] - home[0]).toBeLessThan(-15);
+    // The layout puts it 20 mm back, as the cut does; held, the soft body follows it most of the way (the outline narrows there).
+    expect(Math.abs(back.rect[1] - home.rect[1] - 20)).toBeLessThan(1);
+    expect(back.soft[1] - home.soft[1]).toBeGreaterThan(10);
+    expect(left.soft[0] - home.soft[0]).toBeLessThan(-15);
   });
 
   it("is deterministic: the same recipe settles to the same outlines", () => {

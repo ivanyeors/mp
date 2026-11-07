@@ -5,6 +5,7 @@ import {
   chaikin,
   clipToConvex,
   conformPouchPath,
+  farthestPair,
   insetRing,
   labelRectOf,
   makeRegion,
@@ -14,6 +15,7 @@ import {
   pouchOutline,
   type Pt,
 } from "../conform";
+import { openRing } from "../opening";
 
 const SQUARE: Pt[] = [
   [0, 0],
@@ -239,5 +241,42 @@ describe("openRing (opening by the pouch radius)", () => {
     const out = openRing(withTail, 10);
     expect(Math.max(...out.map(([x]) => x))).toBeLessThan(102);
     expect(Math.max(...out.map(([x]) => x))).toBeGreaterThan(95);
+  });
+});
+
+describe("farthestPair: the all-pairs answer from the hull alone", () => {
+  const brute = (pts: Pt[]): [number, number] => {
+    let ai = 0;
+    let bi = 0;
+    let best = -1;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const d2 = (pts[i][0] - pts[j][0]) ** 2 + (pts[i][1] - pts[j][1]) ** 2;
+        if (d2 > best) {
+          best = d2;
+          ai = i;
+          bi = j;
+        }
+      }
+    }
+    return [ai, bi];
+  };
+  // A seeded generator: the same rings every run.
+  let seed = 7;
+  const rand = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+
+  it("picks the same pair on traced pouch boundaries (grid points, many ties)", () => {
+    for (const [w, h] of [[150, 100], [94, 94], [200, 40], [60, 120]]) {
+      const ring = openRing([[0, 0], [w, 0], [w, h], [0, h]], Math.min(w, h) * 0.2);
+      expect(farthestPair(ring)).toEqual(brute(ring));
+    }
+  });
+
+  it("picks the same pair on random rings, duplicates and collinear runs included", () => {
+    for (let t = 0; t < 200; t++) {
+      const n = 3 + Math.floor(rand() * 60);
+      const pts: Pt[] = Array.from({ length: n }, () => [Math.round(rand() * 20) / 2, Math.round(rand() * 20) / 2]);
+      expect(farthestPair(pts)).toEqual(brute(pts));
+    }
   });
 });

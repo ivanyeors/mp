@@ -23,6 +23,7 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 | [11](https://github.com/ivanyeors/mp/issues/212) | Natural settle — fill spreads into an empty neighbouring sub-section, on screen and in the loft arithmetic | AFK | P1 | built (PR #213); spread capped by the fabric 17-10-2026 (slice 13) | 02, 03 | 50–62 |
 | [12](https://github.com/ivanyeors/mp/issues/214) | Dimension settings — loft allowance, pouch and Neck support dimensions editable in Settings | AFK | P1 | built (PR #213) | 01 | 63–66 |
 | [13](13-cross-section-editing.md) | Edit on the cross-section — drag between columns, Layers and Sections; puffy pouches inside the pillow, never squashed, no rubber band; heights audited | AFK | P1 | built; awaiting Ivan on a deployed build | 05, 07, 11 | — |
+| [14](14-linked-views.md) | Linked views — the top view and the cut draw one position and follow each other's drag live; faster outlines | AFK | P1 | built; awaiting Ivan on a deployed build | 08, 11, 13 | — |
 
 ## Dependency graph
 

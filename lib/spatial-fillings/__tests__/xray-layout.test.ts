@@ -101,7 +101,7 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     expect(large.w / small.w).toBeCloseTo(1.3, 1);
   });
 
-  it("explicit depth stacks as a back-to-front overlay (deeper shifts down-right)", () => {
+  it("explicit depth stacks as an overlay (deeper shifts right, never along: front ↔ back is the settle's)", () => {
     const layout = layoutPlacements([
       { ...piece(1), row: 0 },
       { ...piece(2), row: 1 },
@@ -112,8 +112,8 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     const deep = byDepth.get(2)!;
     const frame = cellFrame("center", "middle");
     expect(top.w).toBeGreaterThan(frame.w * 0.6); // near-full-cell layers, not split rows
-    expect(deep.y).toBeGreaterThan(top.y); // deeper = further down
-    expect(deep.x).toBeGreaterThan(top.x); // + a hair right
+    expect(deep.y).toBe(top.y); // where the cut draws it, front ↔ back
+    expect(deep.x).toBeGreaterThan(top.x); // a hair right reads as deeper
     expect(layout[0].depth).toBe(2); // emitted deepest-first…
     expect(layout[layout.length - 1].depth).toBe(0); // …so the top layer paints last
   });
@@ -142,7 +142,7 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     expect(top[0].x).not.toBeCloseTo(top[1].x, 1);
     // …and together they span what the single deeper piece spans alone.
     expect(top[0].w + top[1].w).toBeGreaterThan(deep[0].w * 0.9);
-    expect(deep[0].y).toBeGreaterThan(top[0].y); // the layer itself is still deeper
+    expect(deep[0].x).toBeGreaterThan(Math.min(top[0].x, top[1].x)); // the layer itself still reads deeper, across
   });
 
   it("a layer emptied out of the middle does not render as a gap", () => {

@@ -46,11 +46,12 @@ import {
 } from "@/lib/spatial-fillings/cross-section";
 import type { BolsterFit, FitStatus, PillowFit } from "@/lib/spatial-fillings/fit";
 import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
-import { padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
+import { draftSoftBody, padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { cn } from "@/lib/utils";
 import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, smoothClosedPath, wellDip, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
 import { useSoftCut, type SoftCutInput } from "./soft-cut";
+import { clearXrayDraft, placementsSignature, publishXrayDraft, useXrayDraft, type XrayDraft } from "./xray-link";
 import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
 export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
@@ -486,6 +487,7 @@ export function CrossSectionSvg({
   editor,
   softBody = SOFT_BODY_DEFAULTS,
   softReplay = 0,
+  live = false,
 }: {
   fit: PillowFit;
   cut: Cut;
@@ -501,6 +503,8 @@ export function CrossSectionSvg({
   softBody?: SoftBodySettings;
   /** Bump to settle again from the start, even a recipe already settled (the Settings preview's Replay). */
   softReplay?: number;
+  /** A pouch is in hand in the other view, and this cut follows its preview: settled quickly, never eased. */
+  live?: boolean;
 }) {
   const uid = useId();
   const columns = crossSectionSlabs(fit, cut);
@@ -516,7 +520,10 @@ export function CrossSectionSvg({
   const drag = editor?.drag ?? null;
   // The soft cut: every piece settled as a soft body inside the cloth case, from the fit's own spans and Layers.
   // The hook keys the settle by value, so a fresh input each render settles only when something it reads changed.
-  const soft = useSoftCut(softBody.enabled ? softInputOf(fit, cut, f, polygon, itemSubtypes, softBody) : null, softBody.animate && !drag, softReplay);
+  // While a pouch is in hand (here or in the top view) every pointer step settles again: a shorter settle keeps up with it.
+  const inHand = live || drag !== null;
+  const settleWith = inHand ? draftSoftBody(softBody) : softBody;
+  const soft = useSoftCut(softBody.enabled ? softInputOf(fit, cut, f, polygon, itemSubtypes, settleWith) : null, softBody.animate && !inHand, softReplay);
   const clothD = soft ? smoothClosedPath(soft.case) : null;
   const well = padWellOf(softBody);
   const wellOf = (subtype: string | null) => (fillingVisual(subtype).shape === "ear" ? well : undefined);
@@ -821,6 +828,8 @@ export function XrayCrossSection({
   const spring = useRef<{ section: Section; timer: number } | null>(null);
   const [held, setHeld] = useState<SlabHold | null>(null);
   const [dropTarget, setDropTarget] = useState<SlabDropTarget | null>(null);
+  // Where along the cut the held pouch would be centred, whole mm from the Section's front: the landing follows it.
+  const [dropAtMm, setDropAtMm] = useState<number | null>(null);
   const [springSection, setSpringSection] = useState<Section | null>(null);
   const [overTab, setOverTab] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -845,12 +854,34 @@ export function XrayCrossSection({
     [items, itemSubtypes, itemSizes],
   );
 
-  // The drop, applied and fitted through the same pure move the commit uses — once per target, not per pointer move.
+  // The drop, applied, placed and fitted through the same pure moves the commit uses — once per target and
+  // millimetre, not per pointer move: on the cut the landing follows the pointer front ↔ back, on a tab it lands home.
   const heldSource = held?.source ?? null;
+  const fitCtx = useMemo(() => ({ size: fit.size, dims: itemDims, loftAllowance: fit.loftAllowance }), [fit.size, itemDims, fit.loftAllowance]);
+  const placedAt = dropTarget && dropTarget.section === cut.section && dropAtMm !== null ? dropAtMm : undefined;
   const preview = useMemo(() => {
     if (!heldSource || !dropTarget || !placements) return null;
-    return previewSlabDrop(placements, heldSource, dropTarget, { size: fit.size, dims: itemDims, loftAllowance: fit.loftAllowance });
-  }, [heldSource, dropTarget, placements, itemDims, fit.size, fit.loftAllowance]);
+    return previewSlabDrop(placements, heldSource, dropTarget, fitCtx, placedAt);
+  }, [heldSource, dropTarget, placements, fitCtx, placedAt]);
+
+  // Linked views: what this cut previews, the top view draws too; while the top view holds a pouch, this cut follows it.
+  const linked = useXrayDraft(placements);
+  // Any draft this cut does not hold itself: the top view's, or a sibling cut's (the Result page pins three).
+  const following: XrayDraft | null = linked && !held ? linked : null;
+  const lastSignature = useRef("");
+  useEffect(() => {
+    const r = preview?.result;
+    if (!held || !r || !r.ok || !preview?.fit) {
+      lastSignature.current = "";
+      clearXrayDraft(placements, "cut");
+      return;
+    }
+    const signature = placementsSignature(r.placements);
+    if (signature === lastSignature.current) return;
+    lastSignature.current = signature;
+    publishXrayDraft(placements, { placements: r.placements, fit: preview.fit, key: keyOf(r.ref), from: "cut" });
+  }, [preview, held, placements]);
+  useEffect(() => () => clearXrayDraft(placementsRef.current, "cut"), []);
 
   const disarmSpring = useCallback(() => {
     if (spring.current) window.clearTimeout(spring.current.timer);
@@ -863,6 +894,7 @@ export function XrayCrossSection({
     disarmSpring();
     setHeld(null);
     setDropTarget(null);
+    setDropAtMm(null);
     setOverTab(false);
   }, [disarmSpring]);
 
@@ -911,6 +943,9 @@ export function XrayCrossSection({
     const inv = m.inverse();
     return { x: inv.a * clientX + inv.c * clientY + inv.e, y: inv.b * clientX + inv.d * clientY + inv.f };
   };
+
+  /** A view x on the cut as whole mm from the Section's front. */
+  const alongMmAt = (x: number) => Math.round((x - frame.x0) / frame.kx);
 
   /** Rest on a tab long enough and the cut opens that Section, so the drop can be placed there exactly. */
   const armSpring = (section: Section) => {
@@ -1033,7 +1068,7 @@ export function XrayCrossSection({
           if (!step?.xMm) return;
           e.preventDefault();
           e.stopPropagation();
-          const n = nudgeSlab(placements, ref, step.xMm, fit);
+          const n = nudgeSlab(placements, ref, step.xMm, fitCtx);
           if (!n) {
             toast(`No room to nudge ${labelOf(slab.itemId)} further ${step.xMm < 0 ? "to the front" : "to the back"}`, { id: "xray-move" });
             return;
@@ -1080,6 +1115,7 @@ export function XrayCrossSection({
       const v = toView(e.clientX, e.clientY);
       ghostRef.current?.setAttribute("transform", `translate(${r1(v.x)} ${r1(v.y)})`);
       const target = targetAt(hold, e.clientX, e.clientY);
+      setDropAtMm(alongMmAt(v.x));
       if (!hold.active) {
         hold.active = true;
         hold.target = target;
@@ -1104,11 +1140,12 @@ export function XrayCrossSection({
         return;
       }
       if (!hold.target || !placements) return;
-      // Dropped on the cut, the pouch lands centred where it was let go (as its columns have room); on a Section tab, at home there.
+      // Dropped on the cut, the pouch lands centred where it was let go (as far as there is room) — the preview's own
+      // millimetre, so what was shown is what lands; on a Section tab, at home there.
       const v = toView(e.clientX, e.clientY);
       const r: SlabPlaceResult | null =
         hold.target.section === cut.section
-          ? placeSlabDrop(placements, hold.source, hold.target, (v.x - frame.x0) / frame.kx, fit, { size: fit.size, dims: itemDims, loftAllowance: fit.loftAllowance })
+          ? placeSlabDrop(placements, hold.source, hold.target, alongMmAt(v.x), fitCtx)
           : asMove(applySlabDrop(placements, hold.source, hold.target));
       if (!r) return;
       if (!r.ok) {
@@ -1134,14 +1171,19 @@ export function XrayCrossSection({
   const tone: NonNullable<CutEditorView["drag"]>["tone"] =
     preview?.result && !preview.result.ok ? "refused" : previewColumn?.status === "over" ? "over" : previewColumn?.status === "compressed" ? "compressed" : "ok";
 
+  // Following another view: the cut shows the Section the held pouch is over (a cut pinned to one Section keeps
+  // its own), the pouch picked out.
+  const followSection = following ? (following.key.split("/")[0] as Section) : null;
+  const shownCut: Cut = tabs && followSection && followSection !== cut.section ? { section: followSection } : cut;
+
   const editor: CutEditorView | undefined = editable
     ? {
         svgRef: attachSvg,
         ghostRef,
         svgHandlers,
         slabHit,
-        selectedKey,
-        hoveredKey: hoverKey,
+        selectedKey: following ? following.key : selectedKey,
+        hoveredKey: following ? null : hoverKey,
         drag: held
           ? {
               sourceKey: held.key,
@@ -1160,14 +1202,27 @@ export function XrayCrossSection({
     if (!onCutChange) return null;
     if (held) {
       if (!dropTarget) return { tone: "muted" as const, text: "Move over a column, a layer or a Section tab — release elsewhere to leave it." };
-      if (preview?.result && !preview.result.ok) return { tone: "over" as const, text: preview.result.error };
-      if (!preview?.result) return { tone: "muted" as const, text: "Leaves it where it is." };
+      const r = preview?.result;
+      if (r && !r.ok) return { tone: "over" as const, text: r.error };
+      if (!r) return { tone: "muted" as const, text: "Leaves it where it is." };
       const layers = cellLayers(placements ?? [], dropTarget).length;
       const col = previewColumn;
       const loft = col ? ` · ${Math.round(col.loftMm)} / ${Math.round(col.maxLoftMm)} mm${statusSuffix(col.status, " · ")}` : "";
       return {
         tone: col?.status === "over" ? ("over" as const) : col?.status === "compressed" ? ("compressed" as const) : ("drop" as const),
-        text: `Drop ${describeSlabTarget(dropTarget, layers, held.source.section)}${loft}`,
+        text: `Drop ${describeSlabTarget(dropTarget, layers, held.source.section)}${landedAt(preview?.fit, keyOf(r.ref))}${loft}`,
+      };
+    }
+    // A sibling cut holding a pouch says where it lands itself (the strip shows one line for all three).
+    if (following?.from === "cut") return null;
+    if (following) {
+      // The top view holds a pouch: say where it would land, as this cut draws it.
+      const piece = following.fit.sections[followSection ?? shownCut.section].pieces.find((p) => p.key === following.key);
+      const ref = refOf(following.key);
+      const layer = cellLayers(following.placements, ref).findIndex((l) => l.some((p) => p.slot === ref.slot));
+      return {
+        tone: "drop" as const,
+        text: `${piece ? labelOf(piece.itemId) : "Filling"} · ${ref.section} ${ref.subSection}, layer ${layer + 1}${landedAt(following.fit, following.key)}`,
       };
     }
     const key = (hoverKey && slabs.some((s) => s.key === hoverKey) ? hoverKey : null) ?? (selectedKey && slabs.some((s) => s.key === selectedKey) ? selectedKey : null);
@@ -1185,7 +1240,7 @@ export function XrayCrossSection({
       tone: "muted" as const,
       text: isMobile
         ? "Drag a filling and it lands where you let go; hold it on a tab to open that Section."
-        : "Drag a filling and it lands where you let go — in its column, another column or layer — or hold it on a Section tab. Keys: ← → front / back · Alt ← → nudge · ↑ ↓ layer · Shift ← → Section.",
+        : "Drag a filling and it lands where you let go — in its column, another column or layer — or hold it on a Section tab. Keys: ← → front / back · Alt ← → nudge (+ Shift: 1 mm) · ↑ ↓ layer · Shift ← → Section.",
     };
   })();
 
@@ -1205,7 +1260,7 @@ export function XrayCrossSection({
     <div className={`space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel>
       {onCutChange && tabs ? (
         <CutControls
-          cut={cut}
+          cut={shownCut}
           onCutChange={onCutChange}
           fit={fit}
           dragging={Boolean(held)}
@@ -1216,14 +1271,16 @@ export function XrayCrossSection({
         title
       )}
       <CrossSectionSvg
-        fit={preview?.fit ?? fit}
-        cut={cut}
+        fit={following?.fit ?? preview?.fit ?? fit}
+        cut={shownCut}
         itemSubtypes={itemSubtypes}
         itemSizes={itemSizes}
         compact={compactLayout}
-        scaleMm={held ? tallest : undefined}
+        // Pinned while a pouch is in hand, in either view, so a preview never resizes the cut under it.
+        scaleMm={held ? tallest : following ? tallestMm(crossSectionSlabs(fit, shownCut)) : undefined}
         editor={editor}
         softBody={softBody}
+        live={following !== null}
       />
       {readout && !onReadout && <CutReadout tone={readout.tone}>{readout.text}</CutReadout>}
     </div>
@@ -1240,6 +1297,13 @@ export function XrayCrossSection({
     );
   }
   return <div className={className}>{body}</div>;
+}
+
+/** Where a pouch stands in a fit, for the line under the cut: " · 85–165 mm from the front". */
+function landedAt(fit: PillowFit | null | undefined, key: string): string {
+  const section = key.split("/")[0] as Section;
+  const p = fit?.sections[section]?.pieces.find((q) => q.key === key);
+  return p ? ` · ${Math.round(p.startMm)}–${Math.round(p.endMm)} mm from the front` : "";
 }
 
 const READOUT_TONE = {

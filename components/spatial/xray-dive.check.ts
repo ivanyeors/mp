@@ -179,7 +179,9 @@ assert.match(renderer, /svg\.addEventListener\("touchstart", onTouchStart, \{ pa
 assert.match(renderer, /e\.currentTarget\.setPointerCapture\(e\.pointerId\)/, "the pointer is captured for the drag");
 assert.match(renderer, /Math\.hypot\(e\.clientX - d\.startX, e\.clientY - d\.startY\) < DRAG_THRESHOLD_PX/, "a press becomes a drag only past the threshold — a click still selects");
 assert.match(renderer, /dropTargetFromElement\(document\.elementFromPoint\(e\.clientX, e\.clientY\)\)/, "the drop target is the tagged element under the pointer");
-assert.match(renderer, /const r = movePiece\(placements, d\.source, plan\.to\);/, "a drop is a movePiece — a drag can never do what a key cannot");
+assert.match(renderer, /const moved = movePiece\(placements, d\.source, plan\.to\);/, "a drop is a movePiece — a drag can never do what a key cannot");
+assert.match(renderer, /const plan = planDrop\(next, over, false\);[\s\S]*showPlan\(plan\);/, "linked views: every pointer move previews the release's own plan in both views");
+assert.match(renderer, /const plan = planDrop\(d, canceled \? null : d\.over, canceled\);/, "…and the release commits that same plan");
 assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
 assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
 assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");

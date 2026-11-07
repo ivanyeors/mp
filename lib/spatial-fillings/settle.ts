@@ -64,6 +64,13 @@ export type PieceSettle = {
   alongMm: number;
   /** Nudged front ↔ back by hand (a fine offset): the soft cut holds it where it was put. */
   nudged?: true;
+  /**
+   * The columns a hand-placed pouch may stand in: its own, and the columns
+   * either side of it that hold nothing at its plane. A nudge or a drop
+   * slides it anywhere in them, never into a neighbour of its own plane.
+   */
+  reachFrom: SubSection;
+  reachTo: SubSection;
   /** Where the settled pouch starts and ends, mm from the Section's front, cut to the columns it spans. */
   startMm: number;
   endMm: number;
@@ -179,6 +186,9 @@ export function anchorAlong(offsetMm: number, cellLengthMm: number, alongMm: num
 
 type Work = {
   p: PillowPlacement;
+  /** The columns it may stand in (`PieceSettle.reachFrom` / `reachTo`), indices. */
+  reachFrom: number;
+  reachTo: number;
   /** Where it sits along its cell (`anchorAlong`): which void its spread favours. */
   anchor: number;
   col: number;
@@ -262,13 +272,22 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
     const maxDepth = Math.max(0, ...layersByCol.map((l) => l.length));
     const work: Work[] = [];
     for (let depth = 0; depth < maxDepth; depth++) {
+      // A column is free at this plane when it holds fewer Layers than the plane is deep.
+      const free = (col: number) => layersByCol[col].length <= depth;
       const plane = layersByCol.map((layers, col) =>
         layers[depth]
           ? layers[depth].map((p): Work => {
               const dims = dimsOf(p.itemId);
               const along = alongMm(dims);
+              let reachFrom = col;
+              let reachTo = col;
+              // A walled product's cells are walls: nothing slides out of its own.
+              while (active && reachFrom > 0 && free(reachFrom - 1)) reachFrom--;
+              while (active && reachTo < SUB_SECTIONS.length - 1 && free(reachTo + 1)) reachTo++;
               return {
                 p,
+                reachFrom,
+                reachTo,
                 anchor: anchorAlong((p.offsetYMm ?? 0) * alongScale, cellLen, along),
                 col,
                 depth,
@@ -299,8 +318,16 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
       const authored = authoredStartMm(w.col, cellLen, along, (w.p.offsetYMm ?? 0) * alongScale);
       // A spread fills the pouch's own cell first: it stands in a neighbour's column only once it reaches it.
       const colOf = (mm: number) => Math.min(Math.max(Math.floor(mm / cellLen), 0), SUB_SECTIONS.length - 1);
-      const spanFrom = Math.max(w.col - cellsFront, 0, Math.min(w.col, colOf(authored - front + SEAM_MM)));
-      const spanTo = Math.min(w.col + cellsBack, SUB_SECTIONS.length - 1, Math.max(w.col, colOf(authored + len + back - SEAM_MM)));
+      const nudged = Boolean(w.p.offsetYMm);
+      let spanFrom = Math.max(w.col - cellsFront, 0, Math.min(w.col, colOf(authored - front + SEAM_MM)));
+      let spanTo = Math.min(w.col + cellsBack, SUB_SECTIONS.length - 1, Math.max(w.col, colOf(authored + len + back - SEAM_MM)));
+      let extent = extentIn(authored - front, authored + len + back, spanFrom * cellLen, (spanTo + 1) * cellLen, nudged);
+      if (nudged) {
+        // Placed by hand, it slides anywhere its plane leaves free and stands in every column it then covers.
+        extent = extentIn(authored - front, authored + len + back, w.reachFrom * cellLen, (w.reachTo + 1) * cellLen, true);
+        spanFrom = Math.max(w.reachFrom, colOf(extent.startMm + SEAM_MM));
+        spanTo = Math.min(w.reachTo, Math.max(spanFrom, colOf(extent.endMm - SEAM_MM)));
+      }
       pieces.push({
         key: `${section}/${w.p.subSection}/${w.p.slot}`,
         section,
@@ -313,8 +340,10 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
         spreadFrontMm: r1(front),
         spreadBackMm: r1(back),
         alongMm: r1(along),
-        ...(w.p.offsetYMm ? { nudged: true as const } : {}),
-        ...extentIn(authored - front, authored + len + back, spanFrom * cellLen, (spanTo + 1) * cellLen, Boolean(w.p.offsetYMm)),
+        ...(nudged ? { nudged: true as const } : {}),
+        reachFrom: SUB_SECTIONS[w.reachFrom],
+        reachTo: SUB_SECTIONS[w.reachTo],
+        ...extent,
         settledLengthMm: r1(settledLength),
         thicknessMm: r1(w.dims.thicknessMm),
         minThicknessMm: r1(Math.min(w.dims.minThicknessMm, w.dims.thicknessMm)),
@@ -337,9 +366,10 @@ export function authoredStartMm(col: number, cellLen: number, alongMm: number, o
 
 /**
  * A settled pouch's extent, mm, cut to the columns it spans. A pouch nudged
- * by hand slides instead: it keeps its length and stops at its columns'
- * edge, so a nudge moves it exactly as far as its own columns have room and
- * never stands it in an occupied neighbour's column.
+ * by hand slides instead: it keeps its length and stops at the edge of the
+ * columns it may reach (its own, and the free ones beside it at its plane),
+ * so a nudge moves it exactly as far as there is room and never stands it in
+ * a neighbour's column of its own plane.
  */
 function extentIn(from: number, to: number, lo: number, hi: number, nudged: boolean): { startMm: number; endMm: number } {
   if (!nudged) return { startMm: r1(Math.max(from, lo)), endMm: r1(Math.min(to, hi)) };

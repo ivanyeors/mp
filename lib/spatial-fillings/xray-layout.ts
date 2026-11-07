@@ -16,6 +16,12 @@
  * Slice 11: every piece also carries its SETTLED rect — the authored rect
  * spread front/back into the empty neighbouring sub-sections the fit's settle
  * pass says it fills — and a settled stack steps by its settled thickness.
+ *
+ * Front ↔ back is the settle's, to the millimetre (linked views, 7-11-2026):
+ * every pouch stands where `settlePillow` says it starts and ends — the very
+ * numbers the cross-section draws — so a pouch moved in either view is in
+ * the same place in both. Depth is drawn across only (a deeper Layer sits a
+ * little to the right, darker), so it never shifts a pouch along.
  */
 
 import {
@@ -38,7 +44,7 @@ import {
   type ResolvedDims,
 } from "./dimensions";
 import type { BolsterFit, CellFit, PillowFit } from "./fit";
-import type { PieceSettle } from "./settle";
+import { authoredStartMm, settlePillow, type PieceSettle } from "./settle";
 import { stageGeometry, XRAY_VIEW, type StageGeometry } from "./xray-stage";
 
 export { XRAY_VIEW };
@@ -79,13 +85,13 @@ export type PieceRect = { x: number; y: number; w: number; h: number };
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 /**
- * Depth is drawn as a foreshortened offset: each layer shifts the next one down
- * (and a hair right) by its thickest piece × k × FORESHORTEN, so a stack of
- * thick pouches reads deeper than a stack of thin ones. A slab loses only its
- * own offset, so the top layer keeps the whole cell and draws at true scale
- * whatever lies under it. The whole stack never drops further than
- * MAX_STACK_DROP of the cell, so the deepest slab stays in the cell whatever
- * is piled on it.
+ * Depth is drawn as a foreshortened offset: each layer shifts the next one
+ * right by its thickest piece × k × FORESHORTEN × DEPTH_DX, so a stack of
+ * thick pouches reads deeper than a stack of thin ones. Only across: front ↔
+ * back is the settle's, which the cross-section draws too (the slab's own
+ * along drop is no longer used for the pouches). A slab loses only its own
+ * offset, so the top layer keeps the whole cell whatever lies under it, and
+ * the whole stack never shifts further than MAX_STACK_DROP of the cell.
  */
 const FORESHORTEN = 0.5;
 const DEPTH_DX = 0.5;
@@ -133,64 +139,66 @@ function packFill(slab: CellFrame, pieces: PouchDimensions[], k: number, widthRa
   });
 }
 
-/** A drawn pouch in its slab: its rect, where it sits un-nudged, and how far it can go. */
-type TruePack = { rect: PieceRect; home: { x: number; y: number }; range: NudgeRange };
+/** A drawn pouch across its slab: its left edge and width, where it sits un-nudged, and how far it can go. */
+type AcrossPack = { x: number; w: number; homeX: number; minX: number; maxX: number };
 
-/** The top-left corners a pouch may take in its slab, view units — the room its neighbours leave it. */
+/** The top-left corners a pouch may take, view units: across, the room its neighbours leave it; front ↔ back, its reach. */
 export type NudgeRange = { minX: number; maxX: number; minY: number; maxY: number };
 
 /**
- * True-scale pack of one layer (slice 02, 28-9-2026): each piece at its
- * footprint (× the fit's squeeze), the row centred in the slab with a seam
- * between pieces, slot order left → right; a piece longer than the slab is
- * cut to it. A piece's fine offset (mm × k) moves it from home within its
- * range — across, the slab less the room its neighbours need; front ↔ back,
- * the whole Section, so it can overhang its cell — and a piece that is
- * moved into a neighbour pushes it along, so order and seams always hold.
+ * True-scale pack of one layer across its slab (slice 02, 28-9-2026): each
+ * piece at its footprint width (× the fit's squeeze), the row centred in the
+ * slab with a seam between pieces, slot order left → right. A piece's fine
+ * across offset (mm × k) moves it from home within the slab less the room its
+ * neighbours need, and a piece moved into a neighbour pushes it along, so
+ * order and seams always hold. Front ↔ back is the settle's, not this.
  */
-function packTrue(
+function packAcross(
   slab: CellFrame,
   pieces: PouchDimensions[],
   k: number,
   widthRatios: readonly number[] | undefined,
-  offsets: ReadonlyArray<{ x: number; y: number }>,
-  /** Front ↔ back, the pouch may slide the whole Section; the slab's depth drop still applies. */
-  along: { minY: number; maxY: number },
-): TruePack[] {
+  offsetsX: readonly number[],
+): AcrossPack[] {
   const seams = GAP * (pieces.length - 1);
-  const feet = pieces.map((d, i) => {
-    const f = footprint(d, k);
-    return { w: f.w * (widthRatios?.[i] ?? 1), h: Math.min(f.h, slab.h) };
-  });
-  const sum = feet.reduce((t, f) => t + f.w, 0);
+  const feet = pieces.map((d, i) => footprint(d, k).w * (widthRatios?.[i] ?? 1));
+  const sum = feet.reduce((t, w) => t + w, 0);
   // Over even after the squeeze: the row shares the slab pro rata (the fit says it cannot close).
   const shrink = sum + seams > slab.w && sum > 0 ? Math.max(slab.w - seams, 1) / sum : 1;
-  const ws = feet.map((f) => f.w * shrink);
+  const ws = feet.map((w) => w * shrink);
   const row = ws.reduce((t, w) => t + w, 0) + seams;
   const start = slab.x + (slab.w - row) / 2;
   const before = (i: number) => ws.slice(0, i).reduce((t, w) => t + w + GAP, 0);
   const after = (i: number) => ws.slice(i + 1).reduce((t, w) => t + w + GAP, 0);
   let prevRight = -Infinity;
   return ws.map((w, i) => {
-    const h = feet[i].h;
-    const home = { x: start + before(i), y: slab.y + (slab.h - h) / 2 };
-    const range = {
-      minX: slab.x + before(i),
-      maxX: slab.x + slab.w - after(i) - w,
-      minY: along.minY,
-      maxY: along.maxY - h,
-    };
-    const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+    const homeX = start + before(i);
+    const minX = slab.x + before(i);
+    const maxX = slab.x + slab.w - after(i) - w;
     // Push right past the previous piece; the ranges guarantee it still fits.
-    const x = Math.max(clamp(home.x + offsets[i].x * k, range.minX, range.maxX), prevRight + GAP);
-    const y = clamp(home.y + offsets[i].y * k, range.minY, range.maxY);
+    const x = Math.max(Math.min(Math.max(homeX + offsetsX[i] * k, minX), Math.max(minX, maxX)), prevRight + GAP);
     prevRight = x + w;
-    return {
-      rect: { x: r1(x), y: r1(y), w: r1(w), h: r1(h) },
-      home: { x: r1(home.x), y: r1(home.y) },
-      range: { minX: r1(range.minX), maxX: r1(range.maxX), minY: r1(range.minY), maxY: r1(range.maxY) },
-    };
+    return { x: r1(x), w: r1(w), homeX: r1(homeX), minX: r1(minX), maxX: r1(maxX) };
   });
+}
+
+/**
+ * An extent along the Section (mm from its front, `cellMm` to a sub-section)
+ * as view y, a hair in from each end so two pouches that meet read as two.
+ * Through the stage's own rows, so a pouch that fills its cell draws exactly
+ * as the cell frame does; an end within a rounding of a row is on it.
+ */
+function alongRect(stage: StageGeometry, cellMm: number, startMm: number, endMm: number): { y: number; h: number } {
+  const yOf = (mm: number) => {
+    const b = Math.min(Math.max(Math.floor(mm / cellMm), 0), SUB_SECTIONS.length - 1);
+    for (const row of [b, b + 1]) if (Math.abs(mm - row * cellMm) < 0.15) return stage.rowY[row];
+    return stage.rowY[b] + ((mm - b * cellMm) * (stage.rowY[b + 1] - stage.rowY[b])) / cellMm;
+  };
+  // A hair in only where an end meets a cell's edge (a neighbour's, or the Section's end): a pouch clear of both keeps its true length.
+  const onRow = (mm: number) => Math.abs(mm / cellMm - Math.round(mm / cellMm)) * cellMm < 0.15;
+  const y0 = Math.max(stage.rowY[0] + INSET, yOf(startMm) + (onRow(startMm) ? INSET : 0));
+  const y1 = Math.min(stage.rowY[3] - INSET, yOf(endMm) - (onRow(endMm) ? INSET : 0));
+  return { y: r1(y0), h: r1(Math.max(y1 - y0, 1)) };
 }
 
 export type PieceLayout = {
@@ -209,16 +217,11 @@ export type PieceLayout = {
   settled: PieceRect;
   /** Top-left corner un-nudged (slice 08): the fine offset is measured from here. */
   home: { x: number; y: number };
-  /** The corners the pouch can take in its slab, for a drag to clamp to. */
+  /** The corners the pouch can take: across in its slab, front ↔ back in its reach (`PieceSettle.reachFrom` … `reachTo`). */
   range: NudgeRange;
+  /** Placed by hand (a fine offset either way): the soft settle holds it where it was put. */
+  nudged: boolean;
 } & PieceRect;
-
-/** The authored rect spread by the settle pass, kept inside the Section (INSET in from the body ends). */
-function settledRect(rect: PieceRect, s: PieceSettle, stage: StageGeometry): PieceRect {
-  const top = Math.max(stage.rowY[0] + INSET, rect.y - s.spreadFrontMm * stage.k);
-  const bottom = Math.min(stage.rowY[3] - INSET, rect.y + rect.h + s.spreadBackMm * stage.k);
-  return { x: rect.x, y: r1(top), w: rect.w, h: r1(Math.max(bottom - top, rect.h)) };
-}
 
 /** What the pillow layout needs beyond the placements: the Size's stage, each item's dimensions and the fit. */
 export type LayoutContext = {
@@ -239,8 +242,10 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
   // The pouch as it sits in this Size (M is the reference): the same door the fit and settle use.
   const dimsOf = dimsAtSize(ctx.dims, PILLOW_DIMENSIONS[stage.size]);
   const sizeF = sizeFactors(PILLOW_DIMENSIONS[stage.size]);
-  const settleOf = new Map<string, PieceSettle>();
-  if (ctx.fit?.settle.active) for (const s of ctx.fit.settle.pieces) settleOf.set(s.key, s);
+  // Where each pouch stands front ↔ back: the fit's settle (the cut draws the same), or this Size's own.
+  const settle = ctx.fit?.settle ?? settlePillow(placements, { size: stage.size, dims: ctx.dims });
+  const settleOf = new Map<string, PieceSettle>(settle.pieces.map((s) => [s.key, s]));
+  const cellLen = settle.cellLengthMm;
   const out: PieceLayout[] = [];
   for (const section of SECTIONS) {
     for (const subSection of SUB_SECTIONS) {
@@ -249,6 +254,7 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
         .sort((a, b) => a.slot - b.slot);
       if (pieces.length === 0) continue;
       const frame = cellFrame(section, subSection, stage);
+      const col = SUB_SECTIONS.indexOf(subSection);
       // Layers compacted exactly as the fit model compacts them (core.cellLayerGroups).
       const layers = cellLayerGroups(pieces);
       const cellFit: CellFit | undefined = ctx.fit?.cells.find(
@@ -261,7 +267,7 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
           (list, d) =>
             Math.max(
               ...list.map(
-                (p) => settleOf.get(`${section}/${subSection}/${p.slot}`)?.settledThicknessMm ?? dimsOf(p.itemId).thicknessMm,
+                (p) => (settle.active ? settleOf.get(`${section}/${subSection}/${p.slot}`)?.settledThicknessMm : undefined) ?? dimsOf(p.itemId).thicknessMm,
               ),
             ) * (cellFit?.thicknessRatios[d] ?? 1),
         ),
@@ -269,19 +275,30 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
       );
       // Emit deepest-first so the renderer paints the top layer last (on top).
       for (let d = layers.length - 1; d >= 0; d--) {
-        const packed = packTrue(
+        const packed = packAcross(
           slabs[d],
           layers[d].map((p) => dimsOf(p.itemId)),
           stage.k,
           cellFit?.layers[d]?.pieces.map((p) => p.widthRatio),
           // Offsets are M millimetres too, so a pouch pushed to the edge stays at the edge at every Size.
-          layers[d].map((p) => ({ x: (p.offsetXMm ?? 0) * sizeF.across, y: (p.offsetYMm ?? 0) * sizeF.along })),
-          { minY: stage.rowY[0] + INSET + (slabs[d].y - frame.y), maxY: stage.rowY[3] - INSET },
+          layers[d].map((p) => (p.offsetXMm ?? 0) * sizeF.across),
         );
         layers[d].forEach((piece, idx) => {
           const key = `${section}/${subSection}/${piece.slot}`;
           const s = settleOf.get(key);
-          const { rect, home, range } = packed[idx];
+          const { x, w, homeX, minX, maxX } = packed[idx];
+          // Its own length (a cell's at most), where it stands, and where it would stand un-nudged.
+          const len = Math.min(dimsOf(piece.itemId).lengthMm, cellLen);
+          const homeStart = col * cellLen + (cellLen - len) / 2;
+          const start = s?.startMm ?? homeStart;
+          const end = s?.endMm ?? homeStart + len;
+          const spread = s ? s.spreadFrontMm > 0 || s.spreadBackMm > 0 : false;
+          // The authored rect is its own length where it was put (home + its offset), kept inside where it settled.
+          const put = authoredStartMm(col, cellLen, s?.alongMm ?? len, (piece.offsetYMm ?? 0) * sizeF.along);
+          const own = Math.min(Math.max(put, start), Math.max(start, end - len));
+          const authored = alongRect(stage, cellLen, own, Math.min(own + len, end));
+          const reach = s ? [SUB_SECTIONS.indexOf(s.reachFrom) * cellLen, (SUB_SECTIONS.indexOf(s.reachTo) + 1) * cellLen] : [col * cellLen, (col + 1) * cellLen];
+          const rect = { x, y: authored.y, w, h: authored.h };
           out.push({
             key,
             section,
@@ -290,9 +307,10 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
             itemId: piece.itemId,
             depth: d,
             ...rect,
-            settled: s && (s.spreadFrontMm > 0 || s.spreadBackMm > 0) ? settledRect(rect, s, stage) : rect,
-            home,
-            range,
+            settled: spread ? { x, w, ...alongRect(stage, cellLen, start, end) } : rect,
+            home: { x: homeX, y: alongRect(stage, cellLen, homeStart, homeStart + len).y },
+            range: { minX, maxX, minY: r1(stage.rowY[0] + reach[0] * stage.k + INSET), maxY: r1(stage.rowY[0] + reach[1] * stage.k - INSET - authored.h) },
+            nudged: Boolean(piece.offsetXMm || piece.offsetYMm),
           });
         });
       }

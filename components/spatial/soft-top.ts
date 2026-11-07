@@ -223,6 +223,17 @@ export function settleTop(planes: readonly SoftTopPlane[], settings: SoftBodySet
   return out;
 }
 
+/** A settled ring's drawn path, once per ring: a plane read from the cache hands back the same rings, so only new ones are smoothed. */
+const smoothedPaths = new WeakMap<readonly Pt[], string>();
+function smoothedPath(ring: readonly Pt[]): string {
+  let d = smoothedPaths.get(ring);
+  if (d === undefined) {
+    d = smoothClosedPath(ring);
+    smoothedPaths.set(ring, d);
+  }
+  return d;
+}
+
 const noSubscribe = () => () => {};
 const isClient = () => true;
 const isServer = () => false;
@@ -342,5 +353,5 @@ export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings
   }, [target]);
 
   const rings = frame && frame.of === target ? frame.rings : target;
-  return useMemo(() => (rings ? new Map([...rings].map(([key, ring]) => [key, smoothClosedPath(ring)])) : null), [rings]);
+  return useMemo(() => (rings ? new Map([...rings].map(([key, ring]) => [key, smoothedPath(ring)])) : null), [rings]);
 }
