@@ -81,6 +81,18 @@ function Button({
 }: ButtonProps) {
   const [ripples, setRipples] = React.useState<Ripple[]>([])
   const buttonRef = React.useRef<HTMLButtonElement>(null)
+  // Each ripple clears itself after 600ms. A Button unmounted before then
+  // cancels its timers, so none sets state afterwards: in a test that means
+  // after jsdom is torn down, where React's update throws `window is not
+  // defined` as an unhandled error and fails the run.
+  const rippleTimers = React.useRef(new Set<ReturnType<typeof setTimeout>>())
+  React.useEffect(() => {
+    const timers = rippleTimers.current
+    return () => {
+      timers.forEach(clearTimeout)
+      timers.clear()
+    }
+  }, [])
 
   const createRipple = React.useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -99,9 +111,11 @@ function Button({
 
       setRipples((prev) => [...prev, newRipple])
 
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        rippleTimers.current.delete(timer)
         setRipples((prev) => prev.filter((r) => r.id !== newRipple.id))
       }, 600)
+      rippleTimers.current.add(timer)
     },
     [],
   )

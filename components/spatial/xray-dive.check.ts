@@ -133,13 +133,15 @@ assert.match(renderer, /setAttribute\("d"/, "morphs write path d only (no layout
 assert.doesNotMatch(renderer, /<rect/, "still no box crops (ADR 0009 guardrail 1)");
 
 // --- Slice 04: the fit on the pillow, in the panel, in the dock, at the add ---
-assert.equal(renderer.match(/<LoftGauge/g)?.length, 2, "the loft gauge is mounted once in the desktop panel and once in the phone dock");
-assert.match(renderer, /<LoftGauge cell=\{cellFitOf\(subSection\)!\} size=\{pillowSize\} compact \/>/, "the desktop panel gauge is the compact one");
-assert.match(renderer, /<LoftGauge cell=\{cellFitOf\(subSection\)!\} size=\{pillowSize\} compact=\{false\} \/>/, "the phone dock gauge is the readable one");
-assert.match(renderer, /role="meter"/, "the gauge is a meter for assistive tech");
-assert.match(renderer, /fitMessage\(cell, size\)/, "the gauge's message is the pure fitMessage — the three numbers and the Size");
+// No loft gauge (owner, 7-11-2026): Staff do not act on used / max mm, so a
+// cell says only that it is compressed or over, with the numbers in its tooltip.
+assert.doesNotMatch(renderer, /LoftGauge|role="meter"/, "no used / max mm gauge on any cell");
+assert.equal(renderer.match(/<CellFitNote/g)?.length, 2, "the fit note is mounted once in the desktop panel and once in the docks");
+assert.match(renderer, /export function FitNote\([\s\S]*?if \(status === "ok"\) return null;/, "a cell that fits says nothing");
+assert.match(renderer, /fitMessage\(cell, size\)/, "the note's tooltip is the pure fitMessage — the three numbers and the Size");
 assert.doesNotMatch(renderer, /status === "over"\) \{\s*toast\.error/, "fit never refuses an add or a move — it warns");
-assert.match(renderer, /<FitWarning status=\{cell\.status\} message=\{fitMessage\(cell, size\)\}/, "the gauge's fit message lives in its warning tooltip");
+assert.match(renderer, /<FitNote status=\{cell\.status\} message=\{fitMessage\(cell, size\)\}/, "the cell's fit message lives in its note's warning tooltip");
+assert.match(renderer, /<FitWarning status=\{status\} message=\{message\} \/>/, "the note's word comes with the warning triangle");
 assert.equal(renderer.match(/warning=\{layerWarning\(subSection, depth\)\}/g)?.length, 2, "each layer row warns with its own width message, in the panel and in the dock");
 assert.match(renderer, /layerFitMessage\(cell, layer\)/, "a row's tooltip is the pure per-layer message");
 
@@ -257,6 +259,6 @@ assert.match(
 console.log("xray-dive.check: all assertions passed");
 
 // --- Controls slot: a host can park the dive controls beside the pillow ------
-assert.match(renderer, /createPortal\(<div data-xray-dive-dock>\{diveControls\(""\)\}<\/div>, controlsSlot!\)/, "slotted controls are the dock's own render, portalled into the host's slot");
+assert.match(renderer, /createPortal\(<div data-xray-dive-dock[^>]*>\{diveControls\("[^"]*"\)\}<\/div>, controlsSlot!\)/, "slotted controls are the dock's own render, portalled into the host's slot");
 assert.match(renderer, /controlsSlot\?\.contains\(target\)/, "a click in the slot is not 'outside' — it never ends the dive");
 assert.match(renderer, /const slotted = Boolean\(controlsSlot\) && !isMobile;/, "phones keep the dock under the pillow");

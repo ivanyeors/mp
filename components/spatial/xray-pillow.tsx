@@ -186,9 +186,11 @@ const sameCellRef = (p: Cell, q: Cell) => p.section === q.section && p.subSectio
 // stage (650px wide) they stay tiny; below md the stage is ~360px wide and
 // there is no hover or precise pointer, so the same chips grow to a readable
 // 11px with ~28px icon buttons — the largest that still fits three per cell.
-const CHIP_CLASS = "rounded border bg-background/90 shadow-sm text-[9px] leading-4 max-md:text-[11px] max-md:leading-5 md:dock:text-xs md:dock:leading-5";
-const CHIP_ICON_CLASS = "size-2.5 max-md:size-3.5 md:dock:size-3.5";
-const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-md:items-center max-md:justify-center md:dock:flex md:dock:size-7 md:dock:items-center md:dock:justify-center";
+// Docked beside the pillow on a desktop (`md:dock:`), nothing constrains them
+// but the panel's width: 14px text and 32px buttons.
+export const CHIP_CLASS = "rounded border bg-background/90 shadow-sm text-[9px] leading-4 max-md:text-[11px] max-md:leading-5 md:dock:text-sm md:dock:leading-6";
+export const CHIP_ICON_CLASS = "size-2.5 max-md:size-3.5 md:dock:size-4";
+export const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-md:items-center max-md:justify-center md:dock:flex md:dock:size-8 md:dock:items-center md:dock:justify-center";
 
 // Layer rows are the one control staff DRAG, and a grab that misses scrolls the
 // page instead — so they get their own, larger scale rather than the read-mostly
@@ -196,10 +198,12 @@ const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-m
 // that still has to fit five rows inside a ~112px cell. Phone: the dock is in
 // normal flow with room, so the buttons go to the 44px minimum touch target.
 const LAYER_ROW_CLASS =
-  "rounded-md border bg-background/95 shadow-sm text-[10px] leading-4 max-md:text-[13px] max-md:leading-6 md:dock:text-[13px] md:dock:leading-6";
+  "rounded-md border bg-background/95 shadow-sm text-[10px] leading-4 max-md:text-[13px] max-md:leading-6 md:dock:text-sm md:dock:leading-7";
 const LAYER_ICON_CLASS = "size-3 max-md:size-4 md:dock:size-4";
 const LAYER_ICON_BUTTON_CLASS =
-  "flex size-5 shrink-0 items-center justify-center rounded max-md:size-11 md:dock:size-8";
+  "flex size-5 shrink-0 items-center justify-center rounded max-md:size-11 md:dock:size-9";
+/** The add picker's diameter when the editor's controls are slotted beside the art (desktop); the Mbolster's too. */
+export const SLOTTED_BLOOM_PX = 300;
 const easeOut = (t: number) => t * (2 - t);
 
 /**
@@ -403,36 +407,32 @@ export function MorphPiece({
 }
 
 /**
- * A cell's loft against its Section's budget (slice 04): `42 / 60 mm`, a bar,
- * and the fit message when the stack is at its limit or past it. Reads the
- * fit the x-ray already holds; nothing is recomputed. Not interactive — it sits
- * over the cell art and must not swallow the click that adds to it.
+ * A cell that is compressed or over (slice 04), said in a word with the numbers
+ * in its triangle's tooltip — only when there is a problem. The loft gauge it
+ * replaces (used / max mm and a bar on every cell) was a measurement Staff do
+ * not act on; the word is what they need (owner, 7-11-2026).
  */
-export function LoftGauge({ cell, size, compact }: { cell: CellFit; size: string; compact: boolean }) {
-  const pct = Math.min(cell.loftMm / Math.max(cell.maxLoftMm, 1), 1) * 100;
-  const bar = cell.status === "ok" ? "bg-emerald-500" : "bg-amber-500";
-  const tone = FIT_TONE[cell.status as Exclude<FitStatus, "ok">];
+function CellFitNote({ cell, size, className = "" }: { cell: CellFit; size: string; className?: string }) {
+  return <FitNote status={cell.status} message={fitMessage(cell, size)} className={className} data-xray-cell-fit={cell.status} />;
+}
+
+/** A fit problem in a word ("Compressed", "Over") with the numbers in its triangle's tooltip; nothing when it fits. The Mbolster's compartment says it the same way. */
+export function FitNote({
+  status,
+  message,
+  className = "",
+  ...data
+}: {
+  status: FitStatus;
+  message: string;
+  className?: string;
+} & { [attr: `data-${string}`]: string }) {
+  if (status === "ok") return null;
   return (
-    <div
-      className={`flex w-full flex-col gap-0.5 rounded border bg-background/90 px-1.5 py-0.5 shadow-sm ${compact ? "text-[9px] leading-4" : "text-[11px] leading-5"}`}
-      role="meter"
-      aria-valuemin={0}
-      aria-valuemax={cell.maxLoftMm}
-      aria-valuenow={cell.loftMm}
-      aria-label={`${cell.section} ${cell.subSection} loft`}
-      data-xray-loft-gauge={cell.status}
-    >
-      <div className="flex items-center gap-1 tabular-nums">
-        <span>
-          {Math.round(cell.loftMm)} / {Math.round(cell.maxLoftMm)} mm
-        </span>
-        {cell.status !== "ok" && <span className={`capitalize ${tone}`}>{cell.status}</span>}
-        {cell.status !== "ok" && <FitWarning status={cell.status} message={fitMessage(cell, size)} className="ml-auto" />}
-      </div>
-      <div className="h-1 w-full overflow-hidden rounded bg-muted">
-        <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
+    <span className={`flex items-center gap-1 font-medium capitalize ${FIT_TONE[status]} ${className}`} {...data}>
+      <FitWarning status={status} message={message} />
+      {status}
+    </span>
   );
 }
 
@@ -467,7 +467,7 @@ export function FitWarning({
           data-fit-warning={status}
           onClick={() => setOpen((o) => !o)}
         >
-          <AlertTriangle className="size-3 max-md:size-3.5" />
+          <AlertTriangle className="size-3 max-md:size-3.5 md:dock:size-4" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-64">
@@ -573,7 +573,7 @@ function LayerRow({
       ref={ref}
       data-drop-cell={dropCell}
       data-drop-layer={depth}
-      className={`pointer-events-auto flex w-full items-center gap-1 px-1 max-md:gap-1.5 max-md:px-1.5 md:dock:gap-1.5 md:dock:px-1.5 ${LAYER_ROW_CLASS} ${isDragging ? "z-50 opacity-70 shadow-lg" : ""}`}
+      className={`pointer-events-auto flex w-full items-center gap-1 px-1 max-md:gap-1.5 max-md:px-1.5 md:dock:gap-1.5 md:dock:px-2 ${LAYER_ROW_CLASS} ${isDragging ? "z-50 opacity-70 shadow-lg" : ""}`}
     >
       <span className="shrink-0 tabular-nums text-muted-foreground">{depth + 1}</span>
       {warning && <FitWarning status={warning.status} message={warning.message} />}
@@ -586,7 +586,7 @@ function LayerRow({
         {pieces.map((piece) => (
           <span
             key={piece.slot}
-            className={`flex min-w-0 items-center gap-0.5 rounded pl-1.5 ${piece.slot === selectedSlot ? "bg-sky-400/30 ring-1 ring-sky-400" : "bg-muted"}`}
+            className={`flex min-w-0 items-center gap-0.5 rounded pl-1.5 md:dock:pl-2 ${piece.slot === selectedSlot ? "bg-sky-400/30 ring-1 ring-sky-400" : "bg-muted"}`}
           >
             <button
               type="button"
@@ -973,7 +973,7 @@ export function XrayPillow({
     return item ? fillingLabel(item) : `Item #${itemId}`;
   };
 
-  /** The dived cell's fit, for its gauge; undefined while the cell is empty. */
+  /** The dived cell's fit, for its fit note; undefined while the cell is empty. */
   const cellFitOf = (subSection: SubSection): CellFit | undefined =>
     dived ? fit.cells.find((c) => c.section === dived && c.subSection === subSection) : undefined;
 
@@ -1375,11 +1375,11 @@ export function XrayPillow({
     // The chip sits on its pouches, so it picks one of them up: the selected one, else the first.
     const ref: PieceRef = { section: cell.section, subSection: cell.subSection, slot: on ? selectedPiece!.slot : slots[0] };
     return (
-      <span className={`flex items-center gap-0.5 px-1 ${CHIP_CLASS} ${on ? "ring-1 ring-sky-400" : ""}`}>
+      <span className={`flex items-center gap-0.5 px-1 md:dock:pl-2 md:dock:pr-0.5 ${CHIP_CLASS} ${on ? "ring-1 ring-sky-400" : ""}`}>
         {/* The chip sits on the pouch, so its label is the selection target there (slice 06). */}
         <button
           type="button"
-          className="max-w-24 cursor-grab truncate active:cursor-grabbing"
+          className="max-w-24 cursor-grab truncate active:cursor-grabbing md:dock:max-w-44"
           aria-pressed={on}
           aria-label={`Select ${label} in ${cell.section} ${cell.subSection} — drag to move`}
           onClick={() => selectPiece(ref)}
@@ -1443,7 +1443,7 @@ export function XrayPillow({
   /** Side ↔ Stacked arrangement toggle for a cell with 2+ pieces (overlay + dock). */
   const arrangementToggle = (cell: Cell, subSection: SubSection, stacked: boolean) => (
     <div
-      className="pointer-events-auto flex overflow-hidden rounded border text-[9px] leading-4 shadow-sm max-md:text-[11px] max-md:leading-5 md:dock:text-xs md:dock:leading-5"
+      className="pointer-events-auto flex shrink-0 overflow-hidden rounded border text-[9px] leading-4 shadow-sm max-md:text-[11px] max-md:leading-5 md:dock:rounded-md md:dock:text-xs md:dock:leading-6"
       role="group"
       aria-label={`${cell.section} ${subSection} arrangement`}
     >
@@ -1454,7 +1454,7 @@ export function XrayPillow({
             key={mode}
             type="button"
             aria-pressed={on}
-            className={`px-1.5 py-0.5 max-md:px-2.5 max-md:py-1 md:dock:px-2.5 md:dock:py-1 ${on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            className={`px-1.5 py-0.5 max-md:px-2.5 max-md:py-1 md:dock:px-2.5 md:dock:py-1.5 ${on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
             onClick={() => onPlacementsChange?.(setCellArrangement(placements, cell, mode))}
           >
             {mode === "side" ? "Side" : "Stacked"}
@@ -1484,7 +1484,7 @@ export function XrayPillow({
         className={
           compact
             ? `pointer-events-auto flex items-center gap-0.5 px-1 aria-disabled:opacity-40 hover:bg-accent ${CHIP_CLASS}`
-            : "flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium hover:bg-accent aria-disabled:opacity-40"
+            : "flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium hover:bg-accent aria-disabled:opacity-40 md:dock:text-sm"
         }
         // aria-disabled, not `disabled`: a disabled button leaves the tab order,
         // so the one thing that explains WHY it does nothing would be unreachable
@@ -1533,7 +1533,7 @@ export function XrayPillow({
       // A pouch dropped here starts a new Layer under the deepest (slice 07).
       data-drop-cell={`${cell.section}/${cell.subSection}`}
       data-drop-layer={layers.length}
-      className={`pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 md:dock:min-h-7 md:dock:px-2 ${CHIP_CLASS}`}
+      className={`pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 md:dock:min-h-9 md:dock:gap-1.5 md:dock:px-3 ${CHIP_CLASS}`}
       aria-label={`Add a layer under ${cell.section} ${subSection}`}
       onClick={() => openPicker(subSection, layers.length)}
     >
@@ -1607,12 +1607,12 @@ export function XrayPillow({
     dived && (
       <div className={`flex flex-col ${chrome}`}>
         <div className="mb-1 flex shrink-0 flex-wrap items-center gap-2 px-1">
-          <span className="text-xs font-semibold capitalize">{dived} section</span>
+          <span className="text-xs font-semibold capitalize md:dock:text-base">{dived} section</span>
           <div className="ml-auto flex items-center gap-2">
             {mirrorButton(dived, false)}
             <button
               type="button"
-              className="min-h-9 rounded-lg px-3 text-xs font-medium hover:bg-accent"
+              className="min-h-9 rounded-lg px-3 text-xs font-medium hover:bg-accent md:dock:text-sm"
               onClick={endDive}
             >
               Done
@@ -1628,17 +1628,19 @@ export function XrayPillow({
           return (
             <div
               key={subSection}
-              className="flex flex-col gap-1.5 border-t border-border/60 px-1 py-2 first:border-t-0"
+              className="flex flex-col gap-1.5 border-t border-border/60 px-1 py-2 first:border-t-0 md:dock:gap-2 md:dock:py-3"
             >
-              <div className="flex items-center gap-1.5">
-                <span className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {/* Wraps rather than squeezing: a narrow host panel puts Add filling on its own line instead of
+                  clipping the Side / Stacked toggle. */}
+              <div className="flex flex-wrap items-center gap-1.5 md:dock:gap-2">
+                <span className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground md:dock:w-16 md:dock:text-xs">
                   {subSection}
                 </span>
                 {cellPcs.length >= 2 && arrangementToggle(cell, subSection, stacked)}
                 <button
                   type="button"
                   disabled={full}
-                  className={`ml-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 md:dock:min-h-7 md:dock:px-2 ${CHIP_CLASS}`}
+                  className={`ml-auto flex shrink-0 items-center gap-0.5 whitespace-nowrap px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 md:dock:min-h-9 md:dock:gap-1.5 md:dock:px-3 ${CHIP_CLASS}`}
                   aria-label={
                     full
                       ? `${dived} ${subSection} cell full (max ${MAX_PIECES_PER_CELL})`
@@ -1650,17 +1652,20 @@ export function XrayPillow({
                   {full ? "Full" : "Add filling"}
                 </button>
               </div>
-              {/* Phone parity (slice 04): the same gauge and message in the dock group. */}
+              {/* Phone parity (slice 04): the same fit note as on the desktop panel. */}
               {cellPcs.length > 0 && cellFitOf(subSection) && (
-                <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact={false} />
+                <CellFitNote cell={cellFitOf(subSection)!} size={pillowSize} className="text-[11px] md:dock:text-sm" />
               )}
+              {/* Slotted (desktop), a one-layer cell's Add layer joins its chips' line: the slot is only as tall
+                  as the pillow, and a line per button pushed the third cell out of sight. */}
               {!stacked && cellPcs.length > 0 && (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   {sideChips
                     .filter((fc) => fc.subSection === subSection)
                     .map((fc) => (
                       <span key={fc.itemId}>{pieceChip(fc.cell, fc.itemId, fc.slots)}</span>
                     ))}
+                  {slotted && layers.length < MAX_LAYERS_PER_CELL && addLayerButton(cell, subSection, layers)}
                 </div>
               )}
               {/* One provider per CELL: see layerDragEnd. */}
@@ -1692,6 +1697,7 @@ export function XrayPillow({
                 </DragDropProvider>
               )}
               {cellPcs.length > 0 &&
+                (stacked || !slotted) &&
                 layers.length < MAX_LAYERS_PER_CELL &&
                 addLayerButton(cell, subSection, layers)}
             </div>
@@ -2083,9 +2089,13 @@ export function XrayPillow({
                   className={`absolute z-20 flex flex-col items-center gap-0.5 ${cellAnchor(subSection).translate}`}
                   style={{ ...cellAnchor(subSection).style, pointerEvents: "none" }}
                 >
-                  {/* Loft gauge (slice 04): used / max mm and the fit message, on the cell. */}
+                  {/* Fit note (slice 04): compressed / over, on the cell, only when it is one. */}
                   {cellPcs.length > 0 && cellFitOf(subSection) && (
-                    <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact />
+                    <CellFitNote
+                      cell={cellFitOf(subSection)!}
+                      size={pillowSize}
+                      className={`pointer-events-auto px-1 ${CHIP_CLASS}`}
+                    />
                   )}
                   {/* ponytail: a side cell's centroid chips share this band; the
                       panel's opaque background and z-20 keep the toggle
@@ -2141,15 +2151,17 @@ export function XrayPillow({
               Phones: centred on the stage instead, so an outer column's bloom
               cannot run off the screen edge — and sized to the whole stage,
               not the dive column, with thicker rings and a 44px centre
-              trigger so the wedges are thumb-sized. */}
+              trigger so the wedges are thumb-sized.
+              Slotted (desktop, controls beside the pillow): nothing else sits
+              on the art, so the bloom grows past the dive column to a fixed
+              300px with phone-sized labels. It is portalled to the page, so
+              it can spill over the neighbouring columns without being clipped. */}
           {openSub && (
             <div
               className="absolute z-40 -translate-x-1/2 -translate-y-1/2"
               style={{
                 ...(isMobile ? { left: "50%", top: "50%" } : cellCenter(openSub)),
-                width: isMobile
-                  ? "100%"
-                  : `${((stage.colX[divedIdx + 1] - stage.colX[divedIdx]) / XRAY_VIEW.width) * 100}%`,
+                width: isMobile ? "100%" : slotted ? SLOTTED_BLOOM_PX : divedColumnWidth,
                 pointerEvents: "auto",
               }}
             >
@@ -2157,9 +2169,10 @@ export function XrayPillow({
                 open
                 root={fillingTree}
                 display="text"
-                size={isMobile ? 280 : 220}
-                ringWidth={isMobile ? 48 : 40}
-                holeRadius={isMobile ? 26 : 18}
+                size={isMobile ? 280 : slotted ? SLOTTED_BLOOM_PX : 220}
+                ringWidth={isMobile ? 48 : slotted ? 56 : 40}
+                holeRadius={isMobile ? 26 : slotted ? 24 : 18}
+                largeLabels={slotted}
                 centerIcon={Plus}
                 ariaLabel={
                   openLayer === null
@@ -2234,8 +2247,9 @@ export function XrayPillow({
           {diveControls("max-h-[70vh] rounded-2xl border border-border/60 bg-background/95 p-2 shadow-xl backdrop-blur-xl")}
         </div>
       )}
-      {/* Host-provided slot (desktop): the same controls beside the pillow, off the art. */}
-      {dived && editable && slotted && createPortal(<div data-xray-dive-dock>{diveControls("")}</div>, controlsSlot!)}
+      {/* Host-provided slot (desktop): the same controls beside the pillow, off the art. A flex column all the
+          way down, so in a slot of bounded height the header (Mirror, Done) stays put while the cells scroll. */}
+      {dived && editable && slotted && createPortal(<div data-xray-dive-dock className="flex min-h-0 flex-1 flex-col">{diveControls("min-h-0 flex-1")}</div>, controlsSlot!)}
     </div>
   );
 }

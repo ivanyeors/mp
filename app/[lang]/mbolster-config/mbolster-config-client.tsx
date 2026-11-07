@@ -107,6 +107,7 @@ import {
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { XrayBolster } from "@/components/spatial/xray-bolster";
+import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { BolsterCrossSection } from "@/components/spatial/xray-cross-section";
 import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
 import { fitBolster } from "@/lib/spatial-fillings/fit";
@@ -303,6 +304,8 @@ export function MbolsterConfigClient({
   const homeHref = withLocale("/", locale);
   const to = (href: string) => withLocale(href, locale);
   const isMobile = useIsMobile();
+  // The Staff compartment editor's panel, where XrayBolster portals its controls (off a phone).
+  const [compartmentSlot, setCompartmentSlot] = React.useState<HTMLElement | null>(null);
   // Phones: each step's Back / Continue render in the bottom bar's slot.
   const [mobileActionsSlot, setMobileActionsSlot] = React.useState<HTMLDivElement | null>(null);
   const [exitDialogOpen, setExitDialogOpen] = React.useState(false);
@@ -1450,7 +1453,10 @@ export function MbolsterConfigClient({
                 />
               </>
             )}
-            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 p-4 max-md:px-3 md:gap-6">
+            {/* Desktop: the stage scrolls when Staff's controls make it taller than the screen (as mp-config's
+                does); `my-auto` keeps it centred while it fits, so a guest's stage is unchanged. */}
+            <div className="relative z-10 flex flex-col p-4 max-md:px-3 lg:absolute lg:inset-0 lg:overflow-y-auto lg:overscroll-contain">
+            <div className="my-auto flex w-full flex-col items-center gap-4 md:gap-6">
               <div
                 // Full column width (max 500px) below lg so the x-ray is tappable on phones.
                 className="relative w-full max-w-[500px] lg:w-[min(75vmin,500px)]"
@@ -1512,6 +1518,8 @@ export function MbolsterConfigClient({
                     // Guests view, never edit: omitting these keeps the renderer read-only.
                     items={staffAssist ? assistItems : undefined}
                     onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
+                    // Staff off a phone: the compartment's controls in the panel under the capsule, off the art.
+                    controlsSlot={staffAssist ? compartmentSlot : undefined}
                     className="absolute inset-0"
                   />
                 )}
@@ -1521,6 +1529,15 @@ export function MbolsterConfigClient({
                   </div>
                 )}
               </div>
+              {/* Staff: the compartment editor (XrayBolster's controls), under the capsule at its width. Phones keep
+                  the controls in the frame. */}
+              {staffAssist && xrayVisible && !isMobile && (
+                <XraySectionDock
+                  dived="compartment"
+                  onSlot={setCompartmentSlot}
+                  className="flex w-full max-w-[500px] border-border/60 bg-background/70 shadow-xl backdrop-blur-xl lg:w-[min(75vmin,500px)]"
+                />
+              )}
               {/* Slice 09: the end-on cut under the capsule, Staff and guest, read-only. */}
               {xrayVisible && (
                 <BolsterCrossSection
@@ -1597,6 +1614,7 @@ export function MbolsterConfigClient({
                   Fillings are chosen by our team after review.
                 </p>
               ) : null}
+            </div>
             </div>
           </div>
 

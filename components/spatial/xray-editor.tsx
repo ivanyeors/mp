@@ -136,6 +136,7 @@ export function XrayBolsterEditor({
   colorOverrides = [],
   dimensionOverrides,
   fit,
+  controlsSlot,
   className,
 }: {
   placements: BolsterPlacement[];
@@ -147,6 +148,8 @@ export function XrayBolsterEditor({
   dimensionOverrides?: DimensionOverridesPayload;
   /** The host's fit (`useBolsterFit`), shared with its confirm and cross-section; computed by the x-ray when omitted. */
   fit?: BolsterFit;
+  /** Desktop: where the compartment controls render instead of over the capsule. */
+  controlsSlot?: HTMLElement | null;
   className?: string;
 }) {
   const { itemSubtypes, itemSizes, itemDims } = useItemMaps(items, dimensionOverrides);
@@ -161,6 +164,7 @@ export function XrayBolsterEditor({
         fit={fit}
         items={items}
         onPlacementsChange={onPlacementsChange}
+        controlsSlot={controlsSlot}
         className="absolute inset-0"
       />
     </XrayFrame>
