@@ -110,7 +110,7 @@ describe("Payment link state", () => {
   });
 
   it("looks up only uuid tokens", () => {
-    expect(isPayLinkToken("3f2a3c1e-8a5b-4b8e-9a51-0c7c9d2f1b6a")).toBe(true);
+    expect(isPayLinkToken("5a1e5a1e-0000-4000-8000-0000000f0009")).toBe(true);
     expect(isPayLinkToken("../../etc")).toBe(false);
     expect(isPayLinkToken(42)).toBe(false);
   });

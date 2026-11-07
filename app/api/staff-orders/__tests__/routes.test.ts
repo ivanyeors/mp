@@ -44,7 +44,7 @@ const pay = (await import("@/app/api/pay/[token]/checkout/route")).POST;
 
 const CUSTOMER = "0b0b0b0b-0000-4000-8000-000000000001";
 const VARIANT = "0c0c0c0c-0000-4000-8000-000000000001";
-const TOKEN = "3f2a3c1e-8a5b-4b8e-9a51-0c7c9d2f1b6a";
+const TOKEN = "5a1e5a1e-0000-4000-8000-0000000f0009";
 const body = {
   customer_id: CUSTOMER,
   goods: [{ variant_id: VARIANT, quantity: 1 }],

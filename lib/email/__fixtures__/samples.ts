@@ -230,7 +230,7 @@ export function samplePaymentRequest(fixture: EmailFixture = "happy") {
     deliveryHeading: "Delivering to",
     deliveryLines: [pick(fixture, "Ada Tan"), pick(fixture, "1 Orchard Road #02-01"), "Singapore 238824", "SG"],
     note: pick(fixture, "Your spare ear pad, and the re-adjustment we did today."),
-    payUrl: "https://custom.mpillow.com/en-US/pay/3f2a3c1e-8a5b-4b8e-9a51-0c7c9d2f1b6a",
+    payUrl: "https://custom.mpillow.com/en-US/pay/5a1e5a1e-0000-4000-8000-0000000f0009",
     expires: "Fri, 14 Nov 2026",
   };
 }
