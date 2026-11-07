@@ -43,10 +43,16 @@ assert.match(renderer, /bolsterShellPolygon\(/, "capsule sampled for conform geo
 assert.match(renderer, /layoutBolsterPlacements\(/, "deterministic layout engine renders the mix");
 assert.match(renderer, /layoutBolsterPlacements\(placements, length, \{ dims: itemDims, fit \}\)/, "true scale (slice 09): the registry dimensions and the fit draw the pack");
 assert.match(renderer, /fitProp \?\? fitBolster\(placements, length, \{ dims: itemDims \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
-assert.match(renderer, /onPlacementsChange\?\.\(addBolsterPiece\(placements, itemId\)\);/, "fit never refuses a bolster add — the gauge warns");
-assert.match(renderer, /<FitWarning status=\{fit\.status\} message=\{bolsterFitMessage\(fit, label\)\}/, "the gauge's fit message lives in its warning tooltip");
+assert.match(renderer, /onPlacementsChange\?\.\(addBolsterPiece\(placements, itemId\)\);/, "fit never refuses a bolster add — the fit note warns");
 assert.match(renderer, /data-xray-bolster-ring=\{fit\.status\}/, "the capsule ring is a stroke on the capsule path, amber (never red)");
-assert.match(renderer, /<BolsterGauge fit=\{fit\} label=\{pieceLabel\} \/>/, "the length gauge sits with the editor");
+// The pillow editor's language (owner, 7-11-2026): no mm bar, a fit problem in a word, the same picker.
+assert.doesNotMatch(renderer, /BolsterGauge|role="meter"|usedMm/, "no used / length mm gauge");
+assert.match(renderer, /<FitNote\s+status=\{fit\.status\}\s+message=\{bolsterFitMessage\(fit, pieceLabel\)\}/, "the fit message lives in the fit note's tooltip");
+assert.match(renderer, /fillingItemsToSunburst\(items \?\? \[\]\)/, "add picker groups fillings family → variant, as the pillow's does");
+assert.match(renderer, /<SunburstMenu[\s\S]*?onSelect=\{\(leaf\) => addItem\(Number\(leaf\.id\)\)\}/, "a picked leaf adds that Item");
+assert.doesNotMatch(renderer, /<Select\b/, "no dropdown picker");
+assert.match(renderer, /const slotted = Boolean\(controlsSlot\) && !isMobile;/, "a host slot docks the controls on desktop only");
+assert.match(renderer, /slotted &&\s+createPortal\(\s*<div data-xray-dive-dock/, "slotted controls take the dock's (md:dock:) sizes");
 assert.match(renderer, /status=\{squeeze\.status\}/, "a squeezed pouch draws dashed");
 assert.doesNotMatch(renderer, /MAX_BOLSTER|placements\.length >= \d/, "the cap is physical and derived — never a slot number (ADR 0008 amendment)");
 assert.match(renderer, /addBolsterPiece\(placements, itemId\)/, "add goes through the shared lib");

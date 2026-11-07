@@ -107,6 +107,7 @@ import {
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { XrayBolster } from "@/components/spatial/xray-bolster";
+import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { BolsterCrossSection } from "@/components/spatial/xray-cross-section";
 import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
 import { fitBolster } from "@/lib/spatial-fillings/fit";
@@ -153,10 +154,16 @@ import {
   pairedDetailsPath,
   readPairedHandoff,
   writePairedHandoff,
+  type PairedBolsterAnswers,
   type PairedChoice,
   type PairedHandoff,
 } from "@/lib/configurator/paired-mbolster";
 import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
+import {
+  bolsterAssistDraft,
+  restoreBolsterAssist,
+  type BolsterAssistDraft,
+} from "@/lib/configurator/staff-assist-draft";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
 import type { ServicePrices } from "@/lib/pricing/service-prices";
@@ -297,6 +304,8 @@ export function MbolsterConfigClient({
   const homeHref = withLocale("/", locale);
   const to = (href: string) => withLocale(href, locale);
   const isMobile = useIsMobile();
+  // The Staff compartment editor's panel, where XrayBolster portals its controls (off a phone).
+  const [compartmentSlot, setCompartmentSlot] = React.useState<HTMLElement | null>(null);
   // Phones: each step's Back / Continue render in the bottom bar's slot.
   const [mobileActionsSlot, setMobileActionsSlot] = React.useState<HTMLDivElement | null>(null);
   const [exitDialogOpen, setExitDialogOpen] = React.useState(false);
@@ -460,10 +469,22 @@ export function MbolsterConfigClient({
   // Staff start from the engine's Filling Template and edit from there. Once per
   // length: emptying the bolster afterwards is a choice, not a gap to refill.
   const seededLengthRef = React.useRef<string | null>(null);
+  // Autosave (Paired build): the mix Staff built on an earlier visit to this
+  // step, waiting for the length it was built for.
+  const restoreAssistRef = React.useRef<BolsterAssistDraft | null>(null);
   React.useEffect(() => {
-    if (!staffAssist || !suggestedLength || !recommendedTemplate) return;
+    if (!staffAssist || !suggestedLength) return;
     if (assistLoadedTemplate || assistPlacements.length > 0) return;
     if (seededLengthRef.current === suggestedLength) return;
+    const restored = restoreBolsterAssist(restoreAssistRef.current, suggestedLength);
+    if (restored) {
+      seededLengthRef.current = suggestedLength;
+      restoreAssistRef.current = null;
+      setAssistLoadedTemplate(restored.loadedTemplate);
+      setAssistPlacements(restored.placements);
+      return;
+    }
+    if (!recommendedTemplate) return;
     seededLengthRef.current = suggestedLength;
     const placements = rowsToBolsterPlacements(recommendedTemplate.placements ?? []);
     setAssistLoadedTemplate({ id: Number(recommendedTemplate.id), placements });
@@ -527,6 +548,8 @@ export function MbolsterConfigClient({
         // private mode — the answers live in state for this visit
       }
       reopenPairedPreviewRef.current = Boolean(choice?.bolster && heightCm);
+      // Read only by the Staff seeding below.
+      restoreAssistRef.current = handoff.bolster?.assist ?? null;
       setConfigSessionId(handoff.companionId);
       setState({ step: "height", heightUnit, heightCm, sleepPosition: handoff.sleepPosition });
       setHeightDraft(displayHeight(heightUnit, heightCm));
@@ -625,22 +648,42 @@ export function MbolsterConfigClient({
     }
   }, [state]);
 
+  // Step 2's answers as they stand, written into the hand-off so reopening the
+  // step shows the same Mbolster. Staff's mix autosaves with them; until one is
+  // loaded, the stored one is kept — it is the one about to be restored.
+  const pairedAnswers = React.useMemo((): PairedBolsterAnswers => {
+    const assist = !staffAssist
+      ? undefined
+      : suggestedLength && (assistLoadedTemplate || assistPlacements.length > 0)
+        ? bolsterAssistDraft(suggestedLength, assistPlacements, assistLoadedTemplate)
+        : paired?.bolster?.assist;
+    return {
+      heightUnit: state.heightUnit,
+      heightCm: state.heightCm,
+      caseId: selectedCase,
+      addonIds: [...selectedAddons],
+      ...(assist ? { assist } : {}),
+    };
+  }, [
+    staffAssist,
+    suggestedLength,
+    assistLoadedTemplate,
+    assistPlacements,
+    paired,
+    state.heightUnit,
+    state.heightCm,
+    selectedCase,
+    selectedAddons,
+  ]);
+
   React.useEffect(() => {
     if (!paired) return;
     try {
-      writePairedHandoff(window.sessionStorage, {
-        ...paired,
-        bolster: {
-          heightUnit: state.heightUnit,
-          heightCm: state.heightCm,
-          caseId: selectedCase,
-          addonIds: [...selectedAddons],
-        },
-      });
+      writePairedHandoff(window.sessionStorage, { ...paired, bolster: pairedAnswers });
     } catch {
       // private mode — the answers live in state for this visit
     }
-  }, [paired, state.heightUnit, state.heightCm, selectedCase, selectedAddons]);
+  }, [paired, pairedAnswers]);
 
   // Persist hold-prep while on preview (covers Stripe cancel return). A paired
   // run's Checkout returns to the Mpillow, so it writes nothing here.
@@ -1129,16 +1172,7 @@ export function MbolsterConfigClient({
       };
     }
     try {
-      writePairedHandoff(window.sessionStorage, {
-        ...paired,
-        bolster: {
-          heightUnit: state.heightUnit,
-          heightCm: state.heightCm,
-          caseId: selectedCase,
-          addonIds: [...selectedAddons],
-        },
-        choice,
-      });
+      writePairedHandoff(window.sessionStorage, { ...paired, bolster: pairedAnswers, choice });
     } catch {
       toast.error("Could not save your Mbolster on this device. Please try again.");
       return;
@@ -1419,7 +1453,10 @@ export function MbolsterConfigClient({
                 />
               </>
             )}
-            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 p-4 max-md:px-3 md:gap-6">
+            {/* Desktop: the stage scrolls when Staff's controls make it taller than the screen (as mp-config's
+                does); `my-auto` keeps it centred while it fits, so a guest's stage is unchanged. */}
+            <div className="relative z-10 flex flex-col p-4 max-md:px-3 lg:absolute lg:inset-0 lg:overflow-y-auto lg:overscroll-contain">
+            <div className="my-auto flex w-full flex-col items-center gap-4 md:gap-6">
               <div
                 // Full column width (max 500px) below lg so the x-ray is tappable on phones.
                 className="relative w-full max-w-[500px] lg:w-[min(75vmin,500px)]"
@@ -1481,6 +1518,8 @@ export function MbolsterConfigClient({
                     // Guests view, never edit: omitting these keeps the renderer read-only.
                     items={staffAssist ? assistItems : undefined}
                     onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
+                    // Staff off a phone: the compartment's controls in the panel under the capsule, off the art.
+                    controlsSlot={staffAssist ? compartmentSlot : undefined}
                     className="absolute inset-0"
                   />
                 )}
@@ -1490,6 +1529,15 @@ export function MbolsterConfigClient({
                   </div>
                 )}
               </div>
+              {/* Staff: the compartment editor (XrayBolster's controls), under the capsule at its width. Phones keep
+                  the controls in the frame. */}
+              {staffAssist && xrayVisible && !isMobile && (
+                <XraySectionDock
+                  dived="compartment"
+                  onSlot={setCompartmentSlot}
+                  className="flex w-full max-w-[500px] border-border/60 bg-background/70 shadow-xl backdrop-blur-xl lg:w-[min(75vmin,500px)]"
+                />
+              )}
               {/* Slice 09: the end-on cut under the capsule, Staff and guest, read-only. */}
               {xrayVisible && (
                 <BolsterCrossSection
@@ -1566,6 +1614,7 @@ export function MbolsterConfigClient({
                   Fillings are chosen by our team after review.
                 </p>
               ) : null}
+            </div>
             </div>
           </div>
 

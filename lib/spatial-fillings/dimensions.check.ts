@@ -45,7 +45,7 @@ for (const size of PILLOW_SIZES) {
 assert.ok(SILHOUETTE_MASTER.length >= 60 && SILHOUETTE_MASTER.length <= 400, "master ring simplified to a sane vertex count");
 
 // --- Every known filling resolves; unmeasured ones are named, not hidden ----
-const seeds = ["3D (S)", "6D (S)", "6D (M)", "6D (L)", "6D (XL)", "6D (Round)", "6D+ (S)", "6D+ (L)", "6D+ (Folded)"];
+const seeds = ["3D (S)", "6D (S)", "6D (M)", "6D (L)", "6D (XL)", "6D (Corner)", "6D+ (S)", "6D+ (L)", "6D+ (Folded)"];
 const unmeasured: string[] = [];
 for (const subtype of seeds) {
   const r = resolveDims({ name: "filling", subtype });

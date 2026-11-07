@@ -211,11 +211,17 @@ import {
   mixAfterTierChange,
   recheckSelectionsForSize,
   sessionTemplateId,
+  soldPillowTier,
   startingTemplateId,
   templateSuggestion,
   type LoadedTemplate,
   type SizeTier,
 } from "@/lib/configurator/staff-assist";
+import {
+  asSizeTier,
+  pillowAssistDraft,
+  restorePillowAssist,
+} from "@/lib/configurator/staff-assist-draft";
 import {
   fetchPillowTemplate,
   StaffAssistPanel,
@@ -382,6 +388,74 @@ function writeToken(key: string, token: string | null): void {
   } catch {
     // private mode — the caller falls back to the legacy draft path
   }
+}
+
+/** One size×tier's product context, from the Staff assist route. */
+type AssistContext = Pick<
+  RecommendationResponseData,
+  "pillow_product" | "variant" | "pricing" | "components" | "composed_buildable"
+> & {
+  default_template?: { id: number; name: string; placements: unknown[] } | null;
+};
+
+async function fetchAssistContext(
+  next: SizeTier,
+): Promise<{ ok: true; context: AssistContext } | { ok: false; error: unknown }> {
+  const res = await fetch(
+    `/api/mp-config/assist/context?size=${encodeURIComponent(next.size)}&tier=${encodeURIComponent(next.tier)}`,
+  ).catch(() => null);
+  const data = await res?.json().catch(() => null);
+  if (!res?.ok || !data?.pillow_product) return { ok: false, error: data?.error };
+  return { ok: true, context: data as AssistContext };
+}
+
+/**
+ * The preview's recommendation as if it had named `next`: product, options and
+ * Costings become that size×tier's, while the engine's record (its Flow route,
+ * its suggested template) stays. Carrying the old Costings forward is what made
+ * the ballpark quote a different pillow than the one on screen.
+ */
+function withAssistContext(
+  prev: RecommendationResponseData | null,
+  next: SizeTier,
+  context: AssistContext,
+): RecommendationResponseData {
+  return {
+    ...(prev ?? {
+      ok: true,
+      recommendation: {
+        recommended_size: next.size,
+        recommended_kind: next.tier,
+        filling_lines: [],
+        summary: "",
+        explanation: "",
+      },
+      templates: [],
+      available_fillings: [],
+    }),
+    pillow_product: context.pillow_product,
+    variant: context.variant,
+    pricing: context.pricing ?? null,
+    components: context.components,
+    composed_buildable: context.composed_buildable,
+  };
+}
+
+/**
+ * A reloaded recommendation, put back on the size×tier a Staff assist session
+ * was on (autosave). Unchanged when the engine already names it; the engine's
+ * own when that size×tier can no longer be loaded, which the toast says.
+ */
+async function onStaffSizeTier(
+  data: RecommendationResponseData,
+  staff: SizeTier | undefined,
+): Promise<RecommendationResponseData> {
+  if (!staff) return data;
+  if (data.pillow_product?.size === staff.size && data.pillow_product?.kind === staff.tier) return data;
+  const loaded = await fetchAssistContext(staff);
+  if (loaded.ok) return withAssistContext(data, staff, loaded.context);
+  toast.error(`Could not reopen Size ${staff.size} — showing the recommended size`);
+  return data;
 }
 
 export function MpConfigClient({
@@ -645,6 +719,9 @@ export function MpConfigClient({
   const suggestedTemplateId = engineSuggestion?.templateId ?? null;
   const suggestedSize = engineSuggestion?.size ?? null;
   const productSize = shopRecommendation?.pillow_product?.size ?? null;
+  // Autosave: the size×tier a restored Staff session was on, until the
+  // recommendation reloads onto it. Its mix is restored straight into state.
+  const restoredSizeTierRef = useRef<SizeTier | null>(null);
   const seededSuggestionRef = useRef<number | null>(null);
   useEffect(() => {
     // A reopened Result keeps its own mix. A fresh session takes the suggestion
@@ -758,6 +835,11 @@ export function MpConfigClient({
   const stepOrder = (postUpsellSteps ?? stepOrderFor(variant)) as Step[];
   const showNeckSteps = !isBasic || upsoldToPremium;
   const soldAsPremium = upsoldToPremium || !isBasic;
+  /** What the hold sells and the preview prices: Staff's Tier control, else the page's. */
+  const soldTier = soldPillowTier({
+    staffTier: staffAssist ? shopRecommendation?.pillow_product?.kind : null,
+    premiumFlow: soldAsPremium,
+  });
   const routeTarget = useMemo(
     () =>
       parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null)?.flowRoute
@@ -1227,6 +1309,15 @@ export function MpConfigClient({
       if (draft.selections.notes) setHoldNotes(draft.selections.notes);
       setHoldAddress(draft.selections.holdAddress);
     }
+    // Staff assist autosave: the mix Staff built goes back now, before the
+    // suggestion can seed over it; their size×tier once the recommendation
+    // reloads below. A finish link is a Result's own build, never this session.
+    if (staffAssist && !resumeFinish && draft?.staffAssist) {
+      const restored = restorePillowAssist(draft.staffAssist);
+      setAssistPlacements(restored.placements);
+      setAssistLoadedTemplate(restored.loadedTemplate);
+      restoredSizeTierRef.current = restored.sizeTier;
+    }
     setCurrentStep("preview");
     setRestoringHoldCancel(true);
 
@@ -1269,6 +1360,24 @@ export function MpConfigClient({
     if (currentStep !== "preview") return;
     // Not a hold session: nothing to restore after a Stripe cancel.
     if (resumeFinish || staffEdit) return;
+    // Mid-restore the page shows the engine's pick, or nothing yet: writing now
+    // would save that over the Staff session being restored.
+    if (restoringHoldCancel) return;
+    // Staff assist autosave: the size×tier on screen and the mix on the x-ray.
+    // With no size on screen (a recommendation that failed to load) the stored
+    // session is kept, so the next visit can still put it back.
+    const shown = asSizeTier(
+      shopRecommendation?.pillow_product?.size,
+      shopRecommendation?.pillow_product?.kind,
+    );
+    const stored = staffAssist && !shown ? readHoldCancelDraft(window.localStorage, holdSurface) : null;
+    const staffSession = !staffAssist
+      ? undefined
+      : shown
+        ? pillowAssistDraft(shown, assistPlacements, assistLoadedTemplate)
+        : stored?.responseId === responseId
+          ? stored?.staffAssist
+          : undefined;
     writeHoldCancelDraft(window.localStorage, {
       v: 1,
       surface: holdSurface,
@@ -1288,6 +1397,7 @@ export function MpConfigClient({
         notes: holdNotes,
         holdAddress,
       },
+      ...(staffSession ? { staffAssist: staffSession } : {}),
     });
   }, [
     currentStep,
@@ -1307,6 +1417,12 @@ export function MpConfigClient({
     holdAddress,
     resumeFinish,
     staffEdit,
+    restoringHoldCancel,
+    staffAssist,
+    shopRecommendation?.pillow_product?.size,
+    shopRecommendation?.pillow_product?.kind,
+    assistPlacements,
+    assistLoadedTemplate,
   ]);
 
   useEffect(() => {
@@ -1613,6 +1729,8 @@ export function MpConfigClient({
     preserveSelections?: boolean;
     /** Price and offer the size×tier Staff assigned (finish link, ADR 0017). */
     assigned?: { size: string; tier: string };
+    /** A restored Staff assist session's size×tier, kept over the engine's. */
+    staffSizeTier?: SizeTier;
   }): Promise<RecommendationResponseData | null> => {
     const missing = incompleteEngineInputs(
       "premium-mpillow",
@@ -1665,7 +1783,9 @@ export function MpConfigClient({
         throw new Error(getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`));
       }
 
-      const data: RecommendationResponseData = await res.json();
+      // One update, on the size×tier shown: an engine-sized moment in between
+      // would prune the add-ons to the wrong size.
+      const data = await onStaffSizeTier(await res.json(), opts?.staffSizeTier);
       setShopRecommendation(data);
 
       if (!opts?.preserveSelections) {
@@ -1681,7 +1801,10 @@ export function MpConfigClient({
     }
   }, [measurementData]);
 
-  const fetchBasicRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }): Promise<RecommendationResponseData | null> => {
+  const fetchBasicRecommendation = useCallback(async (opts?: {
+    preserveSelections?: boolean;
+    staffSizeTier?: SizeTier;
+  }): Promise<RecommendationResponseData | null> => {
     const missing = incompleteEngineInputs(
       "basic-mpillow",
       wizardToEngineInputs(measurementData),
@@ -1704,7 +1827,7 @@ export function MpConfigClient({
         throw new Error(getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`));
       }
 
-      const data: RecommendationResponseData = await res.json();
+      const data = await onStaffSizeTier(await res.json(), opts?.staffSizeTier);
       setShopRecommendation(data);
       if (!opts?.preserveSelections) {
         setSelectedCover(pickDefaultComponent(data.components.covers));
@@ -1730,36 +1853,13 @@ export function MpConfigClient({
    * OOS/Pre-order signals apply).
    */
   const applyAssistSizeTier = async (next: SizeTier, from: SizeTier) => {
-    const res = await fetch(
-      `/api/mp-config/assist/context?size=${encodeURIComponent(next.size)}&tier=${encodeURIComponent(next.tier)}`,
-    );
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.pillow_product) {
-      toast.error(getApiErrorMessage(data?.error, "Failed to switch size"));
+    const loadedContext = await fetchAssistContext(next);
+    if (!loadedContext.ok) {
+      toast.error(getApiErrorMessage(loadedContext.error, "Failed to switch size"));
       return;
     }
-
-    setShopRecommendation((prev) => ({
-      ...(prev ?? {
-        ok: true,
-        recommendation: {
-          recommended_size: next.size,
-          recommended_kind: next.tier,
-          filling_lines: [],
-          summary: "",
-          explanation: "",
-        },
-        templates: [],
-        available_fillings: [],
-      }),
-      pillow_product: data.pillow_product,
-      variant: data.variant,
-      // Costings for the NEW size×tier. Carrying the old ones forward is what
-      // made the ballpark quote a different pillow than the one on screen.
-      pricing: data.pricing ?? null,
-      components: data.components,
-      composed_buildable: data.composed_buildable,
-    }));
+    const data = loadedContext.context;
+    setShopRecommendation((prev) => withAssistContext(prev, next, data));
 
     // Templates are scoped by size, so only a size change replaces the mix.
     const accessoryIds = new Set(
@@ -1837,16 +1937,20 @@ export function MpConfigClient({
   useEffect(() => {
     if (!restoringHoldCancel || currentStep !== "preview") return;
     let cancelled = false;
+    const staffSizeTier = restoredSizeTierRef.current ?? undefined;
     (async () => {
       if (isBasic) {
-        await fetchBasicRecommendation({ preserveSelections: true });
+        await fetchBasicRecommendation({ preserveSelections: true, staffSizeTier });
       } else {
         await Promise.all([
           loadSuggestion(),
-          fetchShopRecommendation({ preserveSelections: true }),
+          fetchShopRecommendation({ preserveSelections: true, staffSizeTier }),
         ]);
       }
-      if (!cancelled) setRestoringHoldCancel(false);
+      if (!cancelled) {
+        restoredSizeTierRef.current = null;
+        setRestoringHoldCancel(false);
+      }
     })();
     return () => {
       cancelled = true;
@@ -2332,16 +2436,10 @@ export function MpConfigClient({
       shopRecommendation?.pillow_product?.size ??
       suggestion?.recommended?.size ??
       suggestion?.product?.size;
-    const tier = soldAsPremium
-      ? ("premium" as const)
-      : isBasic
-        ? ("basic" as const)
-        : ((shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
-          suggestion?.recommended?.kind ??
-          suggestion?.product?.kind);
+    const tier = soldTier;
 
-    if (!size || !tier) {
-      toast.error("Missing size or tier suggestion");
+    if (!size) {
+      toast.error("Missing size suggestion");
       return;
     }
 
@@ -2507,7 +2605,7 @@ export function MpConfigClient({
     measurementData,
     upsertToDb,
     isBasic,
-    soldAsPremium,
+    soldTier,
     configPath,
     holdFields,
     staffAssist,
@@ -2818,7 +2916,6 @@ export function MpConfigClient({
     // priced the CTA is blocked and the amount is withheld.
     // Measurement service (ADR 0024): the rule the hold route applies, on the tier
     // the hold will submit. Shown as its own row, never folded into the pillow.
-    const feeTier = soldAsPremium ? "premium" : isBasic ? "basic" : (tier ?? null);
     let serviceLines: ServiceLine[] = [];
     let servicesBlocked = false;
     try {
@@ -2826,7 +2923,7 @@ export function MpConfigClient({
         {
           measured_by_type: measuredByStaff ? "staff" : "by_user",
           product_type: "pillow",
-          suggested_tier: feeTier,
+          suggested_tier: soldTier,
         },
         servicePrices,
       );
@@ -2841,11 +2938,11 @@ export function MpConfigClient({
     // build's code goes on the Mpillow too. A finish link or a Staff edit shows
     // the code the Result already carries; the server takes it off either way.
     const codeContext: CheckoutCodeContext | null =
-      quoteBlocked || !shopRecommendation || !size || (feeTier !== "basic" && feeTier !== "premium")
+      quoteBlocked || !shopRecommendation || !size
         ? null
         : {
             flow: "customisation",
-            build: { product_type: "pillow", size: String(size), tier: feeTier },
+            build: { product_type: "pillow", size: String(size), tier: soldTier },
             goods: basePrice + addonTotal,
           };
     const storedCoupon = resumeFinish?.coupon ?? staffEdit?.coupon ?? null;
@@ -3339,17 +3436,14 @@ export function MpConfigClient({
                               qty: l.quantity,
                             };
                           });
-                      const soldTierLabel = soldAsPremium ? "premium" : tier;
                       const showTierAdvice =
                         record?.tierSuggestion &&
-                        record.tierSuggestion !== (record.soldTier ?? soldTierLabel);
+                        record.tierSuggestion !== (record.soldTier ?? soldTier);
                       return (
                         <>
-                          {soldTierLabel ? (
-                            <Badge variant="outline" className="text-xs capitalize text-white">
-                              {soldTierLabel} tier
-                            </Badge>
-                          ) : null}
+                          <Badge variant="outline" className="text-xs capitalize text-white">
+                            {soldTier} tier
+                          </Badge>
                           {showTierAdvice && record?.tierSuggestion ? (
                             <TierSuggestion tier={record.tierSuggestion} />
                           ) : null}
