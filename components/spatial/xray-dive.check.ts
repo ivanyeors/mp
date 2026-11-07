@@ -257,6 +257,6 @@ assert.match(
 console.log("xray-dive.check: all assertions passed");
 
 // --- Controls slot: a host can park the dive controls beside the pillow ------
-assert.match(renderer, /createPortal\(<div data-xray-dive-dock>\{diveControls\(""\)\}<\/div>, controlsSlot!\)/, "slotted controls are the dock's own render, portalled into the host's slot");
+assert.match(renderer, /createPortal\(<div data-xray-dive-dock[^>]*>\{diveControls\("[^"]*"\)\}<\/div>, controlsSlot!\)/, "slotted controls are the dock's own render, portalled into the host's slot");
 assert.match(renderer, /controlsSlot\?\.contains\(target\)/, "a click in the slot is not 'outside' — it never ends the dive");
 assert.match(renderer, /const slotted = Boolean\(controlsSlot\) && !isMobile;/, "phones keep the dock under the pillow");

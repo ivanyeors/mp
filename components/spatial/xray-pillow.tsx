@@ -200,6 +200,8 @@ const LAYER_ROW_CLASS =
 const LAYER_ICON_CLASS = "size-3 max-md:size-4 md:dock:size-4";
 const LAYER_ICON_BUTTON_CLASS =
   "flex size-5 shrink-0 items-center justify-center rounded max-md:size-11 md:dock:size-8";
+/** The add picker's diameter when the dive controls are slotted beside the pillow (desktop). */
+const SLOTTED_BLOOM_PX = 300;
 const easeOut = (t: number) => t * (2 - t);
 
 /**
@@ -1607,7 +1609,7 @@ export function XrayPillow({
     dived && (
       <div className={`flex flex-col ${chrome}`}>
         <div className="mb-1 flex shrink-0 flex-wrap items-center gap-2 px-1">
-          <span className="text-xs font-semibold capitalize">{dived} section</span>
+          <span className="text-xs font-semibold capitalize md:dock:text-sm">{dived} section</span>
           <div className="ml-auto flex items-center gap-2">
             {mirrorButton(dived, false)}
             <button
@@ -1654,13 +1656,16 @@ export function XrayPillow({
               {cellPcs.length > 0 && cellFitOf(subSection) && (
                 <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact={false} />
               )}
+              {/* Slotted (desktop), a one-layer cell's Add layer joins its chips' line: the slot is only as tall
+                  as the pillow, and a line per button pushed the third cell out of sight. */}
               {!stacked && cellPcs.length > 0 && (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   {sideChips
                     .filter((fc) => fc.subSection === subSection)
                     .map((fc) => (
                       <span key={fc.itemId}>{pieceChip(fc.cell, fc.itemId, fc.slots)}</span>
                     ))}
+                  {slotted && layers.length < MAX_LAYERS_PER_CELL && addLayerButton(cell, subSection, layers)}
                 </div>
               )}
               {/* One provider per CELL: see layerDragEnd. */}
@@ -1692,6 +1697,7 @@ export function XrayPillow({
                 </DragDropProvider>
               )}
               {cellPcs.length > 0 &&
+                (stacked || !slotted) &&
                 layers.length < MAX_LAYERS_PER_CELL &&
                 addLayerButton(cell, subSection, layers)}
             </div>
@@ -2141,15 +2147,17 @@ export function XrayPillow({
               Phones: centred on the stage instead, so an outer column's bloom
               cannot run off the screen edge — and sized to the whole stage,
               not the dive column, with thicker rings and a 44px centre
-              trigger so the wedges are thumb-sized. */}
+              trigger so the wedges are thumb-sized.
+              Slotted (desktop, controls beside the pillow): nothing else sits
+              on the art, so the bloom grows past the dive column to a fixed
+              300px with phone-sized labels. It is portalled to the page, so
+              it can spill over the neighbouring columns without being clipped. */}
           {openSub && (
             <div
               className="absolute z-40 -translate-x-1/2 -translate-y-1/2"
               style={{
                 ...(isMobile ? { left: "50%", top: "50%" } : cellCenter(openSub)),
-                width: isMobile
-                  ? "100%"
-                  : `${((stage.colX[divedIdx + 1] - stage.colX[divedIdx]) / XRAY_VIEW.width) * 100}%`,
+                width: isMobile ? "100%" : slotted ? SLOTTED_BLOOM_PX : divedColumnWidth,
                 pointerEvents: "auto",
               }}
             >
@@ -2157,9 +2165,10 @@ export function XrayPillow({
                 open
                 root={fillingTree}
                 display="text"
-                size={isMobile ? 280 : 220}
-                ringWidth={isMobile ? 48 : 40}
-                holeRadius={isMobile ? 26 : 18}
+                size={isMobile ? 280 : slotted ? SLOTTED_BLOOM_PX : 220}
+                ringWidth={isMobile ? 48 : slotted ? 56 : 40}
+                holeRadius={isMobile ? 26 : slotted ? 24 : 18}
+                largeLabels={slotted}
                 centerIcon={Plus}
                 ariaLabel={
                   openLayer === null
@@ -2234,8 +2243,9 @@ export function XrayPillow({
           {diveControls("max-h-[70vh] rounded-2xl border border-border/60 bg-background/95 p-2 shadow-xl backdrop-blur-xl")}
         </div>
       )}
-      {/* Host-provided slot (desktop): the same controls beside the pillow, off the art. */}
-      {dived && editable && slotted && createPortal(<div data-xray-dive-dock>{diveControls("")}</div>, controlsSlot!)}
+      {/* Host-provided slot (desktop): the same controls beside the pillow, off the art. A flex column all the
+          way down, so in a slot of bounded height the header (Mirror, Done) stays put while the cells scroll. */}
+      {dived && editable && slotted && createPortal(<div data-xray-dive-dock className="flex min-h-0 flex-1 flex-col">{diveControls("min-h-0 flex-1")}</div>, controlsSlot!)}
     </div>
   );
 }

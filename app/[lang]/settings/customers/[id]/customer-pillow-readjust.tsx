@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import { confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { PILLOW_TEMPLATE_KEYS } from "@/lib/filling-templates/keys";
 import type { PillowSizeKey } from "@/lib/customer-pillow/match";
@@ -135,6 +136,9 @@ export function ReadjustDialog({
     // The dived Section's cut is ringed; a pouch moved to another cut hands the ring to that Section.
     const { setCut, onDiveChange } = useCut();
     const [divedSection, setDivedSection] = useState<Section | null>(null);
+    // From md, the dived Section's controls dock in the Section editor beside the x-ray, off the art (phones keep
+    // theirs under the pillow). On the art they were 9px chips with the add picker blooming in among them.
+    const [controlsSlot, setControlsSlot] = useState<HTMLElement | null>(null);
     const onXrayDive = useCallback(
         (section: Section | null) => {
             onDiveChange(section);
@@ -187,7 +191,7 @@ export function ReadjustDialog({
 
     return (
         <Dialog open={open} onOpenChange={close}>
-            <DialogContent className="sm:max-w-5xl md:max-h-[92dvh] md:overflow-y-auto">
+            <DialogContent className="sm:max-w-6xl md:max-h-[92dvh] md:w-[calc(100%-2rem)] md:overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Re-adjust the pillow</DialogTitle>
                     <DialogDescription>
@@ -235,9 +239,11 @@ export function ReadjustDialog({
 
                 {catalogError && <p className="text-sm text-destructive">{catalogError}</p>}
 
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]">
-                    <div className="min-w-0 space-y-3">
-                        <div className="mx-auto w-full max-w-[52rem]">
+                {/* Phones read the pack list and the changes before the cuts, as before; from md the cuts follow the
+                    x-ray they cut, and the lists come after them. */}
+                <div className="flex flex-col gap-4">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                        <div className="mx-auto w-full min-w-0 max-w-[52rem]">
                             <XrayEditor
                                 placements={placements}
                                 onPlacementsChange={editable ? setPlacements : undefined}
@@ -247,10 +253,21 @@ export function ReadjustDialog({
                                 dimensionOverrides={pillow.dimensionOverrides}
                                 fit={fit}
                                 onDiveChange={onXrayDive}
+                                controlsSlot={controlsSlot}
+                            />
+                        </div>
+                        {/* lg: beside the x-ray, as tall as its content but never taller than the x-ray (absolute in
+                            its grid cell, so a long dive scrolls in the panel instead of pushing the cuts down).
+                            md: under the x-ray. */}
+                        <div className="relative max-md:hidden">
+                            <XraySectionDock
+                                dived={divedSection}
+                                onSlot={setControlsSlot}
+                                className="flex max-h-[26rem] bg-background lg:absolute lg:inset-x-0 lg:top-0 lg:max-h-full"
                             />
                         </div>
                     </div>
-                    <div className="min-w-0 space-y-3">
+                    <div className="grid gap-3 md:order-last md:grid-cols-2 md:items-start">
                         <section className="rounded-md border">
                             <h3 className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm font-medium">
                                 Derived pack list
@@ -286,22 +303,21 @@ export function ReadjustDialog({
                             )}
                         </section>
                     </div>
+                    <XrayCrossSectionStrip
+                        fit={fit}
+                        active={divedSection}
+                        onActiveChange={editable ? setCut : undefined}
+                        itemSubtypes={itemSubtypes}
+                        itemSizes={itemSizes}
+                        itemDims={itemDims}
+                        placements={placements}
+                        onPlacementsChange={editable ? setPlacements : undefined}
+                        items={editable ? items : undefined}
+                        colorOverrides={pillow.colorOverrides}
+                        softBody={softBody}
+                        defaultOpen
+                    />
                 </div>
-
-                <XrayCrossSectionStrip
-                    fit={fit}
-                    active={divedSection}
-                    onActiveChange={editable ? setCut : undefined}
-                    itemSubtypes={itemSubtypes}
-                    itemSizes={itemSizes}
-                    itemDims={itemDims}
-                    placements={placements}
-                    onPlacementsChange={editable ? setPlacements : undefined}
-                    items={editable ? items : undefined}
-                    colorOverrides={pillow.colorOverrides}
-                    softBody={softBody}
-                    defaultOpen
-                />
 
                 {/* From md, pinned to the bottom of the scrolling dialog so Save stays in reach under the x-ray and
                     cut; sticky offsets sit inside the dialog's padding, so it reaches past it to the edge. A phone's
