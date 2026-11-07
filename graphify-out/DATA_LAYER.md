@@ -60,7 +60,7 @@ Changed from pages: `/settings/results`, `/settings/users`
   - `getStaffByAssistCode()` [select] — lib/assist-link/index.ts:35
   - `invitedTarget()` [select] — lib/auth/members.ts:334
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:47
-  - `linkedByName()` [select] — lib/customer-pillow/load.ts:82
+  - `linkedByName()` [select] — lib/customer-pillow/load.ts:86
   - `listAssignableProfiles()` [select] — lib/crm/followups.ts:169
   - `listMembers()` [select] — lib/auth/members.ts:103
   - `listRoles()` [select] — lib/auth/members.ts:118
@@ -299,7 +299,8 @@ Changed from pages: `/account`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:23
   - `POST()` [select] — app/api/results/[id]/accept/route.ts:575
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:179
-  - `PUT()` [select] — app/api/shop/customers/[id]/pillow/route.ts:59
+  - `POST()` [select] — app/api/shop/customers/[id]/pillow/readjust/route.ts:128
+  - `PUT()` [select] — app/api/shop/customers/[id]/pillow/route.ts:58
   - `assertTemplateNameFree()` [select] — lib/filling-templates/membership.ts:75
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:80
   - `getBomTemplates()` [select] — lib/shop/customization-llm.ts:86
@@ -307,9 +308,9 @@ Changed from pages: `/account`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `
   - `listFillingTemplates()` [select] — app/[lang]/settings/inventory/actions.ts:331
   - `listTemplates()` [select] — app/[lang]/settings/inventory/actions.ts:300
   - `loadAssignPrep()` [select] — lib/results/assign-prep.ts:108
-  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:170
+  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:175
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:18
-  - `loadPillowTemplates()` [select] — lib/customer-pillow/load.ts:53
+  - `loadPillowTemplates()` [select] — lib/customer-pillow/load.ts:57
   - `loadTemplateFingerprints()` [select] — app/[lang]/settings/inventory/configure/unpromoted/route.ts:67
   - `setDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:360
   - `templateBuildSaleRows()` [select] — app/[lang]/settings/inventory/actions.ts:209
@@ -454,7 +455,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `authorizeResultAccess()` [select] — lib/results/access.ts:24
   - `confirmationPoints()` [select] — lib/email/index.ts:284
   - `countNewCustomers()` [select] — lib/crm/telegram-update-sources.ts:64
-  - `customerExists()` [select] — app/api/shop/customers/[id]/pillow/route.ts:31
+  - `customerExists()` [select] — app/api/shop/customers/[id]/pillow/readjust/route.ts:53
+  - `customerExists()` [select] — app/api/shop/customers/[id]/pillow/route.ts:29
   - `customerIdForResult()` [select] — lib/crm/customer-link.ts:22
   - `findCustomerByEmail()` [select] — lib/ecommerce/customers.ts:8
   - `getAdminCustomer()` [select] — lib/ecommerce/admin/customers.ts:106
@@ -591,7 +593,7 @@ Changed from pages: `/account`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:202
   - `POST()` [select] — app/api/results/hold/route.ts:500
   - `handleRecommend()` [select] — app/api/shop/customize/route.ts:382
-  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:189
+  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:196
   - `loadFillingTemplatePack()` [select] — lib/filling-templates/pack.ts:29
   - `loadTemplatePreview()` [select] — lib/results/assign-prep.ts:58
 
@@ -727,6 +729,7 @@ Changed from pages: `/settings/inventory`
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
   - `GET()` [select] — app/api/mp-config/assist/route.ts:116
   - `GET()` [select] — app/api/results/addons/route.ts:41
+  - `GET()` [select] — app/api/shop/customers/[id]/pillow/readjust/route.ts:66
   - `POST()` [select] — app/api/results/[id]/assign/route.ts:298
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:94
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:140
@@ -919,7 +922,7 @@ Changed from pages: `/`, `/account`, `/account/login`, `/mbolster-config`, `/mp-
   - `POST()` [select] — app/api/mp-config/responses/route.ts:481
   - `isPickableStaffProfile()` [select] — lib/staff/admin.ts:281
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:40
-  - `linkedByName()` [select] — lib/customer-pillow/load.ts:78
+  - `linkedByName()` [select] — lib/customer-pillow/load.ts:82
   - `listAssignableProfiles()` [select] — lib/crm/followups.ts:159
   - `listCustomerFittings()` [select] — lib/fitting-import/records.ts:132
   - `listStaffProfiles()` [select] — lib/staff/admin.ts:58
@@ -966,7 +969,7 @@ Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`,
 - Read by:
   - `deductOrderStock()` [select] — lib/ecommerce/order-stock.ts:44
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:31
-  - `loadBoughtPillows()` [select] — lib/customer-pillow/load.ts:106
+  - `loadBoughtPillows()` [select] — lib/customer-pillow/load.ts:110
   - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:169
   - `loadOrderItem()` [select] — lib/ecommerce/restock-order.ts:33
   - `loadOrderShippableLines()` [select] — lib/shipping/lines.ts:93
@@ -1089,7 +1092,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `listMpConfigResponses()` [select] — lib/results/admin/responses-list.ts:85
   - `load()` [select] — app/api/settings/readjustments/[id]/route.ts:34
   - `loadAdminOrderDetail()` [select] — lib/ecommerce/admin/order-detail.ts:18
-  - `loadBoughtPillows()` [select] — lib/customer-pillow/load.ts:110
+  - `loadBoughtPillows()` [select] — lib/customer-pillow/load.ts:114
   - `loadDeliveredOrders()` [select] — lib/aftercare/checkup-server.ts:179
   - `loadDueOrders()` [select] — lib/aftercare/review-request-server.ts:119
   - `loadMpConfigResponseDetail()` [select] — lib/results/admin/response-detail.ts:146
@@ -1592,9 +1595,10 @@ References: `bom_templates`, `customers`, `mp_staff`
 Changed from pages: `/settings/customers/[id]`
 - Written by:
   - `DELETE()` [delete] — app/api/shop/customers/[id]/pillow/route.ts:117
-  - `PUT()` [select,upsert] — app/api/shop/customers/[id]/pillow/route.ts:70
+  - `POST()` [select,upsert] — app/api/shop/customers/[id]/pillow/readjust/route.ts:137
+  - `PUT()` [select,upsert] — app/api/shop/customers/[id]/pillow/route.ts:69
 - Read by:
-  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:131
+  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:135
 
 ### customer_preference_events
 Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:35
@@ -1608,7 +1612,7 @@ References: `customers`, `mp_staff`
 ### customer_purchase_lines
 Defined in supabase/migrations/20261031144619_customer_overview_purchase_filters.sql:48
 - Read by:
-  - `loadBoughtPillows()` [select] — lib/customer-pillow/load.ts:97
+  - `loadBoughtPillows()` [select] — lib/customer-pillow/load.ts:101
   - `loadCovered()` [select] — lib/aftercare/checkup-server.ts:158
   - `readLatestPillows()` [select] — lib/email-campaigns/store.ts:481
 
@@ -1804,7 +1808,7 @@ Defined in supabase/migrations/20261020100000_customer_import.sql:52
 References: `customer_addresses`, `customer_import_batches`, `customers`
 - Read by:
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:113
-  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:139
+  - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:143
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:25
   - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:38
 
@@ -2650,7 +2654,7 @@ app/[lang]/settings/customers/page.tsx
 
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
-- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/pillow`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
+- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/pillow`, `/api/shop/customers/[id]/pillow/readjust [GET,POST]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`
 - Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerFittings()`, `listCustomerNotes()`, `loadCustomerPillow()`, `readContactFacts()`, `readCustomerUnsubscribeReason()`, `readNextStepFacts()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_templates`, `customer_addresses`, `customer_followups`, `customer_notes`, `customer_pillows`, `customers`, `filling_template_placements`, `inventory_transactions`, `mp_staff`, `order_items`, `order_timeline`, `orders`, `pillow_products`, `product_variants`
 - Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `appointment_reminders`, `bolster_bom_lines`, `bom_lines`, `customer_consent_events`, `customer_fittings`, `customer_google_reviews`, `customer_preference_events`, `customer_purchase_lines`, `customer_review_requests`, `customer_unsubscribe_reasons`, `customer_whatsapp`, `filling_color_overrides`, `filling_dimension_overrides`, `item_prices`, `items`, `migrated_customers`, `mp_config_responses`, `neck_support_dimension_overrides`, `order_margins`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `readjustment_bookings`, `site_settings`, `whatsapp_inbound`

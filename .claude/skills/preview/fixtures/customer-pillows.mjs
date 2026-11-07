@@ -10,6 +10,10 @@
 //    /settings/customers/00000000-0000-4000-8000-0000000c0002
 //  - Elena Goh (crm.mjs): nothing on record, so the card offers Link.
 //    /settings/customers/00000000-0000-4000-8000-0000000c0005
+//  - Chloe Tan (crm.mjs): Sophie re-adjusted her M · Type-8a five days ago
+//    (ADR 0042 l), a 3D S in place of each side's 6D M and one more in the centre,
+//    so the card draws that mix and says it was re-adjusted.
+//    /settings/customers/00000000-0000-4000-8000-0000000c0003
 //
 // The Profile's pillow (ADR 0042 k), as the signed-in preview user Jamie sees it
 // on /account (fittings.mjs gives Jamie an L · T12 fitting):
@@ -25,6 +29,7 @@ const TYPE_12 = 512;
 const TYPE_8A = 514;
 const SOPHIE = "00000000-0000-4000-8000-0000000000a5";
 const BEN = "00000000-0000-4000-8000-0000000c0002";
+const CHLOE = "00000000-0000-4000-8000-0000000c0003";
 const JAMIE = "cust-preview-owner";
 
 /** One cell's pieces, top Layer first. */
@@ -196,6 +201,21 @@ export default function customerPillows({ scenario, now }) {
           linked_by_user_id: null,
           linked_by_profile_id: SOPHIE,
           linked_at: ago(3),
+        },
+        {
+          customer_id: CHLOE,
+          pillow_size: "M",
+          filling_template_id: TYPE_8A,
+          // Type-8a, re-adjusted: the rows as the Re-adjust route writes them (no template_id, no qty).
+          filling_placements: [
+            ...cell(TYPE_8A, "left", "middle", [67, 69], 1),
+            ...cell(TYPE_8A, "center", "middle", [68, 69], 1),
+            ...cell(TYPE_8A, "center", "back", [69], 3),
+            ...cell(TYPE_8A, "right", "middle", [67, 69], 1),
+          ].map(({ template_id: _t, qty: _q, ...r }) => r),
+          linked_by_user_id: null,
+          linked_by_profile_id: SOPHIE,
+          linked_at: ago(5),
         },
       ],
     },

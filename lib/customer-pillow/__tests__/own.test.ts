@@ -101,6 +101,7 @@ describe("a pillow bought here", () => {
       name: "Type-12 (as built)",
       orderNumber: "MP-1001",
       date: "2026-10-20T04:00:00.000Z",
+      readjusted: false,
       placements: [
         { section: "left", sub_section: "front", slot: 1, item_id: 69, row_index: null, insert_order: 1, offset_x_mm: null, offset_y_mm: null },
       ],
@@ -167,7 +168,7 @@ describe("a Staff link", () => {
     const own = await loadOwnPillow(admin(), CUSTOMER, [fitting]);
     expect(own).toMatchObject({ source: "linked", size: "XL", name: "Type-12", date: null, orderNumber: null });
     expect(Object.keys(own ?? {}).sort()).toEqual(
-      ["colorOverrides", "date", "dimensionOverrides", "items", "name", "orderNumber", "placements", "size", "source"].sort(),
+      ["colorOverrides", "date", "dimensionOverrides", "items", "name", "orderNumber", "placements", "readjusted", "size", "source"].sort(),
     );
     expect(JSON.stringify(own)).not.toMatch(/Sophie|T12|L-LN|cost_price/);
   });
@@ -186,5 +187,63 @@ describe("a Staff link", () => {
   it("of a size alone draws nothing, so the Profile shows nothing", async () => {
     db.customer_pillows[0].filling_template_id = null;
     expect(await loadOwnPillow(admin(), CUSTOMER, [fitting])).toBeNull();
+  });
+});
+
+describe("a Re-adjustment (ADR 0042 l)", () => {
+  // Sophie swapped the template's 6D M for two 3D S at a visit; the link holds what she left in it.
+  const mix = [
+    { section: "center", sub_section: "middle", slot: 1, item_id: 67, row_index: null, insert_order: null, offset_x_mm: null, offset_y_mm: null },
+    { section: "left", sub_section: "front", slot: 1, item_id: 69, row_index: 0, insert_order: 1, offset_x_mm: null, offset_y_mm: null },
+    { section: "left", sub_section: "front", slot: 2, item_id: 69, row_index: 1, insert_order: 2, offset_x_mm: null, offset_y_mm: null },
+  ];
+  beforeEach(() => {
+    db.customer_pillows.push({
+      customer_id: CUSTOMER,
+      pillow_size: "L",
+      filling_template_id: 57,
+      filling_placements: mix,
+      linked_by_profile_id: "p-sophie",
+      linked_at: "2026-11-06T03:00:00.000Z",
+    });
+  });
+
+  it("is drawn from the mix Staff left in the pillow, naming the template it came from", async () => {
+    const read = await loadCustomerPillow(admin(), CUSTOMER, [fitting]);
+    expect(read.ok && read.pillow).toMatchObject({
+      source: "linked",
+      size: "L",
+      template: { id: 57, name: "Type-12" },
+      link: { linkedAt: "2026-11-06T03:00:00.000Z", linkedBy: "Sophie", readjusted: true },
+      placements: mix,
+      ownership: "linked",
+      onProfile: true,
+    });
+    expect(read.ok && read.pillow.items.map((i) => i.id).sort()).toEqual([67, 69]);
+  });
+
+  it("wins over a pillow bought before it, and the template as it is now", async () => {
+    buyHere("1001", "2026-10-20T04:00:00.000Z");
+    const read = await loadCustomerPillow(admin(), CUSTOMER, [fitting]);
+    expect(read.ok && read.pillow.placements).toEqual(mix);
+  });
+
+  it("shows on their Profile as re-adjusted, on the day it was", async () => {
+    const own = await loadOwnPillow(admin(), CUSTOMER, [fitting]);
+    expect(own).toMatchObject({
+      source: "linked",
+      size: "L",
+      name: "Type-12",
+      date: "2026-11-06T03:00:00.000Z",
+      readjusted: true,
+      placements: mix,
+    });
+    expect(JSON.stringify(own)).not.toMatch(/Sophie|T12|L-LN|cost_price/);
+  });
+
+  it("a plain link is not one", async () => {
+    db.customer_pillows[0].filling_placements = null;
+    const read = await loadCustomerPillow(admin(), CUSTOMER, [fitting]);
+    expect(read.ok && read.pillow).toMatchObject({ link: { readjusted: false }, placements: [{ item_id: 67 }, { item_id: 68 }] });
   });
 });

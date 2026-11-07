@@ -33,6 +33,9 @@ function describe(pillow: OwnPillowView): ReactNode {
   if (pillow.source === "fitting") {
     return `What's inside your pillow, section by section, from your in-store fitting${pillow.date ? ` on ${sgDate(pillow.date)}` : ""}.`;
   }
+  if (pillow.readjusted) {
+    return `What's inside your pillow, section by section, as we re-adjusted it${pillow.date ? ` on ${sgDate(pillow.date)}` : ""}.`;
+  }
   return "What's inside your pillow, section by section, as our team recorded it.";
 }
 
