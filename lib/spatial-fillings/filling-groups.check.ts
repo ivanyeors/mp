@@ -39,6 +39,19 @@ assert.ok(!tree.find((n) => n.id === "fam:6d")!.children!.some((c) => c.id === "
 // Other keeps the item name (no density to extract).
 assert.deepEqual(tree.find((n) => n.id === "fam:other")!.children!.map((c) => c.label), ["Mystery Fluff"]);
 
+// Live inventory names the type and keeps the size apart: under its family a
+// leaf is only what tells it apart (never "6D" again), plain sizes first.
+const live = fillingItemsToSunburst([
+  { id: 55, name: "6D", subtype: null, size: "L" },
+  { id: 67, name: "6D", subtype: null, size: "S" },
+  { id: 72, name: "6D Round", subtype: null, size: "S" },
+  { id: 73, name: "6D Fold", subtype: null, size: "S" },
+  { id: 74, name: "6D", subtype: null, size: "XL" },
+  { id: 57, name: "6D+", subtype: null, size: "L" },
+]);
+assert.deepEqual(live.find((n) => n.id === "fam:6d")!.children!.map((c) => c.label), ["S", "L", "XL", "Fold S", "Round S"]);
+assert.deepEqual(live.find((n) => n.id === "fam:6d+")!.children!.map((c) => c.label), ["L"]);
+
 // Leaf ids map straight back to item ids.
 assert.deepEqual(tree.flatMap((n) => n.children!.map((c) => c.id)).sort(), ["2", "3", "5", "7", "8", "9"]);
 

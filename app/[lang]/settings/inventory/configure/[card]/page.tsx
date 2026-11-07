@@ -1878,7 +1878,8 @@ function FillingConfigPanel({
   const fitBySize = useFitAtSizes(placements, scopeKeys, gridItems, dimensionOverrides);
   // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
   const { cut, setCut, onDiveChange: onCutDive } = useCut();
-  // Desktop (lg, the workbench grid): the dived section's controls render in the left column, off the x-ray.
+  // Desktop (lg, the workbench grid): the dived section's (or the Mbolster compartment's) controls render in
+  // the left column, off the x-ray.
   const wideWorkbench = useMediaQuery("(min-width: 1024px)");
   const [controlsSlot, setControlsSlot] = useState<HTMLElement | null>(null);
   const [divedSection, setDivedSection] = useState<string | null>(null);
@@ -1924,7 +1925,7 @@ function FillingConfigPanel({
   const templateRail = (
     <TemplateRail
       title="Filling templates"
-      placement={kind === "pillow" ? "lg:max-h-[28rem]" : undefined}
+      placement="lg:max-h-[28rem]"
       total={templates.length}
       search={search}
       onSearchChange={setSearch}
@@ -2012,15 +2013,12 @@ function FillingConfigPanel({
         serve several.
       </p>
       <div className={WORKBENCH_GRID}>
-      {kind === "pillow" ? (
-        <XraySectionDock
-          dived={divedSection}
-          onSlot={setControlsSlot}
-          className="hidden lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]"
-        />
-      ) : (
-        templateRail
-      )}
+      {/* The editor's controls, off the x-ray: the dived Section's, or the Mbolster's one compartment (no dive). */}
+      <XraySectionDock
+        dived={kind === "pillow" ? divedSection : "compartment"}
+        onSlot={setControlsSlot}
+        className="hidden lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]"
+      />
       <div className="min-w-0 space-y-4">
       <WorkbenchHeader
         title={selectedId === "" ? "New filling template" : name.trim() || "Untitled filling template"}
@@ -2208,12 +2206,13 @@ function FillingConfigPanel({
                 colorOverrides={colorOverrides}
                 dimensionOverrides={dimensionOverrides}
                 fit={bolsterFit}
+                controlsSlot={wideWorkbench ? controlsSlot : null}
               />
               <BolsterCrossSection fit={bolsterFit} itemSubtypes={gridItemSubtypes} colorOverrides={colorOverrides} />
             </Section>
           )}
           <div className="space-y-3">
-          {kind === "pillow" && templateRail}
+          {templateRail}
           <Section title="Derived pack list">
             {kind === "pillow" ? (
               <XrayPackList placements={placements} onPlacementsChange={setPlacements} items={gridItems} />

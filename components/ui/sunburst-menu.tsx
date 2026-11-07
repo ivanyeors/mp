@@ -44,6 +44,8 @@ export type SunburstMenuProps = {
    *  (the x-ray blooms from a whole-cell hit area, not the centre dot); the
    *  centre button then only steps back / closes. Omit for the built-in dot. */
   open?: boolean;
+  /** Phone-sized labels and glyphs on every screen: for a bloom drawn large on a desktop, where 10px text reads small. */
+  largeLabels?: boolean;
   className?: string;
 };
 
@@ -80,6 +82,7 @@ export function SunburstMenu({
   ariaLabel,
   onOpenChange,
   open: openProp,
+  largeLabels = false,
   className,
 }: SunburstMenuProps) {
   // Issue #63 (ADR 0009): the bloom is `size` wide and centered on the trigger,
@@ -117,7 +120,8 @@ export function SunburstMenu({
   // the rings scale, the tap target does not.
   const minHoleRadius = isMobile ? (TOUCH_TARGET + 8) / 2 : 0;
   const holeRadius = Math.max(minHoleRadius, holeRadiusProp * scale);
-  const labelCharW = isMobile ? MOBILE_LABEL_CHAR_W : undefined;
+  const bigType = isMobile || largeLabels;
+  const labelCharW = bigType ? MOBILE_LABEL_CHAR_W : undefined;
   // Controlled when `openProp` is given, self-owned otherwise. onOpenChange is
   // notified from setOpen (not an effect on `open`) so a controlled parent hears
   // an internal close — an effect would never fire, the prop having not moved.
@@ -289,7 +293,7 @@ export function SunburstMenu({
   const showText = display !== "icon";
   const showIcon = display !== "text";
   const centerState = !open ? "closed" : expansionPath.length > 0 ? "back" : "close";
-  const centerIconClass = isMobile ? "size-6" : "size-5";
+  const centerIconClass = bigType ? "size-6" : "size-5";
 
   return (
     <div ref={measureRef} className="flex w-full justify-center">
@@ -388,10 +392,10 @@ export function SunburstMenu({
                       )}
                     >
                       {showIcon && Icon ? (
-                        <Icon className={cn("shrink-0", isMobile ? "size-5" : "size-4")} />
+                        <Icon className={cn("shrink-0", bigType ? "size-5" : "size-4")} />
                       ) : null}
                       {showText ? (
-                        <span className={cn("font-medium", isMobile ? "text-xs" : "text-[10px]")}>
+                        <span className={cn("font-medium", bigType ? "text-xs" : "text-[10px]")}>
                           {arc.node.label}
                         </span>
                       ) : null}

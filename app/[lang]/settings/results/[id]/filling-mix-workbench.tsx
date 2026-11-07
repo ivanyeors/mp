@@ -60,7 +60,7 @@ export function FillingMixWorkbench({
     <div ref={measureRef} className="w-full max-w-[72rem] space-y-3">
       {notice}
       {wide ? (
-        <div className={cn("grid items-start gap-4", rail ? "grid-cols-[minmax(0,1fr)_18rem]" : "grid-cols-1")}>
+        <div className={cn("grid items-start gap-4", rail ? "grid-cols-[minmax(0,1fr)_22rem]" : "grid-cols-1")}>
           <div className="min-w-0">{xray}</div>
           {rail}
         </div>
