@@ -8,6 +8,7 @@ import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import {
   boughtPillows,
   pillowOwnership,
+  placementRows,
   type BoughtPillow,
   type PillowOrderItem,
   type PillowPurchaseLine,
@@ -26,12 +27,15 @@ import type { CustomerPillowView } from "./view";
  * from the build its order line froze at Accept. Without that, the latest
  * Fitting record's that names a configuration type, matched to a template on
  * this read (`match.ts`). A link's or a fitting's template is drawn as it is
- * now.
+ * now, except a link a Re-adjustment wrote (ADR 0042 l): that is drawn from
+ * the mix Staff left in the pillow, and names the template it came from.
  */
 
 type LinkRow = {
   pillow_size: string;
   filling_template_id: number | string | null;
+  /** A Re-adjustment's mix; null for a plain link. */
+  filling_placements: unknown;
   linked_by_user_id: string | null;
   linked_by_profile_id: string | null;
   linked_at: string;
@@ -130,7 +134,7 @@ export async function loadCustomerPillow(
   const [linkRes, tpl, overrides, bought, migratedRes] = await Promise.all([
     admin
       .from("customer_pillows")
-      .select("pillow_size, filling_template_id, linked_by_user_id, linked_by_profile_id, linked_at")
+      .select("pillow_size, filling_template_id, filling_placements, linked_by_user_id, linked_by_profile_id, linked_at")
       .eq("customer_id", customerId)
       .maybeSingle<LinkRow>(),
     loadPillowTemplates(admin),
@@ -144,6 +148,7 @@ export async function loadCustomerPillow(
   if (!bought.ok) return bought;
   if (migratedRes.error) return { ok: false, error: migratedRes.error.message };
   const link = linkRes.data;
+  const readjusted = link !== null && link.filling_placements !== null && link.filling_placements !== undefined;
 
   const fitting = pillowFitting(fittings);
   const match = fitting ? matchFittingTemplate(fitting, tpl.templates) : null;
@@ -170,6 +175,8 @@ export async function loadCustomerPillow(
       const { data } = await admin.from("bom_templates").select("id, name, key").eq("id", linkedId).maybeSingle();
       if (data) template = { id: Number(data.id), name: String(data.name), keys: data.key ? [String(data.key)] : [] };
     }
+    // A Re-adjustment's pillow is what Staff left in it; the template only says where it came from.
+    if (readjusted) placements = placementRows(link.filling_placements);
   } else if (built) {
     source = "order";
     size = built.size;
@@ -185,7 +192,7 @@ export async function loadCustomerPillow(
     template = match.template;
   }
 
-  if (template && source !== "order") {
+  if (template && source !== "order" && !readjusted) {
     const { data, error } = await admin
       .from("filling_template_placements")
       .select("section, sub_section, slot, item_id, row_index, insert_order, offset_x_mm, offset_y_mm")
@@ -203,7 +210,7 @@ export async function loadCustomerPillow(
       source,
       size,
       template,
-      link: link ? { linkedAt: link.linked_at, linkedBy: await linkedByName(admin, link) } : null,
+      link: link ? { linkedAt: link.linked_at, linkedBy: await linkedByName(admin, link), readjusted } : null,
       order: built
         ? {
             orderId: built.orderId,

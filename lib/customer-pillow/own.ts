@@ -22,7 +22,10 @@ export function ownPillowView(pillow: CustomerPillowView): OwnPillowView | null 
         ? (pillow.order?.paidAt ?? null)
         : pillow.source === "fitting"
           ? (pillow.fitting?.fittedAt ?? null)
-          : null,
+          : pillow.link?.readjusted
+            ? pillow.link.linkedAt
+            : null,
+    readjusted: pillow.source === "linked" && pillow.link?.readjusted === true,
     placements: pillow.placements.map((p) => ({
       section: p.section,
       sub_section: p.sub_section,

@@ -3,9 +3,8 @@ import { z } from "zod";
 
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { loadCustomerPillow } from "@/lib/customer-pillow/load";
+import { reloadCustomerPillow } from "@/lib/customer-pillow/reload";
 import { PILLOW_TEMPLATE_KEYS } from "@/lib/filling-templates/keys";
-import { listCustomerFittings } from "@/lib/fitting-import/records";
 import { actingProfile } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -21,8 +20,7 @@ const LinkSchema = z.object({
 
 /** The pillow as the card draws it, after a change: the fittings are read again so the match is current. */
 async function pillowResponse(customerId: string) {
-  const fittings = await listCustomerFittings(customerId).catch(() => []);
-  const loaded = await loadCustomerPillow(supabaseAdmin(), customerId, fittings);
+  const loaded = await reloadCustomerPillow(customerId);
   if (!loaded.ok) return NextResponse.json({ error: loaded.error }, { status: 500 });
   return NextResponse.json({ ok: true, pillow: loaded.pillow });
 }
@@ -37,7 +35,8 @@ async function customerExists(id: string): Promise<boolean> {
  * and the active pillow Filling Template it is built with (or none, when only
  * the size is known). It replaces the fitting's match on the Customer page
  * (ADR 0042 j). It writes `customer_pillows` and nothing else: no Result, no
- * stock, no price.
+ * stock, no price. A Re-adjustment's mix on the link is replaced too: the
+ * pillow is drawn from the template as it is now (ADR 0042 l).
  */
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers-edit");
@@ -69,7 +68,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const { data: before } = await admin
     .from("customer_pillows")
-    .select("pillow_size, filling_template_id")
+    .select("pillow_size, filling_template_id, filling_placements")
     .eq("customer_id", id)
     .maybeSingle();
 
@@ -78,6 +77,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       customer_id: id,
       pillow_size: size,
       filling_template_id: fillingTemplateId,
+      filling_placements: null,
       linked_by_user_id: ctx.userId,
       linked_by_profile_id: (await actingProfile(ctx.memberId))?.id ?? null,
       linked_at: new Date().toISOString(),
@@ -118,7 +118,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     .from("customer_pillows")
     .delete()
     .eq("customer_id", id)
-    .select("pillow_size, filling_template_id")
+    .select("pillow_size, filling_template_id, filling_placements")
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

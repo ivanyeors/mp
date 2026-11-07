@@ -5,7 +5,8 @@ Fitting records on their Profile, without the Drive photos (h); and one person's
 each with its own measurements, all land on one Customer (c, i). Amended (owner, 2026-11-05): the
 Customer page draws the pillow a fitting names in the x-ray, and Staff can link another (j); the
 customer sees it on their Profile once something says they bought it, and a pillow bought here is
-drawn as it was built (k).
+drawn as it was built (k). Amended (2026-11-07): Staff change the fillings in that pillow at a
+Re-adjustment visit, and it is drawn as they left it (l).
 
 Before this platform, every in-store fitting was typed into a Google Form: the customer's name,
 mobile and email, the four measurements (A to D, in inches), the recommended pillow size, the
@@ -128,6 +129,22 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   fitting date, the placements and the placed Items' names (`ownPillowView`). Not who linked it,
   the match notices, the fitting's codes, the templates Change offers, or any cost. It is drawn
   read-only in the same x-ray as the Customer page, which says whether the Profile shows it.
+- **(l) Re-adjust changes the fillings in the pillow they have** (asked 2026-11-07). At a
+  **Re-adjustment** visit Staff re-tune the pillow by swapping, adding or taking out pieces. A
+  Staff member holding `customers-edit` searches the customer, and **Re-adjust**, beside Change
+  pillow on the Customer page, opens the **X-ray editor** on the pillow drawn there (a link's
+  template, an order's build, a fitting's match, or the last Re-adjustment), with its cut and
+  its **Derived pack list**, and a list of the counts that changed. Save writes the mix they
+  leave in it onto the Staff link, as `customer_pillows.filling_placements`, rows shaped like
+  an order line's frozen build, with the size and the template it was re-adjusted from. From
+  then on the link is drawn from that mix, not from the template as it is now, and the card and
+  the Profile say it was re-adjusted, and when. The mix is checked as a **Result**'s is (cells,
+  Layers, pieces, placeable Items) but with no **Tier**: the pillow on record has none. Change
+  pillow replaces it with a template again, and removing the link goes back to the order's or
+  the fitting's. A Re-adjustment is a **Service**: it moves no stock, sets no price, and reaches
+  no Result, order or analytics; its fee is charged when it is booked. Each save is in the audit
+  log (`customer_pillow.readjust`) with the mix before and after, which is the only history
+  kept: the card shows the latest.
 
 ## Considered options
 
@@ -150,6 +167,13 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   every customer who bought before the switch.
 - **Showing the customer their photos too** — rejected by the owner. The files live in the form
   owner's Drive, and the route that previews them is for Staff.
+- **A Re-adjustment history table** (l) — not yet. One row per visit, linked to its
+  **Re-adjustment booking**, would let Staff read every change made over the years. Today the
+  link holds the latest mix and the audit log the ones before it; a table can be filled from
+  that log later.
+- **Moving stock for a Re-adjustment's pieces** (l) — not done. A **Service** consumes no
+  inventory in this model. If the pieces taken out and put in should count, that is a
+  decision for the owner and a stock movement of its own, not a side effect of this save.
 - **Copying the photos into Storage** — rejected for now. Previews from Drive need no storage, no
   copy to keep in step and no second home for the photos. Copying stays possible later from the
   stored file ids.

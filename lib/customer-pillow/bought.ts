@@ -60,6 +60,15 @@ function placementRow(value: unknown): PillowPlacementRow | null {
   };
 }
 
+/**
+ * Pillow placement rows out of stored JSON: an order line's frozen build, or a
+ * Re-adjustment's mix on the Staff link (ADR 0042 l). Anything that is not a
+ * pillow cell row is dropped.
+ */
+export function placementRows(value: unknown): PillowPlacementRow[] {
+  return (Array.isArray(value) ? value : []).map(placementRow).filter((r): r is PillowPlacementRow => r !== null);
+}
+
 /** The pillow build an order line froze at Accept (`ResultOrderBuildSnapshot`), or null when it holds none. */
 export function snapshotPillowBuild(
   snapshot: unknown,
@@ -67,11 +76,10 @@ export function snapshotPillowBuild(
   if (!snapshot || typeof snapshot !== "object") return null;
   const s = snapshot as Record<string, unknown>;
   if (s.product_type !== "pillow" || typeof s.result_id !== "string") return null;
-  const rows = Array.isArray(s.filling_placements) ? s.filling_placements : [];
   return {
     templateId: num(s.filling_template_id),
     templateName: typeof s.filling_template_name === "string" && s.filling_template_name.trim() ? s.filling_template_name : null,
-    placements: rows.map(placementRow).filter((r): r is PillowPlacementRow => r !== null),
+    placements: placementRows(s.filling_placements),
   };
 }
 

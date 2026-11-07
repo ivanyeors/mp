@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BedDouble, Eye, EyeOff, Link2, Loader2, TriangleAlert } from "lucide-react";
+import { BedDouble, Eye, EyeOff, Link2, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,8 @@ import { rowsToPillowPlacements } from "@/lib/spatial-fillings/core";
 import type { MatchableTemplate, PillowSizeKey } from "@/lib/customer-pillow/match";
 import { matchNotices } from "@/lib/customer-pillow/notices";
 import type { CustomerPillowResult, CustomerPillowView } from "@/lib/customer-pillow/view";
+import type { FillingItem } from "@/components/configurator/staff-assist-panel";
+import { ReadjustDialog } from "./customer-pillow-readjust";
 
 /** No template chosen: the size is known, the filling is not. */
 const NO_TEMPLATE = "none";
@@ -36,6 +38,10 @@ const NO_TEMPLATE = "none";
  * with no fitting. Read-only: it shows a recipe, it does not build one, and
  * nothing here reaches a Result, stock or a price. It says whether the
  * customer's own Profile shows it too (k).
+ *
+ * Re-adjust, beside Change, opens the X-ray editor on the pillow drawn, to
+ * change its fillings at a Re-adjustment visit (l). What Staff leave in it is
+ * saved on the link and drawn from then on; it is still not a build.
  */
 export function CustomerPillowCard({
     customerId,
@@ -47,12 +53,18 @@ export function CustomerPillowCard({
     canEdit: boolean;
 }) {
     const [pillow, setPillow] = useState<CustomerPillowView | null>(initial ?? null);
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState<"link" | "readjust" | null>(null);
     // Each opening starts from what is shown, not from what was picked and cancelled last time.
     const [session, setSession] = useState(0);
-    const openDialog = () => {
+    const openDialog = (kind: "link" | "readjust") => {
         setSession((n) => n + 1);
-        setOpen(true);
+        setOpen(kind);
+    };
+    // The Items Re-adjust may place, read once on its first opening.
+    const [catalog, setCatalog] = useState<FillingItem[] | null>(null);
+    const saved = (next: CustomerPillowView) => {
+        setPillow(next);
+        setOpen(null);
     };
 
     if (initial === undefined) return null;
@@ -67,24 +79,31 @@ export function CustomerPillowCard({
     return (
         <Card data-section="pillow">
             <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1.5">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <BedDouble className="h-4 w-4" aria-hidden />
-                            Pillow
-                        </CardTitle>
-                        <CardDescription>
-                            <Source pillow={pillow} />
-                            {pillow.source === "none" && canEdit ? " Link the size and Filling Template they have to draw it here." : ""}
-                        </CardDescription>
-                    </div>
+                {/* The buttons share the title's row, so the description below keeps the card's width. */}
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <BedDouble className="h-4 w-4" aria-hidden />
+                        Pillow
+                    </CardTitle>
                     {canEdit && (
-                        <Button variant="outline" size="sm" className="shrink-0" onClick={openDialog}>
-                            <Link2 className="mr-1.5 h-4 w-4" aria-hidden />
-                            {pillow.source === "none" ? "Link pillow" : "Change pillow"}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" size="sm" onClick={() => openDialog("link")}>
+                                <Link2 className="mr-1.5 h-4 w-4" aria-hidden />
+                                {pillow.source === "none" ? "Link pillow" : "Change pillow"}
+                            </Button>
+                            {pillow.source !== "none" && (
+                                <Button variant="outline" size="sm" onClick={() => openDialog("readjust")}>
+                                    <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />
+                                    Re-adjust
+                                </Button>
+                            )}
+                        </div>
                     )}
                 </div>
+                <CardDescription>
+                    <Source pillow={pillow} />
+                    {pillow.source === "none" && canEdit ? " Link the size and Filling Template they have to draw it here." : ""}
+                </CardDescription>
                 <ProfileLine pillow={pillow} />
             </CardHeader>
             {pillow.source !== "none" && (
@@ -94,15 +113,24 @@ export function CustomerPillowCard({
             )}
             {canEdit && (
                 <LinkDialog
-                    key={session}
+                    key={`link-${session}`}
                     customerId={customerId}
                     pillow={pillow}
-                    open={open}
-                    onOpenChange={setOpen}
-                    onSaved={(next) => {
-                        setPillow(next);
-                        setOpen(false);
-                    }}
+                    open={open === "link"}
+                    onOpenChange={(next) => setOpen(next ? "link" : null)}
+                    onSaved={saved}
+                />
+            )}
+            {canEdit && pillow.source !== "none" && open === "readjust" && (
+                <ReadjustDialog
+                    key={`readjust-${session}`}
+                    customerId={customerId}
+                    pillow={pillow}
+                    open
+                    onOpenChange={(next) => setOpen(next ? "readjust" : null)}
+                    onSaved={saved}
+                    catalog={catalog}
+                    onCatalog={setCatalog}
                 />
             )}
         </Card>
@@ -123,7 +151,9 @@ function Source({ pillow }: { pillow: CustomerPillowView }) {
     if (pillow.source === "linked" && pillow.link) {
         return (
             <>
-                Linked{pillow.link.linkedBy ? ` by ${pillow.link.linkedBy}` : ""} on {formatAdminDateMY(pillow.link.linkedAt)}.
+                {pillow.link.readjusted ? "Re-adjusted" : "Linked"}
+                {pillow.link.linkedBy ? ` by ${pillow.link.linkedBy}` : ""} on {formatAdminDateMY(pillow.link.linkedAt)}
+                {pillow.link.readjusted ? `, from ${pillow.template?.name ?? "a custom mix"}` : ""}.
                 {pillow.order
                     ? ` Bought here on ${boughtOn(pillow.order)}: ${orderLabel(pillow.order)}.`
                     : pillow.fitting
@@ -179,12 +209,14 @@ function ProfileLine({ pillow }: { pillow: CustomerPillowView }) {
 function Drawing({ pillow }: { pillow: CustomerPillowView }) {
     const placements = useMemo(() => rowsToPillowPlacements(pillow.placements), [pillow.placements]);
     const notices = pillow.source === "fitting" ? matchNotices(pillow.match) : [];
-    if (pillow.source === "linked" && pillow.template && !pillow.templates.some((t) => t.id === pillow.template?.id)) {
+    const readjusted = pillow.source === "linked" && pillow.link?.readjusted === true;
+    // A re-adjusted pillow is drawn from its own mix: the template it came from may retire freely.
+    if (pillow.source === "linked" && !readjusted && pillow.template && !pillow.templates.some((t) => t.id === pillow.template?.id)) {
         notices.push(`${pillow.template.name} is no longer active in Configure.`);
     }
     if (pillow.source === "linked" && pillow.link && pillow.order && Date.parse(pillow.order.paidAt) > Date.parse(pillow.link.linkedAt)) {
         notices.push(
-            `They bought a pillow here on ${formatAdminDateMY(pillow.order.paidAt)}, after this link. Use the order's to draw it as it was built.`,
+            `They bought a pillow here on ${formatAdminDateMY(pillow.order.paidAt)}, after this ${readjusted ? "re-adjustment" : "link"}. Use the order's, under Change pillow, to draw it as it was built.`,
         );
     }
     const pieces = placements.length;
@@ -195,12 +227,15 @@ function Drawing({ pillow }: { pillow: CustomerPillowView }) {
             <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">Size {pillow.size ?? "not recorded"}</Badge>
                 <span className="font-medium">
-                    {pillow.template?.name ?? (pillow.source === "order" ? "Custom mix" : "No Filling Template")}
+                    {pillow.template?.name ?? (pillow.source === "order" || readjusted ? "Custom mix" : "No Filling Template")}
                 </span>
+                {readjusted && <Badge variant="outline">Re-adjusted</Badge>}
                 {drawn && (
                     <span className="text-xs text-muted-foreground">
                         {pieces} piece{pieces === 1 ? "" : "s"}
-                        {pillow.template?.keys.length ? ` · serves ${formatTemplateKeys("pillow", pillow.template.keys)}` : ""}
+                        {!readjusted && pillow.template?.keys.length
+                            ? ` · serves ${formatTemplateKeys("pillow", pillow.template.keys)}`
+                            : ""}
                     </span>
                 )}
             </div>
@@ -226,7 +261,9 @@ function Drawing({ pillow }: { pillow: CustomerPillowView }) {
                     {pieces > 0 ? (
                         <PillowContents label="Derived pack list" placements={placements} items={pillow.items} />
                     ) : (
-                        <p className="text-sm text-muted-foreground">{pillow.template?.name} has no placements laid out yet.</p>
+                        <p className="text-sm text-muted-foreground">
+                            {pillow.template?.name ?? "This pillow"} has no placements laid out yet.
+                        </p>
                     )}
                 </>
             )}
@@ -306,7 +343,8 @@ function LinkDialog({
                     <DialogTitle>{pillow.source === "none" ? "Link a pillow" : "Change the pillow"}</DialogTitle>
                     <DialogDescription>
                         The size and Filling Template this customer has. It replaces what their order or fitting records on this
-                        page, shows on their Profile too, and changes no Result, order or stock.
+                        page{pillow.link?.readjusted ? ", and the fillings their last re-adjustment left in it" : ""}, shows on their
+                        Profile too, and changes no Result, order or stock.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">

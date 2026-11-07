@@ -20,11 +20,15 @@ export type CustomerPillowView = {
   /**
    * The Filling Template drawn; null when none is linked or matched, or for an
    * order's custom mix. An order's is the one it was built from, by the name it
-   * had then.
+   * had then; a re-adjusted pillow's the one it was re-adjusted from.
    */
   template: MatchableTemplate | null;
-  /** Staff's link, when there is one. */
-  link: { linkedAt: string; linkedBy: string | null } | null;
+  /**
+   * Staff's link, when there is one. `readjusted`: it holds the mix a
+   * Re-adjustment left in the pillow (ADR 0042 l), drawn instead of the
+   * template, and `linkedAt`/`linkedBy` are that Re-adjustment's.
+   */
+  link: { linkedAt: string; linkedBy: string | null; readjusted: boolean } | null;
   /** The latest pillow bought here whose build the line froze, shown under a link too. */
   order: {
     orderId: string;
@@ -36,7 +40,10 @@ export type CustomerPillowView = {
   /** The fitting the match is read from, shown under a link too, as what the record says. */
   fitting: { id: string; fittedAt: string; label: string } | null;
   match: FittingTemplateMatch | null;
-  /** The template's placements as it is now, or an order's as it was built; empty with neither. */
+  /**
+   * The template's placements as it is now, an order's as it was built, or a
+   * Re-adjustment's as Staff left it; empty with none of them.
+   */
   placements: PillowPlacementRow[];
   /** The Items the placements name, for the x-ray's colours and the pack list. */
   items: FillingMixItem[];
@@ -63,8 +70,10 @@ export type OwnPillowView = {
   name: string | null;
   /** The order it was built for. */
   orderNumber: string | null;
-  /** When it was bought (an order) or fitted (a fitting); null for a link. */
+  /** When it was bought (an order), fitted (a fitting) or re-adjusted; null for a plain link. */
   date: string | null;
+  /** Staff re-adjusted its fillings at a visit, on `date` (ADR 0042 l). */
+  readjusted: boolean;
   placements: PillowPlacementRow[];
   items: FillingMixItem[];
   colorOverrides: ColorOverrideRow[];
@@ -76,3 +85,14 @@ export type CustomerPillowResult = CustomerPillowView | null;
 
 /** Body of `PUT /api/shop/customers/[id]/pillow`. */
 export type CustomerPillowLinkInput = { size: PillowSizeKey; fillingTemplateId: number | null };
+
+/**
+ * Body of `POST /api/shop/customers/[id]/pillow/readjust` (ADR 0042 l): the
+ * size, the template the pillow was re-adjusted from (null for a custom mix),
+ * and every piece left in it.
+ */
+export type CustomerPillowReadjustInput = {
+  size: PillowSizeKey;
+  fillingTemplateId: number | null;
+  placements: PillowPlacementRow[];
+};
