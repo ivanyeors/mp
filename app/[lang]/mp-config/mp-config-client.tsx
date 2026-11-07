@@ -2994,10 +2994,15 @@ export function MpConfigClient({
     const askingDetails = phase == null || phase === "details";
     const pillowTotal =
       quoteBlocked || !shopRecommendation ? null : basePrice + addonTotal + serviceTotal;
+    // Step 2 shows the Mpillow as these rows show it: goods, then each Service
+    // fee on its own row, so the Measurement service stays visible while the
+    // shopper customises the Mbolster (ADR 0024, ADR 0026).
     const pairedPillow: PairedHandoff["pillow"] = {
       label: `Mpillow ${size ?? ""} · ${tier ?? ""}`.trim(),
       ballpark: pillowTotal,
       currency,
+      goods: pillowTotal == null ? null : basePrice + addonTotal,
+      services: serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
     };
     const pairedBolster = pairedChoice?.bolster ? pairedChoice.summary : null;
     // Steps 3 and 4 price the whole order: the Mbolster as its page priced it,

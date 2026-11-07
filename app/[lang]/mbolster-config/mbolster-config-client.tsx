@@ -152,6 +152,7 @@ import { PairedStepperBar } from "@/components/configurator/paired-stepper";
 import {
   clearPairedHandoff,
   pairedDetailsPath,
+  pairedPillowRows,
   readPairedHandoff,
   writePairedHandoff,
   type PairedBolsterAnswers,
@@ -1812,16 +1813,21 @@ export function MbolsterConfigClient({
                   </span>
                 </div>
               ))}
-              {paired ? (
-                <div className="mb-1 flex justify-between text-sm">
-                  <span className="text-muted-foreground">{paired.pillow.label}</span>
-                  <span className="tabular-nums">
-                    {paired.pillow.ballpark != null
-                      ? `${paired.pillow.currency} ${paired.pillow.ballpark.toFixed(2)}`
-                      : "Not available"}
-                  </span>
-                </div>
-              ) : null}
+              {/* The Mpillow as step 1 showed it: goods, then its Measurement
+                  service on its own row — the fee is the Mpillow's, and stays
+                  in the pair's total while the Mbolster is customised. */}
+              {paired
+                ? pairedPillowRows(paired.pillow).map((row) => (
+                    <div key={row.key} className="mb-1 flex justify-between gap-4 text-sm">
+                      <span className="min-w-0 text-muted-foreground">{row.label}</span>
+                      <span className="shrink-0 whitespace-nowrap tabular-nums">
+                        {row.amount != null
+                          ? `${paired.pillow.currency} ${row.amount.toFixed(2)}`
+                          : "Not available"}
+                      </span>
+                    </div>
+                  ))
+                : null}
               {paired ? (
                 <div className="mb-1 flex justify-between text-sm">
                   <span className="text-muted-foreground">Mbolster (ships with it)</span>
