@@ -242,7 +242,7 @@ export function ReadjustDialog({
                 {/* Phones read the pack list and the changes before the cuts, as before; from md the cuts follow the
                     x-ray they cut, and the lists come after them. */}
                 <div className="flex flex-col gap-4">
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                         <div className="mx-auto w-full min-w-0 max-w-[52rem]">
                             <XrayEditor
                                 placements={placements}

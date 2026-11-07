@@ -3720,15 +3720,15 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/filling-groups.check.ts": {
-    "mtime": 1794037689.4476516,
-    "seen": 1794039476.563022,
-    "ast_hash": "d95d98d94376a5d2c63cb78478695d75",
+    "mtime": 1794040360.5221992,
+    "seen": 1794040416.4128146,
+    "ast_hash": "83ec148481c2caae909ea4acebf4d732",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/filling-groups.ts": {
-    "mtime": 1794037689.4476516,
-    "seen": 1794039476.5630236,
-    "ast_hash": "626bcbb217b570d100de1461f3d585c9",
+    "mtime": 1794039744.255087,
+    "seen": 1794040416.4128172,
+    "ast_hash": "0b56ba2ce497cace1ef3777503203f79",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/fingerprint.ts": {
