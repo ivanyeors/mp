@@ -211,6 +211,7 @@ import {
   mixAfterTierChange,
   recheckSelectionsForSize,
   sessionTemplateId,
+  soldPillowTier,
   startingTemplateId,
   templateSuggestion,
   type LoadedTemplate,
@@ -834,6 +835,11 @@ export function MpConfigClient({
   const stepOrder = (postUpsellSteps ?? stepOrderFor(variant)) as Step[];
   const showNeckSteps = !isBasic || upsoldToPremium;
   const soldAsPremium = upsoldToPremium || !isBasic;
+  /** What the hold sells and the preview prices: Staff's Tier control, else the page's. */
+  const soldTier = soldPillowTier({
+    staffTier: staffAssist ? shopRecommendation?.pillow_product?.kind : null,
+    premiumFlow: soldAsPremium,
+  });
   const routeTarget = useMemo(
     () =>
       parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null)?.flowRoute
@@ -2430,16 +2436,10 @@ export function MpConfigClient({
       shopRecommendation?.pillow_product?.size ??
       suggestion?.recommended?.size ??
       suggestion?.product?.size;
-    const tier = soldAsPremium
-      ? ("premium" as const)
-      : isBasic
-        ? ("basic" as const)
-        : ((shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
-          suggestion?.recommended?.kind ??
-          suggestion?.product?.kind);
+    const tier = soldTier;
 
-    if (!size || !tier) {
-      toast.error("Missing size or tier suggestion");
+    if (!size) {
+      toast.error("Missing size suggestion");
       return;
     }
 
@@ -2605,7 +2605,7 @@ export function MpConfigClient({
     measurementData,
     upsertToDb,
     isBasic,
-    soldAsPremium,
+    soldTier,
     configPath,
     holdFields,
     staffAssist,
@@ -2916,7 +2916,6 @@ export function MpConfigClient({
     // priced the CTA is blocked and the amount is withheld.
     // Measurement service (ADR 0024): the rule the hold route applies, on the tier
     // the hold will submit. Shown as its own row, never folded into the pillow.
-    const feeTier = soldAsPremium ? "premium" : isBasic ? "basic" : (tier ?? null);
     let serviceLines: ServiceLine[] = [];
     let servicesBlocked = false;
     try {
@@ -2924,7 +2923,7 @@ export function MpConfigClient({
         {
           measured_by_type: measuredByStaff ? "staff" : "by_user",
           product_type: "pillow",
-          suggested_tier: feeTier,
+          suggested_tier: soldTier,
         },
         servicePrices,
       );
@@ -2939,11 +2938,11 @@ export function MpConfigClient({
     // build's code goes on the Mpillow too. A finish link or a Staff edit shows
     // the code the Result already carries; the server takes it off either way.
     const codeContext: CheckoutCodeContext | null =
-      quoteBlocked || !shopRecommendation || !size || (feeTier !== "basic" && feeTier !== "premium")
+      quoteBlocked || !shopRecommendation || !size
         ? null
         : {
             flow: "customisation",
-            build: { product_type: "pillow", size: String(size), tier: feeTier },
+            build: { product_type: "pillow", size: String(size), tier: soldTier },
             goods: basePrice + addonTotal,
           };
     const storedCoupon = resumeFinish?.coupon ?? staffEdit?.coupon ?? null;
@@ -3437,17 +3436,14 @@ export function MpConfigClient({
                               qty: l.quantity,
                             };
                           });
-                      const soldTierLabel = soldAsPremium ? "premium" : tier;
                       const showTierAdvice =
                         record?.tierSuggestion &&
-                        record.tierSuggestion !== (record.soldTier ?? soldTierLabel);
+                        record.tierSuggestion !== (record.soldTier ?? soldTier);
                       return (
                         <>
-                          {soldTierLabel ? (
-                            <Badge variant="outline" className="text-xs capitalize text-white">
-                              {soldTierLabel} tier
-                            </Badge>
-                          ) : null}
+                          <Badge variant="outline" className="text-xs capitalize text-white">
+                            {soldTier} tier
+                          </Badge>
                           {showTierAdvice && record?.tierSuggestion ? (
                             <TierSuggestion tier={record.tierSuggestion} />
                           ) : null}

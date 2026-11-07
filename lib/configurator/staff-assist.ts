@@ -173,6 +173,26 @@ export function mixAfterTierChange(
   return { placements: kept, removed: placements.length - kept.length };
 }
 
+/**
+ * The tier a pillow hold sells, and the tier its Measurement service and
+ * checkout code are reckoned on. With Staff at the controls it is the Tier
+ * control's: the preview, its price and the x-ray are already that tier's, so
+ * a hold on the page's tier charged a price nobody was shown — and on
+ * `/mp-basic` refused a Premium mix holding a neck support. Otherwise the
+ * page's: Premium on `/mp-config` or once a Basic shopper takes the upgrade,
+ * Basic on `/mp-basic`.
+ */
+export function soldPillowTier(opts: {
+  /** The tier Staff assist mode's Tier control shows; null without a Staff session. */
+  staffTier: string | null | undefined;
+  /** `/mp-config`, or `/mp-basic` after the shopper accepted the Premium route. */
+  premiumFlow: boolean;
+}): PillowTier {
+  const { staffTier } = opts;
+  if (staffTier === "basic" || staffTier === "premium") return staffTier;
+  return opts.premiumFlow ? "premium" : "basic";
+}
+
 // --- Session mix (per-cell list editor, v1) ----------------------------------
 
 function inCell(p: PillowPlacement, cell: Cell): boolean {
