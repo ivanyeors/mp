@@ -15,6 +15,10 @@
 import { parseRecommendationRecord } from "@/lib/rules-engine/recommendation-record";
 import { withJourneyOnAccept, withJourneyOnDecline } from "@/lib/rules-engine/journey";
 import type { RuleFlow } from "@/lib/rules-engine/types";
+import {
+  parseBolsterAssistDraft,
+  type BolsterAssistDraft,
+} from "@/lib/configurator/staff-assist-draft";
 
 /** sessionStorage: the pair as the shopper has built it so far, shared by both pages. */
 export const PAIRED_HANDOFF_KEY = "mp_paired_build_handoff";
@@ -44,6 +48,16 @@ export type PairedBolsterSummary = {
   currency: string;
 };
 
+/** What step 2 was given, so reopening it shows the same Mbolster. */
+export type PairedBolsterAnswers = {
+  heightUnit?: string;
+  heightCm?: string;
+  caseId?: number | null;
+  addonIds?: number[];
+  /** Staff assist mode: the mix Staff built on the Mbolster's x-ray. */
+  assist?: BolsterAssistDraft;
+};
+
 /** Step 2's answer: the Mbolster to hold with the Mpillow, or none (Skip). */
 export type PairedChoice =
   | { bolster: PairedBolster; summary: PairedBolsterSummary }
@@ -64,12 +78,7 @@ export type PairedHandoff = {
   /** The Mpillow as step 1 priced it, for step 2's running total. */
   pillow: { label: string; ballpark: number | null; currency: string };
   /** Step 2's own answers, kept so Back and forth does not lose them. */
-  bolster?: {
-    heightUnit?: string;
-    heightCm?: string;
-    caseId?: number | null;
-    addonIds?: number[];
-  };
+  bolster?: PairedBolsterAnswers;
   /** Step 2's answer, once given. Opening step 2 again clears it until re-answered. */
   choice?: PairedChoice;
 };
@@ -125,6 +134,12 @@ function parsePairedChoice(raw: unknown, companionId: string): PairedChoice | un
   };
 }
 
+function parseBolsterAnswers(raw: object): PairedBolsterAnswers {
+  const { assist, ...answers } = raw as PairedBolsterAnswers;
+  const parsed = parseBolsterAssistDraft(assist);
+  return { ...answers, ...(parsed ? { assist: parsed } : {}) };
+}
+
 export function parsePairedHandoff(raw: unknown): PairedHandoff | null {
   if (!raw || typeof raw !== "object") return null;
   const h = raw as Partial<PairedHandoff>;
@@ -148,7 +163,7 @@ export function parsePairedHandoff(raw: unknown): PairedHandoff | null {
       ballpark: typeof h.pillow?.ballpark === "number" ? h.pillow.ballpark : null,
       currency: h.pillow?.currency ?? "SGD",
     },
-    ...(h.bolster && typeof h.bolster === "object" ? { bolster: h.bolster } : {}),
+    ...(h.bolster && typeof h.bolster === "object" ? { bolster: parseBolsterAnswers(h.bolster) } : {}),
     ...(choice ? { choice } : {}),
   };
 }
