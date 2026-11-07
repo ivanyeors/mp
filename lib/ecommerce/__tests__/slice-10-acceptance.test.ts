@@ -119,11 +119,11 @@ describe("Slice 10 acceptance criteria", () => {
 
   it("AC7: orders list joins order_items for item counts", () => {
     const listSource = readFileSync(
-      join(repoRoot, "app/api/shop/orders/route.ts"),
+      join(repoRoot, "lib/ecommerce/admin/orders-list.ts"),
       "utf8"
     );
-    expect(listSource).toContain("order_items(*)");
-    expect(listSource).toContain("items");
+    expect(listSource).toContain("order_items(");
+    expect(listSource).toContain("items_count");
   });
 
   it("AC7: timeline API returns events alias", () => {

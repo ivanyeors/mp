@@ -5,7 +5,7 @@ How data moves through mp, written for people and agents changing it.
 | Doc | Covers |
 |---|---|
 | [inventory.md](inventory.md) | The stock ledger, on-hand and buildable views, every way stock is added, and how stock reaches the shop, the configurator and Shopify |
-| [purchases-to-inventory.md](purchases-to-inventory.md) | Every purchase channel that takes stock out (shop, Results, Shopify, in-store) and how each avoids deducting twice |
+| [purchases-to-inventory.md](purchases-to-inventory.md) | Every purchase channel that takes stock out (shop, Results, Staff orders, in-store) and how each avoids deducting twice |
 | [settings.md](settings.md) | Which Admin Panel pages change which tables, and how a Costings price reaches Variants, Stripe and Shopify |
 | [analytics.md](analytics.md) | How a sale becomes a margin figure on Analytics: revenue, frozen COGS, sales with no cost, Singapore months, and the tabs |
 | [marketing-consent.md](marketing-consent.md) | Where a Customer's marketing consent is written: every Consent source, its route, and the boxes where people give their email |

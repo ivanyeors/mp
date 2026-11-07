@@ -43,6 +43,7 @@ import {
 import { money } from "./format";
 import { getSiteOrigin } from "@/lib/site-url";
 import { READJUSTMENT_RESCHEDULE_EMAIL_COPY, renderReadjustmentRescheduleEmail } from "./readjustment";
+import { PAYMENT_REQUEST_EMAIL_COPY, renderPaymentRequestEmail } from "./payment-request";
 import { RMA_EMAIL_COPY, RMA_EMAIL_TEMPLATES, renderRmaEmail } from "./rma";
 import { ORDER_EMAIL_COPY, ORDER_EMAIL_TEMPLATES, renderOrderEmail } from "./templates";
 import {
@@ -58,6 +59,8 @@ import {
   sampleMigrationServiceNotice,
   sampleOrder,
   sampleOrderWithPoints,
+  samplePaymentRequest,
+  samplePaymentRequestCollect,
   samplePairedMbolsterRemoved,
   samplePairedMbolsterRemovedReady,
   samplePartnerListing,
@@ -220,6 +223,26 @@ const rmaCases: EmailCase[] = (
 
 export const EMAIL_REGISTRY: readonly EmailCase[] = [
   ...orderCases,
+
+  // --- Staff orders (ADR 0048): the Payment link, by email ---
+  {
+    id: "order.payment_request",
+    label: "Payment request",
+    group: "order",
+    audience: "customer",
+    copy: PAYMENT_REQUEST_EMAIL_COPY,
+    render: (f, copy) => renderPaymentRequestEmail(samplePaymentRequest(f), copyFor(PAYMENT_REQUEST_EMAIL_COPY, copy)),
+  },
+  {
+    // Same renderer: collected from a studio, nothing to deliver, no note.
+    id: "order.payment_request_collect",
+    label: "Payment request — collect from a studio",
+    group: "order",
+    audience: "customer",
+    copy: PAYMENT_REQUEST_EMAIL_COPY,
+    render: (f, copy) =>
+      renderPaymentRequestEmail(samplePaymentRequestCollect(f), copyFor(PAYMENT_REQUEST_EMAIL_COPY, copy)),
+  },
   ...rmaCases,
 
   // --- Results / configurator (customer) ---
