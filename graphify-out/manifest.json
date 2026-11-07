@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1794033585.9866102,
-    "seen": 1794034132.409696,
-    "ast_hash": "cc5ae6f7a04adf33919e88cb915a9a3d",
+    "mtime": 1794034250.2115238,
+    "seen": 1794034419.4507353,
+    "ast_hash": "bb893aae490e502066f687c413d68c67",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -17616,9 +17616,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0042-google-form-fitting-records.md": {
-    "mtime": 1794033585.9634695,
-    "seen": 1794034132.409781,
-    "ast_hash": "29af6ed66676e0ddf55a09dbdefe3aeb",
+    "mtime": 1794034255.0782714,
+    "seen": 1794034419.4508228,
+    "ast_hash": "20ea1da2df638c556260573ab313ca01",
     "semantic_hash": ""
   },
   "lib/crm/__tests__/engagement-sql.test.ts": {

@@ -28,6 +28,7 @@ import {
     pillowPlacementsToRows,
     rowsToPillowPlacements,
     type PillowPlacement,
+    type Section,
 } from "@/lib/spatial-fillings/core";
 import { fillingLabel } from "@/lib/spatial-fillings/filling-groups";
 import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
@@ -37,8 +38,9 @@ const XrayEditor = dynamic(() => import("@/components/spatial/xray-editor").then
     ssr: false,
     loading: () => <Skeleton className="aspect-[664/374] w-full rounded-lg" />,
 });
-const XrayCrossSection = dynamic(
-    () => import("@/components/spatial/xray-cross-section").then((m) => m.XrayCrossSection),
+// Left, centre and right at once, each still an editor, as on Result detail.
+const XrayCrossSectionStrip = dynamic(
+    () => import("@/components/spatial/xray-cross-section-strip").then((m) => m.XrayCrossSectionStrip),
     { ssr: false },
 );
 
@@ -130,7 +132,16 @@ export function ReadjustDialog({
     const fit = usePillowFit(placements, size, items ?? pillow.items, pillow.dimensionOverrides);
     const { itemSubtypes, itemSizes, itemDims } = useItemMaps(items ?? pillow.items, pillow.dimensionOverrides);
     const softBody = useMemo(() => softBodyFromPayload(pillow.dimensionOverrides), [pillow.dimensionOverrides]);
-    const { cut, setCut, onDiveChange } = useCut();
+    // The dived Section's cut is ringed; a pouch moved to another cut hands the ring to that Section.
+    const { setCut, onDiveChange } = useCut();
+    const [divedSection, setDivedSection] = useState<Section | null>(null);
+    const onXrayDive = useCallback(
+        (section: Section | null) => {
+            onDiveChange(section);
+            setDivedSection(section);
+        },
+        [onDiveChange],
+    );
 
     const changes = useMemo(() => countChanges(initial, placements, labelOf), [initial, placements, labelOf]);
     const dirty = useMemo(
@@ -235,22 +246,9 @@ export function ReadjustDialog({
                                 colorOverrides={pillow.colorOverrides}
                                 dimensionOverrides={pillow.dimensionOverrides}
                                 fit={fit}
-                                onDiveChange={onDiveChange}
+                                onDiveChange={onXrayDive}
                             />
                         </div>
-                        <XrayCrossSection
-                            fit={fit}
-                            cut={cut}
-                            onCutChange={setCut}
-                            itemSubtypes={itemSubtypes}
-                            itemSizes={itemSizes}
-                            itemDims={itemDims}
-                            placements={placements}
-                            onPlacementsChange={editable ? setPlacements : undefined}
-                            items={editable ? items : undefined}
-                            colorOverrides={pillow.colorOverrides}
-                            softBody={softBody}
-                        />
                     </div>
                     <div className="min-w-0 space-y-3">
                         <section className="rounded-md border">
@@ -289,6 +287,21 @@ export function ReadjustDialog({
                         </section>
                     </div>
                 </div>
+
+                <XrayCrossSectionStrip
+                    fit={fit}
+                    active={divedSection}
+                    onActiveChange={editable ? setCut : undefined}
+                    itemSubtypes={itemSubtypes}
+                    itemSizes={itemSizes}
+                    itemDims={itemDims}
+                    placements={placements}
+                    onPlacementsChange={editable ? setPlacements : undefined}
+                    items={editable ? items : undefined}
+                    colorOverrides={pillow.colorOverrides}
+                    softBody={softBody}
+                    defaultOpen
+                />
 
                 {/* From md, pinned to the bottom of the scrolling dialog so Save stays in reach under the x-ray and
                     cut; sticky offsets sit inside the dialog's padding, so it reaches past it to the edge. A phone's

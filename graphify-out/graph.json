@@ -201363,7 +201363,7 @@
       "node_kind": "heading",
       "norm_label": "consequences",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L181"
+      "source_location": "L183"
     },
     {
       "id": "docs_adr_0042_google_form_fitting_records_considered_options",
@@ -201375,7 +201375,7 @@
       "node_kind": "heading",
       "norm_label": "considered options",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L149"
+      "source_location": "L151"
     },
     {
       "id": "docs_adr_0042_google_form_fitting_records_context",
@@ -255893,6 +255893,18 @@
       "type": "external"
     },
     {
+      "id": "lib_spatial_fillings_index_max_pieces_per_cell",
+      "label": "lib_spatial_fillings_index_max_pieces_per_cell",
+      "_origin": "semantic",
+      "community": 524,
+      "community_name": "assign/route.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "lib_spatial_fillings_index_max_pieces_per_cell",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "lib_spatial_fillings_index_pillowplacement",
       "label": "lib_spatial_fillings_index_pillowplacement",
       "_origin": "semantic",
@@ -255973,6 +255985,30 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "lib_spatial_fillings_index_section",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "lib_spatial_fillings_index_sections",
+      "label": "lib_spatial_fillings_index_sections",
+      "_origin": "semantic",
+      "community": 524,
+      "community_name": "assign/route.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "lib_spatial_fillings_index_sections",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "lib_spatial_fillings_index_sub_sections",
+      "label": "lib_spatial_fillings_index_sub_sections",
+      "_origin": "semantic",
+      "community": 524,
+      "community_name": "assign/route.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "lib_spatial_fillings_index_sub_sections",
       "source_file": "",
       "type": "external"
     },
@@ -256993,39 +257029,6 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_node_crypto",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "lib_spatial_fillings_index_max_pieces_per_cell",
-      "label": "lib_spatial_fillings_index_max_pieces_per_cell",
-      "community": 524,
-      "community_name": "assign/route.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "lib_spatial_fillings_index_max_pieces_per_cell",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "lib_spatial_fillings_index_sections",
-      "label": "lib_spatial_fillings_index_sections",
-      "community": 524,
-      "community_name": "assign/route.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "lib_spatial_fillings_index_sections",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "lib_spatial_fillings_index_sub_sections",
-      "label": "lib_spatial_fillings_index_sub_sections",
-      "community": 524,
-      "community_name": "assign/route.ts",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "lib_spatial_fillings_index_sub_sections",
       "source_file": "",
       "type": "external"
     },
@@ -666044,7 +666047,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L149",
+      "source_location": "L151",
       "weight": 1.0
     },
     {
@@ -666055,7 +666058,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L181",
+      "source_location": "L183",
       "weight": 1.0
     },
     {
@@ -812324,7 +812327,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L184",
+      "source_location": "L186",
       "weight": 1.0
     },
     {
@@ -812336,7 +812339,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L155",
+      "source_location": "L157",
       "weight": 1.0
     },
     {
@@ -841474,7 +841477,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/customers/[id]/customer-pillow-readjust.tsx",
-      "source_location": "L97",
+      "source_location": "L99",
       "weight": 1.0,
       "context": "GET,POST"
     },
@@ -856806,5 +856809,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "29e4662efd1a709dab135579ee252317f5bafcfb"
+  "built_at_commit": "9511c91495e2fdd573ac2da6eb66c4bfa916259b"
 }

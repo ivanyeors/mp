@@ -133,8 +133,10 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   **Re-adjustment** visit Staff re-tune the pillow by swapping, adding or taking out pieces. A
   Staff member holding `customers-edit` searches the customer, and **Re-adjust**, beside Change
   pillow on the Customer page, opens the **X-ray editor** on the pillow drawn there (a link's
-  template, an order's build, a fitting's match, or the last Re-adjustment), with its cut and
-  its **Derived pack list**, and a list of the counts that changed. Save writes the mix they
+  template, an order's build, a fitting's match, or the last Re-adjustment), with the left, centre
+  and right cuts side by side, its **Derived pack list**, and a list of the counts that changed.
+  The read-only card draws the same three cuts under its x-ray, on the Customer page and the
+  Profile. Save writes the mix they
   leave in it onto the Staff link, as `customer_pillows.filling_placements`, rows shaped like
   an order line's frozen build, with the size and the template it was re-adjusted from. From
   then on the link is drawn from that mix, not from the template as it is now, and the card and

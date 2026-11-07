@@ -188,7 +188,7 @@ _Avoid_: one loft budget for the whole pillow (the centre is lower); treating lo
 _Avoid_: refusing a save on `over`; storing the status; a second rule set for the add / move refusal (it is the same function on the hypothetical result)
 
 **Cross-section view**:
-A live cut of the pillow beside every x-ray, on all three surfaces and the shopper's read-only preview: **Across** (left, centre, right **Sections** at a chosen **sub-section**) or **Along** (front, middle, back of the dived **Section**). The shell is a lens per **Section** at that Section's max **Loft**; each **Layer** a slab of its compressed thickness in the filling's colour, hatched when compressed, through the loft line in red when `over`. Reads the same fit object the x-ray uses; recomputes nothing.
+A live cut of the pillow beside every x-ray, on all three surfaces and the shopper's read-only preview. Result detail, the **Pillow on record** (Customer page and Profile, read-only) and its Re-adjust editor draw all three **Sections**' cuts side by side at once. A cut is **Across** (left, centre, right **Sections** at a chosen **sub-section**) or **Along** (front, middle, back of the dived **Section**). The shell is a lens per **Section** at that Section's max **Loft**; each **Layer** a slab of its compressed thickness in the filling's colour, hatched when compressed, through the loft line in red when `over`. Reads the same fit object the x-ray uses; recomputes nothing.
 _Avoid_: a second fit computation for the cut; edit affordances on the shopper's cut
 
 **Soft cut**:

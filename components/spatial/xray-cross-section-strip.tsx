@@ -14,7 +14,8 @@
  *
  * Wide (three fit at a readable size): one row. Narrower: stacked, at the full
  * layout while there is room for it. Phones: stacked under one "Cross-sections"
- * disclosure, closed by default, as the single cut is.
+ * disclosure, closed by default, as the single cut is; a read-only host whose
+ * cuts are the point (the Customer's pillow) opens it with `defaultOpen`.
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -59,6 +60,7 @@ export function XrayCrossSectionStrip({
   items,
   colorOverrides = [],
   softBody,
+  defaultOpen = false,
   className,
 }: {
   fit: PillowFit;
@@ -75,6 +77,8 @@ export function XrayCrossSectionStrip({
   items?: FillingItem[];
   colorOverrides?: ColorOverrideRow[];
   softBody?: SoftBodySettings;
+  /** Phones: start with the "Cross-sections" disclosure open. */
+  defaultOpen?: boolean;
   className?: string;
 }) {
   const isMobile = useIsMobile();
@@ -185,7 +189,7 @@ export function XrayCrossSectionStrip({
 
   if (isMobile) {
     return (
-      <Collapsible className={className} data-xray-cross-section-disclosure>
+      <Collapsible className={className} defaultOpen={defaultOpen} data-xray-cross-section-disclosure>
         <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-background/90 px-3 py-2 text-sm font-medium [&[data-state=open]>svg]:rotate-180">
           Cross-sections
           <ChevronDown className="size-4 transition-transform" />
