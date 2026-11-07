@@ -1,0 +1,903 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { Check, Copy, Loader2, Minus, Plus, Search, Trash2 } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { QrSvg } from "@/components/ui/qr-svg";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import type { ServiceKey } from "@/lib/pricing/service-prices";
+import type {
+    StaffOrderAddressOption,
+    StaffOrderOptions,
+} from "@/lib/staff-orders/options";
+import {
+    MAX_GOODS_QUANTITY,
+    MAX_SERVICE_QUANTITY,
+    NOTE_MAX,
+    type StaffOrderDraft,
+    type StaffOrderQuoteView,
+} from "@/lib/staff-orders/shared";
+
+/**
+ * Create order (ADR 0048): Staff build a Staff order for this Customer —
+ * products at the shop's price, Services at their Costings price — and the
+ * customer pays it through its Payment link. Nothing typed here is a price:
+ * the summary is the server's quote, re-read on every change, and the create
+ * route prices it again before writing the Order.
+ */
+
+type Line =
+    | { kind: "goods"; id: string; quantity: number }
+    | { kind: "service"; id: ServiceKey; quantity: number };
+
+type AddressForm = {
+    recipient: string;
+    line1: string;
+    line2: string;
+    city: string;
+    postal_code: string;
+    country: string;
+    phone: string;
+};
+
+type Created = {
+    orderId: string;
+    orderNumber: string;
+    url: string;
+    expiresAt: string;
+    emailed: { ok: true; sentTo: string } | { ok: false; error: string } | null;
+};
+
+const NEW_ADDRESS = "new";
+
+const money = (n: number) =>
+    new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(n);
+
+function addressFromOption(a: StaffOrderAddressOption): AddressForm {
+    return {
+        recipient: a.recipient ?? "",
+        line1: a.line1 ?? "",
+        line2: a.line2 ?? "",
+        city: a.city ?? "",
+        postal_code: a.postal_code ?? "",
+        country: (a.country ?? "SG").toUpperCase(),
+        phone: a.phone ?? "",
+    };
+}
+
+export function CreateOrderDialog({
+    open,
+    onOpenChange,
+    customerId,
+    customerName,
+    customerEmail,
+    ordersHref,
+    onCreated,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    customerId: string;
+    customerName: string;
+    customerEmail: string;
+    /** `/settings/orders/<id>` with the locale, for "View order". */
+    ordersHref: (orderId: string) => string;
+    /** The order list on the Customer page refreshes. */
+    onCreated: () => void;
+}) {
+    const [options, setOptions] = useState<StaffOrderOptions | null>(null);
+    const [optionsError, setOptionsError] = useState<string | null>(null);
+
+    const [lines, setLines] = useState<Line[]>([]);
+    const [search, setSearch] = useState("");
+    const [deliveryKind, setDeliveryKind] = useState<"studio" | "ship">("studio");
+    const [studioId, setStudioId] = useState("");
+    const [methodId, setMethodId] = useState("");
+    const [addressChoice, setAddressChoice] = useState(NEW_ADDRESS);
+    const [address, setAddress] = useState<AddressForm>({
+        recipient: customerName,
+        line1: "",
+        line2: "",
+        city: "Singapore",
+        postal_code: "",
+        country: "SG",
+        phone: "",
+    });
+    const [codeInput, setCodeInput] = useState("");
+    const [code, setCode] = useState("");
+    const [note, setNote] = useState("");
+    const [internalNote, setInternalNote] = useState("");
+    const [sendEmail, setSendEmail] = useState(true);
+
+    // The server's answer for one draft, keyed by the draft it priced.
+    const [priced, setPriced] = useState<{ key: string; quote: StaffOrderQuoteView | null; error: string | null } | null>(
+        null,
+    );
+    // A refusal from the create route, for the draft it refused.
+    const [createError, setCreateError] = useState<{ key: string; error: string } | null>(null);
+    const [creating, setCreating] = useState(false);
+    const [created, setCreated] = useState<Created | null>(null);
+    const [copied, setCopied] = useState(false);
+
+    // Load what can be sold the first time the dialog opens.
+    useEffect(() => {
+        if (!open || options) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch(`/api/staff-orders/options?customer_id=${customerId}`);
+                const json = await res.json().catch(() => null);
+                if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Could not load products");
+                if (cancelled) return;
+                const loaded = json as StaffOrderOptions;
+                setOptions(loaded);
+                setStudioId((s) => s || loaded.studios[0]?.id || "");
+                setMethodId((m) => m || loaded.methods[0]?.id || "");
+                const preferred = loaded.addresses.find((a) => a.is_default) ?? loaded.addresses[0];
+                if (preferred) {
+                    setAddressChoice(preferred.id);
+                    setAddress(addressFromOption(preferred));
+                }
+            } catch (e) {
+                if (!cancelled) setOptionsError(e instanceof Error ? e.message : "Could not load products");
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [open, options, customerId]);
+
+    const products = useMemo(() => options?.products ?? [], [options]);
+    const productById = useMemo(() => new Map(products.map((p) => [p.variantId, p])), [products]);
+    const serviceByKey = useMemo(
+        () => new Map((options?.services ?? []).map((s) => [s.key, s])),
+        [options],
+    );
+
+    const hasGoods = lines.some((l) => l.kind === "goods");
+    // Nothing ships in a service-only order: it is done at a studio.
+    const effectiveDelivery = hasGoods ? deliveryKind : "studio";
+
+    const draft: StaffOrderDraft | null = useMemo(() => {
+        if (lines.length === 0) return null;
+        const goods = lines.flatMap((l) => (l.kind === "goods" ? [{ variant_id: l.id, quantity: l.quantity }] : []));
+        const services = lines.flatMap((l) => (l.kind === "service" ? [{ key: l.id, quantity: l.quantity }] : []));
+        let delivery: StaffOrderDraft["delivery"];
+        if (effectiveDelivery === "studio") {
+            if (!studioId) return null;
+            delivery = { kind: "studio", location_id: studioId };
+        } else {
+            if (!methodId || !address.recipient.trim() || !address.line1.trim() || !address.city.trim()) return null;
+            delivery = {
+                kind: "ship",
+                shipping_method_id: methodId,
+                address: {
+                    recipient: address.recipient.trim(),
+                    line1: address.line1.trim(),
+                    line2: address.line2.trim() || undefined,
+                    city: address.city.trim(),
+                    postal_code: address.postal_code.trim(),
+                    country: (address.country.trim() || "SG").toUpperCase(),
+                    phone: address.phone.trim() || undefined,
+                },
+            };
+        }
+        return {
+            customer_id: customerId,
+            goods,
+            services,
+            delivery,
+            code: code || undefined,
+            note: note.trim() || undefined,
+            internal_note: internalNote.trim() || undefined,
+        };
+    }, [lines, effectiveDelivery, studioId, methodId, address, code, note, internalNote, customerId]);
+
+    // Price the draft on the server, debounced; a late answer for an older draft is dropped.
+    // Notes do not change the price, so they do not re-quote.
+    const priceKey = useMemo(
+        () => (draft ? JSON.stringify({ ...draft, note: undefined, internal_note: undefined }) : null),
+        [draft],
+    );
+    const seq = useRef(0);
+    useEffect(() => {
+        if (!priceKey) return;
+        const mine = ++seq.current;
+        const timer = setTimeout(async () => {
+            let answer: { quote: StaffOrderQuoteView | null; error: string | null };
+            try {
+                const res = await fetch("/api/staff-orders/quote", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: priceKey,
+                });
+                const json = await res.json().catch(() => null);
+                answer =
+                    res.ok && json?.ok
+                        ? { quote: json.quote as StaffOrderQuoteView, error: null }
+                        : { quote: null, error: json?.error ?? "Could not price this order" };
+            } catch {
+                answer = { quote: null, error: "Could not price this order" };
+            }
+            if (mine === seq.current) setPriced({ key: priceKey, ...answer });
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [priceKey]);
+
+    // Current: the answer for this very draft. Shown: the latest answer, dimmed while re-pricing.
+    const current = priced && priced.key === priceKey ? priced : null;
+    const quote = current?.quote ?? null;
+    const quoteError = (createError && createError.key === priceKey ? createError.error : null) ?? current?.error ?? null;
+    const shownQuote = priceKey ? (priced?.quote ?? null) : null;
+    const quoting = Boolean(priceKey) && !current;
+
+    const addLine = useCallback((line: Line) => {
+        setLines((prev) => {
+            const at = prev.findIndex((l) => l.kind === line.kind && l.id === line.id);
+            if (at === -1) return [...prev, line];
+            const next = [...prev];
+            next[at] = { ...next[at], quantity: next[at].quantity + line.quantity } as Line;
+            return next;
+        });
+    }, []);
+
+    const setQuantity = (index: number, quantity: number) => {
+        setLines((prev) => {
+            const line = prev[index];
+            const max = line.kind === "goods" ? MAX_GOODS_QUANTITY : MAX_SERVICE_QUANTITY;
+            const q = Math.max(1, Math.min(max, quantity));
+            const next = [...prev];
+            next[index] = { ...line, quantity: q } as Line;
+            return next;
+        });
+    };
+
+    const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
+
+    const filteredProducts = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const hits = q
+            ? products.filter((p) =>
+                  [p.title, p.variantTitle, p.sku].some((v) => v?.toLowerCase().includes(q)),
+              )
+            : products;
+        return hits.slice(0, 30);
+    }, [products, search]);
+
+    const reset = () => {
+        setLines([]);
+        setSearch("");
+        setCodeInput("");
+        setCode("");
+        setNote("");
+        setInternalNote("");
+        setSendEmail(true);
+        setPriced(null);
+        setCreateError(null);
+        setCreated(null);
+        setCopied(false);
+    };
+
+    const close = (next: boolean) => {
+        if (!next) {
+            if (created) reset();
+            // Reload products next time: stock and prices move.
+            setOptions(null);
+            setOptionsError(null);
+        }
+        onOpenChange(next);
+    };
+
+    const create = async () => {
+        if (!draft || !quote) return;
+        setCreating(true);
+        setCreateError(null);
+        try {
+            const res = await fetch("/api/staff-orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...draft, send_email: sendEmail }),
+            });
+            const json = await res.json().catch(() => null);
+            if (!res.ok || !json?.ok) {
+                setCreateError({ key: priceKey ?? "", error: json?.error ?? "Could not create the order" });
+                return;
+            }
+            setCreated({
+                orderId: json.order.id,
+                orderNumber: json.order.order_number,
+                url: json.link.url,
+                expiresAt: json.link.expires_at,
+                emailed: json.emailed ?? null,
+            });
+            onCreated();
+        } catch {
+            setCreateError({ key: priceKey ?? "", error: "Could not create the order" });
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const copy = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            /* clipboard blocked — the link stays selectable in the input */
+        }
+    };
+
+    const quotedLine = (line: Line) =>
+        shownQuote?.lines.find((q) =>
+            line.kind === "goods"
+                ? q.kind === "goods" && q.variantId === line.id
+                : q.kind === "service" && q.serviceKey === line.id,
+        );
+
+    return (
+        <Dialog open={open} onOpenChange={close}>
+            <DialogContent className="sm:max-w-2xl md:max-h-[90vh] md:overflow-y-auto">
+                {created ? (
+                    <CreatedView
+                        created={created}
+                        copied={copied}
+                        onCopy={() => void copy(created.url)}
+                        orderHref={ordersHref(created.orderId)}
+                        onDone={() => close(false)}
+                    />
+                ) : (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>New order for {customerName}</DialogTitle>
+                            <DialogDescription>
+                                Products at their shop price, services at their Costings price. {customerName} pays
+                                through a link, on their own phone.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {optionsError ? (
+                            <p className="text-sm text-destructive">{optionsError}</p>
+                        ) : !options ? (
+                            <div className="flex items-center justify-center py-10">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : (
+                            <div className="min-w-0 space-y-5">
+                                {/* ── Add: products and services ── */}
+                                <section className="space-y-2" aria-labelledby="add-products">
+                                    <Label id="add-products" htmlFor="product-search">
+                                        Products
+                                    </Label>
+                                    <div className="relative">
+                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                        <Input
+                                            id="product-search"
+                                            placeholder="Search by name or SKU"
+                                            value={search}
+                                            onChange={(e) => setSearch(e.target.value)}
+                                            className="pl-9"
+                                        />
+                                    </div>
+                                    <ul className="max-h-52 divide-y overflow-y-auto rounded-md border">
+                                        {filteredProducts.length === 0 ? (
+                                            <li className="px-3 py-4 text-center text-sm text-muted-foreground">
+                                                No products match.
+                                            </li>
+                                        ) : (
+                                            filteredProducts.map((p) => {
+                                                const inOrder =
+                                                    lines.find((l) => l.kind === "goods" && l.id === p.variantId)
+                                                        ?.quantity ?? 0;
+                                                const left = p.stockAvailable - inOrder;
+                                                const name = `${p.title}${p.variantTitle ? ` ${p.variantTitle}` : ""}`;
+                                                return (
+                                                    <li key={p.variantId}>
+                                                        {/* The whole row adds it: a bigger target than the button alone. */}
+                                                        <button
+                                                            type="button"
+                                                            className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                            disabled={left <= 0}
+                                                            onClick={() =>
+                                                                addLine({ kind: "goods", id: p.variantId, quantity: 1 })
+                                                            }
+                                                            aria-label={`Add ${name}`}
+                                                        >
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block truncate text-sm font-medium">
+                                                                    {p.title}
+                                                                    {p.variantTitle ? (
+                                                                        <span className="font-normal text-muted-foreground">
+                                                                            {" "}
+                                                                            · {p.variantTitle}
+                                                                        </span>
+                                                                    ) : null}
+                                                                </span>
+                                                                <span className="block text-xs text-muted-foreground">
+                                                                    {money(p.price)} ·{" "}
+                                                                    {p.stockAvailable > 0
+                                                                        ? `${p.stockAvailable} in stock`
+                                                                        : "Out of stock"}
+                                                                    {p.unlisted ? " · not listed online" : ""}
+                                                                </span>
+                                                            </span>
+                                                            <span
+                                                                aria-hidden="true"
+                                                                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-3 text-sm font-medium"
+                                                            >
+                                                                <Plus className="h-3.5 w-3.5" />
+                                                                Add
+                                                            </span>
+                                                        </button>
+                                                    </li>
+                                                );
+                                            })
+                                        )}
+                                    </ul>
+                                </section>
+
+                                <section className="space-y-2" aria-labelledby="add-services">
+                                    <p id="add-services" className="text-sm font-medium">
+                                        Services
+                                    </p>
+                                    {options.servicesError ? (
+                                        <p className="text-sm text-destructive">
+                                            Service prices could not be read from Costings.
+                                        </p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {options.services.map((s) => (
+                                                <Button
+                                                    key={s.key}
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => addLine({ kind: "service", id: s.key, quantity: 1 })}
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                    {s.label} · {money(s.price)}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ── In this order ── */}
+                                <section className="space-y-2" aria-labelledby="order-lines">
+                                    <p id="order-lines" className="text-sm font-medium">
+                                        In this order
+                                    </p>
+                                    {lines.length === 0 ? (
+                                        <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
+                                            Add a product or a service.
+                                        </p>
+                                    ) : (
+                                        <ul className="divide-y rounded-md border">
+                                            {lines.map((line, i) => {
+                                                const product = line.kind === "goods" ? productById.get(line.id) : null;
+                                                const service =
+                                                    line.kind === "service" ? serviceByKey.get(line.id) : null;
+                                                const pricedLine = quotedLine(line);
+                                                const name = product
+                                                    ? `${product.title}${product.variantTitle ? ` · ${product.variantTitle}` : ""}`
+                                                    : (service?.label ?? line.id);
+                                                const unit = pricedLine?.unitPrice ?? product?.price ?? service?.price ?? 0;
+                                                return (
+                                                    <li
+                                                        key={`${line.kind}-${line.id}`}
+                                                        className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2"
+                                                    >
+                                                        <div className="min-w-0 flex-1 basis-40">
+                                                            <p className="truncate text-sm font-medium">{name}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {line.kind === "service" ? "Service · " : ""}
+                                                                {money(unit)} each
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <Button
+                                                                type="button"
+                                                                size="icon"
+                                                                variant="outline"
+                                                                className="h-8 w-8"
+                                                                onClick={() => setQuantity(i, line.quantity - 1)}
+                                                                disabled={line.quantity <= 1}
+                                                                aria-label={`One fewer ${name}`}
+                                                            >
+                                                                <Minus className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <span
+                                                                className="w-8 text-center text-sm tabular-nums"
+                                                                aria-label="Quantity"
+                                                            >
+                                                                {line.quantity}
+                                                            </span>
+                                                            <Button
+                                                                type="button"
+                                                                size="icon"
+                                                                variant="outline"
+                                                                className="h-8 w-8"
+                                                                onClick={() => setQuantity(i, line.quantity + 1)}
+                                                                aria-label={`One more ${name}`}
+                                                            >
+                                                                <Plus className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                        <span className="w-24 text-right text-sm font-medium tabular-nums">
+                                                            {money(unit * line.quantity)}
+                                                        </span>
+                                                        <Button
+                                                            type="button"
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-8 w-8"
+                                                            onClick={() => removeLine(i)}
+                                                            aria-label={`Remove ${name}`}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                </section>
+
+                                {/* ── Where it goes ── */}
+                                <section className="space-y-3" aria-labelledby="delivery">
+                                    <p id="delivery" className="text-sm font-medium">
+                                        Where it goes
+                                    </p>
+                                    <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Delivery">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={effectiveDelivery === "studio" ? "secondary" : "ghost"}
+                                            aria-pressed={effectiveDelivery === "studio"}
+                                            onClick={() => setDeliveryKind("studio")}
+                                        >
+                                            At a studio
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={effectiveDelivery === "ship" ? "secondary" : "ghost"}
+                                            aria-pressed={effectiveDelivery === "ship"}
+                                            onClick={() => setDeliveryKind("ship")}
+                                            disabled={!hasGoods}
+                                            title={hasGoods ? undefined : "Nothing in this order ships"}
+                                        >
+                                            Deliver to an address
+                                        </Button>
+                                    </div>
+
+                                    {effectiveDelivery === "studio" ? (
+                                        options.studios.length === 0 ? (
+                                            <p className="text-sm text-destructive">
+                                                No studio has an address. Add one under Settings → Locations.
+                                            </p>
+                                        ) : (
+                                            <div className="space-y-1.5">
+                                                <Label>Studio</Label>
+                                                <Select value={studioId} onValueChange={setStudioId}>
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Pick a studio" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {options.studios.map((s) => (
+                                                            <SelectItem key={s.id} value={s.id}>
+                                                                {s.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Handed over or done there. No shipping charge, no courier label.
+                                                </p>
+                                            </div>
+                                        )
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                <div className="min-w-0 space-y-1.5">
+                                                    <Label>Address</Label>
+                                                    <Select
+                                                        value={addressChoice}
+                                                        onValueChange={(v) => {
+                                                            setAddressChoice(v);
+                                                            const saved = options.addresses.find((a) => a.id === v);
+                                                            if (saved) setAddress(addressFromOption(saved));
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="w-full min-w-0">
+                                                            <SelectValue placeholder="Pick an address" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {options.addresses.map((a) => (
+                                                                <SelectItem key={a.id} value={a.id}>
+                                                                    {a.label || a.line1}
+                                                                </SelectItem>
+                                                            ))}
+                                                            <SelectItem value={NEW_ADDRESS}>New address</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="min-w-0 space-y-1.5">
+                                                    <Label>Delivery method</Label>
+                                                    <Select value={methodId} onValueChange={setMethodId}>
+                                                        <SelectTrigger className="w-full min-w-0">
+                                                            <SelectValue placeholder="Pick a method" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {options.methods.map((m) => (
+                                                                <SelectItem key={m.id} value={m.id}>
+                                                                    {m.live ? `${m.name} (live rate)` : `${m.name} · ${money(m.baseRate)}`}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                {(
+                                                    [
+                                                        ["recipient", "Recipient"],
+                                                        ["phone", "Phone (optional)"],
+                                                        ["line1", "Address line 1"],
+                                                        ["line2", "Address line 2 (optional)"],
+                                                        ["city", "City"],
+                                                        ["postal_code", "Postal code"],
+                                                        ["country", "Country code"],
+                                                    ] as Array<[keyof AddressForm, string]>
+                                                ).map(([key, label]) => (
+                                                    <div key={key} className="min-w-0 space-y-1.5">
+                                                        <Label htmlFor={`addr-${key}`}>{label}</Label>
+                                                        <Input
+                                                            id={`addr-${key}`}
+                                                            value={address[key]}
+                                                            maxLength={key === "country" ? 2 : 200}
+                                                            onChange={(e) => {
+                                                                setAddressChoice(NEW_ADDRESS);
+                                                                setAddress((a) => ({ ...a, [key]: e.target.value }));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ── Discount code and notes ── */}
+                                <section className="space-y-3">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="staff-order-code">Discount code (optional)</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="staff-order-code"
+                                                value={codeInput}
+                                                onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                                                placeholder="e.g. WELCOME10"
+                                            />
+                                            {code ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setCode("");
+                                                        setCodeInput("");
+                                                    }}
+                                                >
+                                                    Remove
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    disabled={!codeInput.trim()}
+                                                    onClick={() => setCode(codeInput.trim())}
+                                                >
+                                                    Apply
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Comes off the products only, never a service fee.
+                                        </p>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="staff-order-note">Note for the customer (optional)</Label>
+                                            <Textarea
+                                                id="staff-order-note"
+                                                value={note}
+                                                maxLength={NOTE_MAX}
+                                                rows={3}
+                                                onChange={(e) => setNote(e.target.value)}
+                                                placeholder="Shown in the email and on the payment page"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="staff-order-internal">Internal note (optional)</Label>
+                                            <Textarea
+                                                id="staff-order-internal"
+                                                value={internalNote}
+                                                rows={3}
+                                                onChange={(e) => setInternalNote(e.target.value)}
+                                                placeholder="Staff only"
+                                            />
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* ── Summary: the server's quote ── */}
+                                <section
+                                    className="space-y-1.5 rounded-md bg-muted/50 p-3 text-sm"
+                                    aria-live="polite"
+                                    aria-label="Order total"
+                                >
+                                    {!draft ? (
+                                        <p className="text-muted-foreground">
+                                            {lines.length === 0
+                                                ? "The total shows here once something is in the order."
+                                                : "Finish where it goes to see the total."}
+                                        </p>
+                                    ) : quoteError ? (
+                                        <p className="text-destructive">{quoteError}</p>
+                                    ) : !shownQuote ? (
+                                        <p className="flex items-center gap-2 text-muted-foreground">
+                                            <Loader2 className="h-4 w-4 animate-spin" /> Pricing…
+                                        </p>
+                                    ) : (
+                                        <QuoteSummary quote={shownQuote} stale={quoting} />
+                                    )}
+                                </section>
+                            </div>
+                        )}
+
+                        <DialogFooter className="items-center gap-3 sm:justify-between">
+                            <label className="flex items-center gap-2 text-sm">
+                                <Checkbox
+                                    checked={sendEmail}
+                                    onCheckedChange={(v) => setSendEmail(v === true)}
+                                    aria-label="Email the payment link"
+                                />
+                                <span className="min-w-0 break-all">Email the payment link to {customerEmail}</span>
+                            </label>
+                            <Button
+                                type="button"
+                                onClick={() => void create()}
+                                disabled={!quote || quoting || creating || !!quoteError}
+                            >
+                                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                                {quote ? `Create order · ${money(quote.total)}` : "Create order"}
+                            </Button>
+                        </DialogFooter>
+                    </>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/** The server's quote; dimmed while a newer draft is being priced. */
+function QuoteSummary({ quote, stale }: { quote: StaffOrderQuoteView; stale: boolean }) {
+    return (
+        <dl className={`space-y-1 ${stale ? "opacity-60" : ""}`}>
+            <SummaryRow label="Subtotal" value={money(quote.subtotal)} />
+            <SummaryRow
+                label={quote.delivery.kind === "studio" ? `At ${quote.delivery.locationName}` : quote.delivery.label}
+                value={quote.shippingAmount > 0 ? money(quote.shippingAmount) : "Free"}
+            />
+            {quote.discountAmount > 0 ? (
+                <SummaryRow
+                    label={`Discount${quote.discountCode ? ` (${quote.discountCode})` : ""}`}
+                    value={`− ${money(quote.discountAmount)}`}
+                />
+            ) : null}
+            {quote.taxAmount > 0 ? <SummaryRow label={quote.taxLabel ?? "Tax"} value={money(quote.taxAmount)} /> : null}
+            <SummaryRow label="Total" value={money(quote.total)} strong />
+        </dl>
+    );
+}
+
+function SummaryRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+    return (
+        <div className={`flex items-baseline justify-between gap-3 ${strong ? "border-t pt-1.5 font-semibold" : ""}`}>
+            <dt className={strong ? "" : "text-muted-foreground"}>{label}</dt>
+            <dd className="tabular-nums">{value}</dd>
+        </div>
+    );
+}
+
+function CreatedView({
+    created,
+    copied,
+    onCopy,
+    orderHref,
+    onDone,
+}: {
+    created: Created;
+    copied: boolean;
+    onCopy: () => void;
+    orderHref: string;
+    onDone: () => void;
+}) {
+    const expires = new Intl.DateTimeFormat("en-SG", {
+        timeZone: "Asia/Singapore",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+    }).format(new Date(created.expiresAt));
+    return (
+        <>
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    Order #{created.orderNumber} created
+                </DialogTitle>
+                <DialogDescription>Awaiting payment. The link works until {expires}.</DialogDescription>
+            </DialogHeader>
+            <div className="min-w-0 space-y-4">
+                {created.emailed ? (
+                    created.emailed.ok ? (
+                        <Badge variant="secondary">Emailed to {created.emailed.sentTo}</Badge>
+                    ) : (
+                        <p className="text-sm text-destructive">{created.emailed.error}</p>
+                    )
+                ) : (
+                    <p className="text-sm text-muted-foreground">Not emailed. Copy the link to send it.</p>
+                )}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                        <Label htmlFor="pay-link">Payment link</Label>
+                        <div className="flex gap-2">
+                            <Input
+                                id="pay-link"
+                                readOnly
+                                value={created.url}
+                                onFocus={(e) => e.currentTarget.select()}
+                                className="text-sm"
+                            />
+                            <Button type="button" variant="outline" onClick={onCopy}>
+                                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                {copied ? "Copied" : "Copy"}
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Send it by WhatsApp, or let them scan the code to pay on their phone.
+                        </p>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 self-center">
+                        <div className="rounded-md bg-white p-2">
+                            <QrSvg text={created.url} px={128} label="Payment link QR code" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Scan to pay</p>
+                    </div>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button asChild variant="outline">
+                    <Link href={orderHref}>View order</Link>
+                </Button>
+                <Button type="button" onClick={onDone}>
+                    Done
+                </Button>
+            </DialogFooter>
+        </>
+    );
+}

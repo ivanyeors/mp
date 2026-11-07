@@ -34,6 +34,7 @@ import { runAftercareMessages } from "@/lib/aftercare/job";
 import { runKeptSendingFromEnv } from "@/lib/email-campaigns/keep-sending-server";
 import { runPointsEarn, runPointsMilestones } from "@/lib/points/earn";
 import { releaseStalePointReservations } from "@/lib/points/spend";
+import { expireStaffOrderLinks } from "@/lib/staff-orders/expire";
 import { runSocialInboxMaintenance } from "@/lib/social-inbox/status";
 import {
   parsePaymentReminderSettings,
@@ -571,6 +572,10 @@ export async function GET(req: Request) {
   // session expired or failed; this catches what it missed. Never throws.
   const pointsReservations = await releaseStalePointReservations(admin, now);
 
+  // Chain: Staff orders whose Payment link expired unpaid are cancelled (ADR 0048),
+  // closing any Checkout still open first. Never throws.
+  const staffOrderLinks = await expireStaffOrderLinks(admin, now);
+
   // Chain: CRM Telegram updates (PRD customer-crm slice 14): Google reviews to
   // match, New sign-ups and the Weekly summary. Each goes at most once per
   // period by compare-and-set, so a manual re-run posts nothing twice. After
@@ -607,6 +612,7 @@ export async function GET(req: Request) {
     points,
     pointsMilestones,
     pointsReservations,
+    staffOrderLinks,
     crmTelegram,
     socialInbox,
   });

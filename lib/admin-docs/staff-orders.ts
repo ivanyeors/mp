@@ -1,0 +1,127 @@
+/**
+ * Documentation → Selling from the Customer page (ADR 0048): how Staff make a
+ * Staff order, send its Payment link, and what happens when the customer pays
+ * or does not. Numbers that are rules in code (the link's 7 days, Stripe's
+ * minimum) are read from the code, so the guide cannot drift from them.
+ */
+import { MIN_CHARGE, PAY_LINK_LIFETIME_DAYS } from "@/lib/staff-orders/shared";
+import type { DocGuide, DocSection } from "./types";
+
+export const STAFF_ORDERS_GUIDE: DocGuide = {
+  slug: "staff-orders",
+  title: "Selling from the Customer page",
+  summary:
+    "Make an order for a customer with products and services, send them a link to pay on their own phone, and see it through to paid.",
+  updated: "7 November 2026",
+};
+
+const CUSTOMERS = { label: "Customers", href: "/settings/customers" };
+const ORDERS = { label: "Orders", href: "/settings/orders" };
+const COSTINGS = { label: "Costings → Service fees", href: "/settings/costings" };
+const DISCOUNTS = { label: "Discounts", href: "/settings/discounts" };
+
+/** Pure — every section of the guide. */
+export function staffOrdersGuideSections(): DocSection[] {
+  return [
+    {
+      id: "what",
+      heading: "What it is for",
+      blocks: [
+        {
+          kind: "p",
+          text: "A customer at the counter or on the phone wants something: a spare case, an ear pad, a re-adjustment, a measurement visit. You put the order together on their Customer page, and they pay for it on their own phone through a link we send them.",
+        },
+        {
+          kind: "list",
+          items: [
+            "Products are charged at their shop price, services at their price in Costings. You choose what and how many, never the price.",
+            "A customised pillow or bolster is not sold here: it is a customisation (a Result). Start one with your Assist link, then use Request payment on the Result.",
+            "Points and partner referral codes do not apply. A discount code made in Discounts does, on the products only.",
+          ],
+        },
+        { kind: "links", items: [COSTINGS, DISCOUNTS] },
+      ],
+    },
+    {
+      id: "make",
+      heading: "Make the order",
+      blocks: [
+        { kind: "p", text: "You need the Orders permission. The Create order button is in the Order history card." },
+        {
+          kind: "steps",
+          items: [
+            "Open the customer under Customers.",
+            "Press Create order.",
+            "Search for products and press Add; add any service. Change quantities with − and +.",
+            "Choose where it goes: At a studio (handed over or done there, no shipping charge, no courier label), or Deliver to an address, with one of their saved addresses or a new one and a delivery method.",
+            "Type a discount code if they have one, and press Apply.",
+            "Add a note for the customer if you like (it shows in the email and on the payment page), and an internal note for the team.",
+            "Check the total, which is worked out by the server as you go, and press Create order.",
+          ],
+        },
+        {
+          kind: "note",
+          text: `Stripe cannot take less than SGD ${MIN_CHARGE.toFixed(2)}, so a smaller order is refused. A service-only order is always at a studio.`,
+        },
+        { kind: "links", items: [CUSTOMERS] },
+      ],
+    },
+    {
+      id: "send",
+      heading: "Send the link",
+      blocks: [
+        {
+          kind: "p",
+          text: `Leave "Email the payment link" ticked and the customer gets an email with the order, the total and a Pay button. The link works for ${PAY_LINK_LIFETIME_DAYS} days.`,
+        },
+        {
+          kind: "list",
+          items: [
+            "Copy the link to send it by WhatsApp instead.",
+            "Standing with them? Show the QR code and they scan it to pay on their phone.",
+            `On the order's page, the Payment link card shows when it was sent and to whom. Email the link again sends it once more and gives it another ${PAY_LINK_LIFETIME_DAYS} days.`,
+          ],
+        },
+      ],
+    },
+    {
+      id: "pay",
+      heading: "What the customer sees",
+      blocks: [
+        {
+          kind: "steps",
+          items: [
+            "Our page with what is in the order, the total and where it goes.",
+            "Pay takes them to Stripe's secure page, where they pay by card, Apple Pay, Google Pay or PayNow.",
+            "They come back to our page, which says the payment is received, and the usual order confirmation and receipt arrive by email.",
+          ],
+        },
+        {
+          kind: "p",
+          text: "If something in the order has sold out since you made it, the page asks them to contact us instead of taking the money.",
+        },
+      ],
+    },
+    {
+      id: "after",
+      heading: "After they pay, or if they do not",
+      blocks: [
+        {
+          kind: "table",
+          head: ["What happens", "The order"],
+          rows: [
+            ["They pay", "Confirmed and paid; its stock comes out; a delivered order gets its courier label. Treat it like any other order."],
+            ["They open the payment and leave", "Nothing changes. The link still works."],
+            [`${PAY_LINK_LIFETIME_DAYS} days pass unpaid`, "The daily job cancels it. Email the link again before then to give it more time."],
+            ["You cancel it", "Use Cancel on the order. The link stops working at once."],
+          ],
+        },
+        {
+          kind: "note",
+          text: "To change an order that has not been paid, cancel it and make a new one. The link always charges the total the order was made with.",
+        },
+        { kind: "links", items: [ORDERS] },
+      ],
+    },
+  ];
+}

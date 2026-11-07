@@ -62,6 +62,7 @@ import { CustomerFollowUpsCard } from "./customer-followups-card";
 import { CustomerReviewsCard } from "./customer-reviews-card";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import { CustomerPillowCard } from "./customer-pillow-card";
+import { CreateOrderDialog } from "./create-order-dialog";
 import type { CustomerPillowResult } from "@/lib/customer-pillow/view";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import type { CustomerUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
@@ -169,6 +170,7 @@ export function CustomerDetailClient({
     initialData,
     canEdit,
     canImport = false,
+    canCreateOrder = false,
     viewer,
 }: {
     initialData?: CustomerDetailInitialData;
@@ -181,6 +183,8 @@ export function CustomerDetailClient({
     canEdit: boolean;
     /** Holds `customer-import`: the From Shopify card links its batch in the import history. */
     canImport?: boolean;
+    /** Holds `orders`: Create order makes a Staff order for them, paid by link (ADR 0048). */
+    canCreateOrder?: boolean;
     /** Who is looking: decides which notes they may delete (CRM 02). */
     viewer: Omit<CustomerNotesViewer, "canEdit">;
 }) {
@@ -225,6 +229,9 @@ export function CustomerDetailClient({
 
     // Saving
     const [saving, setSaving] = useState(false);
+
+    // Create order (ADR 0048)
+    const [createOrderOpen, setCreateOrderOpen] = useState(false);
 
     // Add address dialog
     const [addAddressOpen, setAddAddressOpen] = useState(false);
@@ -882,11 +889,17 @@ export function CustomerDetailClient({
                 <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-3 @3xl:col-start-1 @3xl:row-span-2 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-2 @5xl:row-span-1">
                     {/* Order History */}
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <ShoppingCart className="h-4 w-4" />
                                 Order history
                             </CardTitle>
+                            {canCreateOrder ? (
+                                <Button size="sm" onClick={() => setCreateOrderOpen(true)}>
+                                    <Plus className="h-4 w-4" />
+                                    Create order
+                                </Button>
+                            ) : null}
                         </CardHeader>
                         <CardContent className="p-0">
                             {ordersLoading ? (
@@ -897,6 +910,9 @@ export function CustomerDetailClient({
                                 <div className="px-4 py-8 text-center">
                                     <p className="text-sm text-muted-foreground">
                                         No orders yet.
+                                        {canCreateOrder
+                                            ? " Create one to sell them a product or a service, paid by link."
+                                            : ""}
                                     </p>
                                 </div>
                             ) : (
@@ -950,6 +966,18 @@ export function CustomerDetailClient({
                             )}
                         </CardContent>
                     </Card>
+
+                    {canCreateOrder ? (
+                        <CreateOrderDialog
+                            open={createOrderOpen}
+                            onOpenChange={setCreateOrderOpen}
+                            customerId={customer.id}
+                            customerName={displayName}
+                            customerEmail={customer.email}
+                            ordersHref={(orderId) => to(`/settings/orders/${orderId}`)}
+                            onCreated={() => void fetchOrders()}
+                        />
+                    ) : null}
 
                     {/* Pillow (ADR 0042 j): the x-ray of what they have, from a Staff link or their latest fitting */}
                     <CustomerPillowCard customerId={customer.id} pillow={initialData?.pillow} canEdit={canEdit} />

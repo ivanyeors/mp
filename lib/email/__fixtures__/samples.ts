@@ -212,6 +212,42 @@ export function sampleBalanceDue(fixture: EmailFixture = "happy") {
   };
 }
 
+/** A Staff order's Payment request (ADR 0048): an accessory, a service, delivered. */
+export function samplePaymentRequest(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Ada"),
+    orderNumber: "MP-20261107-0042",
+    currency: "SGD",
+    items: [
+      { title: pick(fixture, "Ear Comfort Pad"), variantTitle: pick(fixture, "One size"), quantity: 1, totalPrice: 39 },
+      { title: "Re-adjustment service", variantTitle: null, quantity: 1, totalPrice: 30 },
+    ],
+    subtotal: 69,
+    shippingAmount: 5,
+    discountAmount: 6.9,
+    taxAmount: 0,
+    total: 67.1,
+    deliveryHeading: "Delivering to",
+    deliveryLines: [pick(fixture, "Ada Tan"), pick(fixture, "1 Orchard Road #02-01"), "Singapore 238824", "SG"],
+    note: pick(fixture, "Your spare ear pad, and the re-adjustment we did today."),
+    payUrl: "https://custom.mpillow.com/en-US/pay/3f2a3c1e-8a5b-4b8e-9a51-0c7c9d2f1b6a",
+    expires: "Fri, 14 Nov 2026",
+  };
+}
+
+/** The same request collected from a studio, with no note. */
+export function samplePaymentRequestCollect(fixture: EmailFixture = "happy") {
+  return {
+    ...samplePaymentRequest(fixture),
+    shippingAmount: 0,
+    discountAmount: 0,
+    total: 69,
+    deliveryHeading: `Collect from ${pick(fixture, "Mpillow Studio")}`,
+    deliveryLines: [pick(fixture, "Ada Tan"), pick(fixture, "200 Middle Road #01-02"), "Singapore 188980"],
+    note: null,
+  };
+}
+
 export function sampleReadjustmentReschedule(fixture: EmailFixture = "happy") {
   return {
     guestName: pick(fixture, "Ada Tan"),
