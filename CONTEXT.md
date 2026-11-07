@@ -51,7 +51,7 @@ A **Storefront product** that is not inventory-linked (`is_auto_generated = fals
 A customisation submission with optional **Authorization hold** and operator assignment. After assignment it links to a **Composed sellable** (size×tier or length) and a **Filling Template**. Accepted Results become an **Order** after successful payment capture (when a hold exists).
 
 **Draft Result**:
-A **Result** that has not entered the money path: `mp_config_responses.status` is null. Measurements typed into the configurator and autosaved, before any **Authorization hold** and before in-store finalization. The only state a guest may write — `/api/results/hold` writes `held`, and in-store finalization writes `held` via `buildInstoreReviewOnlyPatch`, so a non-null status means the submission is live and configurator writes are refused.
+A **Result** that has not entered the money path: `mp_config_responses.status` is null. Measurements typed into the configurator and autosaved, before any **Authorization hold** and before in-store finalization. The only state a guest may write — `/api/results/hold` writes `held`, and in-store finalization writes `held` via `buildInstoreReviewOnlyPatch`, so a non-null status means the submission is live and configurator writes are refused. A guest's Draft carries their email (`customer_email`) from birth: the Mpillow configurators ask it on the first question, beside the name, and save nothing for a guest before it (ADR 0049); a Staff device's Draft gets its email at the hold.
 _Avoid_: "unsaved" (a Draft Result is persisted); "unfinalised" (`is_final` records that the Telegram message was sent, not a lifecycle state); cart
 
 **Paired build**:

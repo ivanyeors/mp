@@ -1,7 +1,9 @@
 # Imported customers start subscribed, and the checkout box is ticked by default
 
 Status: Accepted (PRD `campaign-audiences`, owner decisions 2026-10-31). Amends ADR 0029 (h) and
-the rule in `20261020120000_marketing_consent.sql` that "Staff never subscribe anyone".
+the rule in `20261020120000_marketing_consent.sql` that "Staff never subscribe anyone". Amended by
+ADR 0049: a guest's customisation box is also recorded at the configurator's first question,
+with the email asked there, before any hold.
 
 ## Context
 

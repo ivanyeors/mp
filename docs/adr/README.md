@@ -54,3 +54,4 @@ one is amended to point at it.
 | [0046](0046-sub-pages-are-overrides-over-code-sections.md) | The landing page's sub pages are edited in the Page Builder as overrides over code-defined sections |
 | [0047](0047-sizing-photos-screened-by-claude.md) | Sizing photos are screened by Claude Haiku before they are kept, and only passed photos reach Telegram |
 | [0048](0048-staff-orders-paid-through-our-payment-link.md) | A Staff order is priced on the server and paid through our own payment link, which opens a fresh Stripe Checkout each time |
+| [0049](0049-guest-email-on-the-first-question.md) | A guest gives their email on the configurator's first question, and their Draft Result is not saved without it |

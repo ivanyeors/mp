@@ -856,7 +856,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/settings/orders/[id]`, `/settin
   - `main()` [select,update] — scripts/sizing-photos-to-webp.ts:31
   - `sizingPhotosForTelegram()` [delete,update] — lib/results/sizing-photos.ts:54
 - Read by:
-  - `POST()` [select] — app/api/mp-config/responses/route.ts:517
+  - `POST()` [select] — app/api/mp-config/responses/route.ts:547
 
 ### mp_config_responses
 Defined in supabase/migrations/0023_mp_config_responses.sql:6
@@ -866,7 +866,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `DELETE()` [delete,select] — app/api/mp-config/responses/[id]/route.ts:72
   - `DELETE()` [update] — app/api/shop/orders/[id]/mp-config-link/route.ts:116
   - `GET()` [select,update] — app/api/cron/results-sla/route.ts:112
-  - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:325
+  - `POST()` [select,upsert] — app/api/mp-config/responses/route.ts:338
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:73
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:136
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
@@ -923,7 +923,7 @@ Changed from pages: `/`, `/account`, `/account/login`, `/mbolster-config`, `/mp-
   - `updateStaffProfile()` [update] — lib/staff/admin.ts:209
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:68
-  - `POST()` [select] — app/api/mp-config/responses/route.ts:481
+  - `POST()` [select] — app/api/mp-config/responses/route.ts:511
   - `isPickableStaffProfile()` [select] — lib/staff/admin.ts:281
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:40
   - `linkedByName()` [select] — lib/customer-pillow/load.ts:82

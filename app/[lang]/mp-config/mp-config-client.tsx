@@ -168,6 +168,12 @@ import {
   type FieldCheck,
 } from "@/lib/configurator/step-validation";
 import {
+  firstQuestionEmailCheck,
+  withFirstQuestion,
+} from "@/lib/configurator/first-question-email";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MARKETING_BOX_LABEL } from "@/lib/marketing-consent/state";
+import {
   displayMeasurement,
   normalizeMeasurementDraft,
   type MeasurementUnit,
@@ -468,8 +474,16 @@ export function MpConfigClient({
   staffEdit = null,
   servicePrices = null,
   measuredByStaff = false,
+  askEmailFirst = false,
 }: {
   info: MpConfigInfo;
+  /**
+   * A guest, on no Staff login: the first question asks their email beside
+   * their name, and their Draft Result is not saved until it has one (ADR
+   * 0049), so every Draft Staff see in Results is one they can reach. Off for
+   * any Admin Panel login, where the shopper's email is asked at the end.
+   */
+  askEmailFirst?: boolean;
   /** Costings → Service fees (ADR 0024), for the Measurement service row. */
   servicePrices?: ServicePrices | null;
   /** Staff measured this customer — the server charges the Measurement service. */
@@ -773,6 +787,12 @@ export function MpConfigClient({
   // finish link and a re-configuration ask for no email, so they send false.
   const [marketingEmail, setMarketingEmail] = useState(true);
   const askedMarketingEmail = !resumeFinish && !staffEdit && marketingEmail;
+  // Email first (ADR 0049): a guest's first question takes their email, and
+  // nothing is saved for them until it has been. A reopened Result never asks.
+  const emailFirst = askEmailFirst && !resumeFinish && !staffEdit;
+  /** The first question's email is on the Draft Result: autosave may write. */
+  const [firstEmailSaved, setFirstEmailSaved] = useState(false);
+  const [savingFirstEmail, setSavingFirstEmail] = useState(false);
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>(() => ({
     recipient: "",
     line1: "",
@@ -905,7 +925,9 @@ export function MpConfigClient({
       };
       if (!handoff.journey?.flowRoute) return;
       entryJourneyRef.current = handoff.journey;
-      const missing = (handoff.missingSteps ?? []) as Step[];
+      // A guest still answers the first question, the one place they give
+      // their email and so the save of their Draft (ADR 0049).
+      const missing = withFirstQuestion(handoff.missingSteps ?? [], emailFirst) as Step[];
       if (handoff.targetFlow === "premium-mpillow") setUpsoldToPremium(true);
       if (missing.length > 0) {
         setPostUpsellSteps([...missing, "preview"]);
@@ -914,7 +936,8 @@ export function MpConfigClient({
     } catch {
       // ponytail: ignore corrupt handoff
     }
-  }, []);
+    // emailFirst comes from props and never changes; the hand-off is read once.
+  }, [emailFirst]);
 
   const clearTransitionTimers = () => {
     if (transitionTimeoutRef.current !== null) {
@@ -981,7 +1004,8 @@ export function MpConfigClient({
       valid: isNonEmptyString(measurementData.name),
       message: "Enter your name",
     },
-  ], [measurementData.name]);
+    ...(emailFirst ? [firstQuestionEmailCheck(holdEmail)] : []),
+  ], [measurementData.name, emailFirst, holdEmail]);
 
   const ageFields = useMemo((): FieldCheck[] => [
     {
@@ -1294,6 +1318,9 @@ export function MpConfigClient({
     if (draft?.responseId) {
       window.localStorage.setItem(sessionStorageKey, draft.responseId);
       setResponseId(draft.responseId);
+      // This session reached the preview, so it is past the first question:
+      // its Draft exists, and saving it again needs no email asked again.
+      setFirstEmailSaved(true);
     }
     if (draft?.selections) {
       setSelectedCover(draft.selections.selectedCover);
@@ -1487,6 +1514,8 @@ export function MpConfigClient({
     setPairedRestored(false);
     // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     setHoldSubmitting(false);
+    // A new session's Draft is saved by its own first question (ADR 0049).
+    setFirstEmailSaved(false);
   };
 
   const ensureResponseId = () => {
@@ -1570,7 +1599,11 @@ export function MpConfigClient({
   }, [measurementData]);
 
   const upsertToDb = useCallback(async (
-    opts?: { isFinal?: boolean },
+    opts?: {
+      isFinal?: boolean;
+      /** The first question's email (ADR 0049), with the marketing box beside it. */
+      firstEmail?: { email: string; marketingEmail: boolean };
+    },
   ): Promise<{ id: string; telegramStatus?: "sent" | "skipped" | "failed" } | null> => {
     // A reopened finish holds someone's submitted answers. Autosaving them into
     // this device's own Draft session would copy them onto an unrelated row.
@@ -1578,9 +1611,18 @@ export function MpConfigClient({
     // the responses route refuses a non-null status anyway, and a silent
     // autosave of a live Result is not something a Save button should imply.
     if (!responseId || resumeFinish || staffEdit) return null;
+    // Email first (ADR 0049): a guest's Draft is created by the first
+    // question's Continue, carrying their email, and autosave writes only
+    // after it. A Draft Staff see in Results is then one they can reach.
+    if (emailFirst && !firstEmailSaved && !opts?.firstEmail) return null;
     if (!hasAnyInput) return { id: responseId };
 
-    const snapshot = JSON.stringify({ responseId, measurementData, isFinal: opts?.isFinal ?? null });
+    const snapshot = JSON.stringify({
+      responseId,
+      measurementData,
+      isFinal: opts?.isFinal ?? null,
+      firstEmail: opts?.firstEmail ?? null,
+    });
     if (!opts?.isFinal && snapshot === lastSavedRef.current) return { id: responseId };
 
     setSaveStatus("saving");
@@ -1596,6 +1638,11 @@ export function MpConfigClient({
           // The CODE, never a staff id: the server re-resolves it and stamps
           // the row on create only (app/api/mp-config/responses/route.ts).
           ...(assistCode ? { assistCode } : {}),
+          // Sent on the first question's Continue only, so the box is recorded
+          // once per answer and not on every autosave.
+          ...(opts?.firstEmail
+            ? { draftEmail: opts.firstEmail.email, marketingEmail: opts.firstEmail.marketingEmail }
+            : {}),
         }),
       });
       const payload = await res.json().catch(() => null);
@@ -1603,6 +1650,7 @@ export function MpConfigClient({
       // Minted on create only; later saves echo nothing back.
       if (typeof payload?.accessToken === "string") writeToken(tokenStorageKey, payload.accessToken);
       lastSavedRef.current = snapshot;
+      if (opts?.firstEmail) setFirstEmailSaved(true);
       setSaveStatus("saved");
       return {
         id: (payload?.id ?? responseId) as string,
@@ -1620,7 +1668,27 @@ export function MpConfigClient({
     assistCode,
     resumeFinish,
     staffEdit,
+    emailFirst,
+    firstEmailSaved,
   ]);
+
+  /**
+   * The first question's Continue for a guest (ADR 0049): saves the Draft with
+   * their email, and the marketing box beside it, before moving on. A save that
+   * fails keeps them here, since a Draft without an email is the gap this closes.
+   */
+  const saveFirstEmailThenContinue = async () => {
+    setSavingFirstEmail(true);
+    const saved = await upsertToDb({
+      firstEmail: { email: holdEmail.trim(), marketingEmail },
+    });
+    setSavingFirstEmail(false);
+    if (!saved) {
+      setFieldErrors({ email: "We couldn't save your email. Check it and try again." });
+      return;
+    }
+    goToNextStep();
+  };
 
   const loadSuggestion = async () => {
     if (!responseId) return;
@@ -4165,6 +4233,48 @@ export function MpConfigClient({
                     <p className="text-sm text-destructive">{fieldErrors.name}</p>
                   ) : null}
                 </div>
+                {emailFirst ? (
+                  // Email first (ADR 0049): the guest's Draft is saved with it,
+                  // so Staff can follow up on a build that was never paid for.
+                  // The same field the checkout's contact step shows, prefilled.
+                  // A form, so its help lines keep their own size, as the
+                  // contact step's do (globals.css forces marketing <p> to 18px).
+                  <div className="space-y-2" data-typography-scope="app">
+                    <label htmlFor="mp-email" className="text-sm font-medium">
+                      What&apos;s your email?
+                    </label>
+                    <Input
+                      id="mp-email"
+                      type="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      placeholder="you@example.com"
+                      value={holdEmail}
+                      onChange={(e) => setHoldEmail(e.target.value)}
+                      className="text-lg h-12"
+                      aria-invalid={!!fieldErrors.email}
+                      aria-describedby="mp-email-why"
+                    />
+                    {fieldErrors.email ? (
+                      <p className="text-sm text-destructive">{fieldErrors.email}</p>
+                    ) : null}
+                    <p id="mp-email-why" className="text-sm text-muted-foreground">
+                      We keep your answers under this email, so our team can help you
+                      finish your pillow and send your payment link.
+                    </p>
+                    {/* The checkout's box (ADR 0039), sharing its state: ticked by
+                        default, and unticked changes nothing. */}
+                    <label className="flex items-start gap-2 pt-1 text-sm text-muted-foreground">
+                      <Checkbox
+                        id="mp-marketing-email"
+                        className="mt-0.5"
+                        checked={marketingEmail}
+                        onCheckedChange={(checked) => setMarketingEmail(checked === true)}
+                      />
+                      {MARKETING_BOX_LABEL}
+                    </label>
+                  </div>
+                ) : null}
               </div>
 
               <div className="pt-4 empty:hidden">
@@ -4178,10 +4288,12 @@ export function MpConfigClient({
                     Back
                   </Button>
                   <Button
-                    onClick={() => tryAdvance(nameFields, goToNextStep)}
-                    disabled={!hybridCtaEnabled(nameFields)}
+                    onClick={() =>
+                      tryAdvance(nameFields, emailFirst ? saveFirstEmailThenContinue : goToNextStep)
+                    }
+                    disabled={!hybridCtaEnabled(nameFields) || savingFirstEmail}
                   >
-                    Continue
+                    {savingFirstEmail ? "Saving…" : "Continue"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </ConfiguratorStepActions>

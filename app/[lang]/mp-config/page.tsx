@@ -149,6 +149,11 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         // travels back to the server on save, where the code is re-resolved and
         // the Draft Result stamped `source = 'staff_assisted'`.
         assistCode={assistStaff?.code ?? null}
+        // Email first (ADR 0049): anyone on no Admin Panel login is a guest,
+        // and their first question asks their email, so the Draft Result Staff
+        // see in Results is one they can follow up. A Staff device, an Assist
+        // link opened on one included, asks the shopper's email at the end.
+        askEmailFirst={!staffCtx}
         servicePrices={servicePrices}
         measuredByStaff={measuredByStaff}
         partner={

@@ -15,6 +15,7 @@ import {
 } from "@/lib/discovery-source";
 import { getAdminContext, requireAnyAdmin } from "@/lib/auth/admin";
 import { getStaffByAssistCode } from "@/lib/assist-link";
+import { recordBoxConsentByEmail } from "@/lib/marketing-consent/consent";
 import { requireResultAccess } from "@/lib/results/access";
 import { clientIp, rateLimitExceeded } from "@/lib/rate-limit";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
@@ -238,6 +239,18 @@ const UpsertSchema = z.object({
   locationId: z.string().uuid().nullable().optional(),
   /** Explicit flag: require + write contact columns on this upsert. */
   persistContact: z.boolean().optional(),
+  /**
+   * A guest's email from the configurator's first question (ADR 0049), so a
+   * Draft Result Staff can see is one they can reach. Written to
+   * `customer_email` on a Draft only: once a Result is held, its email is the
+   * one the hold wrote.
+   */
+  draftEmail: z.string().trim().toLowerCase().email().max(254).optional(),
+  /**
+   * The marketing box beside that email, ticked by default (ADR 0039). Recorded
+   * as `customisation` once the Draft is saved; absent is unticked.
+   */
+  marketingEmail: z.boolean().optional(),
   /** Result access token — proves the caller owns an existing row. */
   token: z.string().uuid().nullish(),
   /** Assist link code from `/mp-config?assist=`. Re-resolved server-side. */
@@ -372,6 +385,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // The guest's email from the first question (ADR 0049), behind the access
+  // check above. A Draft only: on a held Result the email is the hold's, and
+  // pointing it elsewhere would send that Result's emails, and its access token,
+  // to someone else. "Save without purchasing" writes its own, checked, contact.
+  const draftEmail =
+    parsed.data.draftEmail && !persistContact && (existing == null || existing.status == null)
+      ? parsed.data.draftEmail
+      : null;
+  if (draftEmail) row.customer_email = draftEmail;
+
   // "Working as" (slice 10): a Result a Staff session creates without saying
   // who measured defaults to the profile at this device. Attribution only, and
   // re-validated against the signed-in login.
@@ -460,6 +483,13 @@ export async function POST(req: Request) {
 
   const { error } = await admin.from("mp_config_responses").upsert(row, { onConflict: "id" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // The marketing box beside the first question's email (ADR 0039, 0049):
+  // recorded once the Draft carrying that email is saved, for that email.
+  // Subscribes only someone nobody has asked, and never fails the save.
+  if (draftEmail) {
+    await recordBoxConsentByEmail(admin, draftEmail, parsed.data.marketingEmail === true, "customisation");
+  }
 
   // Optional Telegram notify when a response is marked final (only on the first transition to final).
   let telegramStatus: "sent" | "skipped" | "failed" = "skipped";
