@@ -154,10 +154,16 @@ import {
   pairedDetailsPath,
   readPairedHandoff,
   writePairedHandoff,
+  type PairedBolsterAnswers,
   type PairedChoice,
   type PairedHandoff,
 } from "@/lib/configurator/paired-mbolster";
 import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
+import {
+  bolsterAssistDraft,
+  restoreBolsterAssist,
+  type BolsterAssistDraft,
+} from "@/lib/configurator/staff-assist-draft";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
 import type { ServicePrices } from "@/lib/pricing/service-prices";
@@ -463,10 +469,22 @@ export function MbolsterConfigClient({
   // Staff start from the engine's Filling Template and edit from there. Once per
   // length: emptying the bolster afterwards is a choice, not a gap to refill.
   const seededLengthRef = React.useRef<string | null>(null);
+  // Autosave (Paired build): the mix Staff built on an earlier visit to this
+  // step, waiting for the length it was built for.
+  const restoreAssistRef = React.useRef<BolsterAssistDraft | null>(null);
   React.useEffect(() => {
-    if (!staffAssist || !suggestedLength || !recommendedTemplate) return;
+    if (!staffAssist || !suggestedLength) return;
     if (assistLoadedTemplate || assistPlacements.length > 0) return;
     if (seededLengthRef.current === suggestedLength) return;
+    const restored = restoreBolsterAssist(restoreAssistRef.current, suggestedLength);
+    if (restored) {
+      seededLengthRef.current = suggestedLength;
+      restoreAssistRef.current = null;
+      setAssistLoadedTemplate(restored.loadedTemplate);
+      setAssistPlacements(restored.placements);
+      return;
+    }
+    if (!recommendedTemplate) return;
     seededLengthRef.current = suggestedLength;
     const placements = rowsToBolsterPlacements(recommendedTemplate.placements ?? []);
     setAssistLoadedTemplate({ id: Number(recommendedTemplate.id), placements });
@@ -530,6 +548,8 @@ export function MbolsterConfigClient({
         // private mode — the answers live in state for this visit
       }
       reopenPairedPreviewRef.current = Boolean(choice?.bolster && heightCm);
+      // Read only by the Staff seeding below.
+      restoreAssistRef.current = handoff.bolster?.assist ?? null;
       setConfigSessionId(handoff.companionId);
       setState({ step: "height", heightUnit, heightCm, sleepPosition: handoff.sleepPosition });
       setHeightDraft(displayHeight(heightUnit, heightCm));
@@ -628,22 +648,42 @@ export function MbolsterConfigClient({
     }
   }, [state]);
 
+  // Step 2's answers as they stand, written into the hand-off so reopening the
+  // step shows the same Mbolster. Staff's mix autosaves with them; until one is
+  // loaded, the stored one is kept — it is the one about to be restored.
+  const pairedAnswers = React.useMemo((): PairedBolsterAnswers => {
+    const assist = !staffAssist
+      ? undefined
+      : suggestedLength && (assistLoadedTemplate || assistPlacements.length > 0)
+        ? bolsterAssistDraft(suggestedLength, assistPlacements, assistLoadedTemplate)
+        : paired?.bolster?.assist;
+    return {
+      heightUnit: state.heightUnit,
+      heightCm: state.heightCm,
+      caseId: selectedCase,
+      addonIds: [...selectedAddons],
+      ...(assist ? { assist } : {}),
+    };
+  }, [
+    staffAssist,
+    suggestedLength,
+    assistLoadedTemplate,
+    assistPlacements,
+    paired,
+    state.heightUnit,
+    state.heightCm,
+    selectedCase,
+    selectedAddons,
+  ]);
+
   React.useEffect(() => {
     if (!paired) return;
     try {
-      writePairedHandoff(window.sessionStorage, {
-        ...paired,
-        bolster: {
-          heightUnit: state.heightUnit,
-          heightCm: state.heightCm,
-          caseId: selectedCase,
-          addonIds: [...selectedAddons],
-        },
-      });
+      writePairedHandoff(window.sessionStorage, { ...paired, bolster: pairedAnswers });
     } catch {
       // private mode — the answers live in state for this visit
     }
-  }, [paired, state.heightUnit, state.heightCm, selectedCase, selectedAddons]);
+  }, [paired, pairedAnswers]);
 
   // Persist hold-prep while on preview (covers Stripe cancel return). A paired
   // run's Checkout returns to the Mpillow, so it writes nothing here.
@@ -1132,16 +1172,7 @@ export function MbolsterConfigClient({
       };
     }
     try {
-      writePairedHandoff(window.sessionStorage, {
-        ...paired,
-        bolster: {
-          heightUnit: state.heightUnit,
-          heightCm: state.heightCm,
-          caseId: selectedCase,
-          addonIds: [...selectedAddons],
-        },
-        choice,
-      });
+      writePairedHandoff(window.sessionStorage, { ...paired, bolster: pairedAnswers, choice });
     } catch {
       toast.error("Could not save your Mbolster on this device. Please try again.");
       return;

@@ -1,5 +1,10 @@
 /** Hold-cancel restore: persist preview + hold-prep so Stripe cancel returns to customisation. */
 
+import {
+  parsePillowAssistDraft,
+  type PillowAssistDraft,
+} from "@/lib/configurator/staff-assist-draft";
+
 export type HoldPrepAddress = {
   recipient: string;
   line1: string;
@@ -36,6 +41,13 @@ export type HoldCancelDraft = {
   heightCm?: string;
   sleepPosition?: "side" | "stomach" | "other" | null;
   selections: HoldPrepSelections;
+  /**
+   * Mpillow, Staff assist mode only: the size×tier Staff chose and the mix on
+   * the x-ray. Without it the restore re-asks the engine, and the preview came
+   * back on the recommended size and template after the Paired build's
+   * Mbolster step, a reload or a cancelled Checkout.
+   */
+  staffAssist?: PillowAssistDraft;
 };
 
 export function holdCancelDraftKey(surface: HoldCancelSurface): string {
@@ -108,6 +120,8 @@ export function parseHoldCancelDraft(raw: unknown): HoldCancelDraft | null {
   }
   const selections = parseHoldPrepSelections(d.selections);
   if (!selections) return null;
+  // A session that does not parse is dropped on its own: the rest still restores.
+  const staffAssist = parsePillowAssistDraft(d.staffAssist);
   return {
     v: 1,
     surface: d.surface,
@@ -128,6 +142,7 @@ export function parseHoldCancelDraft(raw: unknown): HoldCancelDraft | null {
         ? d.sleepPosition
         : undefined,
     selections,
+    ...(staffAssist ? { staffAssist } : {}),
   };
 }
 

@@ -129,7 +129,13 @@ assert.match(mp, /r\.flowRoute\?\.targetFlow !== "mbolster"/, "a pending Mbolste
 
 const mb = readFileSync("app/[lang]/mbolster-config/mbolster-config-client.tsx", "utf8");
 assert.match(mb, /<PairedStepperBar className="border-t" step=\{2\} \/> : null\}\s*<\/header>/, "step 2 along the top of the Mbolster's customisation page");
-assert.match(mb, /\{paired \? \(\s*<PairedStepperBar\s+className="sticky top-0/, "and above its height step");
+// Sticky the way the configurator header is (#399): its class is the shared
+// `configuratorStickyHeaderClassName`, itself checked to be `sticky top-0`.
+assert.match(
+  mb,
+  /\{paired \? \(\s*<PairedStepperBar\s+className=\{cn\(\s*configuratorStickyHeaderClassName,/,
+  "and above its height step, sticky like the configurator header",
+);
 assert.doesNotMatch(mb, /<PairedStepper\s/, "and only there");
 assert.match(mb, /nextStep: "preview"/, "paired: height goes straight to the customisation page");
 assert.match(mb, /if \(pairedHandoffOnPage\(\)\) return;/, "a paired run never overwrites the standalone draft");
