@@ -1,4 +1,4 @@
-# Graph Report - wt-fresh  (2026-11-07)
+# Graph Report - cleanwt  (2026-11-07)
 
 ## Corpus Check
 - 2849 files · ~6,998,006 words
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c0aa206a`
+- Built from commit: `ef394859`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

@@ -18,7 +18,7 @@ Default BOM rules:
 
 Updated filling subtypes available:
 - 3D (S)
-- 6D (Round)
+- 6D (Corner)
 - 6D+ (Folded)
 - 6D (S)
 - 6D+ (S)

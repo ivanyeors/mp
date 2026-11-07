@@ -129,7 +129,7 @@ export const POUCH_CATALOG: readonly { key: string; label: string }[] = [
   { key: "6d/m", label: "6D (M)" },
   { key: "6d/l", label: "6D (L)" },
   { key: "6d/xl", label: "6D (XL)" },
-  { key: "6d/round", label: "6D (Round)" },
+  { key: "6d/corner", label: "6D (Corner)" },
   { key: "6d/folded/s", label: "6D Fold S" },
   { key: "6d/folded/m", label: "6D Fold M" },
   { key: "6d/folded/l", label: "6D Fold L" },

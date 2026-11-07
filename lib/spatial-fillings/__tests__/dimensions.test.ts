@@ -104,7 +104,7 @@ describe("pouchKey", () => {
 
 describe("resolveDims", () => {
   it("resolves every seed descriptor to its family and never throws", () => {
-    for (const subtype of ["3D (S)", "6D (S)", "6D (M)", "6D (L)", "6D (XL)", "6D (Round)", "6D+ (S)", "6D+ (L)", "6D+ (Folded)"]) {
+    for (const subtype of ["3D (S)", "6D (S)", "6D (M)", "6D (L)", "6D (XL)", "6D (Corner)", "6D+ (S)", "6D+ (L)", "6D+ (Folded)"]) {
       const r = resolveDims({ name: "filling", subtype });
       expect(r.kind).toBe("pouch");
       expect(r.dims.widthMm).toBeGreaterThan(0);
