@@ -2,17 +2,20 @@
 
 Breakdown of `../guest-email-first-prd.md`. Published locally (no external issue tracker).
 
-**Triage label:** `needs-triage` (02–05)
+**Triage label:** `needs-triage` (03, 05)
 
 | # | Title | Type | Status | Blocked by |
 |---|-------|------|--------|------------|
 | 01 | Ask a guest's email on the first question; no Draft without it | AFK | **done** (ADR 0049) | none |
-| 02 | *Continue your pillow* link: the shopper reopens their own Draft on any device | AFK | needs-triage | 01 |
+| 02 | *Continue your pillow* link: the shopper reopens their own Draft on any device | AFK | **done** (ADR 0050) | 01 |
 | 03 | Staff: send that link from a Draft in Results | AFK | needs-triage | 02 |
-| 04 | Automatic reminder to a guest who stopped | HITL | needs-triage | 02 |
+| 04 | Automatic reminder to a guest who stopped | HITL | **done** (ADR 0050) | 02 |
 | 05 | Measure the first question's drop-off, and decide whether to move it | HITL | needs-triage | 01 |
 
 ## 02 — *Continue your pillow* link
+
+Done (ADR 0050), as below; the Draft records which configurator it was started in, so the link
+opens that one.
 
 A Draft has a **Result access token** from birth, but its answers live only in the browser that
 typed them: a reload starts at the welcome, and another device cannot open it. Give the shopper a
@@ -33,10 +36,12 @@ link, plus *Copy link* for WhatsApp. Today the menu only offers *Request payment
 
 ## 04 — Automatic reminder
 
-A daily job emails a Draft with an email and no activity for N hours, once, with the slice 02
-link. Owner decisions needed: N; whether it goes to everyone or only to people who left the box
-ticked (it is about their own unfinished order, but PDPA and the Spam Control Act should be read
-by counsel, as for ADR 0039); and whether it stops when they book a fitting.
+Done (ADR 0050). The owner set the schedule on 2026-11-08: 1 day, 1 week and 1 month after the
+last save, then stop. Built to the conservative reading of the other questions, each one line to
+change: only to people who left the box ticked (counsel should still read the PDPA and the Spam
+Control Act before it goes to everyone), and it stops when the shopper holds or pays for a pillow,
+not when they book a fitting (a fitting is not a purchase, and the reminder links to their own
+answers). Off under Settings → General → Review SLA.
 
 ## 05 — Measure the cost of asking first
 

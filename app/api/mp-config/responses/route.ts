@@ -251,6 +251,13 @@ const UpsertSchema = z.object({
    * as `customisation` once the Draft is saved; absent is unticked.
    */
   marketingEmail: z.boolean().optional(),
+  /**
+   * The configurator the Draft is in (`/mp-config` or `/mp-basic`), sent with
+   * that email and kept as `data.configurator`, so its continue link (ADR
+   * 0050) reopens it in the same one. Later saves never send it, and the
+   * answers merge, so it stays.
+   */
+  configurator: z.enum(["full", "basic"]).optional(),
   /** Result access token — proves the caller owns an existing row. */
   token: z.string().uuid().nullish(),
   /** Assist link code from `/mp-config?assist=`. Re-resolved server-side. */
@@ -393,7 +400,10 @@ export async function POST(req: Request) {
     parsed.data.draftEmail && !persistContact && (existing == null || existing.status == null)
       ? parsed.data.draftEmail
       : null;
-  if (draftEmail) row.customer_email = draftEmail;
+  if (draftEmail) {
+    row.customer_email = draftEmail;
+    if (parsed.data.configurator) row.data = { ...data, configurator: parsed.data.configurator };
+  }
 
   // "Working as" (slice 10): a Result a Staff session creates without saying
   // who measured defaults to the profile at this device. Attribution only, and

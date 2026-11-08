@@ -115,6 +115,24 @@ describe("POST /api/mp-config/responses — the first question's email", () => {
     expect(h.upsert).not.toHaveBeenCalled();
   });
 
+  it("keeps the configurator it was started in, beside the answers, for its continue link", async () => {
+    h.maybeSingle.mockResolvedValue({ data: null, error: null });
+    await post({ draftEmail: "ada@example.com", configurator: "basic" });
+    expect(written().data).toEqual(expect.objectContaining({ name: "Ada", configurator: "basic" }));
+  });
+
+  it("keeps a stored configurator through an autosave that does not send one", async () => {
+    h.maybeSingle.mockResolvedValue({ data: { status: null, data: { configurator: "basic" } }, error: null });
+    await post({});
+    expect(written().data).toEqual(expect.objectContaining({ name: "Ada", configurator: "basic" }));
+  });
+
+  it("writes no configurator without the first question's email", async () => {
+    h.maybeSingle.mockResolvedValue({ data: null, error: null });
+    await post({ configurator: "basic" });
+    expect(written().data).not.toHaveProperty("configurator");
+  });
+
   it("records no consent when the save fails", async () => {
     h.maybeSingle.mockResolvedValue({ data: null, error: null });
     h.upsert.mockResolvedValue({ error: { message: "connection reset" } });

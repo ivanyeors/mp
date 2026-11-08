@@ -259,6 +259,8 @@ import {
 } from "@/lib/spatial-fillings/core";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { ResumeFinish } from "@/lib/results/resume-finish";
+import type { ResumeDraft } from "@/lib/results/resume-draft";
+import { resumeStepFor, stripContinueDraftQuery } from "@/lib/configurator/continue-draft";
 import { addonsForAnswers, keepOfferedAddons } from "@/lib/results/addons";
 import type { StaffEditResult } from "@/lib/results/staff-edit";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
@@ -475,6 +477,7 @@ export function MpConfigClient({
   servicePrices = null,
   measuredByStaff = false,
   askEmailFirst = false,
+  resumeDraft = null,
 }: {
   info: MpConfigInfo;
   /**
@@ -484,6 +487,14 @@ export function MpConfigClient({
    * any Admin Panel login, where the shopper's email is asked at the end.
    */
   askEmailFirst?: boolean;
+  /**
+   * The guest's own Draft Result, reopened from its continue link (ADR 0050).
+   * This device takes over its id and access token, the form is filled with
+   * its answers, and it opens on the first question left unanswered, or on
+   * the preview. From there it is the guest's ordinary session: it autosaves
+   * the Draft and pays through the normal hold.
+   */
+  resumeDraft?: ResumeDraft | null;
   /** Costings → Service fees (ADR 0024), for the Measurement service row. */
   servicePrices?: ServicePrices | null;
   /** Staff measured this customer — the server charges the Measurement service. */
@@ -564,16 +575,29 @@ export function MpConfigClient({
   const [mobileActionsSlot, setMobileActionsSlot] = useState<HTMLDivElement | null>(null);
   // Both reopened modes start on the preview: there is already a build to look
   // at, so the questionnaire would only be in the way.
-  const [currentStep, setCurrentStep] = useState<Step>(
-    resumeFinish || staffEdit ? "preview" : "welcome",
+  const [currentStep, setCurrentStep] = useState<Step>(() =>
+    resumeFinish || staffEdit
+      ? "preview"
+      : resumeDraft
+        ? resumeStepFor(variant, resumeDraft.answers)
+        : "welcome",
   );
   const [restoringHoldCancel, setRestoringHoldCancel] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
   // Single unit selector for the whole flow (default: inches)
   const [measurementUnit, setMeasurementUnit] = useState<MeasurementUnit>("in");
-  const [measurementDrafts, setMeasurementDrafts] =
-    useState<Record<MeasureKey, string>>(EMPTY_MEASURE_DRAFTS);
+  const [measurementDrafts, setMeasurementDrafts] = useState<Record<MeasureKey, string>>(() => {
+    // A reopened Draft's measurements, shown in the form's starting unit.
+    const answers = resumeDraft?.answers;
+    if (!answers) return EMPTY_MEASURE_DRAFTS;
+    const drafts = { ...EMPTY_MEASURE_DRAFTS };
+    for (const key of Object.keys(EMPTY_MEASURE_DRAFTS) as MeasureKey[]) {
+      const cm = answers[key];
+      if (cm) drafts[key] = displayMeasurement("in", cm);
+    }
+    return drafts;
+  });
   const [measurementData, setMeasurementData] = useState<MeasurementData>(() => ({
     name: "",
     gender: "",
@@ -589,6 +613,8 @@ export function MpConfigClient({
     sleepPainAreas: [],
     sleepPositionType: [],
     usesBolster: "",
+    // A reopened Draft's own answers (ADR 0050).
+    ...resumeDraft?.answers,
     // The submitted answers, so the recommendation fetch below has real inputs.
     ...(resumeFinish?.measurements as Partial<MeasurementData> | undefined),
     ...(staffEdit?.measurements as Partial<MeasurementData> | undefined),
@@ -601,7 +627,9 @@ export function MpConfigClient({
   const assisted = Boolean(assistCode);
   /** Staff re-configuring an existing Result — never a new Draft, never a hold. */
   const staffEditing = Boolean(staffEdit);
-  const [responseId, setResponseId] = useState<string | null>(staffEdit?.id ?? null);
+  const [responseId, setResponseId] = useState<string | null>(
+    staffEdit?.id ?? resumeDraft?.id ?? null,
+  );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
@@ -768,7 +796,9 @@ export function MpConfigClient({
     assistLoadedTemplate,
     assistPlacements.length,
   ]);
-  const [holdEmail, setHoldEmail] = useState(resumeFinish?.email ?? staffEdit?.email ?? "");
+  const [holdEmail, setHoldEmail] = useState(
+    resumeFinish?.email ?? staffEdit?.email ?? resumeDraft?.email ?? "",
+  );
   const [holdPhone, setHoldPhone] = useState(resumeFinish?.phone ?? staffEdit?.phone ?? "");
   const [discoverySource, setDiscoverySource] = useState(
     resumeFinish?.discoverySource ?? staffEdit?.discoverySource ?? "",
@@ -790,8 +820,8 @@ export function MpConfigClient({
   // Email first (ADR 0049): a guest's first question takes their email, and
   // nothing is saved for them until it has been. A reopened Result never asks.
   const emailFirst = askEmailFirst && !resumeFinish && !staffEdit;
-  /** The first question's email is on the Draft Result: autosave may write. */
-  const [firstEmailSaved, setFirstEmailSaved] = useState(false);
+  /** The first question's email is on the Draft Result: autosave may write. A reopened Draft has it already. */
+  const [firstEmailSaved, setFirstEmailSaved] = useState(Boolean(resumeDraft));
   const [savingFirstEmail, setSavingFirstEmail] = useState(false);
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>(() => ({
     recipient: "",
@@ -1233,6 +1263,20 @@ export function MpConfigClient({
     // would both hijack the session and risk autosaving a customer's answers
     // onto an unrelated row.
     if (staffEdit) return;
+    // Continue link (ADR 0050): this device takes over the guest's Draft, its
+    // id and its access token, as if it had started it. The link's token then
+    // leaves the address bar, so a copied URL does not hand the Draft on.
+    if (resumeDraft) {
+      window.localStorage.setItem(sessionStorageKey, resumeDraft.id);
+      writeToken(tokenStorageKey, resumeDraft.token);
+      setResponseId(resumeDraft.id);
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${stripContinueDraftQuery(window.location.search)}`,
+      );
+      return;
+    }
     let id = window.localStorage.getItem(sessionStorageKey);
     if (!id) {
       id = newResponseId();
@@ -1276,14 +1320,15 @@ export function MpConfigClient({
         // Best-effort only; never block the UI.
       }
     })();
-  }, [sessionStorageKey, tokenStorageKey, staffEdit]);
+  }, [sessionStorageKey, tokenStorageKey, staffEdit, resumeDraft]);
 
   // Stripe hold cancel → restore preview + selections (and light notice).
   useEffect(() => {
     if (typeof window === "undefined") return;
     // A reopened Result is not a cancelled hold; restoring this device's draft
     // over it would replace the customer's build with someone else's session.
-    if (staffEdit) return;
+    // Nor is a continue link, whose Draft may not be the one this device holds.
+    if (staffEdit || resumeDraft) return;
     const holdCancelled = isHoldCancelledQuery(window.location.search);
     const draft = readHoldCancelDraft(window.localStorage, holdSurface);
     if (!shouldRestorePreview({ holdCancelled, draftStep: draft?.step })) {
@@ -1640,8 +1685,14 @@ export function MpConfigClient({
           ...(assistCode ? { assistCode } : {}),
           // Sent on the first question's Continue only, so the box is recorded
           // once per answer and not on every autosave.
+          // With the configurator it was started in, so its continue link
+          // (ADR 0050) reopens it in the same one.
           ...(opts?.firstEmail
-            ? { draftEmail: opts.firstEmail.email, marketingEmail: opts.firstEmail.marketingEmail }
+            ? {
+                draftEmail: opts.firstEmail.email,
+                marketingEmail: opts.firstEmail.marketingEmail,
+                configurator: variant,
+              }
             : {}),
         }),
       });
@@ -1670,6 +1721,7 @@ export function MpConfigClient({
     staffEdit,
     emailFirst,
     firstEmailSaved,
+    variant,
   ]);
 
   /**
@@ -2000,6 +2052,15 @@ export function MpConfigClient({
       });
     }
   };
+
+  // A continue link (ADR 0050) that opens on the preview loads its
+  // recommendation, as the photos step's Continue does on the way there.
+  useEffect(() => {
+    if (!resumeDraft || currentStep !== "preview") return;
+    if (isBasic) void fetchBasicRecommendation();
+    else void Promise.all([loadSuggestion(), fetchShopRecommendation()]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: the link opens once
+  }, []);
 
   // After hold-cancel restore, re-fetch recommendation without clobbering cover/case.
   useEffect(() => {

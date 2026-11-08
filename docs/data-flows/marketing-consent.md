@@ -83,6 +83,17 @@ ticks *Include unengaged*. Unengaged is never consent: the Customer stays
 `subscribed`, and no consent event is written. An **Audience** or a
 **Segment** only narrows; neither ever reaches someone the claim refuses.
 
+## Who receives a Draft reminder
+
+A **Draft reminder** (ADR 0050, `lib/draft-reminders`) is not a campaign, but
+it reads consent the same way: it goes only to a Customer whose
+`marketing_email` is `subscribed`, which for a guest is the box under the email
+on the first question. It is sent like a campaign, with an Unsubscribe link and
+`List-Unsubscribe`, and skips an address a campaign bounced from or that
+reported one as spam. The Rest period does not apply. It writes no consent, and
+each send is a `customer_emails` row (`results.draft_reminder_<1d|1w|1m>`, the
+Draft as entity), not a `customer_campaign_sends` row.
+
 ## Why they unsubscribe
 
 After an unsubscribe has taken effect, the unsubscribe page and the account ask
