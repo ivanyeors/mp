@@ -58,6 +58,7 @@ import {
   configuratorStickyHeaderClassName,
 } from "@/components/configurator/configurator-mobile-chrome";
 import { Progress } from "@/components/ui/progress";
+import { WhoIsMeasuring, type MeasurerProfile } from "@/components/configurator/who-is-measuring";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -467,13 +468,20 @@ export function MpConfigClient({
   resumeFinish = null,
   staffEdit = null,
   servicePrices = null,
-  measuredByStaff = false,
+  measuredByStaff: measuredByStaffProp = false,
+  pickMeasurer = null,
 }: {
   info: MpConfigInfo;
   /** Costings → Service fees (ADR 0024), for the Measurement service row. */
   servicePrices?: ServicePrices | null;
   /** Staff measured this customer — the server charges the Measurement service. */
   measuredByStaff?: boolean;
+  /**
+   * A Staff session on a shared login where nobody at this device has chosen
+   * under "Working as": its live profiles, asked on the start screen before the
+   * Draft exists (components/configurator/who-is-measuring.tsx). Null otherwise.
+   */
+  pickMeasurer?: MeasurerProfile[] | null;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
   staffAssist?: boolean;
   /** Admin Panel `results` permission. Gates the completion dialog's link into
@@ -516,6 +524,11 @@ export function MpConfigClient({
 }) {
   // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
   const partnerAssisted = Boolean(partner);
+  // Who is measuring, once a shared login has said so on the start screen. It
+  // is saved as this device's "Working as", which the Draft create reads.
+  const [measurer, setMeasurer] = useState<string | null>(null);
+  const measuredByStaff = measuredByStaffProp || measurer != null;
+  const askMeasurer = pickMeasurer != null && pickMeasurer.length > 1;
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -1523,6 +1536,7 @@ export function MpConfigClient({
   };
 
   const handleStart = () => {
+    if (askMeasurer && measurer == null) return;
     ensureResponseId();
     goToNextStep();
   };
@@ -3983,7 +3997,16 @@ export function MpConfigClient({
                     : "Let's create your perfect pillow, customized just for you"}
                 </p>
               </div>
-              <Button size="lg" onClick={handleStart} className="group">
+              {askMeasurer && pickMeasurer && (
+                <WhoIsMeasuring profiles={pickMeasurer} chosen={measurer} onChosen={setMeasurer} />
+              )}
+              <Button
+                size="lg"
+                onClick={handleStart}
+                className="group"
+                // A Staff login is always Staff: no Draft until it says who measures.
+                disabled={askMeasurer && measurer == null}
+              >
                 Get Started
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>

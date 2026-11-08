@@ -840343,6 +840343,18 @@
     },
     {
       "source": "dataflow_page_mp_basic",
+      "target": "dataflow_endpoint_api_admin_working_as",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/configurator/who-is-measuring.tsx",
+      "source_location": "L37",
+      "weight": 1.0,
+      "context": "POST"
+    },
+    {
+      "source": "dataflow_page_mp_basic",
       "target": "dataflow_endpoint_api_config_uploads",
       "relation": "requests",
       "_origin": "dataflow",
@@ -840373,7 +840385,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1819",
+      "source_location": "L1833",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840397,7 +840409,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L405",
+      "source_location": "L406",
       "weight": 1.0,
       "context": "GET"
     },
@@ -840409,7 +840421,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1701",
+      "source_location": "L1715",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840421,7 +840433,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1588",
+      "source_location": "L1602",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840433,7 +840445,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1234",
+      "source_location": "L1247",
       "weight": 1.0,
       "context": "GET"
     },
@@ -840445,7 +840457,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1904",
+      "source_location": "L1918",
       "weight": 1.0,
       "context": "GET"
     },
@@ -840457,7 +840469,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L2246",
+      "source_location": "L2260",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840469,7 +840481,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L2334",
+      "source_location": "L2348",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840481,7 +840493,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L2307",
+      "source_location": "L2321",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840493,7 +840505,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L2399",
+      "source_location": "L2413",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840505,7 +840517,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1751",
+      "source_location": "L1765",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840642,13 +840654,25 @@
     },
     {
       "source": "dataflow_page_mp_basic",
+      "target": "lib_staff_working_as_memberprofiles",
+      "relation": "loads",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/[lang]/mp-config/page.tsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "dataflow_page_mp_basic",
       "target": "supabase_migrations_0023_mp_config_responses_mp_config_responses",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/page.tsx",
-      "source_location": "L85",
+      "source_location": "L86",
       "weight": 1.0,
       "context": "select"
     },
@@ -840666,6 +840690,18 @@
     },
     {
       "source": "dataflow_page_mp_config",
+      "target": "dataflow_endpoint_api_admin_working_as",
+      "relation": "requests",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/configurator/who-is-measuring.tsx",
+      "source_location": "L37",
+      "weight": 1.0,
+      "context": "POST"
+    },
+    {
+      "source": "dataflow_page_mp_config",
       "target": "dataflow_endpoint_api_config_uploads",
       "relation": "requests",
       "_origin": "dataflow",
@@ -840696,7 +840732,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1819",
+      "source_location": "L1833",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840720,7 +840756,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L405",
+      "source_location": "L406",
       "weight": 1.0,
       "context": "GET"
     },
@@ -840732,7 +840768,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1701",
+      "source_location": "L1715",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840744,7 +840780,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1588",
+      "source_location": "L1602",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840756,7 +840792,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1234",
+      "source_location": "L1247",
       "weight": 1.0,
       "context": "GET"
     },
@@ -840768,7 +840804,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1904",
+      "source_location": "L1918",
       "weight": 1.0,
       "context": "GET"
     },
@@ -840780,7 +840816,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L2246",
+      "source_location": "L2260",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840792,7 +840828,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L2334",
+      "source_location": "L2348",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840804,7 +840840,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L2307",
+      "source_location": "L2321",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840816,7 +840852,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L2399",
+      "source_location": "L2413",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840828,7 +840864,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/mp-config-client.tsx",
-      "source_location": "L1751",
+      "source_location": "L1765",
       "weight": 1.0,
       "context": "POST"
     },
@@ -840965,13 +841001,25 @@
     },
     {
       "source": "dataflow_page_mp_config",
+      "target": "lib_staff_working_as_memberprofiles",
+      "relation": "loads",
+      "_origin": "dataflow",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/[lang]/mp-config/page.tsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "context": "import"
+    },
+    {
+      "source": "dataflow_page_mp_config",
       "target": "supabase_migrations_0023_mp_config_responses_mp_config_responses",
       "relation": "reads_from",
       "_origin": "dataflow",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/mp-config/page.tsx",
-      "source_location": "L85",
+      "source_location": "L86",
       "weight": 1.0,
       "context": "select"
     },
