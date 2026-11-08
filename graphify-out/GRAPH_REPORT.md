@@ -1,17 +1,17 @@
-# Graph Report - mp  (2026-11-08)
+# Graph Report - clean  (2026-11-08)
 
 ## Corpus Check
 - 2894 files · ~7,031,769 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 26 file(s) not represented in the graph (top: .glb 12, (none) 6, .obj 3)
+- Unclassified: 27 file(s) not represented in the graph (top: .glb 12, (none) 7, .obj 3)
 
 ## Summary
-- 22221 nodes · 49798 edges · 1177 communities (900 shown, 277 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 2097 edges (avg confidence: 0.93)
+- 22221 nodes · 49797 edges · 1176 communities (899 shown, 277 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 2096 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4604bdf4`
+- Built from commit: `34bff5d8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -149,7 +149,7 @@
 - google-form-csv.ts
 - service-copy.ts
 - email/registry.ts
-- places-poll.test.ts
+- places-poll.ts
 - items
 - easyship/webhook/route.ts
 - easyship/sync.ts
@@ -254,7 +254,7 @@
 - google-review-match-server.test.ts
 - Mpillow (mp)
 - User Stories
-- Admin Panel mobile audit: spacing, tap targets and tap states — October 2026
+- reviews/preview.ts
 - Slice 01 — Domain glossary: Landing section, Section draft, Publish, Publish snapshot, Preview mode
 - telegram-updates.ts
 - PRD — Campaign email editor: proper EDMs, built from blocks, drafted with Claude
@@ -809,7 +809,6 @@
 - sync-blog-mdx-bodies.mjs
 - 10-payouts.md
 - Fillings live only in Filling Templates
-- mp — agent guide
 - fallback-testimonials.ts
 - 20260909000000_landing_section_drafts.sql
 - Unified filling editor 01: glossary — Spatially authored, X-ray editor
@@ -1038,7 +1037,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (1177 total, 277 thin omitted)
+## Communities (1176 total, 277 thin omitted)
 
 ### Community 0 - "auth/partner.ts"
 Cohesion: 0.07
@@ -1153,8 +1152,8 @@ Cohesion: 0.07
 Nodes (48): BodySchema, Ctx, dynamic, POST(), runtime, Ctx, dynamic, POST() (+40 more)
 
 ### Community 28 - "reviews/telegram-handler.ts"
-Cohesion: 0.08
-Nodes (57): customerMatchLinkFor(), isRateLimited(), ShopReviewForCard, ActionFailure, Actor, actorFields(), claimGoogleReviewPost(), executeGoogleReviewPost() (+49 more)
+Cohesion: 0.10
+Nodes (45): customerMatchLinkFor(), isRateLimited(), ShopReviewForCard, ActionFailure, Actor, actorFields(), claimGoogleReviewPost(), executeGoogleReviewPost() (+37 more)
 
 ### Community 29 - "journey/ingest.ts"
 Cohesion: 0.05
@@ -1173,8 +1172,8 @@ Cohesion: 0.05
 Nodes (52): listFollowUpsByTime(), GOOGLE_REPLY_LABELS, ACCOUNT_GROUP, AFTERCARE_GROUP, FITTINGS_GROUP, FOLLOW_UPS_GROUP, NOTES_GROUP, ORDERS_GROUP (+44 more)
 
 ### Community 34 - "social-inbox/telegram-handler.ts"
-Cohesion: 0.08
-Nodes (53): TEAM_NOTE_PREFIX, attachmentLine(), clip(), customerLabel(), ECHO_NOTE_PREFIX, ECHO_SOURCES, INBOX_CARD_HEADERS, InboxCardInput (+45 more)
+Cohesion: 0.06
+Nodes (68): TEAM_NOTE_PREFIX, attachmentLine(), clip(), customerLabel(), ECHO_NOTE_PREFIX, ECHO_SOURCES, INBOX_CARD_HEADERS, InboxCardInput (+60 more)
 
 ### Community 35 - "refund/route.ts"
 Cohesion: 0.06
@@ -1253,8 +1252,8 @@ Cohesion: 0.20
 Nodes (14): dynamic, GET(), runtime, ApiProbe, CALENDAR_SCOPE, checkGoogleStatus(), CONTACTS_SCOPE, googleErrorMessage() (+6 more)
 
 ### Community 54 - "telegram/webhook/route.ts"
-Cohesion: 0.12
-Nodes (24): answerCallback(), editTelegramMessage(), getEnv(), handleCallback(), handleCommand(), helpText(), InlineKeyboardButton, InlineKeyboardMarkup (+16 more)
+Cohesion: 0.11
+Nodes (25): answerCallback(), editTelegramMessage(), getEnv(), handleCallback(), handleCommand(), helpText(), InlineKeyboardButton, InlineKeyboardMarkup (+17 more)
 
 ### Community 55 - "chat-http.ts"
 Cohesion: 0.13
@@ -1305,8 +1304,8 @@ Cohesion: 0.02
 Nodes (90): ACCOUNT_FILTERS, AccountFilter, BOUGHT_FILTERS, BOUGHT_LABELS, BoughtFilter, CAMPAIGN_FILTER_STATES, CampaignFilter, CampaignFilterState (+82 more)
 
 ### Community 67 - "google-sync.ts"
-Cohesion: 0.04
-Nodes (78): authorizeCron(), dynamic, GET(), maxDuration, runtime, authorizeCron(), dynamic, GET() (+70 more)
+Cohesion: 0.07
+Nodes (51): authorizeCron(), dynamic, GET(), maxDuration, POST(), runtime, BUSINESS_MANAGE_SCOPE, businessProfileClientFromConfig() (+43 more)
 
 ### Community 68 - "configurator-staff-reference-photos-prd.md"
 Cohesion: 0.05
@@ -1330,7 +1329,7 @@ Nodes (25): getChannelMix(), AI_ASSISTANTS, AI_UTM_NAMES, aiAssistantForHost(), 
 
 ### Community 73 - "meta.ts"
 Cohesion: 0.08
-Nodes (42): dynamic, GET(), maxDuration, POST(), runtime, AppWebhook, authQuery(), checkMetaSetup() (+34 more)
+Nodes (37): dynamic, GET(), maxDuration, POST(), runtime, AppWebhook, authQuery(), checkMetaSetup() (+29 more)
 
 ### Community 74 - "PRD-campaign-audiences/issues/README.md"
 Cohesion: 0.09
@@ -1409,8 +1408,8 @@ Cohesion: 0.08
 Nodes (50): ADR-0004, listMediaAssets(), slideMediaRowsFromMap(), applyPublicMigration(), ApplyPublicMigrationResult, ensureAssetForPath(), formatPlanReport(), loadPublicMigrationContext() (+42 more)
 
 ### Community 93 - "reviews/status.ts"
-Cohesion: 0.17
-Nodes (16): dynamic, GET(), runtime, PlacesPollStatus, BUSINESS_PROFILE_ENV, BusinessProfileSetup, checkBusinessProfileSetup(), clip() (+8 more)
+Cohesion: 0.11
+Nodes (22): dynamic, GET(), runtime, Commit author, graphify knowledge graph, mp — agent guide, Project context, Shopify is being replaced (+14 more)
 
 ### Community 94 - "expanded-node.check.ts"
 Cohesion: 0.06
@@ -1486,7 +1485,7 @@ Nodes (35): AD_TITLES, AddressSchema, Advertising, asBool(), asStr(), BoxForType
 
 ### Community 112 - "telegram-handler.test.ts"
 Cohesion: 0.05
-Nodes (38): matches(), BusinessProfileClient, GbpReview, createFakeSupabase(), from(), execute(), run(), GOOGLE_REVIEW_DEFAULTS (+30 more)
+Nodes (37): matches(), BusinessProfileClient, createFakeSupabase(), from(), execute(), run(), GOOGLE_REVIEW_DEFAULTS, Op (+29 more)
 
 ### Community 113 - "sources/results.ts"
 Cohesion: 0.11
@@ -1572,9 +1571,9 @@ Nodes (8): copyMoney(), DEFAULT_SERVICE_COPY_VALUES, interpolateServiceCopy(), i
 Cohesion: 0.03
 Nodes (105): dynamic, GET(), dynamic, GET(), parseFixture(), get(), FORCED_DARK_STYLE_ID, forceDarkMode() (+97 more)
 
-### Community 134 - "places-poll.test.ts"
-Cohesion: 0.09
-Nodes (24): DEFAULT_MIN_REVIEW_RATING, getGooglePlaceTestimonials(), getOptionalReferrerHeaders(), getRequiredEnv(), GooglePlaceTestimonial, isTestimonialVisible(), PLACE_REVIEWS_REVALIDATE_SECONDS, PlaceReview (+16 more)
+### Community 134 - "places-poll.ts"
+Cohesion: 0.05
+Nodes (52): authorizeCron(), dynamic, GET(), maxDuration, runtime, GbpStarRating, DEFAULT_MIN_REVIEW_RATING, getGooglePlaceTestimonials() (+44 more)
 
 ### Community 135 - "items"
 Cohesion: 0.09
@@ -1709,8 +1708,8 @@ Cohesion: 0.09
 Nodes (26): Acceptance criteria, Blocked by, Slice 03 — Order-mirror ingest module + tests, Status, What to build, advanced, cheaperCtx, ctx (+18 more)
 
 ### Community 169 - "reviews/cards.ts"
-Cohesion: 0.07
-Nodes (49): clip(), draftLines(), editedLine(), encodeReviewCallback(), formatCardDate(), GOOGLE_CARD_HEADER, GoogleCardOptions, googleReviewsUrl() (+41 more)
+Cohesion: 0.10
+Nodes (35): clip(), draftLines(), editedLine(), encodeReviewCallback(), formatCardDate(), GOOGLE_CARD_HEADER, GoogleCardOptions, googleReviewsUrl() (+27 more)
 
 ### Community 170 - "answer-lede-coverage.check.ts"
 Cohesion: 0.12
@@ -1984,9 +1983,9 @@ Nodes (33): Acceptance criteria, Blocked by, Slice 01 — ADR + default filling 
 Cohesion: 0.05
 Nodes (36): Acceptance criteria, Blocked by, Implementation notes, OPS, Slice 13 — Merchant Center feed + free listings, What to build, Acceptance criteria, Blocked by (+28 more)
 
-### Community 239 - "Admin Panel mobile audit: spacing, tap targets and tap states — October 2026"
-Cohesion: 0.11
-Nodes (20): 1.1 Primitive tokens (one change each, every page benefits), 1.2 Layout spacing (per page), 1. Spacing to cut, 2.1 Rules, 2.2 Where the 545 undersized targets come from, 2.3 Component changes, 2. Spacing to add at interaction points, 3.1 Today (+12 more)
+### Community 239 - "reviews/preview.ts"
+Cohesion: 0.08
+Nodes (35): 1.1 Primitive tokens (one change each, every page benefits), 1.2 Layout spacing (per page), 1. Spacing to cut, 2.1 Rules, 2.2 Where the 545 undersized targets come from, 2.3 Component changes, 2. Spacing to add at interaction points, 3.1 Today (+27 more)
 
 ### Community 240 - "Slice 01 — Domain glossary: Landing section, Section draft, Publish, Publish snapshot, Preview mode"
 Cohesion: 0.40
@@ -2021,8 +2020,8 @@ Cohesion: 0.25
 Nodes (7): Acceptance criteria, Blocked by, Follow-ups (non-blocking), How it works, Proof, Slice 18 — Staging E2E signoff: full library QA checklist, What to build
 
 ### Community 248 - "name"
-Cohesion: 0.14
-Nodes (13): Commit author, Acceptance criteria, Blocked by, Decisions made while building, Slice 07 — Staff profiles under logins, What to build, 1. Intake, A guest gives their email on the configurator's first question, and their Draft Result is not saved without it (+5 more)
+Cohesion: 0.15
+Nodes (12): Acceptance criteria, Blocked by, Decisions made while building, Slice 07 — Staff profiles under logins, What to build, 1. Intake, A guest gives their email on the configurator's first question, and their Draft Result is not saved without it, Consequences (+4 more)
 
 ### Community 249 - "Domain Migration OPS Checklist — work → custom.mpillow.com"
 Cohesion: 0.22
@@ -3960,10 +3959,6 @@ Nodes (4): Acceptance criteria, Blocked by, Parent, What to build
 Cohesion: 0.33
 Nodes (5): Consequences, Considered options, Context, Decision, Fillings live only in Filling Templates
 
-### Community 874 - "mp — agent guide"
-Cohesion: 0.33
-Nodes (5): graphify knowledge graph, mp — agent guide, Project context, Shopify is being replaced, Show what you changed
-
 ### Community 877 - "20260909000000_landing_section_drafts.sql"
 Cohesion: 0.43
 Nodes (4): idx_landing_page_publishes_published_at, idx_landing_sections_pending, public.landing_page_publishes, public.publish_landing_draft()
@@ -4641,19 +4636,19 @@ Cohesion: 0.50
 Nodes (3): eslintConfig, eslint, eslint-config-next
 
 ## Knowledge Gaps
-- **7718 isolated node(s):** `STAFF`, `PEOPLE`, `OFF`, `ADR-0039`, `ADR-0042` (+7713 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 9945 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **7719 isolated node(s):** `STAFF`, `PEOPLE`, `OFF`, `ADR-0039`, `ADR-0042` (+7714 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 9946 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **277 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `vitest` connect `vitest` to `auth/partner.ts`, `order-shipment.ts`, `inventory-deduction.ts`, `linkCustomerToAuthUser`, `image-usages.ts`, `staff-orders/shared.ts`, `ai-product-writing.ts`, `authorizeResultAccess`, `campaign-blocks.ts`, `showroom-scene.ts`, `slab-drag.ts`, `marketing-consent/state.ts`, `assign/route.ts`, `checkup-copy.test.ts`, `results-sla/route.ts`, `permissions.ts`, `payment-reminders/index.ts`, `zod`, `checkup-server.ts`, `rate-limit.ts`, `segment-rules.ts`, `readjustment/__tests__/checkout.test.ts`, `readjustments/checkout/route.ts`, `google-reviews-routes.test.ts`, `draft-email.test.ts`, `ref_node_path`, `purchase-lines.check.ts`, `rules-engine/types.ts`, `sections.ts`, `journey/ingest.ts`, `ai-refine.test.ts`, `rma/route.ts`, `claude.ts`, `social-inbox/telegram-handler.ts`, `wave-sender.ts`, `staff-assist.ts`, `refund/route.ts`, `ai-refine-shape.ts`, `records.ts`, `countries.ts`, `campaigns/actions.ts`, `xray-layout.ts`, `review-request-server.ts`, `sign-in-intent.ts`, `ref_node_fs`, `conform.ts`, `customers/[id]/route.ts`, `addons.ts`, `google-status.ts`, `telegram/webhook/route.ts`, `getSiteOrigin`, `calendar.ts`, `supabaseAdmin`, `delivery-time.ts`, `paired-build.e2e.test.ts`, `read.ts`, `campaign.ts`, `section-config.ts`, `customer-filters.ts`, `hold/route.ts`, `email-campaigns/results.ts`, `google-sync.ts`, `box-consent.test.ts`, `email-campaigns/content.ts`, `channel-mix.ts`, `pricing-surface.check.ts`, `annotations.ts`, `secretMatches`, `ai-draft.ts`, `pillow-route.test.ts`, `staff`, `locales.ts`, `slice-05.check.ts`, `ingest-gsc.ts`, `writing-settings.ts`, `points.ts`, `price-sync.test.ts`, `drive.ts`, `draft-reminders/server.ts`, `sender-chinese.test.ts`, `money-ledger.ts`, `cross-section.ts`, `ecommerce/orders.ts`, `migrate-public-apply.ts`, `rows-to-csv.ts`, `dark-mode.test.ts`, `sender.ts`, `customize/route.ts`, `stripe/sync.ts`, `photo-screening.ts`, `pillow-readjust-route.test.ts`, `mobile-bottom-bar-height.test.ts`, `commissions/ledger.ts`, `requireAdmin`, `easyship/schema.ts`, `telegram-handler.test.ts`, `sources/results.ts`, `aftercare-notify.ts`, `unsubscribe-reasons-server.ts`, `contacts.ts`, `followups-list-route.test.ts`, `location-colors.ts`, `callback/__tests__/route.test.ts`, `checkup-job.test.ts`, `timeline-route.test.ts`, `whatsapp/route.ts`, `milestones/ledger.ts`, `sizing-photos.ts`, `media-assets/index.ts`, `transition.ts`, `google-form-csv.ts`, `@supabase/supabase-js`, `email/registry.ts`, `journey-aggregates.test.ts`, `places-poll.test.ts`, `service-copy.ts`, `checkout/__tests__/points.test.ts`, `easyship/sync.ts`, `staff-assist-draft.ts`, `service-prices.ts`, `faq/index.ts`, `link-admin.ts`, `easyship/webhook/route.ts`, `flow.test.ts`, `public-request.ts`, `recordAdminAction`, `step-validation.check.ts`, `next-step.ts`, `assertAdmin`, `reasons.ts`, `error-message.ts`, `legacy-filling-migration.test.ts`, `continue-draft.ts`, `masking.test.ts`, `rma/actions.ts`, `fit.ts`, `customer-migration/apply.ts`, `copy-bands.ts`, `product-markdown.ts`, `reviews/cards.ts`, `customisation-binding.test.ts`, `notes-routes.test.ts`, `claim-link.ts`, `flow-variant.ts`, `chat.test.ts`, `email/index.ts`, `dock-chrome.ts`, `refundPayment`, `topic-reviews-loader.ts`, `lifecycle-stage.check.ts`, `getAdminContext`, `points/__tests__/points.test.ts`, `lifecycle-summary.ts`, `ear-pad.test.ts`, `package.json`, `checkup-counts.ts`, `stripLocale`, `content-checks.ts`, `ics.ts`, `sg-calendar.ts`, `welcome-page.ts`, `webhook/__tests__/route.test.ts`, `blogs/[id]/route.ts`, `dimensions.ts`, `staff-refund.test.ts`, `review-requests.ts`, `admin/customers.ts`, `proxy.ts`, `commissions/index.ts`, `segments-routes.test.ts`, `customers-write-guard.test.ts`, `rma/eligibility.ts`, `order-stock.ts`, `google-review-match-server.test.ts`, `telegram-updates.ts`, `status.test.ts`, `sizing-photo-webp.ts`, `landing-slide-ins-compliance.test.ts`, `ga-events.ts`, `crawler-activity.ts`, `fake-admin.ts`, `core.ts`, `responses/route.ts`, `admin-guard.test.ts`, `optimizeImageForWeb`, `easyship/store.ts`, `overlays.ts`, `page-meta.ts`, `earn.ts`, `ledger.test.ts`, `ecommerce.ts`, `visuals.ts`, `returning-customers.ts`, `seo-actions.ts`, `morphs.ts`, `text-contrast.ts`, `webhooks/google-reviews/route.ts`, `result-stage.ts`, `slice-01.check.ts`, `layout.test.ts`, `auto-label.test.ts`, `rules-engine/recommend.ts`, `sla-reminders/index.ts`, `match.ts`, `audience.ts`, `allowance.ts`, `move-keys.ts`, `shopify-csv.ts`, `shopify-export.mjs`, `sold-lines.ts`, `accept/route.ts`, `csv-import.ts`, `import/actions.ts`, `result-access.test.ts`, `build-costs.ts`, `checkups.ts`, `customer-privacy.check.ts`, `meta.ts`, `link-check.ts`, `telegram-updates-job.test.ts`, `item-image-sync.ts`, `overview.ts`, `PillowPlacement`, `service-fees.test.ts`, `followups-routes.test.ts`, `shop-listings.ts`, `strip-unsafe-html.ts`, `carry-over.test.ts`, `ownership-gate.test.ts`, `live-shipping.test.ts`, `soft-body.ts`, `start-route.test.ts`, `customer-account-providers.test.ts`, `sources/consent.ts`, `stripe/webhook/route.ts`, `shop/checkout/route.ts`, `exactly-once.test.ts`, `google-review-links-guard.test.ts`, `locations/index.ts`, `customer-pillow/load.ts`, `review-match.ts`, `replace.ts`, `page.test.ts`, `import-flow.test.ts`, `stock.ts`, `name-key-agreement.test.ts`, `ai-translate-shape.ts`, `partner-terms.test.ts`?**
+- **Why does `vitest` connect `vitest` to `auth/partner.ts`, `order-shipment.ts`, `inventory-deduction.ts`, `linkCustomerToAuthUser`, `image-usages.ts`, `staff-orders/shared.ts`, `ai-product-writing.ts`, `authorizeResultAccess`, `campaign-blocks.ts`, `showroom-scene.ts`, `slab-drag.ts`, `marketing-consent/state.ts`, `assign/route.ts`, `checkup-copy.test.ts`, `results-sla/route.ts`, `permissions.ts`, `payment-reminders/index.ts`, `zod`, `checkup-server.ts`, `rate-limit.ts`, `segment-rules.ts`, `readjustment/__tests__/checkout.test.ts`, `readjustments/checkout/route.ts`, `google-reviews-routes.test.ts`, `draft-email.test.ts`, `ref_node_path`, `purchase-lines.check.ts`, `rules-engine/types.ts`, `sections.ts`, `journey/ingest.ts`, `ai-refine.test.ts`, `rma/route.ts`, `claude.ts`, `social-inbox/telegram-handler.ts`, `wave-sender.ts`, `staff-assist.ts`, `refund/route.ts`, `ai-refine-shape.ts`, `records.ts`, `countries.ts`, `campaigns/actions.ts`, `xray-layout.ts`, `review-request-server.ts`, `sign-in-intent.ts`, `ref_node_fs`, `conform.ts`, `customers/[id]/route.ts`, `addons.ts`, `google-status.ts`, `telegram/webhook/route.ts`, `getSiteOrigin`, `calendar.ts`, `supabaseAdmin`, `delivery-time.ts`, `paired-build.e2e.test.ts`, `read.ts`, `campaign.ts`, `section-config.ts`, `customer-filters.ts`, `hold/route.ts`, `email-campaigns/results.ts`, `google-sync.ts`, `box-consent.test.ts`, `email-campaigns/content.ts`, `channel-mix.ts`, `pricing-surface.check.ts`, `annotations.ts`, `secretMatches`, `ai-draft.ts`, `pillow-route.test.ts`, `staff`, `locales.ts`, `slice-05.check.ts`, `ingest-gsc.ts`, `writing-settings.ts`, `points.ts`, `price-sync.test.ts`, `drive.ts`, `draft-reminders/server.ts`, `sender-chinese.test.ts`, `money-ledger.ts`, `cross-section.ts`, `ecommerce/orders.ts`, `migrate-public-apply.ts`, `rows-to-csv.ts`, `dark-mode.test.ts`, `sender.ts`, `customize/route.ts`, `stripe/sync.ts`, `photo-screening.ts`, `pillow-readjust-route.test.ts`, `mobile-bottom-bar-height.test.ts`, `commissions/ledger.ts`, `requireAdmin`, `easyship/schema.ts`, `telegram-handler.test.ts`, `sources/results.ts`, `aftercare-notify.ts`, `unsubscribe-reasons-server.ts`, `contacts.ts`, `followups-list-route.test.ts`, `location-colors.ts`, `callback/__tests__/route.test.ts`, `checkup-job.test.ts`, `timeline-route.test.ts`, `whatsapp/route.ts`, `milestones/ledger.ts`, `sizing-photos.ts`, `media-assets/index.ts`, `transition.ts`, `google-form-csv.ts`, `@supabase/supabase-js`, `email/registry.ts`, `journey-aggregates.test.ts`, `places-poll.ts`, `service-copy.ts`, `checkout/__tests__/points.test.ts`, `easyship/sync.ts`, `staff-assist-draft.ts`, `service-prices.ts`, `faq/index.ts`, `link-admin.ts`, `easyship/webhook/route.ts`, `flow.test.ts`, `public-request.ts`, `recordAdminAction`, `step-validation.check.ts`, `next-step.ts`, `assertAdmin`, `reasons.ts`, `error-message.ts`, `legacy-filling-migration.test.ts`, `continue-draft.ts`, `masking.test.ts`, `rma/actions.ts`, `fit.ts`, `customer-migration/apply.ts`, `copy-bands.ts`, `product-markdown.ts`, `reviews/cards.ts`, `customisation-binding.test.ts`, `notes-routes.test.ts`, `claim-link.ts`, `flow-variant.ts`, `chat.test.ts`, `email/index.ts`, `dock-chrome.ts`, `refundPayment`, `topic-reviews-loader.ts`, `lifecycle-stage.check.ts`, `getAdminContext`, `points/__tests__/points.test.ts`, `lifecycle-summary.ts`, `ear-pad.test.ts`, `package.json`, `checkup-counts.ts`, `stripLocale`, `content-checks.ts`, `ics.ts`, `sg-calendar.ts`, `welcome-page.ts`, `webhook/__tests__/route.test.ts`, `blogs/[id]/route.ts`, `dimensions.ts`, `staff-refund.test.ts`, `review-requests.ts`, `admin/customers.ts`, `proxy.ts`, `commissions/index.ts`, `segments-routes.test.ts`, `customers-write-guard.test.ts`, `rma/eligibility.ts`, `order-stock.ts`, `google-review-match-server.test.ts`, `reviews/preview.ts`, `telegram-updates.ts`, `status.test.ts`, `sizing-photo-webp.ts`, `landing-slide-ins-compliance.test.ts`, `ga-events.ts`, `crawler-activity.ts`, `fake-admin.ts`, `core.ts`, `responses/route.ts`, `admin-guard.test.ts`, `optimizeImageForWeb`, `easyship/store.ts`, `overlays.ts`, `page-meta.ts`, `earn.ts`, `ledger.test.ts`, `ecommerce.ts`, `visuals.ts`, `returning-customers.ts`, `seo-actions.ts`, `morphs.ts`, `text-contrast.ts`, `webhooks/google-reviews/route.ts`, `result-stage.ts`, `slice-01.check.ts`, `layout.test.ts`, `auto-label.test.ts`, `rules-engine/recommend.ts`, `sla-reminders/index.ts`, `match.ts`, `audience.ts`, `allowance.ts`, `move-keys.ts`, `shopify-csv.ts`, `shopify-export.mjs`, `sold-lines.ts`, `accept/route.ts`, `csv-import.ts`, `import/actions.ts`, `result-access.test.ts`, `build-costs.ts`, `checkups.ts`, `customer-privacy.check.ts`, `meta.ts`, `link-check.ts`, `telegram-updates-job.test.ts`, `item-image-sync.ts`, `overview.ts`, `PillowPlacement`, `service-fees.test.ts`, `followups-routes.test.ts`, `shop-listings.ts`, `strip-unsafe-html.ts`, `carry-over.test.ts`, `ownership-gate.test.ts`, `live-shipping.test.ts`, `soft-body.ts`, `start-route.test.ts`, `customer-account-providers.test.ts`, `sources/consent.ts`, `stripe/webhook/route.ts`, `shop/checkout/route.ts`, `exactly-once.test.ts`, `google-review-links-guard.test.ts`, `locations/index.ts`, `customer-pillow/load.ts`, `review-match.ts`, `replace.ts`, `page.test.ts`, `import-flow.test.ts`, `stock.ts`, `name-key-agreement.test.ts`, `ai-translate-shape.ts`, `partner-terms.test.ts`?**
   _High betweenness centrality (0.227) - this node is a cross-community bridge._
-- **Why does `supabaseAdmin()` connect `supabaseAdmin` to `auth/partner.ts`, `order-shipment.ts`, `inventory-deduction.ts`, `linkCustomerToAuthUser`, `staff-orders/shared.ts`, `suggest/route.ts`, `authorizeResultAccess`, `campaign-blocks.ts`, `marketing-consent/state.ts`, `assign/route.ts`, `results-sla/route.ts`, `permissions.ts`, `mp-config-link/route.ts`, `zod`, `checkup-server.ts`, `rate-limit.ts`, `segment-rules.ts`, `readjustments/checkout/route.ts`, `sections.ts`, `purchase-lines.check.ts`, `rules-engine/types.ts`, `rules-engine/index.ts`, `analytics/actions.ts`, `journey/ingest.ts`, `reviews/telegram-handler.ts`, `rma/route.ts`, `timeline/registry.ts`, `social-inbox/telegram-handler.ts`, `refund/route.ts`, `wave-sender.ts`, `records.ts`, `campaigns/actions.ts`, `review-request-server.ts`, `sign-in-intent.ts`, `customers/[id]/route.ts`, `addons.ts`, `telegram/webhook/route.ts`, `getSiteOrigin`, `chat-http.ts`, `read.ts`, `campaign.ts`, `hold/route.ts`, `google-sync.ts`, `channel-mix.ts`, `secretMatches`, `locales.ts`, `slice-05.check.ts`, `writing-settings.ts`, `drive.ts`, `ecommerce/orders.ts`, `migrate-public-apply.ts`, `reviews/status.ts`, `sender.ts`, `customize/route.ts`, `partner-upload/index.ts`, `photo-screening.ts`, `requireAdmin`, `annotations.ts`, `sources/results.ts`, `aftercare-notify.ts`, `stripe/sync.ts`, `unsubscribe-reasons-server.ts`, `whatsapp/route.ts`, `chat.ts`, `media-assets/index.ts`, `@supabase/supabase-js`, `easyship/webhook/route.ts`, `faq/index.ts`, `link-admin.ts`, `recordAdminAction`, `assertAdmin`, `points/server.ts`, `reasons.ts`, `continue-draft.ts`, `costings/save/route.ts`, `rma/actions.ts`, `exchange-rates.ts`, `customer-migration/apply.ts`, `order-mirror-ingest.check.ts`, `answer-lede-coverage.check.ts`, `email/index.ts`, `fitting-import/apply.ts`, `page-faq/index.ts`, `topic-reviews-loader.ts`, `getAdminContext`, `lifecycle-summary.ts`, `ear-pad.test.ts`, `google-review-match-server.ts`, `tiktok.ts`, `blogs/[id]/route.ts`, `pre-order-restock.ts`, `dimensions.ts`, `review-requests.ts`, `admin/customers.ts`, `proxy.ts`, `order-stock.ts`, `readjustments.ts`, `telegram-updates.ts`, `sizing-photo-webp.ts`, `order-mirror-ingest.ts`, `sales-report.ts`, `responses/route.ts`, `optimizeImageForWeb`, `appointments/settings.ts`, `order-mirror-catchup.ts`, `easyship/store.ts`, `overlays.ts`, `preview.check.ts`, `ecommerce.ts`, `backup-email/route.ts`, `seo-actions.ts`, `returning-customers.ts`, `chat-telegram.ts`, `rules-engine/recommend.ts`, `02 — The points ledger, the balance, the settings, and Staff adjustments`, `allowance.ts`, `shopify-csv.ts`, `accept/route.ts`, `csv-import.ts`, `import/actions.ts`, `checkups.ts`, `customer-privacy.check.ts`, `runShopifyOrderMirrorCatchup`, `resend-webhook/route.ts`, `item-image-sync.ts`, `overview.ts`, `discovery-source/index.ts`, `shop-listings.ts`, `sources/consent.ts`, `stripe/webhook/route.ts`, `shop/checkout/route.ts`, `locations/index.ts`, `shopify/webhook/route.ts`, `import-flow.test.ts`, `coupons/[id]/route.ts`?**
-  _High betweenness centrality (0.143) - this node is a cross-community bridge._
+- **Why does `supabaseAdmin()` connect `supabaseAdmin` to `auth/partner.ts`, `order-shipment.ts`, `inventory-deduction.ts`, `linkCustomerToAuthUser`, `staff-orders/shared.ts`, `suggest/route.ts`, `authorizeResultAccess`, `campaign-blocks.ts`, `marketing-consent/state.ts`, `assign/route.ts`, `results-sla/route.ts`, `permissions.ts`, `mp-config-link/route.ts`, `zod`, `checkup-server.ts`, `rate-limit.ts`, `segment-rules.ts`, `readjustments/checkout/route.ts`, `sections.ts`, `purchase-lines.check.ts`, `rules-engine/types.ts`, `rules-engine/index.ts`, `analytics/actions.ts`, `journey/ingest.ts`, `reviews/telegram-handler.ts`, `rma/route.ts`, `timeline/registry.ts`, `social-inbox/telegram-handler.ts`, `refund/route.ts`, `wave-sender.ts`, `records.ts`, `campaigns/actions.ts`, `review-request-server.ts`, `sign-in-intent.ts`, `customers/[id]/route.ts`, `addons.ts`, `telegram/webhook/route.ts`, `getSiteOrigin`, `chat-http.ts`, `read.ts`, `campaign.ts`, `hold/route.ts`, `google-sync.ts`, `channel-mix.ts`, `secretMatches`, `locales.ts`, `slice-05.check.ts`, `writing-settings.ts`, `drive.ts`, `ecommerce/orders.ts`, `migrate-public-apply.ts`, `reviews/status.ts`, `sender.ts`, `customize/route.ts`, `partner-upload/index.ts`, `photo-screening.ts`, `requireAdmin`, `annotations.ts`, `sources/results.ts`, `aftercare-notify.ts`, `stripe/sync.ts`, `unsubscribe-reasons-server.ts`, `whatsapp/route.ts`, `chat.ts`, `media-assets/index.ts`, `@supabase/supabase-js`, `places-poll.ts`, `easyship/webhook/route.ts`, `faq/index.ts`, `link-admin.ts`, `recordAdminAction`, `assertAdmin`, `points/server.ts`, `reasons.ts`, `continue-draft.ts`, `costings/save/route.ts`, `rma/actions.ts`, `exchange-rates.ts`, `customer-migration/apply.ts`, `order-mirror-ingest.check.ts`, `answer-lede-coverage.check.ts`, `email/index.ts`, `fitting-import/apply.ts`, `page-faq/index.ts`, `topic-reviews-loader.ts`, `getAdminContext`, `lifecycle-summary.ts`, `ear-pad.test.ts`, `google-review-match-server.ts`, `tiktok.ts`, `blogs/[id]/route.ts`, `pre-order-restock.ts`, `dimensions.ts`, `review-requests.ts`, `admin/customers.ts`, `proxy.ts`, `order-stock.ts`, `readjustments.ts`, `telegram-updates.ts`, `sizing-photo-webp.ts`, `order-mirror-ingest.ts`, `sales-report.ts`, `responses/route.ts`, `optimizeImageForWeb`, `appointments/settings.ts`, `order-mirror-catchup.ts`, `easyship/store.ts`, `overlays.ts`, `preview.check.ts`, `ecommerce.ts`, `backup-email/route.ts`, `seo-actions.ts`, `returning-customers.ts`, `chat-telegram.ts`, `rules-engine/recommend.ts`, `02 — The points ledger, the balance, the settings, and Staff adjustments`, `allowance.ts`, `shopify-csv.ts`, `accept/route.ts`, `csv-import.ts`, `import/actions.ts`, `checkups.ts`, `customer-privacy.check.ts`, `runShopifyOrderMirrorCatchup`, `resend-webhook/route.ts`, `item-image-sync.ts`, `overview.ts`, `discovery-source/index.ts`, `shop-listings.ts`, `sources/consent.ts`, `stripe/webhook/route.ts`, `shop/checkout/route.ts`, `locations/index.ts`, `shopify/webhook/route.ts`, `import-flow.test.ts`, `coupons/[id]/route.ts`?**
+  _High betweenness centrality (0.144) - this node is a cross-community bridge._
 - **Why does `@supabase/supabase-js` connect `@supabase/supabase-js` to `auth/partner.ts`, `order-shipment.ts`, `inventory-deduction.ts`, `linkCustomerToAuthUser`, `staff-orders/shared.ts`, `authorizeResultAccess`, `campaign-blocks.ts`, `marketing-consent/state.ts`, `converted-sink.check.ts`, `assign/route.ts`, `results-sla/route.ts`, `checkup-server.ts`, `readjustments/checkout/route.ts`, `ref_node_path`, `purchase-lines.check.ts`, `journey/ingest.ts`, `rma/route.ts`, `refund/route.ts`, `wave-sender.ts`, `package.json`, `campaigns/actions.ts`, `review-request-server.ts`, `sign-in-intent.ts`, `supabaseAdmin`, `customer-filters.ts`, `hold/route.ts`, `identity.ts`, `box-consent.test.ts`, `secretMatches`, `locales.ts`, `ingest-gsc.ts`, `writing-settings.ts`, `draft-reminders/server.ts`, `sender-chinese.test.ts`, `money-ledger.ts`, `sender.ts`, `ga-sync.check.ts`, `email/partner.ts`, `aggregates.ts`, `commissions/ledger.ts`, `sources/results.ts`, `aftercare-notify.ts`, `unsubscribe-reasons-server.ts`, `contacts.ts`, `stripe/sync.ts`, `transition.ts`, `checkup-job.test.ts`, `milestones/ledger.ts`, `sizing-photos.ts`, `service-copy.ts`, `journey-aggregates.test.ts`, `service-prices.ts`, `easyship/webhook/route.ts`, `recordAdminAction`, `assertAdmin`, `points/server.ts`, `reasons.ts`, `costings/save/route.ts`, `claim-link.ts`, `email/index.ts`, `country.check.ts`, `getAdminContext`, `ear-pad.test.ts`, `google-review-match-server.ts`, `checkup-counts.ts`, `content-checks.ts`, `welcome-page.ts`, `pre-order-restock.ts`, `proxy.ts`, `commissions/index.ts`, `order-stock.ts`, `verify-money-flow-e2e.mjs`, `google-review-match-server.test.ts`, `telegram-updates.ts`, `fake-admin.ts`, `optimizeImageForWeb`, `earn.ts`, `ledger.test.ts`, `ecommerce.ts`, `staff-orders/send.ts`, `auto-label.test.ts`, `audience.ts`, `sync-blog-mdx-bodies.mjs`, `customer-privacy.check.ts`, `staff-orders/create.ts`, `customer-pillow/view.ts`, `telegram-updates-job.test.ts`, `item-image-sync.ts`, `soft-body.ts`, `customer-account-providers.test.ts`, `stripe/webhook/route.ts`, `shop/checkout/route.ts`, `customer-pillow/load.ts`?**
-  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+  _High betweenness centrality (0.049) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `supabaseAdmin()` (e.g. with `Build notes` and `What to build`) actually correct?**
   _`supabaseAdmin()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `requireAdmin()` (e.g. with `Build notes` and `PRD: Guest Result Ownership — the Result id stops being a password`) actually correct?**
@@ -4661,4 +4656,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Are the 24 inferred relationships involving `recordAdminAction()` (e.g. with `Admin Panel` and `Admin Panel`) actually correct?**
   _`recordAdminAction()` has 24 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `STAFF`, `PEOPLE`, `OFF` to the rest of the system?**
-  _7718 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _7719 weakly-connected nodes found - possible documentation gaps or missing edges._
