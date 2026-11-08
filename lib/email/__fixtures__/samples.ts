@@ -413,7 +413,7 @@ export function sampleDraftReminder(fixture: EmailFixture = "happy", step: "1d" 
     step,
     name: pick(fixture, "Wei Ling"),
     product: pick(fixture, "Mpillow"),
-    continueUrl: `${ORIGIN}/en-US/mp-config?draft=3f2b8c1e-7d4a-4e9b-a1c2-5d6e7f8a9b0c&token=9b8a7f6e-5d4c-4b3a-8f2e-1d0c9b8a7f6e`,
+    continueUrl: `${ORIGIN}/en-US/mp-config?draft=3f2b8c1e-7d4a-4e9b-a1c2-5d6e7f8a9b0c&token=7d7d7d7d-0000-4000-8000-000000000050`,
     unsubscribeUrl: `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=Qm9vbGVhbi1zZWNyZXQtcHJldmlldy10b2tlbg`,
     supportWhatsAppDisplay: "+65 8780 5311",
     supportWhatsAppUrl: "https://wa.me/6587805311",

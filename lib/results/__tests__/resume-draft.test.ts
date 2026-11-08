@@ -23,7 +23,7 @@ vi.mock("@/lib/supabase/server", () => ({
 const { loadResumeDraft } = await import("@/lib/results/resume-draft");
 
 const ID = "3f2b8c1e-7d4a-4e9b-a1c2-5d6e7f8a9b0c";
-const TOKEN = "9b8a7f6e-5d4c-4b3a-8f2e-1d0c9b8a7f6e";
+const TOKEN = "7d7d7d7d-0000-4000-8000-000000000050";
 
 beforeEach(() => {
   h.row = {

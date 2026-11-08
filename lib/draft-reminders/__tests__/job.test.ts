@@ -20,7 +20,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const ago = (days: number, from = NOW) => new Date(from.getTime() - days * DAY).toISOString();
 const ORIGIN = "https://custom.mpillow.test";
 const DRAFT = "3f2b8c1e-7d4a-4e9b-a1c2-5d6e7f8a9b0c";
-const TOKEN = "9b8a7f6e-5d4c-4b3a-8f2e-1d0c9b8a7f6e";
+const TOKEN = "7d7d7d7d-0000-4000-8000-000000000050";
 const CUSTOMER = "0f8fad5b-d9cb-469f-a165-70867728950e";
 
 const ENV_KEYS = ["VERCEL_ENV", "AFTERCARE_EMAIL_ALLOWLIST", "UNSUBSCRIBE_SECRET", "SUPPORT_EMAIL"] as const;
