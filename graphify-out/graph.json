@@ -187930,7 +187930,7 @@
       "node_kind": "heading",
       "norm_label": "choosing tactics from evidence",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L226"
+      "source_location": "L232"
     },
     {
       "id": "claude_skills_seo_monthly_report_skill_gates_any_one_means_skip",
@@ -187942,7 +187942,7 @@
       "node_kind": "heading",
       "norm_label": "gates: any one means `skip`",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L170"
+      "source_location": "L176"
     },
     {
       "id": "claude_skills_seo_monthly_report_skill_hard_rules",
@@ -187990,7 +187990,7 @@
       "node_kind": "heading",
       "norm_label": "report file",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L247"
+      "source_location": "L253"
     },
     {
       "id": "claude_skills_seo_monthly_report_skill_score_0_100",
@@ -188002,7 +188002,7 @@
       "node_kind": "heading",
       "norm_label": "score: 0\u2013100",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L192"
+      "source_location": "L198"
     },
     {
       "id": "claude_skills_seo_monthly_report_skill_sources",
@@ -188014,7 +188014,7 @@
       "node_kind": "heading",
       "norm_label": "sources",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L290"
+      "source_location": "L296"
     },
     {
       "id": "claude_skills_seo_monthly_report_skill_vetting_and_scoring",
@@ -188026,7 +188026,7 @@
       "node_kind": "heading",
       "norm_label": "vetting and scoring",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L162"
+      "source_location": "L168"
     },
     {
       "id": "claude_skills_seo_monthly_report_skill_what_each_kind_of_link_is_worth",
@@ -188038,7 +188038,7 @@
       "node_kind": "heading",
       "norm_label": "what each kind of link is worth",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L208"
+      "source_location": "L214"
     },
     {
       "id": "lib_fitting_import_google_form_csv_drive_fields",
@@ -672404,18 +672404,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L162",
-      "weight": 1.0
-    },
-    {
-      "source": "claude_skills_seo_monthly_report_skill_monthly_off_site_seo_report",
-      "target": "claude_skills_seo_monthly_report_skill_report_file",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L247",
+      "source_location": "L168",
       "weight": 1.0
     },
     {
@@ -672431,13 +672420,24 @@
     },
     {
       "source": "claude_skills_seo_monthly_report_skill_monthly_off_site_seo_report",
+      "target": "claude_skills_seo_monthly_report_skill_report_file",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
+      "source_location": "L253",
+      "weight": 1.0
+    },
+    {
+      "source": "claude_skills_seo_monthly_report_skill_monthly_off_site_seo_report",
       "target": "claude_skills_seo_monthly_report_skill_sources",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L290",
+      "source_location": "L296",
       "weight": 1.0
     },
     {
@@ -672470,7 +672470,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L170",
+      "source_location": "L176",
       "weight": 1.0
     },
     {
@@ -672481,7 +672481,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L192",
+      "source_location": "L198",
       "weight": 1.0
     },
     {
@@ -672492,7 +672492,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L208",
+      "source_location": "L214",
       "weight": 1.0
     },
     {
@@ -672503,7 +672503,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L226",
+      "source_location": "L232",
       "weight": 1.0
     },
     {
@@ -825711,7 +825711,7 @@
       "confidence_score": 0.95,
       "context": "batch",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L153",
+      "source_location": "L159",
       "weight": 1.0
     },
     {
@@ -843471,7 +843471,7 @@
       "confidence_score": 0.95,
       "context": "summary",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L147",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
@@ -844167,7 +844167,7 @@
       "confidence_score": 0.95,
       "context": "version",
       "source_file": ".claude/skills/seo-monthly-report/SKILL.md",
-      "source_location": "L153",
+      "source_location": "L159",
       "weight": 1.0
     },
     {
@@ -874453,5 +874453,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "262b99e5eeab06913baf3383035cc62d5b183380"
+  "built_at_commit": "c5ea749c7392204617a6cfc45de58b37a96d42a4"
 }

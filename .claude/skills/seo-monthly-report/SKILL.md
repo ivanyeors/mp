@@ -110,6 +110,12 @@ run in the same month replaces that month's rows.
    - `Local listing`: a curated, relevant local list or profile Mpillow is
      missing from (Google Business Profile, Apple Business Connect, Bing
      Places, a real association or mall directory). Never a generic directory.
+
+   Search every kind at least twice before moving on, for example
+   `site:reddit.com/r/singapore pillow`, `site:forums.hardwarezone.com.sg
+   pillow neck`, `pillow review Singapore youtube`, `Mpillow` on Google Maps,
+   Apple Maps and Bing Places. In `run_note`, list the kinds you searched that
+   found nothing separately from any kind you did not search, and why.
 4. **Vet and score** every candidate with the rubric below. Record the gates
    that failed and the score.
 5. **News hooks.** Up to 8 items: this month's Singapore stories Mpillow could
