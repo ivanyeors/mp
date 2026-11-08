@@ -541,12 +541,18 @@ const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
  * where it is to where it settles — a new piece from where it was stacked —
  * over the settle's length, so no in-between frame is ever a half-solved,
  * wobbly shape. No easing when `animate` is off or the viewer asked for
- * reduced motion. Bumping `replay` eases in again from the stack.
+ * reduced motion. Bumping `replay` eases in again from the stack. `easeMs`
+ * shortens the easing while a pouch is held (a preview per pointer step).
  */
-export function useSoftCut(input: SoftCutInput | null, animate: boolean, replay = 0): SoftCutShapes | null {
+export function useSoftCut(input: SoftCutInput | null, animate: boolean, replay = 0, easeMs?: number): SoftCutShapes | null {
   const key = input ? softCutKey(input) : null;
   const [state, setState] = useState<{ key: string; shapes: SoftCutShapes } | null>(null);
   const latest = useRef(input);
+  // A held pouch's preview changes every pointer step: each eases quickly from where the last one was shown.
+  const ease = useRef(easeMs);
+  useLayoutEffect(() => {
+    ease.current = easeMs;
+  });
   const replayed = useRef(replay);
   const shown = useRef<SoftCutShapes | null>(null);
 
@@ -569,7 +575,7 @@ export function useSoftCut(input: SoftCutInput | null, animate: boolean, replay 
       return;
     }
     const plan = morph(fresh || !shown.current ? seedShapes(cur) : shown.current, target, () => seedShapes(cur));
-    const duration = Math.max(200, (cur.settings.steps * 1000) / 60);
+    const duration = !fresh && ease.current !== undefined ? ease.current : Math.max(200, (cur.settings.steps * 1000) / 60);
     const t0 = performance.now();
     let raf = 0;
     const tick = (now: number) => {

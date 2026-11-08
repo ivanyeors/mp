@@ -16,13 +16,14 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 | [04](https://github.com/ivanyeors/mp/issues/204) | Compression feedback and error handling in the editor | AFK | P1 | built (PR #213) | 03, 11 | 12, 14–21 |
 | [05](https://github.com/ivanyeors/mp/issues/205) | Cross-section view — live across / along cut on every surface | AFK | P1 | built (PR #213) | 03, 11 | 23–30 |
 | [06](https://github.com/ivanyeors/mp/issues/206) | Move pieces — select, keyboard moves, Undo | AFK | P1 | built (PR #213); move pad retired for the drag (PR #215) | 02, 03 | 31–36, 38–40 |
-| [07](https://github.com/ivanyeors/mp/issues/207) | Drag a pouch onto another cell or Layer | AFK | P2 | built (PR #213); every move, any Section, Layer sunburst (PR #215) | 06 | 37, 38 |
+| [07](https://github.com/ivanyeors/mp/issues/207) | Drag a pouch onto another cell or Layer | AFK | P2 | built (PR #213); every move, any Section, Layer sunburst (PR #215), retired 8-11-2026 for a drop on the top Layer (slice 14) | 06 | 37, 38 |
 | [08](https://github.com/ivanyeors/mp/issues/208) | Fine nudge — persisted mm offsets | AFK | P2 | built ahead of 10 at Ivan's request (PR #215); migration applied | 06 | 41–43 |
 | [09](https://github.com/ivanyeors/mp/issues/209) | Mbolster parity — capsule dimensions, physical cap, end-on cut | AFK | P2 | built (PR #213); bolster measurements pending | 03, 11 | 44, 45 |
 | [10](https://github.com/ivanyeors/mp/issues/210) | Physical calibration sign-off | HITL | P1 | ready for sign-off; needs Ivan's measurements (01) | 01–09, 11 | 48 |
 | [11](https://github.com/ivanyeors/mp/issues/212) | Natural settle — fill spreads into an empty neighbouring sub-section, on screen and in the loft arithmetic | AFK | P1 | built (PR #213); spread capped by the fabric 17-10-2026 (slice 13) | 02, 03 | 50–62 |
 | [12](https://github.com/ivanyeors/mp/issues/214) | Dimension settings — loft allowance, pouch and Neck support dimensions editable in Settings | AFK | P1 | built (PR #213) | 01 | 63–66 |
 | [13](13-cross-section-editing.md) | Edit on the cross-section — drag between columns, Layers and Sections; puffy pouches inside the pillow, never squashed, no rubber band; heights audited | AFK | P1 | built; awaiting Ivan on a deployed build | 05, 07, 11 | — |
+| [14](14-linked-views.md) | Linked views — the top view and the cut draw one position and follow each other's drag live; precise by default (slow = fine, snaps, badge), no Layer picker; faster outlines | AFK | P1 | built; awaiting Ivan on a deployed build | 08, 11, 13 | — |
 
 ## Dependency graph
 

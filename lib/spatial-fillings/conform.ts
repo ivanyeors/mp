@@ -297,16 +297,38 @@ export function clipToConvex(subject: Pt[], clip: Pt[]): Pt[] {
   return dedupe(out);
 }
 
-/** Douglas–Peucker on a closed ring: vertices within `tol` of the chord between their kept neighbours go. */
-export function simplifyRing(ring: Pt[], tol: number): Pt[] {
-  const pts = dedupe(ring);
-  if (pts.length < 4) return pts;
-  // Anchor on the two points farthest apart, then simplify each half as an open chain.
+/**
+ * The first pair (i < j, in index order) of points farthest apart — what a
+ * scan of every pair finds — without scanning every pair: a farthest pair
+ * lies on the convex hull, so only points standing on the hull (collinear
+ * ones kept, duplicates included) are paired. A traced pouch boundary has
+ * ~1000 points and ~100 on its hull: 0.01 of the work, the same answer.
+ */
+export function farthestPair(pts: readonly Pt[]): [number, number] {
+  const n = pts.length;
+  if (n < 2) return [0, 0];
+  // Andrew's monotone chain, keeping collinear points on the hull's edges.
+  const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => pts[a][0] - pts[b][0] || pts[a][1] - pts[b][1]);
+  const cross = (o: Pt, a: Pt, b: Pt) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const chain = (idx: number[]) => {
+    const out: number[] = [];
+    for (const i of idx) {
+      while (out.length >= 2 && cross(pts[out[out.length - 2]], pts[out[out.length - 1]], pts[i]) < 0) out.pop();
+      out.push(i);
+    }
+    return out;
+  };
+  const onHull = new Set<string>();
+  for (const i of [...chain(order), ...chain([...order].reverse())]) onHull.add(`${pts[i][0]},${pts[i][1]}`);
+  const cand: number[] = [];
+  for (let i = 0; i < n; i++) if (onHull.has(`${pts[i][0]},${pts[i][1]}`)) cand.push(i);
   let ai = 0;
   let bi = 0;
   let best = -1;
-  for (let i = 0; i < pts.length; i++) {
-    for (let j = i + 1; j < pts.length; j++) {
+  for (let x = 0; x < cand.length; x++) {
+    const i = cand[x];
+    for (let y = x + 1; y < cand.length; y++) {
+      const j = cand[y];
       const d2 = (pts[i][0] - pts[j][0]) ** 2 + (pts[i][1] - pts[j][1]) ** 2;
       if (d2 > best) {
         best = d2;
@@ -315,6 +337,15 @@ export function simplifyRing(ring: Pt[], tol: number): Pt[] {
       }
     }
   }
+  return [ai, bi];
+}
+
+/** Douglas–Peucker on a closed ring: vertices within `tol` of the chord between their kept neighbours go. */
+export function simplifyRing(ring: Pt[], tol: number): Pt[] {
+  const pts = dedupe(ring);
+  if (pts.length < 4) return pts;
+  // Anchor on the two points farthest apart, then simplify each half as an open chain.
+  const [ai, bi] = farthestPair(pts);
   const chain = (from: number, to: number): Pt[] => {
     const seq: Pt[] = [];
     for (let i = from; ; i = (i + 1) % pts.length) {
@@ -359,6 +390,37 @@ function dp(seq: Pt[], tol: number): Pt[] {
  * With no regions it is the rounded rect itself.
  */
 export function conformPouchPath(rect: PieceRect, regions: ConformRegion[], shape: ShapeId = "pouch"): string {
+  // Pure in its inputs, and a re-render or a drag changes few of them: one pouch costs ~5 ms to open, a pillow ~100.
+  const key = `${rect.x},${rect.y},${rect.w},${rect.h}|${regions.map(regionId).join(",")}|${shape}`;
+  const hit = conformed.get(key);
+  if (hit !== undefined) {
+    conformed.delete(key);
+    conformed.set(key, hit);
+    return hit;
+  }
+  const d = conformUncached(rect, regions, shape);
+  conformed.set(key, d);
+  if (conformed.size > CONFORM_CACHE_SIZE) conformed.delete(conformed.keys().next().value!);
+  return d;
+}
+
+/** Recently conformed outlines by rect, regions and shape (least recently used goes first). */
+const conformed = new Map<string, string>();
+/** A pillow is ~30 pouches in two views; a drag passes through a few hundred more. */
+const CONFORM_CACHE_SIZE = 600;
+/** A region's identity for the cache: the stage builds each once per Size, so the same object is the same walls. */
+const regionIds = new WeakMap<ConformRegion, number>();
+let nextRegionId = 1;
+function regionId(region: ConformRegion): number {
+  let id = regionIds.get(region);
+  if (id === undefined) {
+    id = nextRegionId++;
+    regionIds.set(region, id);
+  }
+  return id;
+}
+
+function conformUncached(rect: PieceRect, regions: ConformRegion[], shape: ShapeId): string {
   const short = Math.min(rect.w, rect.h);
   const r = short * cornerOf(shape);
   const [shell, ...walls] = regions;
@@ -417,6 +479,17 @@ function chord(pts: Pt[], axis: 0 | 1, level: number, at: number): [number, numb
  * to. A full rectangle gives its own rect back.
  */
 export function labelRectOf(d: string): PieceRect {
+  // Every label is re-read whenever any outline changes (a drag's every step); most outlines did not.
+  const hit = labelRects.get(d);
+  if (hit) return hit;
+  const rect = labelRectUncached(d);
+  labelRects.set(d, rect);
+  if (labelRects.size > CONFORM_CACHE_SIZE) labelRects.delete(labelRects.keys().next().value!);
+  return rect;
+}
+const labelRects = new Map<string, PieceRect>();
+
+function labelRectUncached(d: string): PieceRect {
   const pts = parsePathPolygon(d);
   if (pts.length < 3) return { x: 0, y: 0, w: 0, h: 0 };
   let a = 0;

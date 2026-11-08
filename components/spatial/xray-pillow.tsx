@@ -10,7 +10,7 @@
  * Staff-only: callers mount this behind the staff assist gate.
  */
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { AlertTriangle, FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
@@ -41,18 +41,11 @@ import {
   setCellArrangement,
   shiftPieceLayer,
   type Cell,
+  type MoveResult,
   type PieceRef,
 } from "@/lib/configurator/staff-assist";
 import { isTypingTarget, moveKeyFor, nudgeKeyFor, type MoveKind } from "@/lib/configurator/move-keys";
-import {
-  dropIndex,
-  dropTargetFromElement,
-  layerChoices,
-  planPouchDrop,
-  pouchDropDestination,
-  resolveLayerChoice,
-  type PouchDropTarget,
-} from "@/lib/dnd/pouch-drag";
+import { dropIndex, dropTargetFromElement, planPouchDrop, type PouchDropTarget } from "@/lib/dnd/pouch-drag";
 import {
   MAX_LAYERS_PER_CELL,
   MAX_PIECES_PER_CELL,
@@ -77,18 +70,22 @@ import {
   fitPillow,
   layerFitMessage,
   pieceFitStatus,
-  wouldFit,
   type CellFit,
   type FitStatus,
   type PieceFitStatus,
   type PillowFit,
 } from "@/lib/spatial-fillings/fit";
 import { layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
+import { alongExtent, homeCentreMm, nudgeSlab, placeAlongAt, snapAlongCentre, type AlongSnap } from "@/lib/dnd/slab-drag";
+import { holdSnap, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
+import { settlePillow } from "@/lib/spatial-fillings/settle";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import { PILLOW_DIMENSIONS, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
-import { padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
+import { draftSoftBody, HELD_EASE_MS, padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 import { cellRegion, sectionRegion, useSoftTopPaths, type SoftTopPlane } from "./soft-top";
+import { DragBadge, landingText } from "./drag-badge";
+import { clearXrayDraft, placementsSignature, publishXrayDraft, useXrayDraft, type XrayDraft } from "./xray-link";
 
 // Shell regions pouches deform against: the silhouette (wide seam), each
 // cell's boundary (thin seam, matching the pouch-to-pouch gap) for the
@@ -121,10 +118,27 @@ export function stageRegions(stage: StageGeometry): StageRegions {
 /** The two views of one recipe (slice 11): the cells as authored, or where the fill settles. */
 export type PieceView = "authored" | "settled";
 
-/** The conformed outlines with each soft one in its place, where the soft body drew one. */
-/** A pouch off its home corner was nudged by hand: the soft settle keeps it where it was put. */
-const isNudged = (p: PieceLayout) => p.x !== p.home.x || p.y !== p.home.y;
+/** A pouch placed by hand (a fine offset): the soft settle keeps it where it was put. */
+const isNudged = (p: PieceLayout) => p.nudged;
 
+/** Pieces by Section, deepest first (then cell order, then slot): the paint order of both views. */
+function bySection(pieces: readonly PieceLayout[]): Map<Section, PieceLayout[]> {
+  const out = new Map<Section, PieceLayout[]>();
+  for (const section of SECTIONS) {
+    const list = pieces.filter((p) => p.section === section);
+    if (list.length === 0) continue;
+    list.sort(
+      (a, b) =>
+        b.depth - a.depth ||
+        SUB_SECTIONS.indexOf(a.subSection) - SUB_SECTIONS.indexOf(b.subSection) ||
+        a.slot - b.slot,
+    );
+    out.set(section, list);
+  }
+  return out;
+}
+
+/** The conformed outlines with each soft one in its place, where the soft body drew one. */
 function withSoft(conformed: Map<string, string>, soft: ReadonlyMap<string, string> | null): Map<string, string> {
   if (!soft) return conformed;
   const out = new Map(conformed);
@@ -159,25 +173,30 @@ type PouchDrag = {
   pointerId: number;
   startX: number;
   startY: number;
-  /** Where on the pouch it was picked up, in view units from its centre (0 from a label). */
+  /** Where on the pouch it was picked up, in view units from its drawn centre (0 from a label). */
   grabX: number;
   grabY: number;
-  /** The pointer in view units — the ghost follows it, the drop position reads it. */
+  /** The outline as drawn when it was picked up, and that outline's centre: the ghost carries it. */
+  ghostD: string | null;
+  drawnCx: number;
+  drawnCy: number;
+  /** Its settled centre less its drawn one, front ↔ back (the dive draws the authored rect): where a drop stands it. */
+  alongShift: number;
+  /** The pointer in view units. */
   x: number;
   y: number;
+  /** Where the held pouch's drawn centre is, view units: precise by default (`fine-drag.ts`), the ghost and the drop read it. */
+  fine: FineDrag;
+  /** How near a place a hand aims for it is pulled onto it now, view units (0 while the hand creeps). */
+  snapView: number;
   active: boolean;
   over: PouchDropTarget | null;
   /** The hovered target would leave its cell unable to close. */
   overfull: boolean;
 };
-/** A stacked cell a pouch was dropped on: the Layer picker blooms at the drop point. */
-type LayerPick = {
-  source: PieceRef & { depth: number; itemId: number };
-  cell: Cell;
-  /** Drop point, in % of the editor box. */
-  left: string;
-  top: string;
-};
+/** How near a place a hand aims for (home, a column's middle or edge) a held pouch is pulled onto it, screen px. */
+const SNAP_PX = 7;
+
 const DRAG_THRESHOLD_PX = 6;
 const sameRef = (p: PieceRef, q: PieceRef) => p.section === q.section && p.subSection === q.subSection && p.slot === q.slot;
 const sameCellRef = (p: Cell, q: Cell) => p.section === q.section && p.subSection === q.subSection;
@@ -262,7 +281,19 @@ const circlePath = ({ cx, cy, r }: { cx: number; cy: number; r: number }) => {
  * prepared per transition, degeneracy-checked, crossfade on failure. A `d`
  * change within one view (a neighbour added, the Size changed) snaps, as before.
  */
-export function MorphPiece({
+export const MorphPiece = memo(MorphPieceImpl, (a, b) =>
+  // A pointer move re-renders the x-ray; a pouch whose outline, paint and view are unchanged need not.
+  a.subtype === b.subtype &&
+  a.d === b.d &&
+  a.view === b.view &&
+  a.status === b.status &&
+  a.well === b.well &&
+  a.visual.shape === b.visual.shape &&
+  a.visual.cssVar === b.visual.cssVar &&
+  a.visual.defaultColor === b.visual.defaultColor,
+);
+
+function MorphPieceImpl({
   subtype,
   visual,
   d,
@@ -706,7 +737,6 @@ export function XrayPillow({
   // provider (the layer rows own one per cell for their sort).
   const [drag, setDrag] = useState<PouchDrag | null>(null);
   const dragRef = useRef<PouchDrag | null>(null);
-  const [layerPick, setLayerPick] = useState<LayerPick | null>(null);
   const justDraggedRef = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const editable = Boolean(items && onPlacementsChange);
@@ -795,49 +825,49 @@ export function XrayPillow({
     () => fitProp ?? fitPillow(placements, { size: pillowSize, dims: itemDims, loftAllowance }),
     [fitProp, placements, pillowSize, itemDims, loftAllowance],
   );
+  // What every edit reads: the committed recipe's layout (the drop targets, the chips, the moves).
   const pieces = useMemo(
     () => layoutPlacements(placements, { stage, dims: itemDims, fit }),
     [placements, stage, itemDims, fit],
   );
   const rectByKey = useMemo(() => new Map(pieces.map((pl) => [pl.key, pl] as const)), [pieces]);
+
+  // Linked views (xray-link.ts): while a pouch is in hand — dragged here, or on the cross-section — both views
+  // draw what its release would commit. Everything below that DRAWS reads `shown`; every edit reads the above.
+  const [ownDraft, setOwnDraft] = useState<XrayDraft | null>(null);
+  const linked = useXrayDraft(placements);
+  const draft = ownDraft ?? (linked?.from === "cut" ? linked : null);
+  const shownFit = draft?.fit ?? fit;
+  const shownPieces = useMemo(
+    () => (draft ? layoutPlacements(draft.placements, { stage, dims: itemDims, fit: draft.fit }) : pieces),
+    [draft, pieces, stage, itemDims],
+  );
   /** piece key → its own squeeze (slice 04): the dashed stroke reads this. */
   const pieceStatuses = useMemo(
-    () => new Map(pieces.map((p) => [p.key, pieceFitStatus(fit, p, p.depth)] as const)),
-    [pieces, fit],
+    () => new Map(shownPieces.map((p) => [p.key, pieceFitStatus(shownFit, p, p.depth)] as const)),
+    [shownPieces, shownFit],
   );
   /** cell key → its pieces, in layout order (one grouping pass, not a filter per cell). */
   const piecesByCell = useMemo(() => {
-    const byCell = new Map<CellKey, typeof pieces>();
-    for (const p of pieces) {
+    const byCell = new Map<CellKey, typeof shownPieces>();
+    for (const p of shownPieces) {
       const key = `${p.section}/${p.subSection}` as CellKey;
       const list = byCell.get(key);
       if (list) list.push(p);
       else byCell.set(key, [p]);
     }
     return byCell;
-  }, [pieces]);
+  }, [shownPieces]);
   const cellsInUse = useMemo(() => [...piecesByCell.keys()], [piecesByCell]);
   /**
    * Section → its pieces deepest-first (then cell order, then slot): the paint
    * order of both views, so a top Layer paints over a deeper neighbour that
    * settled under it (slice 11).
    */
-  const piecesBySection = useMemo(() => {
-    const bySection = new Map<Section, PieceLayout[]>();
-    for (const section of SECTIONS) {
-      const list = pieces.filter((p) => p.section === section);
-      if (list.length === 0) continue;
-      list.sort(
-        (a, b) =>
-          b.depth - a.depth ||
-          SUB_SECTIONS.indexOf(a.subSection) - SUB_SECTIONS.indexOf(b.subSection) ||
-          a.slot - b.slot,
-      );
-      bySection.set(section, list);
-    }
-    return bySection;
-  }, [pieces]);
-  const sectionsInUse = useMemo(() => [...piecesBySection.keys()], [piecesBySection]);
+  const piecesBySection = useMemo(() => bySection(shownPieces), [shownPieces]);
+  /** The committed pieces by Section: their hit areas stay put while a preview moves, so a held one is never unmounted. */
+  const hitPiecesBySection = useMemo(() => (shownPieces === pieces ? piecesBySection : bySection(pieces)), [shownPieces, pieces, piecesBySection]);
+  const sectionsInUse = useMemo(() => [...new Set([...piecesBySection.keys(), ...hitPiecesBySection.keys()])], [piecesBySection, hitPiecesBySection]);
   /**
    * piece key → outline at its SETTLED rect, conformed to silhouette ∩ Section
    * (only the Section walls are walls): the default view everywhere, computed
@@ -918,8 +948,12 @@ export function XrayPillow({
     return planes;
   }, [dived, piecesByCell, authoredConformed, itemSubtypes, stage]);
   const earWell = padWellOf(softBody).width;
-  const softSettled = useSoftTopPaths(settledPlanes, softBody, XRAY_VIEW);
-  const softAuthored = useSoftTopPaths(authoredPlanes, softBody, XRAY_VIEW);
+  // A preview re-settles on every pointer step: settled quickly and eased quickly, so the pouches flow with the
+  // hand; the release eases into the full settle.
+  const inHand = draft !== null;
+  const softSettings = useMemo(() => (inHand ? draftSoftBody(softBody) : softBody), [inHand, softBody]);
+  const softSettled = useSoftTopPaths(settledPlanes, softSettings, XRAY_VIEW, inHand ? HELD_EASE_MS : undefined);
+  const softAuthored = useSoftTopPaths(authoredPlanes, softSettings, XRAY_VIEW, inHand ? HELD_EASE_MS : undefined);
   const settledPaths = useMemo(() => withSoft(settledConformed, softSettled), [settledConformed, softSettled]);
   const authoredPaths = useMemo(() => withSoft(authoredConformed, softAuthored), [authoredConformed, softAuthored]);
 
@@ -929,7 +963,7 @@ export function XrayPillow({
   // room), so the well stays in view.
   const labelRects = useMemo(() => {
     const out = new Map<string, PieceRect>();
-    for (const p of pieces) {
+    for (const p of shownPieces) {
       if (p.depth !== 0) continue;
       const d = (p.section === dived ? authoredPaths : settledPaths).get(p.key);
       if (!d) continue;
@@ -949,7 +983,7 @@ export function XrayPillow({
       );
     }
     return out;
-  }, [pieces, dived, authoredPaths, settledPaths, itemSubtypes, earWell]);  const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
+  }, [shownPieces, dived, authoredPaths, settledPaths, itemSubtypes, earWell]);  const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
   // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
   // the editor overlay aligns to the dived column in place.
@@ -992,7 +1026,7 @@ export function XrayPillow({
   }, [selected, placements]);
   const selectedKey = selectedPiece ? `${selectedPiece.section}/${selectedPiece.subSection}/${selectedPiece.slot}` : null;
 
-  const fitCtx = { size: pillowSize, dims: itemDims, loftAllowance };
+  const fitCtx = useMemo(() => ({ size: pillowSize, dims: itemDims, loftAllowance }), [pillowSize, itemDims, loftAllowance]);
 
   /**
    * Write a successful move (key or drag): the selection follows the
@@ -1029,38 +1063,46 @@ export function XrayPillow({
   };
 
   /**
-   * Put a pouch at a top-left corner (slice 08): across, within the room its
-   * neighbours leave it; front ↔ back, anywhere in its Section — the
-   * sub-section follows its centre. Stored as mm from that cell's home, so
-   * what is saved is what is drawn.
+   * Where a pouch put down in its own Section stands (slice 08, linked views
+   * 7-11-2026): across, at `cx` (its drawn centre) within the room its
+   * neighbours leave it; front ↔ back, its settled centre at `centreMm` from
+   * the Section's front, through the cut's own writer (`placeAlongAt`), so
+   * both views draw it in the same place — anywhere its Layer leaves free,
+   * never into a neighbour of its own Layer. The sub-section follows its
+   * centre. Stored as mm from home, so what is saved is what is drawn.
    */
-  const nudgeTo = (ref: PieceRef & { itemId: number }, x: number, y: number) => {
+  const placeTop = (ref: PieceRef, cx: number, centreMm: number, snapView = 0): (Extract<MoveResult, { ok: true }> & { snap?: AlongSnap }) | null => {
     const p = rectByKey.get(`${ref.section}/${ref.subSection}/${ref.slot}`);
-    if (!p || !onPlacementsChange) return;
-    const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
-    const cx = clamp(x, p.range.minX, p.range.maxX);
-    const cy = clamp(y, p.range.minY, p.range.maxY);
-    const from = SUB_SECTIONS.indexOf(ref.subSection);
-    const to = Math.min(Math.max(stage.rowY.findLastIndex((rowY) => rowY <= cy + p.h / 2), 0), SUB_SECTIONS.length - 1);
-    const before = placements;
-    let next = before;
-    let nextRef: PieceRef = ref;
-    if (to !== from) {
-      const r = movePiece(before, ref, { cell: { section: ref.section, subSection: SUB_SECTIONS[to] }, layer: null });
-      if (!r.ok) {
-        toast.error(r.error); // cap feedback, the add's path
-        return;
-      }
-      next = r.placements;
-      nextRef = r.ref;
-    }
-    // Stored as M millimetres (the reference Size), as the layout reads them.
+    const placed = placements.find((q) => sameRef(q, ref));
+    if (!p || !placed) return null;
     const f = sizeFactors(PILLOW_DIMENSIONS[pillowSize]);
-    next = nudgePiece(next, nextRef, {
-      xMm: (cx - p.home.x) / (stage.k * f.across),
-      yMm: (cy - (p.home.y + stage.rowY[to] - stage.rowY[from])) / (stage.k * f.along),
-    });
-    if (next !== before) commitMove(before, next, ref, nextRef, to === from);
+    let x = Math.min(Math.max(cx - p.w / 2, p.range.minX), Math.max(p.range.minX, p.range.maxX));
+    // Within a snap of its home across, it goes home (its across offset cleared).
+    if (snapView > 0 && Math.abs(x - p.home.x) <= snapView) x = p.home.x;
+    // Across first (stored as M millimetres, as the layout reads them), then front ↔ back from where the settle stands it.
+    const across = nudgePiece(placements, ref, { xMm: (x - p.home.x) / (stage.k * f.across), yMm: placed.offsetYMm ?? 0 });
+    const r = placeAlongSnapped(across, ref, centreMm, snapView, false);
+    const next = r ?? { ok: true as const, placements: across, ref };
+    return next.placements === placements ? null : next;
+  };
+  /**
+   * Stand a pouch's settled centre at `centreMm` (`placeAlongAt`), pulled onto
+   * its home, a column's middle or a column's edge when within `snapView`
+   * (view units; 0 places it exactly) — the cut's own snap.
+   */
+  const placeAlongSnapped = (base: PillowPlacement[], ref: PieceRef, centreMm: number, snapView: number, keepCell: boolean) => {
+    const here = alongExtent(settlePillow(base, fitCtx), ref);
+    if (!here) return null;
+    const len = here.endMm - here.startMm;
+    const snapMm = snapView / stage.k;
+    const { centreMm: at, snap } = snapAlongCentre(centreMm, len, here.cellLengthMm, snapMm > 0 ? homeCentreMm(base, ref, fitCtx) : null, snapMm);
+    const r = placeAlongAt(base, ref, at - len / 2, fitCtx, keepCell);
+    return r ? { ...r, ...(snap ? { snap } : {}) } : snap ? { ok: true as const, placements: base, ref, snap } : null;
+  };
+  /** Commit `placeTop`: the toast says it stayed within its cell, or moved on to the one its centre reached. */
+  const nudgeTo = (ref: PieceRef & { itemId: number }, cx: number, centreMm: number) => {
+    const r = placeTop(ref, cx, centreMm);
+    if (r) commitMove(placements, r.placements, ref, r.ref, sameCellRef(r.ref, ref));
   };
 
   /**
@@ -1124,7 +1166,16 @@ export function XrayPillow({
   const nudgeBy = (step: { xMm: number; yMm: number }) => {
     const ref = selectedPiece;
     const p = ref && rectByKey.get(`${ref.section}/${ref.subSection}/${ref.slot}`);
-    if (ref && p) nudgeTo(ref, p.x + step.xMm * stage.k, p.y + step.yMm * stage.k);
+    if (!ref || !p) return;
+    if (step.yMm) {
+      // Front ↔ back is the cut's own nudge (`nudgeSlab`): both views take the same step and stop at the same wall.
+      const r = nudgeSlab(placements, ref, step.yMm, fitCtx);
+      if (!r) toast(`No room to nudge ${pieceLabel(ref.itemId)} further ${step.yMm < 0 ? "to the front" : "to the back"}`, { id: "xray-move" });
+      else if (r.ok) commitMove(placements, r.placements, ref, r.ref, r.within);
+      return;
+    }
+    const here = alongExtent(fit.settle, ref);
+    if (here) nudgeTo(ref, p.x + p.w / 2 + step.xMm * stage.k, (here.startMm + here.endMm) / 2);
   };
   const nudgeByRef = useRef(nudgeBy);
   const performMoveRef = useRef(performMove);
@@ -1160,16 +1211,26 @@ export function XrayPillow({
     e.currentTarget.setPointerCapture(e.pointerId);
     justDraggedRef.current = false;
     const at = toView(e.clientX, e.clientY);
+    // What it is picked up as: the dive draws its authored rect, everywhere else its settled one.
+    const drawn = p.section === dived ? p : p.settled;
+    const drawnCx = drawn.x + drawn.w / 2;
+    const drawnCy = drawn.y + drawn.h / 2;
     const d: PouchDrag = {
       source: { section: p.section, subSection: p.subSection, slot: p.slot, depth: p.depth, itemId: p.itemId },
       key,
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
-      grabX: fromPouch ? at.x - (p.x + p.w / 2) : 0,
-      grabY: fromPouch ? at.y - (p.y + p.h / 2) : 0,
+      grabX: fromPouch ? at.x - drawnCx : 0,
+      grabY: fromPouch ? at.y - drawnCy : 0,
+      ghostD: (p.section === dived ? authoredPaths : settledPaths).get(key) ?? null,
+      drawnCx,
+      drawnCy,
+      alongShift: p.settled.y + p.settled.h / 2 - drawnCy,
       x: at.x,
       y: at.y,
+      fine: startFineDrag([drawnCx, drawnCy], [e.clientX, e.clientY], e.timeStamp),
+      snapView: 0,
       active: false,
       over: null,
       overfull: false,
@@ -1177,6 +1238,83 @@ export function XrayPillow({
     dragRef.current = d;
     setDrag(d);
   };
+
+  /**
+   * What releasing a drag here would do (slice 07; linked views 7-11-2026;
+   * precise by default 8-11-2026): the same plan for the live preview on
+   * every pointer move and for the release, so what both views show while it
+   * is held is what lands. The held pouch's centre (`d.fine`) is where it
+   * goes: its own cell → as far as there is room (`placeTop`); another cell →
+   * onto its top Layer with room, at its place in that row, front ↔ back
+   * where it is held. A layer row in the dive panel names that Layer. Near
+   * home, a column's middle or edge it is pulled onto it (`d.snapView`).
+   */
+  type DropPlan =
+    | { kind: "none" }
+    | { kind: "refused"; error: string }
+    | { kind: "move"; placements: PillowPlacement[]; ref: PieceRef; within: boolean; snap?: AlongSnap };
+  const planDrop = (d: PouchDrag, over: PouchDropTarget | null, canceled: boolean): DropPlan => {
+    const cell = over && { section: over.section, subSection: over.subSection };
+    const layers = cell ? cellLayers(placements, cell) : [];
+    // The drop's position in its row — the target's top Layer — among that row's other pouches.
+    const row = (layers[0] ?? []).filter((q) => !sameRef(q, d.source));
+    const [cx, cy] = d.fine.at;
+    const index = cell
+      ? dropIndex(
+          row.flatMap((q) => {
+            const r = rectByKey.get(`${q.section}/${q.subSection}/${q.slot}`);
+            return r ? [{ cx: r.x + r.w / 2, cy: r.y + r.h / 2, h: r.h }] : [];
+          }),
+          cx,
+          cy,
+        )
+      : undefined;
+    const sourceIndex = (layers[0] ?? []).findIndex((q) => sameRef(q, d.source));
+    const plan = planPouchDrop(d.source, over, { layerCount: layers.length, index, sourceIndex: sourceIndex < 0 ? undefined : sourceIndex }, canceled);
+    if (!plan) return { kind: "none" };
+    // Its settled centre where it is held, mm from the Section's front.
+    const centreMm = (cy + d.alongShift - stage.rowY[0]) / stage.k;
+    if (plan.kind === "nudge") {
+      const r = placeTop(d.source, cx, centreMm, d.snapView);
+      return r ? { kind: "move", placements: r.placements, ref: r.ref, within: sameCellRef(r.ref, d.source), snap: r.snap } : { kind: "none" };
+    }
+    const moved = movePiece(placements, d.source, plan.to);
+    if (!moved.ok) return { kind: "refused", error: moved.error };
+    // The cell is the drop's; front ↔ back it stands where it is held.
+    const placed = placeAlongSnapped(moved.placements, moved.ref, centreMm, d.snapView, true);
+    const next = placed ?? moved;
+    return { kind: "move", placements: next.placements, ref: next.ref, within: false, snap: placed?.snap };
+  };
+
+  /** Show `plan` in both views while the pouch is held (or the committed recipe, when it would change nothing). */
+  const draftSignature = useRef("");
+  const showPlan = (plan: DropPlan | null) => {
+    if (!plan || plan.kind !== "move") {
+      if (draftSignature.current) {
+        draftSignature.current = "";
+        setOwnDraft(null);
+        setDraftSnap(null);
+        clearXrayDraft(placements, "top");
+      }
+      return;
+    }
+    const signature = placementsSignature(plan.placements);
+    if (signature === draftSignature.current) return;
+    draftSignature.current = signature;
+    const next: XrayDraft = {
+      placements: plan.placements,
+      fit: fitPillow(plan.placements, fitCtx),
+      key: `${plan.ref.section}/${plan.ref.subSection}/${plan.ref.slot}`,
+      from: "top",
+    };
+    setOwnDraft(next);
+    setDraftSnap(plan.snap ?? null);
+    publishXrayDraft(placements, next);
+  };
+  /** The snap the shown preview took, for the badge; and a hand that slows on it creeps on from it. */
+  const [draftSnap, setDraftSnap] = useState<AlongSnap | null>(null);
+  const snapHeld = useRef<readonly [number, number] | null>(null);
+
   const moveDrag = (e: React.PointerEvent<Element>) => {
     const d = dragRef.current;
     if (!d || d.pointerId !== e.pointerId) return;
@@ -1185,20 +1323,38 @@ export function XrayPillow({
       draggingRef.current = true; // Escape now cancels the drag, not the dive
       setSelected({ section: d.source.section, subSection: d.source.subSection, slot: d.source.slot });
     }
-    const over = dropTargetFromElement(document.elementFromPoint(e.clientX, e.clientY));
-    const dest = pouchDropDestination(d.source, over);
-    const overfull = dest
-      ? wouldFit(placements, { kind: "move", from: d.source, to: dest }, fitCtx).cell?.status === "over"
-      : false;
-    const next: PouchDrag = { ...d, ...toView(e.clientX, e.clientY), active: true, over, overfull };
+    const at = toView(e.clientX, e.clientY);
+    // Precise by default: the held pouch stays where it was picked up under a brisk hand, and a creeping hand moves
+    // it a fraction of its travel, so the last millimetre needs no key (fine-drag.ts).
+    let fine = moveFineDrag(d.fine, [at.x - d.grabX, at.y - d.grabY], [e.clientX, e.clientY], e.timeStamp);
+    const snapping = snapsNow(fine);
+    // Slowing down on a snap creeps on from where the snap stood it, never jumps off it.
+    if (!snapping && snapHeld.current) {
+      fine = holdSnap(fine, snapHeld.current);
+      snapHeld.current = null;
+    }
+    const m = svgRef.current?.getScreenCTM();
+    const pxPerView = m ? Math.hypot(m.a, m.b) : 1;
+    // What the pouch is over is what its centre is over — a layer row under the pointer names that Layer.
+    const underPointer = dropTargetFromElement(document.elementFromPoint(e.clientX, e.clientY));
+    const centreClient = m ? { x: m.a * fine.at[0] + m.c * fine.at[1] + m.e, y: m.b * fine.at[0] + m.d * fine.at[1] + m.f } : { x: e.clientX, y: e.clientY };
+    const over = underPointer?.kind === "layer" ? underPointer : dropTargetFromElement(document.elementFromPoint(centreClient.x, centreClient.y));
+    const next: PouchDrag = { ...d, ...at, fine, snapView: snapping ? SNAP_PX / pxPerView : 0, active: true, over, overfull: false };
+    const plan = planDrop(next, over, false);
+    next.overfull =
+      plan.kind === "move"
+        ? fitPillow(plan.placements, fitCtx).cells.find((c) => c.section === plan.ref.section && c.subSection === plan.ref.subSection)?.status === "over"
+        : false;
     dragRef.current = next;
     setDrag(next);
+    showPlan(plan);
   };
   const endDrag = (e: React.PointerEvent<Element>, canceled: boolean, onTap?: () => void) => {
     const d = dragRef.current;
     if (!d || d.pointerId !== e.pointerId) return;
     dragRef.current = null;
     setDrag(null);
+    showPlan(null);
     if (!d.active) {
       // A click: the element's onClick selects — except a finger on a pouch,
       // whose click the touchstart guard below suppresses; the tap acts here.
@@ -1207,54 +1363,12 @@ export function XrayPillow({
     }
     draggingRef.current = false;
     justDraggedRef.current = !canceled; // the click that follows the drop must not re-select the old ref
-    const over = canceled ? null : d.over;
-    const cell = over && { section: over.section, subSection: over.subSection };
-    const layers = cell ? cellLayers(placements, cell) : [];
-    // The drop's position in a side-by-side row, among the row's other pouches.
-    const row = (layers[0] ?? []).filter((q) => !sameRef(q, d.source));
-    const index =
-      cell && layers.length <= 1
-        ? dropIndex(
-            row.flatMap((q) => {
-              const r = rectByKey.get(`${q.section}/${q.subSection}/${q.slot}`);
-              return r ? [{ cx: r.x + r.w / 2, cy: r.y + r.h / 2, h: r.h }] : [];
-            }),
-            d.x - d.grabX,
-            d.y - d.grabY,
-          )
-        : undefined;
-    const sourceIndex = (layers[0] ?? []).findIndex((q) => sameRef(q, d.source));
-    const plan = planPouchDrop(d.source, over, { layerCount: layers.length, index, sourceIndex: sourceIndex < 0 ? undefined : sourceIndex }, canceled);
-    if (!plan) return;
-    if (plan.kind === "nudge") {
-      // Its own cell: the pouch goes where its ghost was let go, within the free space.
-      const p = rectByKey.get(d.key);
-      if (p) nudgeTo(d.source, d.x - d.grabX - p.w / 2, d.y - d.grabY - p.h / 2);
+    const plan = planDrop(d, canceled ? null : d.over, canceled);
+    if (plan.kind === "refused") {
+      toast.error(plan.error); // cap feedback, the add's path
       return;
     }
-    if (plan.kind === "chooseLayer") {
-      const box = rootRef.current?.getBoundingClientRect();
-      draggingRef.current = true; // the picker owns Escape until it closes
-      setLayerPick({
-        source: d.source,
-        cell: plan.cell,
-        left: box && box.width > 0 ? `${((e.clientX - box.left) / box.width) * 100}%` : "50%",
-        top: box && box.height > 0 ? `${((e.clientY - box.top) / box.height) * 100}%` : "50%",
-      });
-      return;
-    }
-    // Into an empty sub-section of its own Section: it lands where it was let go, not at home.
-    if (plan.to.cell.section === d.source.section && row.length === 0 && layers.length === 0) {
-      const p = rectByKey.get(d.key);
-      if (p) nudgeTo(d.source, d.x - d.grabX - p.w / 2, d.y - d.grabY - p.h / 2);
-      return;
-    }
-    const r = movePiece(placements, d.source, plan.to);
-    if (!r.ok) {
-      toast.error(r.error); // cap feedback, the add's path
-      return;
-    }
-    commitMove(placements, r.placements, d.source, r.ref);
+    if (plan.kind === "move") commitMove(placements, plan.placements, d.source, plan.ref, plan.within);
   };
   /** Pointer handlers that make an element a handle for one pouch's drag. */
   const dragHandle = (ref: PieceRef, fromPouch = false, onTap?: () => void) => ({
@@ -1293,45 +1407,41 @@ export function XrayPillow({
     setSelected(ref);
   };
 
-  // The Layer picker for a drop on a stacked cell: its Layers top → deep, the
-  // pouch's own and full ones disabled, then a new Layer under the deepest.
-  const layerPickSizes = layerPick ? cellLayers(placements, layerPick.cell).map((l) => l.length) : [];
-  const layerPickOwn = layerPick && sameCellRef(layerPick.source, layerPick.cell) ? layerPick.source.depth : null;
-  const layerPickTree = layerChoices(layerPickSizes, layerPickOwn, { maxLayers: MAX_LAYERS_PER_CELL, maxPerLayer: MAX_PIECES_PER_LAYER });
-  const closeLayerPick = useCallback(() => {
-    draggingRef.current = false;
-    setLayerPick(null);
-  }, []);
-  // Escape closes the picker and leaves the pouch where it was (capture phase,
-  // ahead of the dive's own guard, which stands down through draggingRef).
-  useEffect(() => {
-    if (!layerPick) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.stopPropagation();
-      closeLayerPick();
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [layerPick, closeLayerPick]);
-  const dropIntoLayer = (choice: string) => {
-    const pick = layerPick;
-    closeLayerPick();
-    if (!pick) return;
-    const layer = resolveLayerChoice(choice, layerPickSizes, layerPickOwn);
-    const r = movePiece(placements, pick.source, { cell: pick.cell, layer });
-    if (!r.ok) {
-      toast.error(r.error);
-      return;
-    }
-    commitMove(placements, r.placements, pick.source, r.ref);
-  };
   const cancelDrag = useCallback(() => {
     if (!dragRef.current) return;
     dragRef.current = null;
     draggingRef.current = false;
     setDrag(null);
+    draftSignature.current = "";
+    setOwnDraft(null);
+    clearXrayDraft(placementsRef.current, "top");
   }, []);
+  // Where the held pouch stands in its own preview, drawn: its badge sits over it, and a snap holds it there.
+  // With no preview (it has nowhere to go from here), where it already stands: the badge still says so.
+  const heldKey = ownDraft?.key ?? (drag?.active ? drag.key : null);
+  const heldDrawn = useMemo(() => {
+    if (!heldKey) return null;
+    const p = (ownDraft ? shownPieces : pieces).find((q) => q.key === heldKey);
+    if (!p) return null;
+    const r = p.section === dived ? p : p.settled;
+    const s = (ownDraft?.fit ?? fit).settle.pieces.find((q) => q.key === heldKey);
+    return { cx: r.x + r.w / 2, cy: r.y + r.h / 2, top: r.y, startMm: s?.startMm ?? null, endMm: s?.endMm ?? null };
+  }, [heldKey, ownDraft, shownPieces, pieces, fit, dived]);
+  useEffect(() => {
+    snapHeld.current = draftSnap && ownDraft && heldDrawn ? [heldDrawn.cx, heldDrawn.cy] : null;
+  }, [draftSnap, ownDraft, heldDrawn]);
+  // A snap taking hold is felt as well as seen, where the device can (a phone's short buzz).
+  useEffect(() => {
+    if (draftSnap && dragRef.current && typeof navigator !== "undefined" && "vibrate" in navigator && isMobile) navigator.vibrate(8);
+  }, [draftSnap, isMobile]);
+  // A committed recipe (or this view leaving the page) ends any preview this view published.
+  useEffect(() => () => clearXrayDraft(placementsRef.current, "top"), []);
+  useEffect(() => {
+    if (!dragRef.current) {
+      draftSignature.current = "";
+      setOwnDraft(null);
+    }
+  }, [placements]);
   // Escape mid-drag cancels the drag and keeps the dive open. Capture phase,
   // like the dive's own guard, which stands down while draggingRef is set.
   useEffect(() => {
@@ -1811,7 +1921,7 @@ export function XrayPillow({
 
             {/* Selection (slice 06): the piece's own outline, together with the
                 settled ghost the dive already draws. */}
-            {selectedPiece && dived === selectedPiece.section && authoredPaths.has(selectedKey!) && (
+            {!draft && selectedPiece && dived === selectedPiece.section && authoredPaths.has(selectedKey!) && (
               <path
                 d={authoredPaths.get(selectedKey!)!}
                 fill="none"
@@ -1819,6 +1929,19 @@ export function XrayPillow({
                 strokeWidth={3}
                 vectorEffect="non-scaling-stroke"
                 data-xray-selected-piece
+              />
+            )}
+            {/* Linked views: the pouch in hand — here or on the cut — picked out where it would land. */}
+            {draft && (draft.key.startsWith(`${dived}/`) ? authoredPaths : settledPaths).get(draft.key) && (
+              <path
+                d={(draft.key.startsWith(`${dived}/`) ? authoredPaths : settledPaths).get(draft.key)!}
+                fill="none"
+                stroke="#38bdf8"
+                strokeWidth={3}
+                vectorEffect="non-scaling-stroke"
+                pointerEvents="none"
+                data-xray-selected-piece
+                data-xray-linked={draft.from}
               />
             )}
 
@@ -1834,15 +1957,19 @@ export function XrayPillow({
                 data-xray-drop-hover={drag.overfull ? "overfull" : "ok"}
               />
             )}
-            {drag?.active && (authoredPaths.get(drag.key) ?? settledPaths.get(drag.key)) && rectByKey.has(drag.key) && (
+            {/* The pouch itself already stands where it would land (the live preview); the ghost, an outline
+                only, keeps the pointer's place — it parts from the pouch where a wall or a neighbour stops it. */}
+            {drag?.active && drag.ghostD && (
               <path
-                d={(authoredPaths.get(drag.key) ?? settledPaths.get(drag.key))!}
-                transform={`translate(${drag.x - drag.grabX - (rectByKey.get(drag.key)!.x + rectByKey.get(drag.key)!.w / 2)} ${drag.y - drag.grabY - (rectByKey.get(drag.key)!.y + rectByKey.get(drag.key)!.h / 2)})`}
+                d={drag.ghostD}
+                transform={`translate(${drag.fine.at[0] - drag.drawnCx} ${drag.fine.at[1] - drag.drawnCy})`}
                 fill="white"
-                fillOpacity={0.35}
+                fillOpacity={draft ? 0 : 0.35}
                 stroke="#38bdf8"
                 strokeWidth={2}
+                strokeDasharray={draft ? "5 4" : undefined}
                 vectorEffect="non-scaling-stroke"
+                pointerEvents="none"
                 data-xray-drag-ghost
               />
             )}
@@ -1851,7 +1978,7 @@ export function XrayPillow({
                 dived. A dived Section on a desktop already names its pieces
                 with the chips sitting on them, so it drops these — unless the
                 chips are slotted beside the pillow, when nothing else would. */}
-            {pieces.map((p) =>
+            {shownPieces.map((p) =>
               p.depth === 0 && !(editable && !isMobile && !slotted && p.section === dived) ? (
                 <PieceLabel
                   key={`label-${p.key}`}
@@ -1962,10 +2089,13 @@ export function XrayPillow({
               selection too. Deepest-first, so the top Layer wins the hit. */}
           {editable &&
             sectionsInUse.flatMap((section) =>
-              (piecesBySection.get(section) ?? []).map((p) => {
+              (hitPiecesBySection.get(section) ?? []).map((p) => {
                 const inDive = section === dived;
-                const d = (inDive ? authoredPaths : settledPaths).get(p.key);
-                if (!d) return null;
+                // The committed pieces, so a held pouch keeps its element (and its pointer capture) while a preview
+                // moves it; one the preview has moved away takes its committed outline (conformed already, cached).
+                const d =
+                  (inDive ? authoredPaths : settledPaths).get(p.key) ??
+                  conformPouchPath(inDive ? p : p.settled, [stageRegions(stage).sil, stageRegions(stage).sections[section]], fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape);
                 const on = selectedKey === p.key;
                 const ref = { section: p.section, subSection: p.subSection, slot: p.slot };
                 return (
@@ -2012,6 +2142,16 @@ export function XrayPillow({
                 />
               )),
             )}
+
+          {/* Where the held pouch lands, mm from the front (and the snap that put it there), over it — clear of a finger. */}
+          {drag?.active && heldDrawn && heldDrawn.startMm !== null && heldDrawn.endMm !== null && (
+            <DragBadge
+              text={landingText(heldDrawn.startMm, heldDrawn.endMm, ownDraft ? draftSnap : null)}
+              x={heldDrawn.cx}
+              y={Math.max(heldDrawn.top - (isMobile ? 22 : 14), isMobile ? 18 : 12)}
+              font={isMobile ? 20 : 12}
+            />
+          )}
         </g>
       </svg>
 
@@ -2188,36 +2328,6 @@ export function XrayPillow({
               />
             </div>
           )}
-        </div>
-      )}
-
-      {/* Layer picker: a pouch dropped on a stacked cell asks which Layer, in
-          a bloom at the drop point (phones: centred, like the add picker, so it
-          cannot run off the screen edge). A side-by-side cell never asks. */}
-      {layerPick && (
-        <div
-          className="absolute z-40 -translate-x-1/2 -translate-y-1/2"
-          style={{
-            ...(isMobile ? { left: "50%", top: "50%" } : { left: layerPick.left, top: layerPick.top }),
-            width: isMobile ? 240 : 190,
-            pointerEvents: "auto",
-          }}
-          data-xray-layer-pick
-        >
-          <SunburstMenu
-            open
-            root={layerPickTree}
-            display="text"
-            size={isMobile ? 240 : 190}
-            ringWidth={isMobile ? 52 : 50}
-            holeRadius={isMobile ? 26 : 18}
-            centerIcon={Layers}
-            ariaLabel={`Move ${pieceLabel(layerPick.source.itemId)} into which layer of ${layerPick.cell.section} ${layerPick.cell.subSection}?`}
-            onOpenChange={(o) => {
-              if (!o) closeLayerPick();
-            }}
-            onSelect={(leaf) => dropIntoLayer(leaf.id)}
-          />
         </div>
       )}
 

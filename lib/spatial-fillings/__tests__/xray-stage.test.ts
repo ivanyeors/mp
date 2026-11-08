@@ -188,7 +188,7 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     expect(b.x + b.w).toBeLessThanOrEqual(frame.x + frame.w + 0.1);
   });
 
-  it("offsets deeper layers by the thickness above them, and keeps the deepest slab in the cell", () => {
+  it("offsets deeper layers across by the thickness above them, never along, and keeps the deepest slab in the cell", () => {
     const stage = stageGeometry("M");
     const thin = new Map([[1, resolved({ widthMm: 100, lengthMm: 90, thicknessMm: 20 })]]);
     const thick = new Map([[1, resolved({ widthMm: 100, lengthMm: 90, thicknessMm: 80 })]]);
@@ -196,8 +196,9 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     const deepThin = layoutPlacements(two, { stage, dims: thin }).find((p) => p.depth === 1)!;
     const deepThick = layoutPlacements(two, { stage, dims: thick }).find((p) => p.depth === 1)!;
     const topThin = layoutPlacements(two, { stage, dims: thin }).find((p) => p.depth === 0)!;
-    expect(deepThin.y).toBeGreaterThan(topThin.y);
-    expect(deepThick.y - topThin.y).toBeGreaterThan(deepThin.y - topThin.y);
+    expect(deepThin.x).toBeGreaterThan(topThin.x);
+    expect(deepThick.x - topThin.x).toBeGreaterThan(deepThin.x - topThin.x);
+    expect(deepThick.y).toBe(topThin.y);
 
     const five = [0, 1, 2, 3, 4].map((row) => cell(row + 1, 1, row));
     const layout = layoutPlacements(five, { stage, dims: thick });
@@ -208,7 +209,7 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
       expect(p.h).toBeGreaterThan(0);
     }
     const deepest = layout.find((p) => p.depth === 4)!;
-    expect(deepest.h).toBeGreaterThanOrEqual(frame.h * 0.4);
+    expect(deepest.w).toBeCloseTo(100 * stage.k, 0); // the deepest keeps its true width: its slab stays in the cell
   });
 
   it("is order-independent and byte-identical across calls with a context", () => {
