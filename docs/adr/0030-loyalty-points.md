@@ -35,7 +35,7 @@ The owner's decisions of 2026-10-21, as the PRD lists them:
 1. Points are a dollar offset and nothing else: 100 points = S$1, spent as money off a purchase.
    No tiers, no catalogue, no cashing out, transferring or buying.
 2. They are earned on purchases, plus a one-time Claim bonus for Migrated customers.
-3. The earn rate is 3 points per S$1.
+3. The earn rate is ~~3~~ 1 point per S$1 (amended 2026-11-08, below).
 4. They are spent on shop orders only. Results earn but cannot take them.
 5. GST does not count.
 6. Only Orders paid from launch earn.
@@ -176,3 +176,87 @@ shrinks through expiry, so what customers hold only falls when they spend or a r
 back: the accountant should know (slice 08). The CRM's *Lapsed* sub-status still starts at 24
 months without a purchase: it was set when points expired at 24 months, and is a separate
 retention rule that this amendment does not change.
+
+## Amendment (2026-11-08): points for past purchases
+
+The owner wants customers imported from the old shop to start with points for what they already
+bought there, not only with the Claim bonus.
+
+**Decision 18.** A **Migrated customer** is given **Past-purchase points** once: the earn rate ×
+their Shopify-era spend (`migrated_customers.shopify_amount_spent`), rounded down. This narrows
+decision 6 ("only Orders paid from launch earn"): Orders are unchanged, and the Shopify era is
+settled once from what the platform already holds, as `CLAUDE.md` directs for Shopify-era facts.
+It is built on the Shopify export the customer import stored, and reads nothing from Shopify, so
+decision 15 stands.
+
+The owner's choices, 2026-11-08:
+
+- **(x) Staff give them, in one run,** from Settings → Discounts → Points: a preview first (how
+  many customers, how many points and what they are worth, the median and the largest), then a
+  confirmation, then the run. The run sends the preview's numbers back, and the database grants
+  only if they are still the numbers (`grant_past_purchase_points`), so what Staff confirmed is
+  what is granted. Not gated on points being on: with points off, customers see nothing until
+  launch.
+- **(y) Once per Customer,** held unique (`points_ledger_one_past_purchases`). Running it again
+  grants only customers imported since. A run is not reversible in one step: the ledger is
+  append-only, so a correction is an `adjust` entry.
+- **(z) They never count towards a Milestone bonus.** Rule (t) counts `earn` less `clawback`;
+  this is a ledger kind of its own, `past_purchases`. Partners get none (rule r).
+
+**Considered.**
+
+- *At each customer's Claim, with the Claim bonus:* rejected by the owner. It would have kept what
+  is owed down to customers who come back, but balances would only appear at sign-in.
+- *Counting them towards milestones:* rejected by the owner. In production, at 3 points per S$1,
+  1,258 customers would have passed the first milestone at once, adding 173,600 points (about
+  S$1,736); at 1, fewer.
+- *Writing them as `earn` entries:* rejected. `earn` is one per Order, and milestones count it.
+- *Excluding shipping:* not possible. The export's spend is one total per customer, shipping
+  included, so a past purchase earns on a little more than an Order here would.
+
+**What it costs.** In production on 2026-11-08: 1,613 Migrated customers with spend,
+793,094 points at 1 per S$1 (about S$7,931; it was 2,379,749, about S$23,797, at 3). Half the
+grants are 458 points (S$4.58) or fewer, and the largest is 8,445 (S$84.45). No partner had
+Shopify-era spend. The accountant should
+know before the run: it is a liability from the day it is given (slice 08).
+
+**Consequences.** The ledger has a ninth kind, `past_purchases`, labelled "Points for past
+purchases" on the Staff card with the spend in its note. The cost summary counts the grants. The
+terms gained a "Points for past purchases" section and are dated 8 November 2026; counsel reviews
+it with the rest before launch. The Staff guide's launch checklist gives the points before
+launch, so a customer's balance is there at their first sign-in.
+
+## Amendment (2026-11-08): the earn rate is 1 point per S$1
+
+The owner lowered the earn rate, for Orders and Past-purchase points alike: "make the points
+earned $1 spent = 1 point". A point is still worth S$0.01: "100 points for $1 a user can use".
+
+**Decision 3, amended.** The earn rate is 1 point per S$1: 1% back on what the customer pays
+for, before GST, and the rate Past-purchase points are worked out at. It is still a setting
+(`points_earn_per_dollar`), changed by Staff on Settings → Discounts → Points; rules (a) and (b)
+are unchanged, so nothing saved in points changes what it is worth.
+
+- `20261108100200_points_earn_one.sql` moves the saved rate from 3 to 1, and only from 3, so a
+  rate Staff saved since is theirs. A missing or malformed rate reads as 1, in SQL
+  (`points_settings()`) and in TypeScript (`POINTS_DEFAULTS`).
+- Points were off with no launch date, so no Order earned at 3, and nothing is given back or
+  re-earned.
+
+**Considered.**
+
+- *5 points per S$1 (5% back):* the owner's first change that day, replaced before it was
+  applied.
+- *5 for past purchases only, 3 for Orders:* offered with it; the owner chose one rate for both.
+- *A point worth S$0.10 (10 points = S$1, so 10% back at 1 point per S$1):* chosen, then
+  withdrawn by the owner the same day. 100 points = S$1 stays.
+
+**What it costs.** Customers get 1% back, and the milestone ladder is reached later: the first
+milestone (1,000 points) after about S$1,000 spent, not S$334, and a customer at the last one
+(10,000 points, about S$10,000 spent) has 1.32% back, not 3.96%. The bonuses are worth what they
+were (S$1 to S$20) but take three times the spend; the owner may want to look at the ladder
+again on the same page. The Claim bonus (1,000 points, S$10) and the fewest points used at once
+(500, S$5) are unchanged, so the Claim bonus is now what S$1,000 of Orders earns. Past-purchase
+points are about S$7,931 (above). The terms and the Staff guide read the rate from the settings,
+so they say 1 point once it is saved. The accountant should know the new rate before launch
+(slice 08).
+

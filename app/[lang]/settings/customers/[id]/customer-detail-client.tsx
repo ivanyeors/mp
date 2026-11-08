@@ -476,12 +476,29 @@ export function CustomerDetailClient({
                                 >
                                     {lifecycle.attended_bookings}
                                 </Stat>
-                                <Stat icon={Clock} label="Last purchase">
-                                    {lifecycle.last_purchase_at
-                                        ? formatDate(lifecycle.last_purchase_at)
-                                        : lifecycle.lifecycle_undated
-                                          ? "On Shopify"
-                                          : "None"}
+                                <Stat
+                                    icon={Clock}
+                                    label="Last purchase"
+                                    title={
+                                        lifecycle.last_purchase_dated_by_fitting
+                                            ? "A Shopify-era purchase, dated by their latest fitting record: the in-store visit such an order almost always was."
+                                            : undefined
+                                    }
+                                >
+                                    {lifecycle.last_purchase_at ? (
+                                        <>
+                                            {formatDate(lifecycle.last_purchase_at)}
+                                            {lifecycle.last_purchase_dated_by_fitting ? (
+                                                <span className="block text-xs font-normal text-muted-foreground">
+                                                    Fitting, on Shopify
+                                                </span>
+                                            ) : null}
+                                        </>
+                                    ) : lifecycle.lifecycle_undated ? (
+                                        "On Shopify"
+                                    ) : (
+                                        "None"
+                                    )}
                                 </Stat>
                                 <Stat icon={Clock} label="Last booking">
                                     {lifecycle.last_readjusted_at ? formatDate(lifecycle.last_readjusted_at) : "None"}

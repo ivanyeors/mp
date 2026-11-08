@@ -6,12 +6,15 @@ import { isPartnerMatch, type PartnerMatchRow } from "../partner";
 import { SEEDED_MILESTONES } from "../milestones";
 import { claimBonusOffer } from "../offer";
 import { POINTS_DEFAULTS, PointsSettingsSchema, pointsSettingsFromRows, pointsSettingsToRows, profilePointsView } from "../settings";
-import { POINTS_PER_DOLLAR, formatDollars, formatPoints, formatPointsCount, pointsToDollars } from "../value";
+import { POINTS_PER_DOLLAR, formatDollars, formatEarnRate, formatPoints, formatPointsCount, pointsToDollars } from "../value";
 
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021120000_points_ledger.sql"), "utf8");
 // Points never expire (ADR 0030, 2026-10-31): this one redefines the settings
 // function and the candidates view, so its windows must match too.
 const NEVER_EXPIRE = readFileSync(join(process.cwd(), "supabase/migrations/20261031032017_points_never_expire.sql"), "utf8");
+// The earn rate is 1 (ADR 0030 decision 3, amended 2026-11-08): this one moves
+// the saved 3 to 1 and redefines the settings function's default.
+const EARN_ONE = readFileSync(join(process.cwd(), "supabase/migrations/20261108100200_points_earn_one.sql"), "utf8");
 
 describe("value (ADR 0030 a, b)", () => {
   it("is 100 points to S$1, shown in both", () => {
@@ -21,6 +24,12 @@ describe("value (ADR 0030 a, b)", () => {
     expect(formatPoints(1)).toBe("1 point (S$0.01)");
     expect(formatPointsCount(-500)).toBe("-500 points");
     expect(formatDollars(-5)).toBe("−S$5.00");
+  });
+
+  it("says an earn rate as it is, fractions included", () => {
+    expect(formatEarnRate(1)).toBe("1 point");
+    expect(formatEarnRate(1.5)).toBe("1.5 points");
+    expect(formatEarnRate(3)).toBe("3 points");
   });
 });
 
@@ -34,13 +43,12 @@ describe("settings", () => {
       { key: "points_max_share", value: "1.5" },
       { key: "points_min_redeem", value: "700" },
     ]);
-    expect(s).toMatchObject({ enabled: true, launchAt: "2026-10-31T16:00:00.000Z", earnPerDollar: 3, maxShare: 0.5, minRedeem: 700 });
+    expect(s).toMatchObject({ enabled: true, launchAt: "2026-10-31T16:00:00.000Z", earnPerDollar: 1, maxShare: 0.5, minRedeem: 700 });
   });
 
   it("seeds the same defaults in SQL, and no launch date", () => {
     for (const [key, value] of [
       ["points_enabled", "false"],
-      ["points_earn_per_dollar", "3"],
       ["points_min_redeem", "500"],
       ["points_max_share", "0.5"],
       ["points_claim_bonus", "1000"],
@@ -49,6 +57,13 @@ describe("settings", () => {
       expect(MIGRATION).toContain(`('${key}', '${value}')`);
     }
     expect(MIGRATION).not.toMatch(/\('points_launch_at'/);
+  });
+
+  it("earns 1 point per S$1 by default, in SQL as in TypeScript (ADR 0030, 2026-11-08)", () => {
+    expect(POINTS_DEFAULTS.earnPerDollar).toBe(1);
+    expect(EARN_ONE).toContain("values ('points_earn_per_dollar', '1')");
+    expect(EARN_ONE).toContain("set value = '1', updated_at = now()\n where key = 'points_earn_per_dollar'\n   and btrim(value) = '3';");
+    expect(EARN_ONE).toMatch(/key = 'points_earn_per_dollar'\), 1\),/);
   });
 
   it("has no expiry: no setting, and the row is deleted", () => {

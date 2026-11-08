@@ -6,6 +6,14 @@
 **Blocked by:** the owner confirming the amendment to ADR 0029 decision 10
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:admin`, `area:db`, `area:migration`
 
+> **2026-11-08, dates done another way.** ADR 0042 (m) dates a Migrated customer's latest
+> Shopify-era purchase by their latest Fitting record (owner: "use our customer form timestamp
+> to mark the import as a purchase date"). That dated 1,242 of the 1,617 Shopify-era buyers in
+> production and made 1,014 of them *At risk*. What this slice would still add: dates for the 375
+> with no fitting, and what each order held (*bought*, *more than one pillow*). If it is built,
+> an imported order's date replaces the fitting's for that Customer, and the overview's `lp`
+> join is where the two meet.
+
 ## Goal
 
 A customer who bought on the old shop goes through the same lifecycle as one who bought here
@@ -45,7 +53,8 @@ platform's data, settled once, during the migration.
 - Customers never see imported orders: not in `/account`, not on an order page (ADR 0029
   decision 10, customer side).
 - Imported orders earn no points, pay no commission, deduct no stock and are never fulfilled.
-  They are history.
+  They are history. Their spend already gave **Past-purchase points** once (ADR 0030, amendment
+  of 2026-11-08), so an imported order earning too would pay twice.
 - Nothing reads Shopify after the import. The order mirror stays the Analytics input it is.
 
 ## Acceptance criteria

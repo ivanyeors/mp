@@ -35,7 +35,9 @@ export interface PointsSettings {
 export const POINTS_DEFAULTS: PointsSettings = {
   enabled: false,
   launchAt: null,
-  earnPerDollar: 3,
+  // ADR 0030 decision 3, amended 2026-11-08: 1 point per S$1 (was 3), so
+  // 1% back at 100 points = S$1.
+  earnPerDollar: 1,
   minRedeem: 500,
   maxShare: 0.5,
   claimBonus: 1000,

@@ -9,6 +9,7 @@ import {
   lifecycleDetail,
   lifecycleStage,
   lifecycleUndated,
+  latestPurchase,
 } from "@/lib/crm/lifecycle-stage";
 import { LIFECYCLE_CASES, NOW } from "./lifecycle-stage-cases";
 
@@ -70,6 +71,67 @@ describe("the table", () => {
       expect(lifecycleStage(facts, new Date(c.now))).toBe("lost");
       expect(lifecycleDetail({ ...facts }, new Date(c.now))).toBeNull();
     }
+  });
+});
+
+describe("latestPurchase (ADR 0042 m)", () => {
+  const FIT = "2024-05-01T03:00:00.000Z";
+  const HERE = "2026-10-01T00:00:00.000Z";
+
+  it("dates a Shopify-only buyer by their latest fitting, delivered then", () => {
+    expect(latestPurchase({ hereAt: null, hereDeliveredAt: null, shopifyOrders: 2, lastFittedAt: FIT })).toEqual({
+      at: FIT,
+      deliveredAt: FIT,
+      datedByFitting: true,
+    });
+  });
+
+  it("keeps a later purchase here, and its delivery", () => {
+    expect(latestPurchase({ hereAt: HERE, hereDeliveredAt: null, shopifyOrders: 2, lastFittedAt: FIT })).toEqual({
+      at: HERE,
+      deliveredAt: null,
+      datedByFitting: false,
+    });
+  });
+
+  it("takes a fitting after the purchase here", () => {
+    expect(latestPurchase({ hereAt: FIT, hereDeliveredAt: FIT, shopifyOrders: 1, lastFittedAt: HERE }).datedByFitting).toBe(true);
+  });
+
+  it("gives a tie to the purchase here", () => {
+    expect(latestPurchase({ hereAt: FIT, hereDeliveredAt: null, shopifyOrders: 1, lastFittedAt: FIT })).toEqual({
+      at: FIT,
+      deliveredAt: null,
+      datedByFitting: false,
+    });
+  });
+
+  it("dates nothing without a Shopify-era order: a fitting alone is not a purchase", () => {
+    for (const shopifyOrders of [0, null]) {
+      expect(latestPurchase({ hereAt: null, hereDeliveredAt: null, shopifyOrders, lastFittedAt: FIT })).toEqual({
+        at: null,
+        deliveredAt: null,
+        datedByFitting: false,
+      });
+    }
+  });
+
+  it("leaves a Shopify-era buyer with no fitting undated", () => {
+    const p = latestPurchase({ hereAt: null, hereDeliveredAt: null, shopifyOrders: 3, lastFittedAt: null });
+    expect(p.at).toBeNull();
+    expect(lifecycleUndated({ purchases: 3, lastPurchaseAt: p.at })).toBe(true);
+  });
+
+  it("puts a fitting-dated buyer At risk, and Lapsed, as any other", () => {
+    const at = (fitted: string) => {
+      const p = latestPurchase({ hereAt: null, hereDeliveredAt: null, shopifyOrders: 1, lastFittedAt: fitted });
+      const facts = { purchases: 1, lastPurchaseAt: p.at, lastPurchaseDeliveredAt: p.deliveredAt, bookings: 0, lastBookingAt: null, unsubscribedAt: null };
+      return [lifecycleStage(facts, new Date(NOW)), lifecycleDetail(facts, new Date(NOW))];
+    };
+    expect(at("2024-05-01T00:00:00.000Z")).toEqual(["at_risk", "lapsed"]);
+    expect(at("2025-06-01T00:00:00.000Z")).toEqual(["at_risk", null]);
+    expect(at("2026-06-01T00:00:00.000Z")).toEqual(["new", "settled"]);
+    expect(at("2026-10-20T00:00:00.000Z")).toEqual(["new", "delivered"]);
   });
 });
 

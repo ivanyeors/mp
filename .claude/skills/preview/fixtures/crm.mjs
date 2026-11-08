@@ -20,7 +20,8 @@ const PEOPLE = [
   { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false, ship: "SG", points: 1200 },
   { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], sizes: ["L"], delivered: 10, consent: "not_subscribed", imported: true, said: "no", ship: "SG" },
   { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes", recent: [3], ship: "SG" },
-  { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 790, consent: "not_subscribed", imported: true, said: "no", ship: "MY", lang: "zh-CN" },
+  // ADR 0042 (m): his one purchase was on Shopify, dated by his fitting 26 months ago.
+  { first: "Dev", last: "Nair", stage: "at_risk", detail: "lapsed", purchases: 1, bought: ["basic"], sizes: ["S"], delivered: 790, consent: "not_subscribed", imported: true, said: "no", ship: "MY", lang: "zh-CN", fitDated: true },
   { first: "Elena", last: "Goh", stage: "lead", detail: null, purchases: 0, bought: [], sizes: [], delivered: null, consent: "not_subscribed", imported: true, said: "no", ship: null },
   { first: "Farid", last: "Yusof", stage: "lost", detail: null, purchases: 1, bought: ["premium"], sizes: ["XL"], delivered: 200, consent: "unsubscribed", source: "unsubscribe_link", imported: true, said: "no", ship: "SG" },
   { first: "Grace", last: "Lee", stage: "loyal", detail: "repeat_purchases", purchases: 2, bought: ["premium", "accessory"], sizes: ["M"], delivered: 50, consent: "not_subscribed", imported: true, said: "no", ship: null },
@@ -732,6 +733,8 @@ export default function crm({ now }) {
             last_emailed_at: lastSent ?? "-infinity",
             // Slice 12: the sunset rule's answer, stated per person above.
             unengaged: p.unengaged === true,
+            // ADR 0042 (m): the latest purchase is a Shopify-era one, dated by a fitting.
+            last_purchase_dated_by_fitting: p.fitDated === true,
           };
         }),
     },

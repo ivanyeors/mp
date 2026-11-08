@@ -54,7 +54,8 @@ describe("customer_unengaged", () => {
 
   it("is read by the overview from the latest 6 campaign emails the provider accepted", () => {
     const view = latest(/create (?:or replace )?view (?:public\.)?admin_customer_overview\b[\s\S]*?;/gi);
-    expect(view).toContain("as unengaged from public.customers c");
+    // Later columns follow it (ADR 0042 m appended `last_purchase_dated_by_fitting`).
+    expect(view).toContain("c.created_at, coalesce(en.sent, 0), coalesce(en.clicked, 0), now()) as unengaged,");
     expect(view).toContain(`order by s.sent_at desc, s.id desc limit ${UNENGAGED_AFTER_CAMPAIGNS}`);
     expect(view).toContain("and s.campaign_id is not null and s.status in ('sent', 'bounced', 'complained')");
   });
