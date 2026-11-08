@@ -845284,18 +845284,6 @@
       "weight": 1.0
     },
     {
-      "source": "claude_commit_author",
-      "target": "lib_email_campaigns_store_name",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "context": "user.name",
-      "source_file": "CLAUDE.md",
-      "source_location": "L75",
-      "weight": 1.0
-    },
-    {
       "source": "claude_prd_campaign_audiences_issues_09_fit_checks_and_variables_as_built_2026_10_31",
       "target": "lib_email_campaigns_sender_usesyourpillow",
       "relation": "references",
@@ -875818,5 +875806,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "e5ce74e76b6d46784020e493b1a11575d89a70fa"
+  "built_at_commit": "71f0c5b0020f6b334bb69fa3b8859a570725f21b"
 }
