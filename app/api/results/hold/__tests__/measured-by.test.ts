@@ -83,7 +83,10 @@ vi.mock("@/lib/auth/admin", () => ({
   requireAnyAdmin: h.requireAnyAdmin,
   getAdminContext: vi.fn(async () => h.adminCtx),
 }));
-vi.mock("@/lib/staff/working-as", () => ({ getWorkingAs: vi.fn(async () => h.workingAs) }));
+vi.mock("@/lib/staff/working-as", () => ({
+  getWorkingAs: vi.fn(async () => h.workingAs),
+  actingProfile: vi.fn(async () => h.workingAs),
+}));
 vi.mock("@/lib/authorization-hold", () => ({ createHoldCheckout: h.createHoldCheckout }));
 vi.mock("@/lib/email", () => ({ getEmailTransport: () => ({ send: h.sendEmail }) }));
 vi.mock("@/lib/email/transport", () => ({ getDefaultFromAddress: () => "from@x.test" }));

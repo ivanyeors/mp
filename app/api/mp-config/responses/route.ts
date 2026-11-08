@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isPickableStaffProfile } from "@/lib/staff/admin";
-import { getWorkingAs } from "@/lib/staff/working-as";
+import { actingProfile } from "@/lib/staff/working-as";
 import {
   buildInstoreReviewOnlyPatch,
   shouldCreateInstoreReviewOnly,
@@ -406,14 +406,17 @@ export async function POST(req: Request) {
   }
 
   // "Working as" (slice 10): a Result a Staff session creates without saying
-  // who measured defaults to the profile at this device. Attribution only, and
-  // re-validated against the signed-in login.
+  // who measured defaults to the profile at this device — the one chosen under
+  // "Working as", or a personal login's only profile, which never sees that
+  // picker. Reading the cookie alone left every personal login's in-store
+  // Result `by_user`, and so without its Measurement service fee (ADR 0024).
+  // Attribution only, and re-validated against the signed-in login.
   if (existing == null && !parsed.data.measuredBy) {
     const staff = await getAdminContext();
-    const workingAs = staff ? await getWorkingAs(staff.memberId) : null;
-    if (workingAs) {
+    const measuring = staff ? await actingProfile(staff.memberId) : null;
+    if (measuring) {
       row.measured_by_type = "staff";
-      row.measured_by_staff_id = workingAs.id;
+      row.measured_by_staff_id = measuring.id;
     }
   }
 
