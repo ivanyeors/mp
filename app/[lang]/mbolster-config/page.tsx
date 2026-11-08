@@ -9,7 +9,7 @@ import { getSiteOrigin } from "@/lib/site-url";
 import { getPartnerByCode } from "@/lib/referrals";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { loadServicePrices } from "@/lib/pricing/service-prices";
-import { getWorkingAs } from "@/lib/staff/working-as";
+import { actingProfile } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { MbolsterConfigClient } from "./mbolster-config-client";
 
@@ -45,11 +45,12 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
     partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
   ]);
 
-  // Service fees (ADR 0024): a Staff device working as a profile is measuring this
-  // customer, and the hold stamps the new Result `staff` — so the preview shows the fee.
-  const [servicePrices, workingAs] = await Promise.all([
+  // Service fees (ADR 0024): the profile at a Staff device (chosen under "Working
+  // as", or a personal login's only one) is measuring this customer, and the hold
+  // stamps the new Result `staff` — so the preview shows the fee.
+  const [servicePrices, measuringProfile] = await Promise.all([
     loadServicePrices(supabaseAdmin()).catch(() => null),
-    staffCtx ? getWorkingAs(staffCtx.memberId) : Promise.resolve(null),
+    staffCtx ? actingProfile(staffCtx.memberId) : Promise.resolve(null),
   ]);
 
   const jsonLd = buildConfiguratorProductJsonLd({
@@ -78,7 +79,7 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
         // Same gate as /mp-config: assist edits a Result, `viewer` is read-only.
         staffAssist={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
         servicePrices={servicePrices}
-        measuredByStaff={Boolean(workingAs)}
+        measuredByStaff={Boolean(measuringProfile)}
         partner={
           partner
             ? {

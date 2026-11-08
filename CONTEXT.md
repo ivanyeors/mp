@@ -227,7 +227,7 @@ The amount charged for a **Service** on a **Result** or an **Order**: the **Serv
 _Avoid_: "fee" alone in money-ledger context (`order_payments.type = 'fee'` is Stripe's dispute fee — a cost to us, not a charge to the customer); "surcharge"
 
 **Measurement service**:
-**Staff** measuring a customer for a customisation. Charged automatically when the **Result**'s `measured_by_type = 'staff'`, at the rate for its **Tier** (`assigned_tier ?? suggested_tier`): Premium → Measurement (Premium), Basic → Measurement (Basic). **Mbolster** carries no measurement fee, whoever measured (owner, 2026-10-13). Self-measurement online is free. Derived on every repricing from who measured — never stored as its own flag.
+**Staff** measuring a customer for a customisation. Charged automatically when the **Result**'s `measured_by_type = 'staff'`, at the rate for its **Tier** (`assigned_tier ?? suggested_tier`): Premium → Measurement (Premium), Basic → Measurement (Basic). **Mbolster** carries no measurement fee, whoever measured (owner, 2026-10-13); on a **Paired build** the fee is the Mpillow's, and stays its own row on every step, the Mbolster's included. Self-measurement online is free. Derived on every repricing from who measured — never stored as its own flag.
 _Avoid_: a customer-ticked option in the configurator; treating the "Have us measure you" link as the charge (the link books the visit; the charge follows who measured); "customisation charge"
 
 **Authorization hold**:
@@ -319,7 +319,7 @@ The built-in **Role** that can grant or remove Owner. There is always at least o
 _Avoid_: using Owner for day-to-day access — **Admin** has every page too
 
 **Staff profile**:
-A named person who works under a **Member** (`mp_staff`). A **Result** is "measured by" a Staff profile, and a **Telegram link** belongs to one. A profile cannot sign in and never has more access than its Member. Archived, never deleted, so historical attribution survives; archived profiles drop out of pickers but keep their name on old **Results**. On a shared login, the person at the device can pick who they are "working as", which defaults new Results' measured-by and names them in the Audit Log — attribution, never authorisation.
+A named person who works under a **Member** (`mp_staff`). A **Result** is "measured by" a Staff profile, and a **Telegram link** belongs to one. A profile cannot sign in and never has more access than its Member. Archived, never deleted, so historical attribution survives; archived profiles drop out of pickers but keep their name on old **Results**. On a shared login, the person at the device can pick who they are "working as", which defaults new Results' measured-by and names them in the Audit Log — attribution, never authorisation. A personal login (one live profile) never sees that picker: its one profile is who measured the Results it creates. A **Member** customising on the configurator is always Staff, whatever customer account the same login also has: a shared login nobody at the device has picked on is asked who's measuring on the start screen before the Draft exists.
 _Avoid_: "staff member" (ambiguous with **Staff**); treating a profile as a login
 
 **Telegram link**:

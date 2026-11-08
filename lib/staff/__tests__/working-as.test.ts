@@ -25,7 +25,7 @@ vi.mock("@/lib/supabase/server", async () => {
   return { supabaseAdmin: () => fakeSupabaseAdmin(h.db) };
 });
 
-const { getWorkingAs, validWorkingAs } = await import("@/lib/staff/working-as");
+const { actingProfile, getWorkingAs, validWorkingAs } = await import("@/lib/staff/working-as");
 const { getAdminContext } = await import("@/lib/auth/admin");
 const { recordAdminAction } = await import("@/lib/auth/audit");
 const { POST } = await import("@/app/api/admin/working-as/route");
@@ -72,6 +72,24 @@ describe("validWorkingAs", () => {
     expect(await getWorkingAs("m-studio")).toBeNull();
     h.cookie = KAI;
     expect(await getWorkingAs("m-studio")).toEqual({ id: KAI, name: "Kai Lin" });
+  });
+});
+
+describe("actingProfile: who measured a Result a Staff session creates (ADR 0024)", () => {
+  it("is a personal login's only profile, which never sees the picker", async () => {
+    // No cookie can exist here: the picker renders only for two or more profiles.
+    expect(await actingProfile("m-other")).toEqual({ id: OTHERS, name: "Sam" });
+  });
+
+  it("is nobody on a shared login until someone picks who they are", async () => {
+    expect(await actingProfile("m-studio")).toBeNull();
+    h.cookie = JESS;
+    expect(await actingProfile("m-studio")).toEqual({ id: JESS, name: "Jess" });
+  });
+
+  it("does not count an archived profile toward a login's only one", async () => {
+    h.db.mp_staff = h.db.mp_staff.filter((p) => p.id !== KAI);
+    expect(await actingProfile("m-studio")).toEqual({ id: JESS, name: "Jess" });
   });
 });
 

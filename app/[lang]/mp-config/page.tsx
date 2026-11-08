@@ -12,7 +12,7 @@ import { loadResumeFinish } from "@/lib/results/resume-finish";
 import { loadStaffEditResult } from "@/lib/results/staff-edit";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { loadServicePrices, type ServicePrices } from "@/lib/pricing/service-prices";
-import { getWorkingAs } from "@/lib/staff/working-as";
+import { actingProfile, memberProfiles } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { MpConfigClient } from "./mp-config-client";
 
@@ -76,9 +76,12 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
     ]);
   // Service fees (ADR 0024). The preview shows the Measurement service only when
   // the server will charge it: a live Result says who measured; a new session on a
-  // Staff device working as a profile is stamped `staff` when its Draft is created.
+  // Staff device is stamped `staff` when its Draft is created, measured by the
+  // profile at the device — the one chosen under "Working as", or a personal
+  // login's only profile (`actingProfile`, the same rule the Draft create uses).
   const servicePrices: ServicePrices | null = await loadServicePrices(supabaseAdmin()).catch(() => null);
   const liveResultId = staffEdit || resumeFinish ? resultId : undefined;
+  const measuring = !liveResultId && staffCtx ? await actingProfile(staffCtx.memberId) : null;
   const measuredByStaff = liveResultId
     ? await supabaseAdmin()
         .from("mp_config_responses")
@@ -86,7 +89,17 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         .eq("id", liveResultId)
         .maybeSingle()
         .then(({ data }) => data?.measured_by_type === "staff")
-    : Boolean(staffCtx && (await getWorkingAs(staffCtx.memberId)));
+    : Boolean(measuring);
+  // A Staff login is always Staff here, the customer account it may also have
+  // notwithstanding. On a shared login where nobody at this device has chosen
+  // under "Working as", the start screen asks who is measuring before the Draft
+  // exists, so the Draft is stamped `staff` like any other Staff session's.
+  // Partner runs and Assist links are someone else's session: never asked.
+  const measurerProfiles =
+    staffCtx && !liveResultId && !measuring && !partner && !assistStaff
+      ? await memberProfiles(staffCtx.memberId)
+      : [];
+  const pickMeasurer = measurerProfiles.length > 1 ? measurerProfiles : null;
 
   const info = {
     h1: intro.h1,
@@ -151,6 +164,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         assistCode={assistStaff?.code ?? null}
         servicePrices={servicePrices}
         measuredByStaff={measuredByStaff}
+        pickMeasurer={pickMeasurer}
         partner={
           partner
             ? {
