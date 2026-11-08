@@ -29,7 +29,7 @@ is server-only, and the customer's own key cannot call the function.
 | `import_default` | Customers → Import from Shopify → *Subscribe imported customers* | subscribe, only someone nobody has asked | `subscribe_migrated_customers()` (ADR 0039) |
 | `shopify_unsubscribed` | the same card, from Shopify's unsubscribed list | unsubscribe, except someone who chose to subscribe here since | `subscribe_migrated_customers()` |
 | `checkout` | the box at shop checkout, ticked by default | subscribe, only someone nobody has asked | `app/api/shop/checkout` → `recordCheckoutConsent()` |
-| `customisation` | the box on a customisation's contact step, ticked by default: Mpillow, Basic, Mbolster, a Paired build (once, on the Mpillow), an Assisted customisation | subscribe, only someone nobody has asked | `app/api/results/hold` → `recordBoxConsentByEmail()` |
+| `customisation` | the box on a customisation's contact step, ticked by default: Mpillow, Basic, Mbolster, a Paired build (once, on the Mpillow), an Assisted customisation; and the same box under a guest's email on the Mpillow and Basic first question (ADR 0049) | subscribe, only someone nobody has asked | `app/api/results/hold` → `recordBoxConsentByEmail()`; the first question: `app/api/mp-config/responses` (`draftEmail`, once the Draft is saved) → `recordBoxConsentByEmail()` |
 | `appointment` | the box on booking: a guest's customisation visit, a signed-in re-adjustment (free or paid) | subscribe, only someone nobody has asked | `app/api/appointments/book` → `recordBoxConsentByEmail()`; `app/api/readjustments/book` and `/checkout` → `recordBoxConsent()` |
 | `sign_in` | the box on **Sign in**'s Customer tab, ticked by default; recorded once the link, code or Google proves the address, never for a Staff login | subscribe, only someone nobody has asked | `completeSignIn()` (`lib/auth/complete-sign-in.ts`), from `/auth/callback`, `finishSignIn` and `/auth/confirm` (ADR 0041) |
 | `newsletter` | *Get our emails* in the site footer: the same sign-in link and code | subscribe, only someone nobody has asked; someone who unsubscribed is offered *Email me again* (`account`) | `completeSignIn()`, as above |
@@ -48,7 +48,8 @@ says the same in its own words. The three form boxes are:
 - **a boolean in the request**, absent meaning unticked, so a tab opened
   before the box sends nothing new;
 - **recorded after the thing it rides on succeeds** (the Order, the hold, the
-  booking), and **never fails it**: an error is logged;
+  booking, the save of a guest's Draft with its first-question email), and
+  **never fails it**: an error is logged;
 - **for the email typed on the form.** Checkout and a re-adjustment already
   have their Customer. A customisation or a guest's booking finds the Customer
   by that email, or creates one (a *Lead* until they buy), and only when the
@@ -81,6 +82,17 @@ Customer (clicked none of their last 6 campaigns, and *At risk · Lapsed* or a
 ticks *Include unengaged*. Unengaged is never consent: the Customer stays
 `subscribed`, and no consent event is written. An **Audience** or a
 **Segment** only narrows; neither ever reaches someone the claim refuses.
+
+## Who receives a Draft reminder
+
+A **Draft reminder** (ADR 0050, `lib/draft-reminders`) is not a campaign, but
+it reads consent the same way: it goes only to a Customer whose
+`marketing_email` is `subscribed`, which for a guest is the box under the email
+on the first question. It is sent like a campaign, with an Unsubscribe link and
+`List-Unsubscribe`, and skips an address a campaign bounced from or that
+reported one as spam. The Rest period does not apply. It writes no consent, and
+each send is a `customer_emails` row (`results.draft_reminder_<1d|1w|1m>`, the
+Draft as entity), not a `customer_campaign_sends` row.
 
 ## Why they unsubscribe
 

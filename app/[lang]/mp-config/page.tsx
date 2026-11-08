@@ -9,6 +9,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { getStaffByAssistCode } from "@/lib/assist-link";
 import { loadResumeFinish } from "@/lib/results/resume-finish";
+import { loadResumeDraft } from "@/lib/results/resume-draft";
 import { loadStaffEditResult } from "@/lib/results/staff-edit";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { loadServicePrices, type ServicePrices } from "@/lib/pricing/service-prices";
@@ -38,6 +39,8 @@ type Props = {
     token?: string;
     /** `1` → Staff re-configuration of an existing Result (lib/results/staff-edit). */
     edit?: string;
+    /** A guest's own Draft, reopened from its continue link with `token` (ADR 0050). */
+    draft?: string;
   }>;
 };
 
@@ -49,6 +52,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
     result: resultId,
     token: resultToken,
     edit: editFlag,
+    draft: draftId,
   } = await searchParams;
   const staffEditRequested = editFlag === "1";
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
@@ -57,7 +61,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
   // Partner-assist (#78) is INDEPENDENT of staff auth — it comes from the ?partner
   // URL code, re-resolved server-side (never a client-supplied id).
   // The Assist link (?assist=) is a THIRD, independent axis — see the prop below.
-  const [offer, faq, staffCtx, partner, assistStaff, resumeFinish, staffEdit] =
+  const [offer, faq, staffCtx, partner, assistStaff, resumeFinish, staffEdit, resumeDraft] =
     await Promise.all([
       getConfiguratorOfferRange("pillow"),
       getPageFaq("mp-config", locale),
@@ -73,6 +77,11 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
       // and null for anything not editable — a guest following this link lands
       // on the ordinary configurator and learns nothing about the Result.
       staffEditRequested ? loadStaffEditResult(resultId) : Promise.resolve(null),
+      // Continue link (ADR 0050): the guest's own Draft, by its access token.
+      // Null for anything else, which opens the ordinary configurator.
+      draftId && !resultId && !staffEditRequested
+        ? loadResumeDraft(draftId, resultToken)
+        : Promise.resolve(null),
     ]);
   // Service fees (ADR 0024). The preview shows the Measurement service only when
   // the server will charge it: a live Result says who measured; a new session on a
@@ -80,7 +89,9 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
   // profile at the device — the one chosen under "Working as", or a personal
   // login's only profile (`actingProfile`, the same rule the Draft create uses).
   const servicePrices: ServicePrices | null = await loadServicePrices(supabaseAdmin()).catch(() => null);
-  const liveResultId = staffEdit || resumeFinish ? resultId : undefined;
+  // A reopened Draft says who measured it too: one Staff measured in the studio
+  // and the guest finishes at home still carries the Measurement service.
+  const liveResultId = staffEdit || resumeFinish ? resultId : resumeDraft?.id;
   const measuring = !liveResultId && staffCtx ? await actingProfile(staffCtx.memberId) : null;
   const measuredByStaff = liveResultId
     ? await supabaseAdmin()
@@ -162,6 +173,12 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         // travels back to the server on save, where the code is re-resolved and
         // the Draft Result stamped `source = 'staff_assisted'`.
         assistCode={assistStaff?.code ?? null}
+        // Email first (ADR 0049): anyone on no Admin Panel login is a guest,
+        // and their first question asks their email, so the Draft Result Staff
+        // see in Results is one they can follow up. A Staff device, an Assist
+        // link opened on one included, asks the shopper's email at the end.
+        askEmailFirst={!staffCtx}
+        resumeDraft={resumeDraft}
         servicePrices={servicePrices}
         measuredByStaff={measuredByStaff}
         pickMeasurer={pickMeasurer}

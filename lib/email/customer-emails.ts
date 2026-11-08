@@ -96,6 +96,8 @@ export async function dispatchCustomerEmail(params: {
   render: () => RenderedEmail | Promise<RenderedEmail>;
   /** Reply-To, e.g. the support inbox for an email whose footer says "reply to this email". */
   replyTo?: string;
+  /** Extra message headers: the one-click unsubscribe pair on an email sent like a campaign. */
+  headers?: Record<string, string>;
   admin?: SupabaseClient;
   transport?: EmailTransport;
 }): Promise<SendOutcome> {
@@ -119,6 +121,7 @@ export async function dispatchCustomerEmail(params: {
       to: params.to,
       from: getDefaultFromAddress(),
       ...(params.replyTo ? { replyTo: params.replyTo } : {}),
+      ...(params.headers ? { headers: params.headers } : {}),
     });
     await markCustomerEmailSent(admin, claim.id);
     return { sent: true, transport: transport.name, id: result.id };
