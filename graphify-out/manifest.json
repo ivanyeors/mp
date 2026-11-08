@@ -5826,8 +5826,8 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1794119871.937812,
-    "seen": 1794120359.2799327,
+    "mtime": 1794120377.7899406,
+    "seen": 1794122027.7114182,
     "ast_hash": "8817e252f831d2b32a495c7bec90273c",
     "semantic_hash": ""
   },
@@ -6984,8 +6984,8 @@
     "semantic_hash": ""
   },
   "lib/email/__fixtures__/samples.ts": {
-    "mtime": 1794119746.345202,
-    "seen": 1794120359.2694151,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7070448,
     "ast_hash": "ca098e69874e21f95257877ca201b539",
     "semantic_hash": ""
   },
@@ -12900,8 +12900,8 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/claim.test.ts": {
-    "mtime": 1794119999.7350554,
-    "seen": 1794120359.2690547,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7066855,
     "ast_hash": "5f1feac0b16784dc61b22d64acac4f7f",
     "semantic_hash": ""
   },
@@ -12918,8 +12918,8 @@
     "semantic_hash": ""
   },
   "lib/email/account.ts": {
-    "mtime": 1794119721.3500211,
-    "seen": 1794120359.2694783,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7071116,
     "ast_hash": "836456fd629dbaa186f33590b0a8f761",
     "semantic_hash": ""
   },
@@ -13116,8 +13116,8 @@
     "semantic_hash": ""
   },
   "app/api/settings/customers/__tests__/timeline-route.test.ts": {
-    "mtime": 1794119999.73622,
-    "seen": 1794120359.2671313,
+    "mtime": 1794120377.7904942,
+    "seen": 1794122027.7052402,
     "ast_hash": "ae0b6725f4b90e79c9df18683027bac5",
     "semantic_hash": ""
   },
@@ -13992,8 +13992,8 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/wave-sender.test.ts": {
-    "mtime": 1794119999.7356641,
-    "seen": 1794120359.2690768,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7067056,
     "ast_hash": "6f9e11961c84fa756fd81032e76448fc",
     "semantic_hash": ""
   },
@@ -14040,8 +14040,8 @@
     "semantic_hash": ""
   },
   "lib/email/migration.ts": {
-    "mtime": 1794119721.3472896,
-    "seen": 1794120359.2695124,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7071452,
     "ast_hash": "f1244378e45a78e97465bde075c48639",
     "semantic_hash": ""
   },
@@ -14208,14 +14208,14 @@
     "semantic_hash": ""
   },
   "app/api/settings/discounts/points/route.ts": {
-    "mtime": 1794119479.7799199,
-    "seen": 1794120359.2671654,
+    "mtime": 1794120377.7904942,
+    "seen": 1794122027.705283,
     "ast_hash": "7ce392b17ee7a93a6829e3e103e36f4b",
     "semantic_hash": ""
   },
   "app/api/shop/checkout/__tests__/points.test.ts": {
-    "mtime": 1794119833.596751,
-    "seen": 1794120359.2672043,
+    "mtime": 1794120377.7904942,
+    "seen": 1794122027.70539,
     "ast_hash": "6495e185122fc5deeaf3f594d3e87046",
     "semantic_hash": ""
   },
@@ -14232,8 +14232,8 @@
     "semantic_hash": ""
   },
   "app/api/shop/points/allowance/__tests__/allowance.test.ts": {
-    "mtime": 1794119819.3247523,
-    "seen": 1794120359.267309,
+    "mtime": 1794120377.7904942,
+    "seen": 1794122027.705561,
     "ast_hash": "d49096d544a9ddcab10ee2b486d66f9e",
     "semantic_hash": ""
   },
@@ -14274,8 +14274,8 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/rules.ts": {
-    "mtime": 1794120033.3719862,
-    "seen": 1794120359.2694018,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7070322,
     "ast_hash": "139d1fa4bc5bf731433955217c349ee5",
     "semantic_hash": ""
   },
@@ -14310,8 +14310,8 @@
     "semantic_hash": ""
   },
   "lib/email/__tests__/order-points.test.ts": {
-    "mtime": 1794119700.100306,
-    "seen": 1794120359.2694526,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.707083,
     "ast_hash": "30c81b914a5137c48c34703cd56b3448",
     "semantic_hash": ""
   },
@@ -14346,14 +14346,14 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/order.test.ts": {
-    "mtime": 1794119626.756007,
-    "seen": 1794120359.2698424,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7076473,
     "ast_hash": "189d69ecf2fb2d59ea82d1ce22186477",
     "semantic_hash": ""
   },
   "lib/points/__tests__/points.test.ts": {
-    "mtime": 1794119598.3109183,
-    "seen": 1794120359.269844,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7076495,
     "ast_hash": "44477af73325bedcbcd7eefc09ed7b9a",
     "semantic_hash": ""
   },
@@ -14364,14 +14364,14 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/spend.test.ts": {
-    "mtime": 1794119662.1454556,
-    "seen": 1794120359.2698467,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7076547,
     "ast_hash": "1dddd048b2891d5fa46e36703148b496",
     "semantic_hash": ""
   },
   "lib/points/__tests__/terms.test.ts": {
-    "mtime": 1794119668.165079,
-    "seen": 1794120359.2698486,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7076674,
     "ast_hash": "e4a42a2d58810d3be28b825ff0e0bf99",
     "semantic_hash": ""
   },
@@ -14424,26 +14424,26 @@
     "semantic_hash": ""
   },
   "lib/points/settings.ts": {
-    "mtime": 1794119463.3506317,
-    "seen": 1794120359.2698636,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.707693,
     "ast_hash": "1f31ddddec5f94ab36f3b39a1075bffb",
     "semantic_hash": ""
   },
   "lib/points/spend.ts": {
-    "mtime": 1794119457.006075,
-    "seen": 1794120359.269865,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.707696,
     "ast_hash": "ca802b9fc43fb2ccaa977af196672121",
     "semantic_hash": ""
   },
   "lib/points/terms.ts": {
-    "mtime": 1794119479.7801008,
-    "seen": 1794120359.2698665,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.707698,
     "ast_hash": "71ffb8a8577aee6fa4753d07b0add606",
     "semantic_hash": ""
   },
   "lib/points/value.ts": {
-    "mtime": 1794119457.005171,
-    "seen": 1794120359.2698681,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7077003,
     "ast_hash": "02069f1e3ea35270567689f6e0d08003",
     "semantic_hash": ""
   },
@@ -14604,14 +14604,14 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/loyalty-points-prd.md": {
-    "mtime": 1794119869.5190685,
-    "seen": 1794120359.2791579,
+    "mtime": 1794120377.7847703,
+    "seen": 1794122027.7105556,
     "ast_hash": "279cd7aafd345c8a2703185103e54815",
     "semantic_hash": ""
   },
   "docs/adr/0030-loyalty-points.md": {
-    "mtime": 1794119863.2514372,
-    "seen": 1794120359.280031,
+    "mtime": 1794120377.7904942,
+    "seen": 1794122027.7115853,
     "ast_hash": "3fef198075e0cd735f012f77ca64d31c",
     "semantic_hash": ""
   },
@@ -14652,8 +14652,8 @@
     "semantic_hash": ""
   },
   "lib/admin-docs/__tests__/points.test.ts": {
-    "mtime": 1794119686.9960637,
-    "seen": 1794120359.2682836,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7058814,
     "ast_hash": "61118216b36ed684de3bc4324a449e26",
     "semantic_hash": ""
   },
@@ -14664,8 +14664,8 @@
     "semantic_hash": ""
   },
   "lib/admin-docs/points.ts": {
-    "mtime": 1794119487.6563776,
-    "seen": 1794120359.268296,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7058926,
     "ast_hash": "ce239164065269ade09fc6c7baec24a6",
     "semantic_hash": ""
   },
@@ -14676,14 +14676,14 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/milestones.test.ts": {
-    "mtime": 1794119619.4202704,
-    "seen": 1794120359.269841,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7076447,
     "ast_hash": "0cc5b3cc7d96fd1fb8aedbfe5ecc70ae",
     "semantic_hash": ""
   },
   "lib/points/milestones.ts": {
-    "mtime": 1794119463.3510633,
-    "seen": 1794120359.2698553,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7076786,
     "ast_hash": "124ec5b03e5355984b410733d415e46f",
     "semantic_hash": ""
   },
@@ -16320,8 +16320,8 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/__tests__/starters.test.ts": {
-    "mtime": 1794120087.2680485,
-    "seen": 1794120359.2693584,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7069902,
     "ast_hash": "28807ecdda37fba645670b6174681d43",
     "semantic_hash": ""
   },
@@ -16902,8 +16902,8 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/points.mjs": {
-    "mtime": 1794119502.527192,
-    "seen": 1794120359.2664168,
+    "mtime": 1794120377.7847703,
+    "seen": 1794122027.7043655,
     "ast_hash": "e70b268be008319c7cdc26561479498f",
     "semantic_hash": ""
   },
@@ -16980,8 +16980,8 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/crm.mjs": {
-    "mtime": 1794119505.623961,
-    "seen": 1794120359.2663805,
+    "mtime": 1794120377.7847703,
+    "seen": 1794122027.7043307,
     "ast_hash": "de004c88c4dfdce7132e2fa8a934d5e0",
     "semantic_hash": ""
   },
@@ -18474,14 +18474,14 @@
     "semantic_hash": ""
   },
   "supabase/tests/loyalty-points/assert-10-past-purchases.sql": {
-    "mtime": 1794119426.882945,
-    "seen": 1794120359.2751834,
+    "mtime": 1794120377.8647702,
+    "seen": 1794122027.7101343,
     "ast_hash": "2ff97069af66f46fcf62db4cea963194",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/10-past-purchase-points.md": {
-    "mtime": 1794119869.5155883,
-    "seen": 1794120359.2791529,
+    "mtime": 1794120377.7847703,
+    "seen": 1794122027.7105498,
     "ast_hash": "1a537056713926149518c65fc93da91e",
     "semantic_hash": ""
   },

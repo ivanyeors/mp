@@ -9,7 +9,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { MAX_MILESTONES, milestoneCostRows, type PointsMilestone } from "@/lib/points/milestones";
+import { MAX_MILESTONES, SEEDED_MILESTONES, milestoneCostRows, type PointsMilestone } from "@/lib/points/milestones";
 import type { PointsSummary } from "@/lib/points/server";
 import type { PointsSettings } from "@/lib/points/settings";
 import { POINTS_PER_DOLLAR, formatDollarsShort, formatPoints, percentBack } from "@/lib/points/value";
@@ -71,7 +71,7 @@ function MilestonesField({
         onChange(milestones.map((m, j) => (j === i ? { ...m, ...patch } : m)));
     const add = () => {
         const last = milestones[milestones.length - 1];
-        onChange([...milestones, last ? { at: last.at * 2, bonus: last.bonus * 2 } : { at: 1000, bonus: 100 }]);
+        onChange([...milestones, last ? { at: last.at * 2, bonus: last.bonus * 2 } : { ...SEEDED_MILESTONES[0]! }]);
     };
 
     return (
@@ -103,7 +103,7 @@ function MilestonesField({
                                         id={`points-ms-at-${i}`}
                                         type="number"
                                         step={POINTS_PER_DOLLAR}
-                                        min={100}
+                                        min={POINTS_PER_DOLLAR}
                                         value={Number.isFinite(m.at) ? m.at : ""}
                                         onChange={(e) => setRow(i, { at: Number(e.target.value) })}
                                     />
@@ -114,7 +114,7 @@ function MilestonesField({
                                         id={`points-ms-bonus-${i}`}
                                         type="number"
                                         step={POINTS_PER_DOLLAR}
-                                        min={100}
+                                        min={POINTS_PER_DOLLAR}
                                         value={Number.isFinite(m.bonus) ? m.bonus : ""}
                                         onChange={(e) => setRow(i, { bonus: Number(e.target.value) })}
                                     />
