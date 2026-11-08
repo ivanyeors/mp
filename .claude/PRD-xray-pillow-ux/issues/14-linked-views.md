@@ -68,3 +68,28 @@ Ivan's brief (7-11-2026): arranging fillings should feel like stuffing a real pi
   - a top-view drag into a free cell moves it on the cut mid-drag;
   - a dive drag is followed by the cut.
 - [ ] Ivan on a deployed build, tablet and phone.
+
+## Round 2 (Ivan, 8-11-2026): precise by default, no keys, fluid Layers
+
+> "I want precision to not need any pressing of buttons. It should come naturally on desktop and mobile … precise by default and also fluid in rearranging the fillings' layers."
+
+- **No jump on pickup.** A held filling stays under the pointer at the point it was picked up, in both views. Before, the cut re-centred it on the pointer. What it is over is decided by its centre, so picking it up by an edge never changes where it goes:
+  - the cut's column and Layer band;
+  - the top view's cell (a layer row under the pointer still names that Layer).
+- **Slowing down is the fine control** (`lib/dnd/fine-drag.ts`):
+  - At an ordinary drag (200 px a second and up) the filling follows one to one.
+  - Creeping (50 px a second and under), it moves 0.3 of the pointer's travel, so the last millimetre needs no key on a mouse or a finger.
+  - Moving on draws it back under the pointer, so it never trails a normal drag.
+  - Measured in Chromium on the Configure page: 12 px of creep moved a pouch 3 mm on the cut and 5 mm on the top view.
+  - Speed is in screen pixels, so it feels the same on a phone and a desktop.
+- **Snaps where a hand aims, only at a normal pace** (`snapAlongCentre`): home (un-nudged, which clears its offset), a column's middle, flush with a column's edge, and home across in the top view.
+  - The pull reaches 7 screen px. It stands aside while creeping, so fine placement is never blocked.
+  - Slowing on a snap creeps on from it rather than jumping off it.
+  - The cut draws the snap's line; a phone buzzes once where it can.
+- **The badge.** A pill over the held filling says where it lands, `40–191 mm · centred`. It sits above the finger on a phone, and shows where the filling stands when it has nowhere to go.
+- **No Layer picker between drag and drop.** A filling dropped on a stacked cell in the top view lands on its top Layer with room, at its place in that row. Both views show it while it is held. Depth is changed on the cut by dragging up or down through the Layer bands, or on a layer row in the dive panel.
+- **Fluid reflow.** While a filling is held, both views ease each preview's soft shapes over 130 ms (`HELD_EASE_MS`) instead of snapping, so the stack flows as it passes through the Layers. The release eases into the full settle.
+- **The cut's ghost** is the filling's own size, light and dashed, so the solid landing reads through it.
+- **The keys stay as a shortcut, never needed:** Alt + arrows (5 mm), Alt + Shift + arrows (1 mm).
+
+Tests: `fine-drag.test.ts` (gain, no trailing at an ordinary pace, creep, catch-up, hold on a snap). `slab-drag.test.ts` (the snap places, home clears the offset, no snap places exactly). `pouch-drag.test.ts` (a stacked cell takes the drop on its top Layer). `xray-dive.check.ts`: one sunburst (the add picker), the fine drag and the centre's target. Browser: mouse at a normal pace then a creep on both views; down through the Layer bands on the cut; a drop on a stacked cell with no picker; a finger drag on a 390 px phone (no page scroll, the badge above the finger, the cut following).

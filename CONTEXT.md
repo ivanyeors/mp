@@ -196,7 +196,7 @@ How the **Cross-section view** draws its pieces (ADR 0025): the fit's pieces, st
 _Avoid_: reading a loft or fit number off the soft shapes; "physics" for the fit model (the fit is arithmetic; only the drawing is physical); merging pieces into one mass
 
 **Nudge**:
-A fine, millimetre-step move of one piece (slice 08), persisted as visual-only offsets that never change the **Layer** or the **Insert order** — so the pack list and the fingerprint cannot see it. Front-to-back a nudged piece slides anywhere its **Layer** leaves free in its **Section**: its own column and the empty ones beside it, never into a neighbour of its own Layer (7-11-2026, the same rule in both views); once its centre is in another **sub-section** it is in that **cell** — a move. Distinct from a move made on purpose, which changes the **cell** or **Layer** where it is dropped.
+A fine, millimetre-step move of one piece (slice 08), persisted as visual-only offsets that never change the **Layer** or the **Insert order** — so the pack list and the fingerprint cannot see it. Front-to-back a nudged piece slides anywhere its **Layer** leaves free in its **Section**: its own column and the empty ones beside it, never into a neighbour of its own Layer (7-11-2026, the same rule in both views); once its centre is in another **sub-section** it is in that **cell** — a move. Usually made by dragging, which is precise by default: a creeping hand moves the piece a fraction of its travel (8-11-2026); the Alt-arrow keys are a shortcut. Distinct from a move made on purpose, which changes the **cell** or **Layer** where it is dropped.
 _Avoid_: a nudge that stands a pouch in a neighbour of its own Layer; reading offsets into anything but the drawing
 
 **Natural settle**:

@@ -144,6 +144,9 @@ export const sameSoftBodySettings = (a: SoftBodySettings, b: SoftBodySettings) =
  */
 export const DRAFT_STEPS = 8;
 
+/** How long a held pouch's preview eases from one pointer step's shapes to the next, ms: quick, so it follows the hand. */
+export const HELD_EASE_MS = 130;
+
 /** The Settings a live preview settles with: the same, only shorter. */
 export function draftSoftBody(s: SoftBodySettings): SoftBodySettings {
   return s.steps <= DRAFT_STEPS ? s : { ...s, steps: DRAFT_STEPS };

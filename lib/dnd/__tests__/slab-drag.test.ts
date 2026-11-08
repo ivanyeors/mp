@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { cellLayers } from "@/lib/configurator/staff-assist";
-import { alongExtent, applySlabDrop, cellBands, describeSlabTarget, nudgeSlab, placeAlongAt, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
+import { alongExtent, applySlabDrop, cellBands, describeSlabTarget, homeCentreMm, nudgeSlab, placeAlongAt, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, snapAlongCentre, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
 import type { PillowPlacement, Section, SubSection } from "@/lib/spatial-fillings/core";
 import { alongSlabs } from "@/lib/spatial-fillings/cross-section";
 import { GENERIC_POUCH, PILLOW_DIMENSIONS, resolveDims, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -266,5 +266,32 @@ describe("placeAlongAt: one front ↔ back writer for both views", () => {
     const off = r.placements[0].offsetYMm!;
     expect(Number.isInteger(off)).toBe(true);
     expect(off).toBe(12);
+  });
+});
+
+describe("snapping a drop onto the places a hand aims for", () => {
+  it("snapAlongCentre: home first, then a column's middle or edges, only within the radius", () => {
+    // 80 mm pouch, 110 mm columns, home at 160.
+    expect(snapAlongCentre(162, 80, 110, 160, 4)).toEqual({ centreMm: 160, snap: "home" });
+    expect(snapAlongCentre(57, 80, 110, 160, 4)).toEqual({ centreMm: 55, snap: "centred" });
+    expect(snapAlongCentre(42, 80, 110, 160, 4)).toEqual({ centreMm: 40, snap: "front edge" });
+    expect(snapAlongCentre(178, 80, 110, 160, 4)).toEqual({ centreMm: 180, snap: "back edge" });
+    expect(snapAlongCentre(130, 80, 110, 160, 4)).toEqual({ centreMm: 130, snap: null });
+    expect(snapAlongCentre(162, 80, 110, 160, 0)).toEqual({ centreMm: 162, snap: null });
+  });
+
+  it("a drop near home puts the pouch back home: its offset is cleared", () => {
+    const stiff = new Map<number, ResolvedDims>([[1, { key: "test/stiff", kind: "pouch", dims: { ...GENERIC_POUCH, lengthMm: 80, thicknessMm: 45, minThicknessMm: 45 }, source: "fallback", measuredOn: null }]]);
+    const ctx = { size: "M", dims: stiff };
+    const nudged = [{ ...at("center", "middle", 1, 1, 0), offsetYMm: 12 }];
+    const home = homeCentreMm(nudged, { ...middle, slot: 1 }, ctx)!;
+    const r = placeSlabDrop(nudged, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, home + 2, ctx, 4);
+    if (!r?.ok) throw new Error("expected a placement");
+    expect(r.snap).toBe("home");
+    expect(r.placements[0].offsetYMm).toBeUndefined();
+    // Without the snap it lands exactly where it was let go.
+    const exact = placeSlabDrop(nudged, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, home + 2, ctx, 0);
+    if (!exact?.ok) throw new Error("expected a placement");
+    expect(exact.placements[0].offsetYMm).toBe(2);
   });
 });

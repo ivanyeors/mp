@@ -32,6 +32,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cellLayers, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
 import { applySlabDrop, asMove, cellBands, describeSlabTarget, nudgeSlab, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget, type SlabPlaceResult } from "@/lib/dnd/slab-drag";
 import { nudgeKeyFor } from "@/lib/configurator/move-keys";
+import { holdSnap, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { SECTIONS, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -46,11 +47,12 @@ import {
 } from "@/lib/spatial-fillings/cross-section";
 import type { BolsterFit, FitStatus, PillowFit } from "@/lib/spatial-fillings/fit";
 import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
-import { draftSoftBody, padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
+import { draftSoftBody, HELD_EASE_MS, padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { cn } from "@/lib/utils";
 import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, smoothClosedPath, wellDip, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
 import { useSoftCut, type SoftCutInput } from "./soft-cut";
+import { DragBadge, landingText, SNAP_WORDS } from "./drag-badge";
 import { clearXrayDraft, placementsSignature, publishXrayDraft, useXrayDraft, type XrayDraft } from "./xray-link";
 import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
@@ -474,8 +476,13 @@ export type CutEditorView = {
     ghost: { w: number; h: number; roll: boolean; puff: number; subtype: string | null; label: string; at: { x: number; y: number } };
     /** Over a Section tab: the ghost shrinks and fades so the tab it is about to open still reads. */
     overTab: boolean;
+    /** Where it would land, mm from the front (and the snap that put it there): over the held pouch, clear of a finger. */
+    badge?: string | null;
+    /** A snap's line: the edge or middle it lined the pouch up with, view x. */
+    guideX?: number | null;
   } | null;
 };
+
 
 export function CrossSectionSvg({
   fit,
@@ -523,7 +530,7 @@ export function CrossSectionSvg({
   // While a pouch is in hand (here or in the top view) every pointer step settles again: a shorter settle keeps up with it.
   const inHand = live || drag !== null;
   const settleWith = inHand ? draftSoftBody(softBody) : softBody;
-  const soft = useSoftCut(softBody.enabled ? softInputOf(fit, cut, f, polygon, itemSubtypes, settleWith) : null, softBody.animate && !inHand, softReplay);
+  const soft = useSoftCut(softBody.enabled ? softInputOf(fit, cut, f, polygon, itemSubtypes, settleWith) : null, softBody.animate, softReplay, inHand ? HELD_EASE_MS : undefined);
   const clothD = soft ? smoothClosedPath(soft.case) : null;
   const well = padWellOf(softBody);
   const wellOf = (subtype: string | null) => (fillingVisual(subtype).shape === "ear" ? well : undefined);
@@ -652,9 +659,23 @@ export function CrossSectionSvg({
         );
       })}
       {/* The held pouch, under the pointer, over everything (even the tabs above the cut). */}
+      {/* A snap's line: the column edge or middle the held pouch is lined up with. */}
+      {drag?.guideX != null && (
+        <path
+          d={`M${r1(drag.guideX)} ${r1(top)} V${r1(f.baseline)}`}
+          stroke={DROP}
+          strokeWidth={1.5}
+          strokeDasharray="4 3"
+          vectorEffect="non-scaling-stroke"
+          pointerEvents="none"
+          data-xray-snap-guide
+        />
+      )}
+      {/* The held pouch, under the pointer where it was picked up, over everything (even the tabs above the cut):
+          a light shape, so where it lands — drawn solid in the cut — reads through it. */}
       {drag && (
         <g ref={editor?.ghostRef} transform={`translate(${r1(drag.ghost.at.x)} ${r1(drag.ghost.at.y)})`} pointerEvents="none" data-xray-slab-ghost>
-          <g transform={drag.overTab ? "translate(0 18) scale(0.5)" : "scale(1.04)"} opacity={drag.overTab ? 0.6 : 1}>
+          <g transform={drag.overTab ? "translate(0 18) scale(0.5)" : undefined} opacity={drag.overTab ? 0.6 : 1}>
             {(() => {
               const g = drag.ghost;
               const box = { x: -g.w / 2, y: -g.h / 2, w: g.w, h: g.h };
@@ -663,8 +684,8 @@ export function CrossSectionSvg({
               const font = pieceFontFor(g.label, box, L);
               return (
                 <>
-                  <path d={d} fill={`var(${visual.cssVar}, ${visual.defaultColor})`} fillOpacity={0.82} stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-                  {font > 0 && (
+                  <path d={d} fill={`var(${visual.cssVar}, ${visual.defaultColor})`} fillOpacity={drag.overTab ? 0.82 : 0.3} stroke="white" strokeWidth={2} strokeDasharray={drag.overTab ? undefined : "5 4"} vectorEffect="non-scaling-stroke" />
+                  {drag.overTab && font > 0 && (
                     <text x={0} y={0} textAnchor="middle" dominantBaseline="central" fontSize={font} fontWeight={600} fill="white" stroke="rgba(2,6,23,0.75)" strokeWidth={font * 0.22} strokeLinejoin="round" paintOrder="stroke" className="select-none">
                       {g.label}
                     </text>
@@ -673,6 +694,7 @@ export function CrossSectionSvg({
               );
             })()}
           </g>
+          {drag.badge && !drag.overTab && <DragBadge text={drag.badge} y={-drag.ghost.h / 2 - L.labelFont * 1.6} font={L.labelFont} />}
         </g>
       )}
     </svg>
@@ -749,11 +771,20 @@ type SlabHold = {
   startX: number;
   startY: number;
   ghost: { w: number; h: number; roll: boolean; puff: number; subtype: string | null; label: string };
-  /** Where the pointer picked it up, view units: the ghost's first frame (each move after writes its transform directly). */
+  /** Where the held pouch's centre is, view units: the ghost's first frame (each move after writes its transform directly). */
   at: { x: number; y: number };
   active: boolean;
   target: SlabDropTarget | null;
+  /** Where on the pouch it was picked up, view units from its centre: it stays under the pointer there, never jumps. */
+  grab: { x: number; y: number };
+  /** Front ↔ back, precise by default (`fine-drag.ts`): a creeping hand moves it a fraction of its travel. */
+  fine: FineDrag;
+  /** The last placement asked for: where its centre goes (mm from the front) and the snap radius then. The release reuses it. */
+  along: { mm: number; snapMm: number } | null;
+  pointerType: string;
 };
+/** How near a place a hand aims for (home, a column's middle or edge) a held pouch is pulled onto it, screen px. */
+const SNAP_PX = 7;
 
 export function XrayCrossSection({
   fit,
@@ -828,8 +859,11 @@ export function XrayCrossSection({
   const spring = useRef<{ section: Section; timer: number } | null>(null);
   const [held, setHeld] = useState<SlabHold | null>(null);
   const [dropTarget, setDropTarget] = useState<SlabDropTarget | null>(null);
-  // Where along the cut the held pouch would be centred, whole mm from the Section's front: the landing follows it.
-  const [dropAtMm, setDropAtMm] = useState<number | null>(null);
+  // Where along the cut the held pouch would be centred (whole mm from the Section's front) and how far a snap
+  // reaches then: the landing follows it.
+  const [dropAlong, setDropAlong] = useState<{ mm: number; snapMm: number } | null>(null);
+  // Where the last preview's snap stood the pouch (view x of its centre): a hand that slows there creeps on from it.
+  const snappedAt = useRef<number | null>(null);
   const [springSection, setSpringSection] = useState<Section | null>(null);
   const [overTab, setOverTab] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -858,11 +892,36 @@ export function XrayCrossSection({
   // millimetre, not per pointer move: on the cut the landing follows the pointer front ↔ back, on a tab it lands home.
   const heldSource = held?.source ?? null;
   const fitCtx = useMemo(() => ({ size: fit.size, dims: itemDims, loftAllowance: fit.loftAllowance }), [fit.size, itemDims, fit.loftAllowance]);
-  const placedAt = dropTarget && dropTarget.section === cut.section && dropAtMm !== null ? dropAtMm : undefined;
+  const placedAt = dropTarget && dropTarget.section === cut.section && dropAlong ? dropAlong.mm : undefined;
+  const snapMm = dropAlong?.snapMm ?? 0;
   const preview = useMemo(() => {
     if (!heldSource || !dropTarget || !placements) return null;
-    return previewSlabDrop(placements, heldSource, dropTarget, fitCtx, placedAt);
-  }, [heldSource, dropTarget, placements, fitCtx, placedAt]);
+    return previewSlabDrop(placements, heldSource, dropTarget, fitCtx, placedAt, snapMm);
+  }, [heldSource, dropTarget, placements, fitCtx, placedAt, snapMm]);
+
+  // Where the preview lands the held pouch, and the snap that put it there: the badge, the guide and the hold read it.
+  const heldKey = held?.key ?? null;
+  const landing = useMemo(() => {
+    const r = preview?.result;
+    if (!r || !r.ok || !preview?.fit) {
+      // Nowhere to go from here (or a refused drop): where it already stands, so the badge still says.
+      if (!heldKey || (r && !r.ok)) return null;
+      const section = heldKey.split("/")[0] as Section;
+      const p = fit.sections[section].pieces.find((q) => q.key === heldKey);
+      return p ? { startMm: p.startMm, endMm: p.endMm, snap: null, section } : null;
+    }
+    const p = preview.fit.sections[r.ref.section].pieces.find((q) => q.key === keyOf(r.ref));
+    return p ? { startMm: p.startMm, endMm: p.endMm, snap: r.snap ?? null, section: r.ref.section } : null;
+  }, [preview, heldKey, fit]);
+  const snapGuideMm = landing?.snap ? (landing.snap === "front edge" ? landing.startMm : landing.snap === "back edge" ? landing.endMm : (landing.startMm + landing.endMm) / 2) : null;
+  useEffect(() => {
+    snappedAt.current = landing?.snap ? frame.x0 + ((landing.startMm + landing.endMm) / 2) * frame.kx : null;
+  }, [landing, frame.x0, frame.kx]);
+  // A snap taking hold is felt as well as seen, where the device can (a phone's short buzz).
+  const snapKind = landing?.snap ?? null;
+  useEffect(() => {
+    if (snapKind && holdRef.current?.pointerType === "touch" && typeof navigator !== "undefined") navigator.vibrate?.(8);
+  }, [snapKind]);
 
   // Linked views: what this cut previews, the top view draws too; while the top view holds a pouch, this cut follows it.
   const linked = useXrayDraft(placements);
@@ -894,7 +953,8 @@ export function XrayCrossSection({
     disarmSpring();
     setHeld(null);
     setDropTarget(null);
-    setDropAtMm(null);
+    setDropAlong(null);
+    snappedAt.current = null;
     setOverTab(false);
   }, [disarmSpring]);
 
@@ -968,8 +1028,11 @@ export function XrayCrossSection({
     };
   };
 
-  /** What the pointer is over: a Section tab, a column and height of the cut, or nothing. */
-  const targetAt = (hold: SlabHold, clientX: number, clientY: number): SlabDropTarget | null => {
+  /**
+   * What the held pouch is over: a Section tab (under the pointer), or the column and height of the cut its
+   * centre is at — so picking a pouch up by its edge never changes where it goes — or nothing.
+   */
+  const targetAt = (hold: SlabHold, clientX: number, clientY: number, centre: { x: number; y: number }): SlabDropTarget | null => {
     const hit = document.elementFromPoint(clientX, clientY)?.closest?.("[data-drop-section]");
     // A strip panel is a drop target for its siblings; this cut's own panel is the cut itself.
     const tab = hit && svgRef.current && hit.contains(svgRef.current) ? null : hit;
@@ -982,10 +1045,9 @@ export function XrayCrossSection({
     disarmSpring();
     const box = svgRef.current?.getBoundingClientRect();
     if (!box || clientX < box.left || clientX > box.right || clientY < box.top || clientY > box.bottom) return null;
-    const v = toView(clientX, clientY);
-    const col = Math.min(Math.max(Math.floor((v.x - frame.x0) / frame.colW), 0), SUB_SECTIONS.length - 1);
+    const col = Math.min(Math.max(Math.floor((centre.x - frame.x0) / frame.colW), 0), SUB_SECTIONS.length - 1);
     const cell = { section: cut.section, subSection: SUB_SECTIONS[col] };
-    return slabTargetAt(cell, cellBands(slabs, cell), (frame.floor - v.y) / frame.ky);
+    return slabTargetAt(cell, cellBands(slabs, cell), (frame.floor - centre.y) / frame.ky);
   };
 
   /**
@@ -1040,24 +1102,30 @@ export function XrayCrossSection({
         svgRef.current?.setPointerCapture(e.pointerId);
         const box = slabBox(slab, frame);
         const subtype = itemSubtypes.get(slab.itemId) ?? null;
+        const centre = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+        const v = toView(e.clientX, e.clientY);
         holdRef.current = {
           source,
           key: slab.key,
           pointerId: e.pointerId,
           startX: e.clientX,
           startY: e.clientY,
-          // Held, it is a cushion about one column wide, centred on the pointer — where it points is where it goes.
+          // Held, it keeps its own size and stays under the pointer where it was picked up.
           ghost: {
-            w: Math.min(box.w, frame.colW * 0.86),
+            w: box.w,
             h: Math.max(box.h, 10),
             roll: fillingVisual(subtype).shape === "pill",
             puff: 1,
             subtype,
             label,
           },
-          at: { x: 0, y: 0 },
+          at: centre,
           active: false,
           target: null,
+          grab: { x: v.x - centre.x, y: v.y - centre.y },
+          fine: startFineDrag([centre.x, centre.y], [e.clientX, e.clientY], e.timeStamp),
+          along: null,
+          pointerType: e.pointerType,
         };
       },
       onKeyDown: (e) => {
@@ -1113,13 +1181,27 @@ export function XrayCrossSection({
       if (!hold || hold.pointerId !== e.pointerId) return;
       if (!hold.active && Math.hypot(e.clientX - hold.startX, e.clientY - hold.startY) < DRAG_THRESHOLD_PX) return;
       const v = toView(e.clientX, e.clientY);
-      ghostRef.current?.setAttribute("transform", `translate(${r1(v.x)} ${r1(v.y)})`);
-      const target = targetAt(hold, e.clientX, e.clientY);
-      setDropAtMm(alongMmAt(v.x));
+      // Front ↔ back is precise by default: a creeping hand moves it a fraction of its travel. Up and down is the
+      // pointer's own: the Layers are steps, not millimetres.
+      const direct = [v.x - hold.grab.x, v.y - hold.grab.y] as const;
+      hold.fine = moveFineDrag(hold.fine, direct, [e.clientX, e.clientY], e.timeStamp);
+      const snapping = snapsNow(hold.fine);
+      // Slowing down on a snap creeps on from it, never jumps off it.
+      if (!snapping && snappedAt.current !== null) {
+        hold.fine = holdSnap(hold.fine, [snappedAt.current, hold.fine.at[1]]);
+        snappedAt.current = null;
+      }
+      const centre = { x: hold.fine.at[0], y: direct[1] };
+      ghostRef.current?.setAttribute("transform", `translate(${r1(centre.x)} ${r1(centre.y)})`);
+      const target = targetAt(hold, e.clientX, e.clientY, centre);
+      const pxPerMm = ((svgRef.current?.getBoundingClientRect().width ?? frame.L.width) / frame.L.width) * frame.kx;
+      const along = { mm: alongMmAt(centre.x), snapMm: snapping ? SNAP_PX / Math.max(pxPerMm, 1e-6) : 0 };
+      hold.along = along;
+      setDropAlong((a) => (a && a.mm === along.mm && a.snapMm === along.snapMm ? a : along));
       if (!hold.active) {
         hold.active = true;
         hold.target = target;
-        hold.at = v;
+        hold.at = centre;
         setHeld({ ...hold });
         setDropTarget(target);
         setHoverKey(null);
@@ -1140,12 +1222,11 @@ export function XrayCrossSection({
         return;
       }
       if (!hold.target || !placements) return;
-      // Dropped on the cut, the pouch lands centred where it was let go (as far as there is room) — the preview's own
-      // millimetre, so what was shown is what lands; on a Section tab, at home there.
-      const v = toView(e.clientX, e.clientY);
+      // Dropped on the cut, the pouch lands where it was held (as far as there is room) — the last preview's own
+      // millimetre and snap, so what was shown is what lands; on a Section tab, at home there.
       const r: SlabPlaceResult | null =
-        hold.target.section === cut.section
-          ? placeSlabDrop(placements, hold.source, hold.target, alongMmAt(v.x), fitCtx)
+        hold.target.section === cut.section && hold.along
+          ? placeSlabDrop(placements, hold.source, hold.target, hold.along.mm, fitCtx, hold.along.snapMm)
           : asMove(applySlabDrop(placements, hold.source, hold.target));
       if (!r) return;
       if (!r.ok) {
@@ -1192,6 +1273,8 @@ export function XrayCrossSection({
               tone,
               ghost: { ...held.ghost, at: held.at },
               overTab,
+              badge: landing && landing.section === cut.section ? landingText(landing.startMm, landing.endMm, landing.snap) : null,
+              guideX: snapGuideMm !== null && landing?.section === cut.section ? frame.x0 + snapGuideMm * frame.kx : null,
             }
           : null,
       }
@@ -1210,7 +1293,8 @@ export function XrayCrossSection({
       const loft = col ? ` · ${Math.round(col.loftMm)} / ${Math.round(col.maxLoftMm)} mm${statusSuffix(col.status, " · ")}` : "";
       return {
         tone: col?.status === "over" ? ("over" as const) : col?.status === "compressed" ? ("compressed" as const) : ("drop" as const),
-        text: `Drop ${describeSlabTarget(dropTarget, layers, held.source.section)}${landedAt(preview?.fit, keyOf(r.ref))}${loft}`,
+        // Sliding within its own cell and Layer is a slide, not a drop "side by side".
+        text: `${r.ok && r.within ? `Slide within ${r.ref.section} ${r.ref.subSection}` : `Drop ${describeSlabTarget(dropTarget, layers, held.source.section)}`}${landedAt(preview?.fit, keyOf(r.ref))}${r.ok && r.snap ? ` · ${SNAP_WORDS[r.snap]}` : ""}${loft}`,
       };
     }
     // A sibling cut holding a pouch says where it lands itself (the strip shows one line for all three).

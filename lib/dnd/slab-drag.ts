@@ -130,7 +130,7 @@ export function stepSlabLayer(placements: PillowPlacement[], ref: PieceRef, dir:
 }
 
 /** A move the cut writes; `within` when the pouch only moved in its own cell (a nudge). */
-export type SlabPlaceResult = (Extract<MoveResult, { ok: true }> & { within: boolean }) | Extract<MoveResult, { ok: false }>;
+export type SlabPlaceResult = (Extract<MoveResult, { ok: true }> & { within: boolean; snap?: AlongSnap }) | Extract<MoveResult, { ok: false }>;
 
 /** A plain move, as a place result: it left its cell (or changed nothing). */
 export const asMove = (r: MoveResult | null): SlabPlaceResult | null => (r && r.ok ? { ...r, within: false } : r);
@@ -224,6 +224,49 @@ export function placeAlongAt(
   return next === placements ? null : { ok: true, placements: next, ref: at };
 }
 
+/** Where a snap stood a pouch: back home in its cell, centred in a column, or flush with a column's front or back edge. */
+export type AlongSnap = "home" | "centred" | "front edge" | "back edge";
+
+/**
+ * The centre (mm from the Section's front) a pouch `lenMm` long is put at,
+ * pulled onto the nearest of the places a hand aims for when it is within
+ * `radiusMm`: its home (where it sits un-nudged, `homeCentreMm`), the middle
+ * of a column, or flush with a column's front or back edge. Home wins a tie.
+ * A radius of 0 snaps to nothing.
+ */
+export function snapAlongCentre(
+  centreMm: number,
+  lenMm: number,
+  cellLengthMm: number,
+  homeCentreMm: number | null,
+  radiusMm: number,
+): { centreMm: number; snap: AlongSnap | null } {
+  if (radiusMm <= 0) return { centreMm, snap: null };
+  const candidates: Array<[number, AlongSnap]> = homeCentreMm === null ? [] : [[homeCentreMm, "home"]];
+  for (let c = 0; c < SUB_SECTIONS.length; c++) {
+    candidates.push([(c + 0.5) * cellLengthMm, "centred"]);
+    if (lenMm < cellLengthMm - 1) {
+      candidates.push([c * cellLengthMm + lenMm / 2, "front edge"]);
+      candidates.push([(c + 1) * cellLengthMm - lenMm / 2, "back edge"]);
+    }
+  }
+  let best: [number, AlongSnap] | null = null;
+  for (const cand of candidates) {
+    const d = Math.abs(cand[0] - centreMm);
+    if (d <= radiusMm && (!best || d < Math.abs(best[0] - centreMm) - 1e-9)) best = cand;
+  }
+  return best ? { centreMm: best[0], snap: best[1] } : { centreMm, snap: null };
+}
+
+/** Where a pouch's settled extent would be centred un-nudged front ↔ back (its across offset kept), mm. */
+export function homeCentreMm(placements: PillowPlacement[], ref: PieceRef, ctx: FitContext): number | null {
+  const p = placements.find((q) => sameCell(q, ref) && q.slot === ref.slot);
+  if (!p) return null;
+  const home = p.offsetYMm ? nudgePiece(placements, ref, { xMm: p.offsetXMm ?? 0, yMm: 0 }) : placements;
+  const e = alongExtent(settlePillow(home, { size: ctx.size, dims: ctx.dims, pillow: ctx.pillow }), ref);
+  return e ? (e.startMm + e.endMm) / 2 : null;
+}
+
 /**
  * A drop on the cut, placed: the move `applySlabDrop` makes (none when it
  * stays in its own Layer), then its front ↔ back position so the pouch is
@@ -236,16 +279,21 @@ export function placeSlabDrop(
   target: SlabDropTarget,
   centreMm: number,
   ctx: FitContext,
+  /** Pull it onto a place a hand aims for within this many mm (`snapAlongCentre`); 0 places it exactly. */
+  snapMm = 0,
 ): SlabPlaceResult | null {
   const moved = applySlabDrop(placements, source, target);
   if (moved && !moved.ok) return moved;
   const base = moved ? moved.placements : placements;
   const ref = moved ? moved.ref : source;
   const here = alongExtent(settlePillow(base, { size: ctx.size, dims: ctx.dims, pillow: ctx.pillow }), ref);
-  const placed = here ? placeAlongAt(base, ref, centreMm - (here.endMm - here.startMm) / 2, ctx, Boolean(moved)) : null;
+  if (!here) return null;
+  const len = here.endMm - here.startMm;
+  const { centreMm: at, snap } = snapAlongCentre(centreMm, len, here.cellLengthMm, snapMm > 0 ? homeCentreMm(base, ref, ctx) : null, snapMm);
+  const placed = placeAlongAt(base, ref, at - len / 2, ctx, Boolean(moved));
   const next = placed ?? { ok: true as const, placements: base, ref };
   if (next.placements === placements) return null;
-  return { ...next, within: !moved && next.ref.section === source.section && next.ref.subSection === source.subSection };
+  return { ...next, within: !moved && next.ref.section === source.section && next.ref.subSection === source.subSection, ...(snap ? { snap } : {}) };
 }
 
 /**
@@ -272,8 +320,9 @@ export function previewSlabDrop(
   target: SlabDropTarget,
   ctx: FitContext,
   centreMm?: number,
+  snapMm = 0,
 ): { result: SlabPlaceResult | null; fit: PillowFit | null } {
-  const result = centreMm === undefined ? asMove(applySlabDrop(placements, source, target)) : placeSlabDrop(placements, source, target, centreMm, ctx);
+  const result = centreMm === undefined ? asMove(applySlabDrop(placements, source, target)) : placeSlabDrop(placements, source, target, centreMm, ctx, snapMm);
   return { result, fit: result?.ok ? fitPillow(result.placements, ctx) : null };
 }
 

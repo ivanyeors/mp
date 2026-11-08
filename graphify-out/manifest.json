@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1794067762.8397539,
-    "seen": 1794067963.032879,
-    "ast_hash": "31372b66d60d2b3aa960125a4fdf9569",
+    "mtime": 1794117652.2061164,
+    "seen": 1794117881.6450841,
+    "ast_hash": "b589257c29e1657737c58c1c6eb4c07a",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9144,9 +9144,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1794067762.840578,
-    "seen": 1794067963.032809,
-    "ast_hash": "851d8e66b729c8755308ff79a870b611",
+    "mtime": 1794117657.0876546,
+    "seen": 1794117881.6450427,
+    "ast_hash": "927cd5b220d5c9d6eb4c685e73e25b0c",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
@@ -9384,15 +9384,15 @@
     "semantic_hash": ""
   },
   "lib/dnd/__tests__/pouch-drag.test.ts": {
-    "mtime": 1794037689.419876,
-    "seen": 1794067963.0285428,
-    "ast_hash": "62ea537d74981d23e2a525bc0a6dcc0e",
+    "mtime": 1794117199.1994655,
+    "seen": 1794117881.642936,
+    "ast_hash": "d64934c84b2080925c47f0497c2b3b53",
     "semantic_hash": ""
   },
   "lib/dnd/pouch-drag.ts": {
-    "mtime": 1794037689.419876,
-    "seen": 1794067963.0285518,
-    "ast_hash": "aced26ead0df33b2aa5c2a30b39399df",
+    "mtime": 1794117193.5704973,
+    "seen": 1794117881.6429427,
+    "ast_hash": "52fd6cef2c82220cfaece8de0102a30a",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/bolster-fit.test.ts": {
@@ -12084,15 +12084,15 @@
     "semantic_hash": ""
   },
   "lib/dnd/__tests__/slab-drag.test.ts": {
-    "mtime": 1794067018.9722106,
-    "seen": 1794067963.0285451,
-    "ast_hash": "9669813b6cbe9bac56a14f2b6236e2d8",
+    "mtime": 1794117024.2613444,
+    "seen": 1794117881.6429377,
+    "ast_hash": "a9ea906629509fb8b5a4b5eef7ffd5f0",
     "semantic_hash": ""
   },
   "lib/dnd/slab-drag.ts": {
-    "mtime": 1794067018.972347,
-    "seen": 1794067963.0285544,
-    "ast_hash": "883c934228ceec9594f501dc3c5479d6",
+    "mtime": 1794116964.239886,
+    "seen": 1794117881.642944,
+    "ast_hash": "07e5527a976670be06c6aba485d6a2bf",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/13-cross-section-editing.md": {
@@ -12234,9 +12234,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/soft-body-settings.ts": {
-    "mtime": 1794067018.9733667,
-    "seen": 1794067963.0304792,
-    "ast_hash": "17fb70d46f6eca77ba4f779b87a1c5c8",
+    "mtime": 1794117157.738177,
+    "seen": 1794117881.64373,
+    "ast_hash": "3ee8f3d43dd35964bb1324a4c7ca4363",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/soft-body.ts": {
@@ -18276,9 +18276,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/14-linked-views.md": {
-    "mtime": 1794067786.2223585,
-    "seen": 1794067963.0328066,
-    "ast_hash": "0b9ffba3221e5214cddec8f14e5cb65c",
+    "mtime": 1794117652.1916544,
+    "seen": 1794117881.6450417,
+    "ast_hash": "9803da16f2f6e269f4272003b5548b7a",
+    "semantic_hash": ""
+  },
+  "lib/dnd/__tests__/fine-drag.test.ts": {
+    "mtime": 1794117439.2723975,
+    "seen": 1794117881.6429322,
+    "ast_hash": "f9afd2cc5cf14937edda964eaaa7cb72",
+    "semantic_hash": ""
+  },
+  "lib/dnd/fine-drag.ts": {
+    "mtime": 1794117439.2716424,
+    "seen": 1794117881.6429398,
+    "ast_hash": "a1b4cb5b19037ffd8c5f3a617e0d4c20",
     "semantic_hash": ""
   }
 }

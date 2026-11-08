@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dropIndex, dropTargetFromElement, layerChoices, planPouchDrop, pouchDropDestination, resolveLayerChoice } from "@/lib/dnd/pouch-drag";
+import { dropIndex, dropTargetFromElement, planPouchDrop, pouchDropDestination } from "@/lib/dnd/pouch-drag";
 
 const source = { section: "left", subSection: "front", slot: 2, depth: 0 } as const;
 
@@ -83,8 +83,11 @@ describe("planPouchDrop", () => {
     });
   });
 
-  it("asks for a Layer when another cell is stacked", () => {
-    expect(planPouchDrop(source, center, { layerCount: 2, index: 0 })).toEqual({ kind: "chooseLayer", cell: { section: "center", subSection: "middle" } });
+  it("puts it straight onto a stacked cell's top Layer, at the drop's place in that row — no Layer picker", () => {
+    expect(planPouchDrop(source, center, { layerCount: 2, index: 0 })).toEqual({
+      kind: "move",
+      to: { cell: { section: "center", subSection: "middle" }, layer: null, index: 0 },
+    });
   });
 
   it("in its own cell: reorders past a neighbour in a side-by-side row, else nudges to the drop point", () => {
@@ -104,32 +107,6 @@ describe("planPouchDrop", () => {
     });
     expect(planPouchDrop(source, center, { layerCount: 1 }, true)).toBeNull();
     expect(planPouchDrop(source, null, { layerCount: 1 })).toBeNull();
-  });
-});
-
-describe("layerChoices / resolveLayerChoice", () => {
-  const caps = { maxLayers: 5, maxPerLayer: 3 };
-
-  it("lists the Layers top → deep, own and full ones disabled, then a new Layer", () => {
-    expect(layerChoices([2, 3], null, caps)).toEqual([
-      { id: "0", label: "Top layer", disabled: false },
-      { id: "1", label: "Layer 2", disabled: true },
-      { id: "new", label: "New layer", disabled: false },
-    ]);
-    expect(layerChoices([1, 1], 0, caps).map((c) => c.disabled)).toEqual([true, false, false]);
-  });
-
-  it("offers no new Layer at the cap, or to a pouch alone at the bottom", () => {
-    expect(layerChoices([1, 1, 1, 1, 1], null, caps).some((c) => c.id === "new")).toBe(false);
-    expect(layerChoices([2, 1], 1, caps).some((c) => c.id === "new")).toBe(false);
-  });
-
-  it("shifts deeper picks up by one when the pouch's own Layer closes behind it", () => {
-    expect(resolveLayerChoice("2", [1, 2, 2], 0)).toBe(1);
-    expect(resolveLayerChoice("new", [1, 2, 2], 0)).toBe(2);
-    expect(resolveLayerChoice("2", [2, 2, 2], 0)).toBe(2);
-    expect(resolveLayerChoice("new", [2, 2], null)).toBe(2);
-    expect(resolveLayerChoice("0", [2, 1, 2], 1)).toBe(0);
   });
 });
 

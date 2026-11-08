@@ -259,10 +259,10 @@ const asShapes = (rings: ReadonlyMap<string, Pt[]>): SoftCutShapes => ({ case: N
  * outlines in the same frame; the rest settles a few steps per frame and
  * arrives together. Each new settle eases every outline from where it was
  * shown — a piece not yet soft from its conformed outline — over the settle's
- * length, as the cut does. No easing when `animate` is off or the viewer asked
- * for reduced motion.
+ * length, as the cut does — over `easeMs` instead while a pouch is held. No
+ * easing when `animate` is off or the viewer asked for reduced motion.
  */
-export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings: SoftBodySettings, view: View): ReadonlyMap<string, string> | null {
+export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings: SoftBodySettings, view: View, easeMs?: number): ReadonlyMap<string, string> | null {
   // False on the server and while hydrating (the conformed outlines it rendered); true on the client after.
   const mounted = useSyncExternalStore(noSubscribe, isClient, isServer);
   const live = mounted && settings.enabled && planes !== null && planes.length > 0;
@@ -313,9 +313,12 @@ export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings
   const [frame, setFrame] = useState<{ of: Map<string, Pt[]>; rings: ReadonlyMap<string, Pt[]> } | null>(null);
   const shown = useRef<ReadonlyMap<string, Pt[]> | null>(null);
   const planesRef = useRef(planes);
+  // A held pouch's preview changes every pointer step: each eases quickly from where the last one was shown.
+  const ease = useRef(easeMs);
 
   useLayoutEffect(() => {
     planesRef.current = planes;
+    ease.current = easeMs;
   });
 
   useLayoutEffect(() => {
@@ -328,7 +331,7 @@ export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings
       return asShapes(rings);
     };
     const plan = morph(asShapes(from), asShapes(target), seed);
-    const duration = Math.max(200, (settings.steps * 1000) / 60);
+    const duration = ease.current ?? Math.max(200, (settings.steps * 1000) / 60);
     const t0 = performance.now();
     let raf = 0;
     const show = (rings: ReadonlyMap<string, Pt[]>) => {

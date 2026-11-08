@@ -171,9 +171,7 @@ assert.match(renderer, /\{\.\.\.dragHandle\(ref, true, \(\) => tapPouch\(ref, in
 assert.match(renderer, /\{\.\.\.dragHandle\(ref\)\}/, "the centroid chip over a pouch picks it up too");
 assert.match(renderer, /\{\.\.\.pieceDragHandle\(piece\.slot\)\}/, "a layer row's label picks its pouch up too");
 assert.match(renderer, /const plan = planPouchDrop\(/, "the drop resolves through the pure planner");
-assert.match(renderer, /if \(plan\.kind === "chooseLayer"\)/, "a stacked cell asks which Layer; a side-by-side one does not");
-assert.match(renderer, /<SunburstMenu\s+open\s+root=\{layerPickTree\}/, "the Layer picker is a sunburst at the drop point");
-assert.match(renderer, /resolveLayerChoice\(choice, layerPickSizes, layerPickOwn\)/, "a picked Layer maps to movePiece's lifted-out indices");
+assert.doesNotMatch(renderer, /chooseLayer|layerPick/, "no Layer picker between drag and drop (8-11-2026): a pouch dropped on a stacked cell joins its top Layer, shown live in both views");
 assert.match(renderer, /touchAction: "none"/, "a finger drag on a pouch does not scroll the page");
 assert.match(renderer, /svg\.addEventListener\("touchstart", onTouchStart, \{ passive: false \}\)/, "…and since touch-action does not reach SVG shapes, a non-passive touchstart on the pouches holds the page still");
 assert.match(renderer, /e\.currentTarget\.setPointerCapture\(e\.pointerId\)/, "the pointer is captured for the drag");
@@ -182,6 +180,8 @@ assert.match(renderer, /dropTargetFromElement\(document\.elementFromPoint\(e\.cl
 assert.match(renderer, /const moved = movePiece\(placements, d\.source, plan\.to\);/, "a drop is a movePiece — a drag can never do what a key cannot");
 assert.match(renderer, /const plan = planDrop\(next, over, false\);[\s\S]*showPlan\(plan\);/, "linked views: every pointer move previews the release's own plan in both views");
 assert.match(renderer, /const plan = planDrop\(d, canceled \? null : d\.over, canceled\);/, "…and the release commits that same plan");
+assert.match(renderer, /moveFineDrag\(d\.fine, \[at\.x - d\.grabX, at\.y - d\.grabY\]/, "precise by default: the held pouch keeps its grab point and a creeping hand moves it a fraction of its travel");
+assert.match(renderer, /document\.elementFromPoint\(centreClient\.x, centreClient\.y\)/, "what a held pouch is over is what its centre is over");
 assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
 assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
 assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");
@@ -201,7 +201,7 @@ assert.match(
 );
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "hit area clipped to the silhouette");
 assert.match(renderer, /<SunburstMenu\s+open\b/, "the cell opens the bloom — the menu has no trigger of its own");
-assert.equal(renderer.match(/<SunburstMenu/g)?.length, 2, "one add picker at the cell you opened, one Layer picker at the drop point");
+assert.equal(renderer.match(/<SunburstMenu/g)?.length, 1, "one add picker, at the cell you opened (the drop's Layer picker went 8-11-2026)");
 const sunburst = readFileSync(join(process.cwd(), "components", "ui", "sunburst-menu.tsx"), "utf8");
 assert.match(sunburst, /open: openProp/, "SunburstMenu accepts a controlled open for external triggers");
 assert.match(sunburst, /onOpenChangeRef\.current\?\.\(next\)/, "a controlled parent still hears an internal close");
