@@ -77,6 +77,7 @@ export const CUSTOMER_OVERVIEW_COLUMNS = [
   "campaigns_clicked",
   "last_emailed_at",
   "unengaged",
+  "last_purchase_dated_by_fitting",
 ] as const;
 
 export type CustomerOverviewColumn = (typeof CUSTOMER_OVERVIEW_COLUMNS)[number];
@@ -186,10 +187,15 @@ export interface CustomerOverviewRow {
   /**
    * **Purchases** (PRD-crm-retention-loop slice 03): counted Orders with a
    * goods line, so a re-adjustment fee is not one, plus the Shopify-era order
-   * count until slice 09 imports those Orders.
+   * count.
    */
   purchases: number;
-  /** The latest purchase here; null with none here (a Shopify-only buyer too). */
+  /**
+   * The latest purchase: the latest here, or a Shopify-era one dated by their
+   * latest Fitting record when that is later (ADR 0042 m,
+   * `last_purchase_dated_by_fitting`). Null with neither: a Shopify-only
+   * buyer with no fitting has no date.
+   */
   last_purchase_at: string | null;
   /** The **Lifecycle stage** (lib/crm/lifecycle-stage), as of the read. */
   lifecycle_stage: LifecycleStage;
@@ -198,7 +204,7 @@ export interface CustomerOverviewRow {
    * they are *Loyal*, or *Lapsed* within *At risk*; null otherwise.
    */
   lifecycle_detail: LifecycleDetail | null;
-  /** Placed by the Shopify-era count alone: no dates yet, so never At risk. */
+  /** Placed by the Shopify-era count alone: no purchase here and no fitting to date them, so never At risk. */
   lifecycle_undated: boolean;
   /** Attended **Re-adjustment bookings**; the latest is `last_readjusted_at`. */
   attended_bookings: number;
@@ -236,6 +242,11 @@ export interface CustomerOverviewRow {
    * a stage, never consent.
    */
   unengaged: boolean;
+  /**
+   * `last_purchase_at` is a Shopify-era purchase dated by their latest
+   * **Fitting record**, not an Order here (ADR 0042 m).
+   */
+  last_purchase_dated_by_fitting: boolean;
 }
 
 /** Display name, or null when the Customer has none. */

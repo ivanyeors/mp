@@ -264,8 +264,9 @@ amend the Staff side so the history counts toward the lifecycle. The owner confi
 09 starts.
 
 Until slice 09 lands, a Migrated customer with Shopify-era orders and no purchase here is placed
-by count (New or Loyal). They are not given a date, and the list marks them *no dates
-yet*.
+by count (New or Loyal). Since 2026-11-08 their latest Fitting record dates the latest of those
+orders (ADR 0042 m), so they can be *At risk*; only those with no fitting have no date, and the
+list marks them *no dates yet*.
 
 ## Closing the loop on drop-offs
 

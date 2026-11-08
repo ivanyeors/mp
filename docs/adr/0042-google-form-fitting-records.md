@@ -6,7 +6,8 @@ each with its own measurements, all land on one Customer (c, i). Amended (owner,
 Customer page draws the pillow a fitting names in the x-ray, and Staff can link another (j); the
 customer sees it on their Profile once something says they bought it, and a pillow bought here is
 drawn as it was built (k). Amended (2026-11-07): Staff change the fillings in that pillow at a
-Re-adjustment visit, and it is drawn as they left it (l).
+Re-adjustment visit, and it is drawn as they left it (l). Amended (owner, 2026-11-08): a fitting
+dates a Migrated customer's Shopify-era purchases for the Lifecycle stage (m).
 
 Before this platform, every in-store fitting was typed into a Google Form: the customer's name,
 mobile and email, the four measurements (A to D, in inches), the recommended pillow size, the
@@ -46,7 +47,8 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   name, email and mobile as typed, and the Drive file ids. A column the import does not know is
   kept in `other_answers` under its header, so a later version of the form loses nothing.
 - **(b) It is not a Result, an Order or a Purchase.** It never enters the money path, the
-  Results queue, analytics, the **Lifecycle stage** or `customers.total_*`.
+  Results queue, analytics or `customers.total_*`, and it is never counted as a Purchase. With a
+  Shopify-era order, it dates one for the **Lifecycle stage** (m).
 - **(c) Matching: email first, then mobile; one person, one Customer.** A customer comes back,
   and each visit is another form row with its own measurements. Every one of them is its own
   Fitting record on the same Customer (owner, 2026-11-01).
@@ -148,6 +150,31 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   log (`customer_pillow.readjust`) with the mix before and after, which is the only history
   kept: the card shows the latest.
 
+- **(m) A fitting dates the Shopify-era purchase** (owner, 2026-11-08: "use our customer form
+  timestamp to mark the import as a purchase date of the products if there is any orders"). The
+  Shopify export counts a Migrated customer's orders but carries no dates, so a buyer whose every
+  purchase was Shopify-era was placed by count alone, *no dates yet*, and could never be *At
+  risk*. (k) already reads a fitting with an order as the in-store purchase it almost always was,
+  so the latest Fitting record's timestamp now dates the latest of those orders:
+  - The Customer overview's latest purchase (`last_purchase_at`) is the later of the latest
+    purchase here and, when the Customer has Shopify-era orders, their latest fitting. A tie is
+    the purchase here (`20261108100000_fitting_dated_purchases.sql`; `latestPurchase` in
+    `lib/crm/lifecycle-stage.ts`). The Stage, *Last order* and Unengaged filters, the lifecycle
+    chart and the campaign blocker all read it.
+  - The count is unchanged: the Shopify-era order count is still added to **Purchases**, and the
+    fitting dates only the latest of them. A fitting with no Shopify-era order is still no
+    purchase.
+  - A fitting-dated purchase was in hand at the fitting, so for the *New* sub-status its delivery
+    is the fitting too (*Settled* 30 days after). `last_delivered_at` keeps deliveries made here:
+    the *Delivered* filter and the review request timing are about those.
+  - The Customer page shows the date under *Last purchase* with "Fitting, on Shopify".
+  - Derived on every read, never stored: a later Fitting import or Undo moves it at once.
+
+  In production on 2026-11-08 this dated 1,242 of the 1,617 Migrated customers with Shopify-era
+  orders. 1,014 were last fitted over 12 months ago and moved from *New* or *Loyal* to *At risk*
+  (698 of them *Lapsed*, over 24 months). The 375 with no fitting stay placed by count. This is
+  the lighter half of PRD-crm-retention-loop slice 09: it gives dates, not what was bought.
+
 ## Considered options
 
 - **Import each row as a Result** — rejected; see Context. It would need a status no Result has,
@@ -176,6 +203,11 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
 - **Moving stock for a Re-adjustment's pieces** (l) — not done. A **Service** consumes no
   inventory in this model. If the pieces taken out and put in should count, that is a
   decision for the owner and a stock movement of its own, not a side effect of this save.
+- **Dating by the earliest fitting** (m) — rejected. A later visit is usually a re-adjustment or a
+  second pillow, and either is the last time we saw them, which is what *At risk* measures.
+- **Importing the Shopify orders export instead** (m) — not instead, still possible
+  (PRD-crm-retention-loop slice 09). It would date the 375 with no fitting and say what each
+  order held. The fitting dates what can be dated from what is already here.
 - **Copying the photos into Storage** — rejected for now. Previews from Drive need no storage, no
   copy to keep in step and no second home for the photos. Copying stays possible later from the
   stored file ids.
@@ -194,6 +226,9 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   matched, and the visit becomes its own Customer, as before.
 - The preview of a photo depends on the platform's Google account being able to read the form's
   upload folder. Sharing that folder with it is the owner's one-time setup.
+- A Shopify-era buyer last fitted over 24 months ago is *At risk · Lapsed* (m), so after 6
+  unclicked campaign emails they are **Unengaged** and left out of campaigns that don't include
+  the Unengaged, as any Lapsed customer is.
 - The form's timestamp has no time zone. It is read as Singapore time (UTC+8, no daylight
   saving), and the date order (month first or day first) is read from the file, or chosen by
   Staff when every date in the file fits both.

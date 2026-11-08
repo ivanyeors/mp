@@ -21,6 +21,11 @@ export function formatDollarsShort(amount: number): string {
   return Number.isInteger(amount) ? `S$${amount.toLocaleString("en-SG")}` : formatDollars(amount);
 }
 
+/** "1 point", "1.5 points", "3 points": an earn rate, which may be a fraction. */
+export function formatEarnRate(perDollar: number): string {
+  return `${perDollar.toLocaleString("en-SG")} ${perDollar === 1 ? "point" : "points"}`;
+}
+
 /** "2,130 points", "1 point". */
 export function formatPointsCount(points: number): string {
   const n = Math.round(points);

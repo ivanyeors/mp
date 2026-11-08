@@ -179,6 +179,9 @@ export interface PointsSummary {
   claimBonuses: number;
   milestoneBonuses: number;
   milestoneBonusPoints: number;
+  /** Past-purchase points granted (ADR 0030, 2026-11-08): entries and points. */
+  pastPurchaseGrants: number;
+  pastPurchasePoints: number;
 }
 
 /** What points cost now (`admin_points_summary`). Throws on a failed read. */
@@ -197,7 +200,70 @@ export async function readPointsSummary(admin: SupabaseClient): Promise<PointsSu
     claimBonuses: int(r.claim_bonuses),
     milestoneBonuses: int(r.milestone_bonuses),
     milestoneBonusPoints: int(r.milestone_bonus_points),
+    pastPurchaseGrants: int(r.past_purchase_grants),
+    pastPurchasePoints: int(r.past_purchase_points),
   };
+}
+
+/**
+ * **Past-purchase points** (ADR 0030, amendment of 2026-11-08): what one run
+ * would grant now, and what earlier runs granted. Each Migrated customer gets
+ * floor(earn rate × their Shopify-era spend), once; partners none.
+ */
+export interface PastPurchasePreview {
+  /** Customers a run would grant now, and the points it would grant them. */
+  customers: number;
+  points: number;
+  /** What those customers spent on the old shop, S$. */
+  spend: number;
+  /** The middle and the largest grant, in points. */
+  median: number;
+  largest: number;
+  /** What earlier runs granted. */
+  grantedCustomers: number;
+  grantedPoints: number;
+  /** Migrated customers with Shopify-era spend who are partners, so get none. */
+  partnersLeftOut: number;
+  /** The rate the points are worked out at: the earn rate now. */
+  earnPerDollar: number;
+}
+
+/** `past_purchase_points_preview()`. Throws on a failed read. */
+export async function readPastPurchasePreview(admin: SupabaseClient): Promise<PastPurchasePreview> {
+  const { data, error } = await admin.rpc("past_purchase_points_preview");
+  if (error) throw new Error(`Could not work out the past-purchase points: ${error.message}`);
+  const r = one(data as Record<string, unknown> | Record<string, unknown>[] | null) ?? {};
+  const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  return {
+    customers: int(r.customers),
+    points: int(r.points),
+    spend: Math.round(num(r.spend) * 100) / 100,
+    median: int(r.median),
+    largest: int(r.largest),
+    grantedCustomers: int(r.granted_customers),
+    grantedPoints: int(r.granted_points),
+    partnersLeftOut: int(r.partners_left_out),
+    earnPerDollar: num(r.earn_per_dollar),
+  };
+}
+
+/**
+ * Grants the Past-purchase points the preview showed, in one statement. The
+ * database refuses, in words, when the customers or points are no longer the
+ * ones expected (an import or a rate change since the preview).
+ */
+export async function grantPastPurchasePoints(
+  admin: SupabaseClient,
+  p: { profileId: string | null; customers: number; points: number },
+): Promise<{ ok: true; customers: number; points: number } | { ok: false; error: string }> {
+  const { data, error } = await admin.rpc("grant_past_purchase_points", {
+    p_profile_id: p.profileId,
+    p_expect_customers: p.customers,
+    p_expect_points: p.points,
+  });
+  if (error) return { ok: false, error: error.message };
+  const r = one(data as Record<string, unknown> | Record<string, unknown>[] | null) ?? {};
+  return { ok: true, customers: int(r.customers), points: int(r.points) };
 }
 
 export { POINTS_SETTING_KEYS };

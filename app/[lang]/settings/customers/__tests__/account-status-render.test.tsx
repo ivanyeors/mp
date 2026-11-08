@@ -95,6 +95,7 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   campaigns_clicked: [],
   last_emailed_at: "-infinity",
   unengaged: false,
+  last_purchase_dated_by_fitting: false,
   ...over,
 });
 
@@ -281,6 +282,7 @@ describe("Customer detail: Lifecycle stage", () => {
     lifecycle_undated: false,
     marketing_email_updated_at: null,
     unengaged: false,
+    last_purchase_dated_by_fitting: false,
     ...over,
   });
 
@@ -319,6 +321,22 @@ describe("Customer detail: Lifecycle stage", () => {
     expect(html).toContain(">Loyal<");
     expect(html).toContain("Repeat purchases · No dates yet");
     expect(html).toContain("On Shopify");
+  });
+
+  it("dates a Shopify-era purchase by the fitting, and says so (ADR 0042 m)", () => {
+    const html = withStage(
+      lifecycle({
+        purchases: 1,
+        last_purchase_at: "2024-03-01T02:00:00Z",
+        lifecycle_stage: "at_risk",
+        lifecycle_detail: "lapsed",
+        last_purchase_dated_by_fitting: true,
+      }),
+    );
+    expect(html).toContain(">At risk<");
+    expect(html).not.toContain("No dates yet");
+    expect(html).toContain("Fitting, on Shopify");
+    expect(html).toContain("dated by their latest fitting record");
   });
 
   it("says a Lapsed Customer is Unengaged, with the rule on hover (PRD-campaign-audiences slice 12)", () => {

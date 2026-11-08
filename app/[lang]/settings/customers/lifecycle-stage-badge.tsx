@@ -27,7 +27,7 @@ const STAGE_TINT: Record<LifecycleStage, string> = {
 
 /** Placed by the Shopify-era count alone. */
 export const UNDATED_NOTE = "No dates yet";
-export const UNDATED_TITLE = "Placed by their Shopify-era order count; their dates arrive with the Shopify order history.";
+export const UNDATED_TITLE = "Placed by their Shopify-era order count: no fitting record dates their purchase.";
 
 export function LifecycleStageBadge({
     stage,

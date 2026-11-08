@@ -191,8 +191,9 @@ export type ReadjustedFilter = (typeof READJUSTED_FILTERS)[number];
  * *Last order*: the latest **purchase** (a counted Order with a goods line,
  * `last_purchase_at`; PRD-crm-retention-loop slice 03) was paid within the
  * last N months (`within:6`), or more than N months ago (`over:12`). A
- * re-adjustment fee is not a purchase. A Customer with no purchase here, a
- * Shopify-only buyer included, matches neither.
+ * re-adjustment fee is not a purchase. A Shopify-era purchase is dated by the
+ * Customer's latest Fitting record (ADR 0042 m); a Shopify-only buyer with no
+ * fitting, like a Customer who bought nothing, matches neither.
  */
 export interface LastOrderFilter {
   when: "within" | "over";

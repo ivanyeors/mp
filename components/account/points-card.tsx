@@ -3,7 +3,7 @@ import { Coins } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { PointsMilestone } from "@/lib/points/milestones";
 import type { PendingOrderPoints, PointsBalance } from "@/lib/points/server";
-import { POINTS_PER_DOLLAR, formatPoints, formatPointsCount } from "@/lib/points/value";
+import { POINTS_PER_DOLLAR, formatEarnRate, formatPoints, formatPointsCount } from "@/lib/points/value";
 import { MilestoneBar } from "./milestone-bar";
 
 const sgDate = (iso: string) =>
@@ -104,7 +104,7 @@ export function PointsComingSoonCard({
             <Badge variant="outline">Coming soon</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            {earnPerDollar > 0 ? `You'll earn ${earnPerDollar} points for every S$1 you pay for products, before GST. ` : null}
+            {earnPerDollar > 0 ? `You'll earn ${formatEarnRate(earnPerDollar)} for every S$1 you pay for products, before GST. ` : null}
             {`Use them as money off a later order: ${formatPointsCount(POINTS_PER_DOLLAR)} take S$1 off. They don't expire.`}
           </p>
         </div>

@@ -20,7 +20,8 @@
  *      no purchase but its attended booking makes a Customer Loyal, an
  *      unattended booking counts for nothing, an unsubscribe is Lost until a
  *      later purchase, booking or re-subscribe, a Shopify-only buyer is placed
- *      by count without dates;
+ *      by count without dates unless a Fitting record dates them (ADR 0042
+ *      m), and a fitting alone is no purchase;
  *   3. `stage=` for each stage, mapped by `applyCustomerFilters`, lists
  *      exactly the fixture's Customers in that stage; and (PRD-campaign-
  *      audiences slice 04) for each sub-status, a stage beside a sub-status,
@@ -41,6 +42,7 @@ import {
   lifecycleDetail,
   lifecycleStage,
   lifecycleUndated,
+  latestPurchase,
   type LifecycleDetail,
   type LifecycleStage,
 } from "@/lib/crm/lifecycle-stage";
@@ -82,6 +84,8 @@ interface FixtureBooking {
 interface FixtureCustomer {
   why: string;
   shopifyOrders?: number;
+  /** Fitting records, this many days ago each (ADR 0042 m). */
+  fittingsDaysAgo?: number[];
   orders: FixtureOrder[];
   bookings?: FixtureBooking[];
   /** Unsubscribed this many days ago. */
@@ -126,6 +130,14 @@ const FIXTURE: FixtureCustomer[] = [
   { why: "one Shopify-era order and one purchase here", shopifyOrders: 1, orders: [paid(60)], stage: "loyal", detail: "repeat_purchases", undated: false },
   { why: "a Migrated customer with no Shopify-era order", shopifyOrders: 0, orders: [], stage: "lead", detail: null, undated: false },
   { why: "Shopify-era orders and a purchase 26 months ago", shopifyOrders: 4, orders: [paid(791)], stage: "at_risk", detail: "lapsed", undated: false },
+  // ADR 0042 (m): a Shopify-era purchase dated by the latest Fitting record.
+  { why: "one Shopify-era order, fitted 30 months ago", shopifyOrders: 1, fittingsDaysAgo: [913], orders: [], stage: "at_risk", detail: "lapsed", undated: false },
+  { why: "two Shopify-era orders, fitted 14 and 40 months ago", shopifyOrders: 2, fittingsDaysAgo: [1217, 425], orders: [], stage: "at_risk", detail: null, undated: false },
+  { why: "one Shopify-era order, fitted 2 months ago: settled", shopifyOrders: 1, fittingsDaysAgo: [60], orders: [], stage: "new", detail: "settled", undated: false },
+  { why: "a fitting with no Shopify-era order is no purchase", shopifyOrders: 0, fittingsDaysAgo: [100], orders: [], stage: "lead", detail: null, undated: false },
+  { why: "a fitting, never a Migrated customer, is no purchase", fittingsDaysAgo: [100], orders: [], stage: "lead", detail: null, undated: false },
+  { why: "fitted 20 months ago, bought here 2 months ago", shopifyOrders: 1, fittingsDaysAgo: [600], orders: [paid(60, { deliveredDaysAgo: 55 })], stage: "loyal", detail: "repeat_purchases", undated: false },
+  { why: "bought here 26 months ago, fitted 13 months ago", shopifyOrders: 1, fittingsDaysAgo: [400], orders: [paid(800, { deliveredDaysAgo: 790 })], stage: "at_risk", detail: null, undated: false },
   // Attended Re-adjustment bookings.
   {
     why: "a purchase and the re-adjustment its fee paid for, attended",
@@ -150,12 +162,17 @@ const FIXTURE: FixtureCustomer[] = [
 ];
 
 const BATCH = "b0300000-0000-4000-8000-000000000001";
+const FITTING_BATCH = "b0300000-0000-4000-8000-000000000002";
 
 function fixtureSql(): string {
   const out: string[] = [];
   let order = 0;
   let item = 0;
   let booking = 0;
+  let fitting = 0;
+  out.push(
+    `insert into public.fitting_import_batches (id, file_name, file_sha256, date_order, rows_total) values (${lit(FITTING_BATCH)}, 'lifecycle-check-fittings.csv', ${lit("0".repeat(64))}, 'mdy', 1);`,
+  );
   out.push(
     `insert into public.customer_import_batches (id, source, file_name, file_sha256, rows_total, exported_at) values (${lit(BATCH)}, 'shopify_customers_csv', 'lifecycle-check.csv', ${lit("0".repeat(64))}, 0, current_date);`,
   );
@@ -178,6 +195,12 @@ function fixtureSql(): string {
           `insert into public.order_items (id, order_id, sku, product_title, quantity, unit_price, total_price, kind, service_key) values (${lit(`0d030000-0000-4000-8000-${String(++item).padStart(12, "0")}`)}, ${lit(orderId)}, 'CRM03-FIX', 'Fixture line', 1, 100, 100, ${lit(kind)}, ${kind === "service" ? "'readjustment'" : "null"});`,
         );
       }
+    }
+    for (const days of c.fittingsDaysAgo ?? []) {
+      const key = (++fitting).toString(16).padStart(64, "f");
+      out.push(
+        `insert into public.customer_fittings (customer_id, batch_id, source_key, created_customer, matched_by, fitted_at) values (${lit(id)}, ${lit(FITTING_BATCH)}, ${lit(key)}, false, 'email', ${lit(daysAgo(days))});`,
+      );
     }
     for (const b of c.bookings ?? []) {
       const start = daysAgo(b.daysAgo);
@@ -217,6 +240,7 @@ type OverviewRow = {
   lifecycle_undated: boolean;
   last_delivered_at: string | null;
   lifecycle_statuses: string[];
+  last_purchase_dated_by_fitting: boolean;
 };
 
 /** Slice 04's Stage and Delivered filters beyond one main stage, and whom each lists. */
@@ -247,10 +271,20 @@ function factsOf(c: FixtureCustomer) {
   );
   const latest = [...purchases].sort((a, b) => a.paidDaysAgo! - b.paidDaysAgo!)[0];
   const done = (c.bookings ?? []).filter((b) => b.status === "attended").sort((a, b) => a.daysAgo - b.daysAgo);
+  const fitted = c.fittingsDaysAgo?.length ? Math.min(...c.fittingsDaysAgo) : null;
+  const last = latestPurchase({
+    hereAt: latest ? daysAgo(latest.paidDaysAgo!) : null,
+    hereDeliveredAt: latest?.deliveredDaysAgo != null ? daysAgo(latest.deliveredDaysAgo) : null,
+    shopifyOrders: c.shopifyOrders ?? null,
+    lastFittedAt: fitted == null ? null : daysAgo(fitted),
+  });
   return {
     purchases: purchases.length + (c.shopifyOrders ?? 0),
-    lastPurchaseAt: latest ? daysAgo(latest.paidDaysAgo!) : null,
-    lastPurchaseDeliveredAt: latest?.deliveredDaysAgo != null ? daysAgo(latest.deliveredDaysAgo) : null,
+    lastPurchaseAt: last.at,
+    lastPurchaseDeliveredAt: last.deliveredAt,
+    datedByFitting: last.datedByFitting,
+    // `last_delivered_at`: deliveries here only.
+    deliveredHereAt: latest?.deliveredDaysAgo != null ? daysAgo(latest.deliveredDaysAgo) : null,
     bookings: done.length,
     lastBookingAt: done[0] ? daysAgo(done[0].daysAgo) : null,
     unsubscribedAt: c.unsubscribed && c.resubscribedDaysAgo == null ? daysAgo(c.unsubscribed.daysAgo) : null,
@@ -278,7 +312,7 @@ function main() {
       ...ZONES.flatMap((zone) => [`set local time zone '${zone}';`, ...caseSql(zone)]),
       "set local time zone 'UTC';",
       fixtureSql(),
-      `select '@@overview@@'::text || coalesce(jsonb_agg(to_jsonb(o)), '[]') from (select id, purchases, last_purchase_at, attended_bookings, lifecycle_stage, lifecycle_detail, lifecycle_undated, last_delivered_at, lifecycle_statuses from public.admin_customer_overview where ${inFixture}) o;`,
+      `select '@@overview@@'::text || coalesce(jsonb_agg(to_jsonb(o)), '[]') from (select id, purchases, last_purchase_at, attended_bookings, lifecycle_stage, lifecycle_detail, lifecycle_undated, last_delivered_at, lifecycle_statuses, last_purchase_dated_by_fitting from public.admin_customer_overview where ${inFixture}) o;`,
       ...LIFECYCLE_STAGES.map((s) => filterQuery(`stage_${s}`, `stage=${stageParam(s)}`)),
       filterQuery("stage_loyal_new", "stage=loyal,new"),
       ...SLICE_04_FILTERS.map((f, i) => filterQuery(`slice04_${i}`, f.search)),
@@ -324,6 +358,7 @@ function main() {
       lifecycle_stage: lifecycleStage(facts, now),
       lifecycle_detail: lifecycleDetail(facts, now),
       lifecycle_undated: lifecycleUndated(facts),
+      last_purchase_dated_by_fitting: facts.datedByFitting,
     };
     // Built in the same key order: jsonb reorders keys.
     const sql = {
@@ -333,10 +368,11 @@ function main() {
       lifecycle_stage: row.lifecycle_stage,
       lifecycle_detail: row.lifecycle_detail,
       lifecycle_undated: row.lifecycle_undated,
+      last_purchase_dated_by_fitting: row.last_purchase_dated_by_fitting,
     };
     if (JSON.stringify(sql) !== JSON.stringify(ts)) diffs.push(`fixture "${c.why}": SQL ${JSON.stringify(sql)}, TypeScript ${JSON.stringify(ts)}`);
     // Slice 04: the latest purchase's delivery, and the stage with its sub-status.
-    const delivered = { last_delivered_at: facts.lastPurchaseDeliveredAt && Date.parse(facts.lastPurchaseDeliveredAt), lifecycle_statuses: [ts.lifecycle_stage, ts.lifecycle_detail].filter((v) => v != null) };
+    const delivered = { last_delivered_at: facts.deliveredHereAt && Date.parse(facts.deliveredHereAt), lifecycle_statuses: [ts.lifecycle_stage, ts.lifecycle_detail].filter((v) => v != null) };
     const deliveredSql = { last_delivered_at: row.last_delivered_at && Date.parse(row.last_delivered_at), lifecycle_statuses: row.lifecycle_statuses };
     if (JSON.stringify(deliveredSql) !== JSON.stringify(delivered)) diffs.push(`fixture "${c.why}": SQL ${JSON.stringify(deliveredSql)}, TypeScript ${JSON.stringify(delivered)}`);
     const said = { lifecycle_stage: c.stage, lifecycle_detail: c.detail, lifecycle_undated: c.undated };

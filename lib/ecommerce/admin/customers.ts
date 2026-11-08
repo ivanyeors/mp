@@ -129,6 +129,8 @@ export const CUSTOMER_LIFECYCLE_COLUMNS = [
   "marketing_email_updated_at",
   // PRD-campaign-audiences slice 12: the sunset rule, beside the stage.
   "unengaged",
+  // ADR 0042 (m): the latest purchase is dated by a fitting.
+  "last_purchase_dated_by_fitting",
 ] as const satisfies readonly CustomerOverviewColumn[];
 
 /** The Customer's **Lifecycle stage** and what it is read from. */

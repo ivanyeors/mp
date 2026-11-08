@@ -34,7 +34,8 @@ off a later shop order. The Claim gives each **Migrated customer** a starting ba
    purchase. There are no tiers, no rewards catalogue, and no cashing out, transferring or buying
    points.
 2. **Points are earned on purchases, plus a one-time Claim bonus** for Migrated customers.
-3. **The earn rate is 3 points per S$1 (3%).**
+3. **The earn rate is 3 points per S$1 (3%).** Lowered to 1 point per S$1 (1%) by the owner on
+   2026-11-08 (ADR 0030 amendment); 100 points = S$1 is unchanged.
 4. **Points are spent on shop orders only.** Custom pillows (**Results**) earn points but cannot
    take them.
 5. **GST does not count.** Points are earned on, and taken off, the price before GST. Mellow Life
