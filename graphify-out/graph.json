@@ -161058,7 +161058,7 @@
       "node_kind": "heading",
       "norm_label": "consequences",
       "source_file": "docs/adr/0049-guest-email-on-the-first-question.md",
-      "source_location": "L71"
+      "source_location": "L72"
     },
     {
       "id": "docs_adr_0049_guest_email_on_the_first_question_considered_options",
@@ -161070,7 +161070,7 @@
       "node_kind": "heading",
       "norm_label": "considered options",
       "source_file": "docs/adr/0049-guest-email-on-the-first-question.md",
-      "source_location": "L57"
+      "source_location": "L58"
     },
     {
       "id": "docs_adr_0049_guest_email_on_the_first_question_context",
@@ -676495,7 +676495,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0049-guest-email-on-the-first-question.md",
-      "source_location": "L57",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -676517,7 +676517,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0049-guest-email-on-the-first-question.md",
-      "source_location": "L71",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -830352,7 +830352,7 @@
       "confidence_score": 0.95,
       "context": "name",
       "source_file": "docs/adr/0049-guest-email-on-the-first-question.md",
-      "source_location": "L80",
+      "source_location": "L81",
       "weight": 1.0
     },
     {
@@ -838500,7 +838500,7 @@
       "confidence_score": 0.95,
       "context": "status",
       "source_file": "docs/adr/0049-guest-email-on-the-first-question.md",
-      "source_location": "L45",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -869518,5 +869518,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "9fd35e37724f0581097a3fc159d499111fb436d1"
+  "built_at_commit": "a06e6186dccb9e2910cdf51384208e16fab53522"
 }

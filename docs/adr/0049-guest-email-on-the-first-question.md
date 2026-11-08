@@ -34,8 +34,9 @@ email. Nothing is saved for them before it.**
   Staff re-configuration) opens on the preview and never sees the question.
 - **Where.** The first question, "Tell us about yourself" (`name`). It comes after the welcome and
   *What to expect*, so the shopper knows what they are starting, and it already asks something
-  personal. One field, with one line on why: "We keep your answers under this email, so our team
-  can help you finish your pillow and send your payment link." An Mbolster hand-off into Mpillow
+  personal. One field, with one line on why: "We'll save your measurement results to this email, so
+  you can decide on your pillow later." It says *save*, not *send*: nothing emails a Draft's
+  results yet (the continue link, slice 02, is what would). An Mbolster hand-off into Mpillow
   (the rule graph's **Flow route**), which used to skip the first question, now starts on it for a
   guest.
 - **No Draft without an email.** Autosave writes nothing for a guest until the first question's

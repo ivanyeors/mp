@@ -4259,8 +4259,8 @@ export function MpConfigClient({
                       <p className="text-sm text-destructive">{fieldErrors.email}</p>
                     ) : null}
                     <p id="mp-email-why" className="text-sm text-muted-foreground">
-                      We keep your answers under this email, so our team can help you
-                      finish your pillow and send your payment link.
+                      We&apos;ll save your measurement results to this email, so you can
+                      decide on your pillow later.
                     </p>
                     {/* The checkout's box (ADR 0039), sharing its state: ticked by
                         default, and unticked changes nothing. */}
