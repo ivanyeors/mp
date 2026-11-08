@@ -17,25 +17,24 @@ import {
 
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021140000_points_spending.sql"), "utf8");
 
-// 10 points = S$1 (ADR 0030, amended 2026-11-08), from 50 points (S$5).
-const rules = { minRedeem: 50, maxShare: 0.5 };
+const rules = { minRedeem: 500, maxShare: 0.5 };
 
 describe("the allowance (rule i)", () => {
   it("is the smaller of the balance and half the products after the coupon, in S$1 steps", () => {
-    // Half of S$90 is S$45: the cap, under a 600-point balance.
-    expect(pointsAllowance({ available: 600, productsAfterCoupon: 90, ...rules })).toBe(450);
-    // A balance of 213 spends 210: the odd 3 stay.
-    expect(pointsAllowance({ available: 213, productsAfterCoupon: 200, ...rules })).toBe(210);
+    // Half of S$90 is S$45: the cap, under a 6,000-point balance.
+    expect(pointsAllowance({ available: 6000, productsAfterCoupon: 90, ...rules })).toBe(4500);
+    // A balance of 2,130 spends 2,100: the odd 30 stay.
+    expect(pointsAllowance({ available: 2130, productsAfterCoupon: 200, ...rules })).toBe(2100);
     // Half of S$85.50 is S$42.75: whole dollars only.
-    expect(pointsAllowance({ available: 1000, productsAfterCoupon: 85.5, ...rules })).toBe(420);
+    expect(pointsAllowance({ available: 10000, productsAfterCoupon: 85.5, ...rules })).toBe(4200);
   });
 
   it("is null when the order or the balance cannot reach the minimum", () => {
-    expect(pointsAllowance({ available: 1000, productsAfterCoupon: 9, ...rules })).toBeNull();
-    expect(pointsAllowance({ available: 49, productsAfterCoupon: 200, ...rules })).toBeNull();
+    expect(pointsAllowance({ available: 10000, productsAfterCoupon: 9, ...rules })).toBeNull();
+    expect(pointsAllowance({ available: 499, productsAfterCoupon: 200, ...rules })).toBeNull();
     expect(pointsAllowance({ available: 0, productsAfterCoupon: 200, ...rules })).toBeNull();
-    expect(pointsAllowance({ available: 1000, productsAfterCoupon: 0, ...rules })).toBeNull();
-    expect(pointsAllowance({ available: 50, productsAfterCoupon: 10, ...rules })).toBe(50);
+    expect(pointsAllowance({ available: 10000, productsAfterCoupon: 0, ...rules })).toBeNull();
+    expect(pointsAllowance({ available: 500, productsAfterCoupon: 10, ...rules })).toBe(500);
   });
 
   it("never pays the whole of the products, whatever the share: every Order takes some cash", () => {
@@ -52,34 +51,34 @@ describe("the allowance (rule i)", () => {
 });
 
 describe("a requested amount, as the server checks it (forged requests)", () => {
-  const order = { available: 300, productsAfterCoupon: 90, ...rules };
+  const order = { available: 3000, productsAfterCoupon: 90, ...rules };
 
   it("accepts S$1 steps from the minimum to the allowance", () => {
-    expect(validatePointsRequest(50, order)).toEqual({ ok: true, points: 50, discount: 5 });
-    expect(validatePointsRequest(300, order)).toEqual({ ok: true, points: 300, discount: 30 });
+    expect(validatePointsRequest(500, order)).toEqual({ ok: true, points: 500, discount: 5 });
+    expect(validatePointsRequest(3000, order)).toEqual({ ok: true, points: 3000, discount: 30 });
   });
 
   it("refuses an odd step, a fraction, zero, a negative and a non-number", () => {
-    for (const forged of [55, 100.5, 0, -50, "100", null, Number.NaN]) {
-      expect(validatePointsRequest(forged, order)).toEqual({ ok: false, error: "Points are used in steps of 10 (S$1)." });
+    for (const forged of [550, 1000.5, 0, -500, "1000", null, Number.NaN]) {
+      expect(validatePointsRequest(forged, order)).toEqual({ ok: false, error: "Points are used in steps of 100 (S$1)." });
     }
   });
 
   it("refuses below the minimum", () => {
-    expect(validatePointsRequest(40, order)).toEqual({ ok: false, error: "Use at least 50 points (S$5.00)." });
+    expect(validatePointsRequest(400, order)).toEqual({ ok: false, error: "Use at least 500 points (S$5.00)." });
   });
 
   it("refuses above the cap, even with the balance to cover it", () => {
-    const rich = { ...order, available: 10000 };
-    expect(validatePointsRequest(460, rich)).toEqual({ ok: false, error: "This order can take at most 450 points (S$45.00)." });
-    expect(validatePointsRequest(50, { ...rich, productsAfterCoupon: 0 })).toEqual({
+    const rich = { ...order, available: 100000 };
+    expect(validatePointsRequest(4600, rich)).toEqual({ ok: false, error: "This order can take at most 4,500 points (S$45.00)." });
+    expect(validatePointsRequest(500, { ...rich, productsAfterCoupon: 0 })).toEqual({
       ok: false,
       error: "This order is too small to use points.",
     });
   });
 
   it("refuses above the balance", () => {
-    expect(validatePointsRequest(310, order)).toEqual({ ok: false, error: "You have 300 points (S$30.00) to use." });
+    expect(validatePointsRequest(3100, order)).toEqual({ ok: false, error: "You have 3,000 points (S$30.00) to use." });
   });
 });
 
@@ -124,7 +123,7 @@ describe("labels", () => {
   });
 
   it("shows the points used as their own line", () => {
-    expect(formatPointsUsed(200)).toBe("Points used: 200 (−S$20.00)");
+    expect(formatPointsUsed(2000)).toBe("Points used: 2,000 (−S$20.00)");
   });
 });
 

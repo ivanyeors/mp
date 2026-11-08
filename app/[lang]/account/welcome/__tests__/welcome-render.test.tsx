@@ -80,13 +80,13 @@ describe("signed in", () => {
     firstName: "Jane",
     email: "jane@x.test",
     hasAddress: true,
-    bonus: { kind: "granted" as const, points: 100 },
+    bonus: { kind: "granted" as const, points: 1000 },
   };
 
   it("shows the Claim bonus: what was added, how to use it, and its two limits", () => {
     const html = page({ session: { customerId: "c-jane", email: "jane@x.test" } }, account);
     expect(html).toContain("S$10 in points is in your account");
-    expect(html).toContain("We&#x27;ve added 100 points. Use them on any shop order, up to half the price.");
+    expect(html).toContain("We&#x27;ve added 1,000 points. Use them on any shop order, up to half the price.");
     expect(html).toContain('href="/en-US/shop"');
     expect(html).toContain("can&#x27;t be used on custom pillows, and points used are not refunded");
     expect(html).toContain('href="/en-US/points"');

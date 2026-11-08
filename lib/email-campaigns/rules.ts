@@ -677,7 +677,7 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
 
 /**
  * The sign-in invitation: the imported customers' invitation to the new
- * website, with the Claim bonus (PRD-loyalty-points: 100 points, S$10 off a
+ * website, with the Claim bonus (PRD-loyalty-points: 1,000 points, S$10 off a
  * shop order, for signing in within 3 months of this email). It names no old
  * platform (owner, 2026-10-21). No longer where a new campaign starts
  * (PRD-campaign-email-editor decision 7): it is the Starter *New website:
@@ -687,12 +687,12 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
 export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   name: "New website: sign in for points",
   subject: "Our new website is here, with points waiting for you",
-  preheader: "Sign in within 3 months to collect 100 points, worth S$10 off your next order.",
+  preheader: "Sign in within 3 months to collect 1,000 points, worth S$10 off your next order.",
   body: [
     "We have a new website, and your Mpillow account is ready on it. There's nothing to fill in and no password to set: sign in with this email address, and it's yours.",
     "",
     "## Points for signing in",
-    "Sign in within 3 months of this email and we'll add 100 points to your account. That's S$10 off your next shop order, taken off at checkout.",
+    "Sign in within 3 months of this email and we'll add 1,000 points to your account. That's S$10 off your next shop order, taken off at checkout.",
     "",
     "## What your account does",
     "- Saves your delivery addresses for a faster checkout",

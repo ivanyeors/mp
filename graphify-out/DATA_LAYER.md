@@ -1945,17 +1945,17 @@ Defined in supabase/migrations/20261021130000_points_earning.sql:46
 ### release_points
 Defined in supabase/migrations/20261021140000_points_spending.sql:149
 - Called by:
-  - `releasePoints()` — lib/points/spend.ts:192
+  - `releasePoints()` — lib/points/spend.ts:189
 
 ### release_stale_point_reservations
 Defined in supabase/migrations/20261021140000_points_spending.sql:191
 - Called by:
-  - `releaseStalePointReservations()` — lib/points/spend.ts:214
+  - `releaseStalePointReservations()` — lib/points/spend.ts:211
 
 ### reserve_points
-Defined in supabase/migrations/20261108100200_points_ten_to_the_dollar.sql:86
+Defined in supabase/migrations/20261021140000_points_spending.sql:66
 - Called by:
-  - `reservePoints()` — lib/points/spend.ts:166
+  - `reservePoints()` — lib/points/spend.ts:163
 
 ### restore_landing_snapshot
 Defined in supabase/migrations/20261002090000_easyship_shipping.sql:147

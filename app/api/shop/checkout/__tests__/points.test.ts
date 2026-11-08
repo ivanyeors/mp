@@ -23,7 +23,7 @@ const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   session: null as string | null,
   partner: null as null | { status: string; partnerId: string | null; agreedVersion: string | null },
-  balance: 500,
+  balance: 5000,
   log: [] as string[],
   rpcCalls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
   reserve: null as unknown as Rpc,
@@ -92,7 +92,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.session = null;
   h.partner = null;
-  h.balance = 500;
+  h.balance = 5000;
   h.log = [];
   h.rpcCalls = [];
   h.reserve = () => ({ data: "reserved", error: null });
@@ -147,7 +147,7 @@ beforeEach(() => {
     ],
     site_settings: [
       { key: "points_enabled", value: "true" },
-      { key: "points_min_redeem", value: "50" },
+      { key: "points_min_redeem", value: "500" },
       { key: "points_max_share", value: "0.5" },
     ],
     orders: [],
@@ -205,7 +205,7 @@ function stripeCharge() {
 describe("checkout with points: the Stripe total", () => {
   it("adds the points to the coupon in one amount_off, labelled, and the paid-time reconcile passes", async () => {
     h.session = OWNER;
-    const res = await pay("Wei.Ling@example.com", { coupon: "SAVE10", points: 200 });
+    const res = await pay("Wei.Ling@example.com", { coupon: "SAVE10", points: 2000 });
     expect(res).toEqual({ status: 200, body: expect.objectContaining({ ok: true }) });
 
     // S$10 coupon + S$20 of points.
@@ -215,7 +215,7 @@ describe("checkout with points: the Stripe total", () => {
       customer_id: OWNER,
       subtotal: 100,
       discount_amount: 30,
-      points_spent: 200,
+      points_spent: 2000,
       points_discount: 20,
       coupon_code: "SAVE10",
       shipping_amount: 5,
@@ -238,21 +238,21 @@ describe("checkout with points: the Stripe total", () => {
 
   it("labels points alone \"Points\"", async () => {
     h.session = OWNER;
-    expect((await pay("wei.ling@example.com", { points: 50 })).status).toBe(200);
+    expect((await pay("wei.ling@example.com", { points: 500 })).status).toBe(200);
     expect(h.couponsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount_off: 500, name: "Points" }));
     expect(stripeCharge().total).toBe(100 - 5 + 5);
   });
 
   it("reserves after the Order and its lines exist, and before Stripe opens", async () => {
     h.session = OWNER;
-    await pay("wei.ling@example.com", { coupon: "SAVE10", points: 200 });
+    await pay("wei.ling@example.com", { coupon: "SAVE10", points: 2000 });
     const at = (e: string) => h.log.indexOf(e);
     expect(at("insert:orders")).toBeGreaterThanOrEqual(0);
     expect(at("insert:orders")).toBeLessThan(at("insert:order_items"));
     expect(at("insert:order_items")).toBeLessThan(at("rpc:reserve_points"));
     expect(at("rpc:reserve_points")).toBeLessThan(at("stripe:session"));
     expect(reserveCalls()).toEqual([
-      { fn: "reserve_points", args: { p_customer_id: OWNER, p_order_id: orderInsert()!.id, p_points: 200 } },
+      { fn: "reserve_points", args: { p_customer_id: OWNER, p_order_id: orderInsert()!.id, p_points: 2000 } },
     ]);
     // The session's partner context is read once, for pricing and points both.
     expect(h.getPartnerContext).toHaveBeenCalledTimes(1);
@@ -262,7 +262,7 @@ describe("checkout with points: the Stripe total", () => {
     h.session = OWNER;
     h.db.shipping_methods[0].free_above = 100;
     // SAVE10 needs S$100 of products; S$45 of points takes the cart below that, and it still applies.
-    const res = await pay("wei.ling@example.com", { coupon: "SAVE10", points: 450 });
+    const res = await pay("wei.ling@example.com", { coupon: "SAVE10", points: 4500 });
     expect(res.status).toBe(200);
     expect(orderInsert()).toMatchObject({ shipping_amount: 0, discount_amount: 55, total: 45 });
   });
@@ -285,7 +285,7 @@ describe("who may spend (rule h, rule r)", () => {
   };
 
   it("refuses a guest, even one typing the owner's email", async () => {
-    expect(await pay("wei.ling@example.com", { points: 100 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
+    expect(await pay("wei.ling@example.com", { points: 1000 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
     refusedBeforeAnyWrite();
   });
 
@@ -302,41 +302,41 @@ describe("who may spend (rule h, rule r)", () => {
 
   it("refuses a different signed-in Customer, under either email", async () => {
     h.session = OTHER;
-    expect(await pay("wei.ling@example.com", { points: 100 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
+    expect(await pay("wei.ling@example.com", { points: 1000 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
     refusedBeforeAnyWrite();
   });
 
   it("refuses the owner checking out under another email", async () => {
     h.session = OWNER;
-    expect(await pay("someone@example.com", { points: 100 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
-    expect(await pay("new.address@example.com", { points: 100 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
+    expect(await pay("someone@example.com", { points: 1000 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
+    expect(await pay("new.address@example.com", { points: 1000 })).toEqual({ status: 400, body: { error: POINTS_ACCOUNT_ERROR } });
     refusedBeforeAnyWrite();
   });
 
   it("refuses a signed-in partner, by the context self-purchase pricing reads", async () => {
     h.session = OWNER;
     h.partner = { status: "approved", partnerId: "partner-1", agreedVersion: null };
-    expect(await pay("wei.ling@example.com", { points: 100 })).toEqual({ status: 400, body: { error: POINTS_PARTNER_ERROR } });
+    expect(await pay("wei.ling@example.com", { points: 1000 })).toEqual({ status: 400, body: { error: POINTS_PARTNER_ERROR } });
     refusedBeforeAnyWrite();
   });
 
   it("refuses a partner the session missed, when reserve_points finds them (is_partner_customer)", async () => {
     h.session = OWNER;
     h.reserve = () => ({ data: "partner", error: null });
-    expect(await pay("wei.ling@example.com", { points: 100 })).toEqual({ status: 409, body: { error: POINTS_PARTNER_ERROR } });
+    expect(await pay("wei.ling@example.com", { points: 1000 })).toEqual({ status: 409, body: { error: POINTS_PARTNER_ERROR } });
     expect(h.sessionsCreate).not.toHaveBeenCalled();
     expect(h.db.orders).toEqual([]);
   });
 
   it("accepts the owner using their own email, in any case", async () => {
     h.session = OWNER;
-    expect((await pay("Wei.Ling@Example.com", { points: 100 })).status).toBe(200);
+    expect((await pay("Wei.Ling@Example.com", { points: 1000 })).status).toBe(200);
   });
 
   it("refuses while points are switched off", async () => {
     h.session = OWNER;
     h.db.site_settings[0].value = "false";
-    expect(await pay("wei.ling@example.com", { points: 100 })).toEqual({ status: 400, body: { error: POINTS_DISABLED_ERROR } });
+    expect(await pay("wei.ling@example.com", { points: 1000 })).toEqual({ status: 400, body: { error: POINTS_DISABLED_ERROR } });
     refusedBeforeAnyWrite();
   });
 });
@@ -347,30 +347,30 @@ describe("forged amounts (rule i)", () => {
   });
 
   it.each([
-    ["an odd step", 55, "Points are used in steps of 10 (S$1)."],
-    ["a fraction", 100.5, "Points are used in steps of 10 (S$1)."],
-    ["a negative", -100, "Points are used in steps of 10 (S$1)."],
-    ["below the minimum", 40, "Use at least 50 points (S$5.00)."],
+    ["an odd step", 550, "Points are used in steps of 100 (S$1)."],
+    ["a fraction", 1000.5, "Points are used in steps of 100 (S$1)."],
+    ["a negative", -1000, "Points are used in steps of 100 (S$1)."],
+    ["below the minimum", 400, "Use at least 500 points (S$5.00)."],
     // S$100 less the S$10 coupon: half is S$45.
-    ["above half the products after the coupon", 460, "This order can take at most 450 points (S$45.00)."],
+    ["above half the products after the coupon", 4600, "This order can take at most 4,500 points (S$45.00)."],
   ])("refuses %s", async (_name, points, error) => {
-    h.balance = 10000;
+    h.balance = 100000;
     expect(await pay("wei.ling@example.com", { coupon: "SAVE10", points })).toEqual({ status: 400, body: { error } });
     expect(h.db.orders).toEqual([]);
     expect(reserveCalls()).toEqual([]);
   });
 
   it("refuses more than the balance", async () => {
-    h.balance = 300;
-    expect(await pay("wei.ling@example.com", { coupon: "SAVE10", points: 400 })).toEqual({
+    h.balance = 3000;
+    expect(await pay("wei.ling@example.com", { coupon: "SAVE10", points: 4000 })).toEqual({
       status: 400,
-      body: { error: "You have 300 points (S$30.00) to use." },
+      body: { error: "You have 3,000 points (S$30.00) to use." },
     });
     expect(h.db.orders).toEqual([]);
   });
 
   it("refuses a schema-breaking value outright", async () => {
-    expect((await pay("wei.ling@example.com", { points: "200" })).status).toBe(400);
+    expect((await pay("wei.ling@example.com", { points: "2000" })).status).toBe(400);
     expect(h.db.orders).toEqual([]);
   });
 });
@@ -382,7 +382,7 @@ describe("the reservation and its release (rule j)", () => {
 
   it("refuses cleanly when another tab spent the balance first: no Order left, no Stripe", async () => {
     h.reserve = () => ({ data: "insufficient", error: null });
-    const res = await pay("wei.ling@example.com", { points: 200 });
+    const res = await pay("wei.ling@example.com", { points: 2000 });
     expect(res.status).toBe(409);
     expect(String(res.body.error)).toMatch(/balance has changed/);
     expect(h.sessionsCreate).not.toHaveBeenCalled();
@@ -394,7 +394,7 @@ describe("the reservation and its release (rule j)", () => {
 
   it("gives the points back when Stripe refuses to open the Checkout, before the Order goes", async () => {
     h.sessionsCreate.mockRejectedValueOnce(new Error("Stripe is down"));
-    const res = await pay("wei.ling@example.com", { points: 200 });
+    const res = await pay("wei.ling@example.com", { points: 2000 });
     expect(res).toEqual({ status: 500, body: { error: "Stripe is down" } });
     const release = h.rpcCalls.find((c) => c.fn === "release_points");
     expect(release?.args).toEqual({ p_order_id: expect.stringMatching(/^orders-/) });
@@ -405,9 +405,9 @@ describe("the reservation and its release (rule j)", () => {
   it("keeps the Order, cancelled, when the release cannot be confirmed, so the daily sweep finds it", async () => {
     h.sessionsCreate.mockRejectedValueOnce(new Error("Stripe is down"));
     h.release = () => ({ data: null, error: { message: "connection reset" } });
-    expect((await pay("wei.ling@example.com", { points: 200 })).status).toBe(500);
+    expect((await pay("wei.ling@example.com", { points: 2000 })).status).toBe(500);
     expect(h.log).not.toContain("delete:orders");
-    expect(orderInsert()).toMatchObject({ status: "cancelled", points_spent: 200 });
+    expect(orderInsert()).toMatchObject({ status: "cancelled", points_spent: 2000 });
   });
 
   it("does not release anything on a Stripe error when no points were used", async () => {

@@ -14,7 +14,6 @@ const CASES = JSON.parse(
   readFileSync(join(process.cwd(), "supabase/tests/loyalty-points/milestone-cases.json"), "utf8"),
 ) as { cases: Case[] };
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261023120000_points_milestones.sql"), "utf8");
-const TEN = readFileSync(join(process.cwd(), "supabase/migrations/20261108100200_points_ten_to_the_dollar.sql"), "utf8");
 
 describe("parseMilestones: milestone-cases.json (the same table points_milestones() answers)", () => {
   it.each(CASES.cases.map((c) => [c.name, c] as const))("%s", (_n, c) => {
@@ -24,12 +23,7 @@ describe("parseMilestones: milestone-cases.json (the same table points_milestone
 
 describe("the setting", () => {
   it("is seeded in SQL as SEEDED_MILESTONES, and reads back as it", () => {
-    // Seeded at 100 points = S$1, then divided by 10 when a point became S$0.10
-    // (20261108100200_points_ten_to_the_dollar.sql), so each keeps its dollar value.
-    const seeded = "1000:100,2500:300,5000:800,10000:2000";
-    expect(MIGRATION).toContain(`('points_milestones', '${seeded}')`);
-    expect(TEN).toContain("(split_part(p, ':', 1)::bigint / 10)::text || ':' || (split_part(p, ':', 2)::bigint / 10)::text");
-    expect(SEEDED_MILESTONES).toEqual(parseMilestones(seeded).map((m) => ({ at: m.at / 10, bonus: m.bonus / 10 })));
+    expect(MIGRATION).toContain(`('points_milestones', '${formatMilestones(SEEDED_MILESTONES)}')`);
     expect(parseMilestones(formatMilestones(SEEDED_MILESTONES))).toEqual(SEEDED_MILESTONES);
   });
 
@@ -40,12 +34,7 @@ describe("the setting", () => {
 });
 
 describe("milestoneProgress", () => {
-  const ladder = [
-    { at: 1000, bonus: 100 },
-    { at: 2500, bonus: 300 },
-    { at: 5000, bonus: 800 },
-    { at: 10000, bonus: 2000 },
-  ];
+  const ladder = [...SEEDED_MILESTONES];
 
   it("starts empty, with the first milestone next", () => {
     const p = milestoneProgress(ladder, 0);
@@ -77,14 +66,11 @@ describe("milestoneProgress", () => {
 
 describe("milestoneCostRows", () => {
   it("states the spend that reaches each milestone and what the customer then has back", () => {
-    // 1 point per S$1, 10 points = S$1.
-    const rows = milestoneCostRows(SEEDED_MILESTONES, 1);
-    expect(rows.map((r) => r.spend)).toEqual([100, 250, 500, 1000]);
-    expect(rows.map((r) => r.bonusesSoFar)).toEqual([10, 40, 120, 320]);
-    // 1,000 earned and 320 in bonuses is S$132 back on S$1,000.
-    expect(rows[3]!.backShare).toBeCloseTo(132 / 1000, 6);
-    // At 3 points per S$1, the first is reached after S$34.
-    expect(milestoneCostRows(SEEDED_MILESTONES, 3)[0]!.spend).toBe(34);
+    const rows = milestoneCostRows(SEEDED_MILESTONES, 3);
+    expect(rows.map((r) => r.spend)).toEqual([334, 834, 1667, 3334]);
+    expect(rows.map((r) => r.bonusesSoFar)).toEqual([100, 400, 1200, 3200]);
+    // 10,000 earned and 3,200 in bonuses is S$132 back on S$3,334.
+    expect(rows[3]!.backShare).toBeCloseTo(132 / 3334, 6);
   });
 
   it("has no spend at a rate of 0", () => {

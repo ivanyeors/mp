@@ -32,11 +32,10 @@ one-time **Claim bonus** for Migrated customers.
 
 The owner's decisions of 2026-10-21, as the PRD lists them:
 
-1. Points are a dollar offset and nothing else: ~~100~~ 10 points = S$1 (amended 2026-11-08,
-   below), spent as money off a purchase.
+1. Points are a dollar offset and nothing else: 100 points = S$1, spent as money off a purchase.
    No tiers, no catalogue, no cashing out, transferring or buying.
 2. They are earned on purchases, plus a one-time Claim bonus for Migrated customers.
-3. The earn rate is ~~3 points~~ 1 point per S$1 (amended 2026-11-08, below): 10% back.
+3. The earn rate is ~~3~~ 1 point per S$1 (amended 2026-11-08, below).
 4. They are spent on shop orders only. Results earn but cannot take them.
 5. GST does not count.
 6. Only Orders paid from launch earn.
@@ -44,7 +43,7 @@ The owner's decisions of 2026-10-21, as the PRD lists them:
 8. ~~The balance expires 24 months after the last purchase, with reminders 3, 2 and 1 months
    before.~~ Retired 2026-10-31: points never expire (amendment below).
 9. ~~Reminders go only to customers who agreed to marketing email.~~ Retired with 8.
-10. The Claim bonus is ~~1,000~~ 100 points (S$10; amended 2026-11-08, below).
+10. The Claim bonus is 1,000 points (S$10).
 11. Its window is 3 months from the customer's first campaign email, or from the first wave if we
     never emailed them; there is no calendar end date.
 12. Partners neither earn nor spend points.
@@ -55,7 +54,7 @@ The owner's decisions of 2026-10-21, as the PRD lists them:
 
 The rules that implement them, (a) to (r), are the PRD's *Rules* section, unchanged:
 
-- **Value.** (a) ~~100~~ 10 points = S$1 (amended 2026-11-08) is a constant in code, never a setting. (b) A balance is always
+- **Value.** (a) 100 points = S$1 is a constant in code, never a setting. (b) A balance is always
   shown in points and dollars.
 - **Earning.** (c) `floor(rate × (subtotal − discount_amount − amount_refunded))`, floored at 0.
   (d) Pending for 30 days after `delivered_at` (`paid_at` for service-only Orders), then one
@@ -64,7 +63,7 @@ The rules that implement them, (a) to (r), are the PRD's *Rules* section, unchan
 - **Claim bonus.** (f) Granted once, if the Claim fell inside the window. (g) A Claim before
   launch is granted at the next sign-in.
 - **Spending.** (h) A signed-in, non-partner Customer checking out with their own account email.
-  (i) In ~~100-point steps from 500~~ 10-point (S$1) steps from 50 (amended 2026-11-08), at most half the products' price after any coupon, never
+  (i) In 100-point steps from 500, at most half the products' price after any coupon, never
   shipping. (j) Reserved by one SQL function holding a row lock on the Customer; given back when
   the Checkout expires or its payment fails. (k) Shop orders only.
 - **Refunds and adjustments.** (l) Refund code does not change. (m) A refund after release claws
@@ -210,15 +209,15 @@ The owner's choices, 2026-11-08:
   is owed down to customers who come back, but balances would only appear at sign-in.
 - *Counting them towards milestones:* rejected by the owner. In production, at 3 points per S$1,
   1,258 customers would have passed the first milestone at once, adding 173,600 points (about
-  S$1,736); at 5, more still.
+  S$1,736); at 1, fewer.
 - *Writing them as `earn` entries:* rejected. `earn` is one per Order, and milestones count it.
 - *Excluding shipping:* not possible. The export's spend is one total per customer, shipping
   included, so a past purchase earns on a little more than an Order here would.
 
-**What it costs.** In production on 2026-11-08, at 1 point per S$1 and 10 points = S$1 (below):
-1,613 Migrated customers with spend, 793,094 points, about S$79,309. Half the grants are 458 points
-(S$45.80) or fewer, and the largest is 8,445 (S$844.50). At the rates first proposed it was
-2,379,749 points at 3 per S$1 and 100 points = S$1, about S$23,797. No partner had Shopify-era spend. The accountant should
+**What it costs.** In production on 2026-11-08: 1,613 Migrated customers with spend,
+793,094 points at 1 per S$1 (about S$7,931; it was 2,379,749, about S$23,797, at 3). Half the
+grants are 458 points (S$4.58) or fewer, and the largest is 8,445 (S$84.45). No partner had
+Shopify-era spend. The accountant should
 know before the run: it is a liability from the day it is given (slice 08).
 
 **Consequences.** The ledger has a ninth kind, `past_purchases`, labelled "Points for past
@@ -227,48 +226,37 @@ terms gained a "Points for past purchases" section and are dated 8 November 2026
 it with the rest before launch. The Staff guide's launch checklist gives the points before
 launch, so a customer's balance is there at their first sign-in.
 
-## Amendment (2026-11-08): 10 points = S$1, earned at 1 point per S$1
+## Amendment (2026-11-08): the earn rate is 1 point per S$1
 
-The owner changed what a point is worth: "points earned $1 spent = 1 point. And for spending, it
-would be 10 points per $1 for customer to offset." Earlier the same day the owner had raised the
-earn rate from 3 to 5 points per S$1; that was never applied and is superseded by this.
+The owner lowered the earn rate, for Orders and Past-purchase points alike: "make the points
+earned $1 spent = 1 point". A point is still worth S$0.01: "100 points for $1 a user can use".
 
-**Decisions 1 and 3, amended.** 10 points = S$1, so a point is worth S$0.10, and customers earn 1
-point per S$1 they pay for, before GST: 10% back, where it was 3%. Rule (a) stands: the value is a
-constant in code (`POINTS_PER_DOLLAR`) and in SQL, never a setting. Rule (i): points are used in
-10-point (S$1) steps. The earn rate is still a setting.
+**Decision 3, amended.** The earn rate is 1 point per S$1: 1% back on what the customer pays
+for, before GST, and the rate Past-purchase points are worked out at. It is still a setting
+(`points_earn_per_dollar`), changed by Staff on Settings → Discounts → Points; rules (a) and (b)
+are unchanged, so nothing saved in points changes what it is worth.
 
-**Every amount in points keeps its dollar value.** The owner chose 10 points = S$1 knowing each
-amount saved in points would otherwise be worth ten times as much, so
-`20261108100200_points_ten_to_the_dollar.sql` divides them by 10, once:
-
-| Setting | Was | Now | Worth |
-|---|---|---|---|
-| Earn rate | 3 per S$1 | 1 per S$1 | 10% back |
-| Fewest used at once | 500 | 50 | S$5 |
-| Claim bonus (decision 10) | 1,000 | 100 | S$10 |
-| Milestones | 1,000:100, 2,500:300, 5,000:800, 10,000:2,000 | 100:10, 250:30, 500:80, 1,000:200 | bonuses S$1 to S$20 |
-
-- The checkout's SQL moves with it: `orders_points_discount_matches` is points_discount × 10 =
-  points_spent, and `reserve_points` takes 10-point steps and caps at whole dollars × 10. The
-  constraint is also the marker that the conversion ran, so applying the migration twice divides
-  nothing twice. It refuses to run while any Order has used points; in production none had.
-- The ledger is append-only and is not converted. In production it held one entry, a Staff
-  adjustment of 99,999 points on 2026-11-05, worth S$999.99 before and S$9,999.90 after. Staff
-  settle it with an `adjust` entry.
-- Past-purchase points are at the earn rate, so 1 point per S$1 of Shopify-era spend.
+- `20261108100200_points_earn_one.sql` moves the saved rate from 3 to 1, and only from 3, so a
+  rate Staff saved since is theirs. A missing or malformed rate reads as 1, in SQL
+  (`points_settings()`) and in TypeScript (`POINTS_DEFAULTS`).
+- Points were off with no launch date, so no Order earned at 3, and nothing is given back or
+  re-earned.
 
 **Considered.**
 
-- *5 points per S$1 at 100 points = S$1 (5% back):* the owner's first change of the day, superseded.
-- *1 point per S$1 at 100 points = S$1 (1% back), or at 20 points = S$1 (5% back):* offered; the
-  owner chose 10 points = S$1.
-- *Leaving the amounts in points as they were:* rejected. The Claim bonus would have become S$100,
-  the fewest used at once S$50, and the milestone bonuses S$10 to S$200.
+- *5 points per S$1 (5% back):* the owner's first change that day, replaced before it was
+  applied.
+- *5 for past purchases only, 3 for Orders:* offered with it; the owner chose one rate for both.
+- *A point worth S$0.10 (10 points = S$1, so 10% back at 1 point per S$1):* chosen, then
+  withdrawn by the owner the same day. 100 points = S$1 stays.
 
-**What it costs.** Customers get 10% back. With the milestones, the first (100 points) comes
-after about S$100 spent and adds S$1, and a customer at the last (1,000 points, about S$1,000
-spent) has 13.2% back. Past-purchase points are about S$79,309 (above). The terms, the Profile,
-checkout, the emails and the Staff guide read the value and the settings, so they say 10 points =
-S$1 and 1 point per S$1. The accountant should know before launch (slice 08); counsel reviews the
-terms, dated 8 November 2026.
+**What it costs.** Customers get 1% back, and the milestone ladder is reached later: the first
+milestone (1,000 points) after about S$1,000 spent, not S$334, and a customer at the last one
+(10,000 points, about S$10,000 spent) has 1.32% back, not 3.96%. The bonuses are worth what they
+were (S$1 to S$20) but take three times the spend; the owner may want to look at the ladder
+again on the same page. The Claim bonus (1,000 points, S$10) and the fewest points used at once
+(500, S$5) are unchanged, so the Claim bonus is now what S$1,000 of Orders earns. Past-purchase
+points are about S$7,931 (above). The terms and the Staff guide read the rate from the settings,
+so they say 1 point once it is saved. The accountant should know the new rate before launch
+(slice 08).
+

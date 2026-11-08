@@ -9,10 +9,10 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { MAX_MILESTONES, SEEDED_MILESTONES, milestoneCostRows, type PointsMilestone } from "@/lib/points/milestones";
+import { MAX_MILESTONES, milestoneCostRows, type PointsMilestone } from "@/lib/points/milestones";
 import type { PointsSummary } from "@/lib/points/server";
 import type { PointsSettings } from "@/lib/points/settings";
-import { POINTS_PER_DOLLAR, formatDollarsShort, formatPoints, percentBack } from "@/lib/points/value";
+import { formatDollarsShort, formatEarnRate, formatPoints } from "@/lib/points/value";
 import { PastPurchasePoints } from "./past-purchase-points";
 
 /** "2026-11-01T00:00" in Singapore, for a datetime-local input. */
@@ -71,7 +71,7 @@ function MilestonesField({
         onChange(milestones.map((m, j) => (j === i ? { ...m, ...patch } : m)));
     const add = () => {
         const last = milestones[milestones.length - 1];
-        onChange([...milestones, last ? { at: last.at * 2, bonus: last.bonus * 2 } : { ...SEEDED_MILESTONES[0]! }]);
+        onChange([...milestones, last ? { at: last.at * 2, bonus: last.bonus * 2 } : { at: 1000, bonus: 100 }]);
     };
 
     return (
@@ -102,8 +102,8 @@ function MilestonesField({
                                     <Input
                                         id={`points-ms-at-${i}`}
                                         type="number"
-                                        step={POINTS_PER_DOLLAR}
-                                        min={POINTS_PER_DOLLAR}
+                                        step={100}
+                                        min={100}
                                         value={Number.isFinite(m.at) ? m.at : ""}
                                         onChange={(e) => setRow(i, { at: Number(e.target.value) })}
                                     />
@@ -113,8 +113,8 @@ function MilestonesField({
                                     <Input
                                         id={`points-ms-bonus-${i}`}
                                         type="number"
-                                        step={POINTS_PER_DOLLAR}
-                                        min={POINTS_PER_DOLLAR}
+                                        step={100}
+                                        min={100}
                                         value={Number.isFinite(m.bonus) ? m.bonus : ""}
                                         onChange={(e) => setRow(i, { bonus: Number(e.target.value) })}
                                     />
@@ -153,7 +153,7 @@ function MilestonesField({
 
 /**
  * Discounts → Points (PRD-loyalty-points slice 02; ADR 0030): the programme's
- * settings and what it costs now. 10 points = S$1 is fixed in code. Turning
+ * settings and what it costs now. 100 points = S$1 is fixed in code. Turning
  * points on needs a launch date; only Orders paid from then earn. Customers
  * imported from Shopify are given points for past purchases once, from the
  * panel under the settings (ADR 0030, amendment of 2026-11-08).
@@ -221,8 +221,8 @@ export function PointsSettingsCard() {
                     </CardTitle>
                     <InfoTip label="About points">
                         <p>
-                            Customers earn points on what they pay and spend them as money off a shop order.{" "}
-                            {POINTS_PER_DOLLAR} points are S$1, always, and they never expire. Custom pillows earn points but can&apos;t take them,
+                            Customers earn points on what they pay and spend them as money off a shop order. 100 points
+                            are S$1, always, and they never expire. Custom pillows earn points but can&apos;t take them,
                             and points used are never refunded.
                         </p>
                         <p>Partners neither earn nor spend points: they have their own milestone tiers.</p>
@@ -259,7 +259,7 @@ export function PointsSettingsCard() {
                             <NumberField
                                 id="points-earn"
                                 label="Points per S$1 paid"
-                                hint={`${settings.earnPerDollar} per S$1 is ${percentBack(settings.earnPerDollar)}% back.`}
+                                hint={`${formatEarnRate(settings.earnPerDollar)} per S$1 is ${settings.earnPerDollar}% back.`}
                                 value={settings.earnPerDollar}
                                 onChange={(n) => set("earnPerDollar", n)}
                                 step={0.5}
@@ -270,7 +270,7 @@ export function PointsSettingsCard() {
                                 hint={formatPoints(settings.minRedeem)}
                                 value={settings.minRedeem}
                                 onChange={(n) => set("minRedeem", n)}
-                                step={POINTS_PER_DOLLAR}
+                                step={100}
                             />
                             <NumberField
                                 id="points-share"
@@ -285,7 +285,7 @@ export function PointsSettingsCard() {
                                 hint={`${formatPoints(settings.claimBonus)}, once, for an imported customer who signs in.`}
                                 value={settings.claimBonus}
                                 onChange={(n) => set("claimBonus", n)}
-                                step={POINTS_PER_DOLLAR}
+                                step={100}
                             />
                             <NumberField
                                 id="points-bonus-months"

@@ -40,6 +40,6 @@ A customer imported from Shopify starts with points for what they already bought
 - [x] Partners and customers whose spend is under one point get none.
 - [x] Milestone progress is unchanged by them.
 - [x] A run whose numbers moved since the preview is refused and writes nothing.
-- [ ] The accountant knows the liability before the run (about 793k points, S$79.3k, at 1 point
-      per S$1 and 10 points = S$1, in production on 2026-11-08).
+- [ ] The accountant knows the liability before the run (about 793k points, S$7.9k, at 1 point
+      per S$1, in production on 2026-11-08; the owner lowered the rate from 3 the same day).
 - [ ] The owner runs it, before points launch.

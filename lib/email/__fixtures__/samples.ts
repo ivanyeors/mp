@@ -64,9 +64,9 @@ export function sampleOrder(fixture: EmailFixture = "happy"): OrderEmailData {
   };
 }
 
-/** The same order with 200 points (S$20) spent beside a S$20 coupon, earning 451 points, for a guest. */
+/** The same order with 2,000 points (S$20) spent beside a S$20 coupon, earning 1,233 points, for a guest. */
 export function sampleOrderWithPoints(fixture: EmailFixture = "happy"): OrderEmailData {
-  return { ...sampleOrder(fixture), pointsSpent: 200, pointsEarn: { points: 451, guest: true } };
+  return { ...sampleOrder(fixture), pointsSpent: 2000, pointsEarn: { points: 1233, guest: true } };
 }
 
 export function sampleRma(fixture: EmailFixture = "happy"): RmaEmailData {

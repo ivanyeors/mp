@@ -20,7 +20,7 @@ describe("points used", () => {
   it("splits the discount: the coupon, then the points, each its own line", () => {
     for (const template of ["order_confirmation", "payment_receipt"] as const) {
       const text = plain(renderOrderEmail(template, sampleOrderWithPoints()).text);
-      expect(text).toContain("Discount: − SGD 20.00\nPoints used (200): − SGD 20.00");
+      expect(text).toContain("Discount: − SGD 20.00\nPoints used (2,000): − SGD 20.00");
       expect(text).toContain("Total: SGD 451.13");
     }
   });
@@ -28,7 +28,7 @@ describe("points used", () => {
   it("points alone, with no coupon: no Discount line", () => {
     const text = plain(renderOrderEmail("payment_receipt", { ...sampleOrderWithPoints(), discountAmount: 20 }).text);
     expect(text).not.toContain("Discount:");
-    expect(text).toContain("Points used (200): − SGD 20.00");
+    expect(text).toContain("Points used (2,000): − SGD 20.00");
   });
 
   it("an order with no points is unchanged", () => {
@@ -58,14 +58,14 @@ describe("points the order will earn", () => {
   it("says what it earns, in points and dollars, with a sign-in line for a guest", () => {
     const { text, html } = renderOrderEmail("order_confirmation", sampleOrderWithPoints());
     expect(text).toContain(
-      "This order will earn 451 points (S$45.10) once it has been delivered and kept for 30 days. Sign in with this email to see and use them.",
+      "This order will earn 1,233 points (S$12.33) once it has been delivered and kept for 30 days. Sign in with this email to see and use them.",
     );
-    expect(html).toContain("This order will earn 451 points (S$45.10)");
+    expect(html).toContain("This order will earn 1,233 points (S$12.33)");
   });
 
   it("leaves the sign-in line out for a customer who has signed in", () => {
-    const { text } = renderOrderEmail("order_confirmation", { ...sampleOrderWithPoints(), pointsEarn: { points: 30, guest: false } });
-    expect(text).toContain("This order will earn 30 points (S$3.00) once it has been delivered and kept for 30 days.\n");
+    const { text } = renderOrderEmail("order_confirmation", { ...sampleOrderWithPoints(), pointsEarn: { points: 300, guest: false } });
+    expect(text).toContain("This order will earn 300 points (S$3.00) once it has been delivered and kept for 30 days.\n");
     expect(text).not.toContain("Sign in with this email");
   });
 

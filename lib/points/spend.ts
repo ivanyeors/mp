@@ -11,9 +11,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { POINTS_PER_DOLLAR, formatDollars, formatPoints, pointsToDollars } from "./value";
 
-/** An amount of points that is not whole dollars. */
-export const POINTS_STEP_ERROR = `Points are used in steps of ${POINTS_PER_DOLLAR} (S$1).`;
-
 /** The fixed copy beside the checkout control (stories 5 and 9). */
 export const POINTS_CHECKOUT_COPY = "Points can't be used on custom pillows. Points used are not refunded.";
 
@@ -59,7 +56,7 @@ export function pointsCapDollars(productsAfterCoupon: number, maxShare: number):
 }
 
 /**
- * Pure — the most points this order allows, in S$1 steps (POINTS_PER_DOLLAR): no more
+ * Pure — the most points this order allows, in 100-point (S$1) steps: no more
  * than the balance and no more than the cap. Null when that is below the
  * minimum, so the order cannot take points at all.
  */
@@ -81,7 +78,7 @@ export type PointsRequestCheck = { ok: true; points: number; discount: number } 
 export function validatePointsRequest(requested: unknown, i: AllowanceInput): PointsRequestCheck {
   const n = typeof requested === "number" ? requested : Number.NaN;
   if (!Number.isInteger(n) || n <= 0 || n % POINTS_PER_DOLLAR !== 0) {
-    return { ok: false, error: POINTS_STEP_ERROR };
+    return { ok: false, error: "Points are used in steps of 100 (S$1)." };
   }
   if (n < i.minRedeem) {
     return { ok: false, error: `Use at least ${formatPoints(i.minRedeem)}.` };
@@ -144,7 +141,7 @@ export function reserveRefusalMessage(outcome: Exclude<ReserveOutcome, "reserved
     case "customer":
       return POINTS_ACCOUNT_ERROR;
     case "step":
-      return POINTS_STEP_ERROR;
+      return "Points are used in steps of 100 (S$1).";
     case "minimum":
     case "cap":
       return "That many points can't be used on this order. Please check the amount and try again.";

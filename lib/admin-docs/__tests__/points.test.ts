@@ -53,28 +53,26 @@ describe("pointsGuideSections", () => {
   });
 
   it("states the numbers the settings hold", () => {
-    const t = text(pointsGuideSections({ ...seeded, earnPerDollar: 2, minRedeem: 100, maxShare: 0.3 }, now));
-    expect(t).toContain("2 points per S$1");
-    expect(t).toContain("20% back on products");
-    expect(t).toContain("from 100 points (S$10), up to 30% of the products' price");
-    expect(t).toContain("A S$89 order with no discount earns 178 points (S$17.80).");
-    // One point is said as one.
-    expect(text(pointsGuideSections(seeded, now))).toContain("1 point per S$1");
+    const t = text(pointsGuideSections({ ...seeded, earnPerDollar: 4, minRedeem: 1000, maxShare: 0.3 }, now));
+    expect(t).toContain("4 points per S$1");
+    expect(t).toContain("from 1,000 points (S$10), up to 30% of the products' price");
+    expect(t).toContain("A S$89 order with no discount earns 356 points (S$3.56).");
   });
 
   it("lays out each milestone with the spend that reaches it and what is back by then", () => {
     const sections = pointsGuideSections(seeded, now);
     const table = sections.find((s) => s.id === "milestones")!.blocks.find((b) => b.kind === "table");
     expect(table && table.kind === "table" ? table.rows : null).toEqual([
-      ["1", "100", "10 points (S$1)", "S$100 spent", "11%"],
-      ["2", "250", "30 points (S$3)", "S$250 spent", "11.6%"],
-      ["3", "500", "80 points (S$8)", "S$500 spent", "12.4%"],
-      ["4", "1,000", "200 points (S$20)", "S$1,000 spent", "13.2%"],
+      ["1", "1,000", "100 points (S$1)", "S$1,000 spent", "1.1%"],
+      ["2", "2,500", "300 points (S$3)", "S$2,500 spent", "1.16%"],
+      ["3", "5,000", "800 points (S$8)", "S$5,000 spent", "1.24%"],
+      ["4", "10,000", "2,000 points (S$20)", "S$10,000 spent", "1.32%"],
     ]);
     const t = text(sections);
     expect(t).toContain("A bonus is never taken back");
     expect(t).toContain("Milestones aren't tiers or levels.");
-    expect(t).toContain("a customer who reaches the last one (1,000 points, about S$1,000 spent) has 13.2% back");
+    expect(t).toContain("At 1 point per S$1, customers get 1% back.");
+    expect(t).toContain("a customer who reaches the last one (10,000 points, about S$10,000 spent) has 1.32% back");
   });
 
   it("says when there are no milestones", () => {

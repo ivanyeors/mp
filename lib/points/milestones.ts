@@ -8,7 +8,7 @@
  * bonuses neither move the bar nor set it back.
  *
  * The ladder is one `site_settings` value, "points earned:bonus" pairs:
- * "100:10,250:30". `parseMilestones` reads it exactly as SQL's
+ * "1000:100,2500:300". `parseMilestones` reads it exactly as SQL's
  * `points_milestones()` does, so the Profile's bar and the grant agree.
  */
 import { POINTS_PER_DOLLAR } from "./value";
@@ -22,11 +22,10 @@ export interface PointsMilestone {
 
 /** The ladder the migration seeds; the owner edits it on Settings → Discounts → Points. */
 export const SEEDED_MILESTONES: readonly PointsMilestone[] = [
-  // 10 points = S$1 since 2026-11-08: the seeded ladder divided by 10, so each keeps its dollar value.
-  { at: 100, bonus: 10 },
-  { at: 250, bonus: 30 },
-  { at: 500, bonus: 80 },
-  { at: 1000, bonus: 200 },
+  { at: 1000, bonus: 100 },
+  { at: 2500, bonus: 300 },
+  { at: 5000, bonus: 800 },
+  { at: 10000, bonus: 2000 },
 ];
 
 /** The most milestones a ladder may hold: the bar has room for five. */

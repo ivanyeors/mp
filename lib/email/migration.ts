@@ -35,7 +35,7 @@ import type { RenderedEmail } from "./types";
 
 /** The Claim bonus a sign-in grants (ADR 0030 f), as the email states it. */
 export interface CampaignBonusTerms {
-  /** "100 points". */
+  /** "1,000 points". */
   points: string;
   /** "S$10". */
   amount: string;
@@ -91,7 +91,7 @@ const greet = (firstName: string | null) => {
   return name ? `Hi ${name},` : "Hi,";
 };
 
-/** "100 points, S$10 off your next shop order". */
+/** "1,000 points, S$10 off your next shop order". */
 export function claimBonusPhrase(b: Pick<CampaignBonusTerms, "points" | "amount">): string {
   return `${b.points}, ${b.amount} off your next shop order`;
 }

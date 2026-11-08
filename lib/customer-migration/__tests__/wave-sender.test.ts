@@ -59,12 +59,12 @@ function seed(world: CampaignWorld) {
     { customer_id: EVE, shopify_orders_count: 3, imported_at: "2026-10-12T02:00:00Z" },
     { customer_id: FAY, shopify_orders_count: 3, imported_at: "2026-10-12T02:00:00Z", claimed_at: "2026-10-16T02:00:00Z" },
   );
-  // Points are on and launched, with the seeded Claim bonus: 100 points within 3 months.
+  // Points are on and launched, with the seeded Claim bonus: 1,000 points within 3 months.
   Object.assign(world.settings, {
     migration_service_notice_enabled: "false",
     points_enabled: "true",
     points_launch_at: new Date(Date.now() - 86400_000).toISOString(),
-    points_claim_bonus: "100",
+    points_claim_bonus: "1000",
     points_claim_bonus_months: "3",
   });
 }
@@ -311,7 +311,7 @@ describe("--apply", () => {
     expect(JSON.stringify(world.claimLinks)).not.toContain(link![1]);
 
     // The Claim bonus and its window, from Discounts → Points; no word of the old platform.
-    expect(bea.text).toContain("Sign in within 3 months of this email and we'll add 100 points, S$10 off your next shop order.");
+    expect(bea.text).toContain("Sign in within 3 months of this email and we'll add 1,000 points, S$10 off your next shop order.");
     // The terms, in the Customer's language.
     expect(bea.text).toContain(`How points work: ${ORIGIN}/zh-CN/points`);
     expect(`${bea.subject}\n${bea.text}\n${bea.html}`).not.toMatch(/shopify|moved|voucher/i);

@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1794120377.7899406,
-    "seen": 1794122027.7114182,
-    "ast_hash": "8817e252f831d2b32a495c7bec90273c",
+    "mtime": 1794122346.6387327,
+    "seen": 1794122931.679597,
+    "ast_hash": "cad1edc12e7b811f8dfd6abe6c10066c",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -6984,9 +6984,9 @@
     "semantic_hash": ""
   },
   "lib/email/__fixtures__/samples.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7070448,
-    "ast_hash": "ca098e69874e21f95257877ca201b539",
+    "mtime": 1794122346.7307327,
+    "seen": 1794122931.6769636,
+    "ast_hash": "71b93c96c370422e07557c25b007aaf0",
     "semantic_hash": ""
   },
   "lib/email/__tests__/contact-sheet.test.ts": {
@@ -12900,9 +12900,9 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/claim.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7066855,
-    "ast_hash": "5f1feac0b16784dc61b22d64acac4f7f",
+    "mtime": 1794122346.7307327,
+    "seen": 1794122931.6766236,
+    "ast_hash": "9651100c16c036c1eb399f62c91cf7f9",
     "semantic_hash": ""
   },
   "lib/customer-migration/claim.ts": {
@@ -12918,9 +12918,9 @@
     "semantic_hash": ""
   },
   "lib/email/account.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7071116,
-    "ast_hash": "836456fd629dbaa186f33590b0a8f761",
+    "mtime": 1794122346.7347326,
+    "seen": 1794122931.6770215,
+    "ast_hash": "c9b9f7573ae6023e7a8c4047c2ce4c23",
     "semantic_hash": ""
   },
   "lib/email/customer-emails.ts": {
@@ -13116,9 +13116,9 @@
     "semantic_hash": ""
   },
   "app/api/settings/customers/__tests__/timeline-route.test.ts": {
-    "mtime": 1794120377.7904942,
-    "seen": 1794122027.7052402,
-    "ast_hash": "ae0b6725f4b90e79c9df18683027bac5",
+    "mtime": 1794122346.6387327,
+    "seen": 1794122931.6756518,
+    "ast_hash": "27e67b0d6e9d922e1824da930f542cb5",
     "semantic_hash": ""
   },
   "lib/crm/timeline/__tests__/load.test.ts": {
@@ -13992,9 +13992,9 @@
     "semantic_hash": ""
   },
   "lib/customer-migration/__tests__/wave-sender.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7067056,
-    "ast_hash": "6f9e11961c84fa756fd81032e76448fc",
+    "mtime": 1794122346.7307327,
+    "seen": 1794122931.6766412,
+    "ast_hash": "339b0d424b9bbb26ed76bccaf86d66d1",
     "semantic_hash": ""
   },
   "lib/customer-migration/audience.ts": {
@@ -14040,9 +14040,9 @@
     "semantic_hash": ""
   },
   "lib/email/migration.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7071452,
-    "ast_hash": "f1244378e45a78e97465bde075c48639",
+    "mtime": 1794122346.7347326,
+    "seen": 1794122931.677051,
+    "ast_hash": "53256fdba9cf011ad425e3fd92306af1",
     "semantic_hash": ""
   },
   "lib/email/resend-webhook.ts": {
@@ -14208,15 +14208,15 @@
     "semantic_hash": ""
   },
   "app/api/settings/discounts/points/route.ts": {
-    "mtime": 1794120377.7904942,
-    "seen": 1794122027.705283,
-    "ast_hash": "7ce392b17ee7a93a6829e3e103e36f4b",
+    "mtime": 1794122346.6387327,
+    "seen": 1794122931.6756968,
+    "ast_hash": "6179d0e5c2df12192480426788792238",
     "semantic_hash": ""
   },
   "app/api/shop/checkout/__tests__/points.test.ts": {
-    "mtime": 1794120377.7904942,
-    "seen": 1794122027.70539,
-    "ast_hash": "6495e185122fc5deeaf3f594d3e87046",
+    "mtime": 1794122346.6387327,
+    "seen": 1794122931.6757278,
+    "ast_hash": "c92e1821b81283a7a6113f30ba994882",
     "semantic_hash": ""
   },
   "app/api/shop/customers/[id]/points/__tests__/route.test.ts": {
@@ -14232,9 +14232,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/points/allowance/__tests__/allowance.test.ts": {
-    "mtime": 1794120377.7904942,
-    "seen": 1794122027.705561,
-    "ast_hash": "d49096d544a9ddcab10ee2b486d66f9e",
+    "mtime": 1794122346.6427326,
+    "seen": 1794122931.6758406,
+    "ast_hash": "7f79f78d0e4825c9c8b97dc908157c24",
     "semantic_hash": ""
   },
   "app/api/shop/points/allowance/route.ts": {
@@ -14274,9 +14274,9 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/rules.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7070322,
-    "ast_hash": "139d1fa4bc5bf731433955217c349ee5",
+    "mtime": 1794122346.7307327,
+    "seen": 1794122931.6769526,
+    "ast_hash": "51391995dd25d2092bbf4278e1e35c6f",
     "semantic_hash": ""
   },
   "lib/email-campaigns/sender.ts": {
@@ -14310,9 +14310,9 @@
     "semantic_hash": ""
   },
   "lib/email/__tests__/order-points.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.707083,
-    "ast_hash": "30c81b914a5137c48c34703cd56b3448",
+    "mtime": 1794122346.7347326,
+    "seen": 1794122931.6769989,
+    "ast_hash": "05ab02c8e3decfb3253ced8812704d8e",
     "semantic_hash": ""
   },
   "lib/email/campaigns.ts": {
@@ -14346,15 +14346,15 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/order.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7076473,
-    "ast_hash": "189d69ecf2fb2d59ea82d1ce22186477",
+    "mtime": 1794122346.7347326,
+    "seen": 1794122931.677368,
+    "ast_hash": "3aaae31bf2c8fee079b8abff9ef2421f",
     "semantic_hash": ""
   },
   "lib/points/__tests__/points.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7076495,
-    "ast_hash": "44477af73325bedcbcd7eefc09ed7b9a",
+    "mtime": 1794122476.759885,
+    "seen": 1794122931.67737,
+    "ast_hash": "a9fdb725bc085a9e2fadff99ff3e6faa",
     "semantic_hash": ""
   },
   "lib/points/__tests__/refunds-pinned.test.ts": {
@@ -14364,15 +14364,15 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/spend.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7076547,
-    "ast_hash": "1dddd048b2891d5fa46e36703148b496",
+    "mtime": 1794122346.7347326,
+    "seen": 1794122931.6773732,
+    "ast_hash": "c07e54dc37edb584ddd7a656163dad84",
     "semantic_hash": ""
   },
   "lib/points/__tests__/terms.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7076674,
-    "ast_hash": "e4a42a2d58810d3be28b825ff0e0bf99",
+    "mtime": 1794122430.165725,
+    "seen": 1794122931.6773746,
+    "ast_hash": "dfc9eed36a23e887e71d9036a51222e4",
     "semantic_hash": ""
   },
   "lib/points/claim-bonus.ts": {
@@ -14424,27 +14424,27 @@
     "semantic_hash": ""
   },
   "lib/points/settings.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.707693,
-    "ast_hash": "1f31ddddec5f94ab36f3b39a1075bffb",
+    "mtime": 1794122406.6386778,
+    "seen": 1794122931.6773908,
+    "ast_hash": "ba4a14a1f41c897ec646508eecec4583",
     "semantic_hash": ""
   },
   "lib/points/spend.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.707696,
-    "ast_hash": "ca802b9fc43fb2ccaa977af196672121",
+    "mtime": 1794122346.7347326,
+    "seen": 1794122931.6773922,
+    "ast_hash": "cae19a84e0a3cace4171b38dd64f4271",
     "semantic_hash": ""
   },
   "lib/points/terms.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.707698,
-    "ast_hash": "71ffb8a8577aee6fa4753d07b0add606",
+    "mtime": 1794122412.9279597,
+    "seen": 1794122931.6773937,
+    "ast_hash": "8b0b00f5b60959bb8326afd3c792e3e0",
     "semantic_hash": ""
   },
   "lib/points/value.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7077003,
-    "ast_hash": "02069f1e3ea35270567689f6e0d08003",
+    "mtime": 1794122406.6390898,
+    "seen": 1794122931.6773946,
+    "ast_hash": "9dd427c80cb1fb830f85230377c85abd",
     "semantic_hash": ""
   },
   "supabase/migrations/20261021100000_email_campaigns.sql": {
@@ -14604,15 +14604,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/loyalty-points-prd.md": {
-    "mtime": 1794120377.7847703,
-    "seen": 1794122027.7105556,
-    "ast_hash": "279cd7aafd345c8a2703185103e54815",
+    "mtime": 1794122504.6296263,
+    "seen": 1794122931.6791227,
+    "ast_hash": "cf903bcfbc8d5e34986ad317609b5dc3",
     "semantic_hash": ""
   },
   "docs/adr/0030-loyalty-points.md": {
-    "mtime": 1794120377.7904942,
-    "seen": 1794122027.7115853,
-    "ast_hash": "3fef198075e0cd735f012f77ca64d31c",
+    "mtime": 1794122497.5318077,
+    "seen": 1794122931.6796675,
+    "ast_hash": "8694f2870f4fa8e4d130863402b7d70d",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/countries/route.ts": {
@@ -14652,9 +14652,9 @@
     "semantic_hash": ""
   },
   "lib/admin-docs/__tests__/points.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7058814,
-    "ast_hash": "61118216b36ed684de3bc4324a449e26",
+    "mtime": 1794122465.2323582,
+    "seen": 1794122931.676034,
+    "ast_hash": "17ccdcf8bdfae265e8d71c3cd24931eb",
     "semantic_hash": ""
   },
   "lib/admin-docs/guides.ts": {
@@ -14664,9 +14664,9 @@
     "semantic_hash": ""
   },
   "lib/admin-docs/points.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7058926,
-    "ast_hash": "ce239164065269ade09fc6c7baec24a6",
+    "mtime": 1794122412.938697,
+    "seen": 1794122931.6760435,
+    "ast_hash": "c1de6b579d7fec8cb04a133d1763b7f8",
     "semantic_hash": ""
   },
   "lib/admin-docs/types.ts": {
@@ -14676,15 +14676,15 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/milestones.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7076447,
-    "ast_hash": "0cc5b3cc7d96fd1fb8aedbfe5ecc70ae",
+    "mtime": 1794122346.7347326,
+    "seen": 1794122931.6773665,
+    "ast_hash": "f237245918d6851144c44c2c28c61901",
     "semantic_hash": ""
   },
   "lib/points/milestones.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7076786,
-    "ast_hash": "124ec5b03e5355984b410733d415e46f",
+    "mtime": 1794122346.7347326,
+    "seen": 1794122931.6773822,
+    "ast_hash": "247e14c09ac741b6d6c1bdc2329d2edf",
     "semantic_hash": ""
   },
   "supabase/migrations/20261023120000_points_milestones.sql": {
@@ -16320,9 +16320,9 @@
     "semantic_hash": ""
   },
   "lib/email-campaigns/__tests__/starters.test.ts": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7069902,
-    "ast_hash": "28807ecdda37fba645670b6174681d43",
+    "mtime": 1794122346.7307327,
+    "seen": 1794122931.6769178,
+    "ast_hash": "a406ad9f627cd73ffe22011204cefb14",
     "semantic_hash": ""
   },
   "lib/email-campaigns/ai-campaign.ts": {
@@ -16902,9 +16902,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/points.mjs": {
-    "mtime": 1794120377.7847703,
-    "seen": 1794122027.7043655,
-    "ast_hash": "e70b268be008319c7cdc26561479498f",
+    "mtime": 1794122421.5488942,
+    "seen": 1794122931.6750946,
+    "ast_hash": "ad46f77b5c999bfcaea24b97f48c9841",
     "semantic_hash": ""
   },
   "supabase/migrations/20261031032017_points_never_expire.sql": {
@@ -16980,9 +16980,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/crm.mjs": {
-    "mtime": 1794120377.7847703,
-    "seen": 1794122027.7043307,
-    "ast_hash": "de004c88c4dfdce7132e2fa8a934d5e0",
+    "mtime": 1794122346.6387327,
+    "seen": 1794122931.6750684,
+    "ast_hash": "0446dbdb8401f4a05373ae5aeacfe8d6",
     "semantic_hash": ""
   },
   "app/[lang]/settings/campaigns/__tests__/audience-never-sends-actions.test.ts": {
@@ -18474,21 +18474,21 @@
     "semantic_hash": ""
   },
   "supabase/tests/loyalty-points/assert-10-past-purchases.sql": {
-    "mtime": 1794120377.8647702,
-    "seen": 1794122027.7101343,
+    "mtime": 1794122421.5498757,
+    "seen": 1794122931.6788623,
     "ast_hash": "2ff97069af66f46fcf62db4cea963194",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/10-past-purchase-points.md": {
-    "mtime": 1794120377.7847703,
-    "seen": 1794122027.7105498,
-    "ast_hash": "1a537056713926149518c65fc93da91e",
+    "mtime": 1794122500.674978,
+    "seen": 1794122931.6791198,
+    "ast_hash": "90c37499055c4126e0444bb49ed6f6c4",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261108100200_points_ten_to_the_dollar.sql": {
-    "mtime": 1794119408.3978746,
-    "seen": 1794120359.2750652,
-    "ast_hash": "7eb984b0542e04b4519d5b5185b46c30",
+  "supabase/migrations/20261108100200_points_earn_one.sql": {
+    "mtime": 1794122396.9333026,
+    "seen": 1794122931.678778,
+    "ast_hash": "e0d181d01a691ed4992d0f2788059a7f",
     "semantic_hash": ""
   }
 }

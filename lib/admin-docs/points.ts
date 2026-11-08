@@ -9,7 +9,7 @@ import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 import { pointsForOrder } from "@/lib/points/earn";
 import { milestoneCostRows } from "@/lib/points/milestones";
 import { profilePointsView, type PointsSettings } from "@/lib/points/settings";
-import { POINTS_PER_DOLLAR, formatDollarsShort, formatPointsCount, percentBack, pointsToDollars } from "@/lib/points/value";
+import { POINTS_PER_DOLLAR, formatDollarsShort, formatEarnRate, formatPointsCount, pointsToDollars } from "@/lib/points/value";
 import type { DocGuide, DocSection } from "./types";
 
 export const POINTS_GUIDE: DocGuide = {
@@ -51,8 +51,7 @@ export function pointsStatusLine(s: PointsSettings, now: Date = new Date()): str
 /** Pure — every section of the guide, with the numbers from `s`. */
 export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): DocSection[] {
   const rate = s.earnPerDollar;
-  // "1 point", "2 points".
-  const perDollar = formatPointsCount(rate);
+  const perDollar = formatEarnRate(rate);
   const min = worth(s.minRedeem);
   const share = `${Math.round(s.maxShare * 100)}%`;
   const example = pointsForOrder({ subtotal: 89, discount: 0, refunded: 0 }, rate);
@@ -91,7 +90,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
           rows: [
             ["Launch", s.launchAt ? sgDateTime(s.launchAt) : "Not set", "Only orders paid from then earn."],
             ["Points are on", s.enabled ? "Yes" : "No", "Off: nothing earns and nothing can be used."],
-            ["Earn rate", `${perDollar} per S$1`, `${percentBack(rate)}% back on products, before GST. Shipping doesn't earn.`],
+            ["Earn rate", `${perDollar} per S$1`, `${rate}% back on products, before GST. Shipping doesn't earn.`],
             ["Value", `${POINTS_PER_DOLLAR} points = S$1`, "Fixed in code."],
             ["Fewest used at once", min, "Points are used in S$1 steps from here."],
             ["Most of an order", share, "Of the products' price after any discount code. Never shipping."],
@@ -165,7 +164,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
               },
               {
                 kind: "p" as const,
-                text: `"Back by then" is the points earned and every bonus so far, as a share of the spend: ${percentBack(rate)}% from the earn rate, plus the bonuses.`,
+                text: `"Back by then" is the points earned and every bonus so far, as a share of the spend: ${rate}% from the earn rate, plus the bonuses.`,
               },
             ]
           : [{ kind: "p" as const, text: `There are no milestones now. Add them on ${DISCOUNTS.label}.` }]),
@@ -305,8 +304,8 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
           kind: "p",
           text:
             top && top.spend !== null && top.backShare !== null
-              ? `At ${perDollar} per S$1, customers get ${percentBack(rate)}% back. With the milestones, a customer who reaches the last one (${top.at.toLocaleString("en-SG")} points, about ${formatDollarsShort(top.spend)} spent) has ${percent(top.backShare)} back.`
-              : `At ${perDollar} per S$1, customers get ${percentBack(rate)}% back.`,
+              ? `At ${perDollar} per S$1, customers get ${rate}% back. With the milestones, a customer who reaches the last one (${top.at.toLocaleString("en-SG")} points, about ${formatDollarsShort(top.spend)} spent) has ${percent(top.backShare)} back.`
+              : `At ${perDollar} per S$1, customers get ${rate}% back.`,
         },
         { kind: "note", text: "Points customers hold are a liability. The accountant decides how it is booked and from which figure." },
       ],

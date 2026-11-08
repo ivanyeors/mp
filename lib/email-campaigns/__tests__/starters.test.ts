@@ -198,7 +198,7 @@ describe("the sign-in invitation", () => {
   it("offers only the Claim bonus, which the points rule holds back until points are live", () => {
     const draft = starterDraft(s);
     expect(mentionsPoints(draft)).toBe(true);
-    expect(sent(starterContent(s)).text).toContain("100 points");
+    expect(sent(starterContent(s)).text).toContain("1,000 points");
     expect(starterContent(s).blocks.some((b) => b.type === "buttons" && b.buttons[0].target === "sign_in")).toBe(true);
   });
 });

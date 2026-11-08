@@ -17,7 +17,7 @@
 // `ship` (ISO-2, null for Unknown) and `lang` feed the reach filters (slice 05);
 // `points` is their balance.
 const PEOPLE = [
-  { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false, ship: "SG", points: 120 },
+  { first: "Aisha", last: "Rahman", tags: ["staff"], stage: "loyal", detail: "repeat_purchases", purchases: 3, bought: ["premium", "mbolster"], sizes: ["M"], delivered: 35, consent: "subscribed", source: "account", imported: false, ship: "SG", points: 1200 },
   { first: "Ben", last: "Ong", stage: "new", detail: "delivered", purchases: 1, bought: ["premium"], sizes: ["L"], delivered: 10, consent: "not_subscribed", imported: true, said: "no", ship: "SG" },
   { first: "Chloe", last: "Tan", stage: "new", detail: "settled", purchases: 1, bought: ["premium"], sizes: ["M"], delivered: 45, consent: "subscribed", source: "shopify_import", imported: true, said: "yes", recent: [3], ship: "SG" },
   // ADR 0042 (m): his one purchase was on Shopify, dated by his fitting 26 months ago.

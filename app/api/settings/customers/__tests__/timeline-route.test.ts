@@ -232,9 +232,9 @@ beforeEach(() => {
     // PRD-loyalty-points: Mei's Claim bonus, and her spend, which is not an
     // account event. Kim's bonus is Kim's alone.
     points_ledger: [
-      { id: CLAIM_BONUS, customer_id: MEI, kind: "claim_bonus", points: 100, order_id: null, note: "Claim bonus", created_at: t("06-15T00:00") },
-      { id: "pl-spend", customer_id: MEI, kind: "spend", points: -100, order_id: O1, note: null, created_at: t("09-01T02:00") },
-      { id: "pl-kim", customer_id: KIM, kind: "claim_bonus", points: 100, order_id: null, note: "Claim bonus", created_at: t("06-16T00:00") },
+      { id: CLAIM_BONUS, customer_id: MEI, kind: "claim_bonus", points: 1000, order_id: null, note: "Claim bonus", created_at: t("06-15T00:00") },
+      { id: "pl-spend", customer_id: MEI, kind: "spend", points: -1000, order_id: O1, note: null, created_at: t("09-01T02:00") },
+      { id: "pl-kim", customer_id: KIM, kind: "claim_bonus", points: 1000, order_id: null, note: "Claim bonus", created_at: t("06-16T00:00") },
     ],
   };
 });
@@ -358,7 +358,7 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`account.claimed:${MEI}`)?.summary).toBe("Claimed: first sign-in since the import");
     expect(byId.get(`account.signed_up:${MEI}`)?.summary).toBe("Signed up: a login was linked to this Customer");
     // The Claim bonus, read from the Points ledger, in points and dollars.
-    expect(byId.get(`account.claim_bonus:${CLAIM_BONUS}`)).toMatchObject({ summary: "Claim bonus: 100 points (S$10.00)", group: "account" });
+    expect(byId.get(`account.claim_bonus:${CLAIM_BONUS}`)).toMatchObject({ summary: "Claim bonus: 1,000 points (S$10.00)", group: "account" });
     expect(byId.has("account.claim_bonus:pl-kim")).toBe(false);
     expect([...byId.keys()].some((k) => k.includes("pl-spend"))).toBe(false);
     // Only the first click is dated; the count is in the line. The token is never read.
