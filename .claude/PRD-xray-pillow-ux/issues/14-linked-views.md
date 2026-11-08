@@ -93,3 +93,16 @@ Ivan's brief (7-11-2026): arranging fillings should feel like stuffing a real pi
 - **The keys stay as a shortcut, never needed:** Alt + arrows (5 mm), Alt + Shift + arrows (1 mm).
 
 Tests: `fine-drag.test.ts` (gain, no trailing at an ordinary pace, creep, catch-up, hold on a snap). `slab-drag.test.ts` (the snap places, home clears the offset, no snap places exactly). `pouch-drag.test.ts` (a stacked cell takes the drop on its top Layer). `xray-dive.check.ts`: one sunburst (the add picker), the fine drag and the centre's target. Browser: mouse at a normal pace then a creep on both views; down through the Layer bands on the cut; a drop on a stacked cell with no picker; a finger drag on a 390 px phone (no page scroll, the badge above the finger, the cut following).
+
+## Round 3 (Ivan, 8-11-2026): a Neck support nudged to the centre stuck on the side
+
+> "I know that the neck support component 'cannot' fit into the back of the pillow based on the measurements. I tried nudging the cervical neck component to the center, but it always gets stuck on the side."
+
+- **The cause was the top view's soft settle, not the drag.** The back wall curves in across the centre Section. At Size S the back is about 69 mm deep at the middle and about 107 mm at the sides. A measured roll reaches that wall.
+  - Each piece starts as its outline clipped to the walls. The wall clips a nudged roll more on its inner side, so the clipped outline's middle lies outward of where the roll was put.
+  - The solver held the piece at that middle, and the curved wall then slid the firm roll on to a corner.
+  - Drawn 25–35 view units past where it was put on either side of home; centred only at an offset of exactly 0. A hand creeping it toward the middle saw it stay in one corner, then jump to the other.
+- **The fix:** a firm piece (the roll, the ear pad) is held across at the middle of its layout rect (`SoftPiece.anchorX`, `soft-top.ts`). It cannot squash to the wall as a pouch does, so the wall now pushes it front ↔ back. Pouches and the cut are unchanged.
+- **Still true:** a roll that does not fit the centre back is drawn pressed forward into the pouch in front of it, and its cell keeps its **Fit status**.
+
+Tests: `soft-top.test.ts` (a Neck support in a Size S centre back, nudged −40 … +40 mm, is drawn within 2 view units of where it was put, in order; fails on the old anchor by 35). Browser (preview fixture Hui Min Chua, Re-adjust): stored 40 mm right, it was drawn in the right corner; a drag toward the middle left it in the left corner, and a creep back did not move it. Now it is drawn where stored and follows the drag and the creep.

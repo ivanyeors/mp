@@ -55,6 +55,13 @@ export type SoftPiece = {
    * room instead of pushing it back.
    */
   held?: boolean;
+  /**
+   * Where it is held on the x axis, when that is not the middle of its start ring.
+   * A firm piece starts as its outline clipped to the walls, and a curved wall
+   * clips one side more than the other, so that middle is off to the side; it
+   * is held where it was put instead (the top view, 8-11-2026). Absent: its start.
+   */
+  anchorX?: number;
 };
 
 export type SolverOptions = {
@@ -305,7 +312,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
 
   // Every ring runs the same way round; a piece's rest ring follows its start ring.
   const rings = [
-    { id: "case", kind: "case" as const, pts: full as readonly Pt[], restPts: null as readonly Pt[] | null, areaTarget: undefined as number | undefined, areaMin: 0, over: false, held: false },
+    { id: "case", kind: "case" as const, pts: full as readonly Pt[], restPts: null as readonly Pt[] | null, areaTarget: undefined as number | undefined, areaMin: 0, over: false, held: false, anchorX: undefined as number | undefined },
     ...pieces.map((p) => {
       const flip = signedArea(p.ring) < 0;
       const or = (r: readonly Pt[]) => (flip ? r.slice().reverse() : r);
@@ -318,6 +325,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
         areaMin: p.areaMin ?? 0,
         over: !!p.over,
         held: !!p.held,
+        anchorX: p.anchorX,
       };
     }),
   ];
@@ -382,7 +390,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       qy,
       lx,
       ly,
-      cx0: cx,
+      cx0: r.anchorX ?? cx,
       cy0: cy,
       tx: r.held ? Math.max(tether, HELD_TETHER) : tether,
       ty: r.held && tetherY ? Math.max(tetherY, HELD_TETHER) : tetherY,
