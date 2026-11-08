@@ -14,6 +14,12 @@
 //    (ADR 0042 l), a 3D S in place of each side's 6D M and one more in the centre,
 //    so the card draws that mix and says it was re-adjusted.
 //    /settings/customers/00000000-0000-4000-8000-0000000c0003
+//  - Hui Min Chua (crm.mjs): Sophie re-adjusted her S · Type-8a with a Cervical
+//    Neck Support L in the centre back, nudged 40 mm to the right. The S pillow's
+//    back wall curves in across the centre, and the measured roll (a made-up Neck
+//    support L row below) reaches it, which once slid it into a corner whatever it
+//    was nudged to (8-11-2026). Re-adjust and drag it across to see it follow.
+//    /settings/customers/00000000-0000-4000-8000-0000000c0008
 //
 // The Profile's pillow (ADR 0042 k), as the signed-in preview user Jamie sees it
 // on /account (fittings.mjs gives Jamie an L · T12 fitting):
@@ -23,13 +29,14 @@
 //  - `--scenario pillow-not-bought`: neither, so the Profile shows no pillow.
 //
 // Made-up recipes; the Items are the catalog's (fixtures/analytics.mjs): 55 6D L,
-// 57 6D+ L, 67 6D S, 68 6D M, 69 3D S, 73 6D Fold S.
+// 57 6D+ L, 60 6D+ S, 63 Cervical Neck Support L, 67 6D S, 68 6D M, 69 3D S, 73 6D Fold S.
 
 const TYPE_12 = 512;
 const TYPE_8A = 514;
 const SOPHIE = "00000000-0000-4000-8000-0000000000a5";
 const BEN = "00000000-0000-4000-8000-0000000c0002";
 const CHLOE = "00000000-0000-4000-8000-0000000c0003";
+const HUI_MIN = "00000000-0000-4000-8000-0000000c0008";
 const JAMIE = "cust-preview-owner";
 
 /** One cell's pieces, top Layer first. */
@@ -217,6 +224,26 @@ export default function customerPillows({ scenario, now }) {
           linked_by_profile_id: SOPHIE,
           linked_at: ago(5),
         },
+        {
+          customer_id: HUI_MIN,
+          pillow_size: "S",
+          filling_template_id: TYPE_8A,
+          // Re-adjusted with a Neck support L in the centre back, nudged across toward the right.
+          filling_placements: [
+            ...cell(TYPE_8A, "left", "middle", [55], 1),
+            ...cell(TYPE_8A, "center", "front", [67], 1),
+            ...cell(TYPE_8A, "center", "middle", [60], 2),
+            ...cell(TYPE_8A, "center", "back", [63], 3).map((r) => ({ ...r, offset_x_mm: 40 })),
+            ...cell(TYPE_8A, "right", "middle", [55], 1),
+          ].map(({ template_id: _t, qty: _q, ...r }) => r),
+          linked_by_user_id: null,
+          linked_by_profile_id: SOPHIE,
+          linked_at: ago(1),
+        },
+      ],
+      // A measured Neck support L (made up): a roll thick enough to reach an S pillow's curved centre back.
+      neck_support_dimension_overrides: [
+        { size: "L", width_mm: 150, length_mm: 100, thickness_mm: 100, min_thickness_mm: 70, created_at: ago(30), updated_at: ago(30) },
       ],
     },
   };

@@ -134,6 +134,11 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
   });
   // A roll or an ear pad keeps its own footprint; the pouches share what room it leaves, pro rata, when they would want more.
   const isFirm = (shape: ShapeId) => shape === "pill" || shape === "ear";
+  // A firm piece is held across where the layout put it, not where its clipped outline's middle is. The back wall
+  // curves in at the centre Section, so a roll laid against it is clipped more on its inner side; held at what was
+  // left, the wall then slid it on to the corner whatever offset it had (Ivan, 8-11-2026: a Neck support nudged to
+  // the centre stuck on the side). It cannot squash to the wall as a pouch does, so the wall pushes it forward instead.
+  const heldAcross = (rect: PieceRect) => ({ anchorX: rect.x + rect.w / 2 });
   const firm = drawn.filter((x) => isFirm(x.p.shape)).reduce((a, x) => a + x.area, 0);
   const want = drawn.filter((x) => !isFirm(x.p.shape)).reduce((a, x) => a + x.area * volume, 0);
   const squeeze = want > room - firm ? Math.max((room - firm) / Math.max(want, 1), MIN_SQUEEZE) : 1;
@@ -143,12 +148,12 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
       if (p.shape === "pill") {
         // The firm roll: it remembers the pill it was drawn as, at the footprint it has.
         const rest = pairedWith(scaledTo(pouchOutline(p.rect, 10, "pill") as Pt[], area), ring);
-        return { id: p.key, ring, rest, kind: "roll", areaTarget: area, ...(p.held ? { held: true } : {}) };
+        return { id: p.key, ring, rest, kind: "roll", areaTarget: area, ...heldAcross(p.rect), ...(p.held ? { held: true } : {}) };
       }
       if (p.shape === "ear") {
         // The firm pad: it remembers the puffy square it was drawn as, at the footprint it has.
         const rest = pairedWith(scaledTo(pouchOutline(p.rect, 8, "ear") as Pt[], area), ring);
-        return { id: p.key, ring, rest, kind: "pad", areaTarget: area, ...(p.held ? { held: true } : {}) };
+        return { id: p.key, ring, rest, kind: "pad", areaTarget: area, ...heldAcross(p.rect), ...(p.held ? { held: true } : {}) };
       }
       // A pouch remembers the codebase's own footprint at the volume it holds.
       const target = area * volume * squeeze;

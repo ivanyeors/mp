@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { conformPouchPath, parsePathPolygon } from "@/lib/spatial-fillings/conform";
 import { SECTIONS, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
-import { resolveDims, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { neckAsPouch, resolveDims, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
 import { createSettle, distanceToPolygon, pointInPolygon, signedArea, SOLVER_DEFAULTS, type Pt } from "@/lib/spatial-fillings/soft-body";
 import { SOFT_BODY_DEFAULTS, solverOptionsFor } from "@/lib/spatial-fillings/soft-body-settings";
@@ -135,6 +135,41 @@ describe("soft top view", () => {
     expect(Math.abs(back.rect[1] - home.rect[1] - 20)).toBeLessThan(1);
     expect(back.soft[1] - home.soft[1]).toBeGreaterThan(10);
     expect(left.soft[0] - home.soft[0]).toBeLessThan(-15);
+  });
+
+  it("draws a Neck support nudged across where it was put, against the centre's curved back wall", () => {
+    // Ivan, 8-11-2026: a Neck support in a Size S centre back, nudged toward the middle, stuck on the side. The back wall
+    // curves in there and the roll reaches it, so its clipped outline started lopsided and the wall slid it on to a corner:
+    // 35 view units past where it was put, either side of home, whatever the nudge.
+    const NECK = 9;
+    const dims = new Map(DIMS).set(NECK, { key: "neck/l", kind: "neck", source: "configured", measuredOn: null, dims: neckAsPouch({ lengthMm: 150, radiusMm: 50, minRadiusMm: 35 }) });
+    const stage = stageGeometry("S");
+    const regions = stageRegions(stage);
+    const drawnAt = (offsetXMm: number) => {
+      const placements: PillowPlacement[] = [
+        { section: "center", subSection: "front", slot: 1, itemId: 1 },
+        { section: "center", subSection: "middle", slot: 1, itemId: 1 },
+        { section: "center", subSection: "back", slot: 1, itemId: NECK, ...(offsetXMm ? { offsetXMm } : {}) },
+      ];
+      const pieces = layoutPlacements(placements, { stage, dims, fit: fitPillow(placements, { size: "S", dims }) });
+      const plane: SoftTopPlane = {
+        id: "settled/center/0",
+        region: sectionRegion(stage, "center"),
+        pieces: pieces.map((p) => {
+          const shape = p.itemId === NECK ? "pill" : shapeOf(p.itemId);
+          return { key: p.key, d: conformPouchPath(p.settled, [regions.sil, regions.sections.center], shape), rect: p.settled, shape, held: p.nudged };
+        }),
+      };
+      const ring = settleTop([plane], SOFT_BODY_DEFAULTS, XRAY_VIEW).get("center/back/1")!;
+      const xs = ring.map((q) => q[0]);
+      const rect = pieces.find((p) => p.key === "center/back/1")!.settled;
+      return { soft: (Math.min(...xs) + Math.max(...xs)) / 2, put: rect.x + rect.w / 2 };
+    };
+    const offsets = [-40, -20, -5, 0, 5, 20, 40];
+    const drawn = offsets.map(drawnAt);
+    for (const [i, d] of drawn.entries()) expect(Math.abs(d.soft - d.put), `nudged ${offsets[i]} mm`).toBeLessThan(2);
+    // So a hand creeping it toward the middle sees it move toward the middle, every step of the way.
+    for (let i = 1; i < drawn.length; i++) expect(drawn[i].soft).toBeGreaterThan(drawn[i - 1].soft);
   });
 
   it("is deterministic: the same recipe settles to the same outlines", () => {
