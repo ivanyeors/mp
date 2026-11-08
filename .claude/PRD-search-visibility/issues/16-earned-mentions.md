@@ -21,3 +21,15 @@ User stories covered: 38
 ## Blocked by
 
 Slice 05
+
+## Implementation notes
+
+- Since 2026-11-08 a monthly Claude scheduled task ("Mpillow off-site SEO report", the 28th of
+  each month) does the research half of this slice: it finds mentions, scouts and scores
+  opportunities against a white-hat vetting rubric, collects news hooks and maps which kind of
+  site wins each target search. It writes each month into one Claude dashboard (owner's
+  account), so months can be compared side by side. The target list lives there, not in this
+  folder.
+- The playbook, rubric and report format: `.claude/skills/seo-monthly-report/SKILL.md`.
+- People still do every outreach step. Log each live placement as an `earned` annotation as
+  before; the next run marks the matching opportunity `Won`.
