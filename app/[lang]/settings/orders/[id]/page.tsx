@@ -7,6 +7,7 @@ import {
 } from "@/lib/ecommerce/admin/order-detail";
 import { readOrderPoints, type OrderPointsRow } from "@/lib/points/order";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { loadPayLinkRow } from "@/lib/staff-orders/link";
 import OrderDetailPage, { type OrderDetailInitialData } from "./order-detail-client";
 
 export const runtime = "nodejs";
@@ -26,10 +27,12 @@ export default async function OrderDetailRoute({
 
   await requireAdminPage("orders", locale);
 
-  const [order, timeline, mpConfigLinks] = await Promise.all([
+  const [order, timeline, mpConfigLinks, payLink] = await Promise.all([
     loadAdminOrderDetail(id),
     loadAdminOrderTimeline(id),
     loadAdminOrderMpConfigLinks(id),
+    // A Staff order's Payment link (ADR 0048); null for any other Order or a failed read.
+    loadPayLinkRow(supabaseAdmin(), id).catch(() => null),
   ]);
 
   const orderBody = order.status === 200 ? (order.body as OrderDetailInitialData["order"]) : null;
@@ -48,6 +51,17 @@ export default async function OrderDetailRoute({
         ? (timeline.body as OrderDetailInitialData["timeline"])
         : null,
     mpConfigLinks: mpConfigLinks.status === 200 ? mpConfigLinks.body : null,
+    paymentLink: payLink
+      ? {
+          token: payLink.token,
+          expiresAt: payLink.expires_at,
+          createdByEmail: payLink.created_by_email,
+          lastSentAt: payLink.last_sent_at,
+          lastSentTo: payLink.last_sent_to,
+          sendCount: payLink.send_count ?? 0,
+          locale: String(orderBody?.row?.locale ?? ""),
+        }
+      : null,
   };
 
   return <OrderDetailPage initialData={initialData} />;

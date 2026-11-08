@@ -42,6 +42,8 @@ export const runtime = "nodejs";
  *
  * Seeing this page needs `customers`; its edit controls render only for
  * `customers-edit` (CRM slice 10). The write routes refuse without it anyway.
+ * Create order (a Staff order, ADR 0048) renders only for `orders`, which its
+ * routes require.
  */
 export default async function CustomerDetailPage({
     params,
@@ -91,6 +93,7 @@ export default async function CustomerDetailPage({
             initialData={initialData}
             canEdit={hasPermission(ctx, "customers-edit")}
             canImport={hasPermission(ctx, "customer-import")}
+            canCreateOrder={hasPermission(ctx, "orders")}
             viewer={{ userId: ctx.userId, grantsAll: ctx.grantsAll }}
         />
     );

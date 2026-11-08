@@ -36,6 +36,7 @@ export const SITE_PAGES = [
   "/partner",
   "/partner/apply",
   "/partner/settings",
+  "/pay/[token]",
   "/points",
   "/privacy-policy",
   "/results",

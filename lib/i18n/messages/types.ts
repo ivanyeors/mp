@@ -500,5 +500,38 @@ export type Messages = {
       apiActive: string;
     };
   };
+  /** The Payment link page of a Staff order (ADR 0048). */
+  pay: {
+    title: string;
+    orderNumber: string;
+    greeting: string;
+    greetingNoName: string;
+    item: string;
+    qty: string;
+    amount: string;
+    subtotal: string;
+    shipping: string;
+    discount: string;
+    tax: string;
+    total: string;
+    collectFrom: string;
+    deliverTo: string;
+    noteFromUs: string;
+    payButton: string;
+    opening: string;
+    secure: string;
+    validUntil: string;
+    paidTitle: string;
+    paidBody: string;
+    confirmingTitle: string;
+    confirmingSlow: string;
+    expiredTitle: string;
+    expiredBody: string;
+    closedTitle: string;
+    closedBody: string;
+    notFoundTitle: string;
+    notFoundBody: string;
+    contact: string;
+    error: string;
+  };
 };
-
