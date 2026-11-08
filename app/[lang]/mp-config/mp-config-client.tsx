@@ -58,6 +58,7 @@ import {
   configuratorStickyHeaderClassName,
 } from "@/components/configurator/configurator-mobile-chrome";
 import { Progress } from "@/components/ui/progress";
+import { WhoIsMeasuring, type MeasurerProfile } from "@/components/configurator/who-is-measuring";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -168,6 +169,12 @@ import {
   type FieldCheck,
 } from "@/lib/configurator/step-validation";
 import {
+  firstQuestionEmailCheck,
+  withFirstQuestion,
+} from "@/lib/configurator/first-question-email";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MARKETING_BOX_LABEL } from "@/lib/marketing-consent/state";
+import {
   displayMeasurement,
   normalizeMeasurementDraft,
   type MeasurementUnit,
@@ -211,11 +218,17 @@ import {
   mixAfterTierChange,
   recheckSelectionsForSize,
   sessionTemplateId,
+  soldPillowTier,
   startingTemplateId,
   templateSuggestion,
   type LoadedTemplate,
   type SizeTier,
 } from "@/lib/configurator/staff-assist";
+import {
+  asSizeTier,
+  pillowAssistDraft,
+  restorePillowAssist,
+} from "@/lib/configurator/staff-assist-draft";
 import {
   fetchPillowTemplate,
   StaffAssistPanel,
@@ -247,6 +260,8 @@ import {
 } from "@/lib/spatial-fillings/core";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { ResumeFinish } from "@/lib/results/resume-finish";
+import type { ResumeDraft } from "@/lib/results/resume-draft";
+import { resumeStepFor, stripContinueDraftQuery } from "@/lib/configurator/continue-draft";
 import { addonsForAnswers, keepOfferedAddons } from "@/lib/results/addons";
 import type { StaffEditResult } from "@/lib/results/staff-edit";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
@@ -384,6 +399,74 @@ function writeToken(key: string, token: string | null): void {
   }
 }
 
+/** One size×tier's product context, from the Staff assist route. */
+type AssistContext = Pick<
+  RecommendationResponseData,
+  "pillow_product" | "variant" | "pricing" | "components" | "composed_buildable"
+> & {
+  default_template?: { id: number; name: string; placements: unknown[] } | null;
+};
+
+async function fetchAssistContext(
+  next: SizeTier,
+): Promise<{ ok: true; context: AssistContext } | { ok: false; error: unknown }> {
+  const res = await fetch(
+    `/api/mp-config/assist/context?size=${encodeURIComponent(next.size)}&tier=${encodeURIComponent(next.tier)}`,
+  ).catch(() => null);
+  const data = await res?.json().catch(() => null);
+  if (!res?.ok || !data?.pillow_product) return { ok: false, error: data?.error };
+  return { ok: true, context: data as AssistContext };
+}
+
+/**
+ * The preview's recommendation as if it had named `next`: product, options and
+ * Costings become that size×tier's, while the engine's record (its Flow route,
+ * its suggested template) stays. Carrying the old Costings forward is what made
+ * the ballpark quote a different pillow than the one on screen.
+ */
+function withAssistContext(
+  prev: RecommendationResponseData | null,
+  next: SizeTier,
+  context: AssistContext,
+): RecommendationResponseData {
+  return {
+    ...(prev ?? {
+      ok: true,
+      recommendation: {
+        recommended_size: next.size,
+        recommended_kind: next.tier,
+        filling_lines: [],
+        summary: "",
+        explanation: "",
+      },
+      templates: [],
+      available_fillings: [],
+    }),
+    pillow_product: context.pillow_product,
+    variant: context.variant,
+    pricing: context.pricing ?? null,
+    components: context.components,
+    composed_buildable: context.composed_buildable,
+  };
+}
+
+/**
+ * A reloaded recommendation, put back on the size×tier a Staff assist session
+ * was on (autosave). Unchanged when the engine already names it; the engine's
+ * own when that size×tier can no longer be loaded, which the toast says.
+ */
+async function onStaffSizeTier(
+  data: RecommendationResponseData,
+  staff: SizeTier | undefined,
+): Promise<RecommendationResponseData> {
+  if (!staff) return data;
+  if (data.pillow_product?.size === staff.size && data.pillow_product?.kind === staff.tier) return data;
+  const loaded = await fetchAssistContext(staff);
+  if (loaded.ok) return withAssistContext(data, staff, loaded.context);
+  toast.error(`Could not reopen Size ${staff.size} — showing the recommended size`);
+  return data;
+}
+
 export function MpConfigClient({
   info,
   staffAssist = false,
@@ -393,13 +476,37 @@ export function MpConfigClient({
   resumeFinish = null,
   staffEdit = null,
   servicePrices = null,
-  measuredByStaff = false,
+  measuredByStaff: measuredByStaffProp = false,
+  pickMeasurer = null,
+  askEmailFirst = false,
+  resumeDraft = null,
 }: {
   info: MpConfigInfo;
+  /**
+   * A guest, on no Staff login: the first question asks their email beside
+   * their name, and their Draft Result is not saved until it has one (ADR
+   * 0049), so every Draft Staff see in Results is one they can reach. Off for
+   * any Admin Panel login, where the shopper's email is asked at the end.
+   */
+  askEmailFirst?: boolean;
+  /**
+   * The guest's own Draft Result, reopened from its continue link (ADR 0050).
+   * This device takes over its id and access token, the form is filled with
+   * its answers, and it opens on the first question left unanswered, or on
+   * the preview. From there it is the guest's ordinary session: it autosaves
+   * the Draft and pays through the normal hold.
+   */
+  resumeDraft?: ResumeDraft | null;
   /** Costings → Service fees (ADR 0024), for the Measurement service row. */
   servicePrices?: ServicePrices | null;
   /** Staff measured this customer — the server charges the Measurement service. */
   measuredByStaff?: boolean;
+  /**
+   * A Staff session on a shared login where nobody at this device has chosen
+   * under "Working as": its live profiles, asked on the start screen before the
+   * Draft exists (components/configurator/who-is-measuring.tsx). Null otherwise.
+   */
+  pickMeasurer?: MeasurerProfile[] | null;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
   staffAssist?: boolean;
   /** Admin Panel `results` permission. Gates the completion dialog's link into
@@ -442,6 +549,11 @@ export function MpConfigClient({
 }) {
   // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
   const partnerAssisted = Boolean(partner);
+  // Who is measuring, once a shared login has said so on the start screen. It
+  // is saved as this device's "Working as", which the Draft create reads.
+  const [measurer, setMeasurer] = useState<string | null>(null);
+  const measuredByStaff = measuredByStaffProp || measurer != null;
+  const askMeasurer = pickMeasurer != null && pickMeasurer.length > 1;
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -476,16 +588,29 @@ export function MpConfigClient({
   const [mobileActionsSlot, setMobileActionsSlot] = useState<HTMLDivElement | null>(null);
   // Both reopened modes start on the preview: there is already a build to look
   // at, so the questionnaire would only be in the way.
-  const [currentStep, setCurrentStep] = useState<Step>(
-    resumeFinish || staffEdit ? "preview" : "welcome",
+  const [currentStep, setCurrentStep] = useState<Step>(() =>
+    resumeFinish || staffEdit
+      ? "preview"
+      : resumeDraft
+        ? resumeStepFor(variant, resumeDraft.answers)
+        : "welcome",
   );
   const [restoringHoldCancel, setRestoringHoldCancel] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
   // Single unit selector for the whole flow (default: inches)
   const [measurementUnit, setMeasurementUnit] = useState<MeasurementUnit>("in");
-  const [measurementDrafts, setMeasurementDrafts] =
-    useState<Record<MeasureKey, string>>(EMPTY_MEASURE_DRAFTS);
+  const [measurementDrafts, setMeasurementDrafts] = useState<Record<MeasureKey, string>>(() => {
+    // A reopened Draft's measurements, shown in the form's starting unit.
+    const answers = resumeDraft?.answers;
+    if (!answers) return EMPTY_MEASURE_DRAFTS;
+    const drafts = { ...EMPTY_MEASURE_DRAFTS };
+    for (const key of Object.keys(EMPTY_MEASURE_DRAFTS) as MeasureKey[]) {
+      const cm = answers[key];
+      if (cm) drafts[key] = displayMeasurement("in", cm);
+    }
+    return drafts;
+  });
   const [measurementData, setMeasurementData] = useState<MeasurementData>(() => ({
     name: "",
     gender: "",
@@ -501,6 +626,8 @@ export function MpConfigClient({
     sleepPainAreas: [],
     sleepPositionType: [],
     usesBolster: "",
+    // A reopened Draft's own answers (ADR 0050).
+    ...resumeDraft?.answers,
     // The submitted answers, so the recommendation fetch below has real inputs.
     ...(resumeFinish?.measurements as Partial<MeasurementData> | undefined),
     ...(staffEdit?.measurements as Partial<MeasurementData> | undefined),
@@ -513,7 +640,9 @@ export function MpConfigClient({
   const assisted = Boolean(assistCode);
   /** Staff re-configuring an existing Result — never a new Draft, never a hold. */
   const staffEditing = Boolean(staffEdit);
-  const [responseId, setResponseId] = useState<string | null>(staffEdit?.id ?? null);
+  const [responseId, setResponseId] = useState<string | null>(
+    staffEdit?.id ?? resumeDraft?.id ?? null,
+  );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
@@ -645,6 +774,9 @@ export function MpConfigClient({
   const suggestedTemplateId = engineSuggestion?.templateId ?? null;
   const suggestedSize = engineSuggestion?.size ?? null;
   const productSize = shopRecommendation?.pillow_product?.size ?? null;
+  // Autosave: the size×tier a restored Staff session was on, until the
+  // recommendation reloads onto it. Its mix is restored straight into state.
+  const restoredSizeTierRef = useRef<SizeTier | null>(null);
   const seededSuggestionRef = useRef<number | null>(null);
   useEffect(() => {
     // A reopened Result keeps its own mix. A fresh session takes the suggestion
@@ -677,7 +809,9 @@ export function MpConfigClient({
     assistLoadedTemplate,
     assistPlacements.length,
   ]);
-  const [holdEmail, setHoldEmail] = useState(resumeFinish?.email ?? staffEdit?.email ?? "");
+  const [holdEmail, setHoldEmail] = useState(
+    resumeFinish?.email ?? staffEdit?.email ?? resumeDraft?.email ?? "",
+  );
   const [holdPhone, setHoldPhone] = useState(resumeFinish?.phone ?? staffEdit?.phone ?? "");
   const [discoverySource, setDiscoverySource] = useState(
     resumeFinish?.discoverySource ?? staffEdit?.discoverySource ?? "",
@@ -696,6 +830,12 @@ export function MpConfigClient({
   // finish link and a re-configuration ask for no email, so they send false.
   const [marketingEmail, setMarketingEmail] = useState(true);
   const askedMarketingEmail = !resumeFinish && !staffEdit && marketingEmail;
+  // Email first (ADR 0049): a guest's first question takes their email, and
+  // nothing is saved for them until it has been. A reopened Result never asks.
+  const emailFirst = askEmailFirst && !resumeFinish && !staffEdit;
+  /** The first question's email is on the Draft Result: autosave may write. A reopened Draft has it already. */
+  const [firstEmailSaved, setFirstEmailSaved] = useState(Boolean(resumeDraft));
+  const [savingFirstEmail, setSavingFirstEmail] = useState(false);
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>(() => ({
     recipient: "",
     line1: "",
@@ -758,6 +898,11 @@ export function MpConfigClient({
   const stepOrder = (postUpsellSteps ?? stepOrderFor(variant)) as Step[];
   const showNeckSteps = !isBasic || upsoldToPremium;
   const soldAsPremium = upsoldToPremium || !isBasic;
+  /** What the hold sells and the preview prices: Staff's Tier control, else the page's. */
+  const soldTier = soldPillowTier({
+    staffTier: staffAssist ? shopRecommendation?.pillow_product?.kind : null,
+    premiumFlow: soldAsPremium,
+  });
   const routeTarget = useMemo(
     () =>
       parseRecommendationRecord(shopRecommendation?.recommendation_record ?? null)?.flowRoute
@@ -823,7 +968,9 @@ export function MpConfigClient({
       };
       if (!handoff.journey?.flowRoute) return;
       entryJourneyRef.current = handoff.journey;
-      const missing = (handoff.missingSteps ?? []) as Step[];
+      // A guest still answers the first question, the one place they give
+      // their email and so the save of their Draft (ADR 0049).
+      const missing = withFirstQuestion(handoff.missingSteps ?? [], emailFirst) as Step[];
       if (handoff.targetFlow === "premium-mpillow") setUpsoldToPremium(true);
       if (missing.length > 0) {
         setPostUpsellSteps([...missing, "preview"]);
@@ -832,7 +979,8 @@ export function MpConfigClient({
     } catch {
       // ponytail: ignore corrupt handoff
     }
-  }, []);
+    // emailFirst comes from props and never changes; the hand-off is read once.
+  }, [emailFirst]);
 
   const clearTransitionTimers = () => {
     if (transitionTimeoutRef.current !== null) {
@@ -899,7 +1047,8 @@ export function MpConfigClient({
       valid: isNonEmptyString(measurementData.name),
       message: "Enter your name",
     },
-  ], [measurementData.name]);
+    ...(emailFirst ? [firstQuestionEmailCheck(holdEmail)] : []),
+  ], [measurementData.name, emailFirst, holdEmail]);
 
   const ageFields = useMemo((): FieldCheck[] => [
     {
@@ -1127,6 +1276,20 @@ export function MpConfigClient({
     // would both hijack the session and risk autosaving a customer's answers
     // onto an unrelated row.
     if (staffEdit) return;
+    // Continue link (ADR 0050): this device takes over the guest's Draft, its
+    // id and its access token, as if it had started it. The link's token then
+    // leaves the address bar, so a copied URL does not hand the Draft on.
+    if (resumeDraft) {
+      window.localStorage.setItem(sessionStorageKey, resumeDraft.id);
+      writeToken(tokenStorageKey, resumeDraft.token);
+      setResponseId(resumeDraft.id);
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${stripContinueDraftQuery(window.location.search)}`,
+      );
+      return;
+    }
     let id = window.localStorage.getItem(sessionStorageKey);
     if (!id) {
       id = newResponseId();
@@ -1170,14 +1333,15 @@ export function MpConfigClient({
         // Best-effort only; never block the UI.
       }
     })();
-  }, [sessionStorageKey, tokenStorageKey, staffEdit]);
+  }, [sessionStorageKey, tokenStorageKey, staffEdit, resumeDraft]);
 
   // Stripe hold cancel → restore preview + selections (and light notice).
   useEffect(() => {
     if (typeof window === "undefined") return;
     // A reopened Result is not a cancelled hold; restoring this device's draft
     // over it would replace the customer's build with someone else's session.
-    if (staffEdit) return;
+    // Nor is a continue link, whose Draft may not be the one this device holds.
+    if (staffEdit || resumeDraft) return;
     const holdCancelled = isHoldCancelledQuery(window.location.search);
     const draft = readHoldCancelDraft(window.localStorage, holdSurface);
     if (!shouldRestorePreview({ holdCancelled, draftStep: draft?.step })) {
@@ -1212,6 +1376,9 @@ export function MpConfigClient({
     if (draft?.responseId) {
       window.localStorage.setItem(sessionStorageKey, draft.responseId);
       setResponseId(draft.responseId);
+      // This session reached the preview, so it is past the first question:
+      // its Draft exists, and saving it again needs no email asked again.
+      setFirstEmailSaved(true);
     }
     if (draft?.selections) {
       setSelectedCover(draft.selections.selectedCover);
@@ -1226,6 +1393,15 @@ export function MpConfigClient({
       }
       if (draft.selections.notes) setHoldNotes(draft.selections.notes);
       setHoldAddress(draft.selections.holdAddress);
+    }
+    // Staff assist autosave: the mix Staff built goes back now, before the
+    // suggestion can seed over it; their size×tier once the recommendation
+    // reloads below. A finish link is a Result's own build, never this session.
+    if (staffAssist && !resumeFinish && draft?.staffAssist) {
+      const restored = restorePillowAssist(draft.staffAssist);
+      setAssistPlacements(restored.placements);
+      setAssistLoadedTemplate(restored.loadedTemplate);
+      restoredSizeTierRef.current = restored.sizeTier;
     }
     setCurrentStep("preview");
     setRestoringHoldCancel(true);
@@ -1269,6 +1445,24 @@ export function MpConfigClient({
     if (currentStep !== "preview") return;
     // Not a hold session: nothing to restore after a Stripe cancel.
     if (resumeFinish || staffEdit) return;
+    // Mid-restore the page shows the engine's pick, or nothing yet: writing now
+    // would save that over the Staff session being restored.
+    if (restoringHoldCancel) return;
+    // Staff assist autosave: the size×tier on screen and the mix on the x-ray.
+    // With no size on screen (a recommendation that failed to load) the stored
+    // session is kept, so the next visit can still put it back.
+    const shown = asSizeTier(
+      shopRecommendation?.pillow_product?.size,
+      shopRecommendation?.pillow_product?.kind,
+    );
+    const stored = staffAssist && !shown ? readHoldCancelDraft(window.localStorage, holdSurface) : null;
+    const staffSession = !staffAssist
+      ? undefined
+      : shown
+        ? pillowAssistDraft(shown, assistPlacements, assistLoadedTemplate)
+        : stored?.responseId === responseId
+          ? stored?.staffAssist
+          : undefined;
     writeHoldCancelDraft(window.localStorage, {
       v: 1,
       surface: holdSurface,
@@ -1288,6 +1482,7 @@ export function MpConfigClient({
         notes: holdNotes,
         holdAddress,
       },
+      ...(staffSession ? { staffAssist: staffSession } : {}),
     });
   }, [
     currentStep,
@@ -1307,6 +1502,12 @@ export function MpConfigClient({
     holdAddress,
     resumeFinish,
     staffEdit,
+    restoringHoldCancel,
+    staffAssist,
+    shopRecommendation?.pillow_product?.size,
+    shopRecommendation?.pillow_product?.kind,
+    assistPlacements,
+    assistLoadedTemplate,
   ]);
 
   useEffect(() => {
@@ -1371,6 +1572,8 @@ export function MpConfigClient({
     setPairedRestored(false);
     // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     setHoldSubmitting(false);
+    // A new session's Draft is saved by its own first question (ADR 0049).
+    setFirstEmailSaved(false);
   };
 
   const ensureResponseId = () => {
@@ -1407,6 +1610,7 @@ export function MpConfigClient({
   };
 
   const handleStart = () => {
+    if (askMeasurer && measurer == null) return;
     ensureResponseId();
     goToNextStep();
   };
@@ -1454,7 +1658,11 @@ export function MpConfigClient({
   }, [measurementData]);
 
   const upsertToDb = useCallback(async (
-    opts?: { isFinal?: boolean },
+    opts?: {
+      isFinal?: boolean;
+      /** The first question's email (ADR 0049), with the marketing box beside it. */
+      firstEmail?: { email: string; marketingEmail: boolean };
+    },
   ): Promise<{ id: string; telegramStatus?: "sent" | "skipped" | "failed" } | null> => {
     // A reopened finish holds someone's submitted answers. Autosaving them into
     // this device's own Draft session would copy them onto an unrelated row.
@@ -1462,9 +1670,18 @@ export function MpConfigClient({
     // the responses route refuses a non-null status anyway, and a silent
     // autosave of a live Result is not something a Save button should imply.
     if (!responseId || resumeFinish || staffEdit) return null;
+    // Email first (ADR 0049): a guest's Draft is created by the first
+    // question's Continue, carrying their email, and autosave writes only
+    // after it. A Draft Staff see in Results is then one they can reach.
+    if (emailFirst && !firstEmailSaved && !opts?.firstEmail) return null;
     if (!hasAnyInput) return { id: responseId };
 
-    const snapshot = JSON.stringify({ responseId, measurementData, isFinal: opts?.isFinal ?? null });
+    const snapshot = JSON.stringify({
+      responseId,
+      measurementData,
+      isFinal: opts?.isFinal ?? null,
+      firstEmail: opts?.firstEmail ?? null,
+    });
     if (!opts?.isFinal && snapshot === lastSavedRef.current) return { id: responseId };
 
     setSaveStatus("saving");
@@ -1480,6 +1697,17 @@ export function MpConfigClient({
           // The CODE, never a staff id: the server re-resolves it and stamps
           // the row on create only (app/api/mp-config/responses/route.ts).
           ...(assistCode ? { assistCode } : {}),
+          // Sent on the first question's Continue only, so the box is recorded
+          // once per answer and not on every autosave.
+          // With the configurator it was started in, so its continue link
+          // (ADR 0050) reopens it in the same one.
+          ...(opts?.firstEmail
+            ? {
+                draftEmail: opts.firstEmail.email,
+                marketingEmail: opts.firstEmail.marketingEmail,
+                configurator: variant,
+              }
+            : {}),
         }),
       });
       const payload = await res.json().catch(() => null);
@@ -1487,6 +1715,7 @@ export function MpConfigClient({
       // Minted on create only; later saves echo nothing back.
       if (typeof payload?.accessToken === "string") writeToken(tokenStorageKey, payload.accessToken);
       lastSavedRef.current = snapshot;
+      if (opts?.firstEmail) setFirstEmailSaved(true);
       setSaveStatus("saved");
       return {
         id: (payload?.id ?? responseId) as string,
@@ -1504,7 +1733,28 @@ export function MpConfigClient({
     assistCode,
     resumeFinish,
     staffEdit,
+    emailFirst,
+    firstEmailSaved,
+    variant,
   ]);
+
+  /**
+   * The first question's Continue for a guest (ADR 0049): saves the Draft with
+   * their email, and the marketing box beside it, before moving on. A save that
+   * fails keeps them here, since a Draft without an email is the gap this closes.
+   */
+  const saveFirstEmailThenContinue = async () => {
+    setSavingFirstEmail(true);
+    const saved = await upsertToDb({
+      firstEmail: { email: holdEmail.trim(), marketingEmail },
+    });
+    setSavingFirstEmail(false);
+    if (!saved) {
+      setFieldErrors({ email: "We couldn't save your email. Check it and try again." });
+      return;
+    }
+    goToNextStep();
+  };
 
   const loadSuggestion = async () => {
     if (!responseId) return;
@@ -1613,6 +1863,8 @@ export function MpConfigClient({
     preserveSelections?: boolean;
     /** Price and offer the size×tier Staff assigned (finish link, ADR 0017). */
     assigned?: { size: string; tier: string };
+    /** A restored Staff assist session's size×tier, kept over the engine's. */
+    staffSizeTier?: SizeTier;
   }): Promise<RecommendationResponseData | null> => {
     const missing = incompleteEngineInputs(
       "premium-mpillow",
@@ -1665,7 +1917,9 @@ export function MpConfigClient({
         throw new Error(getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`));
       }
 
-      const data: RecommendationResponseData = await res.json();
+      // One update, on the size×tier shown: an engine-sized moment in between
+      // would prune the add-ons to the wrong size.
+      const data = await onStaffSizeTier(await res.json(), opts?.staffSizeTier);
       setShopRecommendation(data);
 
       if (!opts?.preserveSelections) {
@@ -1681,7 +1935,10 @@ export function MpConfigClient({
     }
   }, [measurementData]);
 
-  const fetchBasicRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }): Promise<RecommendationResponseData | null> => {
+  const fetchBasicRecommendation = useCallback(async (opts?: {
+    preserveSelections?: boolean;
+    staffSizeTier?: SizeTier;
+  }): Promise<RecommendationResponseData | null> => {
     const missing = incompleteEngineInputs(
       "basic-mpillow",
       wizardToEngineInputs(measurementData),
@@ -1704,7 +1961,7 @@ export function MpConfigClient({
         throw new Error(getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`));
       }
 
-      const data: RecommendationResponseData = await res.json();
+      const data = await onStaffSizeTier(await res.json(), opts?.staffSizeTier);
       setShopRecommendation(data);
       if (!opts?.preserveSelections) {
         setSelectedCover(pickDefaultComponent(data.components.covers));
@@ -1730,36 +1987,13 @@ export function MpConfigClient({
    * OOS/Pre-order signals apply).
    */
   const applyAssistSizeTier = async (next: SizeTier, from: SizeTier) => {
-    const res = await fetch(
-      `/api/mp-config/assist/context?size=${encodeURIComponent(next.size)}&tier=${encodeURIComponent(next.tier)}`,
-    );
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.pillow_product) {
-      toast.error(getApiErrorMessage(data?.error, "Failed to switch size"));
+    const loadedContext = await fetchAssistContext(next);
+    if (!loadedContext.ok) {
+      toast.error(getApiErrorMessage(loadedContext.error, "Failed to switch size"));
       return;
     }
-
-    setShopRecommendation((prev) => ({
-      ...(prev ?? {
-        ok: true,
-        recommendation: {
-          recommended_size: next.size,
-          recommended_kind: next.tier,
-          filling_lines: [],
-          summary: "",
-          explanation: "",
-        },
-        templates: [],
-        available_fillings: [],
-      }),
-      pillow_product: data.pillow_product,
-      variant: data.variant,
-      // Costings for the NEW size×tier. Carrying the old ones forward is what
-      // made the ballpark quote a different pillow than the one on screen.
-      pricing: data.pricing ?? null,
-      components: data.components,
-      composed_buildable: data.composed_buildable,
-    }));
+    const data = loadedContext.context;
+    setShopRecommendation((prev) => withAssistContext(prev, next, data));
 
     // Templates are scoped by size, so only a size change replaces the mix.
     const accessoryIds = new Set(
@@ -1833,20 +2067,33 @@ export function MpConfigClient({
     }
   };
 
+  // A continue link (ADR 0050) that opens on the preview loads its
+  // recommendation, as the photos step's Continue does on the way there.
+  useEffect(() => {
+    if (!resumeDraft || currentStep !== "preview") return;
+    if (isBasic) void fetchBasicRecommendation();
+    else void Promise.all([loadSuggestion(), fetchShopRecommendation()]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: the link opens once
+  }, []);
+
   // After hold-cancel restore, re-fetch recommendation without clobbering cover/case.
   useEffect(() => {
     if (!restoringHoldCancel || currentStep !== "preview") return;
     let cancelled = false;
+    const staffSizeTier = restoredSizeTierRef.current ?? undefined;
     (async () => {
       if (isBasic) {
-        await fetchBasicRecommendation({ preserveSelections: true });
+        await fetchBasicRecommendation({ preserveSelections: true, staffSizeTier });
       } else {
         await Promise.all([
           loadSuggestion(),
-          fetchShopRecommendation({ preserveSelections: true }),
+          fetchShopRecommendation({ preserveSelections: true, staffSizeTier }),
         ]);
       }
-      if (!cancelled) setRestoringHoldCancel(false);
+      if (!cancelled) {
+        restoredSizeTierRef.current = null;
+        setRestoringHoldCancel(false);
+      }
     })();
     return () => {
       cancelled = true;
@@ -2332,16 +2579,10 @@ export function MpConfigClient({
       shopRecommendation?.pillow_product?.size ??
       suggestion?.recommended?.size ??
       suggestion?.product?.size;
-    const tier = soldAsPremium
-      ? ("premium" as const)
-      : isBasic
-        ? ("basic" as const)
-        : ((shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
-          suggestion?.recommended?.kind ??
-          suggestion?.product?.kind);
+    const tier = soldTier;
 
-    if (!size || !tier) {
-      toast.error("Missing size or tier suggestion");
+    if (!size) {
+      toast.error("Missing size suggestion");
       return;
     }
 
@@ -2507,7 +2748,7 @@ export function MpConfigClient({
     measurementData,
     upsertToDb,
     isBasic,
-    soldAsPremium,
+    soldTier,
     configPath,
     holdFields,
     staffAssist,
@@ -2818,7 +3059,6 @@ export function MpConfigClient({
     // priced the CTA is blocked and the amount is withheld.
     // Measurement service (ADR 0024): the rule the hold route applies, on the tier
     // the hold will submit. Shown as its own row, never folded into the pillow.
-    const feeTier = soldAsPremium ? "premium" : isBasic ? "basic" : (tier ?? null);
     let serviceLines: ServiceLine[] = [];
     let servicesBlocked = false;
     try {
@@ -2826,7 +3066,7 @@ export function MpConfigClient({
         {
           measured_by_type: measuredByStaff ? "staff" : "by_user",
           product_type: "pillow",
-          suggested_tier: feeTier,
+          suggested_tier: soldTier,
         },
         servicePrices,
       );
@@ -2841,11 +3081,11 @@ export function MpConfigClient({
     // build's code goes on the Mpillow too. A finish link or a Staff edit shows
     // the code the Result already carries; the server takes it off either way.
     const codeContext: CheckoutCodeContext | null =
-      quoteBlocked || !shopRecommendation || !size || (feeTier !== "basic" && feeTier !== "premium")
+      quoteBlocked || !shopRecommendation || !size
         ? null
         : {
             flow: "customisation",
-            build: { product_type: "pillow", size: String(size), tier: feeTier },
+            build: { product_type: "pillow", size: String(size), tier: soldTier },
             goods: basePrice + addonTotal,
           };
     const storedCoupon = resumeFinish?.coupon ?? staffEdit?.coupon ?? null;
@@ -2897,10 +3137,15 @@ export function MpConfigClient({
     const askingDetails = phase == null || phase === "details";
     const pillowTotal =
       quoteBlocked || !shopRecommendation ? null : basePrice + addonTotal + serviceTotal;
+    // Step 2 shows the Mpillow as these rows show it: goods, then each Service
+    // fee on its own row, so the Measurement service stays visible while the
+    // shopper customises the Mbolster (ADR 0024, ADR 0026).
     const pairedPillow: PairedHandoff["pillow"] = {
       label: `Mpillow ${size ?? ""} · ${tier ?? ""}`.trim(),
       ballpark: pillowTotal,
       currency,
+      goods: pillowTotal == null ? null : basePrice + addonTotal,
+      services: serviceLines.map((l) => ({ label: l.label, amount: l.msrp })),
     };
     const pairedBolster = pairedChoice?.bolster ? pairedChoice.summary : null;
     // Steps 3 and 4 price the whole order: the Mbolster as its page priced it,
@@ -3339,17 +3584,14 @@ export function MpConfigClient({
                               qty: l.quantity,
                             };
                           });
-                      const soldTierLabel = soldAsPremium ? "premium" : tier;
                       const showTierAdvice =
                         record?.tierSuggestion &&
-                        record.tierSuggestion !== (record.soldTier ?? soldTierLabel);
+                        record.tierSuggestion !== (record.soldTier ?? soldTier);
                       return (
                         <>
-                          {soldTierLabel ? (
-                            <Badge variant="outline" className="text-xs capitalize text-white">
-                              {soldTierLabel} tier
-                            </Badge>
-                          ) : null}
+                          <Badge variant="outline" className="text-xs capitalize text-white">
+                            {soldTier} tier
+                          </Badge>
                           {showTierAdvice && record?.tierSuggestion ? (
                             <TierSuggestion tier={record.tierSuggestion} />
                           ) : null}
@@ -3884,7 +4126,16 @@ export function MpConfigClient({
                     : "Let's create your perfect pillow, customized just for you"}
                 </p>
               </div>
-              <Button size="lg" onClick={handleStart} className="group">
+              {askMeasurer && pickMeasurer && (
+                <WhoIsMeasuring profiles={pickMeasurer} chosen={measurer} onChosen={setMeasurer} />
+              )}
+              <Button
+                size="lg"
+                onClick={handleStart}
+                className="group"
+                // A Staff login is always Staff: no Draft until it says who measures.
+                disabled={askMeasurer && measurer == null}
+              >
                 Get Started
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
@@ -4071,6 +4322,48 @@ export function MpConfigClient({
                     <p className="text-sm text-destructive">{fieldErrors.name}</p>
                   ) : null}
                 </div>
+                {emailFirst ? (
+                  // Email first (ADR 0049): the guest's Draft is saved with it,
+                  // so Staff can follow up on a build that was never paid for.
+                  // The same field the checkout's contact step shows, prefilled.
+                  // A form, so its help lines keep their own size, as the
+                  // contact step's do (globals.css forces marketing <p> to 18px).
+                  <div className="space-y-2" data-typography-scope="app">
+                    <label htmlFor="mp-email" className="text-sm font-medium">
+                      What&apos;s your email?
+                    </label>
+                    <Input
+                      id="mp-email"
+                      type="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      placeholder="you@example.com"
+                      value={holdEmail}
+                      onChange={(e) => setHoldEmail(e.target.value)}
+                      className="text-lg h-12"
+                      aria-invalid={!!fieldErrors.email}
+                      aria-describedby="mp-email-why"
+                    />
+                    {fieldErrors.email ? (
+                      <p className="text-sm text-destructive">{fieldErrors.email}</p>
+                    ) : null}
+                    <p id="mp-email-why" className="text-sm text-muted-foreground">
+                      We&apos;ll save your measurement results to this email, so you can
+                      decide on your pillow later.
+                    </p>
+                    {/* The checkout's box (ADR 0039), sharing its state: ticked by
+                        default, and unticked changes nothing. */}
+                    <label className="flex items-start gap-2 pt-1 text-sm text-muted-foreground">
+                      <Checkbox
+                        id="mp-marketing-email"
+                        className="mt-0.5"
+                        checked={marketingEmail}
+                        onCheckedChange={(checked) => setMarketingEmail(checked === true)}
+                      />
+                      {MARKETING_BOX_LABEL}
+                    </label>
+                  </div>
+                ) : null}
               </div>
 
               <div className="pt-4 empty:hidden">
@@ -4084,10 +4377,12 @@ export function MpConfigClient({
                     Back
                   </Button>
                   <Button
-                    onClick={() => tryAdvance(nameFields, goToNextStep)}
-                    disabled={!hybridCtaEnabled(nameFields)}
+                    onClick={() =>
+                      tryAdvance(nameFields, emailFirst ? saveFirstEmailThenContinue : goToNextStep)
+                    }
+                    disabled={!hybridCtaEnabled(nameFields) || savingFirstEmail}
                   >
-                    Continue
+                    {savingFirstEmail ? "Saving…" : "Continue"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </ConfiguratorStepActions>

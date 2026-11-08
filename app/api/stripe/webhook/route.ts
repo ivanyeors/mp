@@ -27,6 +27,7 @@ import { clawbackPointsForRefund } from "@/lib/points/earn";
 import { releasePoints } from "@/lib/points/spend";
 import { sendTelegram } from "@/lib/telegram/notify";
 import { scheduleAutoLabel, scheduleLabelCancel } from "@/lib/shipping/schedule-labels";
+import { STAFF_ORDER_PURPOSE } from "@/lib/staff-orders/shared";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -652,6 +653,12 @@ export async function POST(req: Request) {
         ) {
           await expireReadjustmentBooking(admin, session.metadata.readjustment_booking_id);
         }
+
+        // A Staff order's Checkout lapsing is not the end of its Payment link
+        // (ADR 0048): the link opens a new session next time, and only the
+        // link's own expiry cancels the Order (the daily job). It holds no
+        // points, so there is nothing below to give back.
+        if (session.metadata?.purpose === STAFF_ORDER_PURPOSE) break;
 
         const { data: order, error: expiredError } = await admin
           .from("orders")

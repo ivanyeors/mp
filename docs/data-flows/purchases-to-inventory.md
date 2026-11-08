@@ -8,7 +8,7 @@ Terms follow `CONTEXT.md`. Verified by reading the code on 2026-10-27, not
 against the live database. `./scripts/graphify explain
 "inventory_transactions"` lists every writer with its current line.
 
-## Four channels, one ledger
+## Every channel, one ledger
 
 ```mermaid
 flowchart TD
@@ -22,8 +22,12 @@ flowchart TD
     assign --> accept["POST /api/results/[id]/accept<br/>claim → capture → Order"]
     accept --> dos["deductOrderStockOrFlag()<br/>3 attempts"]
   end
-  subgraph staff["Staff-made Orders"]
-    mk["POST /api/shop/orders · PATCH /api/shop/orders/[id]<br/>markOrderShipped()"] -->|"Order becomes sold"| dws["deductStockWhenSold()"]
+  subgraph staffo["Staff orders (ADR 0048)"]
+    so["POST /api/staff-orders<br/>Customer page → Create order<br/>pending, no stock read-out"] --> pl["/pay/[token] → POST /api/pay/[token]/checkout<br/>stock re-checked, Stripe Checkout"]
+    pl --> wh
+  end
+  subgraph staff["Staff status changes"]
+    mk["PATCH /api/shop/orders/[id]<br/>markOrderShipped()"] -->|"Order becomes sold"| dws["deductStockWhenSold()"]
     btn["POST /api/shop/orders/[id]/deduct-stock<br/>Order page → Deduct stock"] --> dst["deductOrderStock()"]
   end
   subgraph manual["In-store, Admin Panel → Inventory"]
@@ -40,7 +44,8 @@ flowchart TD
 |---|---|---|---|---|
 | Shop | `POST /api/stripe/webhook` | After the webhook stamps `paid_at` | The Variant: its Composed sellable's build, its Item, or its own `stock_quantity` | Claim `orders.inventory_deducted_at` |
 | Result | `POST /api/results/[id]/accept` | After capture, once the Order exists | The build frozen on the Order line | Claim `orders.inventory_deducted_at` |
-| Staff-made Order | `POST`/`PATCH /api/shop/orders…`, `markOrderShipped` | When the Order becomes sold | As Shop | Claim `orders.inventory_deducted_at` |
+| Staff order | `POST /api/stripe/webhook`, as Shop | After the webhook stamps `paid_at` | As Shop (Variants only; Service lines take nothing) | Claim `orders.inventory_deducted_at` |
+| Staff status change | `PATCH /api/shop/orders/[id]`, `markOrderShipped` | When the Order becomes sold | As Shop | Claim `orders.inventory_deducted_at` |
 | In-store | Inventory page cart | Immediately | Warehouse + Filling Template, or parts | Unique `sale_id` × `sale_line` × Item |
 
 Shopify sales take no stock. This platform replaces Shopify, so the Shopify
@@ -185,14 +190,38 @@ successful capture, never at hold.
    - Customer preference lines, at the BOM's quantity for that role;
    - Add-on lines (`accessories` Items).
 
-## Staff-made Orders
+## Staff orders (ADR 0048)
+
+A **Staff order** is made on a Customer's page (**Create order**, permission
+`orders`) and paid by the customer through its **Payment link**. It takes
+stock exactly as a shop Order does, because it is settled the same way:
+
+1. **`POST /api/staff-orders`** prices the draft with `quoteStaffOrder`
+   (`lib/staff-orders/quote.ts`): Variants at `product_variants.price`,
+   Services at `service_prices.msrp`, the delivery method, a discount code,
+   tax. It checks stock per Variant against `variant_stock.stock_available`,
+   as checkout does, and writes nothing to the ledger. `createStaffOrder`
+   inserts the Order `pending`, its `order_items` (Service lines are
+   `kind 'service'`), the courier quote and an `order_payment_links` row.
+2. **`POST /api/pay/[token]/checkout`** (the Pay button on `/pay/[token]`)
+   checks stock again and opens a Stripe Checkout Session carrying `order_id`
+   and `purpose: staff_order`, for the Order's stored total.
+3. **`POST /api/stripe/webhook`** confirms it on `checkout.session.completed`
+   through the shop branch above: `paid_at` first, then the claim and
+   `deductInventoryForOrder`. A `staff_order` session that expires unpaid does
+   not cancel the Order; the daily job (`expireStaffOrderLinks`) cancels it
+   once the link itself has expired.
+
+`POST /api/shop/orders`, which wrote an Order already sold at prices from the
+request body, was retired with this change.
+
+## Staff status changes
 
 `deductStockWhenSold(admin, orderId, before, after)` deducts when an Order
 moves from a status that is not sold to one that is (`confirmed`,
 `processing`, `shipped`, `delivered`; `lib/ecommerce/sold-status.ts`). An
 Order already sold before the change is not deducted again. It runs from:
 
-- `POST /api/shop/orders`, when Staff create an Order already sold;
 - `PATCH /api/shop/orders/[id]`, the Order page's status change;
 - `updateOrderStatus` and `fulfillOrder` in `app/[lang]/settings/orders/actions.ts`;
 - `markOrderShipped`, when an Order nobody confirmed is shipped.

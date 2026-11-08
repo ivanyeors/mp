@@ -1,0 +1,15 @@
+# Findings the secret scan (ci.yml, gitleaks) reports that are not secrets.
+# One fingerprint per line, as the job summary prints it: commit:file:rule:line.
+
+# PR #414: a made-up Payment link token (a uuid) in a route test, flagged as a
+# generic API key. Replaced with a low-entropy uuid in the next commit; the
+# scan reads every commit of a pull request, so the original stays listed.
+c10f42d2cdd1c82a2fe4baa7c14798ce546ce40b:app/api/staff-orders/__tests__/routes.test.ts:generic-api-key:47
+
+# PR #415: a made-up Draft access token (a uuid) in the continue-link tests and
+# the reminder email's sample, flagged as a generic API key. Replaced with a
+# low-entropy uuid in the next commit; the originals stay listed for the same
+# reason as above.
+34bff5d819d50f799375fc428c00869fe75ec809:lib/results/__tests__/resume-draft.test.ts:generic-api-key:26
+34bff5d819d50f799375fc428c00869fe75ec809:lib/email/__fixtures__/samples.ts:generic-api-key:416
+34bff5d819d50f799375fc428c00869fe75ec809:lib/draft-reminders/__tests__/job.test.ts:generic-api-key:23

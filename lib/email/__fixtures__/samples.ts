@@ -212,6 +212,42 @@ export function sampleBalanceDue(fixture: EmailFixture = "happy") {
   };
 }
 
+/** A Staff order's Payment request (ADR 0048): an accessory, a service, delivered. */
+export function samplePaymentRequest(fixture: EmailFixture = "happy") {
+  return {
+    firstName: pick(fixture, "Ada"),
+    orderNumber: "MP-20261107-0042",
+    currency: "SGD",
+    items: [
+      { title: pick(fixture, "Ear Comfort Pad"), variantTitle: pick(fixture, "One size"), quantity: 1, totalPrice: 39 },
+      { title: "Re-adjustment service", variantTitle: null, quantity: 1, totalPrice: 30 },
+    ],
+    subtotal: 69,
+    shippingAmount: 5,
+    discountAmount: 6.9,
+    taxAmount: 0,
+    total: 67.1,
+    deliveryHeading: "Delivering to",
+    deliveryLines: [pick(fixture, "Ada Tan"), pick(fixture, "1 Orchard Road #02-01"), "Singapore 238824", "SG"],
+    note: pick(fixture, "Your spare ear pad, and the re-adjustment we did today."),
+    payUrl: "https://custom.mpillow.com/en-US/pay/5a1e5a1e-0000-4000-8000-0000000f0009",
+    expires: "Fri, 14 Nov 2026",
+  };
+}
+
+/** The same request collected from a studio, with no note. */
+export function samplePaymentRequestCollect(fixture: EmailFixture = "happy") {
+  return {
+    ...samplePaymentRequest(fixture),
+    shippingAmount: 0,
+    discountAmount: 0,
+    total: 69,
+    deliveryHeading: `Collect from ${pick(fixture, "Mpillow Studio")}`,
+    deliveryLines: [pick(fixture, "Ada Tan"), pick(fixture, "200 Middle Road #01-02"), "Singapore 188980"],
+    note: null,
+  };
+}
+
 export function sampleReadjustmentReschedule(fixture: EmailFixture = "happy") {
   return {
     guestName: pick(fixture, "Ada Tan"),
@@ -364,6 +400,21 @@ export function sampleCheckup(fixture: EmailFixture = "happy") {
     fee: pick(fixture, "S$30"),
     bookingUrl: `${ORIGIN}/en-US/appointments?type=readjustment&item=6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b`,
     accountUrl: `${ORIGIN}/en-US/account/login?next=%2Fen-US%2Faccount`,
+    supportWhatsAppDisplay: "+65 8780 5311",
+    supportWhatsAppUrl: "https://wa.me/6587805311",
+  };
+}
+
+// ADR 0050: the reminder to a guest who stopped customising. The continue link
+// carries a made-up Draft id and access token; the unsubscribe page is the
+// campaign one below, since the reminder is sent like a campaign.
+export function sampleDraftReminder(fixture: EmailFixture = "happy", step: "1d" | "1w" | "1m" = "1d") {
+  return {
+    step,
+    name: pick(fixture, "Wei Ling"),
+    product: pick(fixture, "Mpillow"),
+    continueUrl: `${ORIGIN}/en-US/mp-config?draft=3f2b8c1e-7d4a-4e9b-a1c2-5d6e7f8a9b0c&token=7d7d7d7d-0000-4000-8000-000000000050`,
+    unsubscribeUrl: `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=Qm9vbGVhbi1zZWNyZXQtcHJldmlldy10b2tlbg`,
     supportWhatsAppDisplay: "+65 8780 5311",
     supportWhatsAppUrl: "https://wa.me/6587805311",
   };

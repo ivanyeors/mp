@@ -10,6 +10,7 @@ import {
   opensPairedDetails,
   pairedDetailsPath,
   pairedHoldBody,
+  pairedPillowRows,
   parsePairedHandoff,
   reanchorPairedHandoff,
   runsPairedStepper,
@@ -73,6 +74,53 @@ assert.equal(parsePairedHandoff({ ...handoff, configPath: "https://evil.test" })
 assert.equal(parsePairedHandoff({ ...handoff, companionId: "" }), null, "needs a companion id");
 assert.equal(parsePairedHandoff({ ...handoff, anchorId: "" }), null, "needs an anchor id");
 
+// --- The Mpillow's Measurement service travels to step 2 as its own row (ADR 0024) ---
+const measured: PairedHandoff = {
+  ...handoff,
+  pillow: {
+    label: "Mpillow M · premium",
+    ballpark: 410,
+    currency: "SGD",
+    goods: 360,
+    services: [{ label: "Measurement (Premium)", amount: 50 }],
+  },
+};
+assert.deepEqual(parsePairedHandoff(JSON.parse(JSON.stringify(measured))), measured, "the fee split round-trips");
+assert.deepEqual(
+  pairedPillowRows(measured.pillow),
+  [
+    { key: "pillow", label: "Mpillow M · premium", amount: 360 },
+    { key: "service-0", label: "Measurement (Premium)", amount: 50 },
+  ],
+  "step 2 shows the Mpillow's goods, then its fee on its own row",
+);
+assert.deepEqual(
+  pairedPillowRows(handoff.pillow),
+  [{ key: "pillow", label: "Mpillow M · premium", amount: 360 }],
+  "a hand-off from before the split shows the one figure",
+);
+assert.deepEqual(
+  pairedPillowRows({ ...measured.pillow, services: [] }).map((r) => r.amount),
+  [410],
+  "no fee owed: one row, the whole figure",
+);
+assert.deepEqual(
+  pairedPillowRows({ ...measured.pillow, goods: 300 }).map((r) => r.amount),
+  [410],
+  "a split that does not add up to the total is not shown",
+);
+assert.deepEqual(
+  pairedPillowRows({ ...measured.pillow, ballpark: null }).map((r) => r.amount),
+  [null],
+  "an unpriced Mpillow is withheld, fee and all",
+);
+assert.deepEqual(
+  parsePairedHandoff({ ...measured, pillow: { ...measured.pillow, services: [{ label: "x", amount: "50" }, null] } })
+    ?.pillow.services,
+  [],
+  "malformed fee rows are dropped",
+);
+
 // --- A new anchor (a cancelled Checkout) mints a new companion, answers kept ---
 assert.equal(reanchorPairedHandoff(answered, "a", () => "x"), answered, "same anchor: untouched");
 const moved = reanchorPairedHandoff(answered, "a2", () => "b2");
@@ -129,12 +177,24 @@ assert.match(mp, /r\.flowRoute\?\.targetFlow !== "mbolster"/, "a pending Mbolste
 
 const mb = readFileSync("app/[lang]/mbolster-config/mbolster-config-client.tsx", "utf8");
 assert.match(mb, /<PairedStepperBar className="border-t" step=\{2\} \/> : null\}\s*<\/header>/, "step 2 along the top of the Mbolster's customisation page");
-assert.match(mb, /\{paired \? \(\s*<PairedStepperBar\s+className="sticky top-0/, "and above its height step");
+// Sticky the way the configurator header is (#399): its class is the shared
+// `configuratorStickyHeaderClassName`, itself checked to be `sticky top-0`.
+assert.match(
+  mb,
+  /\{paired \? \(\s*<PairedStepperBar\s+className=\{cn\(\s*configuratorStickyHeaderClassName,/,
+  "and above its height step, sticky like the configurator header",
+);
 assert.doesNotMatch(mb, /<PairedStepper\s/, "and only there");
 assert.match(mb, /nextStep: "preview"/, "paired: height goes straight to the customisation page");
 assert.match(mb, /if \(pairedHandoffOnPage\(\)\) return;/, "a paired run never overwrites the standalone draft");
 assert.match(mb, /router\.push\(to\(pairedDetailsPath\(paired\.configPath\)\)\)/, "its answer goes back to the Mpillow's step 3");
 assert.match(mb, /handlePairedChoice\(false\)/, "Skip goes on without the Mbolster");
 assert.doesNotMatch(mb, /\/api\/results\/hold[\s\S]*pairedHoldBody|pairedHoldBody\(/, "step 2 never pays");
+assert.match(
+  mp,
+  /services: serviceLines\.map\(\(l\) => \(\{ label: l\.label, amount: l\.msrp \}\)\)/,
+  "step 1 hands its Measurement service to step 2",
+);
+assert.match(mb, /pairedPillowRows\(paired\.pillow\)\.map/, "and step 2 shows it as its own row");
 
 console.log("paired-mbolster self-check ok");

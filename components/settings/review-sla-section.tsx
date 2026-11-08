@@ -58,6 +58,8 @@ export function ReviewSlaSection() {
     authHoldEnabled: true,
   });
   const [reminders, setReminders] = useState<PaymentReminderForm>(REMINDER_DEFAULTS);
+  // Reminders to a guest who stopped customising (ADR 0050): on by default.
+  const [draftReminders, setDraftReminders] = useState(true);
   const [slaLoading, setSlaLoading] = useState(true);
   const [slaSaving, setSlaSaving] = useState(false);
 
@@ -87,6 +89,7 @@ export function ReviewSlaSection() {
           intervalDays: r.intervalDays ?? REMINDER_DEFAULTS.intervalDays,
           maxReminders: r.maxReminders ?? REMINDER_DEFAULTS.maxReminders,
         });
+        setDraftReminders(payload.draftReminders?.enabled ?? true);
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load SLA settings.");
       } finally {
@@ -108,6 +111,7 @@ export function ReviewSlaSection() {
           ...sla,
           opsEmail: sla.opsEmail.trim() || null,
           paymentReminders: reminders,
+          draftReminders: { enabled: draftReminders },
         }),
       });
       const payload = await res.json().catch(() => null);
@@ -129,13 +133,14 @@ export function ReviewSlaSection() {
         intervalDays: r.intervalDays ?? prev.intervalDays,
         maxReminders: r.maxReminders ?? prev.maxReminders,
       }));
+      setDraftReminders((prev) => payload.draftReminders?.enabled ?? prev);
       toast.success("Settings saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save SLA settings.");
     } finally {
       setSlaSaving(false);
     }
-  }, [sla, reminders]);
+  }, [sla, reminders, draftReminders]);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border p-4 max-md:p-0">
@@ -330,6 +335,17 @@ export function ReviewSlaSection() {
                   />
                 </div>
               </div>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3 border-t pt-4">
+              <div className="flex items-center gap-2">
+                <Switch id="draft-remind" checked={draftReminders} onCheckedChange={setDraftReminders} />
+                <Label htmlFor="draft-remind">Remind guests to finish their pillow</Label>
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {draftReminders
+                  ? "A guest who gave their email and stopped before paying gets an email 1 day, 1 week and 1 month after they last saved, then no more. Only to people who agreed to marketing emails. Each email links back to their saved answers."
+                  : "Off. A guest who stops before paying gets no reminder. Their Draft still shows in Results with their email."}
+              </p>
             </div>
             <div className="sm:col-span-2 lg:col-span-3">
               <Button type="button" size="sm" disabled={slaSaving} onClick={() => void saveSla()}>

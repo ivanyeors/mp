@@ -11,6 +11,7 @@
 
 import { CLAIM_BONUS_EMAIL_COPY, renderClaimBonusEmail } from "./account";
 import { CHECKUP_EMAIL_COPY, REVIEW_REQUEST_EMAIL_COPY, renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
+import { DRAFT_REMINDER_EMAIL_COPY, renderDraftReminderEmail } from "./draft-reminder";
 import { APPLICATION_EMAIL_COPY, renderApplicationOutcomeEmail } from "./application";
 import { AUTH_EMAIL_COPY, renderAdminInviteEmail, renderBackupEmailOtpEmail } from "./auth";
 import { renderCampaignBlocksEmail } from "./campaign-blocks";
@@ -43,6 +44,7 @@ import {
 import { money } from "./format";
 import { getSiteOrigin } from "@/lib/site-url";
 import { READJUSTMENT_RESCHEDULE_EMAIL_COPY, renderReadjustmentRescheduleEmail } from "./readjustment";
+import { PAYMENT_REQUEST_EMAIL_COPY, renderPaymentRequestEmail } from "./payment-request";
 import { RMA_EMAIL_COPY, RMA_EMAIL_TEMPLATES, renderRmaEmail } from "./rma";
 import { ORDER_EMAIL_COPY, ORDER_EMAIL_TEMPLATES, renderOrderEmail } from "./templates";
 import {
@@ -58,12 +60,15 @@ import {
   sampleMigrationServiceNotice,
   sampleOrder,
   sampleOrderWithPoints,
+  samplePaymentRequest,
+  samplePaymentRequestCollect,
   samplePairedMbolsterRemoved,
   samplePairedMbolsterRemovedReady,
   samplePartnerListing,
   sampleBalanceDue,
   sampleBalanceDueFinish,
   sampleCheckup,
+  sampleDraftReminder,
   sampleClaimBonus,
   sampleCampaignBlocks,
   sampleComposedCampaign,
@@ -220,6 +225,26 @@ const rmaCases: EmailCase[] = (
 
 export const EMAIL_REGISTRY: readonly EmailCase[] = [
   ...orderCases,
+
+  // --- Staff orders (ADR 0048): the Payment link, by email ---
+  {
+    id: "order.payment_request",
+    label: "Payment request",
+    group: "order",
+    audience: "customer",
+    copy: PAYMENT_REQUEST_EMAIL_COPY,
+    render: (f, copy) => renderPaymentRequestEmail(samplePaymentRequest(f), copyFor(PAYMENT_REQUEST_EMAIL_COPY, copy)),
+  },
+  {
+    // Same renderer: collected from a studio, nothing to deliver, no note.
+    id: "order.payment_request_collect",
+    label: "Payment request — collect from a studio",
+    group: "order",
+    audience: "customer",
+    copy: PAYMENT_REQUEST_EMAIL_COPY,
+    render: (f, copy) =>
+      renderPaymentRequestEmail(samplePaymentRequestCollect(f), copyFor(PAYMENT_REQUEST_EMAIL_COPY, copy)),
+  },
   ...rmaCases,
 
   // --- Results / configurator (customer) ---
@@ -376,6 +401,48 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     audience: "customer",
     copy: RESULT_EMAIL_COPY.balance_due,
     render: (f, copy) => renderBalanceDueReminderEmail(sampleBalanceDueFinish(f), copyFor(RESULT_EMAIL_COPY.balance_due, copy)),
+  },
+  // ADR 0050: a guest who stopped customising, 1 day, 1 week and 1 month after
+  // they last saved. Its customer_emails.template is the entry's id, with the
+  // Draft as entity. Sent like a campaign: Marketing consent only, with an
+  // Unsubscribe link.
+  {
+    id: "results.draft_reminder_1d",
+    label: "Finish your pillow — 1 day",
+    group: "results",
+    audience: "customer",
+    campaign: true,
+    copy: DRAFT_REMINDER_EMAIL_COPY,
+    render: (f, copy) => renderDraftReminderEmail(sampleDraftReminder(f, "1d"), copyFor(DRAFT_REMINDER_EMAIL_COPY, copy)),
+  },
+  {
+    id: "results.draft_reminder_1w",
+    label: "Finish your pillow — 1 week",
+    group: "results",
+    audience: "customer",
+    campaign: true,
+    copy: DRAFT_REMINDER_EMAIL_COPY,
+    render: (f, copy) => renderDraftReminderEmail(sampleDraftReminder(f, "1w"), copyFor(DRAFT_REMINDER_EMAIL_COPY, copy)),
+  },
+  {
+    id: "results.draft_reminder_1m",
+    label: "Finish your pillow — 1 month",
+    group: "results",
+    audience: "customer",
+    campaign: true,
+    copy: DRAFT_REMINDER_EMAIL_COPY,
+    render: (f, copy) => renderDraftReminderEmail(sampleDraftReminder(f, "1m"), copyFor(DRAFT_REMINDER_EMAIL_COPY, copy)),
+  },
+  {
+    // Same renderer with no name given: the greeting is the one line that changes.
+    id: "results.draft_reminder_no_name",
+    label: "Finish your pillow — no name",
+    group: "results",
+    audience: "customer",
+    campaign: true,
+    copy: DRAFT_REMINDER_EMAIL_COPY,
+    render: (f, copy) =>
+      renderDraftReminderEmail({ ...sampleDraftReminder(f, "1d"), name: null }, copyFor(DRAFT_REMINDER_EMAIL_COPY, copy)),
   },
   {
     id: "results.hold_expired",

@@ -78,6 +78,7 @@ import { cn } from "@/lib/utils";
 import { refundableAmount } from "@/lib/ecommerce/admin-refund";
 import { EasyshipFulfilment } from "./easyship-fulfilment";
 import { RefundDialog, type RefundIssued } from "./refund-dialog";
+import { PaymentLinkCard, type PaymentLinkCardData } from "./payment-link-card";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -182,6 +183,8 @@ export type OrderDetailInitialData = {
             created_at: string;
         }>;
     } | null;
+    /** A Staff order's Payment link (ADR 0048); absent or null for any other Order. */
+    paymentLink?: PaymentLinkCardData | null;
 };
 
 /** Same normalisation `fetchOrder` applies, shared with the server seed. */
@@ -1258,6 +1261,15 @@ export default function OrderDetailPage({
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Payment link: a Staff order only (ADR 0048) */}
+                    {initialData?.paymentLink ? (
+                        <PaymentLinkCard
+                            orderId={order.id}
+                            order={{ status: order.status, paid_at: order.paid_at }}
+                            link={initialData.paymentLink}
+                        />
+                    ) : null}
 
                     {/* Customer */}
                     <Card>

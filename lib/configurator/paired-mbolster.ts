@@ -15,6 +15,10 @@
 import { parseRecommendationRecord } from "@/lib/rules-engine/recommendation-record";
 import { withJourneyOnAccept, withJourneyOnDecline } from "@/lib/rules-engine/journey";
 import type { RuleFlow } from "@/lib/rules-engine/types";
+import {
+  parseBolsterAssistDraft,
+  type BolsterAssistDraft,
+} from "@/lib/configurator/staff-assist-draft";
 
 /** sessionStorage: the pair as the shopper has built it so far, shared by both pages. */
 export const PAIRED_HANDOFF_KEY = "mp_paired_build_handoff";
@@ -44,6 +48,32 @@ export type PairedBolsterSummary = {
   currency: string;
 };
 
+/**
+ * The Mpillow as step 1 priced it. `ballpark` is its whole price — goods and
+ * Service fees — and what step 2 adds to the Mbolster for the order's running
+ * total. `goods` and `services` split it the way steps 1, 3 and 4 show it, so
+ * the Measurement service stays its own row on step 2 too rather than vanishing
+ * into the Mpillow's figure (ADR 0024). A hand-off written before they existed
+ * carries neither, and step 2 shows the one figure.
+ */
+export type PairedPillowSummary = {
+  label: string;
+  ballpark: number | null;
+  currency: string;
+  goods?: number | null;
+  services?: Array<{ label: string; amount: number }>;
+};
+
+/** What step 2 was given, so reopening it shows the same Mbolster. */
+export type PairedBolsterAnswers = {
+  heightUnit?: string;
+  heightCm?: string;
+  caseId?: number | null;
+  addonIds?: number[];
+  /** Staff assist mode: the mix Staff built on the Mbolster's x-ray. */
+  assist?: BolsterAssistDraft;
+};
+
 /** Step 2's answer: the Mbolster to hold with the Mpillow, or none (Skip). */
 export type PairedChoice =
   | { bolster: PairedBolster; summary: PairedBolsterSummary }
@@ -62,14 +92,9 @@ export type PairedHandoff = {
   /** The Mpillow's configurator: where step 2 returns to. */
   configPath: string;
   /** The Mpillow as step 1 priced it, for step 2's running total. */
-  pillow: { label: string; ballpark: number | null; currency: string };
+  pillow: PairedPillowSummary;
   /** Step 2's own answers, kept so Back and forth does not lose them. */
-  bolster?: {
-    heightUnit?: string;
-    heightCm?: string;
-    caseId?: number | null;
-    addonIds?: number[];
-  };
+  bolster?: PairedBolsterAnswers;
   /** Step 2's answer, once given. Opening step 2 again clears it until re-answered. */
   choice?: PairedChoice;
 };
@@ -125,6 +150,51 @@ function parsePairedChoice(raw: unknown, companionId: string): PairedChoice | un
   };
 }
 
+function parseBolsterAnswers(raw: object): PairedBolsterAnswers {
+  const { assist, ...answers } = raw as PairedBolsterAnswers;
+  const parsed = parseBolsterAssistDraft(assist);
+  return { ...answers, ...(parsed ? { assist: parsed } : {}) };
+}
+
+const isAmount = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+function parsePairedPillow(raw: Partial<PairedPillowSummary> | undefined): PairedPillowSummary {
+  const pillow: PairedPillowSummary = {
+    label: typeof raw?.label === "string" ? raw.label : "Mpillow",
+    ballpark: isAmount(raw?.ballpark) ? raw.ballpark : null,
+    currency: typeof raw?.currency === "string" ? raw.currency : "SGD",
+  };
+  if (isAmount(raw?.goods)) pillow.goods = raw.goods;
+  if (Array.isArray(raw?.services)) {
+    pillow.services = raw.services.filter(
+      (s): s is { label: string; amount: number } =>
+        Boolean(s) && typeof s.label === "string" && isAmount(s.amount),
+    );
+  }
+  return pillow;
+}
+
+/**
+ * The Mpillow's rows in step 2's summary: its goods, then each Service fee on
+ * its own row, as steps 1, 3 and 4 show them. The rows always add up to
+ * `ballpark`, the figure step 2's total uses. A hand-off without the split, or
+ * one whose split does not add up, shows `ballpark` as one row (null when step 1
+ * could not price it).
+ */
+export function pairedPillowRows(
+  pillow: PairedPillowSummary,
+): Array<{ key: string; label: string; amount: number | null }> {
+  const whole = [{ key: "pillow", label: pillow.label, amount: pillow.ballpark }];
+  const services = pillow.services ?? [];
+  if (pillow.ballpark == null || pillow.goods == null || services.length === 0) return whole;
+  const sum = services.reduce((s, l) => s + l.amount, pillow.goods);
+  if (Math.abs(sum - pillow.ballpark) >= 0.005) return whole;
+  return [
+    { key: "pillow", label: pillow.label, amount: pillow.goods },
+    ...services.map((s, i) => ({ key: `service-${i}`, label: s.label, amount: s.amount })),
+  ];
+}
+
 export function parsePairedHandoff(raw: unknown): PairedHandoff | null {
   if (!raw || typeof raw !== "object") return null;
   const h = raw as Partial<PairedHandoff>;
@@ -143,12 +213,8 @@ export function parsePairedHandoff(raw: unknown): PairedHandoff | null {
     sleepPosition: h.sleepPosition,
     reason: typeof h.reason === "string" ? h.reason : "",
     configPath: h.configPath,
-    pillow: {
-      label: h.pillow?.label ?? "Mpillow",
-      ballpark: typeof h.pillow?.ballpark === "number" ? h.pillow.ballpark : null,
-      currency: h.pillow?.currency ?? "SGD",
-    },
-    ...(h.bolster && typeof h.bolster === "object" ? { bolster: h.bolster } : {}),
+    pillow: parsePairedPillow(h.pillow),
+    ...(h.bolster && typeof h.bolster === "object" ? { bolster: parseBolsterAnswers(h.bolster) } : {}),
     ...(choice ? { choice } : {}),
   };
 }
