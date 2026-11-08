@@ -35,7 +35,7 @@ The owner's decisions of 2026-10-21, as the PRD lists them:
 1. Points are a dollar offset and nothing else: 100 points = S$1, spent as money off a purchase.
    No tiers, no catalogue, no cashing out, transferring or buying.
 2. They are earned on purchases, plus a one-time Claim bonus for Migrated customers.
-3. The earn rate is 3 points per S$1.
+3. The earn rate is ~~3~~ 5 points per S$1 (amended 2026-11-08, below).
 4. They are spent on shop orders only. Results earn but cannot take them.
 5. GST does not count.
 6. Only Orders paid from launch earn.
@@ -207,15 +207,16 @@ The owner's choices, 2026-11-08:
 
 - *At each customer's Claim, with the Claim bonus:* rejected by the owner. It would have kept what
   is owed down to customers who come back, but balances would only appear at sign-in.
-- *Counting them towards milestones:* rejected by the owner. In production 1,258 customers would
-  have passed the first milestone at once, adding 173,600 points (about S$1,736).
+- *Counting them towards milestones:* rejected by the owner. In production, at 3 points per S$1,
+  1,258 customers would have passed the first milestone at once, adding 173,600 points (about
+  S$1,736); at 5, more still.
 - *Writing them as `earn` entries:* rejected. `earn` is one per Order, and milestones count it.
 - *Excluding shipping:* not possible. The export's spend is one total per customer, shipping
   included, so a past purchase earns on a little more than an Order here would.
 
 **What it costs.** In production on 2026-11-08: 1,613 Migrated customers with spend,
-2,379,749 points at 3 per S$1 (about S$23,797). The median grant is about 1,374 points
-(S$13.74), the largest 25,336 (S$253.36). No partner had Shopify-era spend. The accountant should
+3,966,643 points at 5 per S$1 (about S$39,666; it was 2,379,749, about S$23,797, at 3). Half the
+grants are 2,290 points (S$22.90) or fewer, and the largest is 42,226 (S$422.26). No partner had Shopify-era spend. The accountant should
 know before the run: it is a liability from the day it is given (slice 08).
 
 **Consequences.** The ledger has a ninth kind, `past_purchases`, labelled "Points for past
@@ -223,3 +224,31 @@ purchases" on the Staff card with the spend in its note. The cost summary counts
 terms gained a "Points for past purchases" section and are dated 8 November 2026; counsel reviews
 it with the rest before launch. The Staff guide's launch checklist gives the points before
 launch, so a customer's balance is there at their first sign-in.
+
+## Amendment (2026-11-08): the earn rate is 5 points per S$1
+
+The owner raised the earn rate, for Orders and Past-purchase points alike: "can we change to 5
+points per $1 spent?"
+
+**Decision 3, amended.** The earn rate is 5 points per S$1: 5% back on what the customer pays
+for, before GST, and the rate Past-purchase points are worked out at. It is still a setting
+(`points_earn_per_dollar`), changed by Staff on Settings → Discounts → Points; rules (a) and (b)
+are unchanged.
+
+- `20261108100200_points_earn_five.sql` moves the saved rate from 3 to 5, and only from 3, so a
+  rate Staff saved since is theirs. A missing or malformed rate reads as 5, in SQL
+  (`points_settings()`) and in TypeScript (`POINTS_DEFAULTS`).
+- Points were off with no launch date, so no Order earned at 3, and nothing is given back or
+  re-earned.
+
+**Considered.**
+
+- *5 for past purchases only, 3 for Orders:* offered; the owner chose one rate for both.
+
+**What it costs.** Customers get 5% back, and the milestone ladder is reached sooner: the first
+milestone (1,000 points) after about S$200 spent, not S$334, and a customer at the last one
+(10,000 points, about S$2,000 spent) has 6.6% back, not 3.96%. The ladder itself is unchanged;
+the owner may want to look at it again on the same page. Past-purchase points are about S$39,666
+(above). The terms and the Staff guide read the rate from the settings, so they say 5 once it is
+saved. The accountant should know the new rate before launch (slice 08).
+

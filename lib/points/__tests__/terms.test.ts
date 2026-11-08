@@ -19,14 +19,14 @@ describe("pointsTermsSections", () => {
     const t = text();
     for (const rule of [
       "100 points are worth S$1",
-      "3 points for every S$1 you pay for products, before GST",
+      "5 points for every S$1 you pay for products, before GST",
       "Shipping doesn't earn points",
       "30 days after the order is delivered",
       "in steps of S$1, from S$5, up to half of the products' price",
       "Points can't be used on custom pillows",
       "Points used are not refunded. A return refunds money only, up to the money you paid on that order",
       "within 3 months of the email we sent you about it adds 1,000 points (S$10) to your account, once",
-      "If you bought from us before our new website, we add points to your account once for what you spent then: 3 points for every S$1",
+      "If you bought from us before our new website, we add points to your account once for what you spent then: 5 points for every S$1",
       "Your points stay in your account for as long as you have it",
       "Partner accounts neither earn nor use points",
       "can't be cashed out, transferred to anyone else, or bought",
@@ -37,8 +37,8 @@ describe("pointsTermsSections", () => {
   });
 
   it("follows the settings", () => {
-    const t = text({ ...POINTS_DEFAULTS, earnPerDollar: 5, minRedeem: 1000, maxShare: 0.3, claimBonus: 1500, claimBonusMonths: 1 });
-    expect(t).toContain("5 points for every S$1");
+    const t = text({ ...POINTS_DEFAULTS, earnPerDollar: 4, minRedeem: 1000, maxShare: 0.3, claimBonus: 1500, claimBonusMonths: 1 });
+    expect(t).toContain("4 points for every S$1");
     expect(t).toContain("from S$10, up to 30% of the products' price");
     expect(t).toContain("within 1 month of the email we sent you about it adds 1,500 points (S$15)");
   });

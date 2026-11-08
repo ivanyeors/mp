@@ -30,7 +30,7 @@ export default function points({ now }) {
 
   const ledger = [
     // ADR 0030 (2026-11-08): Mei was imported from Shopify, and given points for what she spent there.
-    entry("pts-m-0", POINTS_CUSTOMER, "past_purchases", 1374, 58, {
+    entry("pts-m-0", POINTS_CUSTOMER, "past_purchases", 2290, 58, {
       note: "S$458.00 spent on the old shop",
       created_by_profile_id: "00000000-0000-4000-8000-0000000000a5",
     }),
@@ -59,7 +59,7 @@ export default function points({ now }) {
       site_settings: [
         { key: "points_enabled", value: "true" },
         { key: "points_launch_at", value: ago(60) },
-        { key: "points_earn_per_dollar", value: "3" },
+        { key: "points_earn_per_dollar", value: "5" },
         { key: "points_min_redeem", value: "500" },
         { key: "points_max_share", value: "0.5" },
         { key: "points_claim_bonus", value: "1000" },
@@ -116,14 +116,14 @@ export default function points({ now }) {
       past_purchase_points_preview: () => [
         {
           customers: 412,
-          points: 563190,
+          points: 938650,
           spend: 187730.42,
-          median: 1290,
-          largest: 14880,
+          median: 2150,
+          largest: 24800,
           granted_customers: ledger.filter((r) => r.kind === "past_purchases").length,
           granted_points: sum(ledger, (r) => r.kind === "past_purchases"),
           partners_left_out: 2,
-          earn_per_dollar: 3,
+          earn_per_dollar: 5,
         },
       ],
       grant_past_purchase_points: ({ p_expect_customers, p_expect_points }) => [{ customers: p_expect_customers, points: p_expect_points }],

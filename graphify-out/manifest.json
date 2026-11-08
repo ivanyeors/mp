@@ -14352,9 +14352,9 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/points.test.ts": {
-    "mtime": 1794112852.0381186,
-    "seen": 1794117002.480359,
-    "ast_hash": "72e1b408957630e60182e7510de890f5",
+    "mtime": 1794117464.2545457,
+    "seen": 1794117714.891718,
+    "ast_hash": "12a2d967086e201172dddd39c27fecbc",
     "semantic_hash": ""
   },
   "lib/points/__tests__/refunds-pinned.test.ts": {
@@ -14370,9 +14370,9 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/terms.test.ts": {
-    "mtime": 1794116802.6997051,
-    "seen": 1794117002.4803646,
-    "ast_hash": "4fb48abd8ea6f8c76e2344267d8ed582",
+    "mtime": 1794117450.5898376,
+    "seen": 1794117714.891723,
+    "ast_hash": "b93dcdd9a45c4092d4b2c424071e127e",
     "semantic_hash": ""
   },
   "lib/points/claim-bonus.ts": {
@@ -14424,9 +14424,9 @@
     "semantic_hash": ""
   },
   "lib/points/settings.ts": {
-    "mtime": 1794112852.0381186,
-    "seen": 1794117002.4803784,
-    "ast_hash": "5b38691730c128d3827d06b87192bf26",
+    "mtime": 1794117450.5892286,
+    "seen": 1794117714.8917375,
+    "ast_hash": "9ff04f47a821832b65eb75c8855bd756",
     "semantic_hash": ""
   },
   "lib/points/spend.ts": {
@@ -14604,15 +14604,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/loyalty-points-prd.md": {
-    "mtime": 1794112851.8374283,
-    "seen": 1794117002.4819927,
-    "ast_hash": "134f22f619b7eecfd21bfb24639b3ec9",
+    "mtime": 1794117512.628895,
+    "seen": 1794117714.8938053,
+    "ast_hash": "b1c4ad0a46571b3f7fdd216b3c4e4634",
     "semantic_hash": ""
   },
   "docs/adr/0030-loyalty-points.md": {
-    "mtime": 1794116802.6997051,
-    "seen": 1794117002.4824753,
-    "ast_hash": "2a178ef1a7a73500cafb2b91f975dabb",
+    "mtime": 1794117512.6210403,
+    "seen": 1794117714.8943477,
+    "ast_hash": "11fbfa6f0ad311f8fd239e58dc0c261d",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/countries/route.ts": {
@@ -14652,9 +14652,9 @@
     "semantic_hash": ""
   },
   "lib/admin-docs/__tests__/points.test.ts": {
-    "mtime": 1794112852.0050416,
-    "seen": 1794117002.4790952,
-    "ast_hash": "e259908692b64f4df80862a82a41edf9",
+    "mtime": 1794117489.2142394,
+    "seen": 1794117714.8903623,
+    "ast_hash": "c87dbb9008363b5f1c93de6174bb85d7",
     "semantic_hash": ""
   },
   "lib/admin-docs/guides.ts": {
@@ -16902,9 +16902,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/points.mjs": {
-    "mtime": 1794116802.694795,
-    "seen": 1794117002.4781835,
-    "ast_hash": "089173d69571b0a5cc4434312e9df0b8",
+    "mtime": 1794117450.603204,
+    "seen": 1794117714.8892405,
+    "ast_hash": "4ada2a7abe0ddf622d195772c80197a5",
     "semantic_hash": ""
   },
   "supabase/migrations/20261031032017_points_never_expire.sql": {
@@ -18474,15 +18474,21 @@
     "semantic_hash": ""
   },
   "supabase/tests/loyalty-points/assert-10-past-purchases.sql": {
-    "mtime": 1794116646.3636284,
-    "seen": 1794117002.4817538,
-    "ast_hash": "6a4acf453dd7909be4356791c3e15f20",
+    "mtime": 1794117440.398541,
+    "seen": 1794117714.8935034,
+    "ast_hash": "9249fe3c7e9464a6c9fdc5fdb0f46b1b",
     "semantic_hash": ""
   },
   ".claude/PRD-loyalty-points/issues/10-past-purchase-points.md": {
-    "mtime": 1794116777.2627933,
-    "seen": 1794117002.48199,
-    "ast_hash": "c1799a3d06b57dbb0b16c812e5c5dffa",
+    "mtime": 1794117512.6313548,
+    "seen": 1794117714.8938034,
+    "ast_hash": "1885133f776061553b0777ecab884533",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261108100200_points_earn_five.sql": {
+    "mtime": 1794117415.2548313,
+    "seen": 1794117714.8934298,
+    "ast_hash": "7ccf3eaf4d9b17bde31571796643e26d",
     "semantic_hash": ""
   }
 }

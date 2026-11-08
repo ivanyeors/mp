@@ -53,25 +53,25 @@ describe("pointsGuideSections", () => {
   });
 
   it("states the numbers the settings hold", () => {
-    const t = text(pointsGuideSections({ ...seeded, earnPerDollar: 5, minRedeem: 1000, maxShare: 0.3 }, now));
-    expect(t).toContain("5 points per S$1");
+    const t = text(pointsGuideSections({ ...seeded, earnPerDollar: 4, minRedeem: 1000, maxShare: 0.3 }, now));
+    expect(t).toContain("4 points per S$1");
     expect(t).toContain("from 1,000 points (S$10), up to 30% of the products' price");
-    expect(t).toContain("A S$89 order with no discount earns 445 points (S$4.45).");
+    expect(t).toContain("A S$89 order with no discount earns 356 points (S$3.56).");
   });
 
   it("lays out each milestone with the spend that reaches it and what is back by then", () => {
     const sections = pointsGuideSections(seeded, now);
     const table = sections.find((s) => s.id === "milestones")!.blocks.find((b) => b.kind === "table");
     expect(table && table.kind === "table" ? table.rows : null).toEqual([
-      ["1", "1,000", "100 points (S$1)", "S$334 spent", "3.29%"],
-      ["2", "2,500", "300 points (S$3)", "S$834 spent", "3.48%"],
-      ["3", "5,000", "800 points (S$8)", "S$1,667 spent", "3.72%"],
-      ["4", "10,000", "2,000 points (S$20)", "S$3,334 spent", "3.96%"],
+      ["1", "1,000", "100 points (S$1)", "S$200 spent", "5.5%"],
+      ["2", "2,500", "300 points (S$3)", "S$500 spent", "5.8%"],
+      ["3", "5,000", "800 points (S$8)", "S$1,000 spent", "6.2%"],
+      ["4", "10,000", "2,000 points (S$20)", "S$2,000 spent", "6.6%"],
     ]);
     const t = text(sections);
     expect(t).toContain("A bonus is never taken back");
     expect(t).toContain("Milestones aren't tiers or levels.");
-    expect(t).toContain("a customer who reaches the last one (10,000 points, about S$3,334 spent) has 3.96% back");
+    expect(t).toContain("a customer who reaches the last one (10,000 points, about S$2,000 spent) has 6.6% back");
   });
 
   it("says when there are no milestones", () => {

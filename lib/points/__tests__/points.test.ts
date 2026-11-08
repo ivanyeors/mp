@@ -12,6 +12,9 @@ const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021
 // Points never expire (ADR 0030, 2026-10-31): this one redefines the settings
 // function and the candidates view, so its windows must match too.
 const NEVER_EXPIRE = readFileSync(join(process.cwd(), "supabase/migrations/20261031032017_points_never_expire.sql"), "utf8");
+// The earn rate is 5 (ADR 0030 decision 3, amended 2026-11-08): this one moves
+// the saved 3 to 5 and redefines the settings function's default.
+const EARN_FIVE = readFileSync(join(process.cwd(), "supabase/migrations/20261108100200_points_earn_five.sql"), "utf8");
 
 describe("value (ADR 0030 a, b)", () => {
   it("is 100 points to S$1, shown in both", () => {
@@ -34,13 +37,12 @@ describe("settings", () => {
       { key: "points_max_share", value: "1.5" },
       { key: "points_min_redeem", value: "700" },
     ]);
-    expect(s).toMatchObject({ enabled: true, launchAt: "2026-10-31T16:00:00.000Z", earnPerDollar: 3, maxShare: 0.5, minRedeem: 700 });
+    expect(s).toMatchObject({ enabled: true, launchAt: "2026-10-31T16:00:00.000Z", earnPerDollar: 5, maxShare: 0.5, minRedeem: 700 });
   });
 
   it("seeds the same defaults in SQL, and no launch date", () => {
     for (const [key, value] of [
       ["points_enabled", "false"],
-      ["points_earn_per_dollar", "3"],
       ["points_min_redeem", "500"],
       ["points_max_share", "0.5"],
       ["points_claim_bonus", "1000"],
@@ -49,6 +51,13 @@ describe("settings", () => {
       expect(MIGRATION).toContain(`('${key}', '${value}')`);
     }
     expect(MIGRATION).not.toMatch(/\('points_launch_at'/);
+  });
+
+  it("earns 5 points per S$1 by default, in SQL as in TypeScript (ADR 0030, 2026-11-08)", () => {
+    expect(POINTS_DEFAULTS.earnPerDollar).toBe(5);
+    expect(EARN_FIVE).toContain("values ('points_earn_per_dollar', '5')");
+    expect(EARN_FIVE).toContain("set value = '5', updated_at = now()\n where key = 'points_earn_per_dollar'\n   and btrim(value) = '3';");
+    expect(EARN_FIVE).toMatch(/key = 'points_earn_per_dollar'\), 5\),/);
   });
 
   it("has no expiry: no setting, and the row is deleted", () => {
