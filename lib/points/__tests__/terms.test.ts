@@ -26,6 +26,7 @@ describe("pointsTermsSections", () => {
       "Points can't be used on custom pillows",
       "Points used are not refunded. A return refunds money only, up to the money you paid on that order",
       "within 3 months of the email we sent you about it adds 1,000 points (S$10) to your account, once",
+      "If you bought from us before our new website, we add points to your account once for what you spent then: 3 points for every S$1",
       "Your points stay in your account for as long as you have it",
       "Partner accounts neither earn nor use points",
       "can't be cashed out, transferred to anyone else, or bought",
@@ -47,6 +48,7 @@ describe("pointsTermsSections", () => {
     for (const rule of [
       "at 1,000 points earned, 100 points (S$1); at 2,500 points earned, 300 points (S$3); at 5,000 points earned, 800 points (S$8); at 10,000 points earned, 2,000 points (S$20).",
       "Only points earned on orders count towards a milestone",
+      "points for past purchases and points we add for any other reason don't count",
       "Using points doesn't set you back",
       "the points we take back come off your total",
       "A bonus you've received is yours to keep",

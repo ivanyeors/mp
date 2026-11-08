@@ -1,6 +1,15 @@
 /** The kinds of `points_ledger` entry (ADR 0030 (q)), and how people read each. */
 
-export const POINTS_LEDGER_KINDS = ["earn", "claim_bonus", "milestone_bonus", "spend", "spend_release", "clawback", "adjust"] as const;
+export const POINTS_LEDGER_KINDS = [
+  "earn",
+  "claim_bonus",
+  "milestone_bonus",
+  "past_purchases",
+  "spend",
+  "spend_release",
+  "clawback",
+  "adjust",
+] as const;
 export type PointsLedgerKind = (typeof POINTS_LEDGER_KINDS)[number];
 
 /** How Staff and customers read each kind. */
@@ -8,6 +17,7 @@ export const POINTS_KIND_LABEL: Record<PointsLedgerKind, string> = {
   earn: "Earned on an order",
   claim_bonus: "Claim bonus",
   milestone_bonus: "Milestone bonus",
+  past_purchases: "Points for past purchases",
   spend: "Used at checkout",
   spend_release: "Returned: checkout not completed",
   clawback: "Taken back: refund",

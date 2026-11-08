@@ -13,6 +13,7 @@ import { MAX_MILESTONES, milestoneCostRows, type PointsMilestone } from "@/lib/p
 import type { PointsSummary } from "@/lib/points/server";
 import type { PointsSettings } from "@/lib/points/settings";
 import { formatDollarsShort, formatPoints } from "@/lib/points/value";
+import { PastPurchasePoints } from "./past-purchase-points";
 
 /** "2026-11-01T00:00" in Singapore, for a datetime-local input. */
 function toSgInput(iso: string | null): string {
@@ -153,13 +154,19 @@ function MilestonesField({
 /**
  * Discounts → Points (PRD-loyalty-points slice 02; ADR 0030): the programme's
  * settings and what it costs now. 100 points = S$1 is fixed in code. Turning
- * points on needs a launch date; only Orders paid from then earn.
+ * points on needs a launch date; only Orders paid from then earn. Customers
+ * imported from Shopify are given points for past purchases once, from the
+ * panel under the settings (ADR 0030, amendment of 2026-11-08).
  */
 export function PointsSettingsCard() {
     const [settings, setSettings] = useState<PointsSettings | null>(null);
+    // As saved: Past-purchase points are worked out at the saved rate.
+    const [saved, setSaved] = useState<PointsSettings | null>(null);
     const [summary, setSummary] = useState<PointsSummary | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    // Bumped after Past-purchase points are given, to read the cost again.
+    const [reads, setReads] = useState(0);
 
     useEffect(() => {
         let live = true;
@@ -168,7 +175,9 @@ export function PointsSettingsCard() {
             .then((json) => {
                 if (!live) return;
                 if (json?.ok) {
-                    setSettings(json.settings as PointsSettings);
+                    // A later read refreshes the cost only, never a form being edited.
+                    setSettings((s) => s ?? (json.settings as PointsSettings));
+                    setSaved((s) => s ?? (json.settings as PointsSettings));
                     setSummary(json.summary as PointsSummary);
                 } else setError(json?.error ?? "Could not load the points settings.");
             })
@@ -176,7 +185,7 @@ export function PointsSettingsCard() {
         return () => {
             live = false;
         };
-    }, []);
+    }, [reads]);
 
     const set = <K extends keyof PointsSettings>(k: K, v: PointsSettings[K]) => setSettings((s) => (s ? { ...s, [k]: v } : s));
 
@@ -195,6 +204,7 @@ export function PointsSettingsCard() {
                 return;
             }
             setSettings(json.settings as PointsSettings);
+            setSaved(json.settings as PointsSettings);
             toast.success("Points settings saved.");
         } finally {
             setSaving(false);
@@ -295,6 +305,13 @@ export function PointsSettingsCard() {
                             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                             Save
                         </Button>
+
+                        <PastPurchasePoints
+                            savedRate={saved?.earnPerDollar ?? null}
+                            unsavedRate={settings.earnPerDollar}
+                            pointsOn={saved?.enabled ?? false}
+                            onGranted={() => setReads((r) => r + 1)}
+                        />
                     </>
                 )}
 
@@ -313,6 +330,10 @@ export function PointsSettingsCard() {
                         <p>
                             Milestone bonuses given: {summary.milestoneBonuses.toLocaleString("en-SG")}, worth{" "}
                             {formatPoints(summary.milestoneBonusPoints)}
+                        </p>
+                        <p>
+                            Points for past purchases given: {summary.pastPurchaseGrants.toLocaleString("en-SG")}, worth{" "}
+                            {formatPoints(summary.pastPurchasePoints)}
                         </p>
                     </div>
                 ) : null}

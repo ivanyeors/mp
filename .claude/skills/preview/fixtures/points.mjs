@@ -29,6 +29,11 @@ export default function points({ now }) {
   });
 
   const ledger = [
+    // ADR 0030 (2026-11-08): Mei was imported from Shopify, and given points for what she spent there.
+    entry("pts-m-0", POINTS_CUSTOMER, "past_purchases", 1374, 58, {
+      note: "S$458.00 spent on the old shop",
+      created_by_profile_id: "00000000-0000-4000-8000-0000000000a5",
+    }),
     entry("pts-j-1", JAMIE, "earn", 1170, 40, { order_id: "pts-order-j1" }),
     entry("pts-j-2", JAMIE, "milestone_bonus", 100, 40, { milestone: 1, note: "Milestone 1: 1,000 points earned from orders" }),
     entry("pts-j-3", JAMIE, "spend", -500, 20, { order_id: "pts-order-j2" }),
@@ -100,11 +105,28 @@ export default function points({ now }) {
             customers_with_entries: new Set(ledger.map((r) => r.customer_id)).size,
             milestone_bonuses: ledger.filter((r) => r.kind === "milestone_bonus").length,
             milestone_bonus_points: sum(ledger, (r) => r.kind === "milestone_bonus"),
+            past_purchase_grants: ledger.filter((r) => r.kind === "past_purchases").length,
+            past_purchase_points: sum(ledger, (r) => r.kind === "past_purchases"),
           },
         ];
       },
     },
     rpc: {
+      // 20261108100100_past_purchase_points.sql: made-up customers still to be given points for past purchases.
+      past_purchase_points_preview: () => [
+        {
+          customers: 412,
+          points: 563190,
+          spend: 187730.42,
+          median: 1290,
+          largest: 14880,
+          granted_customers: ledger.filter((r) => r.kind === "past_purchases").length,
+          granted_points: sum(ledger, (r) => r.kind === "past_purchases"),
+          partners_left_out: 2,
+          earn_per_dollar: 3,
+        },
+      ],
+      grant_past_purchase_points: ({ p_expect_customers, p_expect_points }) => [{ customers: p_expect_customers, points: p_expect_points }],
       points_balance: ({ p_customer_id }) => [{ available: held(p_customer_id), pending: pending(p_customer_id) }],
       is_partner_customer: () => false,
     },

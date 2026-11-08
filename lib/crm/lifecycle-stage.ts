@@ -13,10 +13,11 @@ import { monthsBefore } from "@/lib/crm/months";
  *
  * A **purchase** is a counted Order with at least one goods line, so a
  * re-adjustment fee is never one; the booking it paid for, once attended, is
- * an **attended booking**. Until slice 09 imports Shopify-era Orders, a
- * Migrated customer's Shopify-era order count is added to their purchases,
- * with no dates: a Customer with no dated purchase here is placed by count and
- * `undated`, never *At risk*.
+ * an **attended booking**. A Migrated customer's Shopify-era order count is
+ * added to their purchases. Their latest Fitting record dates the latest of
+ * those orders (ADR 0042 m; `latestPurchase`); a Customer with Shopify-era
+ * orders, no fitting and no purchase here has no dates, is placed by count
+ * and `undated`, and is never *At risk*.
  *
  * The overview computes the stage in SQL, `customer_lifecycle_stage` and
  * `customer_lifecycle_detail` (migration 20261028084009), and these mirror
@@ -104,9 +105,9 @@ export const LIFECYCLE_DETAIL_RULE: Record<LifecycleDetail, string> = {
 
 /** What the stage is read from, as the overview's columns hold it. */
 export interface LifecycleFacts {
-  /** Purchases here, plus the Shopify-era count until slice 09. */
+  /** Purchases here, plus the Shopify-era count. */
   purchases: number;
-  /** The latest purchase here; null with none here. */
+  /** The latest purchase (`latestPurchase`): here, or Shopify-era dated by a fitting; null with neither. */
   lastPurchaseAt: string | null;
   /** Attended Re-adjustment bookings. */
   bookings: number;
@@ -158,7 +159,30 @@ export function lifecycleDetail(
   }
 }
 
-/** Placed by the Shopify-era count alone: buyers whose dates are not here yet. */
+/**
+ * The latest purchase, as the overview's `lp` reads it (ADR 0042 m): with
+ * Shopify-era orders and a Fitting record, the later of their latest fitting
+ * and their latest purchase here, a tie going to the purchase here; otherwise
+ * the purchase here. A fitting-dated purchase was in hand at the fitting, so
+ * its delivery is the fitting too.
+ */
+export function latestPurchase(facts: {
+  /** The latest purchase here and its delivery; null with none here. */
+  hereAt: string | null;
+  hereDeliveredAt: string | null;
+  /** `migrated_customers.shopify_orders_count`; null for a Customer who is not a Migrated customer. */
+  shopifyOrders: number | null;
+  /** Their latest Fitting record's `fitted_at`; null with none. */
+  lastFittedAt: string | null;
+}): { at: string | null; deliveredAt: string | null; datedByFitting: boolean } {
+  const fitted = (facts.shopifyOrders ?? 0) > 0 ? facts.lastFittedAt : null;
+  const datedByFitting = fitted != null && (facts.hereAt == null || Date.parse(fitted) > Date.parse(facts.hereAt));
+  return datedByFitting
+    ? { at: fitted, deliveredAt: fitted, datedByFitting }
+    : { at: facts.hereAt, deliveredAt: facts.hereDeliveredAt, datedByFitting };
+}
+
+/** Placed by the Shopify-era count alone: buyers with Shopify-era orders that nothing dates. */
 export function lifecycleUndated({ purchases, lastPurchaseAt }: Pick<LifecycleFacts, "purchases" | "lastPurchaseAt">): boolean {
   return purchases > 0 && !lastPurchaseAt;
 }

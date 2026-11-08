@@ -16,8 +16,8 @@ export const POINTS_GUIDE: DocGuide = {
   slug: "points",
   title: "Mpillow Points",
   summary:
-    "How customers earn and use points, the Claim bonus, bonus milestones, refunds, what customers and Staff see, what it costs, and how to launch.",
-  updated: "31 October 2026",
+    "How customers earn and use points, the Claim bonus, points for past purchases, bonus milestones, refunds, what customers and Staff see, what it costs, and how to launch.",
+  updated: "8 November 2026",
 };
 
 const DISCOUNTS = { label: "Discounts → Points", href: "/settings/discounts" };
@@ -64,7 +64,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
       blocks: [
         {
           kind: "p",
-          text: `Mpillow Points are money off a later shop order. Customers earn them on what they pay for, and from two kinds of bonus: the Claim bonus and bonus milestones. ${POINTS_PER_DOLLAR} points are always S$1. That is fixed in the code, so no setting can lower what a balance is worth.`,
+          text: `Mpillow Points are money off a later shop order. Customers earn them on what they pay for, and from two kinds of bonus: the Claim bonus and bonus milestones. Customers we imported from the old website are also given points once for what they spent there. ${POINTS_PER_DOLLAR} points are always S$1. That is fixed in the code, so no setting can lower what a balance is worth.`,
         },
         { kind: "note", text: pointsStatusLine(s, now) },
         {
@@ -219,6 +219,26 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
       ],
     },
     {
+      id: "past-purchases",
+      heading: "Points for past purchases",
+      blocks: [
+        {
+          kind: "p",
+          text: `A customer we imported from the old website is given points once for what they spent there: ${rate} points per S$1 of the spend the old website recorded, rounded down. They are given by Staff, in one run, from ${DISCOUNTS.label}: it shows how many customers, how many points and what they are worth before anything is given, and asks again before it gives them.`,
+        },
+        {
+          kind: "list",
+          items: [
+            "Each customer gets them once. Running it again later gives them only to customers imported since.",
+            "They are worked out at the earn rate as saved when the run is made.",
+            "They don't count towards a milestone: only points earned on orders here do.",
+            "Partners get none.",
+            "They can't be undone in one step. To take some back, adjust the customer's points with a reason.",
+          ],
+        },
+      ],
+    },
+    {
       id: "refunds",
       heading: "Refunds",
       blocks: [
@@ -277,7 +297,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
       blocks: [
         {
           kind: "p",
-          text: `Every point a customer holds is S$0.01 off a future order. ${DISCOUNTS.label} shows what customers hold, what is pending, and what has been used and taken back, this month and in total, with the Claim bonuses and milestone bonuses given.`,
+          text: `Every point a customer holds is S$0.01 off a future order. ${DISCOUNTS.label} shows what customers hold, what is pending, and what has been used and taken back, this month and in total, with the Claim bonuses, milestone bonuses and points for past purchases given.`,
         },
         {
           kind: "p",
@@ -297,6 +317,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
           kind: "steps",
           items: [
             `Check every number on ${DISCOUNTS.label}, the milestones included.`,
+            `Give imported customers their points for past purchases, from ${DISCOUNTS.label}, so their balance is there when they first sign in.`,
             "Set the launch date and time. Only orders paid from then earn.",
             "Turn points on and save.",
             "Run the live test with a real card: buy, add points by hand, use them on a second order, leave a third checkout and see them come back, return an item and see the refund is money only, then check every entry on the customer's Points card. Refund the test orders afterwards.",

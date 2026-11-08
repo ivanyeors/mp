@@ -112,17 +112,35 @@ describe("customer_lifecycle_detail", () => {
 describe("admin_customer_overview", () => {
   const view = latestOverview();
   const facts =
-    "coalesce(pu.purchases, 0) + coalesce(m.shopify_orders_count, 0), pu.last_purchase_at, " +
+    "coalesce(pu.purchases, 0) + coalesce(m.shopify_orders_count, 0), lp.last_purchase_at, " +
     "coalesce(rb.attended_bookings, 0), rb.last_readjusted_at, " +
     "case when c.marketing_email = 'unsubscribed' then c.marketing_email_updated_at end, now())";
 
   it("reads the stage with now(), from purchases, attended bookings and the unsubscribe", () => {
     expect(view).toContain(`public.customer_lifecycle_stage( ${facts} as lifecycle_stage`);
     expect(view).toContain(
-      `public.customer_lifecycle_detail( ${facts.replace("pu.last_purchase_at, ", "pu.last_purchase_at, pu.last_purchase_delivered_at, ")} as lifecycle_detail`,
+      `public.customer_lifecycle_detail( ${facts.replace("lp.last_purchase_at, ", "lp.last_purchase_at, lp.last_purchase_delivered_at, ")} as lifecycle_detail`,
     );
-    expect(view).toContain("coalesce(m.shopify_orders_count, 0) > 0 and pu.last_purchase_at is null as lifecycle_undated");
+    expect(view).toContain("coalesce(m.shopify_orders_count, 0) > 0 and lp.last_purchase_at is null as lifecycle_undated");
     expect(view).toContain("coalesce(rb.attended_bookings, 0) as attended_bookings");
+  });
+
+  it("dates a Shopify-era purchase by the latest fitting, as latestPurchase does (ADR 0042 m)", () => {
+    expect(view).toContain("lp.last_purchase_at, public.customer_lifecycle_stage(");
+    expect(view).toContain(
+      "select f.customer_id, max(f.fitted_at) as last_fitted_at from public.customer_fittings f group by f.customer_id ) fi on fi.customer_id = c.id",
+    );
+    expect(view).toContain(
+      "left join lateral ( select greatest(pu.last_purchase_at, x.fitted_at) as last_purchase_at, " +
+        "case when x.fitted_at > coalesce(pu.last_purchase_at, '-infinity'::timestamptz) then x.fitted_at else pu.last_purchase_delivered_at end as last_purchase_delivered_at, " +
+        "coalesce(x.fitted_at > coalesce(pu.last_purchase_at, '-infinity'::timestamptz), false) as dated_by_fitting " +
+        "from (select case when coalesce(m.shopify_orders_count, 0) > 0 then fi.last_fitted_at end as fitted_at) x ) lp on true",
+    );
+    // Deliveries we made, for the Delivered filter and the review timing.
+    expect(view).toContain("pu.last_purchase_delivered_at as last_delivered_at");
+    expect(view).toContain("lp.dated_by_fitting as last_purchase_dated_by_fitting");
+    // Every stage call reads `lp`: none is left on the purchase here alone.
+    expect(view.slice(0, view.indexOf(" from public.customers c "))).not.toMatch(/pu\.last_purchase_at/);
   });
 
   it("counts attended Re-adjustment bookings only", () => {

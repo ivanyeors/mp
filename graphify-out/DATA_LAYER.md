@@ -1442,13 +1442,13 @@ Defined in supabase/migrations/20261101020836_customer_lifecycle_counts.sql:22
   - `getLifecycleSummary()` — lib/crm/lifecycle-summary-server.ts:11
 
 ### admin_customer_overview
-Defined in supabase/migrations/20261101081436_campaign_unengaged.sql:81
+Defined in supabase/migrations/20261108100000_fitting_dated_purchases.sql:45
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
   - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
   - `countShipsToUnknown()` [select] — lib/ecommerce/admin/customers.ts:79
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
-  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:142
+  - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:144
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:116
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:57
   - `readNextStepFacts()` [select] — lib/crm/next-step-server.ts:16
@@ -1468,9 +1468,9 @@ Defined in supabase/migrations/20260902000002_admin_orders_revenue_summary.sql:1
   - `loadOrdersDashboard()` — lib/ecommerce/admin/orders-dashboard.ts:62
 
 ### admin_points_summary
-Defined in supabase/migrations/20261031032017_points_never_expire.sql:132
+Defined in supabase/migrations/20261108100100_past_purchase_points.sql:188
 - Read by:
-  - `readPointsSummary()` [select] — lib/points/server.ts:186
+  - `readPointsSummary()` [select] — lib/points/server.ts:189
 
 ### admin_returning_customer_cohorts
 Defined in supabase/migrations/20261101081512_returning_customer_cohorts.sql:25
@@ -1772,6 +1772,11 @@ Defined in supabase/migrations/20261023120000_points_milestones.sql:181
 - Called by:
   - `runPointsMilestones()` — lib/points/earn.ts:77
 
+### grant_past_purchase_points
+Defined in supabase/migrations/20261108100100_past_purchase_points.sql:134
+- Called by:
+  - `grantPastPurchasePoints()` — lib/points/server.ts:259
+
 ### import_fitting_rows
 Defined in supabase/migrations/20261101100000_customer_fittings.sql:323
 - Called by:
@@ -1844,6 +1849,11 @@ Changed from pages: `/settings/customers/[id]`, `/settings/orders/[id]`
   - `expireStaffOrderLinks()` [select] — lib/staff-orders/expire.ts:20
   - `loadPayLinkByToken()` [select] — lib/staff-orders/link.ts:111
   - `loadPayLinkRow()` [select] — lib/staff-orders/link.ts:118
+
+### past_purchase_points_preview
+Defined in supabase/migrations/20261108100100_past_purchase_points.sql:92
+- Called by:
+  - `readPastPurchasePreview()` — lib/points/server.ts:233
 
 ### points_balance
 Defined in supabase/migrations/20261031032017_points_never_expire.sql:157
@@ -2717,7 +2727,7 @@ app/[lang]/settings/customers/import-fittings/page.tsx
 
 ### /settings/discounts
 app/[lang]/settings/discounts/page.tsx
-- Endpoints: `/api/settings/discounts/points [GET,PUT]`, `/api/shop/coupons [GET]`
+- Endpoints: `/api/settings/discounts/points [GET,PUT]`, `/api/settings/discounts/points/past-purchases [GET,POST]`, `/api/shop/coupons [GET]`
 - Loads: `listAdminCoupons()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `coupons`, `mp_staff`, `site_settings`
 - Reads, through the same: `admin_points_summary`, `admin_roles`, `admin_users`, `partners`
