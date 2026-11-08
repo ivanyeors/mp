@@ -49,11 +49,11 @@ beforeEach(() => {
   h.session = null;
   h.rpc = [];
   h.partners = new Set();
-  h.balances = { [OWNER]: 2130, [OTHER]: 90000 };
+  h.balances = { [OWNER]: 213, [OTHER]: 9000 };
   h.db = {
     site_settings: [
       { key: "points_enabled", value: "true" },
-      { key: "points_min_redeem", value: "500" },
+      { key: "points_min_redeem", value: "50" },
       { key: "points_max_share", value: "0.5" },
     ],
     customers: [
@@ -68,16 +68,16 @@ describe("POST /api/shop/points/allowance", () => {
     h.session = OWNER;
     expect(await ask({ products_after_coupon: 90, email: "Wei.Ling@example.com" })).toEqual({
       status: 200,
-      body: { ok: true, usable: true, available: 2130, min: 500, max: 2100, email_ok: true },
+      body: { ok: true, usable: true, available: 213, min: 50, max: 210, email_ok: true },
     });
-    expect((await ask({ products_after_coupon: 20 })).body).toMatchObject({ max: 1000, email_ok: null });
+    expect((await ask({ products_after_coupon: 20 })).body).toMatchObject({ max: 100, email_ok: null });
     expect((await ask({ products_after_coupon: 9 })).body).toMatchObject({ usable: true, max: null });
   });
 
   it("reads the session, never a Customer named in the body", async () => {
     h.session = OWNER;
     const res = await ask({ products_after_coupon: 90, customer_id: OTHER });
-    expect(res.body).toMatchObject({ available: 2130 });
+    expect(res.body).toMatchObject({ available: 213 });
     expect(h.rpc.every((c) => c.args.p_customer_id === OWNER)).toBe(true);
   });
 
@@ -97,10 +97,10 @@ describe("POST /api/shop/points/allowance", () => {
     expect(await ask({ products_after_coupon: 90 })).toEqual(nothing);
 
     h.session = OWNER;
-    h.balances[OWNER] = 499;
+    h.balances[OWNER] = 49;
     expect(await ask({ products_after_coupon: 90 })).toEqual(nothing);
 
-    h.balances[OWNER] = 5000;
+    h.balances[OWNER] = 500;
     h.db.site_settings[0].value = "false";
     expect(await ask({ products_after_coupon: 90 })).toEqual(nothing);
   });

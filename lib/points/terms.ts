@@ -34,7 +34,7 @@ export function pointsTermsSections(s: PointsSettings): PointsTermsSection[] {
     {
       heading: "Earning points",
       paragraphs: [
-        `You earn ${s.earnPerDollar} points for every S$1 you pay for products, before GST. Shipping doesn't earn points, and neither does the part of an order paid with points or a discount code.`,
+        `You earn ${formatPointsCount(s.earnPerDollar)} for every S$1 you pay for products, before GST. Shipping doesn't earn points, and neither does the part of an order paid with points or a discount code.`,
         `Points from an order are pending at first. They become yours to use ${DEFAULT_RETURN_WINDOW_DAYS} days after the order is delivered, once its return window has closed. Your account shows them, and the day they can be used.`,
         "If you return something after its points became usable, we take back the points it earned, as far as your balance allows.",
       ],
@@ -66,7 +66,7 @@ export function pointsTermsSections(s: PointsSettings): PointsTermsSection[] {
     {
       heading: "Points for past purchases",
       paragraphs: [
-        `If you bought from us before our new website, we add points to your account once for what you spent then: ${s.earnPerDollar} points for every S$1, as your account with us recorded it.`,
+        `If you bought from us before our new website, we add points to your account once for what you spent then: ${formatPointsCount(s.earnPerDollar)} for every S$1, as your account with us recorded it.`,
       ],
     },
     ...(bonus

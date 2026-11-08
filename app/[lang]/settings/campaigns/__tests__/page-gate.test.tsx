@@ -133,7 +133,7 @@ describe("the editor", () => {
       <CampaignEditor campaign={null} draft={FIRST_CAMPAIGN_DRAFT} stats={null} segments={[]} staffEmail="owner@mpillow.com" />,
     );
     expect(html).toContain("Our new website is here, with points waiting for you");
-    expect(html).toContain("Sign in within 3 months of this email and we&#x27;ll add 1,000 points");
+    expect(html).toContain("Sign in within 3 months of this email and we&#x27;ll add 100 points");
     expect(html).toContain("Imported from Shopify, not signed in yet");
     // The audience name is for Staff; the email itself never names the old platform.
     expect(html.replace("Imported from Shopify, not signed in yet", "")).not.toMatch(/shopify|moved|migrat/i);

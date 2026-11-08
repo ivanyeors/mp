@@ -9,7 +9,7 @@ import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 import { pointsForOrder } from "@/lib/points/earn";
 import { milestoneCostRows } from "@/lib/points/milestones";
 import { profilePointsView, type PointsSettings } from "@/lib/points/settings";
-import { POINTS_PER_DOLLAR, formatDollarsShort, formatPointsCount, pointsToDollars } from "@/lib/points/value";
+import { POINTS_PER_DOLLAR, formatDollarsShort, formatPointsCount, percentBack, pointsToDollars } from "@/lib/points/value";
 import type { DocGuide, DocSection } from "./types";
 
 export const POINTS_GUIDE: DocGuide = {
@@ -51,6 +51,8 @@ export function pointsStatusLine(s: PointsSettings, now: Date = new Date()): str
 /** Pure — every section of the guide, with the numbers from `s`. */
 export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): DocSection[] {
   const rate = s.earnPerDollar;
+  // "1 point", "2 points".
+  const perDollar = formatPointsCount(rate);
   const min = worth(s.minRedeem);
   const share = `${Math.round(s.maxShare * 100)}%`;
   const example = pointsForOrder({ subtotal: 89, discount: 0, refunded: 0 }, rate);
@@ -89,7 +91,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
           rows: [
             ["Launch", s.launchAt ? sgDateTime(s.launchAt) : "Not set", "Only orders paid from then earn."],
             ["Points are on", s.enabled ? "Yes" : "No", "Off: nothing earns and nothing can be used."],
-            ["Earn rate", `${rate} points per S$1`, `${rate}% back on products, before GST. Shipping doesn't earn.`],
+            ["Earn rate", `${perDollar} per S$1`, `${percentBack(rate)}% back on products, before GST. Shipping doesn't earn.`],
             ["Value", `${POINTS_PER_DOLLAR} points = S$1`, "Fixed in code."],
             ["Fewest used at once", min, "Points are used in S$1 steps from here."],
             ["Most of an order", share, "Of the products' price after any discount code. Never shipping."],
@@ -123,7 +125,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
         },
         {
           kind: "p",
-          text: `An order earns ${rate} points for each S$1 paid for the products the customer kept: the products' price, less any discount (points used count as a discount), less anything refunded, rounded down. Shipping and GST don't count. A S$89 order with no discount earns ${worth(example)}.`,
+          text: `An order earns ${perDollar} for each S$1 paid for the products the customer kept: the products' price, less any discount (points used count as a discount), less anything refunded, rounded down. Shipping and GST don't count. A S$89 order with no discount earns ${worth(example)}.`,
         },
         { kind: "p", text: "These orders never earn:" },
         {
@@ -163,7 +165,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
               },
               {
                 kind: "p" as const,
-                text: `"Back by then" is the points earned and every bonus so far, as a share of the spend: ${rate}% from the earn rate, plus the bonuses.`,
+                text: `"Back by then" is the points earned and every bonus so far, as a share of the spend: ${percentBack(rate)}% from the earn rate, plus the bonuses.`,
               },
             ]
           : [{ kind: "p" as const, text: `There are no milestones now. Add them on ${DISCOUNTS.label}.` }]),
@@ -224,7 +226,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
       blocks: [
         {
           kind: "p",
-          text: `A customer we imported from the old website is given points once for what they spent there: ${rate} points per S$1 of the spend the old website recorded, rounded down. They are given by Staff, in one run, from ${DISCOUNTS.label}: it shows how many customers, how many points and what they are worth before anything is given, and asks again before it gives them.`,
+          text: `A customer we imported from the old website is given points once for what they spent there: ${perDollar} per S$1 of the spend the old website recorded, rounded down. They are given by Staff, in one run, from ${DISCOUNTS.label}: it shows how many customers, how many points and what they are worth before anything is given, and asks again before it gives them.`,
         },
         {
           kind: "list",
@@ -248,7 +250,7 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
         },
         {
           kind: "p",
-          text: `If a refund lands after an order's points were added, ${rate} points per S$1 refunded are taken back, no more than the order earned and no more than the customer holds. Anything short is noted on the entry, not chased.`,
+          text: `If a refund lands after an order's points were added, ${perDollar} per S$1 refunded are taken back, no more than the order earned and no more than the customer holds. Anything short is noted on the entry, not chased.`,
         },
       ],
     },
@@ -303,8 +305,8 @@ export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): 
           kind: "p",
           text:
             top && top.spend !== null && top.backShare !== null
-              ? `At ${rate} points per S$1, customers get ${rate}% back. With the milestones, a customer who reaches the last one (${top.at.toLocaleString("en-SG")} points, about ${formatDollarsShort(top.spend)} spent) has ${percent(top.backShare)} back.`
-              : `At ${rate} points per S$1, customers get ${rate}% back.`,
+              ? `At ${perDollar} per S$1, customers get ${percentBack(rate)}% back. With the milestones, a customer who reaches the last one (${top.at.toLocaleString("en-SG")} points, about ${formatDollarsShort(top.spend)} spent) has ${percent(top.backShare)} back.`
+              : `At ${perDollar} per S$1, customers get ${percentBack(rate)}% back.`,
         },
         { kind: "note", text: "Points customers hold are a liability. The accountant decides how it is booked and from which figure." },
       ],

@@ -565,7 +565,7 @@ _Avoid_: "verified mobile" — nothing verifies a phone number by code; letting 
 ## Loyalty points (ADR 0030)
 
 **Points**:
-A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, from a one-time **Claim bonus**, and, for a **Migrated customer**, once as **Past-purchase points**. Points never expire. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
+A **Customer**'s balance, worth S$0.10 each (10 points = S$1, since 2026-11-08), spent only as money off a shop **Order**, in S$1 steps. Earned on what the customer pays for (1 point per S$1, a setting), from a one-time **Claim bonus**, and, for a **Migrated customer**, once as **Past-purchase points**. Points never expire. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
 _Avoid_: "store credit", "wallet", "cashback" (each implies cash value or a refund); "rewards" (there is no catalogue); "tier" or "member" for customers (a **Member** is **Staff**; tiers are the partners')
 
 **Points ledger**:
@@ -577,7 +577,7 @@ What a paid **Order** will earn once its return window closes, 30 days after del
 _Avoid_: letting pending points be spent, or counting them in the balance
 
 **Claim bonus**:
-1,000 points a **Migrated customer** receives once (`kind = 'claim_bonus'`), when their **Claim** falls within 3 months of the first campaign email we sent them, or of the first wave if we never emailed them. A customer who claimed before points existed receives it at their next **Sign in**.
+100 points (S$10; 1,000 before a point became S$0.10 on 2026-11-08) a **Migrated customer** receives once (`kind = 'claim_bonus'`), when their **Claim** falls within 3 months of the first campaign email we sent them, or of the first wave if we never emailed them. A customer who claimed before points existed receives it at their next **Sign in**.
 _Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
 
 **Past-purchase points**:

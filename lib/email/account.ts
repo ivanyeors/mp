@@ -21,7 +21,7 @@ export const CLAIM_BONUS_EMAIL_COPY = defineEmailCopy({
   description: "Sent once, when a customer's first sign-in adds the sign-in bonus to their points.",
   placeholders: {
     first_name: "The customer's first name",
-    points: "The bonus, e.g. 1,000 points",
+    points: "The bonus, e.g. 100 points",
     amount: "What the bonus is worth, e.g. S$10",
   },
   fields: {

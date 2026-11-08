@@ -30,24 +30,24 @@ export default function points({ now }) {
 
   const ledger = [
     // ADR 0030 (2026-11-08): Mei was imported from Shopify, and given points for what she spent there.
-    entry("pts-m-0", POINTS_CUSTOMER, "past_purchases", 2290, 58, {
+    entry("pts-m-0", POINTS_CUSTOMER, "past_purchases", 458, 58, {
       note: "S$458.00 spent on the old shop",
       created_by_profile_id: "00000000-0000-4000-8000-0000000000a5",
     }),
-    entry("pts-j-1", JAMIE, "earn", 1170, 40, { order_id: "pts-order-j1" }),
-    entry("pts-j-2", JAMIE, "milestone_bonus", 100, 40, { milestone: 1, note: "Milestone 1: 1,000 points earned from orders" }),
-    entry("pts-j-3", JAMIE, "spend", -500, 20, { order_id: "pts-order-j2" }),
-    entry("pts-j-4", JAMIE, "earn", 600, 6, { order_id: "pts-order-j2" }),
-    entry("pts-m-1", POINTS_CUSTOMER, "claim_bonus", 1000, 55),
-    entry("pts-m-2", POINTS_CUSTOMER, "earn", 870, 30, { order_id: "pts-order-m1" }),
-    entry("pts-m-3", POINTS_CUSTOMER, "adjust", 300, 12, { note: "Goodwill: late delivery" }),
-    entry("pts-m-4", POINTS_CUSTOMER, "spend", -1000, 9, { order_id: "pts-order-m2" }),
-    entry("pts-m-5", POINTS_CUSTOMER, "spend_release", 1000, 8, { order_id: "pts-order-m2" }),
+    entry("pts-j-1", JAMIE, "earn", 117, 40, { order_id: "pts-order-j1" }),
+    entry("pts-j-2", JAMIE, "milestone_bonus", 10, 40, { milestone: 1, note: "Milestone 1: 100 points earned from orders" }),
+    entry("pts-j-3", JAMIE, "spend", -50, 20, { order_id: "pts-order-j2" }),
+    entry("pts-j-4", JAMIE, "earn", 60, 6, { order_id: "pts-order-j2" }),
+    entry("pts-m-1", POINTS_CUSTOMER, "claim_bonus", 100, 55),
+    entry("pts-m-2", POINTS_CUSTOMER, "earn", 87, 30, { order_id: "pts-order-m1" }),
+    entry("pts-m-3", POINTS_CUSTOMER, "adjust", 30, 12, { note: "Goodwill: late delivery" }),
+    entry("pts-m-4", POINTS_CUSTOMER, "spend", -100, 9, { order_id: "pts-order-m2" }),
+    entry("pts-m-5", POINTS_CUSTOMER, "spend_release", 100, 8, { order_id: "pts-order-m2" }),
   ];
 
   const candidates = [
-    { order_id: "pts-order-j3", customer_id: JAMIE, order_number: "MP-20417", paid_at: ago(9), delivered_at: ago(5), base: 180, points: 540, release_at: ago(5 - 30) },
-    { order_id: "pts-order-m3", customer_id: POINTS_CUSTOMER, order_number: "MP-20431", paid_at: ago(2), delivered_at: null, base: 89, points: 267, release_at: null },
+    { order_id: "pts-order-j3", customer_id: JAMIE, order_number: "MP-20417", paid_at: ago(9), delivered_at: ago(5), base: 180, points: 180, release_at: ago(5 - 30) },
+    { order_id: "pts-order-m3", customer_id: POINTS_CUSTOMER, order_number: "MP-20431", paid_at: ago(2), delivered_at: null, base: 89, points: 89, release_at: null },
   ];
 
   const sum = (rows, test = () => true) => rows.filter(test).reduce((n, r) => n + r.points, 0);
@@ -59,12 +59,12 @@ export default function points({ now }) {
       site_settings: [
         { key: "points_enabled", value: "true" },
         { key: "points_launch_at", value: ago(60) },
-        { key: "points_earn_per_dollar", value: "5" },
-        { key: "points_min_redeem", value: "500" },
+        { key: "points_earn_per_dollar", value: "1" },
+        { key: "points_min_redeem", value: "50" },
         { key: "points_max_share", value: "0.5" },
-        { key: "points_claim_bonus", value: "1000" },
+        { key: "points_claim_bonus", value: "100" },
         { key: "points_claim_bonus_months", value: "3" },
-        { key: "points_milestones", value: "1000:100,2500:300,5000:800,10000:2000" },
+        { key: "points_milestones", value: "100:10,250:30,500:80,1000:200" },
       ],
       points_ledger: ledger,
       customers: [
@@ -116,14 +116,14 @@ export default function points({ now }) {
       past_purchase_points_preview: () => [
         {
           customers: 412,
-          points: 938650,
+          points: 187730,
           spend: 187730.42,
-          median: 2150,
-          largest: 24800,
+          median: 430,
+          largest: 4960,
           granted_customers: ledger.filter((r) => r.kind === "past_purchases").length,
           granted_points: sum(ledger, (r) => r.kind === "past_purchases"),
           partners_left_out: 2,
-          earn_per_dollar: 5,
+          earn_per_dollar: 1,
         },
       ],
       grant_past_purchase_points: ({ p_expect_customers, p_expect_points }) => [{ customers: p_expect_customers, points: p_expect_points }],

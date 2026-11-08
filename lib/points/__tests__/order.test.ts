@@ -82,16 +82,16 @@ describe("readOrderPoints", () => {
 
 describe("the lines", () => {
   it("say what the order earns, earned, or lost to a refund", () => {
-    expect(orderEarnLine({ kind: "pending", points: 300, releaseAt: "2026-12-10T02:00:00.000Z" })).toBe(
-      "Earns 300 points (S$3.00), usable from 10 Dec 2026",
+    expect(orderEarnLine({ kind: "pending", points: 30, releaseAt: "2026-12-10T02:00:00.000Z" })).toBe(
+      "Earns 30 points (S$3.00), usable from 10 Dec 2026",
     );
-    expect(orderEarnLine({ kind: "pending", points: 300, releaseAt: null })).toBe("Earns 300 points (S$3.00), usable 30 days after delivery");
-    expect(orderEarnLine({ kind: "earned", points: 1233 })).toBe("Earned 1,233 points (S$12.33)");
+    expect(orderEarnLine({ kind: "pending", points: 30, releaseAt: null })).toBe("Earns 30 points (S$3.00), usable 30 days after delivery");
+    expect(orderEarnLine({ kind: "earned", points: 1233 })).toBe("Earned 1,233 points (S$123.30)");
     expect(orderEarnLine({ kind: "refunded" })).toBe("Points not earned: refunded");
   });
 
   it("put points used on their own line", () => {
-    expect(pointsUsedRow(2000)).toEqual({ label: "Points used (2,000)", dollars: 20 });
+    expect(pointsUsedRow(200)).toEqual({ label: "Points used (200)", dollars: 20 });
     expect(pointsUsedRow(0)).toBeNull();
   });
 });

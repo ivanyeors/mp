@@ -6,6 +6,12 @@
  */
 import { z } from "zod";
 import { MAX_MILESTONES, formatMilestones, parseMilestones, type PointsMilestone } from "./milestones";
+import { POINTS_PER_DOLLAR, percentBack } from "./value";
+
+/** The highest earn rate Staff may save: 20% back. */
+export const MAX_EARN_PER_DOLLAR = 2;
+const wholeDollars = (n: number) => n % POINTS_PER_DOLLAR === 0;
+const WHOLE_DOLLARS = `Use whole dollars: a multiple of ${POINTS_PER_DOLLAR}.`;
 
 export const POINTS_SETTING_KEYS = {
   enabled: "points_enabled",
@@ -35,11 +41,12 @@ export interface PointsSettings {
 export const POINTS_DEFAULTS: PointsSettings = {
   enabled: false,
   launchAt: null,
-  // ADR 0030 decision 3, amended 2026-11-08: 5 points per S$1 (was 3).
-  earnPerDollar: 5,
-  minRedeem: 500,
+  // ADR 0030, amended 2026-11-08: 1 point per S$1 and 10 points = S$1, so
+  // 10% back; the amounts in points keep their dollar value (S$5, S$10).
+  earnPerDollar: 1,
+  minRedeem: 50,
   maxShare: 0.5,
-  claimBonus: 1000,
+  claimBonus: 100,
   claimBonusMonths: 3,
   // A missing or malformed ladder is none, never a default one: a bonus is
   // only granted on a ladder that was saved. The migration seeds
@@ -93,16 +100,16 @@ export const PointsSettingsSchema = z
       .nullable()
       .transform((v) => (v ? v : null))
       .refine((v) => v === null || (/^\d{4}-\d{2}-\d{2}/.test(v) && Number.isFinite(Date.parse(v))), "Pick a launch date and time."),
-    earnPerDollar: z.number().min(0, "At least 0.").max(20, "At most 20 points per S$1."),
-    minRedeem: z.number().int().min(100, "At least 100 points (S$1).").max(100000).refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
+    earnPerDollar: z.number().min(0, "At least 0.").max(MAX_EARN_PER_DOLLAR, `At most ${MAX_EARN_PER_DOLLAR} points per S$1 (${percentBack(MAX_EARN_PER_DOLLAR)}% back).`),
+    minRedeem: z.number().int().min(POINTS_PER_DOLLAR, `At least ${POINTS_PER_DOLLAR} points (S$1).`).max(10000).refine(wholeDollars, WHOLE_DOLLARS),
     maxShare: z.number().gt(0, "Above 0%.").max(1, "At most 100%."),
-    claimBonus: z.number().int().min(0).max(100000).refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
+    claimBonus: z.number().int().min(0).max(10000).refine(wholeDollars, WHOLE_DOLLARS),
     claimBonusMonths: z.number().int().min(1, "At least 1 month.").max(24, "At most 24 months."),
     milestones: z
       .array(
         z.object({
-          at: z.number().int().min(100, "A milestone is at least 100 points.").max(1_000_000, "A milestone is at most 1,000,000 points.").refine((n) => n % 100 === 0, "Milestones are multiples of 100 points."),
-          bonus: z.number().int().min(100, "A bonus is at least 100 points (S$1).").max(100_000, "A bonus is at most 100,000 points.").refine((n) => n % 100 === 0, "Use whole dollars: a multiple of 100."),
+          at: z.number().int().min(POINTS_PER_DOLLAR, `A milestone is at least ${POINTS_PER_DOLLAR} points.`).max(100_000, "A milestone is at most 100,000 points.").refine(wholeDollars, `Milestones are multiples of ${POINTS_PER_DOLLAR} points.`),
+          bonus: z.number().int().min(POINTS_PER_DOLLAR, `A bonus is at least ${POINTS_PER_DOLLAR} points (S$1).`).max(10_000, "A bonus is at most 10,000 points.").refine(wholeDollars, WHOLE_DOLLARS),
         }),
       )
       .max(MAX_MILESTONES, `At most ${MAX_MILESTONES} milestones.`),
