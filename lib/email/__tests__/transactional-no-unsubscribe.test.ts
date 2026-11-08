@@ -87,6 +87,10 @@ describe("transactional mail carries no unsubscribe", () => {
       "lib/email-campaigns/sender.ts",
       // PRD-campaign-email-editor slice 03: the same campaigns, built from blocks.
       "lib/email/campaign-blocks.ts",
+      // ADR 0050, on purpose: the reminder to a guest who stopped customising
+      // goes only with Marketing consent and is sent like a campaign.
+      "lib/email/draft-reminder.ts",
+      "lib/draft-reminders/server.ts",
     ]);
     const files = (dir: string): string[] =>
       readdirSync(dir).flatMap((name) => {

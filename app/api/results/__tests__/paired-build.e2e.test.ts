@@ -48,7 +48,7 @@ vi.mock("@/lib/auth/admin", () => {
   };
 });
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: async () => {} }));
-vi.mock("@/lib/staff/working-as", () => ({ getWorkingAs: async () => null }));
+vi.mock("@/lib/staff/working-as", () => ({ getWorkingAs: async () => null, actingProfile: async () => null }));
 vi.mock("@/lib/email", async (orig) => ({
   ...(await orig<typeof import("@/lib/email")>()),
   getEmailTransport: () => ({

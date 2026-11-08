@@ -138,6 +138,21 @@ export const sameSoftBodySettings = (a: SoftBodySettings, b: SoftBodySettings) =
   (Object.keys(SOFT_BODY_DEFAULTS) as (keyof SoftBodySettings)[]).every((k) => a[k] === b[k]);
 
 /**
+ * Settle length while a pouch is in hand in either view (linked views,
+ * 7-11-2026): the live preview follows the pointer, so each step of it
+ * settles in a few milliseconds; the full settle eases in once it is let go.
+ */
+export const DRAFT_STEPS = 8;
+
+/** How long a held pouch's preview eases from one pointer step's shapes to the next, ms: quick, so it follows the hand. */
+export const HELD_EASE_MS = 130;
+
+/** The Settings a live preview settles with: the same, only shorter. */
+export function draftSoftBody(s: SoftBodySettings): SoftBodySettings {
+  return s.steps <= DRAFT_STEPS ? s : { ...s, steps: DRAFT_STEPS };
+}
+
+/**
  * The solver's options for these settings in a cut drawn `scale` times the
  * 664-wide desktop cut (lengths, speeds and areas scale with it). Rigidity is
  * shape memory and skin tension together: the preview's 0 … 100 mapping.

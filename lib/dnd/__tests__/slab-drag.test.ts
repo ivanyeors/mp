@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { cellLayers } from "@/lib/configurator/staff-assist";
-import { applySlabDrop, cellBands, describeSlabTarget, nudgeSlab, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
+import { alongExtent, applySlabDrop, cellBands, describeSlabTarget, homeCentreMm, nudgeSlab, placeAlongAt, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, snapAlongCentre, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
 import type { PillowPlacement, Section, SubSection } from "@/lib/spatial-fillings/core";
 import { alongSlabs } from "@/lib/spatial-fillings/cross-section";
 import { GENERIC_POUCH, PILLOW_DIMENSIONS, resolveDims, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
+import { settlePillow } from "@/lib/spatial-fillings/settle";
 
 const at = (section: Section, subSection: SubSection, slot: number, itemId: number, row?: number): PillowPlacement => ({
   section,
@@ -172,7 +173,7 @@ describe("placing a pouch exactly (the cut's fine nudge)", () => {
   it("drops a pouch centred where it was let go, in its own Layer, to the millimetre", () => {
     const before = drawnOf(mix, "center/middle/2");
     for (const mm of [15, -15, 4]) {
-      const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, before.centre + mm, before.fit, ctxAt("M"));
+      const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, before.centre + mm, ctxAt("M"));
       if (!r?.ok) throw new Error("expected a placement");
       expect(r.within).toBe(true);
       expect(r.placements.find((p) => p.slot === 2 && p.subSection === "middle")!.offsetYMm).toBe(mm);
@@ -182,20 +183,20 @@ describe("placing a pouch exactly (the cut's fine nudge)", () => {
 
   it("never stands a pouch in another column: dropped past its room, it stops at the column's edge", () => {
     const before = drawnOf(mix, "center/middle/2");
-    const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, before.centre + 200, before.fit, ctxAt("M"));
+    const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, before.centre + 200, ctxAt("M"));
     if (!r?.ok) throw new Error("expected a placement");
     const after = drawnOf(r.placements, "center/middle/2");
     expect(after.p.endMm).toBeCloseTo(2 * after.cell, 0);
     // A 6D fills its column between full neighbours: there is nowhere to put it but where it is.
     const full = drawnOf(mix, "center/middle/1");
-    expect(placeSlabDrop(mix, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, full.centre + 30, full.fit, ctxAt("M"))).toBeNull();
-    expect(nudgeSlab(mix, { ...middle, slot: 1 }, 5, full.fit)).toBeNull();
+    expect(placeSlabDrop(mix, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, full.centre + 30, ctxAt("M"))).toBeNull();
+    expect(nudgeSlab(mix, { ...middle, slot: 1 }, 5, ctxAt("M"))).toBeNull();
   });
 
   it("dropped in another column, it moves there and lands where it was let go", () => {
     const open = [at("center", "front", 1, 1, 0), at("center", "middle", 1, 4, 0)];
     const before = drawnOf(open, "center/middle/1");
-    const r = placeSlabDrop(open, { ...middle, slot: 1 }, { kind: "cell", section: "center", subSection: "back" }, 2.5 * before.cell - 10, before.fit, ctxAt("M"));
+    const r = placeSlabDrop(open, { ...middle, slot: 1 }, { kind: "cell", section: "center", subSection: "back" }, 2.5 * before.cell - 10, ctxAt("M"));
     if (!r?.ok) throw new Error("expected a move");
     expect(r.within).toBe(false);
     expect(r.ref.subSection).toBe("back");
@@ -205,7 +206,7 @@ describe("placing a pouch exactly (the cut's fine nudge)", () => {
   it("Alt + ← / → slides it 5 mm within its columns, and stores the offset in Size M millimetres", () => {
     for (const size of ["M", "XL"] as PillowSize[]) {
       const before = drawnOf(mix, "center/middle/2", size);
-      const r = nudgeSlab(mix, roll, 5, before.fit);
+      const r = nudgeSlab(mix, roll, 5, ctxAt(size));
       if (!r?.ok) throw new Error("expected a nudge");
       // Offsets are whole Size M millimetres, so a step lands within a millimetre at other Sizes.
       expect(Math.abs(drawnOf(r.placements, "center/middle/2", size).centre - before.centre - 5)).toBeLessThan(1);
@@ -215,8 +216,82 @@ describe("placing a pouch exactly (the cut's fine nudge)", () => {
     }
     // At its column's front edge it has no room further front.
     const edge = drawnOf(mix, "center/middle/2");
-    const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, edge.centre - 200, edge.fit, ctxAt("M"));
+    const r = placeSlabDrop(mix, roll, { kind: "layer", ...middle, depth: 1 }, edge.centre - 200, ctxAt("M"));
     if (!r?.ok) throw new Error("expected a placement");
-    expect(nudgeSlab(r.placements, roll, -5, fitPillow(r.placements, ctxAt("M")))).toBeNull();
+    expect(nudgeSlab(r.placements, roll, -5, ctxAt("M"))).toBeNull();
+  });
+});
+
+describe("placeAlongAt: one front ↔ back writer for both views", () => {
+  // A stiff 80 mm pouch: no fabric give, so it never spreads — only a placement moves it.
+  const stiff = new Map<number, ResolvedDims>([[1, { key: "test/stiff", kind: "pouch", dims: { ...GENERIC_POUCH, lengthMm: 80, thicknessMm: 45, minThicknessMm: 45 }, source: "fallback", measuredOn: null }]]);
+  const ctx = { size: "M", dims: stiff };
+  const extentOf = (placements: PillowPlacement[], ref: { section: Section; subSection: SubSection; slot: number }) =>
+    alongExtent(settlePillow(placements, ctx), ref)!;
+
+  it("slides into the empty column beside it, and stops at a neighbour of its own Layer", () => {
+    // Middle and back hold a pouch; front is empty. The middle pouch may go anywhere from the front wall to its own column's back.
+    const mix = [at("center", "middle", 1, 1, 0), at("center", "back", 1, 1, 0)];
+    const here = extentOf(mix, { ...middle, slot: 1 });
+    expect(here.reachStartMm).toBe(0);
+    expect(here.reachEndMm).toBeCloseTo(2 * here.cellLengthMm, 0);
+    // 40 mm toward the front: past its own column's edge, into the empty front. Its centre stays in middle.
+    const r = placeAlongAt(mix, { ...middle, slot: 1 }, here.startMm - 40, ctx);
+    if (!r) throw new Error("expected a placement");
+    expect(r.ref.subSection).toBe("middle");
+    expect(extentOf(r.placements, r.ref).startMm).toBeCloseTo(here.startMm - 40, 0);
+    // Toward the back it meets the back pouch's column and stops there.
+    const back = placeAlongAt(mix, { ...middle, slot: 1 }, here.startMm + 100, ctx);
+    if (!back) throw new Error("expected a placement");
+    expect(extentOf(back.placements, back.ref).endMm).toBeCloseTo(2 * here.cellLengthMm, 0);
+  });
+
+  it("moves to the free column its centre ends in, under anything lying there", () => {
+    const mix = [at("center", "middle", 1, 1, 0), at("center", "back", 1, 1, 0)];
+    const r = placeAlongAt(mix, { ...middle, slot: 1 }, 10, ctx);
+    if (!r) throw new Error("expected a placement");
+    expect(r.ref.subSection).toBe("front");
+    expect(extentOf(r.placements, r.ref).startMm).toBeCloseTo(10, 0);
+    // Kept in its cell when asked: the drop target decided the cell already.
+    const kept = placeAlongAt(mix, { ...middle, slot: 1 }, 10, ctx, true);
+    expect(kept?.ref.subSection).toBe("middle");
+    expect(extentOf(kept!.placements, kept!.ref).startMm).toBeCloseTo(10, 0);
+  });
+
+  it("changes nothing where it already stands, and keeps a whole, bounded offset", () => {
+    const mix = [at("center", "middle", 1, 1, 0)];
+    const here = extentOf(mix, { ...middle, slot: 1 });
+    expect(placeAlongAt(mix, { ...middle, slot: 1 }, here.startMm, ctx)).toBeNull();
+    const r = placeAlongAt(mix, { ...middle, slot: 1 }, here.startMm + 12.4, ctx)!;
+    const off = r.placements[0].offsetYMm!;
+    expect(Number.isInteger(off)).toBe(true);
+    expect(off).toBe(12);
+  });
+});
+
+describe("snapping a drop onto the places a hand aims for", () => {
+  it("snapAlongCentre: home first, then a column's middle or edges, only within the radius", () => {
+    // 80 mm pouch, 110 mm columns, home at 160.
+    expect(snapAlongCentre(162, 80, 110, 160, 4)).toEqual({ centreMm: 160, snap: "home" });
+    expect(snapAlongCentre(57, 80, 110, 160, 4)).toEqual({ centreMm: 55, snap: "centred" });
+    expect(snapAlongCentre(42, 80, 110, 160, 4)).toEqual({ centreMm: 40, snap: "front edge" });
+    expect(snapAlongCentre(178, 80, 110, 160, 4)).toEqual({ centreMm: 180, snap: "back edge" });
+    expect(snapAlongCentre(130, 80, 110, 160, 4)).toEqual({ centreMm: 130, snap: null });
+    expect(snapAlongCentre(162, 80, 110, 160, 0)).toEqual({ centreMm: 162, snap: null });
+  });
+
+  it("a drop near home puts the pouch back home: its offset is cleared", () => {
+    const stiff = new Map<number, ResolvedDims>([[1, { key: "test/stiff", kind: "pouch", dims: { ...GENERIC_POUCH, lengthMm: 80, thicknessMm: 45, minThicknessMm: 45 }, source: "fallback", measuredOn: null }]]);
+    const ctx = { size: "M", dims: stiff };
+    const nudged = [{ ...at("center", "middle", 1, 1, 0), offsetYMm: 12 }];
+    const home = homeCentreMm(nudged, { ...middle, slot: 1 }, ctx)!;
+    const r = placeSlabDrop(nudged, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, home + 2, ctx, 4);
+    if (!r?.ok) throw new Error("expected a placement");
+    expect(r.snap).toBe("home");
+    expect(r.placements[0].offsetYMm).toBeUndefined();
+    // Without the snap it lands exactly where it was let go.
+    const exact = placeSlabDrop(nudged, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, home + 2, ctx, 0);
+    if (!exact?.ok) throw new Error("expected a placement");
+    expect(exact.placements[0].offsetYMm).toBe(2);
   });
 });

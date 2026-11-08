@@ -31,6 +31,7 @@ import { syncGoogleReviews } from "@/lib/reviews/google-sync";
 import { pollPlacesReviews } from "@/lib/reviews/places-poll";
 import { runCrmTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 import { runAftercareMessages } from "@/lib/aftercare/job";
+import { runDraftReminders } from "@/lib/draft-reminders/server";
 import { runKeptSendingFromEnv } from "@/lib/email-campaigns/keep-sending-server";
 import { runPointsEarn, runPointsMilestones } from "@/lib/points/earn";
 import { releaseStalePointReservations } from "@/lib/points/spend";
@@ -542,6 +543,18 @@ export async function GET(req: Request) {
     aftercare = { ok: false, error: e instanceof Error ? e.message : "aftercare messages failed" };
   }
 
+  // Chain: reminders to a guest who stopped customising (ADR 0050): 1 day,
+  // 1 week and 1 month after they last saved their Draft, Marketing consent
+  // only, each with the Draft's continue link. Claimed in customer_emails
+  // before each send, so a manual re-run sends nobody one twice. Off with
+  // `draft_reminders_enabled` (Settings → General → Review SLA).
+  let draftReminders: Awaited<ReturnType<typeof runDraftReminders>> | { ok: false; error: string };
+  try {
+    draftReminders = await runDraftReminders(admin, { origin, now });
+  } catch (e) {
+    draftReminders = { ok: false, error: e instanceof Error ? e.message : "draft reminders failed" };
+  }
+
   // Chain: kept sending (PRD-campaign-audiences slice 10, ADR 0040 (6)). One
   // Wave a day for each campaign a person set to keep sending, at most its
   // cap, through the same claim as a Staff Wave, so consent and the Rest
@@ -608,6 +621,7 @@ export async function GET(req: Request) {
     googleReviews,
     placesReviews,
     aftercare,
+    draftReminders,
     keptSending,
     points,
     pointsMilestones,

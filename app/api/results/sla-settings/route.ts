@@ -14,9 +14,10 @@ import {
   parseSlaSettings,
   slaSettingsToStored,
 } from "@/lib/sla-reminders";
+import { DRAFT_REMINDERS_ENABLED_KEY, parseDraftRemindersEnabled } from "@/lib/draft-reminders";
 
-/** Both groups live in `site_settings`; one read and one write serves them. */
-const ALL_KEYS = [...SLA_SETTING_KEYS, ...PAYMENT_REMINDER_SETTING_KEYS];
+/** Every group lives in `site_settings`; one read and one write serves them. */
+const ALL_KEYS = [...SLA_SETTING_KEYS, ...PAYMENT_REMINDER_SETTING_KEYS, DRAFT_REMINDERS_ENABLED_KEY];
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,8 @@ const PutSchema = z.object({
       maxReminders: z.number().int().min(0).max(10).optional(),
     })
     .optional(),
+  /** Reminders to a guest who stopped customising (ADR 0050). Their schedule is fixed. */
+  draftReminders: z.object({ enabled: z.boolean().optional() }).optional(),
 });
 
 /**
@@ -77,6 +80,7 @@ export async function GET() {
       ok: true,
       settings: parseSlaSettings(stored),
       paymentReminders: parsePaymentReminderSettings(stored),
+      draftReminders: { enabled: parseDraftRemindersEnabled(stored[DRAFT_REMINDERS_ENABLED_KEY]) },
     });
   } catch (err) {
     return NextResponse.json(
@@ -136,9 +140,13 @@ export async function PUT(req: Request) {
     ),
   };
 
+  const draftRemindersEnabled =
+    input.draftReminders?.enabled ?? parseDraftRemindersEnabled(stored[DRAFT_REMINDERS_ENABLED_KEY]);
+
   const rows = Object.entries({
     ...slaSettingsToStored(next),
     ...paymentReminderSettingsToStored(nextReminders),
+    [DRAFT_REMINDERS_ENABLED_KEY]: draftRemindersEnabled ? "true" : "false",
   }).map(([key, value]) => ({
     key,
     value,
@@ -153,5 +161,6 @@ export async function PUT(req: Request) {
     ok: true,
     settings: next,
     paymentReminders: nextReminders,
+    draftReminders: { enabled: draftRemindersEnabled },
   });
 }

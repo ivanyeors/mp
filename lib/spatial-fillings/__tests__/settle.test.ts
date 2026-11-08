@@ -226,7 +226,7 @@ describe("the nudge anchors the gap (slice 08)", () => {
     const placements = [{ ...at("center", "middle", 1, 1), offsetYMm: 25 }];
     const [p] = layoutPlacements(placements, { stage, dims: short, fit: fitPillow(placements, { size: "M", dims: short }) });
     expect(p.settled.y).toBeCloseTo(p.y, 1); // nothing spread forward: the gap is in front
-    expect(p.settled.y + p.settled.h).toBeCloseTo(p.y + p.h + GIVE * stage.k, 0);
+    expect(p.settled.y + p.settled.h).toBeCloseTo(p.y + p.h + GIVE * stage.k + 1, 0); // + the hair its cell's back edge kept
   });
 });
 
@@ -295,7 +295,8 @@ describe("layout draws the settled rect", () => {
     expect(p.settled.x).toBe(p.x);
     expect(p.settled.w).toBe(p.w);
     expect(p.settled.y).toBe(p.y); // anchored at the front end
-    expect(p.settled.h).toBeCloseTo(p.h + REACH * stage.k, 0); // its whole reach into the two-cell void behind it — no more
+    // Its whole reach into the two-cell void behind it — no more; it gives back the hair its cell's edge kept (INSET).
+    expect(p.settled.h).toBeCloseTo(p.h + REACH * stage.k + 1, 0);
     expect(p.settled.y + p.settled.h).toBeLessThanOrEqual(stage.rowY[3]);
   });
 
@@ -318,7 +319,9 @@ describe("layout draws the settled rect", () => {
     const two = [at("center", "middle", 1, 1, 0), at("center", "middle", 2, 1, 1)];
     const spread = layoutPlacements(two, { stage, dims, fit: fitPillow(two, { size: "M", dims }) });
     const walled = layoutPlacements(two, { stage, dims, fit: fitPillow(two, { size: "M", dims, pillow: WALLED }) });
-    const deep = (l: typeof spread) => l.find((p) => p.depth === 1)!.y - l.find((p) => p.depth === 0)!.y;
+    // Depth draws across only (front ↔ back is the settle's, as the cut draws it).
+    const deep = (l: typeof spread) => l.find((p) => p.depth === 1)!.x - l.find((p) => p.depth === 0)!.x;
+    expect(deep(spread)).toBeGreaterThan(0);
     expect(deep(spread)).toBeLessThan(deep(walled));
   });
 });

@@ -10,7 +10,7 @@ import { priceResult } from "@/lib/result-pricing";
 import { round2 } from "@/lib/commissions";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { loadResultServiceLines, sumServiceLines } from "@/lib/pricing/service-lines";
-import { getWorkingAs } from "@/lib/staff/working-as";
+import { actingProfile } from "@/lib/staff/working-as";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
@@ -774,11 +774,12 @@ export async function POST(req: Request) {
 
   // Who measured decides the Measurement service fee (ADR 0024), so it is settled
   // before pricing. An existing Draft keeps what it says — the responses route
-  // stamped it on create (a Staff device's working-as profile) and the Results list
-  // may have corrected it since. A brand-new row (Mbolster mints its id at hold)
-  // gets the same create rule the responses route applies: a Staff session working
-  // as a profile measured this customer. Writing `by_user` over a staff-stamped
-  // Draft used to break the 0025 consistency check; now it would also drop the fee.
+  // stamped it on create (the profile at a Staff device) and the Results list may
+  // have corrected it since. A brand-new row (Mbolster mints its id at hold) gets
+  // the same create rule the responses route applies: the profile at a Staff
+  // device — chosen under "Working as", or a personal login's only one — measured
+  // this customer. Writing `by_user` over a staff-stamped Draft used to break the
+  // 0025 consistency check; now it would also drop the fee.
   let measuredBy: { type: "by_user" | "staff"; staffId: string | null };
   if (assisted) {
     measuredBy =
@@ -787,8 +788,8 @@ export async function POST(req: Request) {
         : { type: "by_user", staffId: null };
   } else {
     const staff = await getAdminContext();
-    const workingAs = staff ? await getWorkingAs(staff.memberId) : null;
-    measuredBy = workingAs ? { type: "staff", staffId: workingAs.id } : { type: "by_user", staffId: null };
+    const measuring = staff ? await actingProfile(staff.memberId) : null;
+    measuredBy = measuring ? { type: "staff", staffId: measuring.id } : { type: "by_user", staffId: null };
   }
 
   let serviceLines;
