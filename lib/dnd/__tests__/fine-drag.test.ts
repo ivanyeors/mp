@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BRISK_SPEED, CREEP_MM_PER_PX, CREEP_SPEED, creepGain, FINE_GAIN, fineGain, holdSnap, MIN_CREEP_GAIN, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
+import { BRISK_SPEED, CREEP_SPEED, drawingScale, FINE_GAIN, fineGain, holdSnap, moveFineDrag, PHONE_DRAWING_PX, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
 
 /** Drive a drag along x: `px` screen pixels per sample, `ms` apart, one view unit per pixel. */
 function run(samples: number, px: number, ms: number, from: FineDrag = startFineDrag([0, 0], [0, 0], 0)) {
@@ -57,29 +57,32 @@ describe("fine drag: slowing down is the fine control", () => {
   });
 });
 
-describe("the same millimetres in both views", () => {
-  it("creeps at FINE_GAIN on a large drawing, less on a small one, never under MIN_CREEP_GAIN", () => {
-    expect(creepGain(2)).toBe(FINE_GAIN); // the cut on a desktop
-    expect(creepGain(0.5)).toBeCloseTo(0.5 * CREEP_MM_PER_PX, 6); // the top view on a phone
-    expect(creepGain(0.1)).toBe(MIN_CREEP_GAIN);
-    expect(creepGain(0)).toBe(FINE_GAIN);
-    expect(creepGain(Number.NaN)).toBe(FINE_GAIN);
+describe("the same with a mouse on a desktop as with a finger on a phone", () => {
+  it("reads a drawing's size against a phone's: 1 on a phone, never less, 2 at twice the width", () => {
+    expect(drawingScale(PHONE_DRAWING_PX)).toBe(1);
+    expect(drawingScale(300)).toBe(1);
+    expect(drawingScale(PHONE_DRAWING_PX * 2)).toBe(2);
+    expect(drawingScale(0)).toBe(1);
+    expect(drawingScale(Number.NaN)).toBe(1);
   });
 
-  it("a creeping pixel moves a filling no more than CREEP_MM_PER_PX on the top view at phone scale", () => {
-    const pxPerMm = 0.5; // ~0.53 px a view unit × k 0.94 (Size M), measured on a 390 px phone
-    const creep = creepGain(pxPerMm);
-    // One view unit per pixel in `run`, so view units moved / pixels = gain; mm = view units / (px per mm) here.
-    const d = run(30, 1, 50, startFineDrag([0, 0], [0, 0], 0, creep));
-    const mmPerPx = d.at[0] / 30 / pxPerMm;
-    expect(mmPerPx).toBeLessThanOrEqual(CREEP_MM_PER_PX * 1.05);
-    // Before, at FINE_GAIN, the same creep moved it about 0.6 mm a pixel.
-    expect(run(30, 1, 50).at[0] / 30 / pxPerMm).toBeGreaterThan(0.55);
+  it("a hand crossing the same share of the drawing as slowly creeps on both", () => {
+    // A phone: 1 px a sample, 50 ms apart (20 px/s). A desktop drawing twice the size: 2 px a sample, as slow for it.
+    const phone = run(30, 1, 50, startFineDrag([0, 0], [0, 0], 0, 1));
+    const desktop = run(30, 2, 50, startFineDrag([0, 0], [0, 0], 0, 2));
+    expect(snapsNow(phone)).toBe(false);
+    expect(snapsNow(desktop)).toBe(false);
+    // The filling keeps the same share of the pointer's travel on both.
+    expect(desktop.at[0] / desktop.direct[0]).toBeCloseTo(phone.at[0] / phone.direct[0], 6);
+    expect(phone.at[0] / phone.direct[0]).toBeLessThan(0.45);
   });
 
-  it("still follows a brisk hand one to one, and snaps then, at a low creep gain", () => {
-    const d = run(20, 10, 16, startFineDrag([0, 0], [0, 0], 0, MIN_CREEP_GAIN));
-    expect(d.at[0]).toBeCloseTo(d.direct[0], 0);
-    expect(snapsNow(d)).toBe(true);
+  it("a mouse at 100 px a second over a desktop's drawing twice a phone's creeps, as 50 px a second does on a phone", () => {
+    const desktop = run(30, 1.6, 16, startFineDrag([0, 0], [0, 0], 0, 2)); // 0.1 screen px/ms
+    expect(desktop.speed).toBeCloseTo(0.05, 2);
+    expect(fineGain(desktop.speed)).toBeCloseTo(FINE_GAIN, 1);
+    // Read in screen px, as before, the same hand was between a creep and a drag: barely fine at all.
+    const asBefore = run(30, 1.6, 16, startFineDrag([0, 0], [0, 0], 0, 1));
+    expect(fineGain(asBefore.speed)).toBeGreaterThan(0.4);
   });
 });

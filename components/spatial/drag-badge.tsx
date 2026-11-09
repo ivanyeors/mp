@@ -24,6 +24,11 @@ export function acrossText(mm: number): string {
   return r === 0 ? "" : `${Math.abs(r)} mm ${r < 0 ? "left" : "right"}`;
 }
 
+/** The pill's width for `text` at `font` (view units), as `DragBadge` draws it. */
+export function badgeWidth(text: string, font: number): number {
+  return text.length * font * 0.58 + font * 1.2;
+}
+
 export function DragBadge({
   text,
   x = 0,
@@ -38,7 +43,7 @@ export function DragBadge({
   /** Keep the whole pill between these x (view units): a pouch at the pillow's edge still shows all of it. */
   within?: readonly [number, number];
 }) {
-  const w = text.length * font * 0.58 + font * 1.2;
+  const w = badgeWidth(text, font);
   const h = font * 1.7;
   const at = within ? Math.min(Math.max(x, within[0] + w / 2), Math.max(within[0] + w / 2, within[1] - w / 2)) : x;
   return (

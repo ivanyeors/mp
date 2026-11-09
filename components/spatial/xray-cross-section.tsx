@@ -22,7 +22,7 @@
  * a pouch to read why it is as thick as it draws, from its Settings row.
  */
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref, type RefObject } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,7 +33,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cellLayers, type Cell, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
 import { addAtSlabTarget, applySlabDrop, asMove, cellBands, describeSlabTarget, nudgeSlab, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget, type SlabPlaceResult } from "@/lib/dnd/slab-drag";
 import { nudgeKeyFor } from "@/lib/configurator/move-keys";
-import { creepGain, holdSnap, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
+import type { FineDrag } from "@/lib/dnd/fine-drag";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { SECTIONS, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -53,7 +53,8 @@ import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { cn } from "@/lib/utils";
 import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, smoothClosedPath, wellDip, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
 import { useSoftCut, type SoftCutInput } from "./soft-cut";
-import { DragBadge, landingText, SNAP_WORDS } from "./drag-badge";
+import { landingText, SNAP_WORDS } from "./drag-badge";
+import { badgeFontFor, buzz, HeldGhost, pastThreshold, pickUp, stepHold, svgScale, useHeldGhost, type HeldGhostHandle } from "./held-pouch";
 import { clearXrayDraft, placementsSignature, publishXrayDraft, useXrayDraft, type XrayDraft } from "./xray-link";
 import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
@@ -112,7 +113,6 @@ const AMBER = "#f59e0b";
 const DROP = "#38bdf8";
 /** How long a held pouch rests on a Section tab before the cut opens that Section. */
 const SPRING_MS = 450;
-const DRAG_THRESHOLD_PX = 6;
 const TWEEN_MS = 220;
 
 /** The cut state hook lives with the other host hooks so a page can lazy-load this component and still hold the state. */
@@ -462,7 +462,8 @@ function PuffySlab({
 /** What the editor hands the drawing while it edits; absent on a read-only cut. */
 export type CutEditorView = {
   svgRef: Ref<SVGSVGElement>;
-  ghostRef: RefObject<SVGGElement | null>;
+  /** The held filling's ghost and badge (`held-pouch.tsx`, shared with the top view). */
+  held: HeldGhostHandle;
   svgHandlers: React.SVGProps<SVGSVGElement>;
   /** The handle props for one pouch. */
   slabHit: (slab: AlongSlab, label: string) => SlabHitProps;
@@ -479,6 +480,8 @@ export type CutEditorView = {
     overTab: boolean;
     /** Where it would land, mm from the front (and the snap that put it there): over the held pouch, clear of a finger. */
     badge?: string | null;
+    /** The badge's type, view units: the same size on screen as the top view's. */
+    badgeFont: number;
     /** A snap's line: the edge or middle it lined the pouch up with, view x. */
     guideX?: number | null;
   } | null;
@@ -689,30 +692,25 @@ export function CrossSectionSvg({
       )}
       {/* The held pouch, under the pointer where it was picked up, over everything (even the tabs above the cut):
           a light shape, so where it lands — drawn solid in the cut — reads through it. */}
-      {drag && (
-        <g ref={editor?.ghostRef} transform={`translate(${r1(drag.ghost.at.x)} ${r1(drag.ghost.at.y)})`} pointerEvents="none" data-xray-slab-ghost>
-          <g transform={drag.overTab ? "translate(0 18) scale(0.5)" : undefined} opacity={drag.overTab ? 0.6 : 1}>
-            {(() => {
-              const g = drag.ghost;
-              const box = { x: -g.w / 2, y: -g.h / 2, w: g.w, h: g.h };
-              const d = slabOutline(box, g.roll, g.puff, { well: wellOf(g.subtype) });
-              const visual = fillingVisual(g.subtype);
-              const font = pieceFontFor(g.label, box, L);
-              return (
-                <>
-                  <path d={d} fill={`var(${visual.cssVar}, ${visual.defaultColor})`} fillOpacity={drag.overTab ? 0.82 : 0.3} stroke="white" strokeWidth={2} strokeDasharray={drag.overTab ? undefined : "5 4"} vectorEffect="non-scaling-stroke" />
-                  {drag.overTab && font > 0 && (
-                    <text x={0} y={0} textAnchor="middle" dominantBaseline="central" fontSize={font} fontWeight={600} fill="white" stroke="rgba(2,6,23,0.75)" strokeWidth={font * 0.22} strokeLinejoin="round" paintOrder="stroke" className="select-none">
-                      {g.label}
-                    </text>
-                  )}
-                </>
-              );
-            })()}
-          </g>
-          {drag.badge && !drag.overTab && <DragBadge text={drag.badge} y={-drag.ghost.h / 2 - L.labelFont * 1.6} font={L.labelFont} />}
-        </g>
-      )}
+      {drag && editor && (() => {
+        const g = drag.ghost;
+        const box = { x: -g.w / 2, y: -g.h / 2, w: g.w, h: g.h };
+        const visual = fillingVisual(g.subtype);
+        return (
+          <HeldGhost
+            handle={editor.held}
+            d={slabOutline(box, g.roll, g.puff, { well: wellOf(g.subtype) })}
+            fill={`var(${visual.cssVar}, ${visual.defaultColor})`}
+            halfH={g.h / 2}
+            badge={drag.badge}
+            badgeFont={drag.badgeFont}
+            bounds={[0, width, 0]}
+            shrink={drag.overTab}
+            label={g.label}
+            labelFont={pieceFontFor(g.label, box, L)}
+          />
+        );
+      })()}
     </svg>
   );
 }
@@ -797,10 +795,9 @@ type SlabHold = {
   fine: FineDrag;
   /** The last placement asked for: where its centre goes (mm from the front) and the snap radius then. The release reuses it. */
   along: { mm: number; snapMm: number } | null;
-  pointerType: string;
+  /** Screen px a view unit when it was picked up: the snap's reach and the badge's size read it. */
+  pxPerView: number;
 };
-/** How near a place a hand aims for (home, a column's middle or edge) a held pouch is pulled onto it, screen px. */
-const SNAP_PX = 7;
 
 export function XrayCrossSection({
   fit,
@@ -868,7 +865,7 @@ export function XrayCrossSection({
   const compactLayout = compact ?? isMobile;
   const editable = Boolean(placements && onPlacementsChange && onCutChange);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const ghostRef = useRef<SVGGElement | null>(null);
+  const heldGhost = useHeldGhost();
   const holdRef = useRef<SlabHold | null>(null);
   const placementsRef = useRef(placements);
   const pendingFocus = useRef<string | null>(null);
@@ -953,7 +950,7 @@ export function XrayCrossSection({
   // A snap taking hold is felt as well as seen, where the device can (a phone's short buzz).
   const snapKind = landing?.snap ?? null;
   useEffect(() => {
-    if (snapKind && holdRef.current?.pointerType === "touch" && typeof navigator !== "undefined") navigator.vibrate?.(8);
+    if (snapKind && holdRef.current) buzz();
   }, [snapKind]);
 
   // Linked views: what this cut previews, the top view draws too; while the top view holds a pouch, this cut follows it.
@@ -1206,9 +1203,9 @@ export function XrayCrossSection({
           target: null,
           grab: { x: v.x - centre.x, y: v.y - centre.y },
           // The same millimetres a creeping pixel as the top view, whatever this cut's size on screen.
-          fine: startFineDrag([centre.x, centre.y], [e.clientX, e.clientY], e.timeStamp, creepGain(((svgRef.current?.getBoundingClientRect().width ?? frame.L.width) / frame.L.width) * frame.kx)),
+          fine: pickUp([centre.x, centre.y], e, svgRef.current),
           along: null,
-          pointerType: e.pointerType,
+          pxPerView: svgScale(svgRef.current).pxPerView,
         };
       },
       onKeyDown: (e) => {
@@ -1277,23 +1274,18 @@ export function XrayCrossSection({
         }
         return;
       }
-      if (!hold.active && Math.hypot(e.clientX - hold.startX, e.clientY - hold.startY) < DRAG_THRESHOLD_PX) return;
+      if (!hold.active && !pastThreshold([hold.startX, hold.startY], e)) return;
       const v = toView(e.clientX, e.clientY);
-      // Front ↔ back is precise by default: a creeping hand moves it a fraction of its travel. Up and down is the
-      // pointer's own: the Layers are steps, not millimetres.
+      // Front ↔ back is precise by default (`held-pouch.tsx`, the top view's too): a creeping hand moves it a fraction
+      // of its travel, and slowing on a snap creeps on from it. Up and down is the pointer's own: the Layers are steps.
       const direct = [v.x - hold.grab.x, v.y - hold.grab.y] as const;
-      hold.fine = moveFineDrag(hold.fine, direct, [e.clientX, e.clientY], e.timeStamp);
-      const snapping = snapsNow(hold.fine);
-      // Slowing down on a snap creeps on from it, never jumps off it.
-      if (!snapping && snappedAt.current !== null) {
-        hold.fine = holdSnap(hold.fine, [snappedAt.current, hold.fine.at[1]]);
-        snappedAt.current = null;
-      }
+      const step = stepHold(hold.fine, direct, e, snappedAt.current === null ? null : [snappedAt.current, hold.fine.at[1]], hold.pxPerView);
+      hold.fine = step.fine;
+      if (step.leftSnap) snappedAt.current = null;
       const centre = { x: hold.fine.at[0], y: direct[1] };
-      ghostRef.current?.setAttribute("transform", `translate(${r1(centre.x)} ${r1(centre.y)})`);
+      heldGhost.place([centre.x, centre.y]);
       const target = targetAt(hold, e.clientX, e.clientY, centre);
-      const pxPerMm = ((svgRef.current?.getBoundingClientRect().width ?? frame.L.width) / frame.L.width) * frame.kx;
-      const along = { mm: alongMmAt(centre.x), snapMm: snapping ? SNAP_PX / Math.max(pxPerMm, 1e-6) : 0 };
+      const along = { mm: alongMmAt(centre.x), snapMm: step.snapView / frame.kx };
       hold.along = along;
       setDropAlong((a) => (a && a.mm === along.mm && a.snapMm === along.snapMm ? a : along));
       if (!hold.active) {
@@ -1315,7 +1307,7 @@ export function XrayCrossSection({
       if (tap && tap.pointerId === e.pointerId) {
         tapRef.current = null;
         // A tap, not a scroll or a press that wandered; one that closed the open menu opens no other.
-        if (!tap.closing && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < DRAG_THRESHOLD_PX) openAdd(e.clientX, e.clientY);
+        if (!tap.closing && !pastThreshold([tap.x, tap.y], e)) openAdd(e.clientX, e.clientY);
         return;
       }
       const hold = holdRef.current;
@@ -1366,7 +1358,7 @@ export function XrayCrossSection({
   const editor: CutEditorView | undefined = editable
     ? {
         svgRef: attachSvg,
-        ghostRef,
+        held: heldGhost,
         svgHandlers,
         slabHit,
         selectedKey: following ? following.key : selectedKey,
@@ -1380,6 +1372,7 @@ export function XrayCrossSection({
               ghost: { ...held.ghost, at: held.at },
               overTab,
               badge: landing && landing.section === cut.section ? landingText(landing.startMm, landing.endMm, landing.snap) : null,
+              badgeFont: badgeFontFor(held.pxPerView),
               guideX: snapGuideMm !== null && landing?.section === cut.section ? frame.x0 + snapGuideMm * frame.kx : null,
             }
           : null,

@@ -161,7 +161,7 @@ describe("CrossSectionSvg pouches", () => {
   it("an editor makes every pouch a focusable handle and draws a held pouch where it will land", () => {
     const editor = {
       svgRef: { current: null },
-      ghostRef: { current: null },
+      held: { attachGhost: () => {}, attachBadge: () => {}, place: () => {} },
       svgHandlers: {},
       slabHit: (slab: { key: string }) => ({ tabIndex: 0, role: "button", "data-slab-key": slab.key }),
       selectedKey: "center/front/1",
@@ -184,12 +184,17 @@ describe("CrossSectionSvg pouches", () => {
             tone: "ok",
             ghost: { w: 120, h: 30, roll: false, puff: 1, subtype: null, label: "6D S", at: { x: 100, y: 50 } },
             overTab: false,
+            badge: "0–110 mm",
+            badgeFont: 13,
           },
         }}
       />,
     );
     expect(held).toContain('data-slab-mode="landing"');
     expect(held).toContain("data-xray-slab-ghost");
+    // The shared hold (held-pouch.tsx): the badge rides over the ghost.
+    expect(held).toContain("data-xray-drag-badge");
+    expect(held).toContain("0–110 mm");
     expect(held).toContain('data-xray-drop-column="ok"');
     expect(held).not.toContain("data-slab-selected");
   });
