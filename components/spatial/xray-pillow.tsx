@@ -122,7 +122,10 @@ export type PieceView = "authored" | "settled";
 /** A pouch placed by hand (a fine offset): the soft settle keeps it where it was put. */
 const isNudged = (p: PieceLayout) => p.nudged;
 
-/** Pieces by Section, deepest first (then cell order, then slot): the paint order of both views. */
+/**
+ * Pieces by Section, lowest in the stack first — counted from the floor, so a pouch resting over a lower neighbour's
+ * end paints over it — then deepest first, cell order, slot: the paint order of both views.
+ */
 function bySection(pieces: readonly PieceLayout[]): Map<Section, PieceLayout[]> {
   const out = new Map<Section, PieceLayout[]>();
   for (const section of SECTIONS) {
@@ -130,6 +133,7 @@ function bySection(pieces: readonly PieceLayout[]): Map<Section, PieceLayout[]> 
     if (list.length === 0) continue;
     list.sort(
       (a, b) =>
+        a.level - b.level ||
         b.depth - a.depth ||
         SUB_SECTIONS.indexOf(a.subSection) - SUB_SECTIONS.indexOf(b.subSection) ||
         a.slot - b.slot,
@@ -149,16 +153,6 @@ function withSoft(conformed: Map<string, string>, soft: ReadonlyMap<string, stri
 
 /** A piece whose settled rect differs from its authored one — the dive draws its settled outline as a ghost. */
 const isSpread = (p: PieceLayout) => p.settled.y !== p.y || p.settled.h !== p.h;
-
-/**
- * A piece drawn past its own Section's walls: a Neck support laid at its full length (9-11-2026), longer than its
- * Section is wide. It is conformed to the pillow alone, settles against the pillow's walls, and is painted over
- * every Section, so the whole roll shows.
- */
-export const reachesPast = (p: Pick<PieceLayout, "section" | "settled">, stage: StageGeometry) => {
-  const i = SECTIONS.indexOf(p.section);
-  return p.settled.x < stage.colX[i] - 0.5 || p.settled.x + p.settled.w > stage.colX[i + 1] + 0.5;
-};
 
 // useLayoutEffect starts morphs before paint (no first-frame flash); SSR no-ops.
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -877,9 +871,9 @@ export function XrayPillow({
   }, [shownPieces]);
   const cellsInUse = useMemo(() => [...piecesByCell.keys()], [piecesByCell]);
   /**
-   * Section → its pieces deepest-first (then cell order, then slot): the paint
-   * order of both views, so a top Layer paints over a deeper neighbour that
-   * settled under it (slice 11).
+   * Section → its pieces lowest in the stack first (then deepest first, cell
+   * order, slot): the paint order of both views, so a pouch higher up paints
+   * over a lower neighbour whose end it rests on.
    */
   const piecesBySection = useMemo(() => bySection(shownPieces), [shownPieces]);
   /** The committed pieces by Section: their hit areas stay put while a preview moves, so a held one is never unmounted. */
@@ -898,7 +892,7 @@ export function XrayPillow({
       const settledRegions = [SIL_REGION, SECTION_REGIONS[section]];
       for (const p of list) {
         const shape = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape;
-        paths.set(p.key, conformPouchPath(p.settled, reachesPast(p, stage) ? [SIL_REGION] : settledRegions, shape));
+        paths.set(p.key, conformPouchPath(p.settled, settledRegions, shape));
       }
     }
     return paths;
@@ -917,7 +911,7 @@ export function XrayPillow({
       if (!key.startsWith(`${dived}/`)) continue;
       for (const p of cellPieceList) {
         const shape = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape;
-        paths.set(p.key, conformPouchPath(p, reachesPast(p, stage) ? [SIL_REGION] : regions, shape));
+        paths.set(p.key, conformPouchPath(p, regions, shape));
       }
     }
     return paths;
@@ -925,14 +919,12 @@ export function XrayPillow({
 
   /**
    * The soft body, as the cross-section draws it (ADR 0025; soft-top.ts): one
-   * plane per Layer of each cell, pressed into silhouette ∩ its Section,
-   * settled from the conformed outlines. True size (9-11-2026): a cell's own
-   * pouches press on each other side by side, but not on the next cell's —
-   * pouches longer together than the Section overlap at their ends, as the
-   * fit says, instead of being squeezed back into their cells. A piece reaching
-   * past its Section (the full-length Neck support) settles against the
-   * pillow's own walls. Every map below reads the soft outline where there is
-   * one, so drawing, labels, hit areas and the drag ghost all follow it.
+   * plane per height of each Section's stack (from the floor, as the cut
+   * stacks it), pressed into silhouette ∩ that Section, settled from the
+   * conformed outlines. Stuffed, not layered (9-11-2026): Front, Middle and
+   * Back at one height press on each other end to end where the settle stood
+   * them, each pushing back for the length it was pressed out of. Every map below reads the soft outline where there is one, so
+   * drawing, labels, hit areas and the drag ghost all follow it.
    */
   const planesOf = useCallback(
     (list: readonly PieceLayout[], id: string, pathOf: ReadonlyMap<string, string>, rectOf: (p: PieceLayout) => PieceRect) =>
@@ -941,26 +933,25 @@ export function XrayPillow({
         list.map((p) => ({
           key: p.key,
           section: p.section,
-          subSection: p.subSection,
-          depth: p.depth,
+          level: p.level,
           d: pathOf.get(p.key)!,
           rect: rectOf(p),
           shape: fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape,
           held: isNudged(p),
-          pastSection: reachesPast(p, stage),
+          relaxedH: p.relaxedH,
         })),
         id,
       ),
     [stage, itemSubtypes],
   );
   const settledPlanes = useMemo(
-    () => [...piecesBySection].flatMap(([section, list]) => planesOf(list, `settled/${section}`, settledConformed, (p) => p.settled)),
+    () => [...piecesBySection.values()].flatMap((list) => planesOf(list, "settled", settledConformed, (p) => p.settled)),
     [piecesBySection, settledConformed, planesOf],
   );
   const authoredPlanes = useMemo(() => {
     if (!dived) return null;
     const list = [...piecesByCell].filter(([cell]) => cell.startsWith(`${dived}/`)).flatMap(([, l]) => l);
-    return planesOf(list, `authored/${dived}`, authoredConformed, (p) => p);
+    return planesOf(list, "authored", authoredConformed, (p) => p);
   }, [dived, piecesByCell, authoredConformed, planesOf]);
   const earWell = padWellOf(softBody).width;
   // A preview re-settles on every pointer step: settled quickly and eased quickly, so the pouches flow with the
@@ -1897,8 +1888,7 @@ export function XrayPillow({
                 scrim (deeper = darker) so the overlap reads as a stack. */}
             {sectionsInUse.map((section) => {
               const authored = dived === section;
-              // A piece reaching past its Section's walls is painted after them all, over every Section.
-              const list = (piecesBySection.get(section) ?? []).filter((p) => !reachesPast(p, stage));
+              const list = piecesBySection.get(section) ?? [];
               return (
                 <g key={section} clipPath={`url(#${clipId(section)})`}>
                   {authored &&
@@ -1957,32 +1947,6 @@ export function XrayPillow({
                 data-xray-divider-seam
               />
             ))}
-
-            {/* Pieces laid past their Section's walls (a full-length Neck support): over every Section and its seams,
-                so the whole roll shows where it lies. */}
-            {sectionsInUse.flatMap((section) =>
-              (piecesBySection.get(section) ?? [])
-                .filter((p) => reachesPast(p, stage))
-                .map((p) => {
-                  const subtype = itemSubtypes.get(p.itemId) ?? null;
-                  const visual = fillingVisual(subtype);
-                  const d = (dived === section ? authoredPaths.get(p.key) : settledPaths.get(p.key))!;
-                  return (
-                    <g key={`past-${p.key}`} data-xray-past-section={p.key}>
-                      <MorphPiece
-                        key={visual.shape}
-                        subtype={subtype}
-                        visual={visual}
-                        d={d}
-                        view={dived === section ? "authored" : "settled"}
-                        status={(pieceStatuses.get(p.key) ?? RELAXED_PIECE).status}
-                        well={earWell}
-                      />
-                      {p.depth > 0 && <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />}
-                    </g>
-                  );
-                }),
-            )}
 
             {/* Selection (slice 06): the piece's own outline, together with the
                 settled ghost the dive already draws. */}

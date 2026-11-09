@@ -9,17 +9,20 @@
  * on the walls. Seen from above, a Section's sewn walls do not move, gravity
  * points into the screen, and the Layers lie on top of one another, so:
  *
- * - each Layer of a Section is one plane, settled on its own: pieces of one
- *   Layer press on each other; a Layer under them does not push them aside;
+ * - each height of a Section's stack (from the floor, as the cut stacks it)
+ *   is one plane, settled on its own: pieces at one height press on each
+ *   other — side by side across, and Front, Middle and Back end to end
+ *   (stuffed, 9-11-2026); a Layer under them does not push them aside;
  * - the case is the Section's own region (silhouette ∩ its column), rigid;
- *   in the dive, where the cells are what staff author into, each cell's;
  * - no gravity, and each piece is held loosely both ways to where the layout
  *   put it (the cut holds it front ↔ back only, and lets gravity do the rest);
- * - a pouch remembers the codebase's own footprint (`pouchOutline`) at the
- *   volume Settings gives it; a plane holding more than its room is squeezed
- *   pro rata first, as the cut squeezes a crowded cell; a Neck support is the
- *   firm roll, its footprint the pill; an Ear Comfort Pad is a firm pad, its
- *   footprint a puffy square (its well is drawn on it by the x-ray).
+ * - a pouch remembers the codebase's own footprint (`pouchOutline`) at its own
+ *   length and the volume Settings gives it, so one the settle pressed
+ *   shorter between its neighbours pushes back on them; a plane holding more
+ *   than its room is squeezed pro rata first, as the cut squeezes a crowded
+ *   cell; a Neck support is the firm roll, its footprint the pill; an Ear
+ *   Comfort Pad is a firm pad, its footprint a puffy square (its well is
+ *   drawn on it by the x-ray).
  *
  * The same solver, the same Settings (rigidity, Neck and ear pad firmness, pouch volume,
  * smoothing, space between pieces, settle length, animate, on/off), the same
@@ -63,10 +66,12 @@ const STEP_CHUNK = 2;
 
 /**
  * One piece of a plane: its conformed outline (where it starts), the rect the
- * layout gave it, its shape, and whether it was nudged by hand (`held`: the
- * settle keeps it where it was put, its neighbours make room).
+ * layout gave it, its shape, whether it was nudged by hand (`held`: the settle
+ * keeps it where it was put, its neighbours make room), and its own length
+ * front ↔ back when its neighbours pressed it shorter (`relaxedH`, view units;
+ * absent, the rect's).
  */
-export type SoftTopPiece = { key: string; d: string; rect: PieceRect; shape: ShapeId; held?: boolean };
+export type SoftTopPiece = { key: string; d: string; rect: PieceRect; shape: ShapeId; held?: boolean; relaxedH?: number };
 
 /** One Layer of one Section (or, in the dive, of one cell): the pieces that press on each other, and the walls round them. */
 export type SoftTopPlane = { id: string; region: readonly Pt[]; pieces: readonly SoftTopPiece[] };
@@ -76,35 +81,37 @@ export function sectionRegion(stage: StageGeometry, section: keyof StageGeometry
   return clipToConvex(stage.silhouettePolygon as ConformPt[], stage.sectionPolygons[section] as ConformPt[]) as Pt[];
 }
 
-/** One piece of the top view as its plane needs it: where it lies, and whether it reaches past its Section's walls. */
-export type TopPlanePiece = SoftTopPiece & { section: keyof StageGeometry["sectionPolygons"]; subSection: string; depth: number; pastSection?: boolean };
+/** One piece of the top view as its plane needs it: its Section, and its height in its cell's stack from the floor. */
+export type TopPlanePiece = SoftTopPiece & { section: keyof StageGeometry["sectionPolygons"]; level: number };
 
 /**
- * The top view's soft planes (true size, 9-11-2026): one per Layer of each
- * cell, pressed into silhouette ∩ its Section. A cell's own pouches press on
- * each other side by side, but not on the next cell's, so pouches longer
- * together than the Section overlap at their ends (the fit marks those cells)
- * instead of being squeezed back into their cells; and a cell's pouches are
- * never squeezed for room its neighbours take. A piece reaching past its
- * Section's walls (a full-length Neck support) settles alone against the
- * pillow's own walls.
+ * The top view's soft planes: one per height of each Section's stack, counted
+ * from the floor as the cut stacks it, pressed into silhouette ∩ that Section
+ * (Left, Center and Right are sewn apart). Stuffed, not layered (Ivan,
+ * 9-11-2026: "the front filling and the back filling are supposed to
+ * collide"): every piece at one height presses on every other — a cell's side
+ * by side, and Front, Middle and Back end to end, where the settle stood them,
+ * each pushing back for the length it was pressed out of. A pouch higher up
+ * rests over its neighbour's end, as in the cut.
  */
 export function topPlanes(stage: StageGeometry, pieces: readonly TopPlanePiece[], id: string): SoftTopPlane[] {
   const groups = new Map<string, TopPlanePiece[]>();
   for (const p of pieces) {
-    const g = p.pastSection ? `${p.key}/past` : `${p.section}/${p.subSection}/${p.depth}`;
+    const g = `${p.section}/${p.level}`;
     groups.set(g, [...(groups.get(g) ?? []), p]);
   }
   return [...groups].map(([g, members]) => ({
     id: `${id}/${g}`,
-    region: members[0].pastSection ? (stage.silhouettePolygon as Pt[]) : sectionRegion(stage, members[0].section),
-    pieces: members.map(({ key, d, rect, shape, held }) => ({ key, d, rect, shape, ...(held ? { held } : {}) })),
+    region: sectionRegion(stage, members[0].section),
+    pieces: members.map(({ key, d, rect, shape, held, relaxedH }) => ({
+      key,
+      d,
+      rect,
+      shape,
+      ...(held ? { held } : {}),
+      ...(relaxedH !== undefined && relaxedH > rect.h + 0.05 ? { relaxedH } : {}),
+    })),
   }));
-}
-
-/** In the dive: the silhouette inside one cell. */
-export function cellRegion(stage: StageGeometry, cell: keyof StageGeometry["cellPolygons"]): Pt[] {
-  return clipToConvex(stage.silhouettePolygon as ConformPt[], stage.cellPolygons[cell] as ConformPt[]) as Pt[];
 }
 
 const centroidOf = (P: readonly Pt[]): Pt => {
@@ -156,7 +163,10 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
   const room = Math.abs(signedArea(plane.region)) * ROOM;
   const drawn = plane.pieces.map((p) => {
     const ring = starts.get(p.key)!;
-    return { p, ring, area: Math.abs(signedArea(ring)) };
+    const area = Math.abs(signedArea(ring));
+    // Pressed shorter by its neighbours, it still holds the fill of its own length: it wants that room back.
+    const own = p.relaxedH !== undefined && p.relaxedH > p.rect.h ? p.relaxedH / Math.max(p.rect.h, 1) : 1;
+    return { p, ring, area, ownArea: area * own };
   });
   // A roll or an ear pad keeps its own footprint; the pouches share what room it leaves, pro rata, when they would want more.
   const isFirm = (shape: ShapeId) => shape === "pill" || shape === "ear";
@@ -166,11 +176,11 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
   // the centre stuck on the side). It cannot squash to the wall as a pouch does, so the wall pushes it forward instead.
   const heldAcross = (rect: PieceRect) => ({ anchorX: rect.x + rect.w / 2 });
   const firm = drawn.filter((x) => isFirm(x.p.shape)).reduce((a, x) => a + x.area, 0);
-  const want = drawn.filter((x) => !isFirm(x.p.shape)).reduce((a, x) => a + x.area * volume, 0);
+  const want = drawn.filter((x) => !isFirm(x.p.shape)).reduce((a, x) => a + x.ownArea * volume, 0);
   const squeeze = want > room - firm ? Math.max((room - firm) / Math.max(want, 1), MIN_SQUEEZE) : 1;
   return drawn
     .filter((x) => x.ring.length >= 3 && x.area > 1)
-    .map(({ p, ring, area }): SoftPiece => {
+    .map(({ p, ring, area, ownArea }): SoftPiece => {
       if (p.shape === "pill") {
         // The firm roll: it remembers the pill it is, its whole length (true size, 9-11-2026) — not shrunk to what a
         // curved wall left of its clipped outline, which drew a 150 mm roll 75 mm long; the wall pushes it forward.
@@ -183,9 +193,12 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
         const rest = pairedWith(scaledTo(pouchOutline(p.rect, 8, "ear") as Pt[], area), ring);
         return { id: p.key, ring, rest, kind: "pad", areaTarget: area, ...heldAcross(p.rect), ...(p.held ? { held: true } : {}) };
       }
-      // A pouch remembers the codebase's own footprint at the volume it holds.
-      const target = area * volume * squeeze;
-      const rest = pairedWith(scaledTo(pouchOutline(p.rect, 5, "pouch") as Pt[], target), ring);
+      // A pouch remembers the codebase's own footprint at its own length and the volume it holds: pressed shorter
+      // between its neighbours, it pushes back on them, and they on it, until they share the room.
+      const target = ownArea * volume * squeeze;
+      const H = Math.max(p.relaxedH ?? p.rect.h, p.rect.h);
+      const own = { x: p.rect.x, y: p.rect.y + (p.rect.h - H) / 2, w: p.rect.w, h: H };
+      const rest = pairedWith(scaledTo(pouchOutline(own, 5, "pouch") as Pt[], target), ring);
       return { id: p.key, ring, rest, kind: "pouch", areaTarget: target, areaMin: Math.min(area * AREA_FLOOR, target), ...(p.held ? { held: true } : {}) };
     });
 }
@@ -208,7 +221,7 @@ const planeKey = (plane: SoftTopPlane, settings: SoftBodySettings, view: { width
     view.width,
     view.height,
     JSON.stringify(settings),
-    plane.pieces.map((p) => `${p.key}:${p.shape}:${p.rect.x},${p.rect.y},${p.rect.w},${p.rect.h}:${p.held ? 1 : 0}:${p.d}`).join("|"),
+    plane.pieces.map((p) => `${p.key}:${p.shape}:${p.rect.x},${p.rect.y},${p.rect.w},${p.rect.h}:${p.relaxedH ?? ""}:${p.held ? 1 : 0}:${p.d}`).join("|"),
   ].join("#");
 
 const settledCache = new Map<string, ReadonlyMap<string, Pt[]>>();

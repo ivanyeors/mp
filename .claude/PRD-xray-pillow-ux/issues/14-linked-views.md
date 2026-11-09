@@ -164,3 +164,30 @@ Tests: `fine-drag.test.ts` (the drawing's scale; 100 px a second over a desktop'
 Measured (Size M, Settings values 200 × 150, 190 × 140, 170 × 130 and a 500 mm Neck support L): drawn 200 × 149, 190 × 140, 170 × 129 in a full Section and 200 × 150 alone; the roll 500 mm across. Size S scales them by the pillow (Settings › Dimensions says so).
 
 Tests: `settle.test.ts` rewritten for the rule, plus `fit` (overlap and message), `xray-layout`, `xray-stage`, `cross-section`, `calibration`, `slab-drag`, `soft-cut` (overlaps only where declared, and only at the ends), `soft-top` (the planes as the top view builds them), `xray-pillow-geometry` and `xray-cross-section`. Browser (preview fixtures, desktop and 390 px): Hui Min (Size S, Neck support L set to 500 mm) and Chloe (Size M), top view, the dive and the three cuts.
+
+## Round 7 (Ivan, 9-11-2026): the Neck support inside its own Section
+
+> "The left, middle, right are individual divided sections. So if the cervical neck support is in the center, it should only fit in the center's maximum width."
+
+- Round 6's full-length Neck support is reversed. `packAcross` caps every piece at its own Section's walls; a Neck support longer than its Section is wide is drawn wall to wall and still marked as not fitting.
+- The draw-past-the-walls code is gone: `reachesPast`, its paint layer (`data-xray-past-section`) and its silhouette-only conform in `xray-pillow.tsx`, and the plane for it in `topPlanes`.
+
+## Round 8 (Ivan, 9-11-2026): stuffed, not layered
+
+> "You cannot layer it in that way because the front filling and the back filling are supposed to collide with each other. So you need to use the soft body physics logic to compress the fillings together as how a user will slowly take pouches of filling and stuffing it."
+
+Round 6 let neighbours that do not fit end to end overlap at their ends. Now they press on each other, as pouches stuffed in one after another do.
+
+- **The settle** (`packLayer`, `settle.ts`): each height of a Section's stack, counted from the floor (`PieceSettle.level`), is packed end to end.
+  - Where the Section has room, overlapping neighbours are pushed apart by the least move, each still its own length.
+  - Where it has none, they are pressed shorter wall to wall, each giving in proportion to its length. A Neck support is firm: it gives none while a pouch still can.
+  - A pouch placed by hand holds where it was put and its neighbours make room. Its offset is measured from where it stands packed un-nudged, so every millimetre of a nudge moves it.
+  - Heights, not Layers from the top: a pouch higher in one cell's stack rests over a lower neighbour's end, as the cut draws it.
+- **The fit** (`pressedAlong`, `fit.ts`): `CellFit.overlapMm` / `overlapsWith` are now `pressedMm` / `pressedBy`. The message reads `left · front: pressed 30 mm shorter by middle, compressed; …`.
+- **The top view:** one soft plane per height of each Section (`topPlanes`), so Front, Middle and Back press on each other. A pressed pouch remembers its own length (`PieceLayout.relaxedH`) and pushes back. Paint order is lowest in the stack first.
+- **The side view (soft cut):** the overlap pass is gone (`SoftPiece.overlaps` removed from the solver). A pouch's rest cushion is its own length, so pressed shorter it pushes back on its neighbours and bulges up. A Neck support's circle is narrower than its span at this cut's scales; `rollRoom` lays a pressed row out again around the circle so no gap opens.
+
+Measured (the code's dimensions at Size S, a 6D S, a 6D+ S and a 500 mm Neck support L in the Center, as Hui Min's preview fixture has): 6D S 0–92 mm, 6D+ S 92–190 mm, the Neck support 190–330 mm, the two pouches pressed alike to 65 % of their length. In the browser (preview fixtures, desktop and 390 px) Hui Min's Center is end to end in both views; Chloe's (Size M) bottom pouches are end to end and the 6D M on top rests over the back pouch's end.
+
+Tests: `settle.test.ts` (pushed apart, pressed alike, the Neck support firm, a held pouch's neighbours make room), `fit` (pressed and its message), `soft-top` (a stuffed Center: end to end, pressed pouches remember their length, nothing overlaps), `soft-cut` (pressed pouches stand taller; no two pieces overlap in any recipe). `xray-pillow.check.ts` no longer expects the dive's cell clip; it still fails on two older assertions, as it did on main.
+

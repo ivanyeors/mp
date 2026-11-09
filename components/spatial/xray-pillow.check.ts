@@ -63,7 +63,11 @@ assert.doesNotMatch(renderer, /<rect/, "no box crops anywhere (ADR 0009 guardrai
 assert.doesNotMatch(renderer, /d="M/, "no hard-coded paths — assets only (guardrail 5)");
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "silhouette clip");
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\(section\)\}\)`\}/, "nested Section clip inside silhouette (slice 11: only the Section walls are walls)");
-assert.match(renderer, /clipPath=\{authored \? `url\(#\$\{clipId\(key\)\}\)` : undefined\}/, "the dived Section adds the cell clip inside the Section clip");
+assert.doesNotMatch(
+  renderer,
+  /clipPath=\{authored \? `url\(#\$\{clipId\(key\)\}\)` : undefined\}/,
+  "a dived pouch is not cut to its cell: at its own length it reaches past it, pressed end to end against its neighbours (9-11-2026)",
+);
 assert.match(
   renderer,
   /const regions = \[SIL_REGION, SECTION_REGIONS\[dived\]\];/,

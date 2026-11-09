@@ -86,7 +86,7 @@ export type SoftCutShapes = {
   labels: ReadonlyMap<string, { at: Pt; r: number }>;
 };
 
-type Seed = {
+export type Seed = {
   id: string;
   kind: "pouch" | "roll" | "pad";
   /** Its authored cell's column, and its Layer counted from the floor. */
@@ -104,6 +104,8 @@ type Seed = {
   areaTarget: number;
   areaMin: number;
   over: boolean;
+  /** Its own length along, view units: the span it remembers, more than `x1 − x0` where its neighbours press it shorter. */
+  own: number;
   /** Nudged front ↔ back by hand: the settle holds it where it was put. */
   held?: boolean;
   ring?: Pt[];
@@ -242,8 +244,7 @@ export function dropStack(seeds: readonly Seed[], floorY: number, x0: number, x1
           tp.forEach((v, k) => (top[i0 + k] = v));
         }
       }
-      // The level above rests on it. Another piece of this level whose end reaches over it does not: at true size
-      // (9-11-2026) neighbours longer together than the Section overlap at their ends, at one height.
+      // The level above rests on it; another piece of this level, stood beside it end to end, does not.
       top.forEach((v, k) => {
         support[k] = Math.max(support[k], v);
       });
@@ -285,8 +286,9 @@ export function softCutScene(input: SoftCutInput): {
   for (const { piece, sub } of leaders) depthsOf.set(sub, [...(depthsOf.get(sub) ?? []), piece.depth]);
   for (const d of depthsOf.values()) d.sort((a, b) => b - a);
 
-  // True size (9-11-2026): each pouch spans its own length where the settle stood it, inside the Section — never
-  // cut back to its cell. Two of one Layer that are longer together than the Section overlap at their ends.
+  // True size (9-11-2026): each pouch spans the extent the settle stood it at, inside the Section — its own length,
+  // or shorter where its Layer's neighbours press it end to end (stuffed, 9-11-2026). It remembers the volume of its
+  // own length, so a pressed pouch pushes back on its neighbours and stands taller where it has room.
   const cellMm = fit.settle.cellLengthMm;
   const sectionMm = cellMm * SUB_SECTIONS.length;
 
@@ -326,6 +328,7 @@ export function softCutScene(input: SoftCutInput): {
       areaTarget: roll ? Math.PI * (relaxed / 2) ** 2 : areaTarget,
       areaMin: (s?.minThicknessMm ?? relaxedMm) * f.ky * lengthMm * f.kx,
       over: piece.status === "over",
+      own: Math.max(lengthMm * f.kx - 2 * f.slabGap, endMm * f.kx - startMm * f.kx - 2 * f.slabGap, 1),
       held: piece.nudged === true,
     };
   });
@@ -344,6 +347,7 @@ export function softCutScene(input: SoftCutInput): {
     const k = over > 0 && range > 0 ? Math.min(over / range, 1) : 0;
     for (const s of inCol) s.t = s.relaxed - k * rangeOf(s);
   }
+  rollRoom(seeds, 2 * f.slabGap + 1);
   const stacked = dropStack(seeds, f.floor, f.x0, f.x0 + f.drawW, SUPPORT_STEP * scale, well);
 
   // A cell cannot remember more cushion than it has room for: there the rest shapes share the room pro rata.
@@ -372,34 +376,24 @@ export function softCutScene(input: SoftCutInput): {
       return { id: s.id, ring: s.ring!, rest, kind: "pad", areaTarget: Math.abs(signedArea(rest)), over: s.over };
     }
     const target = s.areaTarget * volume * (squeeze.get(s.col) ?? 1);
-    // The relaxed cushion it remembers: its span, as thick as its volume makes it, resting where it was seeded.
-    // The relaxed cushion it remembers: its span, as thick as its volume makes it. A pouch stacked over
-    // something uneven remembers a cushion too, not the drape it started in, so it settles onto what is
-    // under it instead of holding a tent over it.
-    const w = s.x1 - s.x0;
+    // The relaxed cushion it remembers: its own length (stuffed, 9-11-2026: pressed shorter between its
+    // neighbours, it pushes back on them, into any room they leave, and bulges up where it cannot), as thick as
+    // its volume makes it, centred where it was seeded. A pouch stacked over something uneven remembers a
+    // cushion too, not the drape it started in, so it settles onto what is under it instead of holding a tent
+    // over it.
+    const span = s.x1 - s.x0;
+    const w = Math.max(s.own, span);
+    const x = (s.x0 + s.x1) / 2 - w / 2;
     const bottom = s.flat ? s.bottom! : Math.max(...s.ring!.map((p) => p[1]));
     let h = target / w;
-    h *= target / Math.abs(signedArea(cushionRing({ x: s.x0, y: bottom - h, w, h })));
-    const cushion = cushionRing({ x: s.x0, y: bottom - h, w, h });
-    const rest = s.flat ? cushion : pairedWith(cushion, s.ring!);
+    h *= target / Math.abs(signedArea(cushionRing({ x, y: bottom - h, w, h })));
+    const cushion = cushionRing({ x, y: bottom - h, w, h });
+    const rest = s.flat && w === span ? cushion : pairedWith(cushion, s.ring!);
     return { id: s.id, ring: s.ring!, rest, kind: "pouch", areaTarget: target, areaMin: s.areaMin, over: s.over };
   });
-  // A pouch nudged by hand stays where it was put; its neighbours make room. Pouches at the same height from the floor
-  // in other cells whose ends reach over each other overlap there instead of pressing each other back (the fit marks
-  // the cells); one higher up rests on what lies under it, as before.
-  const spanOf = new Map(seeds.map((sd) => [sd.id, { col: sd.col, level: sd.level, x0: sd.x0, x1: sd.x1 }] as const));
-  const overlapsOf = (id: string) => {
-    const a = spanOf.get(id);
-    if (!a) return [];
-    return [...spanOf]
-      .filter(([k, b]) => k !== id && b.col !== a.col && b.level === a.level && Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 2 * f.kx)
-      .map(([k]) => k);
-  };
-  const softPieces = shaped.map((p, i) => {
-    const overlaps = overlapsOf(p.id);
-    const withHeld = stacked[i].held ? { ...p, held: true } : p;
-    return overlaps.length ? { ...withHeld, overlaps } : withHeld;
-  });
+  // A pouch nudged by hand stays where it was put; its neighbours make room. Every piece presses on every other it
+  // meets: neighbours of one Layer, stood end to end by the settle, squash against each other where they meet.
+  const softPieces = shaped.map((p, i) => (stacked[i].held ? { ...p, held: true } : p));
   return {
     pieces: softPieces,
     frame: { outline: casePolygon, baseline: f.baseline, width: f.width, height: f.height + 40 },
@@ -407,6 +401,72 @@ export function softCutScene(input: SoftCutInput): {
     bodyOf,
     scale,
   };
+}
+
+/**
+ * A roll is drawn round, its diameter its thickness on this cut's vertical scale, which is not the scale along it:
+ * its circle can be narrower than the span the settle stood it at, which would leave a gap in a row stuffed end
+ * to end at its height (9-11-2026). There the row is laid out again with the roll at the width it is drawn:
+ *
+ * - pressed (a pouch shorter than its own length): the pouches share what the rolls and pads leave, each in
+ *   proportion to its own length, so they are pressed alike; with a piece placed by hand in the row, the roll
+ *   keeps its middle instead, and the neighbours it meets take the room its circle leaves on their side;
+ * - not pressed: the roll's circle moves against the one neighbour it meets, or stays centred between two (or
+ *   where it was put by hand).
+ *
+ * A roll as wide as its span or wider (a soft one, squashed) is left to the settle, which presses its neighbours
+ * aside. Changes `seeds` in place.
+ */
+export function rollRoom(seeds: Seed[], touch: number): void {
+  const drawnOf = (r: Seed) => (r.kind !== "roll" ? r.x1 - r.x0 : r.t >= r.relaxed ? r.relaxed : r.t + (Math.PI * (r.relaxed - r.t)) / 2);
+  const narrow = (r: Seed) => r.kind === "roll" && r.x1 - r.x0 - drawnOf(r) >= 1;
+  for (const level of new Set(seeds.filter(narrow).map((s) => s.level))) {
+    const row = seeds.filter((s) => s.level === level).sort((a, b) => a.x0 - b.x0);
+    // Runs of pieces that meet end to end.
+    const runs: Seed[][] = [];
+    for (const s of row) {
+      const run = runs[runs.length - 1];
+      if (run && Math.abs(s.x0 - run[run.length - 1].x1) <= touch) run.push(s);
+      else runs.push([s]);
+    }
+    for (const run of runs) {
+      if (run.length < 2 || !run.some(narrow)) continue;
+      const pouches = run.filter((s) => s.kind === "pouch");
+      const pressed = pouches.some((s) => s.x1 - s.x0 < s.own - 1);
+      const held = run.some((s) => s.held);
+      if (!pressed || held) {
+        for (const [i, r] of run.entries()) {
+          if (!narrow(r)) continue;
+          const spare = r.x1 - r.x0 - drawnOf(r);
+          const before = i > 0 ? run[i - 1] : null;
+          const after = i < run.length - 1 ? run[i + 1] : null;
+          if (pressed) {
+            // Placed by hand: the roll keeps its middle; its neighbours fill to it.
+            if (before) before.x1 += spare / 2;
+            if (after) after.x0 -= spare / 2;
+            r.x0 += spare / 2;
+            r.x1 -= spare / 2;
+          } else if (!r.held && before && !after) r.x1 = r.x0 + drawnOf(r);
+          else if (!r.held && after && !before) r.x0 = r.x1 - drawnOf(r);
+        }
+        continue;
+      }
+      const seams = run.slice(1).map((s, i) => s.x0 - run[i].x1);
+      const room = run[run.length - 1].x1 - run[0].x0 - seams.reduce((t, g) => t + g, 0);
+      const firm = run.filter((s) => s.kind !== "pouch").reduce((t, s) => t + drawnOf(s), 0);
+      const own = pouches.reduce((t, s) => t + s.own, 0);
+      // Never stretched past their own length; never pressed to nothing. What the pouches at their own length do
+      // not fill stays at the row's back end.
+      const ratio = own > 0 ? Math.min(Math.max((room - firm) / own, 0.2), 1) : 1;
+      const widths = run.map((s) => (s.kind === "pouch" ? s.own * ratio : drawnOf(s)));
+      let at = run[0].x0;
+      run.forEach((s, i) => {
+        s.x0 = at;
+        s.x1 = at + widths[i];
+        at = s.x1 + (seams[i] ?? 0);
+      });
+    }
+  }
 }
 
 /** `ring` turned (and, if need be, reversed) so its points pair with the nearest of `ref`: the same count, the same way round. */

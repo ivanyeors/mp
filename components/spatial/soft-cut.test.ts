@@ -42,16 +42,6 @@ function settleFresh(input: SoftCutInput, split?: number) {
   return sim.snapshot();
 }
 
-/**
- * True size (9-11-2026): which settled bodies may overlap — neighbours at one height whose ends reach over each
- * other (`SoftPiece.overlaps`). Everything else stays apart.
- */
-function mayOverlap(input: SoftCutInput): (a: string, b: string) => boolean {
-  const pairs = new Set<string>();
-  for (const p of softCutScene(input).pieces) for (const o of p.overlaps ?? []) pairs.add(`${p.id}|${o}`).add(`${o}|${p.id}`);
-  return (a, b) => pairs.has(`${a}|${b}`);
-}
-
 /** How often an outline's bend flips direction, and how jittery its bend is (the preview's wobble metric). */
 function wobble(ring: readonly Pt[], skip?: (p: Pt) => boolean) {
   let len = 0;
@@ -163,7 +153,8 @@ describe("soft cut", () => {
     // Fully firm, it is seeded round and keeps nearly round, as before softness reached the stack.
     expect(firm.aspect).toBeLessThan(1.15);
     expect(at(75).aspect).toBeLessThan(1.15);
-    expect(soft.aspect).toBeGreaterThan(1.4);
+    // Pressed along by the pouches stuffed against it at its height (9-11-2026), it spreads a little less than alone.
+    expect(soft.aspect).toBeGreaterThan(1.3);
     expect(soft.height).toBeLessThan(firm.height * 0.85);
     // Never below fully squashed: twice the squashed radius at this Size.
     const squashedMm = fit.settle.pieces.find((p) => p.key === "center/middle/2")!.minThicknessMm;
@@ -171,16 +162,15 @@ describe("soft cut", () => {
     expect(soft.pouch).toBeGreaterThan(firm.pouch * 1.2);
     // Squashed, it still rests on the floor under the pouch, apart from its neighbours and inside the cloth.
     const { input, shapes } = soft;
-    const overlapping = mayOverlap(input);
-    const rings = [...new Map([...shapes.rings].map(([k, r]) => [r, k] as const))].map(([r, k]) => [k, r] as const);
+    const rings = [...new Set(shapes.rings.values())];
     const roll = shapes.rings.get("center/middle/2")!;
     expect(input.frame.floor - Math.max(...roll.map((p) => p[1]))).toBeLessThan(input.settings.gap * input.frame.scale + 6);
-    for (const [key, ring] of rings) {
+    for (const ring of rings) {
       for (const p of ring) {
         if (!pointInPolygon(shapes.case, p[0], p[1])) expect(distanceToPolygon(shapes.case, p[0], p[1])).toBeLessThan(1.5);
       }
-      for (const [otherKey, other] of rings) {
-        if (other === ring || overlapping(key, otherKey)) continue;
+      for (const other of rings) {
+        if (other === ring) continue;
         expect(ring.filter((p) => pointInPolygon(other, p[0], p[1]) && distanceToPolygon(other, p[0], p[1]) > 1).length).toBe(0);
       }
     }
@@ -196,6 +186,30 @@ describe("soft cut", () => {
     expect(Math.sign(signedArea(squashed))).toBe(Math.sign(signedArea(round)));
   });
 
+  it("stuffs Front, Middle and Back end to end: pressed shorter, they stand taller, never laid over", () => {
+    // Ivan, 9-11-2026: "the front filling and the back filling are supposed to collide". Three 140 mm pouches in a
+    // 330 mm Section are pressed to 110 mm each; one alone keeps its 140 mm.
+    const full = inputOf({ front: [1], middle: [1], back: [1] });
+    const alone = inputOf({ middle: [1] });
+    const spans = full.fit.sections.center.pieces.map((p) => [p.startMm, p.endMm]);
+    expect(spans).toEqual([
+      [0, 110],
+      [110, 220],
+      [220, 330],
+    ]);
+    const height = (input: SoftCutInput) => {
+      const ring = settleSoftCut(input).rings.get("center/middle/1")!;
+      return Math.max(...ring.map((p) => p[1])) - Math.min(...ring.map((p) => p[1]));
+    };
+    const width = (input: SoftCutInput) => {
+      const ring = settleSoftCut(input).rings.get("center/middle/1")!;
+      return Math.max(...ring.map((p) => p[0])) - Math.min(...ring.map((p) => p[0]));
+    };
+    // It holds the fill of its own length, so pressed shorter it bulges up.
+    expect(width(full)).toBeLessThan(width(alone) - 10);
+    expect(height(full)).toBeGreaterThan(height(alone) + 2);
+  });
+
   it("keeps pieces apart and inside the cloth, and the cloth inside its sewn outline", () => {
     for (const [name, cells] of Object.entries(RECIPES)) {
       const input = inputOf(cells, "M");
@@ -206,9 +220,7 @@ describe("soft cut", () => {
       for (const p of shapes.case) {
         if (!pointInPolygon(sewn, p[0], p[1])) expect(distanceToPolygon(sewn, p[0], p[1]), `${name}: cloth past the seam`).toBeLessThan(billow + 1);
       }
-      // Two pieces overlap only where the settle says their ends reach over each other at one height, in different cells.
-      const overlapping = mayOverlap(input);
-      const span = new Map(input.fit.sections.center.pieces.map((p) => [p.key, p] as const));
+      // Stuffed (9-11-2026): no two pieces overlap — neighbours at one height are pressed end to end, never laid over.
       const rings = [...shapes.rings];
       for (const [key, ring] of rings) {
         for (const p of ring) {
@@ -216,12 +228,6 @@ describe("soft cut", () => {
         }
         for (const [otherKey, other] of rings) {
           if (other === ring) continue;
-          if (overlapping(key, otherKey)) {
-            const [a, b] = [span.get(key)!, span.get(otherKey)!];
-            expect(key.split("/")[1], `${name}: overlapping ends are in different cells`).not.toBe(otherKey.split("/")[1]);
-            expect(Math.min(a.endMm, b.endMm) - Math.max(a.startMm, b.startMm), `${name}: ${key} and ${otherKey} reach over each other`).toBeGreaterThan(2);
-            continue;
-          }
           const inside = ring.filter((p) => pointInPolygon(other, p[0], p[1]) && distanceToPolygon(other, p[0], p[1]) > 1);
           expect(inside.length, `${name}: ${key} and ${otherKey} overlap`).toBe(0);
         }
@@ -315,13 +321,12 @@ describe("soft cut", () => {
     // Nudged past its column's room, it stops at the column's edge: it never stands in the next column.
     const far = at(80);
     expect(far.piece.endMm).toBeLessThanOrEqual(2 * far.cellMm + 0.05);
-    // A 6D longer than its column (140 mm), between full neighbours, keeps its length and stays centred on its cell,
-    // its ends over theirs: there is no room to nudge it, and a nudge never shrinks it (true size, 9-11-2026).
+    // A 6D longer than its column (140 mm), between full neighbours, has no room to be nudged: it stays where its
+    // height in the stack packs it, its own length (true size), and a nudge neither moves nor shrinks it.
     const full = at(20, RECIPES["11"], "center/middle/1");
     const still = at(undefined, RECIPES["11"], "center/middle/1");
     expect(full.piece.endMm - full.piece.startMm).toBeCloseTo(140, 1);
     expect([full.piece.startMm, full.piece.endMm]).toEqual([still.piece.startMm, still.piece.endMm]);
-    expect((full.piece.startMm + full.piece.endMm) / 2).toBeCloseTo(1.5 * full.cellMm, 1);
   });
 
   it("settles a full recipe well inside a frame budget", () => {

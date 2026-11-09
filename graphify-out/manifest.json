@@ -3756,9 +3756,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/xray-layout.ts": {
-    "mtime": 1794234043.8828497,
-    "seen": 1794234383.4967701,
-    "ast_hash": "1b667999266f4d87a393225fd5401931",
+    "mtime": 1794239154.5948434,
+    "seen": 1794239486.653335,
+    "ast_hash": "94f41c5e1ff27c28e7cf62bfc3f17ebd",
     "semantic_hash": ""
   },
   "lib/whatsapp/__tests__/partner-notify.test.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1794229748.3510962,
-    "seen": 1794230054.667069,
-    "ast_hash": "0a2926c31156b04b2c34dd5d81ea390e",
+    "mtime": 1794239424.2813349,
+    "seen": 1794239486.6551409,
+    "ast_hash": "4045a65d83cbe5c2080ab23e5de99237",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9084,9 +9084,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
-    "mtime": 1794037689.2723527,
-    "seen": 1794224690.8549473,
-    "ast_hash": "6c4cf7c631af6fd71b3f15f1005415a9",
+    "mtime": 1794239424.2823107,
+    "seen": 1794239486.655074,
+    "ast_hash": "7436636812a9bbd528ae6635576a479a",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/03-fit-model.md": {
@@ -9336,21 +9336,21 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/fit.ts": {
-    "mtime": 1794228606.9540837,
-    "seen": 1794230054.6655855,
-    "ast_hash": "395c5912d7c32eda7cbfd79ee50f411f",
+    "mtime": 1794239154.59377,
+    "seen": 1794239486.6533208,
+    "ast_hash": "92fab73224f170c8801b8df87efcf249",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/settle.test.ts": {
-    "mtime": 1794228864.5927951,
-    "seen": 1794230054.665537,
-    "ast_hash": "6be0f183b627ee3ecfe800557ad8080a",
+    "mtime": 1794239154.5934093,
+    "seen": 1794239486.6532826,
+    "ast_hash": "46964625205452f274ed9bb526f3dc42",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/settle.ts": {
-    "mtime": 1794229086.072084,
-    "seen": 1794230054.665591,
-    "ast_hash": "2cadf3ecdc674c5a044df8b788c39f1d",
+    "mtime": 1794239154.59377,
+    "seen": 1794239486.6533258,
+    "ast_hash": "46f6172b9aad0e81f7ba0eb9775aec84",
     "semantic_hash": ""
   },
   "lib/configurator/__tests__/move-piece.test.ts": {
@@ -12240,9 +12240,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/soft-body.ts": {
-    "mtime": 1794228730.3552303,
-    "seen": 1794230054.6655967,
-    "ast_hash": "c67a28be1f79e46352bf1c923dc23e1e",
+    "mtime": 1794239154.59377,
+    "seen": 1794239486.6533315,
+    "ast_hash": "c5d5fde9aacfa3582ff3d171ebdd6348",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-soft-cut/xray-soft-cut-prd.md": {
@@ -18564,9 +18564,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/14-linked-views.md": {
-    "mtime": 1794229769.1955614,
-    "seen": 1794230054.6670222,
-    "ast_hash": "631eaf5cfac6890974257eaa3edf56be",
+    "mtime": 1794239431.9090464,
+    "seen": 1794239486.6550896,
+    "ast_hash": "de3eba0f2600e0377b20516fa382dd68",
     "semantic_hash": ""
   },
   "app/api/settings/discounts/points/past-purchases/__tests__/route.test.ts": {

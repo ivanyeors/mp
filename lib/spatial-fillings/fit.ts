@@ -101,13 +101,14 @@ export type CellFit = {
   /** The other columns this cell's own pieces settled into (slice 11), front → back; the message names them. */
   settledInto: SubSection[];
   /**
-   * True size (9-11-2026): how far, mm, this cell's pouches and a neighbour's in the same Layer overlap at their
-   * ends, because together they are longer than the room front to back; 0 when they fit end to end.
+   * Stuffed (9-11-2026): how much shorter, mm, the cell's most pressed pouch stands than its own length, pressed
+   * end to end against the neighbours of its Layer because together they are longer than the room front to back;
+   * 0 when they fit.
    */
-  overlapMm: number;
-  /** The neighbouring cells they overlap, front → back. */
-  overlapsWith: SubSection[];
-  /** The worse of the loft status, every Layer's width status, and compressed when its pouches overlap a neighbour's. */
+  pressedMm: number;
+  /** The neighbouring cells that press it, front → back. */
+  pressedBy: SubSection[];
+  /** The worse of the loft status, every Layer's width status, and compressed when its pouches are pressed shorter. */
   status: FitStatus;
 };
 
@@ -376,7 +377,7 @@ function cellFit(
   loftMm: number,
   loftLayers: number,
   settledInto: SubSection[] = [],
-  overlap: { mm: number; with: SubSection[] } = { mm: 0, with: [] },
+  pressed: { mm: number; by: SubSection[] } = { mm: 0, by: [] },
 ): CellFit {
   return {
     section,
@@ -389,35 +390,40 @@ function cellFit(
     thicknessRatios,
     loftLayers,
     settledInto,
-    overlapMm: r1(overlap.mm),
-    overlapsWith: overlap.with,
+    pressedMm: r1(pressed.mm),
+    pressedBy: pressed.by,
     status: worstStatus(
       layerFits.reduce((s, l) => worstStatus(s, l.status), stack.status),
-      overlap.mm > 0 ? "compressed" : "ok",
+      pressed.mm > 0 ? "compressed" : "ok",
     ),
   };
 }
 
+/** A pouch pressed less than this much shorter than its own length is not pressed (the settle rounds to 0.1 mm). */
+const PRESSED_MM = 0.5;
+
 /**
- * True size: how far a cell's own pouches overlap the pouches of the other
- * cells of their Section in the same Layer, at their ends (more than a seam),
- * and which cells. Pieces of other Layers lie over or under them, not in the way.
+ * Stuffed: how much shorter than its own length a cell's most pressed pouch
+ * stands, pressed end to end against the neighbours at its height in the stack
+ * (`packLayer`), and which cells press it — the nearest one holding a pouch at
+ * that height on either side. Pieces higher or lower lie over or under it.
  */
-function endOverlap(settled: readonly PieceSettle[], subSection: SubSection): { mm: number; with: SubSection[] } {
+function pressedAlong(settled: readonly PieceSettle[], subSection: SubSection): { mm: number; by: SubSection[] } {
   let mm = 0;
-  const others = new Set<SubSection>();
+  const by = new Set<SubSection>();
+  const col = subSectionIndex(subSection);
   for (const a of settled) {
     if (a.subSection !== subSection) continue;
-    for (const b of settled) {
-      if (b.subSection === subSection || b.depth !== a.depth) continue;
-      const o = Math.min(a.endMm, b.endMm) - Math.max(a.startMm, b.startMm);
-      if (o > SEAM_MM + 1e-6) {
-        mm = Math.max(mm, o);
-        others.add(b.subSection);
-      }
-    }
+    const short = a.alongMm - a.settledLengthMm;
+    if (short <= PRESSED_MM) continue;
+    mm = Math.max(mm, short);
+    const cols = settled.filter((b) => b.level === a.level && b.subSection !== subSection).map((b) => subSectionIndex(b.subSection));
+    const front = Math.max(-1, ...cols.filter((c) => c < col));
+    const back = Math.min(SUB_SECTIONS.length, ...cols.filter((c) => c > col));
+    if (front >= 0) by.add(SUB_SECTIONS[front]);
+    if (back < SUB_SECTIONS.length) by.add(SUB_SECTIONS[back]);
   }
-  return { mm, with: SUB_SECTIONS.filter((s) => others.has(s)) };
+  return { mm, by: SUB_SECTIONS.filter((s) => by.has(s)) };
 }
 
 type LayerPieces = readonly { slot: number; itemId: number; dims: PouchDimensions }[];
@@ -542,7 +548,8 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
         loftBySubSection[subSection],
         stack.depths.length,
         settledInto,
-        endOverlap(settled, subSection),
+        // A walled product's cells cut a pouch to the cell; nothing presses it there.
+        settle.active ? pressedAlong(settled, subSection) : undefined,
       );
       cells.push(cell);
       sectionStatus = worstStatus(sectionStatus, cell.status);
@@ -637,9 +644,9 @@ export function fitMessage(cell: CellFit, size: string): string {
     const n = cell.loftLayers;
     return `${where}: ${n} ${n === 1 ? "layer needs" : "layers need"} ${Math.round(cell.relaxedLoftMm)} mm relaxed, ${Math.round(cell.minLoftMm)} mm fully compressed; Size ${size} holds ${Math.round(cell.maxLoftMm)} mm`;
   }
-  if (cell.overlapMm > 0) {
+  if (cell.pressedMm > 0) {
     const sectionMm = Math.round(pillowDimensions(size).dims.lengthMm);
-    return `${where}: overlaps ${cell.overlapsWith.join(" and ")} by ${Math.round(cell.overlapMm)} mm at the ends, compressed; the pouches are longer together than the ${sectionMm} mm front to back of Size ${size}`;
+    return `${where}: pressed ${Math.round(cell.pressedMm)} mm shorter by ${cell.pressedBy.join(" and ")}, compressed; the pouches are longer together than the ${sectionMm} mm front to back of Size ${size}`;
   }
   return `${where}: fits`;
 }

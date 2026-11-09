@@ -7,9 +7,15 @@
  * True size (Ivan, 9-11-2026): a pouch stands at its own length, as Settings
  * measured it. It used to be cut to its cell (a Size M cell is 110 mm, most
  * pouches 130–150 mm) and, beside an empty cell, slumped past its length into
- * it — so the drawn width : length never matched the one set. Now neighbours
- * that do not fit end to end overlap at their ends, and the fit marks those
- * cells compressed; an empty cell beside a pouch stays empty.
+ * it — so the drawn width : length never matched the one set. An empty cell
+ * beside a pouch stays empty.
+ *
+ * Stuffed, not layered (Ivan, 9-11-2026: "the front filling and the back
+ * filling are supposed to collide"): neighbours of one Layer that do not fit
+ * end to end are pushed apart where the Section has room, else pressed
+ * shorter against each other, wall to wall, as pouches stuffed in one after
+ * another are; the fit marks those cells compressed, and the soft body in
+ * both views squashes them where they meet.
  *
  * The Mbolster's settle (below) still spreads along the capsule. Pure +
  * browser-safe.
@@ -46,6 +52,11 @@ export type PieceSettle = {
   itemId: number;
   /** The piece's plane in its authored cell: 0 = top, compacted like the layout. */
   depth: number;
+  /**
+   * Its height in its cell's stack, counted from the floor (0 = the bottom Layer, which rests on the back panel).
+   * Pouches at one height in neighbouring cells meet end to end and press on each other (`packLayer`).
+   */
+  level: number;
   /** The columns the settled pouch stands in, front → back; its own cell always. */
   spanFrom: SubSection;
   spanTo: SubSection;
@@ -66,7 +77,7 @@ export type PieceSettle = {
   /** Where the settled pouch starts and ends, mm from the Section's front, cut to the columns it spans. */
   startMm: number;
   endMm: number;
-  /** Its footprint once settled: the authored extent (at most a cell) plus the spread each way, mm. */
+  /** Its extent once settled, mm: its own length (`alongMm`), or less where its Layer's neighbours press it shorter. */
   settledLengthMm: number;
   thicknessMm: number;
   minThicknessMm: number;
@@ -127,9 +138,10 @@ function fabricGiveMm(relaxedMm: number, thicknessMm: number, minThicknessMm: nu
  *   Layer leaves room; a pouch longer than that room stays centred on it;
  * - the whole of it inside its Section, so a pouch against the front or back
  *   wall is pushed in from it;
- * - never cut to its cell (a Size M cell is 110 mm, most pouches are longer):
- *   where neighbours do not fit end to end, their ends overlap, and the fit
- *   marks those cells compressed (`fitPillow`);
+ * - never cut to its cell (a Size M cell is 110 mm, most pouches are longer),
+ *   and never laid over a neighbour of its Layer: where neighbours overlap,
+ *   they are pushed apart, or pressed shorter end to end when the Section has
+ *   no room (`packLayer`), and the fit marks those cells compressed;
  * - never slumped longer than its length into an empty cell.
  *
  * A walled product's cells are walls: there a pouch is cut to its cell, as
@@ -150,7 +162,7 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
       ),
     );
     const maxDepth = Math.max(0, ...layersByCol.map((l) => l.length));
-    const work: { p: PillowPlacement; col: number; depth: number; dims: PouchDimensions; reachFrom: number; reachTo: number }[] = [];
+    const work: { p: PillowPlacement; col: number; depth: number; level: number; dims: PouchDimensions; reachFrom: number; reachTo: number }[] = [];
     for (let depth = 0; depth < maxDepth; depth++) {
       // A column is free at this plane when it holds fewer Layers than the plane is deep.
       const free = (col: number) => layersByCol[col].length <= depth;
@@ -161,17 +173,46 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
           // A walled product's cells are walls: nothing slides out of its own.
           while (active && reachFrom > 0 && free(reachFrom - 1)) reachFrom--;
           while (active && reachTo < SUB_SECTIONS.length - 1 && free(reachTo + 1)) reachTo++;
-          work.push({ p, col, depth, dims: dimsOf(p.itemId), reachFrom, reachTo });
+          work.push({ p, col, depth, level: layers.length - 1 - depth, dims: dimsOf(p.itemId), reachFrom, reachTo });
         }
       });
     }
     work.sort((a, b) => a.col - b.col || a.depth - b.depth || a.p.slot - b.p.slot);
-    for (const w of work) {
+    // Where each stands on its own, then each height of the stack packed end to end: pouches that meet at one height
+    // from the floor press against each other, never laid over (one higher up rests over its neighbour's end instead).
+    const sectionMm = cellLen * SUB_SECTIONS.length;
+    const firm = (w: (typeof work)[number]) => ctx.dims?.get(w.p.itemId)?.kind === "neck";
+    const packed = (list: LayerExtent[]) => {
+      if (active) for (let level = 0; level < maxDepth; level++) packLayer(list.filter((_, i) => work[i].level === level), sectionMm);
+      return list;
+    };
+    const unNudged = () =>
+      work.map((w): LayerExtent => ({ col: w.col, ...extentAlong(w.col, cellLen, alongMm(w.dims), 0, w.reachFrom, w.reachTo, active), firm: firm(w), held: false }));
+    // A pouch placed by hand is moved by its offset from where it stands packed un-nudged (so every millimetre of a nudge
+    // moves it, from what was drawn), at that length, inside the columns it may reach; there it holds, and its
+    // neighbours make room. One longer than that room cannot move. A walled product's cells take the offset as before.
+    const home = work.some((w) => w.p.offsetYMm) ? packed(unNudged()) : null;
+    const extents = packed(
+      work.map((w, i): LayerExtent => {
+        const offsetMm = (w.p.offsetYMm ?? 0) * alongScale;
+        if (!active) return { col: w.col, ...extentAlong(w.col, cellLen, alongMm(w.dims), offsetMm, w.reachFrom, w.reachTo, active), firm: firm(w), held: false };
+        const own = { col: w.col, ...extentAlong(w.col, cellLen, alongMm(w.dims), 0, w.reachFrom, w.reachTo, active), firm: firm(w), held: false };
+        if (!offsetMm || !home) return own;
+        const h = home[i];
+        const len = h.endMm - h.startMm;
+        const lo = w.reachFrom * cellLen;
+        const hi = (w.reachTo + 1) * cellLen;
+        if (hi - lo < len - 0.5) return { ...h, held: false };
+        const centre = Math.min(Math.max((h.startMm + h.endMm) / 2 + offsetMm, lo + len / 2), hi - len / 2);
+        return { col: w.col, startMm: centre - len / 2, endMm: centre + len / 2, firm: h.firm, held: true };
+      }),
+    );
+    for (const [i, w] of work.entries()) {
       const along = alongMm(w.dims);
-      const { startMm, endMm } = extentAlong(w.col, cellLen, along, (w.p.offsetYMm ?? 0) * alongScale, w.reachFrom, w.reachTo, active);
+      const { startMm, endMm } = extents[i];
       const len = endMm - startMm;
       // The columns it stands in (the loft counts it there): its own, and any it covers half of — or half of itself,
-      // for a pouch shorter than a cell. An end overlapping a neighbour does not stand it there.
+      // for a pouch shorter than a cell. A neighbour's end pressed into its column does not stand that neighbour there.
       const need = Math.min(cellLen, len) / 2 - EPS;
       const covers = (c: number) => Math.min(endMm, (c + 1) * cellLen) - Math.max(startMm, c * cellLen) >= need;
       let spanFrom = w.col;
@@ -186,6 +227,7 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
         slot: w.p.slot,
         itemId: w.p.itemId,
         depth: w.depth,
+        level: w.level,
         spanFrom: SUB_SECTIONS[spanFrom],
         spanTo: SUB_SECTIONS[spanTo],
         spreadFrontMm: 0,
@@ -204,6 +246,119 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
     }
   }
   return { size: pillow.size, active, cellLengthMm: r1(cellLen), pieces };
+}
+
+/** One pouch of a Layer as `packLayer` moves it: its column, its extent (mm from the Section's front), and how it gives. */
+export type LayerExtent = {
+  col: number;
+  startMm: number;
+  endMm: number;
+  /** A Neck support: firm foam, it is not pressed shorter while a pouch still can be. */
+  firm: boolean;
+  /** Placed by hand, where it can move: it stays where it was put, and its neighbours make room. */
+  held: boolean;
+};
+
+/** A column of one Layer as `packLayer` moves it: its pouches side by side across, pressing as one. */
+type LayerColumn = { members: LayerExtent[]; S: number; E: number; G: number; firm: number; held: boolean };
+
+/**
+ * One height of a Section's stack packed end to end, as pouches are stuffed in one
+ * after another (Ivan, 9-11-2026: "the front filling and the back filling are
+ * supposed to collide ... compress the fillings together"). A column's pouches
+ * of the Layer lie side by side across and press as one. Where columns
+ * overlap as each stands on its own:
+ *
+ * - a column placed by hand stays where it was put, its neighbours make room
+ *   (one laid over another placed by hand does not hold);
+ * - between those and the Section's walls, the rest are pushed apart, end to
+ *   end, by the least move, each still its own length, where there is room;
+ * - where there is none, they are pressed shorter against each other, wall to
+ *   wall. Each column gives its share of the shortfall by what it can give — a
+ *   pouch any of its length, so pouches pressed together shorten alike; a
+ *   Neck support none, being firm, until nothing else is left to give.
+ *
+ * Changes `layer` in place. A Layer whose columns do not overlap is left as it is.
+ */
+export function packLayer(layer: LayerExtent[], sectionMm: number): void {
+  const cols = [...new Set(layer.map((e) => e.col))].sort((a, b) => a - b);
+  if (cols.length < 2) return;
+  const groups = cols.map((col): LayerColumn => {
+    const members = layer.filter((e) => e.col === col);
+    const S = Math.min(...members.map((e) => e.startMm));
+    const E = Math.max(...members.map((e) => e.endMm));
+    const firm = Math.max(0, ...members.filter((e) => e.firm).map((e) => e.endMm - e.startMm));
+    return { members, S, E, G: E - S, firm, held: members.some((e) => e.held) };
+  });
+  if (groups.every((g, i) => i === 0 || groups[i - 1].E <= g.S + EPS)) return;
+  let heldTo = 0;
+  for (const g of groups) {
+    if (!g.held) continue;
+    if (g.S < heldTo - EPS) g.held = false;
+    else heldTo = g.E;
+  }
+  // The room either side of each column placed by hand, wall to wall.
+  let from = 0;
+  let a = 0;
+  for (let i = 0; i <= groups.length; i++) {
+    if (i < groups.length && !groups[i].held) continue;
+    packRun(groups.slice(from, i), a, i < groups.length ? groups[i].S : sectionMm);
+    if (i < groups.length) a = groups[i].E;
+    from = i + 1;
+  }
+}
+
+/** Columns between `a` and `b` (a wall, or a column placed by hand) pushed apart where they fit, else pressed shorter. */
+function packRun(groups: LayerColumn[], a: number, b: number): void {
+  if (groups.length === 0) return;
+  if (groups.every((g, i) => g.S >= (i ? groups[i - 1].E : a) - EPS) && groups[groups.length - 1].E <= b + EPS) return;
+  const total = groups.reduce((t, g) => t + g.G, 0);
+  const move = (g: LayerColumn, by: number) => {
+    for (const e of g.members) {
+      e.startMm += by;
+      e.endMm += by;
+    }
+  };
+  if (total <= b - a + EPS) {
+    // Pushed apart by the least move: each column's start less the lengths before it may never fall back (pool the
+    // ones that would, at their mean), then kept between a and b.
+    const before = groups.map((_, i) => groups.slice(0, i).reduce((t, g) => t + g.G, 0));
+    const blocks: { sum: number; n: number }[] = [];
+    groups.forEach((g, i) => {
+      blocks.push({ sum: g.S - before[i], n: 1 });
+      while (blocks.length > 1 && blocks[blocks.length - 2].sum / blocks[blocks.length - 2].n > blocks[blocks.length - 1].sum / blocks[blocks.length - 1].n) {
+        const last = blocks.pop()!;
+        blocks[blocks.length - 1].sum += last.sum;
+        blocks[blocks.length - 1].n += last.n;
+      }
+    });
+    const u = blocks.flatMap((k) => Array<number>(k.n).fill(Math.min(Math.max(k.sum / k.n, a), Math.max(b - total, a))));
+    groups.forEach((g, i) => move(g, u[i] + before[i] - g.S));
+    return;
+  }
+  // Pressed wall to wall: the shortfall shared by what each column can give, then, if that is not enough, by length.
+  const short = total - Math.max(b - a, 0);
+  const give = groups.map((g) => Math.max(g.G - g.firm, 0));
+  const canGive = give.reduce((t, v) => t + v, 0);
+  const first = Math.min(short, canGive);
+  const shrink = give.map((v) => (canGive > 0 ? (first * v) / canGive : 0));
+  const left = groups.map((g, i) => g.G - shrink[i]);
+  const leftTotal = left.reduce((t, v) => t + v, 0);
+  if (short > first && leftTotal > 0) left.forEach((v, i) => (shrink[i] += ((short - first) * v) / leftTotal));
+  let at = a;
+  groups.forEach((g, i) => {
+    const G2 = Math.max(g.G - shrink[i], 0);
+    const scale = g.G > 0 ? G2 / g.G : 0;
+    for (const e of g.members) {
+      const len = e.endMm - e.startMm;
+      const len2 = e.firm ? Math.min(len, G2) : len * scale;
+      const centre = at + ((e.startMm + e.endMm) / 2 - g.S) * scale;
+      const start = Math.min(Math.max(centre - len2 / 2, at), at + G2 - len2);
+      e.startMm = start;
+      e.endMm = start + len2;
+    }
+    at += G2;
+  });
 }
 
 /**

@@ -212,6 +212,8 @@ export type PieceLayout = {
   itemId: number;
   /** The piece's layer: 0 = top/front, increasing = deeper. */
   depth: number;
+  /** Its height in its cell's stack from the floor: 0 = the bottom Layer. Pouches at one height press end to end. */
+  level: number;
   /**
    * The rect once the fill has settled (slice 11): the authored rect spread
    * front/back into the empty neighbouring sub-sections, anchored at its
@@ -224,6 +226,11 @@ export type PieceLayout = {
   range: NudgeRange;
   /** Placed by hand (a fine offset either way): the soft settle holds it where it was put. */
   nudged: boolean;
+  /**
+   * Its own length front ↔ back, view units: `h`, or more where its Layer's neighbours press it shorter end to
+   * end (stuffed, 9-11-2026). The soft settle remembers this length, so a pressed pouch pushes back on them.
+   */
+  relaxedH: number;
 } & PieceRect;
 
 /** What the pillow layout needs beyond the placements: the Size's stage, each item's dimensions and the fit. */
@@ -293,13 +300,16 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
           const s = settleOf.get(key);
           const { x, w, homeX, minX, maxX } = packed[idx];
           // True size (9-11-2026): its own length where the settle stands it — centred on its cell, or where it was
-          // put — the same extent the cut draws. Never cut to its cell, never slumped past its length.
+          // put — the same extent the cut draws; shorter only where its Layer's neighbours press it end to end
+          // (stuffed). Never cut to its cell, never laid over a neighbour, never slumped past its length.
           const own = dimsOf(piece.itemId).lengthMm;
           const reachFrom = s ? SUB_SECTIONS.indexOf(s.reachFrom) : col;
           const reachTo = s ? SUB_SECTIONS.indexOf(s.reachTo) : col;
           const placed = s ?? extentAlong(col, cellLen, own, (piece.offsetYMm ?? 0) * sizeF.along, reachFrom, reachTo, settle.active);
           const home = extentAlong(col, cellLen, own, 0, reachFrom, reachTo, settle.active);
           const along = alongRect(stage, cellLen, placed.startMm, placed.endMm);
+          // Pressed end to end by its Layer's neighbours, it stands shorter than its own length: the soft settle remembers that length.
+          const pressed = own / Math.max(placed.endMm - placed.startMm, 1);
           // How far front ↔ back it can go: its centre within the columns it may reach.
           const lowest = extentAlong(col, cellLen, own, -Infinity, reachFrom, reachTo, settle.active);
           const highest = extentAlong(col, cellLen, own, Infinity, reachFrom, reachTo, settle.active);
@@ -311,6 +321,7 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
             slot: piece.slot,
             itemId: piece.itemId,
             depth: d,
+            level: layers.length - 1 - d,
             ...rect,
             settled: rect,
             home: { x: homeX, y: alongRect(stage, cellLen, home.startMm, home.endMm).y },
@@ -321,6 +332,7 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
               maxY: alongRect(stage, cellLen, highest.startMm, highest.endMm).y,
             },
             nudged: Boolean(piece.offsetXMm || piece.offsetYMm),
+            relaxedH: pressed > 1 + 1e-3 ? r1(along.h * pressed) : along.h,
           });
         });
       }
