@@ -8,7 +8,7 @@ import {
   type CellKey,
 } from "@/components/spatial/xray-assets";
 import { conformPouchPath, makeRegion, type ConformRegion } from "@/lib/spatial-fillings/conform";
-import { GAP, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
+import { cellFrame, GAP, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
 import type { PillowPlacement } from "@/lib/spatial-fillings/core";
 
 /**
@@ -133,7 +133,7 @@ describe("a compressed piece still conforms inside its regions (slice 03)", () =
 });
 
 describe("a settled piece conforms against silhouette ∩ Section (slice 11)", () => {
-  it("spreads past its cell divider yet stays inside the Section, and the authored outline stays in the cell", async () => {
+  it("a pouch longer than its cell reaches past its cell's edges at its own length, yet stays inside its Section", async () => {
     const { fitPillow } = await import("@/lib/spatial-fillings/fit");
     const { GENERIC_POUCH } = await import("@/lib/spatial-fillings/dimensions");
     const { pointInPolygon } = await import("@/lib/spatial-fillings/conform");
@@ -143,10 +143,11 @@ describe("a settled piece conforms against silhouette ∩ Section (slice 11)", (
     const alone: PillowPlacement[] = [{ section: "center", subSection: "middle", slot: 1, itemId: 1 }];
     const fit = fitPillow(alone, { size: "M", dims });
     const [p] = layoutPlacements(alone, { dims, fit });
-    expect(p.settled.h).toBeGreaterThan(p.h);
+    // True size (9-11-2026): the authored rect is the settled one, the generic pouch's 140 mm in a 110 mm cell.
+    expect(p.settled).toEqual({ x: p.x, y: p.y, w: p.w, h: p.h });
+    expect(p.h).toBeGreaterThan(cellFrame("center", "middle").h);
     const SECTION_REGION = makeRegion(SECTION_POLYGONS.center, GAP);
     const settled = conformPouchPath(p.settled, [SIL_REGION, SECTION_REGION]);
-    const authored = conformPouchPath(p, [SIL_REGION, CELL_REGIONS["center/middle"]]);
     const ring = (d: string) => {
       const nums = (d.match(/-?\d*\.?\d+/g) ?? []).map(Number);
       const pts: [number, number][] = [];
@@ -160,7 +161,5 @@ describe("a settled piece conforms against silhouette ∩ Section (slice 11)", (
       if (!pointInPolygon(pt, CELL_POLYGONS["center/middle"])) outsideCell++;
     }
     expect(outsideCell).toBeGreaterThan(0);
-    for (const pt of ring(authored)) expect(pointInPolygon(pt, CELL_POLYGONS["center/middle"])).toBe(true);
-    expect(settled).not.toBe(authored);
   });
 });

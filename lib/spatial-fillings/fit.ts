@@ -45,7 +45,7 @@ import {
   type PouchDimensions,
   type ResolvedDims,
 } from "./dimensions";
-import { settleBolster, settlePillow, spans, subSectionIndex, type BolsterPieceSettle, type PillowSettle } from "./settle";
+import { settleBolster, settlePillow, spans, subSectionIndex, type BolsterPieceSettle, type PieceSettle, type PillowSettle } from "./settle";
 import type { BolsterLength } from "./xray-layout";
 
 export { SEAM_MM };
@@ -100,7 +100,14 @@ export type CellFit = {
   loftLayers: number;
   /** The other columns this cell's own pieces settled into (slice 11), front → back; the message names them. */
   settledInto: SubSection[];
-  /** The worse of the loft status and every Layer's width status. */
+  /**
+   * True size (9-11-2026): how far, mm, this cell's pouches and a neighbour's in the same Layer overlap at their
+   * ends, because together they are longer than the room front to back; 0 when they fit end to end.
+   */
+  overlapMm: number;
+  /** The neighbouring cells they overlap, front → back. */
+  overlapsWith: SubSection[];
+  /** The worse of the loft status, every Layer's width status, and compressed when its pouches overlap a neighbour's. */
   status: FitStatus;
 };
 
@@ -369,6 +376,7 @@ function cellFit(
   loftMm: number,
   loftLayers: number,
   settledInto: SubSection[] = [],
+  overlap: { mm: number; with: SubSection[] } = { mm: 0, with: [] },
 ): CellFit {
   return {
     section,
@@ -381,8 +389,35 @@ function cellFit(
     thicknessRatios,
     loftLayers,
     settledInto,
-    status: layerFits.reduce((s, l) => worstStatus(s, l.status), stack.status),
+    overlapMm: r1(overlap.mm),
+    overlapsWith: overlap.with,
+    status: worstStatus(
+      layerFits.reduce((s, l) => worstStatus(s, l.status), stack.status),
+      overlap.mm > 0 ? "compressed" : "ok",
+    ),
   };
+}
+
+/**
+ * True size: how far a cell's own pouches overlap the pouches of the other
+ * cells of their Section in the same Layer, at their ends (more than a seam),
+ * and which cells. Pieces of other Layers lie over or under them, not in the way.
+ */
+function endOverlap(settled: readonly PieceSettle[], subSection: SubSection): { mm: number; with: SubSection[] } {
+  let mm = 0;
+  const others = new Set<SubSection>();
+  for (const a of settled) {
+    if (a.subSection !== subSection) continue;
+    for (const b of settled) {
+      if (b.subSection === subSection || b.depth !== a.depth) continue;
+      const o = Math.min(a.endMm, b.endMm) - Math.max(a.startMm, b.startMm);
+      if (o > SEAM_MM + 1e-6) {
+        mm = Math.max(mm, o);
+        others.add(b.subSection);
+      }
+    }
+  }
+  return { mm, with: SUB_SECTIONS.filter((s) => others.has(s)) };
 }
 
 type LayerPieces = readonly { slot: number; itemId: number; dims: PouchDimensions }[];
@@ -507,6 +542,7 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
         loftBySubSection[subSection],
         stack.depths.length,
         settledInto,
+        endOverlap(settled, subSection),
       );
       cells.push(cell);
       sectionStatus = worstStatus(sectionStatus, cell.status);
@@ -600,6 +636,10 @@ export function fitMessage(cell: CellFit, size: string): string {
   if (loftStatus !== "ok") {
     const n = cell.loftLayers;
     return `${where}: ${n} ${n === 1 ? "layer needs" : "layers need"} ${Math.round(cell.relaxedLoftMm)} mm relaxed, ${Math.round(cell.minLoftMm)} mm fully compressed; Size ${size} holds ${Math.round(cell.maxLoftMm)} mm`;
+  }
+  if (cell.overlapMm > 0) {
+    const sectionMm = Math.round(pillowDimensions(size).dims.lengthMm);
+    return `${where}: overlaps ${cell.overlapsWith.join(" and ")} by ${Math.round(cell.overlapMm)} mm at the ends, compressed; the pouches are longer together than the ${sectionMm} mm front to back of Size ${size}`;
   }
   return `${where}: fits`;
 }

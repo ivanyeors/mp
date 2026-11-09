@@ -76,6 +76,32 @@ export function sectionRegion(stage: StageGeometry, section: keyof StageGeometry
   return clipToConvex(stage.silhouettePolygon as ConformPt[], stage.sectionPolygons[section] as ConformPt[]) as Pt[];
 }
 
+/** One piece of the top view as its plane needs it: where it lies, and whether it reaches past its Section's walls. */
+export type TopPlanePiece = SoftTopPiece & { section: keyof StageGeometry["sectionPolygons"]; subSection: string; depth: number; pastSection?: boolean };
+
+/**
+ * The top view's soft planes (true size, 9-11-2026): one per Layer of each
+ * cell, pressed into silhouette ∩ its Section. A cell's own pouches press on
+ * each other side by side, but not on the next cell's, so pouches longer
+ * together than the Section overlap at their ends (the fit marks those cells)
+ * instead of being squeezed back into their cells; and a cell's pouches are
+ * never squeezed for room its neighbours take. A piece reaching past its
+ * Section's walls (a full-length Neck support) settles alone against the
+ * pillow's own walls.
+ */
+export function topPlanes(stage: StageGeometry, pieces: readonly TopPlanePiece[], id: string): SoftTopPlane[] {
+  const groups = new Map<string, TopPlanePiece[]>();
+  for (const p of pieces) {
+    const g = p.pastSection ? `${p.key}/past` : `${p.section}/${p.subSection}/${p.depth}`;
+    groups.set(g, [...(groups.get(g) ?? []), p]);
+  }
+  return [...groups].map(([g, members]) => ({
+    id: `${id}/${g}`,
+    region: members[0].pastSection ? (stage.silhouettePolygon as Pt[]) : sectionRegion(stage, members[0].section),
+    pieces: members.map(({ key, d, rect, shape, held }) => ({ key, d, rect, shape, ...(held ? { held } : {}) })),
+  }));
+}
+
 /** In the dive: the silhouette inside one cell. */
 export function cellRegion(stage: StageGeometry, cell: keyof StageGeometry["cellPolygons"]): Pt[] {
   return clipToConvex(stage.silhouettePolygon as ConformPt[], stage.cellPolygons[cell] as ConformPt[]) as Pt[];
@@ -146,9 +172,11 @@ export function softTopPieces(plane: SoftTopPlane, settings: SoftBodySettings): 
     .filter((x) => x.ring.length >= 3 && x.area > 1)
     .map(({ p, ring, area }): SoftPiece => {
       if (p.shape === "pill") {
-        // The firm roll: it remembers the pill it was drawn as, at the footprint it has.
-        const rest = pairedWith(scaledTo(pouchOutline(p.rect, 10, "pill") as Pt[], area), ring);
-        return { id: p.key, ring, rest, kind: "roll", areaTarget: area, ...heldAcross(p.rect), ...(p.held ? { held: true } : {}) };
+        // The firm roll: it remembers the pill it is, its whole length (true size, 9-11-2026) — not shrunk to what a
+        // curved wall left of its clipped outline, which drew a 150 mm roll 75 mm long; the wall pushes it forward.
+        const own = pouchOutline(p.rect, 10, "pill") as Pt[];
+        const rest = pairedWith(own, ring);
+        return { id: p.key, ring, rest, kind: "roll", areaTarget: Math.abs(signedArea(own)), ...heldAcross(p.rect), ...(p.held ? { held: true } : {}) };
       }
       if (p.shape === "ear") {
         // The firm pad: it remembers the puffy square it was drawn as, at the footprint it has.

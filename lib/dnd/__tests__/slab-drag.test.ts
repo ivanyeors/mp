@@ -186,7 +186,7 @@ describe("describeSlabTarget", () => {
 });
 
 describe("placing a pouch exactly (the cut's fine nudge)", () => {
-  // Real dimensions: a 6D is as long as its column; the Neck support roll leaves room in it.
+  // Real dimensions: a 6D (140 mm) is longer than its 110 mm column; the Neck support roll leaves room in it.
   const ITEMS: Record<number, { name: string; category?: string }> = {
     1: { name: "6D (S)" },
     4: { name: "Cervical Neck Support (M)", category: "accessories" },
@@ -219,7 +219,7 @@ describe("placing a pouch exactly (the cut's fine nudge)", () => {
     if (!r?.ok) throw new Error("expected a placement");
     const after = drawnOf(r.placements, "center/middle/2");
     expect(after.p.endMm).toBeCloseTo(2 * after.cell, 0);
-    // A 6D fills its column between full neighbours: there is nowhere to put it but where it is.
+    // A 6D longer than its column, between full neighbours: centred on it, its ends over theirs, it cannot move.
     const full = drawnOf(mix, "center/middle/1");
     expect(placeSlabDrop(mix, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, full.centre + 30, ctxAt("M"))).toBeNull();
     expect(nudgeSlab(mix, { ...middle, slot: 1 }, 5, ctxAt("M"))).toBeNull();

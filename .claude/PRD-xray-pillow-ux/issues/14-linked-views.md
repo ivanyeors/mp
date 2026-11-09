@@ -136,3 +136,31 @@ Tests: `editor-drafts.test.ts` (keep, read, expire, list by scope, a refusing st
 Measured (preview fixtures, Re-adjust): the same slow hand (20 steps over a phone's drawing, twice the pixels on a desktop's) moves the top view's 6D S from 81–233 mm to 69–221 mm with a finger on a 390 px phone and with a mouse at 1440 px. A brisk mouse drag across cells shows the drop and lands where it was shown.
 
 Tests: `fine-drag.test.ts` (the drawing's scale; 100 px a second over a desktop's drawing creeps as 50 does on a phone), `xray-cross-section.test.tsx` (the shared ghost and its badge), `xray-dive.check.ts` (both views hold with `held-pouch.tsx` and keep no hold code of their own; the top view plans per millimetre).
+
+## Round 6 (Ivan, 9-11-2026): true size — a pouch at the width × length it was measured
+
+> "I've already set the filling template length, but it's not displaying in its right width / size ratio on the top view's X-ray."
+
+- **The cause:** the settle cut every pouch to its cell (a Size S or M cell is 110 mm; the measured pouches are 130–150 mm), and beside an empty cell let it slump past its length. At Size M a 200 × 150 pouch drew 200 × 108 in a full Section and 200 × 169 alone. The Neck support L (500 mm) was cut to its 258 mm Section.
+- **Decided with Ivan (9-11-2026):**
+  - Pouches at true size in both views. Ends overlap where neighbours do not fit, and the cell is marked compressed. No slump.
+  - The Neck support at its full length, across the side Sections, keeping its "does not fit".
+- **What changed:**
+  - **The settle** (`extentAlong`, `settle.ts`): a pouch stands at its own length, centred on its cell, inside its Section.
+    - Where a neighbouring cell of its Layer is free, it stays clear of the occupied one.
+    - A nudge moves it from there, within its own and the free columns; one longer than that room stays centred on it.
+    - The spread planner and the fabric-give helpers for the pillow are gone (the Mbolster keeps its own).
+  - **The fit** (`endOverlap`, `fit.ts`): cells whose pouches overlap a neighbour's in the same Layer are compressed. The message says by how much: `left · front: overlaps middle by 45 mm at the ends, compressed; …`.
+  - **The top view:**
+    - Drawn from the settle, authored = settled.
+    - One soft plane per Layer of each cell (`topPlanes`), so neighbours overlap instead of being pressed or squeezed back into their cells.
+    - No cell clip in the dive.
+    - A roll keeps its whole length in the soft settle: the curved back wall used to shrink a 150 mm roll to 75 mm.
+    - A Neck support alone in its Layer is laid at its full length, centred on its Section, inside the pillow's sides, conformed to the pillow only, settled against the pillow's own walls and painted over every Section.
+  - **The side view (soft cut):** a slab spans its own length in the Section. Slabs at one height in neighbouring cells overlap (`SoftPiece.overlaps`, the solver skips that pair) and no longer rest on each other.
+  - **`placeAlongAt`:** changes nothing for a pouch with no room to move, instead of storing a meaningless offset.
+  - **The calibration sheet:** predicts 0 spread, and the front pouch's own end as the seam.
+
+Measured (Size M, Settings values 200 × 150, 190 × 140, 170 × 130 and a 500 mm Neck support L): drawn 200 × 149, 190 × 140, 170 × 129 in a full Section and 200 × 150 alone; the roll 500 mm across. Size S scales them by the pillow (Settings › Dimensions says so).
+
+Tests: `settle.test.ts` rewritten for the rule, plus `fit` (overlap and message), `xray-layout`, `xray-stage`, `cross-section`, `calibration`, `slab-drag`, `soft-cut` (overlaps only where declared, and only at the ends), `soft-top` (the planes as the top view builds them), `xray-pillow-geometry` and `xray-cross-section`. Browser (preview fixtures, desktop and 390 px): Hui Min (Size S, Neck support L set to 500 mm) and Chloe (Size M), top view, the dive and the three cuts.

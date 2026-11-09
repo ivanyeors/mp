@@ -153,7 +153,8 @@ export function calibrationSheet(registry: DimensionRegistry, templates: readonl
     };
   });
 
-  // Front and back filled with the same pouch, middle empty: where the two meet, from the front edge.
+  // Front and back filled with the same pouch, middle empty: where the front one ends, from the front edge. At true
+  // size (9-11-2026) each keeps its own length, so they meet only if they are long enough to.
   const seamPouch = pouches.find((p) => p.key === "6d/l") ?? pouches[0];
   let seam: SeamRow | null = null;
   if (seamPouch) {
@@ -169,7 +170,7 @@ export function calibrationSheet(registry: DimensionRegistry, templates: readonl
       key: seamPouch.key,
       label: seamPouch.label,
       source: seamPouch.source,
-      seamFromFrontMm: r0(fit.settle.cellLengthMm + front.spreadBackMm),
+      seamFromFrontMm: r0(front.endMm),
       bodyLengthMm: M.lengthMm,
     };
   }

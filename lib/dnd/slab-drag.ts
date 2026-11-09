@@ -187,9 +187,10 @@ export function alongExtent(settle: PillowSettle, ref: PieceRef): AlongExtent | 
  * Layer), never into a neighbour of its own Layer, and stops at the
  * Section's ends, so what either view draws is what the other draws.
  *
- * The stored offset (Size M mm, whole) is solved against the settle itself:
- * a nudge changes which way the pouch spreads (`anchorAlong`), so the spread
- * never leaves it off from where it was put. Its across offset is kept.
+ * The stored offset (Size M mm, whole) is solved against the settle itself,
+ * so a wall or the room its Layer leaves never leaves it off from where it was
+ * put; a pouch longer than that room cannot move (true size). Its across
+ * offset is kept.
  *
  * Unless `keepCell`, a pouch whose centre ends in another column — a free
  * one — moves to that cell, under anything lying there: a pouch slid along
@@ -206,6 +207,8 @@ export function placeAlongAt(
   const here = alongExtent(settlePillow(placements, settleCtx), ref);
   if (!here) return null;
   const len = here.endMm - here.startMm;
+  // True size: a pouch longer than the room its Layer leaves it stands centred on that room, whatever its offset.
+  if (here.reachEndMm - here.reachStartMm < len - 0.5) return null;
   const want = Math.min(Math.max(startMm, here.reachStartMm), Math.max(here.reachStartMm, here.reachEndMm - len));
   let base = placements;
   let at = ref;

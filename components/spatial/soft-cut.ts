@@ -242,9 +242,9 @@ export function dropStack(seeds: readonly Seed[], floorY: number, x0: number, x1
           tp.forEach((v, k) => (top[i0 + k] = v));
         }
       }
-      // A later piece of this level that overlaps this one rests on it.
+      // The level above rests on it. Another piece of this level whose end reaches over it does not: at true size
+      // (9-11-2026) neighbours longer together than the Section overlap at their ends, at one height.
       top.forEach((v, k) => {
-        if (v > 0) base[k] = Math.max(base[k], v);
         support[k] = Math.max(support[k], v);
       });
     }
@@ -285,18 +285,10 @@ export function softCutScene(input: SoftCutInput): {
   for (const { piece, sub } of leaders) depthsOf.set(sub, [...(depthsOf.get(sub) ?? []), piece.depth]);
   for (const d of depthsOf.values()) d.sort((a, b) => b - a);
 
-  // The fit's settle counts Layers from the top, so it can spread a cell's bottom pouch into a neighbour that
-  // holds fewer Layers — under what lies there. Gravity agrees with it only where the neighbour is empty: a
-  // pouch spreads into empty columns beside its cell and no further.
+  // True size (9-11-2026): each pouch spans its own length where the settle stood it, inside the Section — never
+  // cut back to its cell. Two of one Layer that are longer together than the Section overlap at their ends.
   const cellMm = fit.settle.cellLengthMm;
-  const occupied = new Set(leaders.map((l) => SUB_SECTIONS.indexOf(l.sub)));
-  const reach = (c: number) => {
-    let a = c;
-    let b = c;
-    while (a > 0 && !occupied.has(a - 1)) a--;
-    while (b < SUB_SECTIONS.length - 1 && !occupied.has(b + 1)) b++;
-    return [a * cellMm, (b + 1) * cellMm] as const;
-  };
+  const sectionMm = cellMm * SUB_SECTIONS.length;
 
   const volume = settings.volumePct / 100;
   const neckSoftness = 1 - settings.neckFirmness / 100;
@@ -305,7 +297,7 @@ export function softCutScene(input: SoftCutInput): {
     const s = settled.get(piece.key);
     const roll = isRoll(piece.itemId);
     const pad = !roll && (isPad?.(piece.itemId) ?? false);
-    const [lo, hi] = reach(SUB_SECTIONS.indexOf(sub));
+    const [lo, hi] = [0, sectionMm];
     // The fit rounds to 0.1 mm; a span on a cell's edge is on it exactly.
     const onEdge = (mm: number) => (Math.abs(mm - Math.round(mm / cellMm) * cellMm) < 0.15 ? Math.round(mm / cellMm) * cellMm : mm);
     const startMm = Math.max(onEdge(piece.startMm), lo);
@@ -392,8 +384,22 @@ export function softCutScene(input: SoftCutInput): {
     const rest = s.flat ? cushion : pairedWith(cushion, s.ring!);
     return { id: s.id, ring: s.ring!, rest, kind: "pouch", areaTarget: target, areaMin: s.areaMin, over: s.over };
   });
-  // A pouch nudged by hand stays where it was put; its neighbours make room.
-  const softPieces = shaped.map((p, i) => (stacked[i].held ? { ...p, held: true } : p));
+  // A pouch nudged by hand stays where it was put; its neighbours make room. Pouches at the same height from the floor
+  // in other cells whose ends reach over each other overlap there instead of pressing each other back (the fit marks
+  // the cells); one higher up rests on what lies under it, as before.
+  const spanOf = new Map(seeds.map((sd) => [sd.id, { col: sd.col, level: sd.level, x0: sd.x0, x1: sd.x1 }] as const));
+  const overlapsOf = (id: string) => {
+    const a = spanOf.get(id);
+    if (!a) return [];
+    return [...spanOf]
+      .filter(([k, b]) => k !== id && b.col !== a.col && b.level === a.level && Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 2 * f.kx)
+      .map(([k]) => k);
+  };
+  const softPieces = shaped.map((p, i) => {
+    const overlaps = overlapsOf(p.id);
+    const withHeld = stacked[i].held ? { ...p, held: true } : p;
+    return overlaps.length ? { ...withHeld, overlaps } : withHeld;
+  });
   return {
     pieces: softPieces,
     frame: { outline: casePolygon, baseline: f.baseline, width: f.width, height: f.height + 40 },

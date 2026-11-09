@@ -62,6 +62,13 @@ export type SoftPiece = {
    * is held where it was put instead (the top view, 8-11-2026). Absent: its start.
    */
   anchorX?: number;
+  /**
+   * Pieces it does not press on, by id (either side may list the other): the
+   * ends of two pouches of one Layer that are longer together than their
+   * Section overlap rather than push each other back into their cells (true
+   * size, 9-11-2026). Everything else it touches, it presses on.
+   */
+  overlaps?: readonly string[];
 };
 
 export type SolverOptions = {
@@ -329,6 +336,17 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       };
     }),
   ];
+  // Pairs that overlap instead of pressing (`SoftPiece.overlaps`), as body indices (the case is 0).
+  const indexOf = new Map(pieces.map((p, i) => [p.id, i + 1] as const));
+  const passes = new Set<number>();
+  pieces.forEach((p, i) => {
+    for (const other of p.overlaps ?? []) {
+      const j = indexOf.get(other);
+      if (j === undefined) continue;
+      passes.add((i + 1) * rings.length + j);
+      passes.add(j * rings.length + (i + 1));
+    }
+  });
   const N = rings.reduce((s, r) => s + r.pts.length, 0);
   const X = new Float64Array(N);
   const Y = new Float64Array(N);
@@ -692,7 +710,7 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       for (let k = A.start; k < A.start + A.n; k++) {
         sweep(bi, X[k], Y[k]);
         for (let bj = 1; bj < NB; bj++) {
-          if (bj === bi) continue;
+          if (bj === bi || passes.has(bi * rings.length + bj)) continue;
           const bx = bodies[bj].box;
           if (X[k] < bx[0] - gap || X[k] > bx[2] + gap || Y[k] < bx[1] - gap || Y[k] > bx[3] + gap) continue;
           let s: number;

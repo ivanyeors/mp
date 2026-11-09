@@ -44,7 +44,7 @@ import {
   type ResolvedDims,
 } from "./dimensions";
 import type { BolsterFit, CellFit, PillowFit } from "./fit";
-import { authoredStartMm, settlePillow, type PieceSettle } from "./settle";
+import { extentAlong, settlePillow, type PieceSettle } from "./settle";
 import { stageGeometry, XRAY_VIEW, type StageGeometry } from "./xray-stage";
 
 export { XRAY_VIEW };
@@ -159,7 +159,21 @@ function packAcross(
   k: number,
   widthRatios: readonly number[] | undefined,
   offsetsX: readonly number[],
+  /** The pillow's own left and right edges, view units: a roll alone in its Layer may reach that far. */
+  pillowX?: readonly [number, number],
 ): AcrossPack[] {
+  // A Neck support alone in its Layer is laid at its own length (Ivan, 9-11-2026: "full length"), centred on its
+  // Section, reaching over the side Sections if it is longer than its own; the fit still says it does not fit.
+  if (pillowX && pieces.length === 1) {
+    // Never past the pillow's own sides: a roll in a side Section is pushed in from the outer wall, and a nudge
+    // moves it from there.
+    const w = Math.min(footprint(pieces[0], k).w, pillowX[1] - pillowX[0]);
+    const minX = pillowX[0];
+    const maxX = pillowX[1] - w;
+    const homeX = Math.min(Math.max(slab.x + (slab.w - w) / 2, minX), maxX);
+    const x = Math.min(Math.max(homeX + offsetsX[0] * k, minX), maxX);
+    return [{ x: r1(x), w: r1(w), homeX: r1(homeX), minX: r1(minX), maxX: r1(maxX) }];
+  }
   const seams = GAP * (pieces.length - 1);
   const feet = pieces.map((d, i) => footprint(d, k).w * (widthRatios?.[i] ?? 1));
   const sum = feet.reduce((t, w) => t + w, 0);
@@ -275,30 +289,32 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
       );
       // Emit deepest-first so the renderer paints the top layer last (on top).
       for (let d = layers.length - 1; d >= 0; d--) {
+        const roll = layers[d].length === 1 && ctx.dims?.get(layers[d][0].itemId)?.kind === "neck";
         const packed = packAcross(
           slabs[d],
           layers[d].map((p) => dimsOf(p.itemId)),
           stage.k,
-          cellFit?.layers[d]?.pieces.map((p) => p.widthRatio),
+          roll ? undefined : cellFit?.layers[d]?.pieces.map((p) => p.widthRatio),
           // Offsets are M millimetres too, so a pouch pushed to the edge stays at the edge at every Size.
           layers[d].map((p) => (p.offsetXMm ?? 0) * sizeF.across),
+          roll ? [stage.colX[0], stage.colX[SECTIONS.length]] : undefined,
         );
         layers[d].forEach((piece, idx) => {
           const key = `${section}/${subSection}/${piece.slot}`;
           const s = settleOf.get(key);
           const { x, w, homeX, minX, maxX } = packed[idx];
-          // Its own length (a cell's at most), where it stands, and where it would stand un-nudged.
-          const len = Math.min(dimsOf(piece.itemId).lengthMm, cellLen);
-          const homeStart = col * cellLen + (cellLen - len) / 2;
-          const start = s?.startMm ?? homeStart;
-          const end = s?.endMm ?? homeStart + len;
-          const spread = s ? s.spreadFrontMm > 0 || s.spreadBackMm > 0 : false;
-          // The authored rect is its own length where it was put (home + its offset), kept inside where it settled.
-          const put = authoredStartMm(col, cellLen, s?.alongMm ?? len, (piece.offsetYMm ?? 0) * sizeF.along);
-          const own = Math.min(Math.max(put, start), Math.max(start, end - len));
-          const authored = alongRect(stage, cellLen, own, Math.min(own + len, end));
-          const reach = s ? [SUB_SECTIONS.indexOf(s.reachFrom) * cellLen, (SUB_SECTIONS.indexOf(s.reachTo) + 1) * cellLen] : [col * cellLen, (col + 1) * cellLen];
-          const rect = { x, y: authored.y, w, h: authored.h };
+          // True size (9-11-2026): its own length where the settle stands it — centred on its cell, or where it was
+          // put — the same extent the cut draws. Never cut to its cell, never slumped past its length.
+          const own = dimsOf(piece.itemId).lengthMm;
+          const reachFrom = s ? SUB_SECTIONS.indexOf(s.reachFrom) : col;
+          const reachTo = s ? SUB_SECTIONS.indexOf(s.reachTo) : col;
+          const placed = s ?? extentAlong(col, cellLen, own, (piece.offsetYMm ?? 0) * sizeF.along, reachFrom, reachTo, settle.active);
+          const home = extentAlong(col, cellLen, own, 0, reachFrom, reachTo, settle.active);
+          const along = alongRect(stage, cellLen, placed.startMm, placed.endMm);
+          // How far front ↔ back it can go: its centre within the columns it may reach.
+          const lowest = extentAlong(col, cellLen, own, -Infinity, reachFrom, reachTo, settle.active);
+          const highest = extentAlong(col, cellLen, own, Infinity, reachFrom, reachTo, settle.active);
+          const rect = { x, y: along.y, w, h: along.h };
           out.push({
             key,
             section,
@@ -307,9 +323,14 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
             itemId: piece.itemId,
             depth: d,
             ...rect,
-            settled: spread ? { x, w, ...alongRect(stage, cellLen, start, end) } : rect,
-            home: { x: homeX, y: alongRect(stage, cellLen, homeStart, homeStart + len).y },
-            range: { minX, maxX, minY: r1(stage.rowY[0] + reach[0] * stage.k + INSET), maxY: r1(stage.rowY[0] + reach[1] * stage.k - INSET - authored.h) },
+            settled: rect,
+            home: { x: homeX, y: alongRect(stage, cellLen, home.startMm, home.endMm).y },
+            range: {
+              minX,
+              maxX,
+              minY: alongRect(stage, cellLen, lowest.startMm, lowest.endMm).y,
+              maxY: alongRect(stage, cellLen, highest.startMm, highest.endMm).y,
+            },
             nudged: Boolean(piece.offsetXMm || piece.offsetYMm),
           });
         });

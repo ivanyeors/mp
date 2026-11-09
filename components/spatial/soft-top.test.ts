@@ -9,8 +9,8 @@ import { SOFT_BODY_DEFAULTS, solverOptionsFor } from "@/lib/spatial-fillings/sof
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, XRAY_VIEW } from "@/lib/spatial-fillings/xray-stage";
-import { cellRegion, sectionRegion, settleTop, softTopOptions, softTopPieces, type SoftTopPlane } from "./soft-top";
-import { stageRegions } from "./xray-pillow";
+import { cellRegion, sectionRegion, settleTop, softTopOptions, softTopPieces, topPlanes, type SoftTopPlane } from "./soft-top";
+import { reachesPast, stageRegions } from "./xray-pillow";
 
 // The cut's test items and the brand recipes (soft-cut.test.ts), each cell top → bottom.
 const ITEMS: Record<number, { name: string; subtype: string; category?: string }> = {
@@ -28,7 +28,10 @@ const RECIPES: Record<string, Record<SubSection, number[]>> = {
 };
 const shapeOf = (itemId: number) => fillingVisual(SUBTYPES.get(itemId) ?? null).shape;
 
-/** The planes the x-ray settles, built as XrayPillow builds them: one per Layer of each Section. */
+/**
+ * The planes the x-ray settles, built as XrayPillow builds them (`topPlanes`): one per Layer of each cell, inside its
+ * Section; a piece reaching past its Section (a full-length Neck support) alone, inside the pillow.
+ */
 function planesOf(cells: Partial<Record<SubSection, number[]>>, size: PillowSize = "M", sections: readonly Section[] = SECTIONS): SoftTopPlane[] {
   const placements: PillowPlacement[] = sections.flatMap((section) =>
     SUB_SECTIONS.flatMap((subSection) => (cells[subSection] ?? []).map((itemId, row) => ({ section, subSection, slot: row + 1, itemId, row }))),
@@ -37,26 +40,29 @@ function planesOf(cells: Partial<Record<SubSection, number[]>>, size: PillowSize
   const fit = fitPillow(placements, { size, dims: DIMS });
   const pieces = layoutPlacements(placements, { stage, dims: DIMS, fit });
   const regions = stageRegions(stage);
-  const planes: SoftTopPlane[] = [];
-  for (const section of sections) {
-    const list = pieces.filter((p) => p.section === section);
-    for (const depth of [...new Set(list.map((p) => p.depth))]) {
-      planes.push({
-        id: `settled/${section}/${depth}`,
-        region: sectionRegion(stage, section),
-        pieces: list
-          .filter((p) => p.depth === depth)
-          .map((p) => ({ key: p.key, d: conformPouchPath(p.settled, [regions.sil, regions.sections[section]], shapeOf(p.itemId)), rect: p.settled, shape: shapeOf(p.itemId) })),
-      });
-    }
-  }
-  return planes;
+  return topPlanes(
+    stage,
+    pieces.map((p) => {
+      const past = reachesPast(p, stage);
+      return {
+        key: p.key,
+        section: p.section,
+        subSection: p.subSection,
+        depth: p.depth,
+        d: conformPouchPath(p.settled, past ? [regions.sil] : [regions.sil, regions.sections[p.section]], shapeOf(p.itemId)),
+        rect: p.settled,
+        shape: shapeOf(p.itemId),
+        pastSection: past,
+      };
+    }),
+    "settled",
+  );
 }
 
 const overlap = (a: readonly Pt[], b: readonly Pt[]) => a.some(([x, y]) => pointInPolygon(b, x, y) && distanceToPolygon(b, x, y) > 0.5);
 
 describe("soft top view", () => {
-  it("settles every piece of every brand recipe, Size and Section inside its walls, apart from its Layer's neighbours", () => {
+  it("settles every piece of every brand recipe, Size and Section inside its walls, apart from its cell's Layer neighbours", () => {
     for (const [name, cells] of Object.entries(RECIPES))
       for (const size of ["XS", "M", "XL"] as PillowSize[]) {
         const planes = planesOf(cells, size);
@@ -88,7 +94,9 @@ describe("soft top view", () => {
     // Middle: a 6D on top, the Neck support in the Layer under it.
     const planes = planesOf({ middle: [1, 4] }, "M", ["center"]);
     const top = planes.find((p) => p.id.endsWith("/0"))!;
-    const under = planes.find((p) => p.id.endsWith("/1"))!;
+    // The roll (the code's 300 mm Neck support) is longer than the centre is wide: laid at its length, it is its own plane.
+    const under = planes.find((p) => p.pieces.some((q) => q.shape === "pill"))!;
+    expect(under.id).toBe("settled/center/middle/2/past");
     const at = (volumePct: number) => softTopPieces(top, { ...SOFT_BODY_DEFAULTS, volumePct })[0];
     expect(at(150).kind).toBe("pouch");
     expect(at(150).areaTarget!).toBeGreaterThan(at(100).areaTarget!);
@@ -110,18 +118,24 @@ describe("soft top view", () => {
       const pieces = layoutPlacements(placements, { stage, dims: DIMS, fit });
       const regions = stageRegions(stage);
       const list = pieces.filter((p) => p.depth === 0);
-      const plane: SoftTopPlane = {
-        id: "settled/center/0",
-        region: sectionRegion(stage, "center"),
-        pieces: list.map((p) => ({
+      // The top view's own planes (topPlanes): each cell's Layer its own, so the front pouch it overlaps does not
+      // push it back (true size, 9-11-2026).
+      const planes = topPlanes(
+        stage,
+        list.map((p) => ({
           key: p.key,
+          section: p.section,
+          subSection: p.subSection,
+          depth: p.depth,
           d: conformPouchPath(p.settled, [regions.sil, regions.sections.center], shapeOf(p.itemId)),
           rect: p.settled,
           shape: shapeOf(p.itemId),
           held: p.nudged,
         })),
-      };
-      const ring = settleTop([plane], SOFT_BODY_DEFAULTS, XRAY_VIEW).get("center/middle/1")!;
+        "settled/center",
+      );
+      expect(planes.map((pl) => pl.id).sort()).toEqual(["settled/center/center/front/0", "settled/center/center/middle/0"]);
+      const ring = settleTop(planes, SOFT_BODY_DEFAULTS, XRAY_VIEW).get("center/middle/1")!;
       const rect = list.find((p) => p.key === "center/middle/1")!.settled;
       return {
         soft: [ring.reduce((a, q) => a + q[0], 0) / ring.length / stage.k, ring.reduce((a, q) => a + q[1], 0) / ring.length / stage.k],
