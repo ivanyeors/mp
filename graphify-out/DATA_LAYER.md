@@ -177,7 +177,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
 - Read by:
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:552
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:211
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:488
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:535
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:154
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:163
   - `getBolsterBaseQuantities()` [select] — lib/shop/customization-inventory.ts:416
@@ -204,7 +204,7 @@ Changed from pages: `/account`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `
   - `setDefaultFillingTemplateId()` [update] — lib/results/composed-sellable.ts:401
 - Read by:
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:554
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:397
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:444
   - `bolsterDefaults()` [select] — lib/ecommerce/inventory-deduction.ts:155
   - `getDefaultFillingTemplateId()` [select] — lib/results/composed-sellable.ts:344
 
@@ -235,7 +235,7 @@ Changed from pages: `/settings/inventory/configure/[card]`
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:551
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:210
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:84
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:396
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:443
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:162
   - `getAvailableBolsterComponents()` [select] — lib/shop/customization-inventory.ts:234
   - `getAvailableComponents()` [select] — lib/shop/customization-inventory.ts:129
@@ -728,7 +728,7 @@ Changed from pages: `/settings/inventory`
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:538
   - `/settings/integrations/shopify` (page) [select] — app/[lang]/settings/integrations/shopify/shopify-client.tsx:35
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:204
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:394
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:441
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:57
   - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:651
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
@@ -1244,7 +1244,7 @@ Changed from pages: `/account`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `
   - `/settings/costings` (page) [select] — app/[lang]/settings/costings/page.tsx:546
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:209
   - `/settings/inventory/configure` (page) [select] — app/[lang]/settings/inventory/configure/configure-client.tsx:80
-  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:395
+  - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:442
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:32
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:33
   - `POST()` [select] — app/[lang]/settings/inventory/configure/save/route.ts:118

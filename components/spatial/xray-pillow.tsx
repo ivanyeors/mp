@@ -77,14 +77,14 @@ import {
 } from "@/lib/spatial-fillings/fit";
 import { layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { alongExtent, homeCentreMm, nudgeSlab, placeAlongAt, snapAlongCentre, type AlongSnap } from "@/lib/dnd/slab-drag";
-import { holdSnap, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
+import { creepGain, holdSnap, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
 import { settlePillow } from "@/lib/spatial-fillings/settle";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import { PILLOW_DIMENSIONS, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { draftSoftBody, HELD_EASE_MS, padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 import { cellRegion, sectionRegion, useSoftTopPaths, type SoftTopPlane } from "./soft-top";
-import { DragBadge, landingText } from "./drag-badge";
+import { acrossText, DragBadge, landingText } from "./drag-badge";
 import { clearXrayDraft, placementsSignature, publishXrayDraft, useXrayDraft, type XrayDraft } from "./xray-link";
 
 // Shell regions pouches deform against: the silhouette (wide seam), each
@@ -1215,6 +1215,9 @@ export function XrayPillow({
     const drawn = p.section === dived ? p : p.settled;
     const drawnCx = drawn.x + drawn.w / 2;
     const drawnCy = drawn.y + drawn.h / 2;
+    // Creeps the same millimetres a pixel as the cut does, though the top view draws the pillow smaller.
+    const m = svgRef.current?.getScreenCTM();
+    const creep = creepGain((m ? Math.hypot(m.a, m.b) : 1) * stage.k);
     const d: PouchDrag = {
       source: { section: p.section, subSection: p.subSection, slot: p.slot, depth: p.depth, itemId: p.itemId },
       key,
@@ -1229,7 +1232,7 @@ export function XrayPillow({
       alongShift: p.settled.y + p.settled.h / 2 - drawnCy,
       x: at.x,
       y: at.y,
-      fine: startFineDrag([drawnCx, drawnCy], [e.clientX, e.clientY], e.timeStamp),
+      fine: startFineDrag([drawnCx, drawnCy], [e.clientX, e.clientY], e.timeStamp, creep),
       snapView: 0,
       active: false,
       over: null,
@@ -1425,8 +1428,11 @@ export function XrayPillow({
     if (!p) return null;
     const r = p.section === dived ? p : p.settled;
     const s = (ownDraft?.fit ?? fit).settle.pieces.find((q) => q.key === heldKey);
-    return { cx: r.x + r.w / 2, cy: r.y + r.h / 2, top: r.y, startMm: s?.startMm ?? null, endMm: s?.endMm ?? null };
-  }, [heldKey, ownDraft, shownPieces, pieces, fit, dived]);
+    // Across, mm from where it sits un-nudged at this Size (stored as M millimetres): the badge's other axis.
+    const placed = (ownDraft?.placements ?? placements).find((q) => `${q.section}/${q.subSection}/${q.slot}` === heldKey);
+    const acrossMm = (placed?.offsetXMm ?? 0) * sizeFactors(PILLOW_DIMENSIONS[pillowSize]).across;
+    return { cx: r.x + r.w / 2, cy: r.y + r.h / 2, top: r.y, startMm: s?.startMm ?? null, endMm: s?.endMm ?? null, acrossMm };
+  }, [heldKey, ownDraft, shownPieces, pieces, fit, dived, placements, pillowSize]);
   useEffect(() => {
     snapHeld.current = draftSnap && ownDraft && heldDrawn ? [heldDrawn.cx, heldDrawn.cy] : null;
   }, [draftSnap, ownDraft, heldDrawn]);
@@ -2146,9 +2152,10 @@ export function XrayPillow({
           {/* Where the held pouch lands, mm from the front (and the snap that put it there), over it — clear of a finger. */}
           {drag?.active && heldDrawn && heldDrawn.startMm !== null && heldDrawn.endMm !== null && (
             <DragBadge
-              text={landingText(heldDrawn.startMm, heldDrawn.endMm, ownDraft ? draftSnap : null)}
+              text={[landingText(heldDrawn.startMm, heldDrawn.endMm, ownDraft ? draftSnap : null), acrossText(heldDrawn.acrossMm)].filter(Boolean).join(" · ")}
               x={heldDrawn.cx}
               y={Math.max(heldDrawn.top - (isMobile ? 22 : 14), isMobile ? 18 : 12)}
+              within={[4, XRAY_VIEW.width - 4]}
               font={isMobile ? 20 : 12}
             />
           )}
@@ -2338,7 +2345,7 @@ export function XrayPillow({
           className="pointer-events-none absolute inset-x-0 top-full text-center text-[11px] leading-4 text-white/70"
           aria-hidden
         >
-          Tap a section to edit · drag a pouch to move it
+          Tap a section to edit · drag a pouch to move it, slowly to place it exactly
         </p>
       )}
 

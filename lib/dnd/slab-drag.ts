@@ -17,7 +17,7 @@
  * what lands. The committed cut never recomputes: it draws the host's fit.
  */
 
-import { cellLayers, layerOf, moveLayer, movePiece, nudgePiece, type Cell, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
+import { addPiece, cellLayers, layerOf, moveLayer, movePiece, nudgePiece, type Cell, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
 import { MAX_LAYERS_PER_CELL, MAX_OFFSET_MM, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
 import type { AlongSlab } from "@/lib/spatial-fillings/cross-section";
 import { fitPillow, type FitContext, type PillowFit } from "@/lib/spatial-fillings/fit";
@@ -109,6 +109,31 @@ export function applySlabDrop(placements: PillowPlacement[], source: PieceRef, t
   const r = movePiece(placements, source, { cell, layer: lifted });
   if (!r.ok || gap >= lifted) return r;
   return { ...r, placements: moveLayer(r.placements, cell, lifted, Math.max(gap, 0)) };
+}
+
+/**
+ * Add a filling where a tap on the cut names (Ivan, 9-11-2026: "tap on the
+ * side view for the front, middle, back section" to add): the same target a
+ * drop there would take. An empty column takes it as the cell's first piece;
+ * above a stack, between two Layers or under it, a new Layer there; a Layer's
+ * middle, beside what is in that Layer. A cell already at its Layer cap takes
+ * it by the add rule instead (its top Layer with room), so the tap still adds
+ * where it can. Refuses with `addPiece`'s cap errors.
+ */
+export function addAtSlabTarget(
+  placements: PillowPlacement[],
+  target: SlabDropTarget,
+  itemId: number,
+): { ok: true; placements: PillowPlacement[] } | { ok: false; error: string } {
+  const cell: Cell = { section: target.section, subSection: target.subSection };
+  if (target.kind === "cell") return addPiece(placements, cell, itemId, null);
+  if (target.kind === "layer") return addPiece(placements, cell, itemId, target.depth);
+  const layers = cellLayers(placements, cell).length;
+  if (layers >= MAX_LAYERS_PER_CELL) return addPiece(placements, cell, itemId, null);
+  // In under the deepest, then lifted to its gap, as a drop into a gap is.
+  const added = addPiece(placements, cell, itemId, layers);
+  if (!added.ok || target.gap >= layers) return added;
+  return { ok: true, placements: moveLayer(added.placements, cell, layers, Math.max(target.gap, 0)) };
 }
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { cellLayers } from "@/lib/configurator/staff-assist";
-import { alongExtent, applySlabDrop, cellBands, describeSlabTarget, homeCentreMm, nudgeSlab, placeAlongAt, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, snapAlongCentre, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
+import { addAtSlabTarget, alongExtent, applySlabDrop, cellBands, describeSlabTarget, homeCentreMm, nudgeSlab, placeAlongAt, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, snapAlongCentre, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
 import type { PillowPlacement, Section, SubSection } from "@/lib/spatial-fillings/core";
 import { alongSlabs } from "@/lib/spatial-fillings/cross-section";
 import { GENERIC_POUCH, PILLOW_DIMENSIONS, resolveDims, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -121,6 +121,38 @@ describe("applySlabDrop", () => {
     expect(result?.ok).toBe(true);
     expect(fit?.sections.center.columns.middle?.planes).toHaveLength(2);
     expect(previewSlabDrop(placements, { ...front, slot: 1 }, { kind: "cell", ...front }, { size: "M" })).toEqual({ result: null, fit: null });
+  });
+});
+
+describe("addAtSlabTarget: a tap on the cut adds where it names", () => {
+  const added = (r: ReturnType<typeof addAtSlabTarget>) => {
+    if (!r.ok) throw new Error(`expected an add, got ${r.error}`);
+    return r.placements;
+  };
+  const two = [at("center", "middle", 1, 3, 0), at("center", "middle", 2, 4, 1)];
+
+  it("an empty column: the cell's first piece", () => {
+    expect(stack(added(addAtSlabTarget(two, { kind: "cell", ...front }, 9)), front)).toEqual([[9]]);
+  });
+
+  it("above the stack, between Layers and under it: a new Layer exactly there", () => {
+    expect(stack(added(addAtSlabTarget(two, { kind: "gap", ...middle, gap: 0 }, 9)), middle)).toEqual([[9], [3], [4]]);
+    expect(stack(added(addAtSlabTarget(two, { kind: "gap", ...middle, gap: 1 }, 9)), middle)).toEqual([[3], [9], [4]]);
+    expect(stack(added(addAtSlabTarget(two, { kind: "gap", ...middle, gap: 2 }, 9)), middle)).toEqual([[3], [4], [9]]);
+  });
+
+  it("a Layer's middle: beside what is in it", () => {
+    expect(stack(added(addAtSlabTarget(two, { kind: "layer", ...middle, depth: 1 }, 9)), middle)).toEqual([[3], [4, 9]]);
+  });
+
+  it("a cell at its Layer cap still takes it, on its top Layer with room", () => {
+    const five = [1, 2, 3, 4, 5].map((item, row) => at("center", "middle", row + 1, item, row));
+    expect(stack(added(addAtSlabTarget(five, { kind: "gap", ...middle, gap: 0 }, 9)), middle)).toEqual([[1, 9], [2], [3], [4], [5]]);
+  });
+
+  it("leaves every other cell as it was", () => {
+    const next = added(addAtSlabTarget([...two, at("left", "front", 1, 7)], { kind: "gap", ...middle, gap: 0 }, 9));
+    expect(next.filter((p) => p.section === "left")).toEqual([at("left", "front", 1, 7)]);
   });
 });
 

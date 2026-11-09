@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BRISK_SPEED, CREEP_SPEED, FINE_GAIN, fineGain, holdSnap, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
+import { BRISK_SPEED, CREEP_MM_PER_PX, CREEP_SPEED, creepGain, FINE_GAIN, fineGain, holdSnap, MIN_CREEP_GAIN, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
 
 /** Drive a drag along x: `px` screen pixels per sample, `ms` apart, one view unit per pixel. */
 function run(samples: number, px: number, ms: number, from: FineDrag = startFineDrag([0, 0], [0, 0], 0)) {
@@ -54,5 +54,32 @@ describe("fine drag: slowing down is the fine control", () => {
     expect(d.at).toEqual([42, 0]);
     const next = moveFineDrag(d, [d.direct[0] + 1, 0], [d.client[0] + 1, 0], d.t + 200);
     expect(next.at[0]).toBeCloseTo(42 + FINE_GAIN, 6);
+  });
+});
+
+describe("the same millimetres in both views", () => {
+  it("creeps at FINE_GAIN on a large drawing, less on a small one, never under MIN_CREEP_GAIN", () => {
+    expect(creepGain(2)).toBe(FINE_GAIN); // the cut on a desktop
+    expect(creepGain(0.5)).toBeCloseTo(0.5 * CREEP_MM_PER_PX, 6); // the top view on a phone
+    expect(creepGain(0.1)).toBe(MIN_CREEP_GAIN);
+    expect(creepGain(0)).toBe(FINE_GAIN);
+    expect(creepGain(Number.NaN)).toBe(FINE_GAIN);
+  });
+
+  it("a creeping pixel moves a filling no more than CREEP_MM_PER_PX on the top view at phone scale", () => {
+    const pxPerMm = 0.5; // ~0.53 px a view unit × k 0.94 (Size M), measured on a 390 px phone
+    const creep = creepGain(pxPerMm);
+    // One view unit per pixel in `run`, so view units moved / pixels = gain; mm = view units / (px per mm) here.
+    const d = run(30, 1, 50, startFineDrag([0, 0], [0, 0], 0, creep));
+    const mmPerPx = d.at[0] / 30 / pxPerMm;
+    expect(mmPerPx).toBeLessThanOrEqual(CREEP_MM_PER_PX * 1.05);
+    // Before, at FINE_GAIN, the same creep moved it about 0.6 mm a pixel.
+    expect(run(30, 1, 50).at[0] / 30 / pxPerMm).toBeGreaterThan(0.55);
+  });
+
+  it("still follows a brisk hand one to one, and snaps then, at a low creep gain", () => {
+    const d = run(20, 10, 16, startFineDrag([0, 0], [0, 0], 0, MIN_CREEP_GAIN));
+    expect(d.at[0]).toBeCloseTo(d.direct[0], 0);
+    expect(snapsNow(d)).toBe(true);
   });
 });

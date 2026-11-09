@@ -7,7 +7,7 @@
  * drag, the keys, the fit) stays in that one component, so this is a layout,
  * never a second cross-section.
  *
- * Each cut still edits. A pouch dragged within a panel lands where it is let
+ * Each cut still edits. A tap on a column adds a filling there. A pouch dragged within a panel lands where it is let
  * go; dragged onto a sibling panel it moves to that Section, at home in the
  * same column — the drop a Section tab takes on the single cut. One readout
  * line serves all three, so the panels never jump as the pointer moves.
@@ -107,10 +107,12 @@ export function XrayCrossSectionStrip({
   );
   const dropTarget = SECTIONS.map((s) => dropInto[s]).find(Boolean) ?? null;
   const readout = SECTIONS.map((s) => readouts[s]).find(Boolean) ?? null;
+  // A tap on a column adds a filling there (each cut's own menu), once there are Items to pick from.
+  const addHint = editable && items?.length ? (isMobile ? "Tap Front, Middle or Back to add a filling. " : "Click a column to add a filling. ") : "";
   const idleHint = editable
     ? isMobile
-      ? "Drag a filling and it lands where you let go; drop it on another cut to move it to that Section."
-      : "Drag a filling within a cut and it lands where you let go, or onto another cut to move it to that Section. Keys: ← → front / back · Alt ← → nudge (+ Shift: 1 mm) · ↑ ↓ layer · Shift ← → Section."
+      ? `${addHint}Drag a filling and it lands where you let go; drop it on another cut to move it to that Section.`
+      : `${addHint}Drag a filling within a cut and it lands where you let go, or onto another cut to move it to that Section. Keys: ← → front / back · Alt ← → nudge (+ Shift: 1 mm) · ↑ ↓ layer · Shift ← → Section.`
     : null;
 
   const titleFor = useCallback(

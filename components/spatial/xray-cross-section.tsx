@@ -23,16 +23,17 @@
  */
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref, type RefObject } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SunburstMenu } from "@/components/ui/sunburst-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { cellLayers, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
-import { applySlabDrop, asMove, cellBands, describeSlabTarget, nudgeSlab, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget, type SlabPlaceResult } from "@/lib/dnd/slab-drag";
+import { cellLayers, type Cell, type MoveResult, type PieceRef } from "@/lib/configurator/staff-assist";
+import { addAtSlabTarget, applySlabDrop, asMove, cellBands, describeSlabTarget, nudgeSlab, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, stepSlabLayer, type SlabDropTarget, type SlabPlaceResult } from "@/lib/dnd/slab-drag";
 import { nudgeKeyFor } from "@/lib/configurator/move-keys";
-import { holdSnap, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
+import { creepGain, holdSnap, moveFineDrag, snapsNow, startFineDrag, type FineDrag } from "@/lib/dnd/fine-drag";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { SECTIONS, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "@/lib/spatial-fillings/core";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -46,7 +47,7 @@ import {
   type Cut,
 } from "@/lib/spatial-fillings/cross-section";
 import type { BolsterFit, FitStatus, PillowFit } from "@/lib/spatial-fillings/fit";
-import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
+import { fillingItemsToSunburst, fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { draftSoftBody, HELD_EASE_MS, padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { cn } from "@/lib/utils";
@@ -481,6 +482,10 @@ export type CutEditorView = {
     /** A snap's line: the edge or middle it lined the pouch up with, view x. */
     guideX?: number | null;
   } | null;
+  /** A tap on a column adds a filling there: the cursor says so. */
+  addable?: boolean;
+  /** The column a tap would add to (hovered), or whose add menu is open: lightly marked. */
+  addColumn?: SubSection | null;
 };
 
 
@@ -536,6 +541,8 @@ export function CrossSectionSvg({
   const wellOf = (subtype: string | null) => (fillingVisual(subtype).shape === "ear" ? well : undefined);
   const labelOf = (itemId: number) => pieceLabelLines(itemSubtypes.get(itemId) ?? null, itemSizes?.get(itemId) ?? null).join(" ");
   const dropX0 = drag?.column ? f.x0 + SUB_SECTIONS.indexOf(drag.column) * f.colW : null;
+  const addColumn = !drag ? (editor?.addColumn ?? null) : null;
+  const addX0 = addColumn ? f.x0 + SUB_SECTIONS.indexOf(addColumn) * f.colW : null;
   const toneColor = drag?.tone === "over" || drag?.tone === "refused" ? AMBER : DROP;
   const top = f.baseline - f.shellH;
   const slabs = alongSlabs(fit, cut.section).map((slab) => {
@@ -592,7 +599,7 @@ export function CrossSectionSvg({
       xmlns="http://www.w3.org/2000/svg"
       preserveAspectRatio="xMidYMid meet"
       className="h-auto w-full"
-      style={drag ? { overflow: "visible", touchAction: "none" } : undefined}
+      style={drag ? { overflow: "visible", touchAction: "none" } : editor?.addable ? { cursor: "pointer" } : undefined}
       aria-label={`Cross-section ${cutLabel(cut)}`}
       data-xray-cross-section="along"
       data-xray-cut-aspect={aspectOf(profile).toFixed(3)}
@@ -637,6 +644,15 @@ export function CrossSectionSvg({
             data-xray-drop-column={drag?.tone}
           />
         )}
+        {addX0 !== null && (
+          <path
+            d={`M${r1(addX0)} 0 H${r1(addX0 + f.colW)} V${r1(f.baseline)} H${r1(addX0)} Z`}
+            fill={DROP}
+            fillOpacity={0.1}
+            pointerEvents="none"
+            data-xray-add-column={addColumn}
+          />
+        )}
         {/* Each piece once, over the length it settles to, resting on what lies under it, inside the case. */}
         {slabs.filter((s) => !s.over).map((s) => s.el)}
       </g>
@@ -652,7 +668,7 @@ export function CrossSectionSvg({
         const cx = f.x0 + i * f.colW + f.colW / 2;
         return (
           <g key={col.key} data-column={col.key} data-status={col.status}>
-            <text x={r1(cx)} y={r1(f.baseline + L.labelDy)} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={drag?.column === col.key ? toneColor : XRAY_SHELL_VAR} className="select-none capitalize">
+            <text x={r1(cx)} y={r1(f.baseline + L.labelDy)} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={drag?.column === col.key ? toneColor : addColumn === col.key ? DROP : XRAY_SHELL_VAR} className="select-none capitalize">
               {col.label}
             </text>
           </g>
@@ -868,6 +884,23 @@ export function XrayCrossSection({
   const [overTab, setOverTab] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hoverKey, setHoverKey] = useState<string | null>(null);
+  // Tap to add (Ivan, 9-11-2026): a tap on a column — beside its pouches, above or under the stack, or on its
+  // name — blooms the fillings there, and the pick lands where the tap was (`addAtSlabTarget`), as a drop there
+  // would. A tap on a pouch still selects it.
+  const canAdd = editable && Boolean(items?.length);
+  const fillingTree = useMemo(() => fillingItemsToSunburst(items ?? []), [items]);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const tapRef = useRef<{ pointerId: number; x: number; y: number; closing: boolean } | null>(null);
+  // Each kept with the Section it was on, so another Section shown drops it without an effect.
+  const [addState, setAddAt] = useState<{ target: SlabDropTarget; left: number; top: number } | null>(null);
+  const addAt = addState?.target.section === cut.section ? addState : null;
+  // Read when a press starts: a tap that closes the open menu does not open another.
+  const addOpen = useRef(false);
+  useEffect(() => {
+    addOpen.current = addAt !== null;
+  }, [addAt]);
+  const [hoverState, setHoverColumn] = useState<Cell | null>(null);
+  const hoverColumn = hoverState?.section === cut.section ? hoverState.subSection : null;
 
   useEffect(() => {
     placementsRef.current = placements;
@@ -1007,6 +1040,55 @@ export function XrayCrossSection({
   /** A view x on the cut as whole mm from the Section's front. */
   const alongMmAt = (x: number) => Math.round((x - frame.x0) / frame.kx);
 
+  /** The cell a point on the cut is in (its column of this Section), or null outside the pillow's length. */
+  const cellAt = (clientX: number, clientY: number) => {
+    const v = toView(clientX, clientY);
+    const col = Math.floor((v.x - frame.x0) / frame.colW);
+    if (col < 0 || col >= SUB_SECTIONS.length) return null;
+    return { cell: { section: cut.section, subSection: SUB_SECTIONS[col] }, v };
+  };
+
+  /** Bloom the fillings where the tap was: in the column, at the place a drop there would take. */
+  const openAdd = (clientX: number, clientY: number) => {
+    const at = cellAt(clientX, clientY);
+    const box = bodyRef.current?.getBoundingClientRect();
+    if (!at || !box) return;
+    const { cell, v } = at;
+    // On the column's name, under the case: the add rule. In the column: above, between or under its Layers.
+    const target: SlabDropTarget =
+      v.y > frame.floor ? { kind: "cell", ...cell } : slabTargetAt(cell, cellBands(slabs, cell), (frame.floor - v.y) / frame.ky);
+    setHoverColumn(null);
+    setAddAt({ target, left: clientX - box.left, top: clientY - box.top });
+  };
+
+  /** Add the picked filling where the tap named; Undo while it is still the last thing that happened. */
+  const addHere = (target: SlabDropTarget, itemId: number) => {
+    if (!placements || !onPlacementsChange) return;
+    const before = placements;
+    const r = addAtSlabTarget(before, target, itemId);
+    if (!r.ok) {
+      toast.error(r.error); // cap feedback, the add's path
+      return;
+    }
+    onPlacementsChange(r.placements);
+    const cell = { section: target.section, subSection: target.subSection };
+    const isNew = (p: PillowPlacement) => !before.some((q) => q.section === p.section && q.subSection === p.subSection && q.slot === p.slot);
+    const layer = cellLayers(r.placements, cell).findIndex((l) => l.some(isNew));
+    toast.success(`Added ${labelOf(itemId)} to ${cell.section} ${cell.subSection}${layer >= 0 ? `, layer ${layer + 1}` : ""}`, {
+      id: "xray-move",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          if (placementsRef.current !== r.placements) {
+            toast.error("Undo unavailable — the mix changed after the add");
+            return;
+          }
+          onPlacementsChange(before);
+        },
+      },
+    });
+  };
+
   /** Rest on a tab long enough and the cut opens that Section, so the drop can be placed there exactly. */
   const armSpring = (section: Section) => {
     // A pinned cut has no tab to open: its siblings are already on screen.
@@ -1123,7 +1205,8 @@ export function XrayCrossSection({
           active: false,
           target: null,
           grab: { x: v.x - centre.x, y: v.y - centre.y },
-          fine: startFineDrag([centre.x, centre.y], [e.clientX, e.clientY], e.timeStamp),
+          // The same millimetres a creeping pixel as the top view, whatever this cut's size on screen.
+          fine: startFineDrag([centre.x, centre.y], [e.clientX, e.clientY], e.timeStamp, creepGain(((svgRef.current?.getBoundingClientRect().width ?? frame.L.width) / frame.L.width) * frame.kx)),
           along: null,
           pointerType: e.pointerType,
         };
@@ -1176,9 +1259,24 @@ export function XrayCrossSection({
   };
 
   const svgHandlers: React.SVGProps<SVGSVGElement> = {
+    onPointerDown: (e) => {
+      // A pouch's own press starts its hold; anywhere else on the cut a press may be a tap that adds.
+      if (!canAdd || e.button !== 0 || holdRef.current || following) return;
+      if (e.target instanceof Element && e.target.closest("[data-slab-hit]")) return;
+      tapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, closing: addOpen.current };
+    },
+    onPointerLeave: () => setHoverColumn(null),
     onPointerMove: (e) => {
       const hold = holdRef.current;
-      if (!hold || hold.pointerId !== e.pointerId) return;
+      if (!hold || hold.pointerId !== e.pointerId) {
+        // A mouse over a column, off its pouches, marks where a click would add.
+        if (canAdd && e.pointerType === "mouse" && !addOpen.current && !holdRef.current) {
+          const onPouch = e.target instanceof Element && e.target.closest("[data-slab-hit]");
+          const next = onPouch ? null : (cellAt(e.clientX, e.clientY)?.cell ?? null);
+          setHoverColumn((c) => (c?.section === next?.section && c?.subSection === next?.subSection ? c : next));
+        }
+        return;
+      }
       if (!hold.active && Math.hypot(e.clientX - hold.startX, e.clientY - hold.startY) < DRAG_THRESHOLD_PX) return;
       const v = toView(e.clientX, e.clientY);
       // Front ↔ back is precise by default: a creeping hand moves it a fraction of its travel. Up and down is the
@@ -1213,6 +1311,13 @@ export function XrayCrossSection({
       }
     },
     onPointerUp: (e) => {
+      const tap = tapRef.current;
+      if (tap && tap.pointerId === e.pointerId) {
+        tapRef.current = null;
+        // A tap, not a scroll or a press that wandered; one that closed the open menu opens no other.
+        if (!tap.closing && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < DRAG_THRESHOLD_PX) openAdd(e.clientX, e.clientY);
+        return;
+      }
       const hold = holdRef.current;
       if (!hold || hold.pointerId !== e.pointerId) return;
       endHold();
@@ -1236,6 +1341,7 @@ export function XrayCrossSection({
       commit(placements, r, hold.source, r.within);
     },
     onPointerCancel: (e) => {
+      if (tapRef.current?.pointerId === e.pointerId) tapRef.current = null;
       if (holdRef.current?.pointerId === e.pointerId) endHold();
     },
     onLostPointerCapture: (e) => {
@@ -1277,6 +1383,8 @@ export function XrayCrossSection({
               guideX: snapGuideMm !== null && landing?.section === cut.section ? frame.x0 + snapGuideMm * frame.kx : null,
             }
           : null,
+        addable: canAdd && !held && !following,
+        addColumn: addAt ? (addAt.target.section === shownCut.section ? addAt.target.subSection : null) : hoverColumn,
       }
     : undefined;
 
@@ -1296,6 +1404,10 @@ export function XrayCrossSection({
         // Sliding within its own cell and Layer is a slide, not a drop "side by side".
         text: `${r.ok && r.within ? `Slide within ${r.ref.section} ${r.ref.subSection}` : `Drop ${describeSlabTarget(dropTarget, layers, held.source.section)}`}${landedAt(preview?.fit, keyOf(r.ref))}${r.ok && r.snap ? ` · ${SNAP_WORDS[r.snap]}` : ""}${loft}`,
       };
+    }
+    if (addAt) {
+      const layers = cellLayers(placements ?? [], addAt.target).length;
+      return { tone: "drop" as const, text: `Add a filling: ${describeSlabTarget(addAt.target, layers).replace(/ — side by side$/, ", side by side")}` };
     }
     // A sibling cut holding a pouch says where it lands itself (the strip shows one line for all three).
     if (following?.from === "cut") return null;
@@ -1323,8 +1435,8 @@ export function XrayCrossSection({
     return {
       tone: "muted" as const,
       text: isMobile
-        ? "Drag a filling and it lands where you let go; hold it on a tab to open that Section."
-        : "Drag a filling and it lands where you let go — in its column, another column or layer — or hold it on a Section tab. Keys: ← → front / back · Alt ← → nudge (+ Shift: 1 mm) · ↑ ↓ layer · Shift ← → Section.",
+        ? `${canAdd ? "Tap Front, Middle or Back to add a filling. " : ""}Drag a filling and it lands where you let go; hold it on a tab to open that Section.`
+        : `${canAdd ? "Click a column to add a filling. " : ""}Drag a filling and it lands where you let go — in its column, another column or layer — or hold it on a Section tab. Keys: ← → front / back · Alt ← → nudge (+ Shift: 1 mm) · ↑ ↓ layer · Shift ← → Section.`,
     };
   })();
 
@@ -1341,7 +1453,7 @@ export function XrayCrossSection({
   }, [onDropSection, dropSection]);
 
   const body = (
-    <div className={`space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel>
+    <div ref={bodyRef} className={`relative space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel>
       {onCutChange && tabs ? (
         <CutControls
           cut={shownCut}
@@ -1367,6 +1479,30 @@ export function XrayCrossSection({
         live={following !== null}
       />
       {readout && !onReadout && <CutReadout tone={readout.tone}>{readout.text}</CutReadout>}
+      {/* The add menu blooms where the tap was (portalled by the menu, so no panel clips it); a phone centres it
+          across the panel, so a bloom off a column at the edge stays on the screen, with thumb-sized wedges. */}
+      {addAt && (
+        <div
+          className="absolute z-40 -translate-x-1/2 -translate-y-1/2"
+          style={{ left: isMobile ? "50%" : addAt.left, top: addAt.top, width: isMobile ? "100%" : 240 }}
+          data-xray-cut-add
+        >
+          <SunburstMenu
+            open
+            root={fillingTree}
+            display="text"
+            size={isMobile ? 280 : 220}
+            ringWidth={isMobile ? 48 : 40}
+            holeRadius={isMobile ? 26 : 18}
+            centerIcon={Plus}
+            ariaLabel={`Add filling to ${addAt.target.section} ${addAt.target.subSection}`}
+            onOpenChange={(o) => {
+              if (!o) setAddAt(null);
+            }}
+            onSelect={(leaf) => addHere(addAt.target, Number(leaf.id))}
+          />
+        </div>
+      )}
     </div>
   );
   if (collapsible && isMobile) {

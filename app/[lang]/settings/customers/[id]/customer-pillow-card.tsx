@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BedDouble, Eye, EyeOff, Link2, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroupLabel, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PillowContents, PillowXray } from "@/components/customer-pillow/pillow-drawing";
+import { DraftNotice } from "@/components/spatial/draft-notice";
+import { useDraftSavedAt } from "@/hooks/use-autosave-draft";
+import { clearDraft, readDraft } from "@/lib/editor-drafts";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { formatTemplateKeys, PILLOW_TEMPLATE_KEYS } from "@/lib/filling-templates/keys";
 import { rowsToPillowPlacements } from "@/lib/spatial-fillings/core";
@@ -23,7 +26,7 @@ import type { MatchableTemplate, PillowSizeKey } from "@/lib/customer-pillow/mat
 import { matchNotices } from "@/lib/customer-pillow/notices";
 import type { CustomerPillowResult, CustomerPillowView } from "@/lib/customer-pillow/view";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import { ReadjustDialog } from "./customer-pillow-readjust";
+import { ReadjustDialog, readjustDraftKey } from "./customer-pillow-readjust";
 
 /** No template chosen: the size is known, the filling is not. */
 const NO_TEMPLATE = "none";
@@ -42,6 +45,10 @@ const NO_TEMPLATE = "none";
  * Re-adjust, beside Change, opens the X-ray editor on the pillow drawn, to
  * change its fillings at a Re-adjustment visit (l). What Staff leave in it is
  * saved on the link and drawn from then on; it is still not a build.
+ *
+ * A Re-adjust left unsaved (Back, a reload, a closed app) is kept on this
+ * device: the page opens Re-adjust on it again, and while it is closed the card
+ * offers Resume or Discard.
  */
 export function CustomerPillowCard({
     customerId,
@@ -54,12 +61,25 @@ export function CustomerPillowCard({
 }) {
     const [pillow, setPillow] = useState<CustomerPillowView | null>(initial ?? null);
     const [open, setOpen] = useState<"link" | "readjust" | null>(null);
-    // Each opening starts from what is shown, not from what was picked and cancelled last time.
+    // Each opening starts from what is shown (or, for Re-adjust, the unsaved draft), not from what was picked and
+    // cancelled last time.
     const [session, setSession] = useState(0);
     const openDialog = (kind: "link" | "readjust") => {
         setSession((n) => n + 1);
         setOpen(kind);
     };
+    // An unsaved Re-adjust kept on this device: the page opens on it once, and the card offers it while it is closed.
+    const canReadjust = canEdit && pillow !== null && pillow.source !== "none";
+    const draftKey = readjustDraftKey(customerId);
+    const draftAt = useDraftSavedAt(canReadjust ? draftKey : null);
+    const reopened = useRef(false);
+    useEffect(() => {
+        if (!canReadjust || reopened.current || !readDraft(draftKey)) return;
+        reopened.current = true;
+        // Storage is the browser's: only now, after the first paint, can the page know there is a draft to open.
+        setSession((n) => n + 1);
+        setOpen("readjust");
+    }, [canReadjust, draftKey]);
     // The Items Re-adjust may place, read once on its first opening.
     const [catalog, setCatalog] = useState<FillingItem[] | null>(null);
     const saved = (next: CustomerPillowView) => {
@@ -108,6 +128,15 @@ export function CustomerPillowCard({
             </CardHeader>
             {pillow.source !== "none" && (
                 <CardContent className="space-y-4">
+                    {canReadjust && draftAt !== null && open !== "readjust" && (
+                        <DraftNotice
+                            kind="waiting"
+                            what="re-adjustment"
+                            savedAt={draftAt}
+                            onRestore={() => openDialog("readjust")}
+                            onDiscard={() => clearDraft(draftKey)}
+                        />
+                    )}
                     <Drawing pillow={pillow} />
                 </CardContent>
             )}
