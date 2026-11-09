@@ -159,21 +159,10 @@ function packAcross(
   k: number,
   widthRatios: readonly number[] | undefined,
   offsetsX: readonly number[],
-  /** The pillow's own left and right edges, view units: a roll alone in its Layer may reach that far. */
-  pillowX?: readonly [number, number],
 ): AcrossPack[] {
-  // A Neck support alone in its Layer is laid at its own length (Ivan, 9-11-2026: "full length"), centred on its
-  // Section, reaching over the side Sections if it is longer than its own; the fit still says it does not fit.
-  if (pillowX && pieces.length === 1) {
-    // Never past the pillow's own sides: a roll in a side Section is pushed in from the outer wall, and a nudge
-    // moves it from there.
-    const w = Math.min(footprint(pieces[0], k).w, pillowX[1] - pillowX[0]);
-    const minX = pillowX[0];
-    const maxX = pillowX[1] - w;
-    const homeX = Math.min(Math.max(slab.x + (slab.w - w) / 2, minX), maxX);
-    const x = Math.min(Math.max(homeX + offsetsX[0] * k, minX), maxX);
-    return [{ x: r1(x), w: r1(w), homeX: r1(homeX), minX: r1(minX), maxX: r1(maxX) }];
-  }
+  // Every piece stays inside its own Section's walls: Left, Center and Right are sewn apart (Ivan, 9-11-2026: a
+  // Neck support in the Center "should only fit in the center's maximum width"). One longer than its Section is
+  // wide is drawn wall to wall; the fit still says it does not fit.
   const seams = GAP * (pieces.length - 1);
   const feet = pieces.map((d, i) => footprint(d, k).w * (widthRatios?.[i] ?? 1));
   const sum = feet.reduce((t, w) => t + w, 0);
@@ -289,6 +278,7 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
       );
       // Emit deepest-first so the renderer paints the top layer last (on top).
       for (let d = layers.length - 1; d >= 0; d--) {
+        // A Neck support alone in its Layer keeps its own length up to its Section's width, never the squeeze's.
         const roll = layers[d].length === 1 && ctx.dims?.get(layers[d][0].itemId)?.kind === "neck";
         const packed = packAcross(
           slabs[d],
@@ -297,7 +287,6 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
           roll ? undefined : cellFit?.layers[d]?.pieces.map((p) => p.widthRatio),
           // Offsets are M millimetres too, so a pouch pushed to the edge stays at the edge at every Size.
           layers[d].map((p) => (p.offsetXMm ?? 0) * sizeF.across),
-          roll ? [stage.colX[0], stage.colX[SECTIONS.length]] : undefined,
         );
         layers[d].forEach((piece, idx) => {
           const key = `${section}/${subSection}/${piece.slot}`;

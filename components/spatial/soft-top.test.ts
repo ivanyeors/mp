@@ -94,9 +94,10 @@ describe("soft top view", () => {
     // Middle: a 6D on top, the Neck support in the Layer under it.
     const planes = planesOf({ middle: [1, 4] }, "M", ["center"]);
     const top = planes.find((p) => p.id.endsWith("/0"))!;
-    // The roll (the code's 300 mm Neck support) is longer than the centre is wide: laid at its length, it is its own plane.
+    // The roll (the code's 300 mm Neck support) is longer than the centre is wide: kept inside the centre's walls
+    // (9-11-2026), it settles in its own cell's Layer plane like any pouch.
     const under = planes.find((p) => p.pieces.some((q) => q.shape === "pill"))!;
-    expect(under.id).toBe("settled/center/middle/2/past");
+    expect(under.id).toBe("settled/center/middle/1");
     const at = (volumePct: number) => softTopPieces(top, { ...SOFT_BODY_DEFAULTS, volumePct })[0];
     expect(at(150).kind).toBe("pouch");
     expect(at(150).areaTarget!).toBeGreaterThan(at(100).areaTarget!);
