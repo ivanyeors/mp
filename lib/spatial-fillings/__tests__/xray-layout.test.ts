@@ -51,12 +51,18 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     expect(layoutPlacements(placements)).toEqual(a);
   });
 
-  it.each([1, 2, 3, 4, 5])("%i pieces pack inside the cell without overlapping", (n) => {
+  it.each([1, 2, 3, 4, 5])("%i pieces pack side by side across their Section without overlapping, each its own length in it", (n) => {
     const layout = layoutPlacements(Array.from({ length: n }, (_, i) => piece(i + 1)));
     expect(layout).toHaveLength(n);
     disjoint(layout);
+    // Across: inside their cell's column. Front ↔ back: the generic pouch's 140 mm (longer than a 110 mm cell), inside
+    // the Section (true size, 9-11-2026).
     const frame = cellFrame("center", "middle");
-    for (const p of layout) inFrame(p, frame);
+    const section = { x: frame.x, w: frame.w, y: cellFrame("center", "front").y, h: cellFrame("center", "back").y + frame.h - cellFrame("center", "front").y };
+    for (const p of layout) {
+      inFrame(p, section);
+      expect(p.h).toBeGreaterThan(frame.h);
+    }
   });
 
   it("pieces compress as the cell fills: area never grows with count", () => {

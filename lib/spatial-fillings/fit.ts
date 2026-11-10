@@ -45,7 +45,7 @@ import {
   type PouchDimensions,
   type ResolvedDims,
 } from "./dimensions";
-import { settleBolster, settlePillow, spans, subSectionIndex, type BolsterPieceSettle, type PillowSettle } from "./settle";
+import { settleBolster, settlePillow, spans, subSectionIndex, type BolsterPieceSettle, type PieceSettle, type PillowSettle } from "./settle";
 import type { BolsterLength } from "./xray-layout";
 
 export { SEAM_MM };
@@ -100,7 +100,15 @@ export type CellFit = {
   loftLayers: number;
   /** The other columns this cell's own pieces settled into (slice 11), front → back; the message names them. */
   settledInto: SubSection[];
-  /** The worse of the loft status and every Layer's width status. */
+  /**
+   * Stuffed (9-11-2026): how much shorter, mm, the cell's most pressed pouch stands than its own length, pressed
+   * end to end against the neighbours of its Layer because together they are longer than the room front to back;
+   * 0 when they fit.
+   */
+  pressedMm: number;
+  /** The neighbouring cells that press it, front → back. */
+  pressedBy: SubSection[];
+  /** The worse of the loft status, every Layer's width status, and compressed when its pouches are pressed shorter. */
   status: FitStatus;
 };
 
@@ -369,6 +377,7 @@ function cellFit(
   loftMm: number,
   loftLayers: number,
   settledInto: SubSection[] = [],
+  pressed: { mm: number; by: SubSection[] } = { mm: 0, by: [] },
 ): CellFit {
   return {
     section,
@@ -381,8 +390,40 @@ function cellFit(
     thicknessRatios,
     loftLayers,
     settledInto,
-    status: layerFits.reduce((s, l) => worstStatus(s, l.status), stack.status),
+    pressedMm: r1(pressed.mm),
+    pressedBy: pressed.by,
+    status: worstStatus(
+      layerFits.reduce((s, l) => worstStatus(s, l.status), stack.status),
+      pressed.mm > 0 ? "compressed" : "ok",
+    ),
   };
+}
+
+/** A pouch pressed less than this much shorter than its own length is not pressed (the settle rounds to 0.1 mm). */
+const PRESSED_MM = 0.5;
+
+/**
+ * Stuffed: how much shorter than its own length a cell's most pressed pouch
+ * stands, pressed end to end against the neighbours at its height in the stack
+ * (`packLayer`), and which cells press it — the nearest one holding a pouch at
+ * that height on either side. Pieces higher or lower lie over or under it.
+ */
+function pressedAlong(settled: readonly PieceSettle[], subSection: SubSection): { mm: number; by: SubSection[] } {
+  let mm = 0;
+  const by = new Set<SubSection>();
+  const col = subSectionIndex(subSection);
+  for (const a of settled) {
+    if (a.subSection !== subSection) continue;
+    const short = a.alongMm - a.settledLengthMm;
+    if (short <= PRESSED_MM) continue;
+    mm = Math.max(mm, short);
+    const cols = settled.filter((b) => b.level === a.level && b.subSection !== subSection).map((b) => subSectionIndex(b.subSection));
+    const front = Math.max(-1, ...cols.filter((c) => c < col));
+    const back = Math.min(SUB_SECTIONS.length, ...cols.filter((c) => c > col));
+    if (front >= 0) by.add(SUB_SECTIONS[front]);
+    if (back < SUB_SECTIONS.length) by.add(SUB_SECTIONS[back]);
+  }
+  return { mm, by: SUB_SECTIONS.filter((s) => by.has(s)) };
 }
 
 type LayerPieces = readonly { slot: number; itemId: number; dims: PouchDimensions }[];
@@ -507,6 +548,8 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
         loftBySubSection[subSection],
         stack.depths.length,
         settledInto,
+        // A walled product's cells cut a pouch to the cell; nothing presses it there.
+        settle.active ? pressedAlong(settled, subSection) : undefined,
       );
       cells.push(cell);
       sectionStatus = worstStatus(sectionStatus, cell.status);
@@ -600,6 +643,10 @@ export function fitMessage(cell: CellFit, size: string): string {
   if (loftStatus !== "ok") {
     const n = cell.loftLayers;
     return `${where}: ${n} ${n === 1 ? "layer needs" : "layers need"} ${Math.round(cell.relaxedLoftMm)} mm relaxed, ${Math.round(cell.minLoftMm)} mm fully compressed; Size ${size} holds ${Math.round(cell.maxLoftMm)} mm`;
+  }
+  if (cell.pressedMm > 0) {
+    const sectionMm = Math.round(pillowDimensions(size).dims.lengthMm);
+    return `${where}: pressed ${Math.round(cell.pressedMm)} mm shorter by ${cell.pressedBy.join(" and ")}, compressed; the pouches are longer together than the ${sectionMm} mm front to back of Size ${size}`;
   }
   return `${where}: fits`;
 }

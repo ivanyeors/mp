@@ -58,16 +58,17 @@ describe("crossSectionSlabs", () => {
     expect(relaxed.slabs).toEqual([{ depth: 0, heightMm: 45, itemId: 1, status: "ok", hatched: false }]);
   });
 
-  it("a pouch settled across middle and back contributes its settled thickness to both columns", () => {
+  it("a pouch stands in its own column at its own thickness; slid into a free one, in that one too", () => {
     const fit = fitPillow([at("center", "middle", 1, 1)], { size: "M", dims });
     const along: Cut = { section: "center" };
     const cols = crossSectionSlabs(fit, along);
     expect(cols.map((c) => c.key)).toEqual(["front", "middle", "back"]);
     expect(cols.map((c) => c.widthMm)).toEqual([fit.settle.cellLengthMm, fit.settle.cellLengthMm, fit.settle.cellLengthMm]);
-    expect(cols[1].loftMm).toBeLessThan(45);
-    expect(cols[2].loftMm).toBe(cols[1].loftMm);
-    expect(cols[0].loftMm).toBe(cols[1].loftMm);
-    expect(cols[2].slabs[0].itemId).toBe(1);
+    // True size: it keeps its thickness, and its ends over the empty neighbours do not stand it there.
+    expect(cols.map((c) => c.loftMm)).toEqual([0, 45, 0]);
+    const slid = crossSectionSlabs(fitPillow([{ ...at("center", "middle", 1, 1), offsetYMm: 100 }], { size: "M", dims }), along);
+    expect(slid.map((c) => c.loftMm)).toEqual([0, 45, 45]);
+    expect(slid[2].slabs[0].itemId).toBe(1);
     // Walled, the same recipe is one tall column and two gaps.
     const walled = crossSectionSlabs(fitPillow([at("center", "middle", 1, 1)], { size: "M", dims, pillow: WALLED }), along);
     expect(walled.map((c) => c.loftMm)).toEqual([0, 45, 0]);
@@ -99,7 +100,7 @@ describe("the along cut's thickness, from Settings to the drawing", () => {
     const fit = fitPillow([at("center", "middle", 1, 1)], { size: "XS", dims: configured });
     const [slab] = alongSlabs(fit, "center");
     expect(slab.relaxedMm).toBeCloseTo(45 * (101 / 153), 0);
-    expect(slab.settledMm).toBeLessThan(slab.relaxedMm); // alone in the Section: it spreads front and back
+    expect(slab.settledMm).toBe(slab.relaxedMm); // true size: alone in the Section it keeps its length, and its thickness
     expect(slab.heightMm).toBe(slab.settledMm);
   });
 
@@ -107,7 +108,7 @@ describe("the along cut's thickness, from Settings to the drawing", () => {
     const fit = fitPillow([at("center", "middle", 1, 1)], { size: "XS", dims: configured });
     const [slab] = alongSlabs(fit, "center");
     const note = slabThicknessNote(slab, fit.size, configured.get(1));
-    expect(note).toMatch(/^\d+ mm drawn: 45 mm for Size M \(Settings\) → 30 mm at Size XS → \d+ mm spread along the Section$/);
+    expect(note).toBe("30 mm drawn: 45 mm for Size M (Settings) → 30 mm at Size XS");
     const fallback = { key: "6d/s", kind: "pouch" as const, source: "fallback" as const, measuredOn: null, dims: { ...GENERIC_POUCH } };
     expect(slabThicknessNote(slab, fit.size, fallback)).toContain("(not in Settings — family default)");
     const atM = fitPillow([at("left", "front", 1, 1)], { size: "M", dims: configured, pillow: WALLED });

@@ -9,7 +9,7 @@ import { SOFT_BODY_DEFAULTS, solverOptionsFor } from "@/lib/spatial-fillings/sof
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, XRAY_VIEW } from "@/lib/spatial-fillings/xray-stage";
-import { cellRegion, sectionRegion, settleTop, softTopOptions, softTopPieces, type SoftTopPlane } from "./soft-top";
+import { sectionRegion, settleTop, softTopOptions, softTopPieces, topPlanes, type SoftTopPlane } from "./soft-top";
 import { stageRegions } from "./xray-pillow";
 
 // The cut's test items and the brand recipes (soft-cut.test.ts), each cell top → bottom.
@@ -28,7 +28,7 @@ const RECIPES: Record<string, Record<SubSection, number[]>> = {
 };
 const shapeOf = (itemId: number) => fillingVisual(SUBTYPES.get(itemId) ?? null).shape;
 
-/** The planes the x-ray settles, built as XrayPillow builds them: one per Layer of each Section. */
+/** The planes the x-ray settles, built as XrayPillow builds them (`topPlanes`): one per height of each Section's stack, inside it. */
 function planesOf(cells: Partial<Record<SubSection, number[]>>, size: PillowSize = "M", sections: readonly Section[] = SECTIONS): SoftTopPlane[] {
   const placements: PillowPlacement[] = sections.flatMap((section) =>
     SUB_SECTIONS.flatMap((subSection) => (cells[subSection] ?? []).map((itemId, row) => ({ section, subSection, slot: row + 1, itemId, row }))),
@@ -37,26 +37,25 @@ function planesOf(cells: Partial<Record<SubSection, number[]>>, size: PillowSize
   const fit = fitPillow(placements, { size, dims: DIMS });
   const pieces = layoutPlacements(placements, { stage, dims: DIMS, fit });
   const regions = stageRegions(stage);
-  const planes: SoftTopPlane[] = [];
-  for (const section of sections) {
-    const list = pieces.filter((p) => p.section === section);
-    for (const depth of [...new Set(list.map((p) => p.depth))]) {
-      planes.push({
-        id: `settled/${section}/${depth}`,
-        region: sectionRegion(stage, section),
-        pieces: list
-          .filter((p) => p.depth === depth)
-          .map((p) => ({ key: p.key, d: conformPouchPath(p.settled, [regions.sil, regions.sections[section]], shapeOf(p.itemId)), rect: p.settled, shape: shapeOf(p.itemId) })),
-      });
-    }
-  }
-  return planes;
+  return topPlanes(
+    stage,
+    pieces.map((p) => ({
+      key: p.key,
+      section: p.section,
+      level: p.level,
+      d: conformPouchPath(p.settled, [regions.sil, regions.sections[p.section]], shapeOf(p.itemId)),
+      rect: p.settled,
+      shape: shapeOf(p.itemId),
+      relaxedH: p.relaxedH,
+    })),
+    "settled",
+  );
 }
 
 const overlap = (a: readonly Pt[], b: readonly Pt[]) => a.some(([x, y]) => pointInPolygon(b, x, y) && distanceToPolygon(b, x, y) > 0.5);
 
 describe("soft top view", () => {
-  it("settles every piece of every brand recipe, Size and Section inside its walls, apart from its Layer's neighbours", () => {
+  it("settles every piece of every brand recipe, Size and Section inside its walls, apart from every other of its Layer", () => {
     for (const [name, cells] of Object.entries(RECIPES))
       for (const size of ["XS", "M", "XL"] as PillowSize[]) {
         const planes = planesOf(cells, size);
@@ -69,7 +68,7 @@ describe("soft top view", () => {
             for (const [x, y] of ring) if (!pointInPolygon(plane.region, x, y)) expect(distanceToPolygon(plane.region, x, y), `${name} ${size} ${plane.id}`).toBeLessThan(1.5);
             expect(Math.abs(signedArea(ring))).toBeGreaterThan(100);
           }
-          // Pieces of one Layer press on each other; they never run into each other.
+          // Pieces of one Layer press on each other — Front, Middle and Back too; they never run into each other.
           for (let i = 0; i < mine.length; i++) for (let j = i + 1; j < mine.length; j++) expect(overlap(mine[i]!, mine[j]!), `${name} ${size} ${plane.id}`).toBe(false);
         }
       }
@@ -85,10 +84,13 @@ describe("soft top view", () => {
   });
 
   it("reads the Settings: pouch volume swells the pouches, a Neck support is the firm roll", () => {
-    // Middle: a 6D on top, the Neck support in the Layer under it.
+    // Middle: a 6D on top, the Neck support in the Layer under it (the bottom of the stack).
     const planes = planesOf({ middle: [1, 4] }, "M", ["center"]);
-    const top = planes.find((p) => p.id.endsWith("/0"))!;
-    const under = planes.find((p) => p.id.endsWith("/1"))!;
+    const top = planes.find((p) => p.id.endsWith("/1"))!;
+    // The roll (the code's 300 mm Neck support) is longer than the centre is wide: kept inside the centre's walls
+    // (9-11-2026), it settles in its Section's Layer plane like any pouch.
+    const under = planes.find((p) => p.pieces.some((q) => q.shape === "pill"))!;
+    expect(under.id).toBe("settled/center/0");
     const at = (volumePct: number) => softTopPieces(top, { ...SOFT_BODY_DEFAULTS, volumePct })[0];
     expect(at(150).kind).toBe("pouch");
     expect(at(150).areaTarget!).toBeGreaterThan(at(100).areaTarget!);
@@ -110,18 +112,24 @@ describe("soft top view", () => {
       const pieces = layoutPlacements(placements, { stage, dims: DIMS, fit });
       const regions = stageRegions(stage);
       const list = pieces.filter((p) => p.depth === 0);
-      const plane: SoftTopPlane = {
-        id: "settled/center/0",
-        region: sectionRegion(stage, "center"),
-        pieces: list.map((p) => ({
+      // The top view's own planes (topPlanes): one per height from the floor. The middle's top 6D stands a Layer above
+      // the front pouch, resting over its end; held, it stays where it was put.
+      const planes = topPlanes(
+        stage,
+        list.map((p) => ({
           key: p.key,
+          section: p.section,
+          level: p.level,
           d: conformPouchPath(p.settled, [regions.sil, regions.sections.center], shapeOf(p.itemId)),
           rect: p.settled,
           shape: shapeOf(p.itemId),
           held: p.nudged,
+          relaxedH: p.relaxedH,
         })),
-      };
-      const ring = settleTop([plane], SOFT_BODY_DEFAULTS, XRAY_VIEW).get("center/middle/1")!;
+        "settled",
+      );
+      expect(planes.map((pl) => pl.id)).toEqual(["settled/center/0", "settled/center/1"]);
+      const ring = settleTop(planes, SOFT_BODY_DEFAULTS, XRAY_VIEW).get("center/middle/1")!;
       const rect = list.find((p) => p.key === "center/middle/1")!.settled;
       return {
         soft: [ring.reduce((a, q) => a + q[0], 0) / ring.length / stage.k, ring.reduce((a, q) => a + q[1], 0) / ring.length / stage.k],
@@ -131,9 +139,10 @@ describe("soft top view", () => {
     const home = centreOf({});
     const back = centreOf({ offsetYMm: 20 });
     const left = centreOf({ offsetXMm: -20 });
-    // The layout puts it 20 mm back, as the cut does; held, the soft body follows it most of the way (the outline narrows there).
+    // The layout puts it 20 mm back, as the cut does; held, the soft body follows it a good part of the way (the
+    // outline narrows toward the centre's back wall, so its middle moves less).
     expect(Math.abs(back.rect[1] - home.rect[1] - 20)).toBeLessThan(1);
-    expect(back.soft[1] - home.soft[1]).toBeGreaterThan(10);
+    expect(back.soft[1] - home.soft[1]).toBeGreaterThan(8);
     expect(left.soft[0] - home.soft[0]).toBeLessThan(-15);
   });
 
@@ -183,14 +192,43 @@ describe("soft top view", () => {
     expect(run()).toBe(run());
   });
 
-  it("walls the dive's cells as the dive draws them: the silhouette inside each cell", () => {
-    const stage = stageGeometry("M");
-    for (const section of SECTIONS)
-      for (const sub of SUB_SECTIONS) {
-        const region = cellRegion(stage, `${section}/${sub}`);
-        expect(region.length).toBeGreaterThanOrEqual(3);
-        expect(Math.abs(signedArea(region))).toBeLessThan(Math.abs(signedArea(sectionRegion(stage, section))));
-      }
+  it("stuffs Front, Middle and Back of one Layer against each other: pressed shorter, never laid over, pushing back", () => {
+    // Ivan, 9-11-2026: "the front filling and the back filling are supposed to collide". A Size S centre with a pouch in
+    // each sub-section and a Neck support at the back: longer together than the Section, end to end.
+    const NECK = 9;
+    const dims = new Map(DIMS).set(NECK, { key: "neck/l", kind: "neck", source: "configured", measuredOn: null, dims: neckAsPouch({ lengthMm: 500, radiusMm: 70, minRadiusMm: 40 }) });
+    const placements: PillowPlacement[] = [
+      { section: "center", subSection: "front", slot: 1, itemId: 1 },
+      { section: "center", subSection: "middle", slot: 1, itemId: 2 },
+      { section: "center", subSection: "back", slot: 1, itemId: NECK },
+    ];
+    const stage = stageGeometry("S");
+    const regions = stageRegions(stage);
+    const pieces = layoutPlacements(placements, { stage, dims, fit: fitPillow(placements, { size: "S", dims }) });
+    const along = [...pieces].sort((a, b) => a.y - b.y);
+    // The layout stands them end to end: each starts where the one before it ends.
+    for (let i = 1; i < along.length; i++) expect(along[i].y).toBeGreaterThanOrEqual(along[i - 1].y + along[i - 1].h - 0.5);
+    // The pouches are pressed shorter than their own length; the firm roll keeps its own.
+    for (const p of along) {
+      if (p.itemId === NECK) expect(p.relaxedH).toBe(p.h);
+      else expect(p.relaxedH).toBeGreaterThan(p.h + 1);
+    }
+    const planes = topPlanes(
+      stage,
+      pieces.map((p) => {
+        const shape = p.itemId === NECK ? "pill" : shapeOf(p.itemId);
+        return { key: p.key, section: p.section, level: p.level, d: conformPouchPath(p.settled, [regions.sil, regions.sections.center], shape), rect: p.settled, shape, relaxedH: p.relaxedH };
+      }),
+      "settled",
+    );
+    expect(planes).toHaveLength(1);
+    // A pressed pouch remembers the fill of its own length: it wants more room than it was given, and pushes for it.
+    const soft = softTopPieces(planes[0], SOFT_BODY_DEFAULTS);
+    const loose = softTopPieces({ ...planes[0], pieces: planes[0].pieces.map((p) => ({ ...p, relaxedH: undefined })) }, SOFT_BODY_DEFAULTS);
+    expect(soft.find((q) => q.id === "center/front/1")!.areaTarget!).toBeGreaterThan(loose.find((q) => q.id === "center/front/1")!.areaTarget!);
+    const rings = settleTop(planes, SOFT_BODY_DEFAULTS, XRAY_VIEW);
+    const mine = planes[0].pieces.map((p) => rings.get(p.key)!);
+    for (let i = 0; i < mine.length; i++) for (let j = i + 1; j < mine.length; j++) expect(overlap(mine[i], mine[j])).toBe(false);
   });
 
   it("settles a whole pillow quickly enough to draw on the main thread", () => {

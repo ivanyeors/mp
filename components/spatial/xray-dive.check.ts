@@ -175,18 +175,31 @@ assert.doesNotMatch(renderer, /chooseLayer|layerPick/, "no Layer picker between 
 assert.match(renderer, /touchAction: "none"/, "a finger drag on a pouch does not scroll the page");
 assert.match(renderer, /svg\.addEventListener\("touchstart", onTouchStart, \{ passive: false \}\)/, "…and since touch-action does not reach SVG shapes, a non-passive touchstart on the pouches holds the page still");
 assert.match(renderer, /e\.currentTarget\.setPointerCapture\(e\.pointerId\)/, "the pointer is captured for the drag");
-assert.match(renderer, /Math\.hypot\(e\.clientX - d\.startX, e\.clientY - d\.startY\) < DRAG_THRESHOLD_PX/, "a press becomes a drag only past the threshold — a click still selects");
+assert.match(renderer, /if \(!d\.active && !pastThreshold\(\[d\.startX, d\.startY\], e\)\) return;/, "a press becomes a drag only past the threshold — a click still selects");
 assert.match(renderer, /dropTargetFromElement\(document\.elementFromPoint\(e\.clientX, e\.clientY\)\)/, "the drop target is the tagged element under the pointer");
 assert.match(renderer, /const moved = movePiece\(placements, d\.source, plan\.to\);/, "a drop is a movePiece — a drag can never do what a key cannot");
 assert.match(renderer, /const plan = planDrop\(next, over, false\);[\s\S]*showPlan\(plan\);/, "linked views: every pointer move previews the release's own plan in both views");
 assert.match(renderer, /const plan = planDrop\(d, canceled \? null : d\.over, canceled\);/, "…and the release commits that same plan");
-assert.match(renderer, /moveFineDrag\(d\.fine, \[at\.x - d\.grabX, at\.y - d\.grabY\]/, "precise by default: the held pouch keeps its grab point and a creeping hand moves it a fraction of its travel");
+assert.match(renderer, /stepHold\(d\.fine, \[at\.x - d\.grabX, at\.y - d\.grabY\]/, "precise by default: the held pouch keeps its grab point and a creeping hand moves it a fraction of its travel");
+// One hold for both views (9-11-2026): the top view runs the side view's code, held-pouch.tsx, and neither keeps its own.
+{
+  const cutSource = readFileSync(join(process.cwd(), "components", "spatial", "xray-cross-section.tsx"), "utf8");
+  for (const [name, src] of [["top view", renderer], ["side view", cutSource]] as const) {
+    assert.match(src, /from "\.\/held-pouch"/, `the ${name} holds a filling with held-pouch.tsx`);
+    assert.match(src, /<HeldGhost/, `the ${name} draws the shared ghost and badge`);
+    assert.match(src, /= stepHold\(/, `the ${name} steps the shared fine drag`);
+    assert.match(src, /pickUp\(/, `the ${name} picks up at its drawing's scale`);
+    assert.doesNotMatch(src, /moveFineDrag|startFineDrag|creepGain|const SNAP_PX|const DRAG_THRESHOLD_PX/, `the ${name} keeps no hold code of its own`);
+    assert.doesNotMatch(src, /pointerType === "touch" && typeof navigator|vibrate\(8\)/, `the ${name} buzzes on a snap whatever holds it`);
+  }
+  assert.match(renderer, /if \(d\.active && planKey === d\.planKey\) return;/, "the top view plans again only when where it would land can change, as the cut does");
+}
 assert.match(renderer, /document\.elementFromPoint\(centreClient\.x, centreClient\.y\)/, "what a held pouch is over is what its centre is over");
 assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
 assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
 assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");
 assert.match(renderer, /fill=\{drag\.overfull \? AMBER : "#38bdf8"\}/, "the hovered cell highlights in the selection blue (visible on the unveiled Section), amber — never red — when the drop would leave it overfull");
-assert.match(renderer, /data-xray-drag-ghost/, "a ghost of the outline follows the pointer");
+assert.match(renderer, /<HeldGhost\s+handle=\{heldGhost\}\s+d=\{drag\.ghostD/, "a ghost of the outline follows the pointer (the side view's, held-pouch.tsx)");
 assert.match(renderer, /if \(e\.key !== "Escape"\) return;\s*e\.stopPropagation\(\);\s*cancelDrag\(\);/, "Escape mid-drag cancels the drag and keeps the dive open");
 assert.match(renderer, /draggingRef\.current = true; \/\/ Escape now cancels the drag, not the dive/, "the dive's Escape guard stands down during a pouch drag");
 

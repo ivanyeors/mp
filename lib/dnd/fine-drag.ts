@@ -4,11 +4,18 @@
  * one while the hand moves briskly, and at a fraction of its travel while it
  * creeps, so slowing down IS the fine control — the way a hand slows to set a
  * pouch exactly. Moving briskly again draws the filling back under the
- * pointer, so the two never stay apart. Pure, for both x-ray views.
+ * pointer, so the two never stay apart. Pure; the one engine both x-ray views
+ * hold a filling with (`components/spatial/held-pouch.tsx`).
  *
- * Positions are in the caller's units (the views pass view units); speed is
- * measured in screen pixels per millisecond, so the feel is the same on a
- * phone and a desktop whatever the drawing's scale.
+ * Positions are in the caller's units (the views pass view units), so the
+ * filling keeps the same share of the pointer's travel in either view.
+ *
+ * The same on a mouse as on a phone (Ivan, 9-11-2026: "I like the UX from the
+ * phone, best to have the same for desktop using mouse too"). Speed is read
+ * against the drawing, not the screen: a desktop draws the pillow about twice
+ * a phone's size, so in raw screen pixels a mouse hardly ever crept. Each
+ * drag carries its drawing's `scale` (`drawingScale`: 1 on a phone), and
+ * speeds are read in a phone's pixels.
  */
 
 export type Vec = readonly [number, number];
@@ -18,34 +25,50 @@ export type FineDrag = {
   at: Vec;
   /** Where the pointer alone would put it (pointer less where it was grabbed). */
   direct: Vec;
-  /** Smoothed pointer speed, screen px per ms. */
+  /** Smoothed pointer speed, a phone's px per ms (screen px ÷ `scale`). */
   speed: number;
   /** The last pointer sample: screen px and its time, ms. */
   client: Vec;
   t: number;
+  /** How much larger than on a phone the drawing is on screen (`drawingScale`). */
+  scale: number;
 };
 
-/** At or below this speed (50 px a second: a deliberate creep) the filling moves at FINE_GAIN of the pointer's travel. */
+/** At or below this speed (50 px a second on a phone's drawing: a deliberate creep) the filling moves at FINE_GAIN of the pointer's travel. */
 export const CREEP_SPEED = 0.05;
-/** At or above it (200 px a second: an ordinary drag), one to one. */
+/** At or above it (200 px a second on a phone's drawing: an ordinary drag), one to one. */
 export const BRISK_SPEED = 0.2;
-/** The slowest a filling moves against the pointer: a 3 px creep is about a millimetre on either view. */
+/** The slowest a filling moves against the pointer: a 3 px creep is about a millimetre on a phone. */
 export const FINE_GAIN = 0.3;
 /** Moving at an ordinary pace, the share of the gap to the pointer a filling closes each sample (less, the slower). */
 export const CATCH_UP = 0.35;
 /** A pause longer than this starts the speed afresh (a fresh, slow move is fine at once). */
 const PAUSE_MS = 120;
+/** How wide a phone draws the x-ray (a 390 px screen less its margins): the drawing every speed is read against. */
+export const PHONE_DRAWING_PX = 360;
 
-/** The gain at a speed: FINE_GAIN when creeping, 1 when brisk, straight in between. */
+/**
+ * How much larger than on a phone a drawing `widthPx` wide is on screen: 1 on
+ * a phone, about 2 for the top view on a desktop. Never under 1, so a narrow
+ * panel reads as a phone.
+ */
+export function drawingScale(widthPx: number): number {
+  return widthPx > 0 ? Math.max(1, widthPx / PHONE_DRAWING_PX) : 1;
+}
+
+/** The gain at a speed (a phone's px per ms): FINE_GAIN when creeping, 1 when brisk, straight in between. */
 export function fineGain(speed: number): number {
   if (speed <= CREEP_SPEED) return FINE_GAIN;
   if (speed >= BRISK_SPEED) return 1;
   return FINE_GAIN + ((1 - FINE_GAIN) * (speed - CREEP_SPEED)) / (BRISK_SPEED - CREEP_SPEED);
 }
 
-/** A drag picked up with the filling at `at`, the pointer at `client` (screen px) at time `t`. */
-export function startFineDrag(at: Vec, client: Vec, t: number): FineDrag {
-  return { at, direct: at, speed: 0, client, t };
+/**
+ * A drag picked up with the filling at `at`, the pointer at `client` (screen
+ * px) at time `t`, on a drawing `scale` times a phone's (`drawingScale`).
+ */
+export function startFineDrag(at: Vec, client: Vec, t: number, scale = 1): FineDrag {
+  return { at, direct: at, speed: 0, client, t, scale: scale > 0 ? scale : 1 };
 }
 
 /**
@@ -57,7 +80,7 @@ export function startFineDrag(at: Vec, client: Vec, t: number): FineDrag {
  */
 export function moveFineDrag(d: FineDrag, direct: Vec, client: Vec, t: number): FineDrag {
   const dt = Math.max(t - d.t, 1);
-  const travelled = Math.hypot(client[0] - d.client[0], client[1] - d.client[1]);
+  const travelled = Math.hypot(client[0] - d.client[0], client[1] - d.client[1]) / d.scale;
   const sample = travelled / dt;
   // Smoothed, so one jittery sample neither jolts nor freezes it; a pause forgets the old speed.
   const speed = dt > PAUSE_MS ? sample : d.speed + (sample - d.speed) * 0.5;
@@ -68,7 +91,7 @@ export function moveFineDrag(d: FineDrag, direct: Vec, client: Vec, t: number): 
   let y = d.at[1] + step(1);
   x += (direct[0] - x) * catchUp;
   y += (direct[1] - y) * catchUp;
-  return { at: [x, y], direct, speed, client, t };
+  return { at: [x, y], direct, speed, client, t, scale: d.scale };
 }
 
 /** True while the hand moves at a normal pace: snapping helps then, and stands aside while it creeps. */

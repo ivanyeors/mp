@@ -106,3 +106,88 @@ Tests: `fine-drag.test.ts` (gain, no trailing at an ordinary pace, creep, catch-
 - **Still true:** a roll that does not fit the centre back is drawn pressed forward into the pouch in front of it, and its cell keeps its **Fit status**.
 
 Tests: `soft-top.test.ts` (a Neck support in a Size S centre back, nudged −40 … +40 mm, is drawn within 2 view units of where it was put, in order; fails on the old anchor by 35). Browser (preview fixture Hui Min Chua, Re-adjust): stored 40 mm right, it was drawn in the right corner; a drag toward the middle left it in the left corner, and a creep back did not move it. Now it is drawn where stored and follows the drag and the creep.
+
+## Round 4 (Ivan, 9-11-2026): autosave, tap the cut to add, fine moves on the top view
+
+> "When I'm editing … the fillings template or the customer's version, … autosave. So if I accidentally press back or exit or close the app or web, it should auto load … the last version I worked on. Also … tap on the side view for the front middle back section to add the sunburst menu to add the fillings. Then in the top view, I should also be able to do micro adjustments, just like … on the side view."
+
+- **Autosave** (`lib/editor-drafts.ts`, `hooks/use-autosave-draft.ts`):
+  - An edit that differs from what is saved is kept on this device (`localStorage`), 400 ms after the last change and at once when the page is hidden or left, or the dialog closes. Saving removes it; so does Discard.
+  - **Customer › Re-adjust**: the page opens Re-adjust on a kept draft by itself, with "Picked up your unsaved re-adjustment from 7:04 pm" and Discard. Closed, the Pillow card offers Resume or Discard. A draft made on the pillow before it was changed (Change pillow, or a save elsewhere) is offered, not put back.
+  - **Configure › Filling config**: the card opens on Filling config and the template last edited, with the edit put back. The template list marks templates with an unsaved edit; a new template's edit is kept too. Clear discards.
+  - Per device and browser: it is never sent anywhere, and another device or Staff member does not see it.
+- **Tap the cut to add** (`addAtSlabTarget`, `lib/dnd/slab-drag.ts`): a tap on a column of the side view (beside its pouches, above or under the stack, or on its Front / Middle / Back name) blooms the fillings there. The pick lands where the tap was, as a drop there would: above the stack a new top Layer, between Layers a new Layer there, an empty column its first piece, the name the add rule. A tap on a pouch still selects it. Undo in the toast.
+- **Fine moves on the top view**: the top view's badge also says where the pouch stands across, which only the top view can set: `74–226 mm · 4 mm right`. (A per-view creep gain tried here made the two views feel different; round 5 replaced it.)
+
+Tests: `editor-drafts.test.ts` (keep, read, expire, list by scope, a refusing store), `slab-drag.test.ts` (a tap adds as a drop there would; a full stack still takes it), `fine-drag.test.ts` (the creep gain by scale; a brisk hand still follows one to one and snaps). Browser (preview fixtures, phone and desktop): an edit in Re-adjust and in a Filling Template survives a reload and is put back; saving clears it; a stale draft is offered; a tap on Left › Front adds a 6D L there; a tap above the middle stack adds a new top Layer.
+
+## Round 5 (Ivan, 9-11-2026): one hold for both views, and a mouse like a finger
+
+> "Top view's fine drag and side view's fine drag feel different. I like the side view's version, please implement the exact same code for the same UX. And these must be the same for both cursor click drag and using from phone (I like the UX interaction from the phone, so best to have the same for desktop using mouse too)."
+
+- **One hold, the side view's** (`components/spatial/held-pouch.tsx`): both `XrayPillow` and `XrayCrossSection` hold a filling with it, so every page that draws either view gets it. Neither keeps hold code of its own (`xray-dive.check.ts` says so).
+  - The press-to-drag threshold, the fine drag (`stepHold`), the snap's reach and creeping on from a snap, and the buzz when a snap takes hold.
+  - The ghost under the pointer: the filling's own shape, in its colour, light and dashed, so where it lands (drawn solid) reads through it. The badge rides over the ghost in both views (the top view's sat on the landed pouch). Both move by writing their transforms, never a re-render per pointer move.
+  - The top view plans again only when where it would land can change (the target, the whole millimetre either way, whether a snap may pull), as the cut does; before, it settled the pillow and ran the fit on every pointer move. The release lands at the preview's own millimetres.
+  - The top view draws the snap's line too: across the Section at the edge or middle it lined the pouch up with.
+  - One creep gain in both views (FINE_GAIN). Round 4's per-view gain made the top view's held pouch lag the finger further than the cut's; that is gone.
+- **A mouse like a finger** (`drawingScale`, `lib/dnd/fine-drag.ts`): speeds and the snap's reach are read against the drawing, in a phone's pixels. A desktop draws the pillow about twice a phone's size, so in raw screen pixels a mouse hardly ever crept and snapped at half the reach. The badge is 13 px on screen everywhere. A snap buzzes wherever the device can, whatever holds the filling (before, a touch on the cut, a phone-sized screen on the top view).
+
+Measured (preview fixtures, Re-adjust): the same slow hand (20 steps over a phone's drawing, twice the pixels on a desktop's) moves the top view's 6D S from 81–233 mm to 69–221 mm with a finger on a 390 px phone and with a mouse at 1440 px. A brisk mouse drag across cells shows the drop and lands where it was shown.
+
+Tests: `fine-drag.test.ts` (the drawing's scale; 100 px a second over a desktop's drawing creeps as 50 does on a phone), `xray-cross-section.test.tsx` (the shared ghost and its badge), `xray-dive.check.ts` (both views hold with `held-pouch.tsx` and keep no hold code of their own; the top view plans per millimetre).
+
+## Round 6 (Ivan, 9-11-2026): true size — a pouch at the width × length it was measured
+
+> "I've already set the filling template length, but it's not displaying in its right width / size ratio on the top view's X-ray."
+
+- **The cause:** the settle cut every pouch to its cell (a Size S or M cell is 110 mm; the measured pouches are 130–150 mm), and beside an empty cell let it slump past its length. At Size M a 200 × 150 pouch drew 200 × 108 in a full Section and 200 × 169 alone. The Neck support L (500 mm) was cut to its 258 mm Section.
+- **Decided with Ivan (9-11-2026):**
+  - Pouches at true size in both views. Ends overlap where neighbours do not fit, and the cell is marked compressed. No slump.
+  - The Neck support at its full length, across the side Sections, keeping its "does not fit".
+- **What changed:**
+  - **The settle** (`extentAlong`, `settle.ts`): a pouch stands at its own length, centred on its cell, inside its Section.
+    - Where a neighbouring cell of its Layer is free, it stays clear of the occupied one.
+    - A nudge moves it from there, within its own and the free columns; one longer than that room stays centred on it.
+    - The spread planner and the fabric-give helpers for the pillow are gone (the Mbolster keeps its own).
+  - **The fit** (`endOverlap`, `fit.ts`): cells whose pouches overlap a neighbour's in the same Layer are compressed. The message says by how much: `left · front: overlaps middle by 45 mm at the ends, compressed; …`.
+  - **The top view:**
+    - Drawn from the settle, authored = settled.
+    - One soft plane per Layer of each cell (`topPlanes`), so neighbours overlap instead of being pressed or squeezed back into their cells.
+    - No cell clip in the dive.
+    - A roll keeps its whole length in the soft settle: the curved back wall used to shrink a 150 mm roll to 75 mm.
+    - A Neck support alone in its Layer is laid at its full length, centred on its Section, inside the pillow's sides, conformed to the pillow only, settled against the pillow's own walls and painted over every Section.
+  - **The side view (soft cut):** a slab spans its own length in the Section. Slabs at one height in neighbouring cells overlap (`SoftPiece.overlaps`, the solver skips that pair) and no longer rest on each other.
+  - **`placeAlongAt`:** changes nothing for a pouch with no room to move, instead of storing a meaningless offset.
+  - **The calibration sheet:** predicts 0 spread, and the front pouch's own end as the seam.
+
+Measured (Size M, Settings values 200 × 150, 190 × 140, 170 × 130 and a 500 mm Neck support L): drawn 200 × 149, 190 × 140, 170 × 129 in a full Section and 200 × 150 alone; the roll 500 mm across. Size S scales them by the pillow (Settings › Dimensions says so).
+
+Tests: `settle.test.ts` rewritten for the rule, plus `fit` (overlap and message), `xray-layout`, `xray-stage`, `cross-section`, `calibration`, `slab-drag`, `soft-cut` (overlaps only where declared, and only at the ends), `soft-top` (the planes as the top view builds them), `xray-pillow-geometry` and `xray-cross-section`. Browser (preview fixtures, desktop and 390 px): Hui Min (Size S, Neck support L set to 500 mm) and Chloe (Size M), top view, the dive and the three cuts.
+
+## Round 7 (Ivan, 9-11-2026): the Neck support inside its own Section
+
+> "The left, middle, right are individual divided sections. So if the cervical neck support is in the center, it should only fit in the center's maximum width."
+
+- Round 6's full-length Neck support is reversed. `packAcross` caps every piece at its own Section's walls; a Neck support longer than its Section is wide is drawn wall to wall and still marked as not fitting.
+- The draw-past-the-walls code is gone: `reachesPast`, its paint layer (`data-xray-past-section`) and its silhouette-only conform in `xray-pillow.tsx`, and the plane for it in `topPlanes`.
+
+## Round 8 (Ivan, 9-11-2026): stuffed, not layered
+
+> "You cannot layer it in that way because the front filling and the back filling are supposed to collide with each other. So you need to use the soft body physics logic to compress the fillings together as how a user will slowly take pouches of filling and stuffing it."
+
+Round 6 let neighbours that do not fit end to end overlap at their ends. Now they press on each other, as pouches stuffed in one after another do.
+
+- **The settle** (`packLayer`, `settle.ts`): each height of a Section's stack, counted from the floor (`PieceSettle.level`), is packed end to end.
+  - Where the Section has room, overlapping neighbours are pushed apart by the least move, each still its own length.
+  - Where it has none, they are pressed shorter wall to wall, each giving in proportion to its length. A Neck support is firm: it gives none while a pouch still can.
+  - A pouch placed by hand holds where it was put and its neighbours make room. Its offset is measured from where it stands packed un-nudged, so every millimetre of a nudge moves it.
+  - Heights, not Layers from the top: a pouch higher in one cell's stack rests over a lower neighbour's end, as the cut draws it.
+- **The fit** (`pressedAlong`, `fit.ts`): `CellFit.overlapMm` / `overlapsWith` are now `pressedMm` / `pressedBy`. The message reads `left · front: pressed 30 mm shorter by middle, compressed; …`.
+- **The top view:** one soft plane per height of each Section (`topPlanes`), so Front, Middle and Back press on each other. A pressed pouch remembers its own length (`PieceLayout.relaxedH`) and pushes back. Paint order is lowest in the stack first.
+- **The side view (soft cut):** the overlap pass is gone (`SoftPiece.overlaps` removed from the solver). A pouch's rest cushion is its own length, so pressed shorter it pushes back on its neighbours and bulges up. A Neck support's circle is narrower than its span at this cut's scales; `rollRoom` lays a pressed row out again around the circle so no gap opens.
+
+Measured (the code's dimensions at Size S, a 6D S, a 6D+ S and a 500 mm Neck support L in the Center, as Hui Min's preview fixture has): 6D S 0–92 mm, 6D+ S 92–190 mm, the Neck support 190–330 mm, the two pouches pressed alike to 65 % of their length. In the browser (preview fixtures, desktop and 390 px) Hui Min's Center is end to end in both views; Chloe's (Size M) bottom pouches are end to end and the 6D M on top rests over the back pouch's end.
+
+Tests: `settle.test.ts` (pushed apart, pressed alike, the Neck support firm, a held pouch's neighbours make room), `fit` (pressed and its message), `soft-top` (a stuffed Center: end to end, pressed pouches remember their length, nothing overlaps), `soft-cut` (pressed pouches stand taller; no two pieces overlap in any recipe). `xray-pillow.check.ts` no longer expects the dive's cell clip; it still fails on two older assertions, as it did on main.
+

@@ -101,14 +101,14 @@ describe("CrossSectionSvg along profiles", () => {
 });
 
 describe("CrossSectionSvg along pieces", () => {
-  // One squashable pouch alone in its Section: it settles front-to-back across all three columns.
+  // One pouch alone in its Section, slid most of the way into the empty back: it stands in two columns.
   const soft = new Map([[1, { key: "k", kind: "pouch" as const, source: "measured" as const, measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, thicknessMm: 60, minThicknessMm: 15 } }]]);
-  const lone = fitPillow([{ section: "right", subSection: "middle", slot: 1, itemId: 1, row: 0 }], { size: "M", dims: soft });
+  const lone = fitPillow([{ section: "right", subSection: "middle", slot: 1, itemId: 1, row: 0, offsetYMm: 100 }], { size: "M", dims: soft });
 
-  it("draws one slab for one pouch, however many columns it settles into", () => {
+  it("draws one slab for one pouch, however many columns it stands in", () => {
     const m = renderToStaticMarkup(<CrossSectionSvg fit={lone} cut={{ section: "right" }} itemSubtypes={new Map()} />);
     const s = lone.settle.pieces[0];
-    expect(s.spanFrom).toBe("front");
+    expect(s.spanFrom).toBe("middle");
     expect(s.spanTo).toBe("back");
     expect(m.match(/data-slab-status=/g)).toHaveLength(1);
   });
@@ -161,7 +161,7 @@ describe("CrossSectionSvg pouches", () => {
   it("an editor makes every pouch a focusable handle and draws a held pouch where it will land", () => {
     const editor = {
       svgRef: { current: null },
-      ghostRef: { current: null },
+      held: { attachGhost: () => {}, attachBadge: () => {}, place: () => {} },
       svgHandlers: {},
       slabHit: (slab: { key: string }) => ({ tabIndex: 0, role: "button", "data-slab-key": slab.key }),
       selectedKey: "center/front/1",
@@ -184,12 +184,17 @@ describe("CrossSectionSvg pouches", () => {
             tone: "ok",
             ghost: { w: 120, h: 30, roll: false, puff: 1, subtype: null, label: "6D S", at: { x: 100, y: 50 } },
             overTab: false,
+            badge: "0–110 mm",
+            badgeFont: 13,
           },
         }}
       />,
     );
     expect(held).toContain('data-slab-mode="landing"');
     expect(held).toContain("data-xray-slab-ghost");
+    // The shared hold (held-pouch.tsx): the badge rides over the ghost.
+    expect(held).toContain("data-xray-drag-badge");
+    expect(held).toContain("0–110 mm");
     expect(held).toContain('data-xray-drop-column="ok"');
     expect(held).not.toContain("data-slab-selected");
   });

@@ -142,12 +142,19 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     }
   });
 
-  it("cuts a pouch longer than its cell to the cell", () => {
+  it("draws a pouch longer than its cell at its own length (true size), never longer than its Section", () => {
     const stage = stageGeometry("M");
-    const dims = new Map([[1, resolved({ widthMm: 100, lengthMm: 400 })]]);
-    const [p] = layoutPlacements([cell(1, 1)], { stage, dims });
     const frame = cellFrame("center", "middle", stage);
-    expect(p.h).toBeCloseTo(frame.h, 0);
+    const long = new Map([[1, resolved({ widthMm: 100, lengthMm: 150 })]]);
+    const [p] = layoutPlacements([cell(1, 1)], { stage, dims: long });
+    expect(p.h).toBeCloseTo(150 * stage.k, 0);
+    expect(p.h).toBeGreaterThan(frame.h);
+    // Longer than the pillow: as long as its Section, front wall to back wall.
+    const huge = new Map([[1, resolved({ widthMm: 100, lengthMm: 400 })]]);
+    const [q] = layoutPlacements([cell(1, 1)], { stage, dims: huge });
+    // (a hair in from each wall, as every pouch on a cell's edge is drawn)
+    expect(Math.abs(q.y - stage.rowY[0])).toBeLessThanOrEqual(1.5);
+    expect(Math.abs(q.y + q.h - stage.rowY[3])).toBeLessThanOrEqual(1.5);
   });
 
   it("moves a pouch by its fine offset from home: across within its cell, front ↔ back within its Section", () => {

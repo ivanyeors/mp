@@ -49,15 +49,15 @@ describe("calibrationSheet", () => {
     expect(l.centre.overAt ?? 99).toBeLessThanOrEqual(l.side.overAt ?? 99);
   });
 
-  it("predicts the spread and the seam from the same settle the x-ray draws", () => {
+  it("predicts the settle and the seam from the same settle the x-ray draws: true size, no spread", () => {
     const l = sheet.settle.find((s) => s.key === "6d/l")!;
-    expect(l.spreadFrontMm).toBe(l.spreadBackMm);
+    expect([l.spreadFrontMm, l.spreadBackMm]).toEqual([0, 0]);
     expect(l.lengthMm).toBe(100);
-    expect(Math.abs(l.settledLengthMm - (l.lengthMm + l.spreadFrontMm + l.spreadBackMm))).toBeLessThanOrEqual(1);
-    expect(l.settledThicknessMm).toBeGreaterThanOrEqual(35);
+    expect(l.settledLengthMm).toBe(l.lengthMm);
+    expect(l.settledThicknessMm).toBe(l.thicknessMm);
     expect(sheet.seam?.key).toBe("6d/l");
-    expect(sheet.seam!.seamFromFrontMm).toBeGreaterThan(sheet.seam!.bodyLengthMm / 3);
-    expect(sheet.seam!.seamFromFrontMm).toBeLessThan((2 * sheet.seam!.bodyLengthMm) / 3);
+    // The front 6D L, centred in its 110 mm cell at its 100 mm: it ends 105 mm from the front edge.
+    expect(sheet.seam!.seamFromFrontMm).toBe(105);
   });
 
   it("states the budgets with the Settings allowance, and the five-6D-L checks with their messages", () => {

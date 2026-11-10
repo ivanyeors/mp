@@ -209,8 +209,8 @@ describe("layout reads the fit", () => {
     expect(a.widthRatio).toBeLessThan(b.widthRatio);
     expect(top[0].w / top[1].w).toBeCloseTo((a.acrossMm * a.widthRatio) / (b.acrossMm * b.widthRatio), 2);
     expect(top[0].w).toBeCloseTo(a.widthRatio * 150 * stage.k, -1);
-    // The top Layer draws at true scale: nothing above it foreshortens it.
-    expect(top[0].h).toBeCloseTo(Math.min(GENERIC_POUCH.lengthMm * stage.k, frame.h), 1);
+    // The top Layer draws at true scale, its own length (true size: not cut to its cell): nothing foreshortens it.
+    expect(top[0].h).toBeCloseTo(GENERIC_POUCH.lengthMm * stage.k, 0);
     // Thickness ratios shrink the depth offset compared with the unfitted layout.
     const withoutFit = layoutPlacements(placements, { stage, dims });
     const deepWith = withFit.find((p) => p.depth === 1)!;
@@ -226,13 +226,17 @@ describe("feedback helpers (slice 04)", () => {
   ]);
   const WALLED = { ...PILLOW_DIMENSIONS.M, subSectionDividers: true };
 
-  it("names the columns a cell settled into, in the message and on the cell", () => {
-    const fit = fitPillow([at("center", "middle", 1, 2)], { size: "M", dims });
-    expect(fit.cells[0].settledInto).toEqual(["front", "back"]);
-    expect(fitMessage(fit.cells[0], "M")).toBe("center · middle (settled into front and back): fits");
-    const walled = fitPillow([at("center", "middle", 1, 2)], { size: "M", dims, pillow: WALLED });
+  it("names the columns a cell's pouch was slid into, in the message and on the cell", () => {
+    // True size: a pouch at home stands in its own cell (its ends over a neighbour's do not count) …
+    const home = fitPillow([at("center", "middle", 1, 2)], { size: "M", dims });
+    expect(home.cells[0].settledInto).toEqual([]);
+    expect(fitMessage(home.cells[0], "M")).toBe("center · middle: fits");
+    // … one slid most of the way into the empty back stands there too.
+    const slid = fitPillow([{ ...at("center", "middle", 1, 2), offsetYMm: 100 }], { size: "M", dims });
+    expect(slid.cells[0].settledInto).toEqual(["back"]);
+    expect(fitMessage(slid.cells[0], "M")).toBe("center · middle (settled into back): fits");
+    const walled = fitPillow([{ ...at("center", "middle", 1, 2), offsetYMm: 100 }], { size: "M", dims, pillow: WALLED });
     expect(walled.cells[0].settledInto).toEqual([]);
-    expect(fitMessage(walled.cells[0], "M")).toBe("center · middle: fits");
   });
 
   it("pieceFitStatus: ok when relaxed, compressed with its ratios when squeezed either way, over when the cell cannot close", () => {

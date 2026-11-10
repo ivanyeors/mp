@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import Link from "next/link";
 import { notFound, useParams, usePathname } from "next/navigation";
@@ -49,6 +49,9 @@ import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension
 import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import { confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
 import { XraySectionDock } from "@/components/spatial/xray-section-dock";
+import { DraftNotice, DraftSavedHint } from "@/components/spatial/draft-notice";
+import { useAutosaveDraft, useDraftKeys } from "@/hooks/use-autosave-draft";
+import { listDrafts, readDraft } from "@/lib/editor-drafts";
 import { useBolsterFit, useCut, useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
 import {
@@ -145,6 +148,41 @@ type UnpromotedEntry = {
   placements: Array<PillowPlacementRow | BolsterPlacementRow>;
   packList: Array<{ item_id: number; count: number }>;
 };
+
+/**
+ * A Filling Template edit in progress, as the autosave keeps it (`lib/editor-drafts.ts`): the fields Save
+ * sends. One per template and one for a new template, per size or length, on this device.
+ */
+type TemplateDraft = {
+  name: string;
+  notes: string;
+  active: boolean;
+  keys: string[];
+  rows: Array<PillowPlacementRow | BolsterPlacementRow>;
+};
+
+/** Where a size's (or length's) Filling Template drafts are kept: then the template id, or `new`. */
+const templateDraftScope = (kind: "pillow" | "bolster", key: string) => `template:${kind}:${key}:`;
+
+function templateDraftOf(
+  kind: "pillow" | "bolster",
+  f: { name: string; notes: string; active: boolean; keys: string[]; placements: PillowPlacement[]; bolsterMix: BolsterPlacement[] },
+): TemplateDraft {
+  return {
+    name: f.name,
+    notes: f.notes,
+    active: f.active,
+    keys: [...f.keys].sort(),
+    rows: kind === "pillow" ? pillowPlacementsToRows(f.placements) : bolsterPlacementsToRows(f.bolsterMix),
+  };
+}
+
+/** The draft's own reading of the placements, as the editor holds them. */
+function draftPlacements(kind: "pillow" | "bolster", d: TemplateDraft) {
+  return kind === "pillow"
+    ? { placements: rowsToPillowPlacements(d.rows as PillowPlacementRow[]), bolsterMix: [] as BolsterPlacement[] }
+    : { placements: [] as PillowPlacement[], bolsterMix: rowsToBolsterPlacements(d.rows as BolsterPlacementRow[]) };
+}
 
 type Item = {
   id: number;
@@ -319,6 +357,11 @@ export default function ConfigureCardPage() {
             ? ("Long (1.2m)" as const)
             : null
       : null;
+  // Filling Template edits left unsaved on this card, by template: Filling config opens on them.
+  const pillowDrafts = useDraftKeys(templateDraftScope("pillow", selectedSize ?? ""));
+  const bolsterDrafts = useDraftKeys(
+    templateDraftScope("bolster", keyPart === "short" || keyPart === "long" ? keyPart : "medium"),
+  );
   if (!(selectedPillowKind && selectedSize) && !bolsterVariant) notFound();
   const open = !!(selectedPillowKind && selectedSize);
   const bolsterOpen = !!bolsterVariant;
@@ -369,8 +412,12 @@ export default function ConfigureCardPage() {
   const [bolsterTemplateNotes, setBolsterTemplateNotes] = useState('');
   const [pillowDeleteOpen, setPillowDeleteOpen] = useState(false);
   const [bolsterDeleteOpen, setBolsterDeleteOpen] = useState(false);
-  const [pillowDrawerTab, setPillowDrawerTab] = useState<"product" | "filling">("product");
-  const [bolsterDrawerTab, setBolsterDrawerTab] = useState<"product" | "filling">("product");
+  // The tab picked; until one is, Filling config when a Filling Template edit was left unsaved on this card
+  // (Back, a reload, a closed app), where it is put back, else Product.
+  const [pickedPillowTab, setPillowDrawerTab] = useState<"product" | "filling" | null>(null);
+  const [pickedBolsterTab, setBolsterDrawerTab] = useState<"product" | "filling" | null>(null);
+  const pillowDrawerTab = pickedPillowTab ?? (selectedSize && pillowDrafts.size > 0 ? "filling" : "product");
+  const bolsterDrawerTab = pickedBolsterTab ?? (bolsterVariant && bolsterDrafts.size > 0 ? "filling" : "product");
   const [defaultFillingByPillow, setDefaultFillingByPillow] = useState(makeEmptyDefaultByPillow);
   const [defaultFillingByBolster, setDefaultFillingByBolster] = useState(makeEmptyDefaultByBolster);
 
@@ -1483,6 +1530,40 @@ function FillingConfigPanel({
   const [forking, setForking] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
+  // Autosave (9-11-2026): the open template as it was loaded or last saved (`baseline`), so an edit that
+  // differs from it is kept on this device and the editor opens on it again after Back, a reload or a
+  // closed app. `restored` is when the edit put back was kept; the rail marks templates with one.
+  const draftScope = templateDraftScope(kind, templateKey);
+  const [baseline, setBaseline] = useState<{ id: number | ""; sig: string; data: TemplateDraft } | null>(null);
+  const [restored, setRestored] = useState<number | null>(null);
+  const draftIds = useDraftKeys(draftScope);
+
+  const applyDraft = useCallback(
+    (d: TemplateDraft) => {
+      const p = draftPlacements(kind, d);
+      setName(d.name);
+      setNotes(d.notes);
+      setActive(d.active);
+      setScopeKeys(d.keys);
+      setPlacements(p.placements);
+      setBolsterMix(p.bolsterMix);
+    },
+    [kind],
+  );
+  /** `data` is what is saved for `id`: the autosave compares with it; a kept edit for `id` is put back over it. */
+  const settleOn = useCallback(
+    (id: number | "", data: TemplateDraft) => {
+      const sig = JSON.stringify(data);
+      setBaseline({ id, sig, data });
+      const kept = readDraft<TemplateDraft>(`${draftScope}${id === "" ? "new" : id}`);
+      if (kept && JSON.stringify(kept.data) !== sig) {
+        applyDraft(kept.data);
+        setRestored(kept.savedAt);
+      } else setRestored(null);
+    },
+    [draftScope, applyDraft],
+  );
+
   const resetEditor = useCallback(() => {
     setSelectedId("");
     setRenamingId("");
@@ -1495,7 +1576,11 @@ function FillingConfigPanel({
     setPlacements([]);
     setBolsterMix([]);
     setHadPlacements(false);
-  }, [templateKey]);
+    settleOn("", templateDraftOf(kind, { name: "", notes: "", active: true, keys: [templateKey], placements: [], bolsterMix: [] }));
+  }, [templateKey, kind, settleOn]);
+
+  // Opening the card: the template edited last and left unsaved opens again (a new one's is put back by resetEditor).
+  const openLastDraft = useRef<(list: FillingTemplateRow[]) => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
@@ -1503,7 +1588,9 @@ function FillingConfigPanel({
     (async () => {
       try {
         const list = await loadFillingTemplates(kind, templateKey);
-        if (!cancelled) setTemplates(list);
+        if (cancelled) return;
+        setTemplates(list);
+        openLastDraft.current(list);
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load filling templates.");
       }
@@ -1577,20 +1664,16 @@ function FillingConfigPanel({
     }
   };
 
-  const selectTemplate = async (id: number | "") => {
-    setSelectedId(id);
+  const selectTemplate = async (id: number | "", list: FillingTemplateRow[] = templates) => {
     if (id === "") {
-      setName("");
-      setNotes("");
-      setActive(true);
-      setScopeKeys([templateKey]);
-      setLines([]);
-      setPlacements([]);
-      setBolsterMix([]);
-      setHadPlacements(false);
+      resetEditor();
       return;
     }
-    const meta = templates.find((t) => t.id === id);
+    setSelectedId(id);
+    // Nothing is kept while it loads: what is on screen is the last template's.
+    setBaseline(null);
+    setRestored(null);
+    const meta = list.find((t) => t.id === id);
     setName(meta?.name ?? "");
     setNotes(meta?.notes ?? "");
     setActive(meta?.is_active ?? true);
@@ -1608,15 +1691,31 @@ function FillingConfigPanel({
       type LineRow = { item_id: number | string; quantity: number | string };
       setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
       // Per-kind spatial rows: bolster rows are slot-only (never pillow enums).
+      let loadedPlacements: PillowPlacement[] = [];
+      let loadedMix: BolsterPlacement[] = [];
       if (kind === "pillow") {
         const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
-        setPlacements(rowsToPillowPlacements(placementRows));
+        loadedPlacements = rowsToPillowPlacements(placementRows);
+        setPlacements(loadedPlacements);
         setHadPlacements(placementRows.length > 0);
       } else {
         const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
-        setBolsterMix(rowsToBolsterPlacements(placementRows));
+        loadedMix = rowsToBolsterPlacements(placementRows);
+        setBolsterMix(loadedMix);
         setHadPlacements(placementRows.length > 0);
       }
+      // What is saved, for the autosave; an edit of it kept on this device goes back over it.
+      settleOn(
+        id,
+        templateDraftOf(kind, {
+          name: meta?.name ?? "",
+          notes: meta?.notes ?? "",
+          active: meta?.is_active ?? true,
+          keys: served.length ? served : meta?.keys?.length ? meta.keys : [templateKey],
+          placements: loadedPlacements,
+          bolsterMix: loadedMix,
+        }),
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't load the template.");
     }
@@ -1626,6 +1725,42 @@ function FillingConfigPanel({
   const spatialRows = () =>
     kind === "pillow" ? pillowPlacementsToRows(placements) : bolsterPlacementsToRows(bolsterMix);
   const spatialCount = kind === "pillow" ? placements.length : bolsterMix.length;
+
+  // The autosave: what Save would send, kept on this device while it differs from what is saved.
+  const draftData = useMemo(
+    () => templateDraftOf(kind, { name, notes, active, keys: scopeKeys, placements, bolsterMix }),
+    [kind, name, notes, active, scopeKeys, placements, bolsterMix],
+  );
+  const draftSig = useMemo(() => JSON.stringify(draftData), [draftData]);
+  const draftOpen = baseline !== null && baseline.id === selectedId;
+  const dirty = draftOpen && baseline.sig !== draftSig;
+  const autosave = useAutosaveDraft(
+    draftOpen ? `${draftScope}${selectedId === "" ? "new" : selectedId}` : null,
+    draftData,
+    dirty,
+  );
+  /** Back to what is saved: the kept edit goes. */
+  const discardDraft = () => {
+    if (!baseline) return;
+    autosave.discard();
+    applyDraft(baseline.data);
+    setRestored(null);
+  };
+  /** A list action (rename, Active) saved one field of the open template: what is saved now says so too. */
+  const rebase = (id: number, patch: Partial<TemplateDraft>) =>
+    setBaseline((b) => {
+      if (!b || b.id !== id) return b;
+      const data = { ...b.data, ...patch };
+      return { id, data, sig: JSON.stringify(data) };
+    });
+  useEffect(() => {
+    openLastDraft.current = (list) => {
+      const last = listDrafts(draftScope)[0];
+      if (!last || last.key === "new") return;
+      const t = list.find((x) => String(x.id) === last.key);
+      if (t) void selectTemplate(t.id, list);
+    };
+  });
 
   const putTemplatePlacements = async (templateId: number, nextName?: string) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), {
@@ -1668,6 +1803,13 @@ function FillingConfigPanel({
     // Slice 04 / 09: a cell that cannot close, or a bolster that cannot fit, is a confirm, never a block (ADR 0019).
     if (kind === "pillow" && !confirmSaveWithOverCells(fit, "Save")) return;
     if (kind === "bolster" && !confirmSaveWithBolsterFit(bolsterFit, "Save")) return;
+    // What this save sends: once it lands it is what is saved, and the kept edit has done its job.
+    const sent = draftData;
+    const saved = (id: number) => {
+      autosave.discard();
+      setRestored(null);
+      setBaseline({ id, sig: JSON.stringify(sent), data: sent });
+    };
     setSaving(true);
     setDeleteConfirm(false);
     try {
@@ -1678,6 +1820,7 @@ function FillingConfigPanel({
       // would overwrite a recipe — and its size membership — nobody opened.
       if (selectedId !== "") {
         await putTemplatePlacements(selectedId, trimmed);
+        saved(selectedId);
         setTemplates(await loadFillingTemplates(kind, templateKey));
         if (!scope.keys.includes(templateKey)) {
           resetEditor();
@@ -1720,7 +1863,10 @@ function FillingConfigPanel({
       }
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
-      if (savedId) setSelectedId(savedId);
+      if (savedId) {
+        setSelectedId(savedId);
+        saved(savedId);
+      }
       toast.success(payload?.updatedExisting ? "Filling template updated" : "Filling template saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save the filling template.");
@@ -1764,7 +1910,10 @@ function FillingConfigPanel({
         throw new Error(typeof message === "string" ? message : "Couldn't rename the filling template.");
       }
       setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, name: trimmed } : t)));
-      if (selectedId === id) setName(trimmed);
+      if (selectedId === id) {
+        setName(trimmed);
+        rebase(id, { name: trimmed });
+      }
       setRenamingId("");
       toast.success("Filling template renamed");
     } catch (e) {
@@ -1805,7 +1954,9 @@ function FillingConfigPanel({
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
       const createdId = payload?.template?.id as number | undefined;
-      if (createdId) await selectTemplate(createdId);
+      // The edit went to the copy; the original keeps what it had saved.
+      autosave.discard();
+      if (createdId) await selectTemplate(createdId, list);
       toast.success(
         `${copyName} now covers ${label} only, and ${name.trim() || "the original"} no longer does.`,
       );
@@ -1826,7 +1977,10 @@ function FillingConfigPanel({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Couldn't update the template.");
       setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, is_active } : t)));
-      if (selectedId === id) setActive(is_active);
+      if (selectedId === id) {
+        setActive(is_active);
+        rebase(id, { active: is_active });
+      }
       toast.success(is_active ? "Template activated" : "Template deactivated");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't update the template.");
@@ -1844,6 +1998,7 @@ function FillingConfigPanel({
     setSaving(true);
     try {
       await deleteTemplateById(selectedId);
+      autosave.discard();
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
       resetEditor();
@@ -1985,6 +2140,7 @@ function FillingConfigPanel({
           meta={
             <>
               {!t.is_active && <Badge variant="secondary">Inactive</Badge>}
+              {draftIds.has(String(t.id)) && <Badge variant="outline">Unsaved</Badge>}
               {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} />}
               <TemplateScopeChips
                 kind={kind}
@@ -2022,7 +2178,7 @@ function FillingConfigPanel({
       <div className="min-w-0 space-y-4">
       <WorkbenchHeader
         title={selectedId === "" ? "New filling template" : name.trim() || "Untitled filling template"}
-        description={`${kind === "pillow" ? "Size" : "Length"} ${templateKey}, ${spatialCount} piece${spatialCount === 1 ? "" : "s"} placed`}
+        description={`${kind === "pillow" ? "Size" : "Length"} ${templateKey}, ${spatialCount} piece${spatialCount === 1 ? "" : "s"} placed${dirty ? " · unsaved" : ""}`}
         // Save is pinned here while the shared-recipe notice scrolls away with
         // the meta block, so the warning rides alongside the button it is about.
         warning={
@@ -2047,6 +2203,7 @@ function FillingConfigPanel({
         }
       />
       <div className="space-y-3 lg:rounded-xl lg:border lg:p-4">
+      {restored !== null && dirty && <DraftNotice kind="restored" savedAt={restored} onDiscard={discardDraft} />}
       <div className="space-y-1 lg:hidden">
         <div className="text-sm font-medium text-muted-foreground">Template</div>
         <Select
@@ -2062,6 +2219,7 @@ function FillingConfigPanel({
               <SelectItem key={t.id} value={String(t.id)}>
                 {t.name}
                 {!t.is_active ? " (inactive)" : ""}
+                {draftIds.has(String(t.id)) ? " · unsaved" : ""}
               </SelectItem>
             ))}
           </SelectContent>
@@ -2102,10 +2260,19 @@ function FillingConfigPanel({
           >
             {deleteConfirm ? `Delete ×${scopeKeys.length}` : "Delete"}
           </Button>
-          <Button variant="outline" onClick={resetEditor} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Clear means it: this edit is not kept as a draft.
+              autosave.discard();
+              resetEditor();
+            }}
+            disabled={saving}
+          >
             Clear
           </Button>
         </div>
+        {dirty && <DraftSavedHint savedAt={autosave.savedAt} className="lg:hidden" />}
       </div>
       {deleteConfirm && (
         <p className="text-xs text-amber-700 dark:text-amber-400">

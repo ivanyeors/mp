@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { cellLayers } from "@/lib/configurator/staff-assist";
-import { alongExtent, applySlabDrop, cellBands, describeSlabTarget, homeCentreMm, nudgeSlab, placeAlongAt, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, snapAlongCentre, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
+import { addAtSlabTarget, alongExtent, applySlabDrop, cellBands, describeSlabTarget, homeCentreMm, nudgeSlab, placeAlongAt, placeSlabDrop, previewSlabDrop, slabTargetAt, slabTargetKey, snapAlongCentre, stepSlabLayer, type SlabDropTarget } from "@/lib/dnd/slab-drag";
 import type { PillowPlacement, Section, SubSection } from "@/lib/spatial-fillings/core";
 import { alongSlabs } from "@/lib/spatial-fillings/cross-section";
 import { GENERIC_POUCH, PILLOW_DIMENSIONS, resolveDims, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -124,6 +124,38 @@ describe("applySlabDrop", () => {
   });
 });
 
+describe("addAtSlabTarget: a tap on the cut adds where it names", () => {
+  const added = (r: ReturnType<typeof addAtSlabTarget>) => {
+    if (!r.ok) throw new Error(`expected an add, got ${r.error}`);
+    return r.placements;
+  };
+  const two = [at("center", "middle", 1, 3, 0), at("center", "middle", 2, 4, 1)];
+
+  it("an empty column: the cell's first piece", () => {
+    expect(stack(added(addAtSlabTarget(two, { kind: "cell", ...front }, 9)), front)).toEqual([[9]]);
+  });
+
+  it("above the stack, between Layers and under it: a new Layer exactly there", () => {
+    expect(stack(added(addAtSlabTarget(two, { kind: "gap", ...middle, gap: 0 }, 9)), middle)).toEqual([[9], [3], [4]]);
+    expect(stack(added(addAtSlabTarget(two, { kind: "gap", ...middle, gap: 1 }, 9)), middle)).toEqual([[3], [9], [4]]);
+    expect(stack(added(addAtSlabTarget(two, { kind: "gap", ...middle, gap: 2 }, 9)), middle)).toEqual([[3], [4], [9]]);
+  });
+
+  it("a Layer's middle: beside what is in it", () => {
+    expect(stack(added(addAtSlabTarget(two, { kind: "layer", ...middle, depth: 1 }, 9)), middle)).toEqual([[3], [4, 9]]);
+  });
+
+  it("a cell at its Layer cap still takes it, on its top Layer with room", () => {
+    const five = [1, 2, 3, 4, 5].map((item, row) => at("center", "middle", row + 1, item, row));
+    expect(stack(added(addAtSlabTarget(five, { kind: "gap", ...middle, gap: 0 }, 9)), middle)).toEqual([[1, 9], [2], [3], [4], [5]]);
+  });
+
+  it("leaves every other cell as it was", () => {
+    const next = added(addAtSlabTarget([...two, at("left", "front", 1, 7)], { kind: "gap", ...middle, gap: 0 }, 9));
+    expect(next.filter((p) => p.section === "left")).toEqual([at("left", "front", 1, 7)]);
+  });
+});
+
 describe("stepSlabLayer", () => {
   const three = [at("center", "front", 1, 1, 0), at("center", "front", 2, 2, 1), at("center", "front", 3, 3, 2)];
 
@@ -154,7 +186,7 @@ describe("describeSlabTarget", () => {
 });
 
 describe("placing a pouch exactly (the cut's fine nudge)", () => {
-  // Real dimensions: a 6D is as long as its column; the Neck support roll leaves room in it.
+  // Real dimensions: a 6D (140 mm) is longer than its 110 mm column; the Neck support roll leaves room in it.
   const ITEMS: Record<number, { name: string; category?: string }> = {
     1: { name: "6D (S)" },
     4: { name: "Cervical Neck Support (M)", category: "accessories" },
@@ -187,7 +219,7 @@ describe("placing a pouch exactly (the cut's fine nudge)", () => {
     if (!r?.ok) throw new Error("expected a placement");
     const after = drawnOf(r.placements, "center/middle/2");
     expect(after.p.endMm).toBeCloseTo(2 * after.cell, 0);
-    // A 6D fills its column between full neighbours: there is nowhere to put it but where it is.
+    // A 6D longer than its column, between full neighbours: centred on it, its ends over theirs, it cannot move.
     const full = drawnOf(mix, "center/middle/1");
     expect(placeSlabDrop(mix, { ...middle, slot: 1 }, { kind: "layer", ...middle, depth: 0 }, full.centre + 30, ctxAt("M"))).toBeNull();
     expect(nudgeSlab(mix, { ...middle, slot: 1 }, 5, ctxAt("M"))).toBeNull();

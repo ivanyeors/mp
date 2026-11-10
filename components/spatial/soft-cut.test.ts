@@ -153,7 +153,8 @@ describe("soft cut", () => {
     // Fully firm, it is seeded round and keeps nearly round, as before softness reached the stack.
     expect(firm.aspect).toBeLessThan(1.15);
     expect(at(75).aspect).toBeLessThan(1.15);
-    expect(soft.aspect).toBeGreaterThan(1.4);
+    // Pressed along by the pouches stuffed against it at its height (9-11-2026), it spreads a little less than alone.
+    expect(soft.aspect).toBeGreaterThan(1.3);
     expect(soft.height).toBeLessThan(firm.height * 0.85);
     // Never below fully squashed: twice the squashed radius at this Size.
     const squashedMm = fit.settle.pieces.find((p) => p.key === "center/middle/2")!.minThicknessMm;
@@ -185,6 +186,30 @@ describe("soft cut", () => {
     expect(Math.sign(signedArea(squashed))).toBe(Math.sign(signedArea(round)));
   });
 
+  it("stuffs Front, Middle and Back end to end: pressed shorter, they stand taller, never laid over", () => {
+    // Ivan, 9-11-2026: "the front filling and the back filling are supposed to collide". Three 140 mm pouches in a
+    // 330 mm Section are pressed to 110 mm each; one alone keeps its 140 mm.
+    const full = inputOf({ front: [1], middle: [1], back: [1] });
+    const alone = inputOf({ middle: [1] });
+    const spans = full.fit.sections.center.pieces.map((p) => [p.startMm, p.endMm]);
+    expect(spans).toEqual([
+      [0, 110],
+      [110, 220],
+      [220, 330],
+    ]);
+    const height = (input: SoftCutInput) => {
+      const ring = settleSoftCut(input).rings.get("center/middle/1")!;
+      return Math.max(...ring.map((p) => p[1])) - Math.min(...ring.map((p) => p[1]));
+    };
+    const width = (input: SoftCutInput) => {
+      const ring = settleSoftCut(input).rings.get("center/middle/1")!;
+      return Math.max(...ring.map((p) => p[0])) - Math.min(...ring.map((p) => p[0]));
+    };
+    // It holds the fill of its own length, so pressed shorter it bulges up.
+    expect(width(full)).toBeLessThan(width(alone) - 10);
+    expect(height(full)).toBeGreaterThan(height(alone) + 2);
+  });
+
   it("keeps pieces apart and inside the cloth, and the cloth inside its sewn outline", () => {
     for (const [name, cells] of Object.entries(RECIPES)) {
       const input = inputOf(cells, "M");
@@ -195,15 +220,16 @@ describe("soft cut", () => {
       for (const p of shapes.case) {
         if (!pointInPolygon(sewn, p[0], p[1])) expect(distanceToPolygon(sewn, p[0], p[1]), `${name}: cloth past the seam`).toBeLessThan(billow + 1);
       }
-      const rings = [...shapes.rings.values()];
-      for (const ring of rings) {
+      // Stuffed (9-11-2026): no two pieces overlap — neighbours at one height are pressed end to end, never laid over.
+      const rings = [...shapes.rings];
+      for (const [key, ring] of rings) {
         for (const p of ring) {
           if (!pointInPolygon(shapes.case, p[0], p[1])) expect(distanceToPolygon(shapes.case, p[0], p[1]), `${name}: a piece through the cloth`).toBeLessThan(1.5);
         }
-        for (const other of rings) {
+        for (const [otherKey, other] of rings) {
           if (other === ring) continue;
           const inside = ring.filter((p) => pointInPolygon(other, p[0], p[1]) && distanceToPolygon(other, p[0], p[1]) > 1);
-          expect(inside.length, `${name}: two pieces overlap`).toBe(0);
+          expect(inside.length, `${name}: ${key} and ${otherKey} overlap`).toBe(0);
         }
       }
     }
@@ -295,12 +321,12 @@ describe("soft cut", () => {
     // Nudged past its column's room, it stops at the column's edge: it never stands in the next column.
     const far = at(80);
     expect(far.piece.endMm).toBeLessThanOrEqual(2 * far.cellMm + 0.05);
-    // A pouch as long as its column, between full neighbours, keeps its length: a nudge never shrinks it.
+    // A 6D longer than its column (140 mm), between full neighbours, has no room to be nudged: it stays where its
+    // height in the stack packs it, its own length (true size), and a nudge neither moves nor shrinks it.
     const full = at(20, RECIPES["11"], "center/middle/1");
     const still = at(undefined, RECIPES["11"], "center/middle/1");
-    expect(full.piece.endMm - full.piece.startMm).toBeCloseTo(still.piece.endMm - still.piece.startMm, 1);
-    expect(full.piece.startMm).toBeGreaterThanOrEqual(full.cellMm - 0.05);
-    expect(full.piece.endMm).toBeLessThanOrEqual(2 * full.cellMm + 0.05);
+    expect(full.piece.endMm - full.piece.startMm).toBeCloseTo(140, 1);
+    expect([full.piece.startMm, full.piece.endMm]).toEqual([still.piece.startMm, still.piece.endMm]);
   });
 
   it("settles a full recipe well inside a frame budget", () => {

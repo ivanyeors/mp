@@ -210,7 +210,7 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
 
       <Section
         title="5. Settle: one pouch alone in centre middle, size M"
-        hint="Front and back empty. Close the pillow, press once as a head would, open it and measure how far it spread each way and how thick it now is."
+        hint="Front and back empty. The x-ray draws it at its own length, spread 0 each way. Close the pillow, press once as a head would, open it and measure how far it really spread each way and how thick it now is."
       >
         <Table className={phoneMinWidth.settle}>
           <TableHeader>
@@ -246,9 +246,9 @@ export function CalibrationSheetView({ sheet, generatedAt }: { sheet: Calibratio
         </Table>
         {sheet.seam && (
           <p>
-            Front and back filled with {sheet.seam.label}, middle empty: the two should meet about{" "}
-            <strong>{sheet.seam.seamFromFrontMm} mm</strong> from the front edge (body {sheet.seam.bodyLengthMm} mm). Measured:
-            ________ mm.
+            Front and back filled with {sheet.seam.label}, middle empty: the x-ray draws the front one ending{" "}
+            <strong>{sheet.seam.seamFromFrontMm} mm</strong> from the front edge, at its own length (body {sheet.seam.bodyLengthMm} mm).
+            Measured: ________ mm.
           </p>
         )}
       </Section>
