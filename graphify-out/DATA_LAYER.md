@@ -423,18 +423,6 @@ Changed from pages: `/settings/customers/[id]`
 - Read by:
   - `listCustomerNotes()` [select] — lib/crm/notes.ts:64
 
-### customer_whatsapp
-Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:170
-References: `customers`
-Changed from pages: `/settings/customers`
-- Written by:
-  - `notifyAftercareWhatsApp()` [update,upsert] — lib/whatsapp/aftercare-notify.ts:151
-  - `recordAftercareDeliveryFailure()` [update] — lib/whatsapp/aftercare-notify.ts:219
-- Read by:
-  - `latestAftercareSentAt()` [select] — lib/whatsapp/aftercare-notify.ts:197
-  - `loadLedger()` [select] — lib/aftercare/checkup-server.ts:220
-  - `readAftercareView()` [select] — lib/aftercare/preferences.ts:165
-
 ### customers
 Defined in supabase/migrations/0028_ecommerce.sql:212
 Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/filters`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
@@ -1471,7 +1459,7 @@ Defined in supabase/migrations/20260902000002_admin_orders_revenue_summary.sql:1
   - `loadOrdersDashboard()` — lib/ecommerce/admin/orders-dashboard.ts:62
 
 ### admin_points_summary
-Defined in supabase/migrations/20261108100100_past_purchase_points.sql:188
+Defined in supabase/migrations/20261031032017_points_never_expire.sql:132
 - Read by:
   - `readPointsSummary()` [select] — lib/points/server.ts:189
 
@@ -1663,6 +1651,18 @@ References: `customer_consent_events`, `customers`
 - Read by:
   - `readLatestUnsubscribe()` [select] — lib/marketing-consent/unsubscribe-reasons-server.ts:87
   - `readReasonsForEvents()` [select] — lib/marketing-consent/unsubscribe-reasons-server.ts:125
+
+### customer_whatsapp
+Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:170
+References: `customers`
+Changed from pages: `/settings/customers`
+- Written by:
+  - `notifyAftercareWhatsApp()` [update,upsert] — lib/whatsapp/aftercare-notify.ts:151
+  - `recordAftercareDeliveryFailure()` [update] — lib/whatsapp/aftercare-notify.ts:219
+- Read by:
+  - `latestAftercareSentAt()` [select] — lib/whatsapp/aftercare-notify.ts:197
+  - `loadLedger()` [select] — lib/aftercare/checkup-server.ts:220
+  - `readAftercareView()` [select] — lib/aftercare/preferences.ts:165
 
 ### decrement_coupon_usage
 Defined in supabase/migrations/20261025130000_coupon_usage_decrement.sql:13
