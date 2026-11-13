@@ -2506,7 +2506,7 @@ app/auth/confirm/page.tsx
 - Server actions: `confirmEmailLink()`
 
 ### /blog
-app/[lang]/blog/page.tsx
+app/[lang]/blog/(index)/page.tsx
 - Loads: `getBlogPostsFromDb()`
 - Reads, through the same: `blog_posts`
 
@@ -2992,7 +2992,7 @@ app/[lang]/shipping-refund-policies/page.tsx
 - Reads, through the same: `admin_roles`, `admin_users`, `points_ledger`, `service_prices`, `site_settings`
 
 ### /shop
-app/[lang]/shop/page.tsx
+app/[lang]/shop/(index)/page.tsx
 - Endpoints: `/api/account/addresses [GET]`, `/api/checkout/code [POST]`, `/api/shop/exchange-rates [GET]`
 - Loads: `getProducts()`, `getReviewAggregates()`
 - Changes, through its actions, endpoints and their calls: `customer_addresses`, `customers`, `exchange_rates`, `orders`, `partner_users`

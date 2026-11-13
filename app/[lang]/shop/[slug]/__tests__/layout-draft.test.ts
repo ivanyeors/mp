@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The PDP page 404s a draft or archived slug; the layout around it must not
- * still emit its title, description, image and Product JSON-LD (price).
+ * A draft or archived slug 404s from the layout, not only the page: the page
+ * streams inside loading.tsx, by when a 200 is already sent. The layout must
+ * not emit its title, description, image and Product JSON-LD (price) either.
  */
 
 const h = vi.hoisted(() => ({
@@ -48,8 +49,10 @@ describe.each(["draft", "archived"])("a %s product", (status) => {
     expect(h.buildPageMetadata).not.toHaveBeenCalled();
   });
 
-  it("emits no Product JSON-LD", async () => {
-    await ProductLayout({ params, children: null });
+  it("answers 404 itself, before the page streams, and emits no Product JSON-LD", async () => {
+    await expect(ProductLayout({ params, children: null })).rejects.toMatchObject({
+      digest: expect.stringContaining("404"),
+    });
     expect(h.buildProductJsonLd).not.toHaveBeenCalled();
   });
 });

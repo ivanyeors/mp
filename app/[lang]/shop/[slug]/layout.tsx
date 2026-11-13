@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import {
   getProductBySlug,
   resolveProductContent,
@@ -59,9 +60,9 @@ export default async function ProductLayout({ params, children }: Props) {
   const { lang, slug } = await params;
   const product = await getProductBySlug(slug);
 
-  if (!product || product.status !== "active") {
-    return <>{children}</>;
-  }
+  // Here, not only in page.tsx: the page streams inside loading.tsx, and by then
+  // the status is sent, so a missing product would answer 200 instead of 404.
+  if (!product || product.status !== "active") notFound();
 
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const content = resolveProductContent(product, locale);

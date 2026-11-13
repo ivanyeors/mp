@@ -10,9 +10,9 @@ vi.mock("@/lib/supabase/middleware", () => ({ refreshSupabaseSession: vi.fn(asyn
 const merged = Object.entries(MERGED_BLOG_SLUGS);
 
 describe("blog consolidation map", () => {
-  it("retires 12 posts and merges 59, with no slug in both", () => {
+  it("retires 12 posts and merges 60, with no slug in both", () => {
     expect(RETIRED_BLOG_SLUGS.size).toBe(12);
-    expect(merged).toHaveLength(59);
+    expect(merged).toHaveLength(60);
     for (const [slug] of merged) expect(RETIRED_BLOG_SLUGS.has(slug)).toBe(false);
   });
 

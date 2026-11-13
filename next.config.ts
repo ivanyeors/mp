@@ -25,6 +25,13 @@ const SECURITY_HEADERS = [
   },
 ];
 
+/**
+ * The site's own address (lib/site-url.ts), fixed at build. The old work. host
+ * sends everything there, /api and /auth included, so after the move to
+ * www.mpillow.com it is still one hop.
+ */
+const SITE_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") || "https://custom.mpillow.com";
+
 const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
@@ -56,7 +63,7 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         has: [{ type: "host", value: "work.mpillow.com" }],
-        destination: "https://custom.mpillow.com/:path*",
+        destination: `${SITE_ORIGIN}/:path*`,
         permanent: true,
       },
     ];
