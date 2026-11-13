@@ -22,6 +22,7 @@ import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
 import { sizingPhotosForTelegram } from "@/lib/results/sizing-photos";
 import { getPublicOrigin } from "@/lib/site-url";
+import { stitchShopperVisitor } from "@/lib/analytics/journey/stitch-server";
 import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 
 export const runtime = "nodejs";
@@ -502,6 +503,10 @@ export async function POST(req: Request) {
   // Subscribes only someone nobody has asked, and never fails the save.
   if (draftEmail) {
     await recordBoxConsentByEmail(admin, draftEmail, parsed.data.marketingEmail === true, "customisation");
+    // The earliest a guest names themselves: this browser's Visits, and the
+    // Entry source of the first, are theirs from here (ADR 0007). Never on a
+    // Staff or Partner device, and never fails the save.
+    await stitchShopperVisitor(admin, req, { email: draftEmail });
   }
 
   // Optional Telegram notify when a response is marked final (only on the first transition to final).

@@ -19,6 +19,10 @@ assert.deepEqual(
     entryMedium: "social",
     entryCampaign: "spring",
     referrerHost: "www.google.com",
+    entryContent: null,
+    entryTerm: null,
+    clickIdKind: null,
+    clickId: null,
     ref: null,
   },
 );
@@ -31,6 +35,10 @@ assert.deepEqual(
     entryMedium: null,
     entryCampaign: null,
     referrerHost: "t.co",
+    entryContent: null,
+    entryTerm: null,
+    clickIdKind: null,
+    clickId: null,
     ref: null,
   },
 );
@@ -55,9 +63,36 @@ assert.deepEqual(
     entryMedium: null,
     entryCampaign: null,
     referrerHost: "facebook.com",
+    entryContent: null,
+    entryTerm: null,
+    clickIdKind: null,
+    clickId: null,
     ref: null,
   },
 );
+
+// Ad click ids ride beside the source, never replace it
+{
+  const google = resolveEntrySource({ search: "?gclid=abc123", referrer: "https://www.google.com/" });
+  assert.equal(google.entrySource, "www.google.com");
+  assert.equal(google.clickIdKind, "gclid");
+  assert.equal(google.clickId, "abc123");
+  const tiktok = resolveEntrySource({ search: "?ttclid=tt1" });
+  assert.equal(tiktok.entrySource, "Direct");
+  assert.equal(tiktok.clickIdKind, "ttclid");
+  // A paid id outranks fbclid, which Meta adds to organic links too
+  assert.equal(resolveEntrySource({ search: "?fbclid=f1&gclid=g1" }).clickIdKind, "gclid");
+  assert.equal(resolveEntrySource({ search: "?fbclid=f1" }).clickIdKind, "fbclid");
+  // Empty or absurdly long values are not click ids
+  assert.equal(resolveEntrySource({ search: "?gclid=%20" }).clickIdKind, null);
+  assert.equal(resolveEntrySource({ search: `?gclid=${"x".repeat(600)}` }).clickIdKind, null);
+  const tagged = resolveEntrySource({
+    search: "?utm_source=ig&utm_medium=paid_social&utm_content=reel-a&utm_term=neck%20pain&fbclid=f2",
+  });
+  assert.equal(tagged.entryContent, "reel-a");
+  assert.equal(tagged.entryTerm, "neck pain");
+  assert.equal(tagged.clickIdKind, "fbclid");
+}
 
 // Referrer beats Direct
 assert.deepEqual(
@@ -67,6 +102,10 @@ assert.deepEqual(
     entryMedium: null,
     entryCampaign: null,
     referrerHost: "www.reddit.com",
+    entryContent: null,
+    entryTerm: null,
+    clickIdKind: null,
+    clickId: null,
     ref: null,
   },
 );
@@ -77,6 +116,10 @@ assert.deepEqual(resolveEntrySource({}), {
   entryMedium: null,
   entryCampaign: null,
   referrerHost: null,
+  entryContent: null,
+  entryTerm: null,
+  clickIdKind: null,
+  clickId: null,
   ref: null,
 });
 assert.deepEqual(resolveEntrySource({ search: null, referrer: "not a url" }), {
@@ -84,6 +127,10 @@ assert.deepEqual(resolveEntrySource({ search: null, referrer: "not a url" }), {
   entryMedium: null,
   entryCampaign: null,
   referrerHost: null,
+  entryContent: null,
+  entryTerm: null,
+  clickIdKind: null,
+  clickId: null,
   ref: null,
 });
 

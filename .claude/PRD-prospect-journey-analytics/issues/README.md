@@ -23,6 +23,7 @@ Tracer-bullet breakdown of the PRD (`../prospect-journey-analytics-prd.md`). Eac
 | 13 | Staging E2E signoff | HITL | 04–12, 14–15 | 43–46 |
 | 14 | Expanded node dig-in (replace side panel) | AFK | 07, 06/11 | 19 (amended), 7 |
 | 15 | Dig-in viz polish + Section expand on-node chrome | AFK | 14, 06 | 4–5, 19 (viz) |
+| 16 | A customer's first entry point: Visitor→Customer link, platform, first touch | AFK | 05, 10 | 14, 30–31 |
 
 ## Dependency graph
 

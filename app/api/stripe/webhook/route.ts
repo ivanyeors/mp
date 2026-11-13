@@ -28,6 +28,7 @@ import { releasePoints } from "@/lib/points/spend";
 import { sendTelegram } from "@/lib/telegram/notify";
 import { scheduleAutoLabel, scheduleLabelCancel } from "@/lib/shipping/schedule-labels";
 import { STAFF_ORDER_PURPOSE } from "@/lib/staff-orders/shared";
+import { recordPaidOrderVisit } from "@/lib/analytics/journey/identity";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -558,6 +559,18 @@ export async function POST(req: Request) {
             "Payment confirmed via Stripe",
             { stripe_session_id: session.id, payment_intent: paymentIntent }
           );
+          // The Visit that paid (ADR 0007), found through the Order's Customer
+          // or email: Stripe's delivery carries no Visitor cookie. A shop
+          // checkout only. A Staff order or a readjustment fee (both carry a
+          // `purpose`) was sold by a person, not by the Visit that opened its
+          // link. Never fails the webhook.
+          if (!session.metadata?.purpose) {
+            await recordPaidOrderVisit(admin, {
+              orderId,
+              customerId: order.customer_id as string | null,
+              email: order.email as string | null,
+            });
+          }
         }
 
         // Step 7: Clear cart if cart token in metadata

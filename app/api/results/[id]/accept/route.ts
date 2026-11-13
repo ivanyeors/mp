@@ -34,6 +34,7 @@ import { incrementCouponUsage } from "@/lib/ecommerce/discounts";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { deductOrderStockOrFlag } from "@/lib/ecommerce/order-stock";
 import { getPublicOrigin } from "@/lib/site-url";
+import { recordPaidOrderVisit } from "@/lib/analytics/journey/identity";
 import { scheduleAutoLabel } from "@/lib/shipping/schedule-labels";
 
 export const runtime = "nodejs";
@@ -692,6 +693,18 @@ export async function POST(
     } catch (e) {
       console.error("Coupon usage increment failed after capture", e);
     }
+  }
+
+  // The Visit this sale came from (ADR 0007), for a Result the shopper held
+  // online: found through the email they gave at the hold, since Staff accept
+  // from their own browser. An in-store or Assisted Result came from no Visit.
+  // Once, as above, and never fails the accept.
+  if (row.source === "online_purchase") {
+    await recordPaidOrderVisit(admin, {
+      orderId: order.id as string,
+      customerId,
+      email: (row.customer_email as string | null) ?? null,
+    });
   }
 
   // Record what we actually charged as ledger rows. Without these the order has no

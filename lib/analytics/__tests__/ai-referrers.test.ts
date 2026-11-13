@@ -18,11 +18,11 @@ describe("classifyVisit", () => {
     ["claude.ai", "Claude"],
     ["chat.deepseek.com", "DeepSeek"],
   ])("%s is an AI assistant (%s)", (host, name) => {
-    expect(classifyVisit(visit(host))).toEqual({ channel: "ai_assistant", aiSource: name });
+    expect(classifyVisit(visit(host))).toEqual({ channel: "ai_assistant", aiSource: name, platform: null });
   });
 
   it("treats utm_source=chatgpt.com as AI even without a referrer", () => {
-    expect(classifyVisit(visit(null, "chatgpt.com", "referral"))).toEqual({ channel: "ai_assistant", aiSource: "ChatGPT" });
+    expect(classifyVisit(visit(null, "chatgpt.com", "referral"))).toEqual({ channel: "ai_assistant", aiSource: "ChatGPT", platform: null });
   });
 
   it.each(["www.google.com", "www.google.com.sg", "bing.com", "duckduckgo.com", "search.yahoo.com"])(
@@ -57,5 +57,54 @@ describe("classifyVisit", () => {
 
   it("falls back to referral for any other site", () => {
     expect(classifyVisit(visit("honeycombers.com")).channel).toBe("referral");
+  });
+
+  describe("platform", () => {
+    const signals = (extra: { entry_click_id_kind?: string; entry_app?: string }, host: string | null = null) => ({
+      ...visit(host),
+      ...extra,
+    });
+
+    it("names the platform a referrer or tag points at", () => {
+      expect(classifyVisit(visit("www.google.com"))).toMatchObject({ channel: "organic_search", platform: "Google" });
+      expect(classifyVisit(visit("l.instagram.com"))).toMatchObject({ channel: "social", platform: "Instagram" });
+      expect(classifyVisit(visit("lm.facebook.com"))).toMatchObject({ channel: "social", platform: "Facebook" });
+      expect(classifyVisit(visit(null, "ig", null))).toMatchObject({ channel: "social", platform: "Instagram" });
+      expect(classifyVisit(visit(null, "tiktok", "paid_social"))).toMatchObject({ channel: "paid", platform: "TikTok" });
+      expect(classifyVisit(visit(null, "meta", "cpc"))).toMatchObject({ channel: "paid", platform: "Meta" });
+    });
+
+    it("reads an untagged Google Ads click as paid, not organic search", () => {
+      expect(classifyVisit(signals({ entry_click_id_kind: "gclid" }, "www.google.com"))).toEqual({
+        channel: "paid",
+        aiSource: null,
+        platform: "Google",
+      });
+      expect(classifyVisit(signals({ entry_click_id_kind: "wbraid" }))).toMatchObject({ channel: "paid", platform: "Google" });
+      expect(classifyVisit(signals({ entry_click_id_kind: "ttclid" }))).toMatchObject({ channel: "paid", platform: "TikTok" });
+    });
+
+    it("does not call an fbclid click paid: Meta adds it to organic links too", () => {
+      expect(classifyVisit(signals({ entry_click_id_kind: "fbclid" }))).toMatchObject({ channel: "social", platform: "Meta" });
+      // The referrer or the app says which of the two
+      expect(classifyVisit(signals({ entry_click_id_kind: "fbclid" }, "l.facebook.com")).platform).toBe("Facebook");
+      expect(classifyVisit(signals({ entry_click_id_kind: "fbclid", entry_app: "instagram" })).platform).toBe("Instagram");
+    });
+
+    it("takes an untagged Visit from an app's own browser out of Direct", () => {
+      expect(classifyVisit(signals({ entry_app: "tiktok" }))).toEqual({ channel: "social", aiSource: null, platform: "TikTok" });
+      expect(classifyVisit(signals({ entry_app: "instagram" }))).toMatchObject({ channel: "social", platform: "Instagram" });
+      // A Visit from before these were recorded is still Direct
+      expect(classifyVisit(visit(null))).toEqual({ channel: "direct", aiSource: null, platform: null });
+    });
+
+    it("leaves an email opened inside an app as Email, with no platform", () => {
+      expect(classifyVisit({ ...visit(null, "email_campaign", "email"), entry_app: "instagram" })).toEqual({
+        channel: "email",
+        aiSource: null,
+        platform: null,
+      });
+      expect(classifyVisit(visit("honeycombers.com")).platform).toBeNull();
+    });
   });
 });

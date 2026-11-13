@@ -12,6 +12,7 @@ import { loadCustomerPillow } from "@/lib/customer-pillow/load";
 import type { CustomerPillowResult } from "@/lib/customer-pillow/view";
 import { readContactFacts } from "@/lib/crm/contact-facts";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
+import { readCustomerEntry } from "@/lib/crm/customer-entry";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types/ecommerce";
 import {
@@ -70,9 +71,15 @@ export default async function CustomerDetailPage({
     ]);
 
     // Both need what the reads above returned; neither waits for the other.
-    const [pillow, contact] = customer.ok
-        ? await Promise.all([readPillow(id, fittings), readContact(customer.row as Customer, ctx)])
-        : [undefined, undefined];
+    // The third: how they found us (their first Visit's Entry source), read
+    // from journey analytics; their own answer only with `results`.
+    const [pillow, contact, entry] = customer.ok
+        ? await Promise.all([
+              readPillow(id, fittings),
+              readContact(customer.row as Customer, ctx),
+              readCustomerEntry(supabaseAdmin(), customer.row as Customer, { results: hasPermission(ctx, "results") }),
+          ])
+        : [undefined, undefined, undefined];
 
     const initialData: CustomerDetailInitialData = {
         customer: customer.ok
@@ -86,6 +93,7 @@ export default async function CustomerDetailPage({
         fittings,
         pillow,
         contact,
+        entry,
     };
 
     return (

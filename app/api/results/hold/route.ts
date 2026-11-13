@@ -64,6 +64,7 @@ import {
   type ResultCouponTerms,
 } from "@/lib/results/discount";
 import { VISITOR_COOKIE, parseVisitorId } from "@/lib/analytics/journey/identity";
+import { stitchShopperVisitor } from "@/lib/analytics/journey/stitch-server";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
 import { getSiteSettings } from "@/lib/site-settings";
 import { SLA_SETTING_KEYS, parseSlaSettings } from "@/lib/sla-reminders";
@@ -1226,6 +1227,13 @@ export async function POST(req: Request) {
   // Subscribes a Customer nobody has asked, never one who unsubscribed, and
   // never stops the hold.
   await recordBoxConsentByEmail(admin, input.email, input.marketingEmail === true, "customisation");
+
+  // This browser's Visits belong to the shopper who just gave this email
+  // (ADR 0007). Not an Assisted customisation, whose device is Staff's, and
+  // never on a Staff or Partner session. Never stops the hold.
+  if (!input.deferred) {
+    await stitchShopperVisitor(admin, req, { email: input.email, customerId });
+  }
 
   // No inventory reserve or deduct on hold (US36).
 
