@@ -116,7 +116,7 @@ A **Visitor** who has not yet produced a paid **Order**.
 _Avoid_: lead; anonymous user (prefer **Visitor**); treating converters as the default Analytics cohort
 
 **Entry source**:
-Machine-captured traffic origin at **Visit** start: UTM when present, else referrer host, else Direct.
+Machine-captured traffic origin at **Visit** start: UTM when present, else referrer host, else Direct. Recorded beside it: the landing path, an ad click id, and the app whose built-in browser the Visit began in. Read back as a channel (how it came: Paid, Social, Organic search, …) and a **platform** (who sent it: Google, Instagram, TikTok, …). A **Customer**'s first entry point is the Entry source of the earliest Visit tied to them, derived, never stored (ADR 0007 amendment 2026-11-13).
 _Avoid_: **Discovery source** (self-reported on **Result**); referral source; campaign (when you mean the full Entry source)
 
 **Drop-off**:

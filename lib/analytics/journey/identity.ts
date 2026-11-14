@@ -15,6 +15,19 @@ export function parseVisitorId(raw: unknown): string | null {
   return UUID_RE.test(id) ? id : null;
 }
 
+/** The Visitor id a request's own cookie carries, or null. */
+export function readVisitorCookie(req: { headers: { get(name: string): string | null } }): string | null {
+  const header = req.headers.get("cookie");
+  if (!header) return null;
+  const match = header.match(new RegExp(`(?:^|;\\s*)${VISITOR_COOKIE}=([^;]*)`));
+  if (!match) return null;
+  try {
+    return parseVisitorId(decodeURIComponent(match[1]!));
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeVisitorEmail(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const email = raw.trim().toLowerCase();
@@ -180,4 +193,111 @@ export async function linkVisitToPaidOrder(
     .is("converted_order_id", null);
   if (uErr) return { ok: false, error: uErr.message };
   return { ok: true, linked: true, visitId: pick.visitId };
+}
+
+/**
+ * Every Visitor known to be this person: linked to the Customer, or carrying
+ * the email. One person has several when they use a phone and a laptop, or an
+ * app's built-in browser and then Safari.
+ */
+export async function visitorIdsForPerson(
+  db: SupabaseClient,
+  person: { customerId?: string | null; email?: string | null },
+): Promise<string[]> {
+  const customerId = parseVisitorId(person.customerId);
+  const email = normalizeVisitorEmail(person.email);
+  const ids = new Set<string>();
+  // Two plain lookups, not one `.or()`: an email goes into a filter untouched.
+  if (customerId) {
+    const { data, error } = await db.from("analytics_visitors").select("id").eq("customer_id", customerId).limit(50);
+    if (error) throw new Error(error.message);
+    for (const row of data ?? []) ids.add(row.id as string);
+  }
+  if (email) {
+    const { data, error } = await db.from("analytics_visitors").select("id").eq("email", email).limit(50);
+    if (error) throw new Error(error.message);
+    for (const row of data ?? []) ids.add(row.id as string);
+  }
+  return [...ids];
+}
+
+/**
+ * Set converted_order_id on the Visit that paid, found through the Order's
+ * Customer or email. Payment is confirmed by Stripe or by Staff, with no
+ * browser cookie in reach, so the Visitor is whoever gave that email earlier
+ * (`stitchVisitor`). Last-touch: the open Visit, else the newest.
+ */
+export async function linkPaidOrderToPerson(
+  db: SupabaseClient,
+  opts: { orderId: string; customerId?: string | null; email?: string | null },
+): Promise<{ ok: true; linked: boolean; visitId: string | null } | { ok: false; error: string }> {
+  const orderId = parseVisitorId(opts.orderId);
+  if (!orderId) return { ok: false, error: "invalid orderId" };
+
+  let visitorIds: string[];
+  try {
+    visitorIds = await visitorIdsForPerson(db, opts);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "visitor lookup failed" };
+  }
+  if (visitorIds.length === 0) return { ok: true, linked: false, visitId: null };
+
+  const { data: visits, error: lookErr } = await db
+    .from("analytics_visits")
+    .select("id, ended_at, started_at, converted_order_id")
+    .in("visitor_id", visitorIds)
+    .order("started_at", { ascending: false })
+    .limit(50);
+  if (lookErr) return { ok: false, error: lookErr.message };
+
+  const pick = pickVisitForConversion((visits ?? []) as VisitConversionCandidate[], orderId);
+  if (!pick) return { ok: true, linked: false, visitId: null };
+  if (pick.alreadyLinked) return { ok: true, linked: true, visitId: pick.visitId };
+
+  const { error: uErr } = await db
+    .from("analytics_visits")
+    .update({ converted_order_id: orderId })
+    .eq("id", pick.visitId)
+    .is("converted_order_id", null);
+  if (uErr) return { ok: false, error: uErr.message };
+  return { ok: true, linked: true, visitId: pick.visitId };
+}
+
+/**
+ * Tie the browser that just gave an email to that email, and to the Customer
+ * when there is one. Called wherever a shopper types their own email: the
+ * configurator's first question, the hold, shop checkout.
+ *
+ * Never on a Staff or Partner device: one browser there serves many shoppers,
+ * and the first would be handed every later shopper's Visits. The caller
+ * decides that; this only refuses a request with no Visitor cookie.
+ *
+ * Analytics must not fail a save or a sale, so this never throws.
+ */
+export async function stitchVisitor(
+  db: SupabaseClient,
+  req: { headers: { get(name: string): string | null } },
+  person: { email?: string | null; customerId?: string | null },
+): Promise<void> {
+  try {
+    const visitorId = readVisitorCookie(req);
+    if (!visitorId) return;
+    const merged = await mergeVisitorIdentity(db, { visitorId, ...person });
+    if (!merged.ok) console.error("[journey] Visitor merge failed:", merged.error);
+  } catch (e) {
+    console.error("[journey] Visitor merge failed:", e);
+  }
+}
+
+/** `linkPaidOrderToPerson`, for a payment path that must not fail on analytics. */
+export async function recordPaidOrderVisit(
+  db: SupabaseClient,
+  opts: { orderId: string; customerId?: string | null; email?: string | null },
+): Promise<void> {
+  try {
+    const linked = await linkPaidOrderToPerson(db, opts);
+    if (!linked.ok) console.error(`[journey] Order ${opts.orderId} was not linked to a Visit:`, linked.error);
+  } catch (e) {
+    console.error(`[journey] Order ${opts.orderId} was not linked to a Visit:`, e);
+  }
 }

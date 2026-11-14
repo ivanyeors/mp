@@ -14,6 +14,8 @@ import {
 } from "@/lib/seo-metrics/aggregate";
 import { addDays } from "@/lib/seo-metrics/dates";
 import { buildChannelMix, singaporeDate, type MixVisit } from "@/lib/analytics/channel-mix";
+import type { VisitSourceFields } from "@/lib/analytics/ai-referrers";
+import { loadFirstVisits } from "@/lib/analytics/journey/first-touch";
 import { buildCrawlerActivity, type CrawlerHitRow } from "@/lib/analytics/crawler-activity";
 import { validateAnnotation, type Annotation, type AnnotationInput } from "@/lib/seo-metrics/annotations";
 import { splitQueryPageKey } from "@/lib/seo-metrics/keys";
@@ -108,10 +110,12 @@ export async function getChannelMix(input: { range: string; granularity: string 
   const sinceIso = new Date(Date.parse(`${bucketStart(from, granularity)}T00:00:00+08:00`)).toISOString();
   const admin = supabaseAdmin();
 
-  const visits = await fetchAllPages<MixVisit>((a, b) =>
+  const visits = await fetchAllPages<MixVisit & { visitor_id: string }>((a, b) =>
     admin
       .from("analytics_visits")
-      .select("id, started_at, entry_source, entry_medium, referrer_host, converted_order_id")
+      .select(
+        "id, visitor_id, started_at, entry_source, entry_medium, referrer_host, entry_click_id_kind, entry_app, converted_order_id",
+      )
       .gte("started_at", sinceIso)
       .order("started_at", { ascending: true })
       .range(a, b),
@@ -136,12 +140,28 @@ export async function getChannelMix(input: { range: string; granularity: string 
     for (const o of data ?? []) orderTotals.set(o.id as string, Number(o.total));
   }
 
+  // First touch: where each paying shopper first came from. Their first Visit
+  // can be older than the range, so it is read on its own, for payers only.
+  // A failed read leaves first touch equal to last touch rather than no card.
+  const payers = visits.filter((v) => v.converted_order_id && orderTotals.has(v.converted_order_id));
+  const firstTouch = new Map<string, VisitSourceFields>();
+  try {
+    const firstByVisitor = await loadFirstVisits(admin, payers.map((v) => v.visitor_id));
+    for (const v of payers) {
+      const first = firstByVisitor.get(v.visitor_id);
+      if (first) firstTouch.set(v.id, first);
+    }
+  } catch (e) {
+    console.error("[analytics] First touch could not be read:", e);
+  }
+
   return {
     from,
     to,
     granularity,
     ...buildChannelMix({
       visits,
+      firstTouch,
       configuratorVisitIds: new Set(configEvents.map((e) => e.visit_id)),
       orderTotals,
       from,

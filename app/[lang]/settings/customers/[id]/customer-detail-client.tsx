@@ -58,6 +58,8 @@ import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { AftercareCard } from "./aftercare-card";
 import { MarketingConsentCard } from "./marketing-consent-card";
 import { PointsCard } from "./points-card";
+import { CustomerEntryCard } from "./customer-entry-card";
+import type { CustomerEntryResult } from "@/lib/crm/customer-entry";
 import { CustomerFollowUpsCard } from "./customer-followups-card";
 import { CustomerReviewsCard } from "./customer-reviews-card";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
@@ -150,6 +152,8 @@ export type CustomerDetailInitialData = {
     fittings?: CustomerFittingsResult;
     /** Their pillow, drawn in the x-ray (ADR 0042 j); null when it could not be read. */
     pillow?: CustomerPillowResult;
+    /** How they found us: first Visit's Entry source, and their own answer. A failed read says so on the card. */
+    entry?: CustomerEntryResult;
 };
 
 const emptyAddress: AddressFormState = {
@@ -1022,6 +1026,9 @@ export function CustomerDetailClient({
                     <PointsCard customerId={customer.id} canEdit={canEdit} />
                     {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}
                     <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} />
+
+                    {/* How they found us: first Visit's Entry source beside their own answer (ADR 0007) */}
+                    <CustomerEntryCard entry={initialData?.entry} />
 
                     {/* Aftercare switches (CRM slice 13): their own card, since the Contact card only reads */}
                     <AftercareCard customerId={customer.id} canEdit={canEdit} />

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeCountryCode, UNKNOWN_COUNTRY } from "./country";
 import { resolveEntrySource, type EntrySourceInput } from "./entry-source";
+import { isEntryApp } from "./in-app";
 import { isValidReferralCodeFormat } from "@/lib/referrals/attribution";
 import { stampVisitorRef } from "@/lib/referrals";
 import { normalizeGaClientId } from "./ga-sync";
@@ -31,6 +32,11 @@ export type IngestBody = {
   entry?: EntrySourceInput | null;
   /** ISO country (or Unknown) — set on Visit INSERT only; from server headers. */
   country?: string | null;
+  /**
+   * The in-app browser the request came from (`in-app.ts`), from the server's
+   * own read of the User-Agent. Set on Visit INSERT only.
+   */
+  entryApp?: string | null;
   /** Close a prior Visit (pagehide or rotated after inactivity). */
   closeVisitId?: string | null;
   closeReason?: "pagehide" | "inactivity" | null;
@@ -191,6 +197,11 @@ export async function closeStaleVisitsForVisitor(
   }
 }
 
+/** PostgREST's schema cache (PGRST204) or Postgres itself (42703) not knowing a column. */
+function isUnknownColumn(error: { code?: string }): boolean {
+  return error.code === "PGRST204" || error.code === "42703";
+}
+
 /** Persist Visitor + Visit + events. Idempotent enough for beacons (new event rows). */
 export async function persistJourneyIngest(
   db: SupabaseClient,
@@ -241,18 +252,31 @@ export async function persistJourneyIngest(
   // Freeze Entry source + country on first INSERT only — race-safe like visitors.
   const resolved = resolveEntrySource(body.entry ?? {});
   const country = normalizeCountryCode(body.country) || UNKNOWN_COUNTRY;
-  const { error: visitErr } = await db.from("analytics_visits").upsert(
-    {
-      id: visitId,
-      visitor_id: visitorId,
-      entry_source: resolved.entrySource,
-      entry_medium: resolved.entryMedium,
-      entry_campaign: resolved.entryCampaign,
-      referrer_host: resolved.referrerHost,
-      country,
-    },
-    { onConflict: "id", ignoreDuplicates: true },
-  );
+  const base = {
+    id: visitId,
+    visitor_id: visitorId,
+    entry_source: resolved.entrySource,
+    entry_medium: resolved.entryMedium,
+    entry_campaign: resolved.entryCampaign,
+    referrer_host: resolved.referrerHost,
+    country,
+  };
+  const detail = {
+    entry_content: resolved.entryContent,
+    entry_term: resolved.entryTerm,
+    entry_click_id_kind: resolved.clickIdKind,
+    entry_click_id: resolved.clickId,
+    entry_app: isEntryApp(body.entryApp) ? body.entryApp : null,
+    // `entry` rides only on a Visit's first page view, so that view's path
+    // is where the Visit landed.
+    landing_path: body.entry ? (events[0]?.path ?? null) : null,
+  };
+  const insertVisit = (row: Record<string, unknown>) =>
+    db.from("analytics_visits").upsert(row, { onConflict: "id", ignoreDuplicates: true });
+  let { error: visitErr } = await insertVisit({ ...base, ...detail });
+  // The code can deploy before the migration that adds the detail columns
+  // (20261113090000). Losing the detail for those Visits beats losing the Visits.
+  if (visitErr && isUnknownColumn(visitErr)) ({ error: visitErr } = await insertVisit(base));
   if (visitErr) return { ok: false, error: visitErr.message };
 
   const rows = events.map((e) => ({

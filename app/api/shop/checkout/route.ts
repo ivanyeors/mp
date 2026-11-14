@@ -16,6 +16,7 @@ import {
 import { getCurrentCustomerId } from "@/lib/shop/customer-addresses";
 import { getPartnerByReferralCode, isSelfReferral } from "@/lib/referrals";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
+import { stitchShopperVisitor } from "@/lib/analytics/journey/stitch-server";
 import { computeSelfPurchaseDiscount } from "@/lib/partner-self-purchase";
 import { loadSelfPurchaseAllowance } from "@/lib/partner-self-purchase/allowance";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
@@ -901,6 +902,11 @@ export async function POST(req: Request) {
     .from("orders")
     .update({ stripe_session_id: stripeSession.sessionId })
     .eq("id", orderRow.id);
+
+  // This browser's Visits belong to the shopper checking out (ADR 0007), which
+  // is how the webhook finds the Visit that paid. Never on a Staff or Partner
+  // session, and never stops the checkout.
+  await stitchShopperVisitor(admin, req, { email: normalizedEmail, customerId: customer.id });
 
   // Note: coupon usage is incremented in the Stripe webhook after successful payment,
   // not here — avoids double-counting when checkout sessions are abandoned.

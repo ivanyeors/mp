@@ -13,6 +13,15 @@ export type MixVisit = VisitSourceFields & {
   converted_order_id: string | null;
 };
 
+/**
+ * Whose Visit an Order is counted for. `orders` / `revenue` are last touch:
+ * the Visit that paid. `firstOrders` / `firstRevenue` are first touch: the same
+ * Orders, counted for the Entry source of that shopper's first Visit instead
+ * (`lib/analytics/journey/first-touch.ts`). The two columns sum to the same
+ * total; only the split between rows differs.
+ */
+type Credit = { orders: number; revenue: number; firstOrders: number; firstRevenue: number };
+
 /** Chart series, fixed order (colour follows the entity, never its rank). */
 export const MIX_SERIES = ["organic_search", "ai_assistant", "direct", "referral", "other"] as const;
 export type MixSeries = (typeof MIX_SERIES)[number];
@@ -32,17 +41,25 @@ export function seriesFor(channel: Channel): MixSeries {
 
 export type MixBucket = { start: string } & Record<MixSeries, number>;
 
-export type FunnelRow = {
+export type FunnelRow = Credit & {
   channel: Channel;
   visits: number;
   configuratorVisits: number;
-  orders: number;
-  revenue: number;
+};
+
+/** One platform arriving one way: Google by ads and Google by search are two rows. */
+export type PlatformRow = Credit & {
+  platform: string;
+  channel: Channel;
+  visits: number;
+  configuratorVisits: number;
 };
 
 export type ChannelMix = {
   buckets: MixBucket[];
   funnel: FunnelRow[];
+  /** Named platforms only, most Visits first. Direct, Email, AI and plain referrals name none. */
+  platforms: PlatformRow[];
   aiSources: { source: string; visits: number; orders: number }[];
   totalVisits: number;
 };
@@ -60,6 +77,11 @@ export function buildChannelMix(input: {
   configuratorVisitIds: Set<string>;
   /** Paid order id → total, for visits that converted. */
   orderTotals: Map<string, number>;
+  /**
+   * Visit id → the first Visit of the shopper behind it, for Visits that
+   * converted. A Visit missing here is counted as its own first touch.
+   */
+  firstTouch?: Map<string, VisitSourceFields>;
   from: string;
   to: string;
   granularity: Granularity;
@@ -72,15 +94,28 @@ export function buildChannelMix(input: {
   }
 
   const funnel = new Map<Channel, FunnelRow>(
-    CHANNEL_ORDER.map((channel) => [channel, { channel, visits: 0, configuratorVisits: 0, orders: 0, revenue: 0 }]),
+    CHANNEL_ORDER.map((channel) => [
+      channel,
+      { channel, visits: 0, configuratorVisits: 0, orders: 0, revenue: 0, firstOrders: 0, firstRevenue: 0 },
+    ]),
   );
+  const platforms = new Map<string, PlatformRow>();
+  const platformRow = (platform: string, channel: Channel): PlatformRow => {
+    const key = `${platform}\0${channel}`;
+    let row = platforms.get(key);
+    if (!row) {
+      row = { platform, channel, visits: 0, configuratorVisits: 0, orders: 0, revenue: 0, firstOrders: 0, firstRevenue: 0 };
+      platforms.set(key, row);
+    }
+    return row;
+  };
   const ai = new Map<string, { source: string; visits: number; orders: number }>();
 
   let totalVisits = 0;
   for (const v of input.visits) {
     const date = singaporeDate(v.started_at);
     if (date < firstBucket || date > input.to) continue;
-    const { channel, aiSource } = classifyVisit(v);
+    const { channel, aiSource, platform } = classifyVisit(v);
 
     const bucket = buckets.get(bucketStart(date, input.granularity));
     if (bucket) bucket[seriesFor(channel)] += 1;
@@ -89,12 +124,28 @@ export function buildChannelMix(input: {
     if (date < input.from) continue;
     totalVisits += 1;
     const row = funnel.get(channel)!;
+    const named = platform ? platformRow(platform, channel) : null;
     row.visits += 1;
-    if (input.configuratorVisitIds.has(v.id)) row.configuratorVisits += 1;
+    if (named) named.visits += 1;
+    if (input.configuratorVisitIds.has(v.id)) {
+      row.configuratorVisits += 1;
+      if (named) named.configuratorVisits += 1;
+    }
     const converted = v.converted_order_id ? input.orderTotals.get(v.converted_order_id) : undefined;
     if (converted !== undefined) {
-      row.orders += 1;
-      row.revenue += converted;
+      for (const r of [row, named]) {
+        if (!r) continue;
+        r.orders += 1;
+        r.revenue += converted;
+      }
+      // The same Order, counted for where its shopper first came from. That
+      // first Visit may predate the range: the Order is in it, which is what counts.
+      const first = classifyVisit(input.firstTouch?.get(v.id) ?? v);
+      for (const r of [funnel.get(first.channel)!, first.platform ? platformRow(first.platform, first.channel) : null]) {
+        if (!r) continue;
+        r.firstOrders += 1;
+        r.firstRevenue += converted;
+      }
     }
     if (aiSource) {
       const a = ai.get(aiSource) ?? { source: aiSource, visits: 0, orders: 0 };
@@ -107,6 +158,9 @@ export function buildChannelMix(input: {
   return {
     buckets: [...buckets.values()],
     funnel: [...funnel.values()],
+    platforms: [...platforms.values()].sort(
+      (a, b) => b.visits - a.visits || b.firstOrders - a.firstOrders || a.platform.localeCompare(b.platform),
+    ),
     aiSources: [...ai.values()].sort((a, b) => b.visits - a.visits),
     totalVisits,
   };
