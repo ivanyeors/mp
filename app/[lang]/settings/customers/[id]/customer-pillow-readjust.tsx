@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import { confirmSaveWithOverCells } from "@/components/spatial/xray-fit-banner";
-import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { DraftNotice, DraftSavedHint } from "@/components/spatial/draft-notice";
 import { useAutosaveDraft } from "@/hooks/use-autosave-draft";
@@ -66,7 +66,7 @@ function pillowBase(size: PillowSizeKey, placements: PillowPlacement[]): string 
 /** One filling's change in count between the pillow Staff opened and what is in it now. */
 type CountChange = { itemId: number; label: string; was: number; now: number };
 
-/** Every filling whose count changed, in the order the pack list reads. */
+/** Every filling whose count changed, by name. */
 function countChanges(before: PillowPlacement[], after: PillowPlacement[], labelOf: (id: number) => string): CountChange[] {
     const was = new Map(flattenToPackList(before).map((l) => [l.item_id, l.count]));
     const now = new Map(flattenToPackList(after).map((l) => [l.item_id, l.count]));
@@ -259,9 +259,10 @@ export function ReadjustDialog({
                 <DialogHeader>
                     <DialogTitle>Re-adjust the pillow</DialogTitle>
                     <DialogDescription>
-                        Change the fillings in this customer&apos;s pillow at a Re-adjustment visit: click a section to swap, add or
-                        remove pieces. Saving replaces the pillow drawn on this page and on their Profile. No stock moves, and no
-                        order or price changes.
+                        Change the fillings in this customer&apos;s pillow at a Re-adjustment visit: click a section to add or swap
+                        pieces, and take one out with its bin (on the x-ray once you click it, or in the insert order) or by
+                        dragging it off the x-ray. Saving replaces the pillow drawn on this page and on their Profile. No stock
+                        moves, and no order or price changes.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -315,8 +316,8 @@ export function ReadjustDialog({
                     dirty && <DraftNotice kind="restored" what="re-adjustment" savedAt={restored} onDiscard={startOver} />
                 )}
 
-                {/* Phones read the pack list and the changes before the cuts, as before; from md the cuts follow the
-                    x-ray they cut, and the lists come after them. */}
+                {/* Phones read the insert order and the changes before the cuts, as before; from md the cuts follow
+                    the x-ray they cut, and the lists come after them. */}
                 <div className="flex flex-col gap-4">
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                         <div className="mx-auto w-full min-w-0 max-w-[52rem]">
@@ -343,18 +344,27 @@ export function ReadjustDialog({
                             />
                         </div>
                     </div>
-                    <div className="grid gap-3 md:order-last md:grid-cols-2 md:items-start">
-                        <section className="rounded-md border">
+                    <div className="space-y-3 md:order-last">
+                        {/* Insert order, not the derived pack list (owner, 15-11-2026): a count per filling cannot say which
+                            Section a piece is in, which is what taking one out needs. Under the cuts, left, center and right
+                            line up with the cut of the same Section. */}
+                        <section className="rounded-md border" data-readjust-insert-order>
                             <h3 className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm font-medium">
-                                Derived pack list
+                                Insert order
                                 <span className="text-xs font-normal text-muted-foreground tabular-nums">
-                                    {pieces} piece{pieces === 1 ? "" : "s"}
+                                    {pieces} step{pieces === 1 ? "" : "s"}
                                 </span>
                             </h3>
-                            <XrayPackList
+                            <p className="px-3 pt-2.5 text-xs text-muted-foreground">
+                                Each Section&apos;s pieces in the order they go in, and where each one sits.
+                                {editable ? " Drag to reorder; the bin takes that piece out." : ""}
+                            </p>
+                            <InsertOrderList
                                 placements={placements}
                                 onPlacementsChange={editable ? setPlacements : undefined}
                                 items={labelItems}
+                                columns
+                                className="p-3"
                             />
                         </section>
                         <section className="rounded-md border" aria-live="polite">
@@ -364,9 +374,9 @@ export function ReadjustDialog({
                                     {dirty ? "Pieces moved; the same fillings are in it." : "Nothing changed yet."}
                                 </p>
                             ) : (
-                                <ul className="divide-y text-sm">
+                                <ul className="grid gap-x-6 px-3 py-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
                                     {changes.map((c) => (
-                                        <li key={c.itemId} className="flex items-center justify-between gap-2 px-3 py-2">
+                                        <li key={c.itemId} className="flex items-center justify-between gap-2 py-1.5">
                                             <span className="min-w-0 truncate">{c.label}</span>
                                             <span
                                                 className={`shrink-0 tabular-nums ${c.now > c.was ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}

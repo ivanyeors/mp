@@ -3,18 +3,24 @@
 /**
  * Insert order (CONTEXT.md): the numbered steps for putting pieces into each
  * Section — left, center, right — when the pillow is assembled. Sub-sections
- * and layers are not part of it. Mounted beside the derived pack list on the
- * Admin Panel surfaces (Configure, Result detail assign); drag to reorder when
- * `onPlacementsChange` is given, read-only otherwise. Pieces never ordered sort
- * last, so a piece added after ordering is simply the next step.
+ * and layers are not part of the sequence; each step names its sub-section
+ * (and its Layer, in a stacked cell) only so Staff can find that piece in the
+ * pillow. Mounted beside the derived pack list on Configure and Result detail
+ * assign, and in its place in the Customer page's Re-adjust editor, where
+ * Staff take pieces out one by one and need to know which Section each came
+ * from. Drag to reorder and remove a piece when `onPlacementsChange` is given,
+ * read-only otherwise. Pieces never ordered sort last, so a piece added after
+ * ordering is simply the next step.
  */
 
 import type { ReactNode } from "react";
 import { DragDropProvider } from "@dnd-kit/react";
+import { Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SortableRow } from "@/components/ui/sortable-row";
-import { sectionInsertOrder, setSectionInsertOrder } from "@/lib/configurator/staff-assist";
+import { removePiece, sectionInsertOrder, setSectionInsertOrder } from "@/lib/configurator/staff-assist";
 import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import { SECTIONS, type PillowPlacement, type Section } from "@/lib/spatial-fillings/core";
 import { fillingLabel, type FillingItemLike } from "@/lib/spatial-fillings/filling-groups";
@@ -23,14 +29,45 @@ import { cn } from "@/lib/utils";
 // Unique within a Section (the cell PK minus section), which is one provider's scope.
 const pieceId = (p: PillowPlacement) => `${p.subSection}/${p.slot}`;
 
-function Step({ n, label, grip }: { n: number; label: string; grip?: ReactNode }) {
+function Step({
+  n,
+  label,
+  where,
+  grip,
+  onRemove,
+  removeLabel,
+}: {
+  n: number;
+  label: string;
+  /** Where the piece sits in its Section: its sub-section, and its Layer in a stacked cell. */
+  where: string;
+  grip?: ReactNode;
+  onRemove?: () => void;
+  removeLabel?: string;
+}) {
   return (
-    <div className="flex min-h-9 items-center gap-2 text-sm">
+    <div className="flex min-h-9 min-w-0 items-center gap-2 text-sm">
       {grip}
       <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums">
         {n}
       </span>
-      <span className="truncate rounded-full bg-primary/10 px-2.5 py-0.5 font-medium">{label}</span>
+      <span className="min-w-0 truncate rounded-full bg-primary/10 px-2.5 py-0.5 font-medium" title={label}>
+        {label}
+      </span>
+      <span className="shrink-0 whitespace-nowrap text-xs capitalize text-muted-foreground">{where}</span>
+      {onRemove && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="ml-auto size-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          aria-label={removeLabel}
+          title={removeLabel}
+          onClick={onRemove}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      )}
     </div>
   );
 }
@@ -39,33 +76,55 @@ export function InsertOrderList({
   placements,
   onPlacementsChange,
   items,
+  columns = false,
   className,
 }: {
   placements: PillowPlacement[];
   onPlacementsChange?: (next: PillowPlacement[]) => void;
   /** The items handed to the editor; a pre-formatted `label` wins over the type label. */
   items: Array<FillingItemLike & { label?: string }>;
+  /** Left, center and right side by side from md, as the pillow lies, instead of one under another. */
+  columns?: boolean;
   className?: string;
 }) {
   const labelOf = (itemId: number) => {
     const item = items.find((i) => i.id === itemId);
     return item ? item.label ?? fillingLabel(item) : `Item #${itemId}`;
   };
+  // A cell is stacked once any of its pieces sits below the top Layer; its steps then say which Layer.
+  const stacked = new Set(placements.filter((p) => (p.row ?? 0) > 0).map((p) => `${p.section}/${p.subSection}`));
+  const whereOf = (p: PillowPlacement) =>
+    stacked.has(`${p.section}/${p.subSection}`) ? `${p.subSection} · layer ${(p.row ?? 0) + 1}` : p.subSection;
 
   const reorder = (section: Section, steps: PillowPlacement[]) => (event: SortableDragEndEvent) => {
     const next = sortableMove(steps, event, pieceId);
     if (next) onPlacementsChange?.(setSectionInsertOrder(placements, section, next));
   };
+  const remove = (p: PillowPlacement) =>
+    onPlacementsChange && (() => onPlacementsChange(removePiece(placements, { section: p.section, subSection: p.subSection }, p.slot)));
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn(columns ? "grid gap-x-6 gap-y-4 md:grid-cols-3" : "space-y-3", className)}>
       {SECTIONS.map((section) => {
         const steps = sectionInsertOrder(placements, section);
         const authored = steps.some((p) => p.insertOrder != null);
+        const step = (p: PillowPlacement, i: number, grip?: ReactNode) => (
+          <Step
+            n={i + 1}
+            label={labelOf(p.itemId)}
+            where={whereOf(p)}
+            grip={grip}
+            onRemove={remove(p)}
+            removeLabel={`Remove step ${i + 1}, ${labelOf(p.itemId)}, from ${section} ${whereOf(p)}`}
+          />
+        );
         return (
-          <div key={section} className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{section}</span>
+          <div key={section} className="min-w-0 space-y-1" data-insert-order-section={section}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {section}
+                {columns && steps.length > 0 && <span className="ml-1.5 font-normal tabular-nums">{steps.length}</span>}
+              </span>
               {steps.length > 0 && !authored && (
                 <Badge variant="outline" title="Order not set yet — showing reading order">
                   auto
@@ -83,12 +142,12 @@ export function InsertOrderList({
                     index={i}
                     label={`step ${i + 1}, ${labelOf(p.itemId)}`}
                   >
-                    {(grip) => <Step n={i + 1} label={labelOf(p.itemId)} grip={grip} />}
+                    {(grip) => step(p, i, grip)}
                   </SortableRow>
                 ))}
               </DragDropProvider>
             ) : (
-              steps.map((p, i) => <Step key={pieceId(p)} n={i + 1} label={labelOf(p.itemId)} />)
+              steps.map((p, i) => <div key={pieceId(p)}>{step(p, i)}</div>)
             )}
           </div>
         );

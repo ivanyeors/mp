@@ -137,6 +137,10 @@ Panel. The file stays in the browser, as the Shopify import's does ([ADR 0029](0
   pillow on the Customer page, opens the **X-ray editor** on the pillow drawn there (a link's
   template, an order's build, a fitting's match, or the last Re-adjustment), with the left, centre
   and right cuts side by side, its **Derived pack list**, and a list of the counts that changed.
+  (Amended, owner, 2026-11-15: the **Insert order** replaces the pack list here, one column per
+  Section under its cut, each piece with its bin, because a count per filling could not say which
+  Section a piece to take out was in. A pouch also comes out from the x-ray itself: its bin once
+  selected, Delete, or dragged off the x-ray, drawn red as it goes.)
   The read-only card draws the same three cuts under its x-ray, on the Customer page and the
   Profile. Save writes the mix they
   leave in it onto the Staff link, as `customer_pillows.filling_placements`, rows shaped like
