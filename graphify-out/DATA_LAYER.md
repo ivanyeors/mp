@@ -431,9 +431,10 @@ Changed from pages: `/settings/customers/[id]`
 
 ### customers
 Defined in supabase/migrations/0028_ecommerce.sql:212
-Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/filters`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
+Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/filters`, `/settings/results/[id]`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
 - Written by:
   - `PATCH()` [select,update] — app/api/shop/customers/[id]/route.ts:47
+  - `POST()` [select,update] — app/api/results/[id]/customer/route.ts:119
   - `POST()` [insert] — app/api/shop/customers/route.ts:44
   - `findOrCreateCustomer()` [insert] — lib/ecommerce/customers.ts:24
   - `linkCustomerToAuthUser()` [insert,select,update] — lib/auth/customer-identity.ts:82
@@ -465,8 +466,8 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:299
   - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:228
   - `readAftercareView()` [select] — lib/aftercare/preferences.ts:149
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:162
-  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:133
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:165
+  - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:136
   - `readProfileAftercare()` [select] — lib/aftercare/preferences.ts:203
   - `readWhatsAppGate()` [select] — lib/aftercare/preferences.ts:109
   - `retryFailedEmails()` [select] — lib/aftercare/review-request-server.ts:382
@@ -724,7 +725,7 @@ Changed from pages: `/settings/inventory`
   - `/settings/inventory` (page) [select] — app/[lang]/settings/inventory/page.tsx:204
   - `/settings/inventory/configure/[card]` (page) [select] — app/[lang]/settings/inventory/configure/[card]/page.tsx:441
   - `/settings/inventory/configure/calibration` (page) [select] — app/[lang]/settings/inventory/configure/calibration/page.tsx:57
-  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:651
+  - `/settings/results/[id]` (page) [select] — app/[lang]/settings/results/[id]/result-detail-client.tsx:658
   - `GET()` [select] — app/[lang]/settings/product-builder/filling-visuals/route.ts:20
   - `GET()` [select] — app/api/mp-config/assist/route.ts:116
   - `GET()` [select] — app/api/results/addons/route.ts:41
@@ -851,7 +852,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/settings/orders/[id]`, `/settin
   - `main()` [select,update] — scripts/sizing-photos-to-webp.ts:31
   - `sizingPhotosForTelegram()` [delete,update] — lib/results/sizing-photos.ts:54
 - Read by:
-  - `POST()` [select] — app/api/mp-config/responses/route.ts:565
+  - `POST()` [select] — app/api/mp-config/responses/route.ts:583
 
 ### mp_config_responses
 Defined in supabase/migrations/0023_mp_config_responses.sql:6
@@ -865,6 +866,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `POST()` [select,update] — app/api/results/[id]/accept/route.ts:74
   - `POST()` [select,update] — app/api/results/[id]/assign/route.ts:136
   - `POST()` [select,update] — app/api/results/[id]/cancel/route.ts:50
+  - `POST()` [select,update] — app/api/results/[id]/customer/route.ts:94
   - `POST()` [select,update] — app/api/results/[id]/decline/route.ts:40
   - `POST()` [select,update] — app/api/results/[id]/filling-mix/route.ts:92
   - `POST()` [select,update] — app/api/results/[id]/finish/route.ts:53
@@ -921,7 +923,7 @@ Changed from pages: `/`, `/account`, `/account/login`, `/mbolster-config`, `/mp-
   - `updateStaffProfile()` [update] — lib/staff/admin.ts:209
 - Read by:
   - `/settings/audit-log` (page) [select] — app/[lang]/settings/audit-log/page.tsx:68
-  - `POST()` [select] — app/api/mp-config/responses/route.ts:529
+  - `POST()` [select] — app/api/mp-config/responses/route.ts:547
   - `isPickableStaffProfile()` [select] — lib/staff/admin.ts:281
   - `link-admin.ts` [select] — lib/telegram/link-admin.ts:40
   - `linkedByName()` [select] — lib/customer-pillow/load.ts:82
@@ -1449,6 +1451,7 @@ Defined in supabase/migrations/20261108100000_fitting_dated_purchases.sql:45
   - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:144
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:116
   - `listAdminCustomers()` [select] — lib/ecommerce/admin/customers.ts:57
+  - `loadResultCustomerSummary()` [select] — lib/results/admin/result-customer.ts:38
   - `readNextStepFacts()` [select] — lib/crm/next-step-server.ts:16
   - `readRecipientFacts()` [select] — lib/email-campaigns/store.ts:507
   - `readUnengagedIds()` [select] — lib/email-campaigns/store.ts:458
@@ -1536,7 +1539,7 @@ Defined in supabase/migrations/20261020120000_marketing_consent.sql:73
 References: `customer_campaign_sends`, `customers`
 - Read by:
   - `readLatestUnsubscribe()` [select] — lib/marketing-consent/unsubscribe-reasons-server.ts:76
-  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:170
+  - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:173
   - `sources/consent.ts` [select] — lib/crm/timeline/sources/consent.ts:41
 
 ### customer_emails
@@ -1992,7 +1995,7 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
 ### set_marketing_email
 Defined in supabase/migrations/20261101031444_consent_sign_up.sql:44
 - Called by:
-  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:65
+  - `setMarketingEmail()` — lib/marketing-consent/consent.ts:67
 
 ### slide_in_page_publishes
 Defined in supabase/migrations/20261105000000_slide_in_sections.sql:53
@@ -2943,11 +2946,11 @@ app/[lang]/settings/results/page.tsx
 
 ### /settings/results/[id]
 app/[lang]/settings/results/[id]/page.tsx
-- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/mp-config/responses [POST]`, `/api/mp-config/responses/[id] [DELETE,GET]`, `/api/results/[id]/assign [POST]`, `/api/results/[id]/cancel [POST]`, `/api/results/[id]/filling-mix [GET,POST]`, `/api/results/[id]/request-payment [POST]`, `/api/results/assign/prep [GET]`, `/settings/inventory/configure/templates/[templateId]`
-- Loads: `customerIdForResult()`, `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `loadResultFillingMix()`, `requireAdminPage()`
+- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/mp-config/responses [POST]`, `/api/mp-config/responses/[id] [DELETE,GET]`, `/api/results/[id]/assign [POST]`, `/api/results/[id]/cancel [POST]`, `/api/results/[id]/customer [POST]`, `/api/results/[id]/filling-mix [GET,POST]`, `/api/results/[id]/request-payment [POST]`, `/api/results/assign/prep [GET]`, `/api/shop/customers [GET]`, `/settings/inventory/configure/templates/[templateId]`
+- Loads: `customerIdForResult()`, `loadFillingItems()`, `loadMpConfigResponseDetail()`, `loadResultAssignPrep()`, `loadResultCustomerSummary()`, `loadResultFillingMix()`, `requireAdminPage()`
 - Reads: `items`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `analytics_visitors`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `filling_template_placements`, `mp_config_response_photos`, `mp_config_responses`, `mp_staff`, `partner_users`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`
-- Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `customers`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `neck_support_dimension_overrides`, `orders`, `partners`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `analytics_visitors`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_template_lines`, `bom_templates`, `customers`, `filling_template_placements`, `mp_config_response_photos`, `mp_config_responses`, `mp_staff`, `partner_users`, `pillow_products`, `result_bolster_filling_placements`, `result_filling_placements`
+- Reads, through the same: `admin_customer_overview`, `admin_roles`, `admin_users`, `bolster_bom_lines`, `bom_lines`, `config_upload`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `inventory_balances`, `item_prices`, `items`, `neck_support_dimension_overrides`, `orders`, `partners`, `product_prices`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`
 
 ### /settings/rma
 app/[lang]/settings/rma/page.tsx

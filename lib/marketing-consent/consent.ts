@@ -9,8 +9,10 @@
  *    (app/[lang]/account/actions.ts), `account`, either way;
  *  - the boxes where people give their email, ticked by default (ADR 0039),
  *    subscribe only, and only someone nobody has asked: at checkout
- *    (app/api/shop/checkout) `checkout`; on a customisation's contact step
- *    (app/api/results/hold) `customisation`; on booking an appointment
+ *    (app/api/shop/checkout) `checkout`; wherever a customisation takes an
+ *    email (lib/crm/customisation-customer.ts: the first question, *Save
+ *    without purchasing*, the hold, and Staff on a Result's Customer panel)
+ *    `customisation`; on booking an appointment
  *    (app/api/appointments/book, app/api/readjustments/book and /checkout)
  *    `appointment`;
  *  - the one-click unsubscribe link (app/api/email/unsubscribe), `unsubscribe_link`;
@@ -101,7 +103,8 @@ export function recordCheckoutConsent(admin: SupabaseClient, customerId: string,
 
 /**
  * A box on a form that takes an email but makes no Customer of its own (a
- * customisation's contact step, a guest's booking). Ticked, it finds the
+ * guest's booking; a customisation makes its Customer either way, through
+ * lib/crm/customisation-customer.ts, ADR 0051). Ticked, it finds the
  * Customer by the email typed, or creates one, then records as
  * `recordBoxConsent` does. The email is always the one typed on the form, so
  * on a Staff member's device it is the shopper's, never the Staff login's.

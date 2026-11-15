@@ -3849,6 +3849,9 @@ export function MpConfigClient({
                             },
                             token: readToken(tokenStorageKey),
                             persistContact: true,
+                            // The box beside the email (ADR 0039): the
+                            // contact becomes a Customer either way (ADR 0051).
+                            marketingEmail: askedMarketingEmail,
                             email: holdEmail.trim(),
                             phone: holdPhone.trim(),
                             discoverySource,

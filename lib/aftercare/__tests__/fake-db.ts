@@ -50,6 +50,7 @@ export function fakeAftercareDb(db: AftercareFakeDb, rpcs: Record<string, RpcHan
           return q;
         },
         eq: (col: string, val: unknown) => (filters.push((r) => r[col] === val), q),
+        is: (col: string, val: unknown) => (filters.push((r) => (r[col] ?? null) === val), q),
         in: (col: string, vals: unknown[]) => (filters.push((r) => vals.includes(r[col])), q),
         order: (col: string, opts?: { ascending?: boolean }) => ((sort = { col, asc: opts?.ascending !== false }), q),
         limit: (n: number) => ((limit = n), q),
