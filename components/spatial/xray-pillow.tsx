@@ -170,6 +170,13 @@ const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
 // gauge and its warning say which, in amber. (The amber / red cell rings went
 // with Ivan's 26-9-2026 review: no seams on the pillow but the two dividers.)
 const AMBER = "#f59e0b";
+// Remove (owner, 15-11-2026): the one red on the x-ray, and it means only "this pouch comes out". A pouch carried
+// off the x-ray, or whose bin is under the pointer, draws in the theme's destructive red; fit status still never does.
+const REMOVE_RED = "var(--destructive, rgb(220,38,38))";
+/** How far past the x-ray's edge a held pouch must be carried before its release takes it out, screen px. */
+const REMOVE_MARGIN_PX = 24;
+/** Where the remove chip sits beside the hand, screen px. */
+const removeChipTransform = (clientX: number, clientY: number) => `translate(${clientX + 16}px, ${clientY + 16}px)`;
 const RELAXED_PIECE: PieceFitStatus = { status: "ok", widthRatio: 1, thicknessRatio: 1 };
 /** A pouch drag in flight (slice 07). */
 type PouchDrag = {
@@ -206,6 +213,11 @@ type PouchDrag = {
   planAt: Vec;
   /** What the shown preview was planned for (target, millimetres, snapping): another plan only when it changes. */
   planKey: string;
+  /** The pointer, screen px: the remove chip follows it off the x-ray. */
+  clientX: number;
+  clientY: number;
+  /** Carried off the x-ray, past REMOVE_MARGIN_PX and off the dive's controls: its release takes the pouch out. */
+  removing: boolean;
 };
 const sameRef = (p: PieceRef, q: PieceRef) => p.section === q.section && p.subSection === q.subSection && p.slot === q.slot;
 const sameCellRef = (p: Cell, q: Cell) => p.section === q.section && p.subSection === q.subSection;
@@ -1111,6 +1123,35 @@ export function XrayPillow({
     if (r) commitMove(placements, r.placements, ref, r.ref, sameCellRef(r.ref, ref));
   };
 
+  /** The selected pouch's bin is under the pointer (its key): the pouch previews in red, as one carried off does. */
+  const [binHover, setBinHover] = useState<string | null>(null);
+  const removeChipRef = useRef<HTMLDivElement>(null);
+  /**
+   * Take one pouch out (owner, 15-11-2026): its bin on the x-ray, Delete or Backspace with it selected, or a drag off
+   * the x-ray. Undo is a move's: an inverse applied only while the remove is still the last thing that happened.
+   */
+  const takeOut = (ref: PieceRef) => {
+    const placed = placements.find((q) => sameRef(q, ref));
+    if (!placed || !onPlacementsChange) return;
+    const before = placements;
+    const next = removePiece(before, ref, ref.slot);
+    onPlacementsChange(next);
+    setSelected(null);
+    setBinHover(null);
+    toast.success(`Removed ${pieceLabel(placed.itemId)} from ${ref.section} ${ref.subSection}`, {
+      id: "xray-move",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          if (placementsRef.current !== next) {
+            toast.error("Undo unavailable — the mix changed after the remove");
+            return;
+          }
+          onPlacementsChange?.(before);
+        },
+      },
+    });
+  };
   /**
    * One move of the selected pouch, from a key: the pure functions
    * decide (caps first, then the fit), the refusal rides the same toast path
@@ -1185,9 +1226,13 @@ export function XrayPillow({
   };
   const nudgeByRef = useRef(nudgeBy);
   const performMoveRef = useRef(performMove);
+  const takeOutSelectedRef = useRef(() => {});
   useEffect(() => {
     performMoveRef.current = performMove;
     nudgeByRef.current = nudgeBy;
+    takeOutSelectedRef.current = () => {
+      if (selectedPiece) takeOut(selectedPiece);
+    };
   });
 
   // --- Pouch drag (slices 06/07) -----------------------------------------------
@@ -1208,6 +1253,18 @@ export function XrayPillow({
     if (!m) return { x: 0, y: 0 };
     const inv = m.inverse();
     return { x: inv.a * clientX + inv.c * clientY + inv.e, y: inv.b * clientX + inv.d * clientY + inv.f };
+  };
+  /**
+   * Whether the hand has carried a held pouch off the x-ray to take it out: past the frame's edge by
+   * REMOVE_MARGIN_PX, so a pouch pushed hard against a wall is not lost, and not over the dive's own controls (beside
+   * the pillow, or under it on a phone), where a drop that misses a layer row should do nothing, not remove.
+   */
+  const offXray = (clientX: number, clientY: number) => {
+    const box = rootRef.current?.getBoundingClientRect();
+    if (!box) return false;
+    const m = REMOVE_MARGIN_PX;
+    if (clientX >= box.left - m && clientX <= box.right + m && clientY >= box.top - m && clientY <= box.bottom + m) return false;
+    return !document.elementFromPoint(clientX, clientY)?.closest("[data-xray-dive-dock]");
   };
   const startDrag = (e: React.PointerEvent<Element>, ref: PieceRef, fromPouch: boolean) => {
     if (!editable || e.button !== 0) return;
@@ -1245,6 +1302,9 @@ export function XrayPillow({
       pxPerView: svgScale(svgRef.current).pxPerView,
       planAt: [drawnCx, drawnCy],
       planKey: "",
+      clientX: e.clientX,
+      clientY: e.clientY,
+      removing: false,
     };
     dragRef.current = d;
     setDrag(d);
@@ -1346,15 +1406,29 @@ export function XrayPillow({
     const m = svgRef.current?.getScreenCTM();
     const underPointer = dropTargetFromElement(document.elementFromPoint(e.clientX, e.clientY));
     const centreClient = m ? { x: m.a * fine.at[0] + m.c * fine.at[1] + m.e, y: m.b * fine.at[0] + m.d * fine.at[1] + m.f } : { x: e.clientX, y: e.clientY };
-    const over = underPointer?.kind === "layer" ? underPointer : dropTargetFromElement(document.elementFromPoint(centreClient.x, centreClient.y));
+    // Carried off the x-ray (owner, 15-11-2026): over nothing, and its release takes it out. A layer row is still a
+    // drop target wherever it is, so only a hand off every target removes.
+    const removing = !underPointer && offXray(e.clientX, e.clientY);
+    const over = removing
+      ? null
+      : underPointer?.kind === "layer" ? underPointer : dropTargetFromElement(document.elementFromPoint(centreClient.x, centreClient.y));
     // Planned at whole millimetres, as the cut is: the view draws again only when where it would land can change.
     const mm = (v: number) => Math.round(v / stage.k) * stage.k;
     const planAt: Vec = [mm(fine.at[0]), mm(fine.at[1])];
     const target = over ? `${over.section}/${over.subSection}${over.kind === "layer" ? `:${over.depth}` : ""}` : "-";
-    const planKey = `${target}|${planAt[0].toFixed(2)}|${planAt[1].toFixed(2)}|${step.snapView > 0 ? 1 : 0}`;
-    const next: PouchDrag = { ...d, ...at, fine, snapView: step.snapView, active: true, over, planAt, planKey };
+    const planKey = removing ? "remove" : `${target}|${planAt[0].toFixed(2)}|${planAt[1].toFixed(2)}|${step.snapView > 0 ? 1 : 0}`;
+    const next: PouchDrag = { ...d, ...at, fine, snapView: step.snapView, active: true, over, planAt, planKey, clientX: e.clientX, clientY: e.clientY, removing };
     dragRef.current = next;
+    // The remove chip follows the hand without a render, as the ghost does.
+    removeChipRef.current?.style.setProperty("transform", removeChipTransform(e.clientX, e.clientY));
     if (d.active && planKey === d.planKey) return;
+    if (removing) {
+      // Nothing moves while it is off the x-ray: the pouch stays drawn where it is, in red, and both views show the mix as it is.
+      next.overfull = false;
+      setDrag(next);
+      showPlan(null);
+      return;
+    }
     const plan = planDrop(next, over, false);
     next.overfull =
       plan.kind === "move"
@@ -1377,6 +1451,10 @@ export function XrayPillow({
     }
     draggingRef.current = false;
     justDraggedRef.current = !canceled; // the click that follows the drop must not re-select the old ref
+    if (d.removing && !canceled) {
+      takeOut(d.source);
+      return;
+    }
     const plan = planDrop(d, canceled ? null : d.over, canceled);
     if (plan.kind === "refused") {
       toast.error(plan.error); // cap feedback, the add's path
@@ -1459,6 +1537,23 @@ export function XrayPillow({
   useEffect(() => {
     snapHeld.current = draftSnap && ownDraft && heldDrawn ? [heldDrawn.cx, heldDrawn.cy] : null;
   }, [draftSnap, ownDraft, heldDrawn]);
+  /**
+   * Where the selected pouch's bin sits, frame %: its drawn top-right, a little in so it sits on the pouch, kept
+   * inside the frame. Only in its own dive, and not while anything is held or the add picker is open.
+   */
+  const binAt = (() => {
+    if (!editable || !selectedPiece || !selectedKey || dived !== selectedPiece.section || drag?.active || openSub || draft) return null;
+    const r = rectByKey.get(selectedKey);
+    if (!r) return null;
+    const inset = Math.min(r.w, r.h) * 0.15;
+    const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+    return {
+      left: clamp(((r.x + r.w - inset) / XRAY_VIEW.width) * 100, 3, 97),
+      top: clamp(((r.y + inset) / XRAY_VIEW.height) * 100, 4, 96),
+    };
+  })();
+  /** The pouch drawn red as the one coming out: carried off the x-ray, or its bin under the pointer. */
+  const removingKey = drag?.active && drag.removing ? drag.key : binAt && binHover !== null && binHover === selectedKey ? binHover : null;
   // A snap taking hold is felt as well as seen, where the device can (a phone's short buzz), whatever holds it.
   useEffect(() => {
     if (draftSnap && dragRef.current) buzz();
@@ -1490,6 +1585,12 @@ export function XrayPillow({
     if (!dived || !editable || !selectedPiece) return;
     const onMoveKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target) || draggingRef.current) return;
+      // Delete (or a Mac's Backspace) takes the selected pouch out, as its bin does.
+      if ((e.key === "Delete" || e.key === "Backspace") && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();
+        takeOutSelectedRef.current();
+        return;
+      }
       const step = nudgeKeyFor(e);
       if (step) {
         e.preventDefault();
@@ -2021,6 +2122,20 @@ export function XrayPillow({
                 fillOpacity={cellIsFull(addTarget) ? 0.05 : 0.14}
               />
             )}
+            {/* Remove (15-11-2026): the pouch a release or its bin would take out, red where it stands — over the
+                dive's veil, so one carried off from another Section reads red too. */}
+            {removingKey && (removingKey.startsWith(`${dived}/`) ? authoredPaths : settledPaths).get(removingKey) && (
+              <path
+                d={(removingKey.startsWith(`${dived}/`) ? authoredPaths : settledPaths).get(removingKey)!}
+                fill={REMOVE_RED}
+                fillOpacity={0.6}
+                stroke={REMOVE_RED}
+                strokeWidth={3}
+                vectorEffect="non-scaling-stroke"
+                pointerEvents="none"
+                data-xray-removing
+              />
+            )}
           </g>
 
           <path
@@ -2176,9 +2291,13 @@ export function XrayPillow({
               handle={heldGhost}
               d={drag.ghostD ?? ""}
               offset={[-drag.drawnCx, -drag.drawnCy]}
-              fill={`var(${fillingVisual(itemSubtypes.get(drag.source.itemId) ?? null).cssVar}, ${fillingVisual(itemSubtypes.get(drag.source.itemId) ?? null).defaultColor})`}
+              fill={
+                drag.removing
+                  ? REMOVE_RED
+                  : `var(${fillingVisual(itemSubtypes.get(drag.source.itemId) ?? null).cssVar}, ${fillingVisual(itemSubtypes.get(drag.source.itemId) ?? null).defaultColor})`
+              }
               halfH={drag.halfH}
-              badge={heldBadge}
+              badge={drag.removing ? null : heldBadge}
               badgeFont={badgeFontFor(drag.pxPerView)}
               bounds={[4, XRAY_VIEW.width - 4, 0]}
             />
@@ -2224,6 +2343,26 @@ export function XrayPillow({
               {pieceChip(fc.cell, fc.itemId, fc.slots)}
             </div>
           ))}
+
+          {/* The selected pouch's bin (15-11-2026): on its top-right corner, so Staff take out the piece they are
+              looking at without finding it in a list. Hovered, the pouch turns red, as one carried off does. */}
+          {binAt && selectedPiece && (
+            <button
+              type="button"
+              className="absolute z-30 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-background bg-destructive text-white shadow-md transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:size-9"
+              style={{ left: `${binAt.left}%`, top: `${binAt.top}%`, pointerEvents: "auto" }}
+              aria-label={`Remove ${pieceLabel(selectedPiece.itemId)} from ${selectedPiece.section} ${selectedPiece.subSection}`}
+              title="Remove (Delete)"
+              onPointerEnter={() => setBinHover(selectedKey)}
+              onPointerLeave={() => setBinHover(null)}
+              onFocus={() => setBinHover(selectedKey)}
+              onBlur={() => setBinHover(null)}
+              onClick={() => takeOut(selectedPiece)}
+              data-xray-remove-piece
+            >
+              <Trash2 className="size-3.5 max-md:size-4" aria-hidden />
+            </button>
+          )}
 
           {/* Per-cell control surface, ON the cell it edits. XrayEditor frames
               the pillow at the x-ray's own aspect ratio with overflow-hidden, so
@@ -2369,8 +2508,30 @@ export function XrayPillow({
           className="pointer-events-none absolute inset-x-0 top-full text-center text-[11px] leading-4 text-white/70"
           aria-hidden
         >
-          Tap a section to edit · drag a pouch to move it, slowly to place it exactly
+          Tap a section to edit · drag a pouch to move it, slowly to place it exactly, or off the x-ray to remove it
         </p>
+      )}
+
+      {/* Carried off the x-ray (15-11-2026): the frame rings red, and a chip by the hand says what its release does —
+          the frame clips the ghost on a desktop, so off it the chip is what follows the pointer. Portalled to the
+          page: a dialog's transform would otherwise hold a fixed element inside it. */}
+      {drag?.active && drag.removing && (
+        <>
+          <div className="pointer-events-none absolute inset-0 rounded-lg ring-2 ring-inset ring-destructive" data-xray-remove-ring />
+          {createPortal(
+            <div
+              ref={removeChipRef}
+              className="pointer-events-none fixed left-0 top-0 z-[100] flex items-center gap-1.5 whitespace-nowrap rounded-full bg-destructive px-2.5 py-1 text-xs font-medium text-white shadow-lg"
+              style={{ transform: removeChipTransform(drag.clientX, drag.clientY) }}
+              role="status"
+              data-xray-remove-chip
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+              Release to remove {pieceLabel(drag.source.itemId)}
+            </div>,
+            document.body,
+          )}
+        </>
       )}
 
       {/* Phone dock: the dived section's controls, one group per cell, under the

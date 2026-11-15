@@ -10,6 +10,7 @@ import {
 } from "@/lib/results/admin/detail-prep";
 import { loadResultFillingMix } from "@/lib/results/admin/filling-mix";
 import { loadMpConfigResponseDetail } from "@/lib/results/admin/response-detail";
+import { loadResultCustomerSummary } from "@/lib/results/admin/result-customer";
 import ResultDetailPage, { type ResultDetailInitialData } from "./result-detail-client";
 
 export const runtime = "nodejs";
@@ -56,7 +57,13 @@ export default async function ResultDetailRoute({
         .catch(() => null)
     : Promise.resolve(null);
 
-  const [[assignPrep, fillingItems], customerId, fillingMix] = await Promise.all([
+  // The Customer panel (ADR 0051 d): who it is and their stage. A failed read
+  // shows the panel without them, never fails the page.
+  const customerPromise = customerIdPromise.then((cid) =>
+    cid ? loadResultCustomerSummary(supabaseAdmin(), cid).catch(() => null) : null,
+  );
+
+  const [[assignPrep, fillingItems], customerId, fillingMix, customer] = await Promise.all([
     response && canEditFillingMix(response)
       ? Promise.all([
           loadResultAssignPrep(
@@ -68,6 +75,7 @@ export default async function ResultDetailRoute({
       : Promise.resolve([null, null] as const),
     customerIdPromise,
     fillingMixPromise,
+    customerPromise,
   ]);
 
   const initialData: ResultDetailInitialData = {
@@ -79,6 +87,10 @@ export default async function ResultDetailRoute({
     fillingItems,
     fillingMix,
     customerId,
+    customer,
+    canViewCustomers: hasPermission(ctx, "customers"),
+    // Linking or creating changes a Customer: `customers-edit` (ADR 0051 g).
+    canEditCustomer: hasPermission(ctx, "customers-edit"),
   };
 
   return <ResultDetailPage initialData={initialData} />;

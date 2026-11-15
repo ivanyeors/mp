@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -34,6 +33,8 @@ import { useElementWidth } from "@/hooks/use-element-width";
 import { fillingMixMode } from "@/lib/results/filling-mix";
 import type { ResultFillingMixPayload } from "@/lib/results/admin/filling-mix";
 import { FillingMixWorkbench, WorkbenchTile } from "./filling-mix-workbench";
+import { ResultCustomerPanel } from "./result-customer-panel";
+import { resultContactEditable, type ResultCustomerSummary } from "@/lib/results/result-customer";
 
 /**
  * The x-ray editor and the cross-section load on demand, as on the Configure
@@ -276,6 +277,12 @@ export type ResultDetailInitialData = {
    * or no single Customer matches.
    */
   customerId?: string | null;
+  /** The Customer panel's Customer and stage (ADR 0051 d); null with none or unread. */
+  customer?: ResultCustomerSummary | null;
+  /** The viewer holds `customers`: the panel shows at all. */
+  canViewCustomers?: boolean;
+  /** The viewer holds `customers-edit`: the panel links and creates. */
+  canEditCustomer?: boolean;
 };
 
 /**
@@ -373,7 +380,7 @@ export default function ResultDetailPage({
   const id = params?.id;
 
   const [seed] = useState(() => deriveSeed(initialData));
-  const customerId = initialData?.customerId ?? null;
+  const customer = initialData?.customer ?? null;
 
   const [loading, setLoading] = useState(!initialData?.detail);
   const [saving, setSaving] = useState(false);
@@ -1590,6 +1597,26 @@ export default function ResultDetailPage({
         </Card>
       )}
 
+      {/* Who this Result belongs to, for every Result: a Draft that stopped
+          part-way most of all (ADR 0051). */}
+      {initialData?.canViewCustomers ? (
+        <ResultCustomerPanel
+          resultId={row.id}
+          resultName={typeof row.data?.name === "string" && row.data.name.trim() ? row.data.name.trim() : null}
+          resultEmail={row.customer_email ?? null}
+          resultPhone={row.customer_phone ?? null}
+          editable={resultContactEditable({
+            status: row.status ?? null,
+            customer_email: row.customer_email ?? null,
+            data: row.data,
+          })}
+          customer={customer}
+          canEdit={initialData?.canEditCustomer === true}
+          customerHref={(cid) => to(`/settings/customers/${cid}`)}
+          onChanged={() => router.refresh()}
+        />
+      ) : null}
+
       {/* Purchase-path assignment (held Results) */}
       {(row.status === "held" || row.status === "assigned") && (
         // `#assignment`: the configurator sends Staff here after an Assist submit.
@@ -1787,9 +1814,9 @@ export default function ResultDetailPage({
             </div>
           ) : null}
 
+
           {(row.authorized_amount != null ||
             row.customer_email ||
-            customerId ||
             row.customer_phone ||
             row.discovery_source) && (
             <div className="grid gap-3 sm:grid-cols-2 text-sm border-t pt-3">
@@ -1807,21 +1834,11 @@ export default function ResultDetailPage({
                   <span className="font-medium">{row.coupon_code}</span>
                 </div>
               )}
-              {(row.customer_email || customerId) && (
+              {/* The Customer itself, and *Open customer*, are on the panel above. */}
+              {row.customer_email && (
                 <div>
-                  <span className="text-muted-foreground">{row.customer_email ? "Email: " : "Customer"}</span>
+                  <span className="text-muted-foreground">Email: </span>
                   {row.customer_email}
-                  {customerId ? (
-                    <>
-                      {row.customer_email ? " · " : ": "}
-                      <Link
-                        href={to(`/settings/customers/${customerId}`)}
-                        className="font-medium underline-offset-4 hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
-                      >
-                        Open customer
-                      </Link>
-                    </>
-                  ) : null}
                 </div>
               )}
               {row.customer_phone && (

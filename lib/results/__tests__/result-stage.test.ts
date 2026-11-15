@@ -234,7 +234,7 @@ describe("bucketFor", () => {
   it("folds building into to_build and handed_over into closed", () => {
     expect(bucketFor("building")).toBe("to_build");
     expect(bucketFor("handed_over")).toBe("closed");
-    expect(bucketFor("measurement_only")).toBe("needs_assign");
+    expect(bucketFor("measurement_only")).toBe("unfinished");
   });
 
   it("passes the primary buckets through unchanged", () => {

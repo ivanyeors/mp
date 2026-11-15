@@ -178,7 +178,8 @@ export function resultStage(input: StageInput, now: Date = new Date()): StageRes
 }
 
 export const STAGE_LABELS: Record<ResultStage, string> = {
-  measurement_only: "Measurement only",
+  // A Draft Result: started, and not yet sent, held or paid (PRD-results-to-customer slice 03).
+  measurement_only: "Unfinished",
   needs_assign: "Needs assign",
   awaiting_customer: "Awaiting customer",
   to_build: "To build",
@@ -199,20 +200,28 @@ export const STUCK_REASON_LABELS: Record<StuckReason, string> = {
   accept_interrupted: "Accept interrupted — check Stripe and Orders",
 };
 
-/** The queue buckets staff actually work from, in workflow order. */
+/**
+ * The queue buckets staff actually work from, in workflow order, then
+ * *Unfinished*: the Draft Results, which are follow-ups for the CRM, not build
+ * work (PRD-results-to-customer slice 03). *Needs assign* is the build team's
+ * queue, as the sidebar badge counts it (`/api/results/queue-counts`).
+ */
 export const STAGE_BUCKETS = [
   "needs_assign",
   "awaiting_customer",
   "to_build",
   "shipped",
   "stuck",
+  "unfinished",
   "closed",
-] as const satisfies readonly ResultStage[];
+] as const;
+
+export type StageBucket = (typeof STAGE_BUCKETS)[number];
 
 /** Which stages fall under each bucket tab. */
-export function bucketFor(stage: ResultStage): (typeof STAGE_BUCKETS)[number] {
+export function bucketFor(stage: ResultStage): StageBucket {
   if (stage === "building") return "to_build";
   if (stage === "handed_over") return "closed";
-  if (stage === "measurement_only") return "needs_assign";
-  return stage as (typeof STAGE_BUCKETS)[number];
+  if (stage === "measurement_only") return "unfinished";
+  return stage;
 }
