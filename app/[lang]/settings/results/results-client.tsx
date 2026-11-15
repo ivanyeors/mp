@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MoreVertical, RefreshCw, Send, SquareArrowOutUpRight, Trash2 } from "lucide-react";
+import { MoreVertical, RefreshCw, Send, SquareArrowOutUpRight, Trash2, UserRound } from "lucide-react";
 import { AssistLinkCard } from "@/components/admin/assist-link-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,9 @@ import {
   bucketFor,
   resultStage,
   type ResultStage,
+  type StageBucket,
 } from "@/lib/results/result-stage";
+import { draftProgress, resultSourceKey } from "@/lib/results/draft-progress";
 import { formatAdminDateMY, formatAdminDateTime } from "@/lib/format/admin-date";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -118,7 +120,7 @@ type LocationOption = {
   name: string;
 };
 
-type ResultsTab = (typeof STAGE_BUCKETS)[number];
+type ResultsTab = StageBucket;
 
 /** Order-linkage filter: staff need to find rows whose Order state is wrong. */
 type OrderFilter = "all" | "has_order" | "no_order" | "mismatch";
@@ -141,8 +143,16 @@ const TAB_LABELS: Record<ResultsTab, string> = {
   to_build: "To build",
   shipped: "Shipped",
   stuck: "Stuck",
+  unfinished: "Unfinished",
   closed: "Closed",
 };
+
+/** What an empty tab says. */
+function emptyText(tab: ResultsTab): string {
+  if (tab === "stuck") return "Nothing is stuck. Every result is moving.";
+  if (tab === "unfinished") return "No unfinished customisations. Everyone who started has sent, held or paid.";
+  return `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`;
+}
 
 /** Order-status badge tone, mirroring the Orders list vocabulary. */
 const ORDER_STATUS_CLASS: Record<string, string> = {
@@ -159,7 +169,7 @@ const ORDER_STATUS_CLASS: Record<string, string> = {
 function noOrderReason(stage: ResultStage): string {
   switch (stage) {
     case "measurement_only":
-      return "Measurement only";
+      return "No purchase yet";
     case "needs_assign":
     case "awaiting_customer":
       return "Not yet captured";
@@ -170,7 +180,9 @@ function noOrderReason(stage: ResultStage): string {
   }
 }
 
-function sourceLabel(source: string | null | undefined): string {
+/** The row's source, as the queue shows and filters it (`resultSourceKey`). */
+function sourceLabel(row: MpConfigResponseRow): string {
+  const source = resultSourceKey(row);
   return source === "online_purchase"
     ? "Purchase"
     : source === "online_customization"
@@ -494,7 +506,7 @@ export default function ResultsPage({
     const q = search.trim().toLowerCase();
     return staged
       .filter((s) => bucketFor(s.stage) === tab)
-      .filter((s) => sourceFilter === "all" || (s.row.source ?? "manual") === sourceFilter)
+      .filter((s) => sourceFilter === "all" || resultSourceKey(s.row) === sourceFilter)
       .filter((s) => {
         if (orderFilter === "all") return true;
         if (orderFilter === "has_order") return Boolean(s.row.order_id);
@@ -749,6 +761,13 @@ export default function ResultsPage({
         >
           <SquareArrowOutUpRight className="h-4 w-4" />
           Open result
+        </DropdownMenuItem>
+        {/* The Result page's Customer panel: link or create one (ADR 0051). */}
+        <DropdownMenuItem
+          onSelect={() => router.push(`${to(`/settings/results/${row.id}`)}#customer`)}
+        >
+          <UserRound className="h-4 w-4" />
+          Customer…
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={
@@ -1006,9 +1025,7 @@ export default function ResultsPage({
           )}
           {filtered.length === 0 ? (
             <EmptyState className="md:hidden">
-              {tab === "stuck"
-                ? "Nothing is stuck. Every result is moving."
-                : `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`}
+              {emptyText(tab)}
             </EmptyState>
           ) : (
             <MobileList>
@@ -1035,7 +1052,10 @@ export default function ResultsPage({
                       </>
                     }
                   >
-                    <p className="truncate text-sm font-medium">{row.customer_email || name}</p>
+                    <p className="truncate text-sm font-medium">{name !== "—" ? name : row.customer_email || name}</p>
+                    {name !== "—" && row.customer_email ? (
+                      <p className="truncate text-xs text-muted-foreground">{row.customer_email}</p>
+                    ) : null}
                     {size && (
                       <p className="truncate text-xs text-muted-foreground capitalize">
                         {size} · {(row.assigned_tier ?? row.suggested_tier) ?? "—"} tier
@@ -1053,7 +1073,7 @@ export default function ResultsPage({
                             : undefined
                         }
                       >
-                        {sourceLabel(row.source)}
+                        {sourceLabel(row)}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         {formatAdminDateMY(row.updated_at)}
@@ -1062,6 +1082,9 @@ export default function ResultsPage({
                     {stuckReason && (
                       <p className="mt-0.5 text-xs text-red-700">{STUCK_REASON_LABELS[stuckReason]}</p>
                     )}
+                    {stage === "measurement_only" ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{draftProgress(row.data).label}</p>
+                    ) : null}
                   </MobileListRow>
                 );
               })}
@@ -1097,9 +1120,7 @@ export default function ResultsPage({
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={14} className="py-10 text-center text-sm text-muted-foreground">
-                    {tab === "stuck"
-                      ? "Nothing is stuck. Every result is moving."
-                      : `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`}
+                    {emptyText(tab)}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -1141,7 +1162,10 @@ export default function ResultsPage({
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{updated}</TableCell>
                       <TableCell className="font-medium">
-                        {row.customer_email || name}
+                        {name !== "—" ? name : row.customer_email || name}
+                        {name !== "—" && row.customer_email ? (
+                          <div className="truncate text-xs font-normal text-muted-foreground">{row.customer_email}</div>
+                        ) : null}
                         {(row.assigned_size ?? row.suggested_size) && (
                           <div className="text-xs font-normal text-muted-foreground capitalize">
                             {(row.assigned_size ?? row.suggested_size) ?? "—"} ·{" "}
@@ -1161,6 +1185,11 @@ export default function ResultsPage({
                             {STUCK_REASON_LABELS[stuckReason]}
                           </div>
                         )}
+                        {stage === "measurement_only" ? (
+                          <div className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+                            {draftProgress(row.data).label}
+                          </div>
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -1171,7 +1200,7 @@ export default function ResultsPage({
                               : ""
                           }`}
                         >
-                          {sourceLabel(row.source)}
+                          {sourceLabel(row)}
                         </Badge>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>

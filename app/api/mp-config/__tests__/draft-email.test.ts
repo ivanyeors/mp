@@ -4,14 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * A guest gives their email on the configurator's first question (ADR 0049),
  * so every Draft Result Staff can see is one they can reach. The route writes
  * it to `customer_email` on a Draft only, never on a held Result (whose email,
- * and the access token its emails carry, are the hold's), and records the
- * marketing box beside it as `customisation` once the save has succeeded.
+ * and the access token its emails carry, are the hold's), and, once the save
+ * has succeeded, makes the email a Customer with the box beside it (ADR 0051).
+ * *Save without purchasing* does the same for the contact it saves.
  */
 
 const h = vi.hoisted(() => ({
   maybeSingle: vi.fn(),
   upsert: vi.fn(),
-  recordBoxConsentByEmail: vi.fn(),
+  customerForCustomisation: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/admin", () => ({
@@ -28,8 +29,13 @@ vi.mock("@/lib/results/access", async (orig) => ({
   ...(await orig<typeof import("@/lib/results/access")>()),
   requireResultAccess: vi.fn().mockResolvedValue({ ok: true }),
 }));
-vi.mock("@/lib/marketing-consent/consent", () => ({
-  recordBoxConsentByEmail: h.recordBoxConsentByEmail,
+vi.mock("@/lib/crm/customisation-customer", () => ({
+  customerForCustomisation: h.customerForCustomisation,
+}));
+vi.mock("@/lib/discovery-source", () => ({
+  getDiscoverySourceCatalog: vi.fn().mockResolvedValue([]),
+  validateDiscoverySource: () => null,
+  normalizeDiscoverySourceOther: () => null,
 }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => {
@@ -57,7 +63,7 @@ const written = () => h.upsert.mock.calls[0]![0] as Record<string, unknown>;
 beforeEach(() => {
   vi.clearAllMocks();
   h.upsert.mockResolvedValue({ error: null });
-  h.recordBoxConsentByEmail.mockResolvedValue(undefined);
+  h.customerForCustomisation.mockResolvedValue("c-1");
 });
 
 describe("POST /api/mp-config/responses — the first question's email", () => {
@@ -66,22 +72,20 @@ describe("POST /api/mp-config/responses — the first question's email", () => {
     const res = await post({ draftEmail: "  Ada@Example.COM ", marketingEmail: true });
     expect(res.status).toBe(200);
     expect(written().customer_email).toBe("ada@example.com");
-    expect(h.recordBoxConsentByEmail).toHaveBeenCalledWith(
+    expect(h.customerForCustomisation).toHaveBeenCalledWith(
       expect.anything(),
-      "ada@example.com",
+      { email: "ada@example.com", name: "Ada" },
       true,
-      "customisation",
     );
   });
 
-  it("passes an unticked box as unticked, which records nothing", async () => {
+  it("makes the email a Customer even with the box unticked, which records no consent (ADR 0051)", async () => {
     h.maybeSingle.mockResolvedValue({ data: null, error: null });
     await post({ draftEmail: "ada@example.com" });
-    expect(h.recordBoxConsentByEmail).toHaveBeenCalledWith(
+    expect(h.customerForCustomisation).toHaveBeenCalledWith(
       expect.anything(),
-      "ada@example.com",
+      { email: "ada@example.com", name: "Ada" },
       false,
-      "customisation",
     );
   });
 
@@ -99,14 +103,14 @@ describe("POST /api/mp-config/responses — the first question's email", () => {
     const res = await post({ draftEmail: "someone-else@example.com", marketingEmail: true });
     expect(res.status).toBe(200);
     expect(written()).not.toHaveProperty("customer_email");
-    expect(h.recordBoxConsentByEmail).not.toHaveBeenCalled();
+    expect(h.customerForCustomisation).not.toHaveBeenCalled();
   });
 
   it("leaves customer_email alone on an autosave that sends no email", async () => {
     h.maybeSingle.mockResolvedValue({ data: { status: null, data: {} }, error: null });
     await post({});
     expect(written()).not.toHaveProperty("customer_email");
-    expect(h.recordBoxConsentByEmail).not.toHaveBeenCalled();
+    expect(h.customerForCustomisation).not.toHaveBeenCalled();
   });
 
   it("refuses an address that is not an email", async () => {
@@ -138,6 +142,43 @@ describe("POST /api/mp-config/responses — the first question's email", () => {
     h.upsert.mockResolvedValue({ error: { message: "connection reset" } });
     const res = await post({ draftEmail: "ada@example.com", marketingEmail: true });
     expect(res.status).toBe(500);
-    expect(h.recordBoxConsentByEmail).not.toHaveBeenCalled();
+    expect(h.customerForCustomisation).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/mp-config/responses — Save without purchasing", () => {
+  const save = (extra: Record<string, unknown> = {}) =>
+    post({
+      persistContact: true,
+      email: "Shopper@Example.com",
+      phone: "9123 4567",
+      discoverySource: "instagram",
+      ...extra,
+    });
+
+  it("makes the contact a Customer, with its name and mobile, and the box", async () => {
+    h.maybeSingle.mockResolvedValue({ data: { status: null, data: {} }, error: null });
+    const res = await save({ marketingEmail: true });
+    expect(res.status).toBe(200);
+    expect(h.customerForCustomisation).toHaveBeenCalledWith(
+      expect.anything(),
+      { email: "Shopper@Example.com", name: "Ada", phone: written().customer_phone },
+      true,
+    );
+    expect(written().customer_phone).toBeTruthy();
+  });
+
+  it("an unticked box still makes the Customer, and records no consent", async () => {
+    h.maybeSingle.mockResolvedValue({ data: { status: null, data: {} }, error: null });
+    await save();
+    expect(h.customerForCustomisation).toHaveBeenCalledWith(expect.anything(), expect.anything(), false);
+  });
+
+  it("records nothing when the save fails", async () => {
+    h.maybeSingle.mockResolvedValue({ data: { status: null, data: {} }, error: null });
+    h.upsert.mockResolvedValue({ error: { message: "connection reset" } });
+    const res = await save({ marketingEmail: true });
+    expect(res.status).toBe(500);
+    expect(h.customerForCustomisation).not.toHaveBeenCalled();
   });
 });
