@@ -155,6 +155,32 @@ export type LinkedGoogleReview = GoogleReviewSummary & {
   linkedAt: string;
   /** The Staff profile that linked it; null when nobody had chosen one, or it is gone. */
   linkedBy: string | null;
+  /** What the Reviews tab needs to answer it (PRD-customer-page-journey slice 03). */
+  answer: GoogleReviewAnswer;
+};
+
+/**
+ * Answering a Linked Google review from the Customer page. Nothing is posted
+ * from there: the reply is copied and pasted on Google by hand.
+ */
+export type GoogleReviewAnswer = {
+  /** The suggested reply the Telegram card holds; null when none was drafted. */
+  draft: string | null;
+  /** What we posted, or what Staff marked as posted; else the reply Google reports; null with none. */
+  posted: string | null;
+  /**
+   * Where *Open on Google* goes: this review's own page when the Places API
+   * gave one, else the shop's reviews page; null when neither is known.
+   */
+  url: string | null;
+  /** `url` opens this review itself, not the list of all of them. */
+  urlIsReview: boolean;
+  /**
+   * *Mark replied* applies: a review read through the Places API, which cannot
+   * show us replies, with none on record. A Business Profile review is never
+   * marked: the sync reads its reply from Google.
+   */
+  canMarkReplied: boolean;
 };
 
 export type ShopReviewSummary = {

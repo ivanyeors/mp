@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
-import type { Customer } from "@/lib/types/ecommerce";
 import type { MigratedCustomerFacts } from "@/lib/customer-migration/overview";
 import { DEFAULT_CUSTOMER_FILTERS, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
@@ -35,7 +34,7 @@ const groupFor = (
       campaigns={campaigns}
     />,
   );
-const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
+const { FromShopifyCard } = await import("../[id]/customer-account-cards");
 
 describe("Customers list: Points filter", () => {
   it("offers Has points and No points, with the URL's value", () => {
@@ -54,24 +53,6 @@ describe("Customers list: Points filter", () => {
   });
 });
 
-const customer = {
-  id: "c1",
-  email: "ana@x.test",
-  auth_user_id: "auth-1",
-  first_name: "Ana",
-  last_name: "Tan",
-  phone: null,
-  locale: "en-US",
-  tags: [],
-  notes: null,
-  total_orders: 0,
-  total_spent: 0,
-  created_at: "2026-09-01T00:00:00Z",
-  updated_at: "2026-09-01T00:00:00Z",
-  account_linked_at: "2026-10-22T02:00:00Z",
-  account_last_seen_at: null,
-} as unknown as Customer;
-
 const facts: MigratedCustomerFacts = {
   createdByImport: true,
   importedAt: "2026-10-21T02:00:00Z",
@@ -87,17 +68,11 @@ const facts: MigratedCustomerFacts = {
   claimBonusAt: "2026-11-03T02:00:00Z",
 };
 
+// The Journey shows these on the chapter that holds the import (PRD-customer-page-journey slice 04).
 const detail = (f: MigratedCustomerFacts) =>
-  renderToString(
-    <CustomerDetailClient
-      initialData={{ customer: { ok: true, row: customer }, notes: [], migration: { ok: true, facts: f } }}
-      canEdit={false}
-      canImport={false}
-      viewer={{ userId: "u1", grantsAll: false }}
-    />,
-  );
+  renderToString(<FromShopifyCard migration={{ ok: true, facts: f }} importHistoryHref={null} bare />);
 
-describe("From Shopify card", () => {
+describe("From Shopify facts", () => {
   it("shows the Claim link's first click, and when the Claim bonus was granted", () => {
     const html = detail(facts);
     expect(html).toContain("Claim link");

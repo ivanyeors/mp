@@ -49,6 +49,7 @@ export const googleReviewsAdapter: TimelineAdapter = {
           ref: { type: "google_review", id: l.google_review_id },
           summary: g.star_rating ? `Google review: ${g.star_rating}★` : "Google review",
           status: GOOGLE_REPLY_LABELS[googleReplyState(g.status, Boolean(g.google_reply))],
+          ...(g.star_rating ? { rating: g.star_rating } : {}),
         },
       ];
     });
