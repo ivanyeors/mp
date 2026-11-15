@@ -42,10 +42,12 @@ export type RedraftResult =
 
 /**
  * A fresh draft from Claude, by the same prompt and rules as the Telegram card
- * (lib/reviews/draft-reply.ts). A review still waiting for an answer keeps the
- * draft: it is saved, its version moves on (so a Post tapped on the old card
- * is refused as stale), and the card is redrawn. Any other review gets the
- * draft back without a write, because its row is settled.
+ * (lib/reviews/draft-reply.ts). Called only when a Staff member asks for a
+ * suggestion on the Reviews tab, never because the tab was opened. A review
+ * still waiting for an answer keeps the draft: it is saved, its version moves
+ * on (so a Post tapped on the old card is refused as stale), and the card is
+ * redrawn. A settled review, and one whose draft a review manager wrote in
+ * Telegram, get the draft back without a write.
  */
 export async function redraftReviewReply(reviewId: string, deps: Deps = {}): Promise<RedraftResult> {
   const row = await getGoogleReview(reviewId);
@@ -55,6 +57,8 @@ export async function redraftReviewReply(reviewId: string, deps: Deps = {}): Pro
   if (!result.ok) return { ok: false, reason: "draft_failed", message: result.error };
 
   if (row.status !== "pending") return { ok: true, reply: result.reply, saved: false };
+  // A review manager wrote the draft on the Telegram card: Claude's is for this page only.
+  if (row.draft_source === "staff") return { ok: true, reply: result.reply, saved: false };
 
   const { data } = await supabaseAdmin()
     .from("google_reviews")

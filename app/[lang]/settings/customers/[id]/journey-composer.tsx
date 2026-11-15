@@ -270,28 +270,29 @@ function FollowUpForm({
 }
 
 /**
- * Email or WhatsApp: pick what it is about, let Claude draft it, edit, then
- * open it in Gmail or WhatsApp with the text filled in. Blank is always
- * there: the buttons work with nothing drafted.
+ * Email or WhatsApp: pick what it is about, press *Generate suggestion* to
+ * have Claude draft it through the API, edit, then open it in Gmail or
+ * WhatsApp with the text filled in. Choosing a subject drafts nothing: Claude
+ * is called only on that press (owner, 2026-11-15). Blank is always there:
+ * the buttons work with nothing drafted.
  */
 function MessageForm({ customerId, channel }: { customerId: string; channel: MessageChannel }) {
     const { device, openEmail, openWhatsApp, emailOpens, whatsappOpens } = useShortcuts();
     const [subject, setSubject] = useState("");
     const [body, setBody] = useState("");
-    const [intent, setIntent] = useState<MessageIntent | null>(null);
+    const [intent, setIntent] = useState<MessageIntent>("check_in");
     const [drafting, setDrafting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [drafted, setDrafted] = useState(false);
 
-    const draft = async (next: MessageIntent) => {
-        setIntent(next);
+    const draft = async () => {
         setDrafting(true);
         setError(null);
         try {
             const res = await fetch(`/api/settings/customers/${customerId}/suggest-message`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ channel, intent: next }),
+                body: JSON.stringify({ channel, intent }),
             });
             if (!res.ok) throw new Error(await readError(res, "Could not draft a message"));
             const payload = (await res.json()) as { subject: string | null; body: string };
@@ -310,10 +311,9 @@ function MessageForm({ customerId, channel }: { customerId: string; channel: Mes
 
     return (
         <div className="space-y-3">
-            <div className="space-y-1.5">
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Let Claude draft it. You read and edit it before anything is sent.
+            <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                    Claude can suggest a message for you to edit. Nothing is drafted until you press Generate suggestion.
                 </p>
                 <div className="flex flex-wrap gap-2" role="group" aria-label="What the message is about">
                     {MESSAGE_INTENTS.map((key) => (
@@ -321,17 +321,26 @@ function MessageForm({ customerId, channel }: { customerId: string; channel: Mes
                             key={key}
                             type="button"
                             size="sm"
-                            variant={intent === key ? "default" : "outline"}
+                            variant={intent === key ? "secondary" : "outline"}
                             aria-pressed={intent === key}
-                            className="h-8 rounded-full px-3 text-xs"
+                            className={cn("h-8 rounded-full px-3 text-xs", intent === key && "border border-foreground/40")}
                             disabled={drafting}
-                            onClick={() => void draft(key)}
+                            onClick={() => setIntent(key)}
                         >
-                            {drafting && intent === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                             {MESSAGE_INTENT_LABELS[key]}
                         </Button>
                     ))}
                 </div>
+                <Button type="button" size="sm" variant={drafted ? "ghost" : "default"} disabled={drafting} onClick={() => void draft()}>
+                    {drafting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : drafted ? (
+                        <RefreshCw className="h-4 w-4" />
+                    ) : (
+                        <Sparkles className="h-4 w-4" />
+                    )}
+                    {drafted ? "Generate again" : "Generate suggestion"}
+                </Button>
             </div>
 
             {error ? (
@@ -345,7 +354,7 @@ function MessageForm({ customerId, channel }: { customerId: string; channel: Mes
             ) : null}
             <Textarea
                 aria-label={channel === "email" ? "Email" : "WhatsApp message"}
-                placeholder={channel === "email" ? "Write the email, or pick what it is about above…" : "Write the message, or pick what it is about above…"}
+                placeholder={channel === "email" ? "Write the email, or generate a suggestion above…" : "Write the message, or generate a suggestion above…"}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={channel === "email" ? 7 : 4}
@@ -358,12 +367,6 @@ function MessageForm({ customerId, channel }: { customerId: string; channel: Mes
                     Opens {channel === "email" ? emailOpens : (whatsappOpens ?? "WhatsApp")}.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                    {intent ? (
-                        <Button type="button" variant="ghost" size="sm" disabled={drafting} onClick={() => void draft(intent)}>
-                            <RefreshCw className={cn("h-4 w-4", drafting && "animate-spin")} />
-                            Redraft
-                        </Button>
-                    ) : null}
                     <CopyButton text={whole} variant="outline" />
                     <Button type="button" size="sm" onClick={open}>
                         {channel === "email" ? <Mail className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}

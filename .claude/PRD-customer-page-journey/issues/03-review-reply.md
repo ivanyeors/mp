@@ -36,9 +36,14 @@ paste, post, *Mark replied*.
   guarded update that redraws an open Telegram card. *Mark replied* accepts a Places review in
   `new`, `pending`, `backlog` or `skipped`.
 - Routes: `POST /api/settings/customers/google-reviews/[reviewId]/draft` and `…/replied`.
-- The Reviews tab: the reply in an editable box, the reply-rule warnings under it, *Copy reply*,
-  *Open this review on Google* (or *Open our reviews on Google*), *Redraft* or *Suggest a reply*,
-  *Mark replied*. A reply on record shows to everyone, with nothing to press.
+- **Nothing is suggested until Staff press *Generate reply suggestion*** (owner, 2026-11-15):
+  opening the tab never calls Claude. The first press shows the draft the Telegram card already
+  holds, when there is one, so both places start from the same words; with none, and on every
+  *Generate again*, Claude drafts one through the API. A draft a review manager wrote in Telegram
+  is never replaced from here.
+- Then: the reply in an editable box, the reply-rule warnings under it, *Copy reply*, *Open this
+  review on Google* (or *Open our reviews on Google*) and *Mark replied*. A reply on record shows
+  to everyone, with nothing to press.
 - A review entry on the Journey that is not answered has *Reply to this review*, which opens the
   Reviews tab.
 - **Tests:** `lib/reviews/__tests__/admin-reply.test.ts`, `reviews-render.test.tsx`.

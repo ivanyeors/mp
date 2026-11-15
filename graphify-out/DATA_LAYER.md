@@ -617,9 +617,9 @@ Changed from pages: `/settings/customers/[id]`
   - `executeGoogleReviewPost()` [update] — lib/reviews/google-actions.ts:135
   - `main()` [select,upsert] — scripts/google-reviews-backfill.ts:52
   - `markGoogleReviewReplied()` [update] — lib/reviews/google-actions.ts:109
-  - `markReviewRepliedByStaff()` [update] — lib/reviews/admin-reply.ts:108
+  - `markReviewRepliedByStaff()` [update] — lib/reviews/admin-reply.ts:112
   - `purgeExpiredPlacesReviews()` [delete] — lib/reviews/places-poll.ts:140
-  - `redraftReviewReply()` [update] — lib/reviews/admin-reply.ts:59
+  - `redraftReviewReply()` [update] — lib/reviews/admin-reply.ts:63
   - `setStaffDraft()` [update] — lib/reviews/google-actions.ts:184
   - `skipGoogleReview()` [update] — lib/reviews/google-actions.ts:207
   - `syncGoogleReviews()` [select,update,upsert] — lib/reviews/google-sync.ts:287

@@ -2237,7 +2237,7 @@
       "file_type": "code",
       "norm_label": "markrepliedresult",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L78"
+      "source_location": "L82"
     },
     {
       "id": "lib_reviews_admin_reply_redraftresult",
@@ -31863,7 +31863,7 @@
       "file_type": "code",
       "norm_label": "markreviewrepliedbystaff()",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L88"
+      "source_location": "L92"
     },
     {
       "id": "lib_reviews_admin_reply_redraftreviewreply",
@@ -31875,7 +31875,7 @@
       "file_type": "code",
       "norm_label": "redraftreviewreply()",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L50"
+      "source_location": "L52"
     },
     {
       "id": "lib_reviews_admin_reply_refreshcard",
@@ -125153,7 +125153,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-customer-page-journey/issues/03-review-reply.md",
-      "source_location": "L46"
+      "source_location": "L51"
     },
     {
       "id": "claude_prd_customer_page_journey_issues_03_review_reply_goal",
@@ -125177,7 +125177,7 @@
       "node_kind": "heading",
       "norm_label": "hitl",
       "source_file": ".claude/PRD-customer-page-journey/issues/03-review-reply.md",
-      "source_location": "L53"
+      "source_location": "L58"
     },
     {
       "id": "claude_prd_customer_page_journey_issues_03_review_reply_what_to_build",
@@ -139297,7 +139297,7 @@
       "node_kind": "heading",
       "norm_label": "chapters",
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L83"
+      "source_location": "L86"
     },
     {
       "id": "claude_prd_customer_page_journey_customer_page_journey_prd_heights",
@@ -139309,7 +139309,7 @@
       "node_kind": "heading",
       "norm_label": "heights",
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L99"
+      "source_location": "L102"
     },
     {
       "id": "claude_prd_customer_page_journey_customer_page_journey_prd_owner_decisions_2026_11_15_all_settled",
@@ -139369,7 +139369,7 @@
       "node_kind": "heading",
       "norm_label": "slices",
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L121"
+      "source_location": "L124"
     },
     {
       "id": "claude_prd_customer_page_journey_customer_page_journey_prd_solution",
@@ -139381,7 +139381,7 @@
       "node_kind": "heading",
       "norm_label": "solution",
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L67"
+      "source_location": "L70"
     },
     {
       "id": "claude_prd_customer_page_journey_customer_page_journey_prd_success",
@@ -139393,7 +139393,7 @@
       "node_kind": "heading",
       "norm_label": "success",
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L134"
+      "source_location": "L137"
     },
     {
       "id": "claude_prd_customer_page_journey_customer_page_journey_prd_what_is_not_built_here",
@@ -139405,7 +139405,7 @@
       "node_kind": "heading",
       "norm_label": "what is not built here",
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L112"
+      "source_location": "L115"
     },
     {
       "id": "claude_prd_customer_page_journey_issues_01_layout_and_tabs",
@@ -139669,7 +139669,7 @@
       "node_kind": "heading",
       "norm_label": "acceptance criteria",
       "source_file": ".claude/PRD-customer-page-journey/issues/05-suggested-messages.md",
-      "source_location": "L49"
+      "source_location": "L53"
     },
     {
       "id": "claude_prd_customer_page_journey_issues_05_suggested_messages_as_built_2026_11_15",
@@ -360120,6 +360120,18 @@
     },
     {
       "source": "lib_reviews_admin_reply_markreviewrepliedbystaff",
+      "target": "lib_reviews_google_reviews_getgooglereview",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/reviews/admin-reply.ts",
+      "source_location": "L101",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_reviews_admin_reply_markreviewrepliedbystaff",
       "target": "lib_reviews_mark_replied_canmarkreplied",
       "relation": "calls",
       "_origin": "ast",
@@ -360127,7 +360139,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L106",
+      "source_location": "L110",
       "weight": 1.0
     },
     {
@@ -360139,7 +360151,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L108",
+      "source_location": "L112",
       "weight": 1.0
     },
     {
@@ -360151,7 +360163,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L125",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -360163,19 +360175,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L94",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_reviews_admin_reply_markreviewrepliedbystaff",
-      "target": "lib_reviews_google_reviews_getgooglereview",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L97",
+      "source_location": "L98",
       "weight": 1.0
     },
     {
@@ -360187,7 +360187,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L51",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -360199,7 +360199,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L54",
+      "source_location": "L56",
       "weight": 1.0
     },
     {
@@ -360211,7 +360211,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L59",
+      "source_location": "L63",
       "weight": 1.0
     },
     {
@@ -360223,7 +360223,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L74",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -651522,7 +651522,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L121",
+      "source_location": "L124",
       "weight": 1.0
     },
     {
@@ -651533,7 +651533,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L134",
+      "source_location": "L137",
       "weight": 1.0
     },
     {
@@ -651577,29 +651577,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L67",
-      "weight": 1.0
-    },
-    {
-      "source": "claude_prd_customer_page_journey_customer_page_journey_prd_solution",
-      "target": "claude_prd_customer_page_journey_customer_page_journey_prd_what_is_not_built_here",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L112",
-      "weight": 1.0
-    },
-    {
-      "source": "claude_prd_customer_page_journey_customer_page_journey_prd_solution",
-      "target": "claude_prd_customer_page_journey_customer_page_journey_prd_chapters",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L83",
+      "source_location": "L70",
       "weight": 1.0
     },
     {
@@ -651610,7 +651588,29 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
-      "source_location": "L99",
+      "source_location": "L102",
+      "weight": 1.0
+    },
+    {
+      "source": "claude_prd_customer_page_journey_customer_page_journey_prd_solution",
+      "target": "claude_prd_customer_page_journey_customer_page_journey_prd_what_is_not_built_here",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
+      "source_location": "L115",
+      "weight": 1.0
+    },
+    {
+      "source": "claude_prd_customer_page_journey_customer_page_journey_prd_solution",
+      "target": "claude_prd_customer_page_journey_customer_page_journey_prd_chapters",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".claude/PRD-customer-page-journey/customer-page-journey-prd.md",
+      "source_location": "L86",
       "weight": 1.0
     },
     {
@@ -651775,7 +651775,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-page-journey/issues/03-review-reply.md",
-      "source_location": "L46",
+      "source_location": "L51",
       "weight": 1.0
     },
     {
@@ -651786,7 +651786,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-page-journey/issues/03-review-reply.md",
-      "source_location": "L53",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -651907,7 +651907,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": ".claude/PRD-customer-page-journey/issues/05-suggested-messages.md",
-      "source_location": "L49",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -766934,7 +766934,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L50",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -766945,7 +766945,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L78",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
@@ -766956,7 +766956,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L88",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -834726,7 +834726,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "lib/reviews/__tests__/admin-reply.test.ts",
-      "source_location": "L166",
+      "source_location": "L176",
       "weight": 1.0
     },
     {
@@ -839706,7 +839706,7 @@
       "confidence_score": 0.95,
       "context": "checkReplyText",
       "source_file": ".claude/PRD-customer-page-journey/issues/03-review-reply.md",
-      "source_location": "L49",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
@@ -871882,7 +871882,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/customers/[id]/customer-reviews-card.tsx",
-      "source_location": "L321",
+      "source_location": "L338",
       "weight": 1.0
     },
     {
@@ -871893,7 +871893,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/customers/[id]/customer-reviews-card.tsx",
-      "source_location": "L334",
+      "source_location": "L352",
       "weight": 1.0
     },
     {
@@ -871904,7 +871904,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[lang]/settings/customers/[id]/journey-composer.tsx",
-      "source_location": "L291",
+      "source_location": "L292",
       "weight": 1.0,
       "context": "POST"
     },
@@ -884235,7 +884235,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L108",
+      "source_location": "L112",
       "weight": 1.0,
       "context": "update"
     },
@@ -884247,7 +884247,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/reviews/admin-reply.ts",
-      "source_location": "L59",
+      "source_location": "L63",
       "weight": 1.0,
       "context": "update"
     },
@@ -887906,5 +887906,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "293ad82ec036c0df5507c0f725579c9cde0d0108"
+  "built_at_commit": "074d5ce94f0e2219e8026105e16e981ed7a7866e"
 }

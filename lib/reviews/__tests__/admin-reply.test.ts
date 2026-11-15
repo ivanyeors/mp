@@ -81,6 +81,16 @@ describe("redraftReviewReply", () => {
     expect(d.edit).not.toHaveBeenCalled();
   });
 
+  it("does not replace a draft a review manager wrote on the Telegram card", async () => {
+    seed({ draft_reply: "Written by hand in Telegram.", draft_source: "staff" });
+    const d = deps();
+    const result = await redraftReviewReply(REVIEW_ID, d as never);
+    expect(result).toEqual({ ok: true, reply: "A new draft.", saved: false });
+    expect(review().draft_reply).toBe("Written by hand in Telegram.");
+    expect(review().draft_version).toBe(3);
+    expect(d.edit).not.toHaveBeenCalled();
+  });
+
   it("says why when Claude could not draft, and writes nothing", async () => {
     const d = { ...deps(), draft: vi.fn(async () => ({ ok: false as const, error: "Claude is not configured" })) };
     const result = await redraftReviewReply(REVIEW_ID, d as never);

@@ -249,43 +249,33 @@ describe("answering a Linked Google review", () => {
     expect(html).not.toContain("Copy reply");
   });
 
-  it("offers the draft, Copy, the review on Google, Redraft and Mark replied", () => {
+  it("suggests nothing until Staff ask: one button, and the review on Google", () => {
     const html = body(waiting(), true);
-    expect(html).toContain("Suggested reply · service recovery");
-    expect(html).toContain("Jane, I am sorry.");
-    for (const control of ["Copy reply", "Open this review on Google", "Redraft", "Mark replied"]) expect(html, control).toContain(control);
+    expect(html).toContain("Generate reply suggestion");
+    expect(html).toContain("Nothing is drafted until you ask.");
+    expect(html).toContain("Open this review on Google");
     expect(html).toContain('href="https://maps.google.com/review/abc"');
     expect(html).toContain('target="_blank"');
-    expect(html).toContain("mark it replied afterwards");
+    // The draft the Telegram card holds is not shown, copied or marked before the press.
+    expect(html).not.toContain("Jane, I am sorry.");
+    for (const control of ["Copy reply", "Mark replied", "Generate again", "<textarea"]) expect(html, control).not.toContain(control);
+  });
+
+  it("offers the same button when no draft exists yet", () => {
+    const html = body(waiting({ draft: null }), true);
+    expect(html).toContain("Generate reply suggestion");
+    expect(html).not.toContain("Copy reply");
+    expect(html).not.toContain("Mark replied");
   });
 
   it("says so when the link opens the list, not the review", () => {
     const html = body(waiting({ url: "https://search.google.com/local/reviews?placeid=x", urlIsReview: false }), true);
     expect(html).toContain("Open our reviews on Google");
-    expect(html).toContain("find this one by its date");
-  });
-
-  it("has no Mark replied for a review Google reports on", () => {
-    const html = body(waiting({ canMarkReplied: false }), true);
-    expect(html).not.toContain("Mark replied");
-    expect(html).toContain("Google tells us once it is posted.");
-  });
-
-  it("offers to suggest a reply when none was drafted", () => {
-    const html = body(waiting({ draft: null }), true);
-    expect(html).toContain("No reply has been drafted for this review yet.");
-    expect(html).toContain("Suggest a reply");
-    expect(html).not.toContain("Copy reply");
-    expect(html).not.toContain("Mark replied");
-  });
-
-  it("warns when a service-recovery reply leaves the WhatsApp line out", () => {
-    expect(body(waiting({ draft: "Jane, I am sorry." }), true)).toContain("every service-recovery reply should");
   });
 
   it("shows a view-only role none of it", () => {
     const html = body(waiting(), false);
-    for (const control of ["Suggested reply", "Copy reply", "Open this review on Google", "Redraft", "Mark replied"]) {
+    for (const control of ["Generate reply suggestion", "Suggested reply", "Copy reply", "Open this review on Google", "Mark replied"]) {
       expect(html, control).not.toContain(control);
     }
   });

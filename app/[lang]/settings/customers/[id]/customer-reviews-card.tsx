@@ -281,11 +281,18 @@ async function postJson(url: string, body?: unknown): Promise<Record<string, unk
 /**
  * Answering one Linked Google review (PRD-customer-page-journey slice 03).
  *
- * A reply already on record is shown as it stands. Otherwise: the suggested
- * reply (the draft the Telegram card holds, when there is one) in a box Staff
- * can edit, *Copy reply*, a link to the review on Google, *Redraft*, and, for
- * a review Google cannot report a reply on, *Mark replied*, which records the
- * text in the box as what was posted. Nothing here posts to Google.
+ * A reply already on record is shown as it stands. Otherwise nothing is
+ * suggested until a Staff member presses *Generate reply suggestion* (owner,
+ * 2026-11-15): Claude is never called because the tab was opened. The first
+ * press shows the draft the Telegram card already holds, when there is one,
+ * so both places start from the same words and a draft a review manager wrote
+ * there is not thrown away; with none, and on every *Generate again*, Claude
+ * drafts one through the API.
+ *
+ * Then: the reply in a box Staff can edit, *Copy reply*, a link to the review
+ * on Google, and, for a review Google cannot report a reply on, *Mark
+ * replied*, which records the text in the box as what was posted. Nothing
+ * here posts to Google.
  *
  * Without `customers-edit` only a reply on record shows.
  */
@@ -299,8 +306,11 @@ function ReviewAnswer({
     onAnswered: () => void;
 }) {
     const { answer } = review;
-    const [text, setText] = useState(answer.draft ?? "");
+    const [text, setText] = useState("");
+    // Where the words in the box came from; null until a suggestion was asked for.
+    const [source, setSource] = useState<"telegram" | "claude" | null>(null);
     const [busy, setBusy] = useState<"draft" | "mark" | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     if (answer.posted) {
         return (
@@ -315,13 +325,21 @@ function ReviewAnswer({
     const style = replyStyleFor(review.rating);
     const warnings = text.trim() ? replyWarnings(text, { style }) : [];
 
-    const redraft = async () => {
+    const generate = async () => {
+        setError(null);
+        // The first press takes the draft that already exists; Claude is called only for a new one.
+        if (source === null && answer.draft) {
+            setText(answer.draft);
+            setSource("telegram");
+            return;
+        }
         setBusy("draft");
         try {
             const payload = await postJson(`/api/settings/customers/google-reviews/${review.id}/draft`);
             setText(String(payload.reply ?? ""));
+            setSource("claude");
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Could not draft a reply");
+            setError(e instanceof Error ? e.message : "Could not draft a reply");
         } finally {
             setBusy(null);
         }
@@ -341,13 +359,24 @@ function ReviewAnswer({
         }
     };
 
+    const openOnGoogle = answer.url ? (
+        <Button asChild size="sm" variant="outline">
+            <a href={answer.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                {answer.urlIsReview ? "Open this review on Google" : "Open our reviews on Google"}
+            </a>
+        </Button>
+    ) : null;
+
     return (
         <div className="space-y-2 rounded-md bg-muted/50 p-3">
             <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Sparkles className="h-3.5 w-3.5" />
-                Suggested reply · {REPLY_STYLE_NAMES[style].toLowerCase()}
+                {source === null
+                    ? "Reply to this review"
+                    : `Suggested reply · ${REPLY_STYLE_NAMES[style].toLowerCase()}${source === "telegram" ? " · the draft on the Telegram card" : " · drafted by Claude"}`}
             </p>
-            {text || busy === "draft" ? (
+            {source !== null || busy === "draft" ? (
                 <Textarea
                     aria-label="Reply to this review"
                     value={text}
@@ -358,8 +387,15 @@ function ReviewAnswer({
                     className="resize-y bg-background"
                 />
             ) : (
-                <p className="text-muted-foreground">No reply has been drafted for this review yet.</p>
+                <p className="text-muted-foreground">
+                    Claude can suggest a reply for you to edit. Nothing is drafted until you ask.
+                </p>
             )}
+            {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                    {error}
+                </p>
+            ) : null}
             {warnings.length ? (
                 <ul className="space-y-0.5 text-xs text-amber-700 dark:text-amber-400">
                     {warnings.map((w) => (
@@ -368,19 +404,18 @@ function ReviewAnswer({
                 </ul>
             ) : null}
             <div className="flex flex-wrap gap-2">
-                {text ? <CopyButton text={text} label="Copy reply" variant="outline" /> : null}
-                {answer.url ? (
-                    <Button asChild size="sm" variant="outline">
-                        <a href={answer.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                            {answer.urlIsReview ? "Open this review on Google" : "Open our reviews on Google"}
-                        </a>
-                    </Button>
-                ) : null}
-                <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => void redraft()}>
-                    {busy === "draft" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                    {text ? "Redraft" : "Suggest a reply"}
+                <Button size="sm" variant={source === null ? "default" : "ghost"} disabled={busy !== null} onClick={() => void generate()}>
+                    {busy === "draft" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : source === null ? (
+                        <Sparkles className="h-4 w-4" />
+                    ) : (
+                        <RefreshCw className="h-4 w-4" />
+                    )}
+                    {source === null ? "Generate reply suggestion" : "Generate again"}
                 </Button>
+                {text ? <CopyButton text={text} label="Copy reply" variant="outline" /> : null}
+                {openOnGoogle}
                 {answer.canMarkReplied && text.trim() ? (
                     <Button size="sm" disabled={busy !== null} onClick={() => void markReplied()}>
                         {busy === "mark" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -388,14 +423,16 @@ function ReviewAnswer({
                     </Button>
                 ) : null}
             </div>
-            <p className="text-xs text-muted-foreground">
-                {answer.url
-                    ? answer.urlIsReview
-                        ? "Copy the reply, open the review, and paste it there."
-                        : "Copy the reply, open our reviews, find this one by its date, and paste it there."
-                    : "Copy the reply and paste it under this review on Google."}
-                {answer.canMarkReplied ? " Google does not tell us when you have, so mark it replied afterwards." : " Google tells us once it is posted."}
-            </p>
+            {source !== null ? (
+                <p className="text-xs text-muted-foreground">
+                    {answer.url
+                        ? answer.urlIsReview
+                            ? "Copy the reply, open the review, and paste it there."
+                            : "Copy the reply, open our reviews, find this one by its date, and paste it there."
+                        : "Copy the reply and paste it under this review on Google."}
+                    {answer.canMarkReplied ? " Google does not tell us when you have, so mark it replied afterwards." : " Google tells us once it is posted."}
+                </p>
+            ) : null}
         </div>
     );
 }

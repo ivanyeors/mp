@@ -39,10 +39,14 @@ review and the re-adjustment, ready to open in Gmail.
 - The route reads everything it tells Claude itself: the first name, the acting Staff profile,
   the Next step, the twelve newest timeline entries this viewer may see (summary only, with
   `#` numbers removed), and the latest Linked Google review for *About their review*.
-- The composer's Email and WhatsApp modes, as specified. WhatsApp mode shows only for a valid
-  mobile.
+- The composer's Email and WhatsApp modes. **Claude drafts only on *Generate suggestion***
+  (owner, 2026-11-15): choosing what the message is about selects it and calls nothing; *Generate
+  again* redrafts. WhatsApp mode shows only for a valid mobile.
+- The key is the one saved on General → Claude API key (`lib/ai/claude.ts`), as for review
+  replies and campaign drafts. Without it the composer says so and a blank message still opens.
 - **Tests:** `lib/crm/__tests__/suggest-message.test.ts` (the prompt, the parser, a refusal, an
-  empty reply, the request's settings).
+  empty reply, the request's settings); `composer-render.test.tsx` (nothing is called by opening
+  a mode).
 - **Not run:** a live draft. The preview has no Claude key by design, so the wording of real
   drafts is unread; that is this slice's HITL.
 

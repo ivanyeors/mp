@@ -63,6 +63,9 @@ fifteen cards tall.
    once, in `lib/contact.ts`.
 5. **Shortcuts open the customer's own apps.** Nothing is sent from the platform. (Sending from
    the page and WhatsApp through Meta's business platform are parked.)
+6. **Claude drafts only when asked.** A suggested reply or message is generated through Claude's
+   API when a Staff member presses *Generate reply suggestion* or *Generate suggestion*, never
+   because a tab or a mode was opened.
 
 ## Solution
 
