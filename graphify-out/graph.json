@@ -211720,7 +211720,7 @@
       "node_kind": "heading",
       "norm_label": "consequences",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L215"
+      "source_location": "L219"
     },
     {
       "id": "docs_adr_0042_google_form_fitting_records_considered_options",
@@ -211732,7 +211732,7 @@
       "node_kind": "heading",
       "norm_label": "considered options",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L178"
+      "source_location": "L182"
     },
     {
       "id": "docs_adr_0042_google_form_fitting_records_context",
@@ -685413,7 +685413,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L178",
+      "source_location": "L182",
       "weight": 1.0
     },
     {
@@ -685424,7 +685424,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L215",
+      "source_location": "L219",
       "weight": 1.0
     },
     {
@@ -835950,7 +835950,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L218",
+      "source_location": "L222",
       "weight": 1.0
     },
     {
@@ -835962,7 +835962,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L184",
+      "source_location": "L188",
       "weight": 1.0
     },
     {
@@ -839826,7 +839826,7 @@
       "confidence_score": 0.95,
       "context": "latestPurchase",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L161",
+      "source_location": "L165",
       "weight": 1.0
     },
     {
@@ -881476,5 +881476,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "98c8977e2ecd74febf4aed6c904af28c9f7437e4"
+  "built_at_commit": "1f80e5a2d35f89a9b041988accdf653ab99695d6"
 }
