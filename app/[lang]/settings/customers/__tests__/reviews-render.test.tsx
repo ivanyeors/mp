@@ -164,6 +164,7 @@ const DATA: CustomerReviewsData = {
       how: "suggestion",
       linkedAt: "2026-11-05T02:00:00.000Z",
       linkedBy: "Jess",
+      answer: { draft: null, posted: "Thank you, Jane.", url: null, urlIsReview: false, canMarkReplied: false },
     },
   ],
   shop: [{ id: "s1", rating: 4, product: "Premium Mpillow", status: "pending", createdAt: "2026-10-28T02:00:00.000Z" }],
@@ -217,5 +218,75 @@ describe("the Reviews card", () => {
     expect(html).toContain("No shop reviews.");
     expect(html).toContain("Not asked.");
     expect(body({ ...DATA, request: { ...DATA.request!, clickedAt: null, clickCount: 0 } }, true)).toContain("· not clicked");
+  });
+});
+
+// PRD-customer-page-journey slice 03: answer a Linked Google review from here.
+describe("answering a Linked Google review", () => {
+  const waiting = (answer: Partial<CustomerReviewsData["google"][number]["answer"]> = {}): CustomerReviewsData => ({
+    ...DATA,
+    google: [
+      {
+        ...DATA.google[0]!,
+        rating: 1,
+        reply: "waiting",
+        answer: {
+          draft: "Jane, I am sorry. Please message us on WhatsApp at +65 8780 5311.",
+          posted: null,
+          url: "https://maps.google.com/review/abc",
+          urlIsReview: true,
+          canMarkReplied: true,
+          ...answer,
+        },
+      },
+    ],
+  });
+
+  it("shows the reply on record, to everyone, with nothing to press", () => {
+    const html = body(DATA, false);
+    expect(html).toContain("Our reply");
+    expect(html).toContain("Thank you, Jane.");
+    expect(html).not.toContain("Copy reply");
+  });
+
+  it("offers the draft, Copy, the review on Google, Redraft and Mark replied", () => {
+    const html = body(waiting(), true);
+    expect(html).toContain("Suggested reply · service recovery");
+    expect(html).toContain("Jane, I am sorry.");
+    for (const control of ["Copy reply", "Open this review on Google", "Redraft", "Mark replied"]) expect(html, control).toContain(control);
+    expect(html).toContain('href="https://maps.google.com/review/abc"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain("mark it replied afterwards");
+  });
+
+  it("says so when the link opens the list, not the review", () => {
+    const html = body(waiting({ url: "https://search.google.com/local/reviews?placeid=x", urlIsReview: false }), true);
+    expect(html).toContain("Open our reviews on Google");
+    expect(html).toContain("find this one by its date");
+  });
+
+  it("has no Mark replied for a review Google reports on", () => {
+    const html = body(waiting({ canMarkReplied: false }), true);
+    expect(html).not.toContain("Mark replied");
+    expect(html).toContain("Google tells us once it is posted.");
+  });
+
+  it("offers to suggest a reply when none was drafted", () => {
+    const html = body(waiting({ draft: null }), true);
+    expect(html).toContain("No reply has been drafted for this review yet.");
+    expect(html).toContain("Suggest a reply");
+    expect(html).not.toContain("Copy reply");
+    expect(html).not.toContain("Mark replied");
+  });
+
+  it("warns when a service-recovery reply leaves the WhatsApp line out", () => {
+    expect(body(waiting({ draft: "Jane, I am sorry." }), true)).toContain("every service-recovery reply should");
+  });
+
+  it("shows a view-only role none of it", () => {
+    const html = body(waiting(), false);
+    for (const control of ["Suggested reply", "Copy reply", "Open this review on Google", "Redraft", "Mark replied"]) {
+      expect(html, control).not.toContain(control);
+    }
   });
 });

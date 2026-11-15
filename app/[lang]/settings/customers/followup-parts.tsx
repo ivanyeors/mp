@@ -16,7 +16,7 @@ import {
 } from "@/lib/crm/followup-rules";
 
 /**
- * The pieces the Customer detail's Follow-ups card and the Customers page's
+ * The pieces the Customer page's Journey and the Customers page's
  * Follow-ups tab share (CRM slice 06): the due label, the assignee with its
  * *Assignee archived* chip, and the *Done*, *Reassign* and delete actions.
  * The actions render only for `customers-edit`; the routes refuse without it.

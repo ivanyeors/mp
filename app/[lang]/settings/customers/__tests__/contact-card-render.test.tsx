@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-const { ContactCard } = await import("../[id]/customer-account-cards");
+const { ContactCard, SignInFacts, signInSummary } = await import("../[id]/customer-account-cards");
 const { CustomersClient } = await import("../customers-client");
 const { CustomerFilterGroup } = await import("../customer-filters-panel");
 
@@ -69,12 +69,18 @@ const facts = (over: Partial<ContactFacts> = {}): ContactFactsResult => ({
 });
 
 const card = (customer: CardCustomer, opts: { createdByImport?: boolean | null; contact?: ContactFactsResult } = {}) =>
-  renderToString(<ContactCard customer={customer} {...opts} />);
+  renderToString(
+    <>
+      <ContactCard customer={customer} {...opts} />
+      <SignInFacts customer={customer} />
+    </>,
+  );
 
-describe("Contact and sign-in card: email and sign-in", () => {
+describe("Contact details card and the Sign-in row: email and sign-in", () => {
   it("shows a Customer with an account as Verified, with the date, and how they sign in", () => {
     const html = card(member);
-    expect(html).toContain("Contact and sign-in");
+    expect(html).toContain("Contact details");
+    expect(html).not.toContain("Contact and sign-in");
     expect(html).toContain("Verified: signed in with it since <!-- -->2 Oct 2026");
     expect(html).toContain("Email code and Google");
     expect(html).toContain("Last signed-in visit");
@@ -93,9 +99,27 @@ describe("Contact and sign-in card: email and sign-in", () => {
     expect(card({ ...member, account_providers: ["google"] })).toContain(">Google<");
     expect(card({ ...member, account_providers: [] })).toContain("Not recorded yet");
   });
+
+  it("sums the Sign-in row up in a few words while it is closed", () => {
+    expect(signInSummary(member)).toBe("Email code and Google");
+    expect(signInSummary(guest)).toBe("No account yet");
+    expect(signInSummary({ ...member, account_providers: [] })).toBe("Not recorded yet");
+  });
+
+  it("draws the buttons it is handed, and an edit form in place of the rows", () => {
+    const withButtons = renderToString(
+      <ContactCard customer={member} headerAction={<button>Edit</button>} emailActions={<button>Email</button>} mobileActions={<button>WhatsApp</button>} />,
+    );
+    for (const label of [">Edit<", ">Email<", ">WhatsApp<"]) expect(withButtons, label).toContain(label);
+    // No number, no WhatsApp button, even when one is handed in.
+    expect(renderToString(<ContactCard customer={{ ...member, phone: null }} mobileActions={<button>WhatsApp</button>} />)).not.toContain(">WhatsApp<");
+    const editing = renderToString(<ContactCard customer={member} editForm={<form>the form</form>} />);
+    expect(editing).toContain("the form");
+    expect(editing).not.toContain("Verified: signed in");
+  });
 });
 
-describe("Contact and sign-in card: mobile and WhatsApp", () => {
+describe("Contact details card: mobile and WhatsApp", () => {
   it("formats the mobile and says whether it is valid, never that it is verified", () => {
     const valid = card(member);
     expect(valid).toContain("+65 8780 5311");
@@ -130,7 +154,7 @@ describe("Contact and sign-in card: mobile and WhatsApp", () => {
   });
 });
 
-describe("Contact and sign-in card: other numbers seen", () => {
+describe("Contact details card: other numbers seen", () => {
   it("lists them with where and when, or None", () => {
     const html = card(member, {
       contact: facts({

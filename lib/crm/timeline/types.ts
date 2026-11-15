@@ -35,6 +35,12 @@ export type TimelineEntry = {
   status?: string;
   /** Longer text shown under the summary (a note, in full). */
   detail?: string;
+  /**
+   * A review's stars, 1 to 5; absent for a review with no rating and for every
+   * other kind. The Journey reads a chapter's height from it
+   * (lib/crm/journey/chapters.ts), so no number is read out of `summary`.
+   */
+  rating?: number;
 };
 
 /** An entry as the route returns it: tagged with its adapter's kind group. */

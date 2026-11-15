@@ -50,9 +50,11 @@ type Pending = { preference: AftercarePreference; value: boolean };
  * Its own fetch, like the orders and addresses panels beside it, unless the
  * page hands it `initialView`.
  *
- * It sits directly under slice 11's Contact and sign-in card rather than
- * inside it (CRM 11 build notes): that card only reads facts, and these
- * switches change things, with a dialog, a note and a history of their own.
+ * It is its own card, not part of slice 11's contact card (CRM 11 build
+ * notes): that card only reads facts, and these switches change things, with a
+ * dialog, a note and a history of their own. On the Customer page it sits in
+ * the Preferences row, beside Marketing consent (PRD-customer-page-journey
+ * slice 01).
  */
 export function AftercareCard({
     customerId,

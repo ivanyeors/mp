@@ -4,16 +4,24 @@ import type { CustomerFollowUp, CustomerFollowUpsData, FollowUpListData } from "
 
 /**
  * Follow-ups in the Admin Panel (CRM slice 06). Without `customers-edit` the
- * card and the tab show every follow-up, assignee and due date, with no form
- * and no *Done*, *Reassign* or delete. An archived assignee's open follow-up
- * carries the *Assignee archived* chip.
+ * Customer page and the tab show every open follow-up, assignee and due date,
+ * with no form and no *Done*, *Reassign* or delete. An archived assignee's
+ * open follow-up carries the *Assignee archived* chip.
+ *
+ * On the Customer page they live in the Journey (PRD-customer-page-journey
+ * slice 04): the open ones on Now, the form in the composer, and each one's
+ * buttons on its entry. A done one is an entry in its chapter.
  */
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers",
 }));
 
-const { CustomerFollowUpsCard } = await import("../[id]/customer-followups-card");
+const { NowCard } = await import("../[id]/customer-journey");
+const { JourneyComposer } = await import("../[id]/journey-composer");
+const { CustomerShortcutsProvider } = await import("../[id]/customer-shortcuts");
+const { FollowUpActions } = await import("../followup-parts");
+const { journeyNow } = await import("@/lib/crm/journey/chapters");
 const { FollowUpsTab } = await import("../followups-tab");
 
 const JESS = { id: "p-jess", name: "Jess" };
@@ -38,13 +46,35 @@ const rows = [
   followUp({ id: "f-done", title: "Booked the visit", doneAt: "2026-10-02T03:00:00Z", doneBy: KAI }),
 ];
 
-const card = (canEdit: boolean, data: Partial<CustomerFollowUpsData> = {}) =>
+const data = (canEdit: boolean): CustomerFollowUpsData => ({ rows, today: "2026-10-21", me: JESS, assignees: canEdit ? [JESS, KAI] : [] });
+const open = rows.filter((r) => !r.doneAt);
+
+/** Now, as the Journey draws it: the open follow-ups, with their buttons for those who may. */
+const nowCard = (canEdit: boolean) =>
   renderToString(
-    <CustomerFollowUpsCard
-      customerId="c1"
-      canEdit={canEdit}
-      initialData={{ rows, today: "2026-10-21", me: JESS, assignees: canEdit ? [JESS, KAI] : [], ...data }}
+    <NowCard
+      now={journeyNow(open, "2026-10-21")}
+      nextStepText={null}
+      followUps={open}
+      today="2026-10-21"
+      actions={(f) => (canEdit ? <FollowUpActions followUp={f} assignees={[JESS, KAI]} onChange={() => {}} allowDelete /> : null)}
     />,
+  );
+
+/** The composer on its Follow-up mode. */
+const form = () =>
+  renderToString(
+    <CustomerShortcutsProvider customerId="c1" email="mei@example.test" phone={null} canLog onLogged={() => {}}>
+      <JourneyComposer
+        customerId="c1"
+        mode="followup"
+        onModeChange={() => {}}
+        focusSignal={0}
+        followUps={data(true)}
+        onNoteAdded={() => {}}
+        onFollowUpAdded={() => {}}
+      />
+    </CustomerShortcutsProvider>,
   );
 
 const tab = (canEdit: boolean, data: Partial<FollowUpListData> = {}) =>
@@ -64,29 +94,37 @@ const tab = (canEdit: boolean, data: Partial<FollowUpListData> = {}) =>
   );
 
 /** Each change control, as it appears in the markup. */
-const CARD_CONTROLS = ['aria-label="New follow-up"', 'id="followup-due"', 'aria-label="Assign to"', "Add follow-up", ">Done<", "Reassign", 'aria-label="Delete follow-up"'];
+const FORM_CONTROLS = ['aria-label="New follow-up"', 'id="followup-due"', 'aria-label="Assign to"', "Add follow-up"];
+const ROW_CONTROLS = [">Done<", "Reassign", 'aria-label="Delete follow-up"'];
 const TAB_CONTROLS = [">Done<", "Reassign", ">Actions<"];
 
-describe("Follow-ups card on the Customer detail", () => {
-  it("renders the form, Done, Reassign and delete for customers-edit, with tomorrow and you as defaults", () => {
-    const html = card(true);
-    for (const c of CARD_CONTROLS) expect(html, c).toContain(c);
+describe("Follow-ups on the Customer page", () => {
+  it("has the form in the composer, with tomorrow and you as defaults", () => {
+    const html = form();
+    for (const c of FORM_CONTROLS) expect(html, c).toContain(c);
     expect(html).toContain('value="2026-10-22"');
   });
 
-  it("shows a view-only role every follow-up, with none of the controls", () => {
-    const html = card(false);
-    for (const c of CARD_CONTROLS) expect(html, c).not.toContain(c);
-    for (const fact of ["Send the fill sample", "Call about her second pillow", "Booked the visit", "Jess", "Ana", "Due 23 Oct 2026", "Overdue · due 10 Oct 2026", "Done 2 Oct 2026 by Kai"]) {
-      expect(html, fact).toContain(fact);
-    }
+  it("renders Done, Reassign and delete on Now for customers-edit", () => {
+    const html = nowCard(true);
+    for (const c of ROW_CONTROLS) expect(html, c).toContain(c);
   });
 
-  it("marks an archived assignee's open follow-up, and lists open ones before done ones", () => {
-    const html = card(false);
+  it("shows a view-only role every open follow-up, with none of the controls", () => {
+    const html = nowCard(false).replace(/<!-- -->/g, "");
+    for (const c of ROW_CONTROLS) expect(html, c).not.toContain(c);
+    for (const fact of ["Send the fill sample", "Call about her second pillow", "Jess", "Ana", "Due 23 Oct 2026", "Overdue · due 10 Oct 2026"]) {
+      expect(html, fact).toContain(fact);
+    }
+    expect(html).not.toContain("Booked the visit");
+  });
+
+  it("marks an archived assignee's open follow-up, and says Now needs care while one is overdue", () => {
+    const html = nowCard(false);
     expect(html).toContain("Assignee archived");
+    expect(html).toContain("Needs care");
+    expect(html).toContain("a follow-up overdue");
     expect(html.indexOf("Send the fill sample")).toBeLessThan(html.indexOf("Call about her second pillow"));
-    expect(html.indexOf("Call about her second pillow")).toBeLessThan(html.indexOf("Booked the visit"));
   });
 });
 

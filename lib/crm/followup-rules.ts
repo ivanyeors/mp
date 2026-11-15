@@ -92,7 +92,7 @@ export interface FollowUpListRow extends CustomerFollowUp {
   customerName: string;
 }
 
-/** What the Follow-ups card reads (`GET /api/shop/customers/[id]/followups`). */
+/** What the Customer page's Journey reads (`GET /api/shop/customers/[id]/followups`). */
 export interface CustomerFollowUpsData {
   rows: CustomerFollowUp[];
   /** The Singapore day the states are read against. */

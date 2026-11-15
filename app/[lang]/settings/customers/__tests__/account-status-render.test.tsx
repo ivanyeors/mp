@@ -199,39 +199,64 @@ const detail = (c: Customer, migration?: { ok: true; facts: MigratedCustomerFact
     />,
   );
 
-// CRM slice 11 grew the Account card into the Contact and sign-in card, which
-// keeps the sign-up date (as *Verified since*) and the last signed-in visit.
-describe("Customer detail: Contact and sign-in card (was the Account card)", () => {
-  it("says when a signed-up Customer signed up, and their last signed-in visit", () => {
-    const html = detail(
-      customer({
-        auth_user_id: "auth-1",
-        account_linked_at: "2026-10-02T03:00:00Z",
-        account_last_seen_at: "2026-10-20T06:00:00Z",
-      }),
-    );
+const { FromShopifyCard, SignInFacts } = await import("../[id]/customer-account-cards");
+
+/** The From Shopify facts as the Journey shows them, on the chapter that holds the import. */
+const shopify = (migration?: { ok: true; facts: MigratedCustomerFacts | null } | { ok: false }, canImport = false) =>
+  renderToString(
+    <FromShopifyCard migration={migration} importHistoryHref={canImport ? "/en-US/settings/customers/import" : null} bare />,
+  );
+
+// CRM slice 11 grew the Account card into the Contact and sign-in card.
+// PRD-customer-page-journey slice 01 split it: Contact details keeps the
+// sign-up date (as *Verified since*), and the Sign-in row holds how they sign
+// in and the last signed-in visit.
+describe("Customer detail: Contact details and the Sign-in row (was the Account card)", () => {
+  const member = customer({
+    auth_user_id: "auth-1",
+    account_linked_at: "2026-10-02T03:00:00Z",
+    account_last_seen_at: "2026-10-20T06:00:00Z",
+  });
+
+  it("says when a signed-up Customer signed up, on the page as it opens", () => {
+    const html = detail(member);
+    expect(html).toContain("Contact details");
     expect(html).toContain("Verified: signed in with it since <!-- -->2 Oct 2026");
+    expect(html).toContain('aria-label="About the sign-up date"');
+    // The row is closed: its line says how they sign in, and its facts wait for a press.
+    expect(html).toContain(">Sign-in<");
+    expect(html).not.toContain("Last signed-in visit");
+  });
+
+  it("shows their last signed-in visit in the Sign-in row", () => {
+    const html = renderToString(<SignInFacts customer={member} />);
     expect(html).toContain("Last signed-in visit");
     expect(html).toContain("20 Oct 2026");
-    expect(html).toContain('aria-label="About the sign-up date"');
   });
 
   it("tells Staff how a Customer with no account becomes one", () => {
-    const html = detail(customer({}));
+    expect(detail(customer({}))).toContain("No account yet");
+    const html = renderToString(<SignInFacts customer={customer({})} />);
     expect(html).toContain("No account yet: they become a signed-up customer the first time they sign in");
     expect(html).toContain("ana@x.test");
     expect(html).not.toContain("Last signed-in visit");
   });
 });
 
-describe("Customer detail: From Shopify card", () => {
-  it("is left out for a Customer who is not a Migrated customer", () => {
-    expect(detail(customer({}), { ok: true, facts: null })).not.toContain("From Shopify");
-    expect(detail(customer({}))).not.toContain("From Shopify");
+// The From Shopify card is no longer a card on the page: the Journey shows its
+// facts on the chapter that holds the import (PRD-customer-page-journey slice 04).
+describe("Customer detail: From Shopify facts", () => {
+  it("are left out for a Customer who is not a Migrated customer", () => {
+    expect(shopify({ ok: true, facts: null })).toBe("");
+    expect(shopify()).toBe("");
   });
 
-  it("shows the Shopify-era facts, apart from the platform's", () => {
-    const html = detail(customer({}), { ok: true, facts });
+  it("are not a card of their own on the page", () => {
+    expect(detail(customer({}), { ok: true, facts })).not.toContain("From Shopify");
+  });
+
+  it("show the Shopify-era facts, apart from the platform's", () => {
+    const html = shopify({ ok: true, facts });
     expect(html).toContain("From Shopify");
     expect(html).toContain("21 Oct 2026");
     expect(html).toContain("customers_export.csv");
@@ -245,23 +270,22 @@ describe("Customer detail: From Shopify card", () => {
     expect(html).not.toContain("Claimed on");
   });
 
-  it("says Created by the import, and the Claim once there is one", () => {
-    const html = detail(customer({}), { ok: true, facts: { ...facts, createdByImport: true, claimedAt: "2026-10-25T00:00:00Z" } });
+  it("say Created by the import, and the Claim once there is one", () => {
+    const html = shopify({ ok: true, facts: { ...facts, createdByImport: true, claimedAt: "2026-10-25T00:00:00Z" } });
     expect(html).toContain("Created by the import");
     expect(html).toContain("Claimed on <!-- -->25 Oct 2026");
   });
 
-  it("links the batch in the import history only for customer-import", () => {
-    expect(detail(customer({}), { ok: true, facts }, true)).toContain('href="/en-US/settings/customers/import#batch-b1"');
-    expect(detail(customer({}), { ok: true, facts }, false)).not.toContain("#batch-b1");
+  it("link the batch in the import history only for customer-import", () => {
+    expect(shopify({ ok: true, facts }, true)).toContain('href="/en-US/settings/customers/import#batch-b1"');
+    expect(shopify({ ok: true, facts }, false)).not.toContain("#batch-b1");
   });
 
-  it("says so when the facts could not be read", () => {
-    expect(detail(customer({}), { ok: false })).toContain("Could not load what the Shopify import holds");
+  it("say so when the facts could not be read", () => {
+    expect(shopify({ ok: false })).toContain("Could not load what the Shopify import holds");
   });
 });
 
-// PRD-crm-retention-loop slice 03: the Lifecycle stage on the Customer.
 describe("Customer detail: Lifecycle stage", () => {
   const withStage = (lifecycle: AdminCustomerLifecycle | null) =>
     renderToString(

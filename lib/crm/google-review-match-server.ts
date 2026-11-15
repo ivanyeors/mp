@@ -20,11 +20,14 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSiteOrigin } from "@/lib/site-url";
 import { REVIEW_REQUEST_TEMPLATE } from "@/lib/aftercare/review-request";
 import { productTitle } from "@/lib/reviews/shop-reviews";
+import { googleReviewsUrl } from "@/lib/reviews/cards";
+import { canMarkReplied } from "@/lib/reviews/mark-replied";
 import { suggestGoogleReviewMatches, type MatchCandidate } from "@/lib/crm/review-match";
 import {
   excerpt,
   googleReplyState,
   type CustomerReviewsData,
+  type GoogleReviewAnswer,
   type GoogleReviewSummary,
   type LinkedGoogleReview,
   type ReviewRequestSummary,
@@ -283,6 +286,10 @@ type LinkRow = {
     created_at: string;
     status: string;
     google_reply: string | null;
+    source: "business_profile" | "places";
+    maps_uri: string | null;
+    draft_reply: string | null;
+    posted_reply: string | null;
   } | null;
 };
 
@@ -316,7 +323,7 @@ export async function readCustomerReviews(admin: SupabaseClient, customerId: str
       .from("customer_google_reviews")
       .select(
         "google_review_id, how, linked_at, linked_by:mp_staff!linked_by_profile_id(name), " +
-          "google_reviews!inner(id, star_rating, comment, reviewer_name, reviewer_is_anonymous, review_created_at, created_at, status, google_reply)",
+          "google_reviews!inner(id, star_rating, comment, reviewer_name, reviewer_is_anonymous, review_created_at, created_at, status, google_reply, source, maps_uri, draft_reply, posted_reply)",
       )
       .eq("customer_id", customerId),
     admin
@@ -335,6 +342,7 @@ export async function readCustomerReviews(admin: SupabaseClient, customerId: str
   ]);
   const failed = links.error ?? shop.error ?? request.error ?? emails.error ?? whatsapp.error;
   if (failed) throw new Error(failed.message);
+  const listingUrl = googleReviewsUrl();
 
   const google = ((links.data ?? []) as unknown as LinkRow[])
     .filter((l) => l.google_reviews)
@@ -355,6 +363,7 @@ export async function readCustomerReviews(admin: SupabaseClient, customerId: str
         how: l.how,
         linkedAt: l.linked_at,
         linkedBy: one(l.linked_by)?.name ?? null,
+        answer: googleReviewAnswer(g, listingUrl),
       };
     })
     .sort((a, b) => Date.parse(b.reviewedAt) - Date.parse(a.reviewedAt));
@@ -383,6 +392,24 @@ export async function readCustomerReviews(admin: SupabaseClient, customerId: str
         )
       : null,
     possible,
+  };
+}
+
+/**
+ * What the Reviews tab needs to answer a Linked Google review. `listingUrl` is
+ * the shop's reviews page, used when the review has no page of its own.
+ */
+export function googleReviewAnswer(
+  g: Pick<NonNullable<LinkRow["google_reviews"]>, "status" | "source" | "maps_uri" | "draft_reply" | "posted_reply" | "google_reply">,
+  listingUrl: string | null,
+): GoogleReviewAnswer {
+  const own = g.maps_uri?.trim() || null;
+  return {
+    draft: g.draft_reply?.trim() || null,
+    posted: g.posted_reply?.trim() || g.google_reply?.trim() || null,
+    url: own ?? listingUrl,
+    urlIsReview: own !== null,
+    canMarkReplied: canMarkReplied(g),
   };
 }
 

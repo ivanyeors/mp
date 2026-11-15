@@ -445,6 +445,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `/pay/[token]` (page) [select] — app/[lang]/pay/[token]/page.tsx:75
   - `GET()` [select] — app/api/settings/customers/[id]/timeline/route.ts:47
   - `POST()` [select] — app/api/results/hold/route.ts:887
+  - `POST()` [select] — app/api/settings/customers/[id]/suggest-message/route.ts:55
   - `POST()` [select] — app/api/shop/customers/[id]/addresses/route.ts:53
   - `POST()` [select] — app/api/shop/customers/[id]/followups/route.ts:65
   - `POST()` [select] — app/api/shop/customers/[id]/notes/route.ts:45
@@ -608,6 +609,7 @@ Defined in supabase/migrations/20261028040928_google_reviews_places_source.sql:3
 
 ### google_reviews
 Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
+Changed from pages: `/settings/customers/[id]`
 - Written by:
   - `adoptPlacesRow()` [update] — lib/reviews/google-sync.ts:453
   - `claimGoogleReviewPost()` [update] — lib/reviews/google-actions.ts:80
@@ -615,7 +617,9 @@ Defined in supabase/migrations/20261002060000_google_review_replies.sql:40
   - `executeGoogleReviewPost()` [update] — lib/reviews/google-actions.ts:135
   - `main()` [select,upsert] — scripts/google-reviews-backfill.ts:52
   - `markGoogleReviewReplied()` [update] — lib/reviews/google-actions.ts:109
+  - `markReviewRepliedByStaff()` [update] — lib/reviews/admin-reply.ts:108
   - `purgeExpiredPlacesReviews()` [delete] — lib/reviews/places-poll.ts:140
+  - `redraftReviewReply()` [update] — lib/reviews/admin-reply.ts:59
   - `setStaffDraft()` [update] — lib/reviews/google-actions.ts:184
   - `skipGoogleReview()` [update] — lib/reviews/google-actions.ts:207
   - `syncGoogleReviews()` [select,update,upsert] — lib/reviews/google-sync.ts:287
@@ -1340,7 +1344,7 @@ Changed from pages: `/shop/[slug]`
   - `getReviewAggregates()` [select] — lib/seo/review-aggregate.ts:38
   - `getShopReviewByCard()` [select] — lib/reviews/shop-reviews.ts:64
   - `loadShopReviewForCard()` [select] — lib/reviews/shop-reviews.ts:40
-  - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:322
+  - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:329
   - `sources/reviews.ts` [select] — lib/crm/timeline/sources/reviews.ts:31
   - `topic-reviews-loader.ts` [select] — lib/seo/topic-reviews-loader.ts:11
 
@@ -1443,7 +1447,7 @@ Defined in supabase/migrations/20261101020836_customer_lifecycle_counts.sql:22
 Defined in supabase/migrations/20261108100000_fitting_dated_purchases.sql:45
 - Read by:
   - `countCustomers()` [select] — lib/crm/segments.ts:68
-  - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:429
+  - `countLinkedReviewsOfAsked()` [select] — lib/crm/google-review-match-server.ts:456
   - `countShipsToUnknown()` [select] — lib/ecommerce/admin/customers.ts:79
   - `countSignUps()` [select] — lib/crm/telegram-update-sources.ts:51
   - `getAdminCustomerLifecycle()` [select] — lib/ecommerce/admin/customers.ts:144
@@ -1457,8 +1461,8 @@ Defined in supabase/migrations/20261108100000_fitting_dated_purchases.sql:45
 ### admin_google_reviews_unlinked
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:321
 - Read by:
-  - `loadUnlinked()` [select] — lib/crm/google-review-match-server.ts:139
-  - `readReviewTab()` [select] — lib/crm/google-review-match-server.ts:245
+  - `loadUnlinked()` [select] — lib/crm/google-review-match-server.ts:142
+  - `readReviewTab()` [select] — lib/crm/google-review-match-server.ts:248
 
 ### admin_orders_revenue_summary
 Defined in supabase/migrations/20260902000002_admin_orders_revenue_summary.sql:12
@@ -1581,8 +1585,8 @@ Changed from pages: `/settings/customers`, `/settings/customers/[id]`
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:49
 References: `customers`, `google_reviews`, `mp_staff`
 - Read by:
-  - `countGoogleReviewsLinked()` [select] — lib/crm/google-review-match-server.ts:443
-  - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:315
+  - `countGoogleReviewsLinked()` [select] — lib/crm/google-review-match-server.ts:470
+  - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:322
   - `sources/google-reviews.ts` [select] — lib/crm/timeline/sources/google-reviews.ts:35
 
 ### customer_import_batches
@@ -1636,7 +1640,7 @@ Changed from pages: `/settings/customers`
 - Read by:
   - `countReviewRequests()` [select] — lib/aftercare/review-request-counts.ts:33
   - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:214
-  - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:327
+  - `readCustomerReviews()` [select] — lib/crm/google-review-match-server.ts:334
   - `review-requests.ts` [select] — lib/crm/timeline/sources/review-requests.ts:36
 
 ### customer_segments
@@ -1777,7 +1781,7 @@ Defined in supabase/migrations/20261020024120_whatsapp_inbound_calendar_channels
 ### google_review_match_candidates
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:113
 - Called by:
-  - `loadCandidates()` — lib/crm/google-review-match-server.ts:120
+  - `loadCandidates()` — lib/crm/google-review-match-server.ts:123
 
 ### grant_due_milestone_bonuses
 Defined in supabase/migrations/20261023120000_points_milestones.sql:181
@@ -2712,10 +2716,10 @@ app/[lang]/settings/customers/page.tsx
 
 ### /settings/customers/[id]
 app/[lang]/settings/customers/[id]/page.tsx
-- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/settings/customers/[id]/timeline [GET]`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [GET,POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/pillow`, `/api/shop/customers/[id]/pillow/readjust [GET,POST]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/shop/orders [GET]`, `/api/staff-orders [POST]`, `/api/staff-orders/options [GET]`, `/api/staff-orders/quote [POST]`
+- Endpoints: `/api/mp-config/assist [GET,POST]`, `/api/settings/customers/[id]/suggest-message [POST]`, `/api/settings/customers/[id]/timeline [GET]`, `/api/settings/customers/google-reviews/[reviewId]/draft`, `/api/settings/customers/google-reviews/[reviewId]/replied`, `/api/shop/customers [GET]`, `/api/shop/customers/[id] [GET,PATCH]`, `/api/shop/customers/[id]/addresses [GET,POST]`, `/api/shop/customers/[id]/aftercare [GET,POST]`, `/api/shop/customers/[id]/followups [GET,POST]`, `/api/shop/customers/[id]/followups/[followupId]`, `/api/shop/customers/[id]/marketing-consent [GET,POST]`, `/api/shop/customers/[id]/notes [POST]`, `/api/shop/customers/[id]/notes/[noteId] [DELETE]`, `/api/shop/customers/[id]/pillow`, `/api/shop/customers/[id]/pillow/readjust [GET,POST]`, `/api/shop/customers/[id]/points [GET,POST]`, `/api/shop/customers/[id]/reviews [GET]`, `/api/staff-orders [POST]`, `/api/staff-orders/options [GET]`, `/api/staff-orders/quote [POST]`
 - Loads: `getAdminCustomer()`, `getAdminCustomerLifecycle()`, `getMigratedCustomer()`, `listCustomerFittings()`, `listCustomerNotes()`, `loadCustomerPillow()`, `readContactFacts()`, `readCustomerEntry()`, `readCustomerUnsubscribeReason()`, `readNextStepFacts()`, `requireAdminPage()`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_templates`, `customer_addresses`, `customer_followups`, `customer_notes`, `customer_pillows`, `customers`, `filling_template_placements`, `mp_staff`, `order_items`, `order_payment_links`, `order_shipments`, `order_timeline`, `orders`, `pillow_products`, `shipping_rate_quotes`
-- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `analytics_visitors`, `analytics_visits`, `appointment_reminders`, `coupons`, `customer_consent_events`, `customer_fittings`, `customer_google_reviews`, `customer_preference_events`, `customer_purchase_lines`, `customer_review_requests`, `customer_unsubscribe_reasons`, `customer_whatsapp`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `item_prices`, `items`, `migrated_customers`, `mp_config_responses`, `neck_support_dimension_overrides`, `order_margins`, `partners`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `product_variants`, `readjustment_bookings`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`, `variant_stock`, `whatsapp_inbound`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `bolster_length_config`, `bolster_template_placements`, `bom_template_keys`, `bom_templates`, `customer_addresses`, `customer_followups`, `customer_notes`, `customer_pillows`, `customers`, `filling_template_placements`, `google_reviews`, `mp_staff`, `order_items`, `order_payment_links`, `order_shipments`, `order_timeline`, `orders`, `pillow_products`, `shipping_rate_quotes`
+- Reads, through the same: `admin_customer_overview`, `admin_google_reviews_unlinked`, `admin_roles`, `admin_users`, `analytics_visitors`, `analytics_visits`, `appointment_reminders`, `coupons`, `customer_consent_events`, `customer_fittings`, `customer_google_reviews`, `customer_preference_events`, `customer_purchase_lines`, `customer_review_requests`, `customer_unsubscribe_reasons`, `customer_whatsapp`, `email_template_copy`, `filling_color_overrides`, `filling_dimension_overrides`, `item_prices`, `items`, `migrated_customers`, `mp_config_responses`, `neck_support_dimension_overrides`, `partners`, `points_ledger`, `points_milestone_progress`, `points_order_candidates`, `product_reviews`, `product_variants`, `readjustment_bookings`, `service_prices`, `shipping_methods`, `site_settings`, `tax_rates`, `variant_stock`, `whatsapp_inbound`
 
 ### /settings/customers/filters
 app/[lang]/settings/customers/filters/page.tsx
