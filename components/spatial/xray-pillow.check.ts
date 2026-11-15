@@ -114,7 +114,13 @@ assert.match(
   "the two divider seams are drawn at the Section columns, in the shell stroke",
 );
 assert.match(renderer, /strokeDasharray: status === "ok" \? undefined : "6 3"/, "a squeezed piece draws with a dashed stroke");
-assert.doesNotMatch(renderer, /#ef4444|bg-red-|text-red-|RING_OVER/, "nothing turns red (Ivan, 1-11-2026): a piece in a cell that cannot close keeps the dashed outline, the gauge says it in amber");
+assert.doesNotMatch(renderer, /#ef4444|bg-red-|text-red-|RING_OVER/, "fit never turns red (Ivan, 1-11-2026): a piece in a cell that cannot close keeps the dashed outline, the gauge says it in amber");
+// The one red on the x-ray means "this pouch comes out" (owner, 15-11-2026), and only the remove states draw it.
+assert.equal(
+  renderer.match(/REMOVE_RED/g)?.length,
+  4,
+  "REMOVE_RED is defined once and drawn only by the pouch coming out (its fill and stroke) and the ghost carried off the x-ray",
+);
 assert.doesNotMatch(renderer, /squeezeLines|↕ \$\{|↔ \$\{/, "no ↕ / ↔ squeeze percentage beside the type label (Ivan, 1-11-2026)");
 assert.match(renderer, /fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
 // Slice 05, as reviewed 26-9-2026: the x-ray draws no cut line (the cross-section's own controls say where it is taken).

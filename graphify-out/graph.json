@@ -2188,45 +2188,6 @@
       "source_location": "L216"
     },
     {
-      "id": "lib_google_business_profile_businessprofileclient",
-      "label": "BusinessProfileClient",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "businessprofileclient",
-      "source_file": "lib/google/business-profile.ts",
-      "source_location": "L110"
-    },
-    {
-      "id": "lib_google_business_profile_gbpreview",
-      "label": "GbpReview",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "gbpreview",
-      "source_file": "lib/google/business-profile.ts",
-      "source_location": "L24"
-    },
-    {
-      "id": "lib_google_places_reviews_googleplacetestimonial",
-      "label": "GooglePlaceTestimonial",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "googleplacetestimonial",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "lib_google_places_reviews_placereview",
       "label": "PlaceReview",
       "_callable": true,
@@ -2251,32 +2212,6 @@
       "norm_label": "placereviewsread",
       "source_file": "lib/google/places-reviews.ts",
       "source_location": "L99"
-    },
-    {
-      "id": "lib_google_places_reviews_placesv1placedetails",
-      "label": "PlacesV1PlaceDetails",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "placesv1placedetails",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L28"
-    },
-    {
-      "id": "lib_google_places_reviews_placesv1review",
-      "label": "PlacesV1Review",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "placesv1review",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L12"
     },
     {
       "id": "lib_reviews_tests_fake_supabase_op",
@@ -3824,6 +3759,175 @@
       "norm_label": "source",
       "source_file": "scripts/graphify-dataflow.py",
       "source_location": "L223"
+    },
+    {
+      "id": "lib_google_places_reviews_googleplacetestimonial",
+      "label": "GooglePlaceTestimonial",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "googleplacetestimonial",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_google_places_reviews_placesv1placedetails",
+      "label": "PlacesV1PlaceDetails",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placesv1placedetails",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L28"
+    },
+    {
+      "id": "lib_google_places_reviews_placesv1review",
+      "label": "PlacesV1Review",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placesv1review",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_reviews_google_sync_reviewsyncdeps",
+      "label": "ReviewSyncDeps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "reviewsyncdeps",
+      "source_file": "lib/reviews/google-sync.ts",
+      "source_location": "L67"
+    },
+    {
+      "id": "lib_reviews_google_sync_reviewsyncsummary",
+      "label": "ReviewSyncSummary",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "reviewsyncsummary",
+      "source_file": "lib/reviews/google-sync.ts",
+      "source_location": "L85"
+    },
+    {
+      "id": "lib_reviews_places_poll_claim",
+      "label": "Claim",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "claim",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L80"
+    },
+    {
+      "id": "lib_reviews_places_poll_placespolldeps",
+      "label": "PlacesPollDeps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placespolldeps",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L156"
+    },
+    {
+      "id": "lib_reviews_places_poll_placespollstatus",
+      "label": "PlacesPollStatus",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placespollstatus",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L231"
+    },
+    {
+      "id": "lib_reviews_places_poll_placespollsummary",
+      "label": "PlacesPollSummary",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placespollsummary",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L164"
+    },
+    {
+      "id": "lib_reviews_status_businessprofilesetup",
+      "label": "BusinessProfileSetup",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "businessprofilesetup",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L31"
+    },
+    {
+      "id": "lib_reviews_status_googlecallerror",
+      "label": "GoogleCallError",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "googlecallerror",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L60"
+    },
+    {
+      "id": "lib_reviews_status_googlereviewsstatus",
+      "label": "GoogleReviewsStatus",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "googlereviewsstatus",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L47"
+    },
+    {
+      "id": "lib_reviews_status_json",
+      "label": "Json",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "json",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L58"
     },
     {
       "id": "app_lang_settings_costings_save_route_bolstervariant",
@@ -11327,19 +11431,6 @@
       "source_location": "L206"
     },
     {
-      "id": "lib_reviews_cards_card",
-      "label": "Card",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 239,
-      "community_name": "Admin Panel mobile audit: spacing, tap targets and tap states \u2014 October 2026",
-      "file_type": "code",
-      "norm_label": "card",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L30"
-    },
-    {
       "id": "lib_crm_customer_overview_purchaseclass",
       "label": "PurchaseClass",
       "_callable": true,
@@ -11702,6 +11793,32 @@
       "norm_label": "storedsizingphoto",
       "source_file": "lib/results/sizing-photo-webp.ts",
       "source_location": "L16"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_unsubscribelinks",
+      "label": "unsubscribeLinks",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "unsubscribelinks",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L101"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_unsubscribeprobe",
+      "label": "UnsubscribeProbe",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "unsubscribeprobe",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L137"
     },
     {
       "id": "lib_appointments_calendar_calendarrangeevent",
@@ -16332,6 +16449,19 @@
       "source_location": "L41"
     },
     {
+      "id": "lib_reviews_cards_card",
+      "label": "Card",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "card",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L30"
+    },
+    {
       "id": "lib_reviews_cards_googlecardoptions",
       "label": "GoogleCardOptions",
       "_callable": true,
@@ -16356,6 +16486,19 @@
       "norm_label": "reviewcallback",
       "source_file": "lib/reviews/cards.ts",
       "source_location": "L57"
+    },
+    {
+      "id": "lib_reviews_google_reviews_googlereviewrow",
+      "label": "GoogleReviewRow",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "googlereviewrow",
+      "source_file": "lib/reviews/google-reviews.ts",
+      "source_location": "L23"
     },
     {
       "id": "lib_reviews_preview_googlesample",
@@ -16397,19 +16540,6 @@
       "source_location": "L232"
     },
     {
-      "id": "lib_reviews_reply_rules_replycheck",
-      "label": "ReplyCheck",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "replycheck",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L84"
-    },
-    {
       "id": "lib_reviews_reply_style_replystyle",
       "label": "ReplyStyle",
       "_callable": true,
@@ -16421,19 +16551,6 @@
       "norm_label": "replystyle",
       "source_file": "lib/reviews/reply-style.ts",
       "source_location": "L15"
-    },
-    {
-      "id": "lib_telegram_bot_api_inlinekeyboardbutton",
-      "label": "InlineKeyboardButton",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "inlinekeyboardbutton",
-      "source_file": "lib/telegram/bot-api.ts",
-      "source_location": "L17"
     },
     {
       "id": "lib_shopify_pricing_itempricerow",
@@ -25146,32 +25263,6 @@
       "source_location": "L33"
     },
     {
-      "id": "lib_marketing_consent_unsubscribe_unsubscribelinks",
-      "label": "unsubscribeLinks",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "unsubscribelinks",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L101"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_unsubscribeprobe",
-      "label": "UnsubscribeProbe",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "unsubscribeprobe",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L137"
-    },
-    {
       "id": "lib_reviews_pubsub_pushbody",
       "label": "PushBody",
       "_callable": true,
@@ -25601,6 +25692,19 @@
       "source_location": "L6"
     },
     {
+      "id": "lib_google_business_profile_businessprofileclient",
+      "label": "BusinessProfileClient",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "google-sync.ts",
+      "file_type": "code",
+      "norm_label": "businessprofileclient",
+      "source_file": "lib/google/business-profile.ts",
+      "source_location": "L110"
+    },
+    {
       "id": "lib_google_business_profile_businessprofileconfig",
       "label": "BusinessProfileConfig",
       "_callable": true,
@@ -25625,6 +25729,19 @@
       "norm_label": "businessprofileerror",
       "source_file": "lib/google/business-profile.ts",
       "source_location": "L43"
+    },
+    {
+      "id": "lib_google_business_profile_gbpreview",
+      "label": "GbpReview",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 67,
+      "community_name": "google-sync.ts",
+      "file_type": "code",
+      "norm_label": "gbpreview",
+      "source_file": "lib/google/business-profile.ts",
+      "source_location": "L24"
     },
     {
       "id": "lib_google_business_profile_gbpreviewpage",
@@ -25718,32 +25835,6 @@
       "source_location": "L63"
     },
     {
-      "id": "lib_reviews_google_sync_reviewsyncdeps",
-      "label": "ReviewSyncDeps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "reviewsyncdeps",
-      "source_file": "lib/reviews/google-sync.ts",
-      "source_location": "L67"
-    },
-    {
-      "id": "lib_reviews_google_sync_reviewsyncsummary",
-      "label": "ReviewSyncSummary",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "reviewsyncsummary",
-      "source_file": "lib/reviews/google-sync.ts",
-      "source_location": "L85"
-    },
-    {
       "id": "lib_reviews_google_sync_syncreview",
       "label": "SyncReview",
       "_callable": true,
@@ -25755,110 +25846,6 @@
       "norm_label": "syncreview",
       "source_file": "lib/reviews/google-sync.ts",
       "source_location": "L60"
-    },
-    {
-      "id": "lib_reviews_places_poll_claim",
-      "label": "Claim",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "claim",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L80"
-    },
-    {
-      "id": "lib_reviews_places_poll_placespolldeps",
-      "label": "PlacesPollDeps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "placespolldeps",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L156"
-    },
-    {
-      "id": "lib_reviews_places_poll_placespollstatus",
-      "label": "PlacesPollStatus",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "placespollstatus",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L231"
-    },
-    {
-      "id": "lib_reviews_places_poll_placespollsummary",
-      "label": "PlacesPollSummary",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "placespollsummary",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L164"
-    },
-    {
-      "id": "lib_reviews_status_businessprofilesetup",
-      "label": "BusinessProfileSetup",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "businessprofilesetup",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L31"
-    },
-    {
-      "id": "lib_reviews_status_googlecallerror",
-      "label": "GoogleCallError",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "googlecallerror",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L60"
-    },
-    {
-      "id": "lib_reviews_status_googlereviewsstatus",
-      "label": "GoogleReviewsStatus",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "googlereviewsstatus",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L47"
-    },
-    {
-      "id": "lib_reviews_status_json",
-      "label": "Json",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "json",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L58"
     },
     {
       "id": "scripts_google_business_setup_json",
@@ -30281,17 +30268,17 @@
       "source_location": "L25"
     },
     {
-      "id": "lib_reviews_google_reviews_googlereviewrow",
-      "label": "GoogleReviewRow",
+      "id": "lib_reviews_reply_rules_replycheck",
+      "label": "ReplyCheck",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 944,
       "community_name": "reviews/telegram-handler.ts",
       "file_type": "code",
-      "norm_label": "googlereviewrow",
-      "source_file": "lib/reviews/google-reviews.ts",
-      "source_location": "L23"
+      "norm_label": "replycheck",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L84"
     },
     {
       "id": "lib_reviews_shop_reviews_productcontent",
@@ -30344,6 +30331,19 @@
       "norm_label": "telegramuser",
       "source_file": "lib/reviews/telegram-handler.ts",
       "source_location": "L59"
+    },
+    {
+      "id": "lib_telegram_bot_api_inlinekeyboardbutton",
+      "label": "InlineKeyboardButton",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "inlinekeyboardbutton",
+      "source_file": "lib/telegram/bot-api.ts",
+      "source_location": "L17"
     },
     {
       "id": "lib_telegram_bot_api_inlinekeyboardmarkup",
@@ -38982,112 +38982,64 @@
       "source_location": "L25"
     },
     {
-      "id": "lib_google_places_reviews_getgoogleplacetestimonials",
-      "label": "getGooglePlaceTestimonials()",
+      "id": "lib_analytics_tests_journey_aggregates_test_matches",
+      "label": "matches()",
       "_callable": true,
       "_origin": "ast",
       "community": 112,
       "community_name": "places-poll.test.ts",
       "file_type": "code",
-      "norm_label": "getgoogleplacetestimonials()",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L159"
+      "norm_label": "matches()",
+      "source_file": "lib/analytics/__tests__/journey-aggregates.test.ts",
+      "source_location": "L22"
     },
     {
-      "id": "lib_google_places_reviews_getoptionalreferrerheaders",
-      "label": "getOptionalReferrerHeaders()",
+      "id": "lib_reviews_tests_fake_supabase_createfakesupabase",
+      "label": "createFakeSupabase()",
       "_callable": true,
       "_origin": "ast",
       "community": 112,
       "community_name": "places-poll.test.ts",
       "file_type": "code",
-      "norm_label": "getoptionalreferrerheaders()",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L41"
+      "norm_label": "createfakesupabase()",
+      "source_file": "lib/reviews/__tests__/fake-supabase.ts",
+      "source_location": "L14"
     },
     {
-      "id": "lib_google_places_reviews_getrequiredenv",
-      "label": "getRequiredEnv()",
+      "id": "lib_reviews_tests_fake_supabase_createfakesupabase_from",
+      "label": "from()",
       "_callable": true,
       "_origin": "ast",
       "community": 112,
       "community_name": "places-poll.test.ts",
       "file_type": "code",
-      "norm_label": "getrequiredenv()",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L34"
+      "norm_label": "from()",
+      "source_file": "lib/reviews/__tests__/fake-supabase.ts",
+      "source_location": "L21"
     },
     {
-      "id": "lib_google_places_reviews_hasgoogleplacereviewsconfig",
-      "label": "hasGooglePlaceReviewsConfig()",
+      "id": "lib_reviews_tests_fake_supabase_createfakesupabase_from_execute",
+      "label": "execute()",
       "_callable": true,
       "_origin": "ast",
       "community": 112,
       "community_name": "places-poll.test.ts",
       "file_type": "code",
-      "norm_label": "hasgoogleplacereviewsconfig()",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L57"
+      "norm_label": "execute()",
+      "source_file": "lib/reviews/__tests__/fake-supabase.ts",
+      "source_location": "L53"
     },
     {
-      "id": "lib_google_places_reviews_isplacesreviewname",
-      "label": "isPlacesReviewName()",
+      "id": "lib_reviews_tests_fake_supabase_createfakesupabase_from_run",
+      "label": "run()",
       "_callable": true,
       "_origin": "ast",
       "community": 112,
       "community_name": "places-poll.test.ts",
       "file_type": "code",
-      "norm_label": "isplacesreviewname()",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L85"
-    },
-    {
-      "id": "lib_google_places_reviews_istestimonialvisible",
-      "label": "isTestimonialVisible()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "istestimonialvisible()",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L68"
-    },
-    {
-      "id": "lib_google_places_reviews_readplacereviews",
-      "label": "readPlaceReviews()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "readplacereviews()",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L109"
-    },
-    {
-      "id": "lib_google_tests_places_reviews_test_placeresponse",
-      "label": "placeResponse()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "placeresponse()",
-      "source_file": "lib/google/__tests__/places-reviews.test.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_google_tests_places_reviews_test_stubfetch",
-      "label": "stubFetch()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "stubfetch()",
-      "source_file": "lib/google/__tests__/places-reviews.test.ts",
-      "source_location": "L46"
+      "norm_label": "run()",
+      "source_file": "lib/reviews/__tests__/fake-supabase.ts",
+      "source_location": "L48"
     },
     {
       "id": "lib_reviews_tests_google_sync_test_byname",
@@ -39244,6 +39196,54 @@
       "norm_label": "run()",
       "source_file": "lib/reviews/__tests__/places-poll.test.ts",
       "source_location": "L61"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_conversations",
+      "label": "conversations()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "conversations()",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L54"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_igmessage",
+      "label": "igMessage()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "igmessage()",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L56"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_lastreply",
+      "label": "lastReply()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "lastreply()",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L82"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_reply",
+      "label": "reply()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "reply()",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L76"
     },
     {
       "id": "lib_social_inbox_tests_tiktok_token_test_inhours",
@@ -44466,6 +44466,318 @@
       "source_location": "L687"
     },
     {
+      "id": "lib_google_places_reviews_getgoogleplacetestimonials",
+      "label": "getGooglePlaceTestimonials()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "getgoogleplacetestimonials()",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L159"
+    },
+    {
+      "id": "lib_google_places_reviews_getoptionalreferrerheaders",
+      "label": "getOptionalReferrerHeaders()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "getoptionalreferrerheaders()",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L41"
+    },
+    {
+      "id": "lib_google_places_reviews_getrequiredenv",
+      "label": "getRequiredEnv()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "getrequiredenv()",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L34"
+    },
+    {
+      "id": "lib_google_places_reviews_hasgoogleplacereviewsconfig",
+      "label": "hasGooglePlaceReviewsConfig()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "hasgoogleplacereviewsconfig()",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L57"
+    },
+    {
+      "id": "lib_google_places_reviews_isplacesreviewname",
+      "label": "isPlacesReviewName()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "isplacesreviewname()",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L85"
+    },
+    {
+      "id": "lib_google_places_reviews_istestimonialvisible",
+      "label": "isTestimonialVisible()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "istestimonialvisible()",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L68"
+    },
+    {
+      "id": "lib_google_places_reviews_readplacereviews",
+      "label": "readPlaceReviews()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "readplacereviews()",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L109"
+    },
+    {
+      "id": "lib_google_tests_places_reviews_test_placeresponse",
+      "label": "placeResponse()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placeresponse()",
+      "source_file": "lib/google/__tests__/places-reviews.test.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "lib_google_tests_places_reviews_test_stubfetch",
+      "label": "stubFetch()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "stubfetch()",
+      "source_file": "lib/google/__tests__/places-reviews.test.ts",
+      "source_location": "L46"
+    },
+    {
+      "id": "lib_reviews_places_poll_claimplacesread",
+      "label": "claimPlacesRead()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "claimplacesread()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L89"
+    },
+    {
+      "id": "lib_reviews_places_poll_getplacespollstatus",
+      "label": "getPlacesPollStatus()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "getplacespollstatus()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L242"
+    },
+    {
+      "id": "lib_reviews_places_poll_lastratingcount",
+      "label": "lastRatingCount()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "lastratingcount()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L123"
+    },
+    {
+      "id": "lib_reviews_places_poll_lastsuccessfulread",
+      "label": "lastSuccessfulRead()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "lastsuccessfulread()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L111"
+    },
+    {
+      "id": "lib_reviews_places_poll_placespollmonthlycap",
+      "label": "placesPollMonthlyCap()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placespollmonthlycap()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L54"
+    },
+    {
+      "id": "lib_reviews_places_poll_placestosyncreview",
+      "label": "placesToSyncReview()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "placestosyncreview()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L67"
+    },
+    {
+      "id": "lib_reviews_places_poll_pollmonth",
+      "label": "pollMonth()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "pollmonth()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L60"
+    },
+    {
+      "id": "lib_reviews_places_poll_pollplacesreviews",
+      "label": "pollPlacesReviews()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "pollplacesreviews()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L185"
+    },
+    {
+      "id": "lib_reviews_places_poll_purgeexpiredplacesreviews",
+      "label": "purgeExpiredPlacesReviews()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "purgeexpiredplacesreviews()",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L135"
+    },
+    {
+      "id": "lib_reviews_status_checkbusinessprofilesetup",
+      "label": "checkBusinessProfileSetup()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "checkbusinessprofilesetup()",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L94"
+    },
+    {
+      "id": "lib_reviews_status_clip",
+      "label": "clip()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "clip()",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L73"
+    },
+    {
+      "id": "lib_reviews_status_env",
+      "label": "env()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "env()",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L69"
+    },
+    {
+      "id": "lib_reviews_status_explain",
+      "label": "explain()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "explain()",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L78"
+    },
+    {
+      "id": "lib_reviews_status_getgooglereviewsstatus",
+      "label": "getGoogleReviewsStatus()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "getgooglereviewsstatus()",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L208"
+    },
+    {
+      "id": "lib_reviews_status_googlecallerror_constructor",
+      "label": ".constructor()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": ".constructor()",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L61"
+    },
+    {
+      "id": "lib_reviews_status_refreshaccesstoken",
+      "label": "refreshAccessToken()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "refreshaccesstoken()",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L86"
+    },
+    {
+      "id": "lib_reviews_status_storedcounts",
+      "label": "storedCounts()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "storedcounts()",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L198"
+    },
+    {
       "id": "app_api_mp_config_responses_route_get",
       "label": "GET()",
       "_callable": true,
@@ -47262,18 +47574,6 @@
       "source_location": "L128"
     },
     {
-      "id": "lib_social_inbox_cards_renderinboxcard",
-      "label": "renderInboxCard()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "renderinboxcard()",
-      "source_file": "lib/social-inbox/cards.ts",
-      "source_location": "L95"
-    },
-    {
       "id": "lib_social_inbox_cards_rendersentnote",
       "label": "renderSentNote()",
       "_callable": true,
@@ -47382,6 +47682,18 @@
       "source_location": "L90"
     },
     {
+      "id": "lib_social_inbox_platforms_humanagentenabled",
+      "label": "humanAgentEnabled()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 14,
+      "community_name": "social-inbox/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "humanagentenabled()",
+      "source_file": "lib/social-inbox/platforms.ts",
+      "source_location": "L48"
+    },
+    {
       "id": "lib_social_inbox_platforms_issocialplatform",
       "label": "isSocialPlatform()",
       "_callable": true,
@@ -47392,18 +47704,6 @@
       "norm_label": "issocialplatform()",
       "source_file": "lib/social-inbox/platforms.ts",
       "source_location": "L18"
-    },
-    {
-      "id": "lib_social_inbox_preview_inboxpreviewcard",
-      "label": "inboxPreviewCard()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "inboxpreviewcard()",
-      "source_file": "lib/social-inbox/preview.ts",
-      "source_location": "L10"
     },
     {
       "id": "lib_social_inbox_store_ensureconversation",
@@ -47538,52 +47838,52 @@
       "source_location": "L20"
     },
     {
-      "id": "lib_social_inbox_tests_inbox_flow_test_conversations",
-      "label": "conversations()",
+      "id": "lib_telegram_bot_api_replyingroup",
+      "label": "replyInGroup()",
       "_callable": true,
       "_origin": "ast",
       "community": 14,
       "community_name": "social-inbox/telegram-handler.ts",
       "file_type": "code",
-      "norm_label": "conversations()",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L54"
+      "norm_label": "replyingroup()",
+      "source_file": "lib/telegram/bot-api.ts",
+      "source_location": "L142"
     },
     {
-      "id": "lib_social_inbox_tests_inbox_flow_test_igmessage",
-      "label": "igMessage()",
+      "id": "lib_telegram_bot_api_replyto",
+      "label": "replyTo()",
       "_callable": true,
       "_origin": "ast",
       "community": 14,
       "community_name": "social-inbox/telegram-handler.ts",
       "file_type": "code",
-      "norm_label": "igmessage()",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L56"
+      "norm_label": "replyto()",
+      "source_file": "lib/telegram/bot-api.ts",
+      "source_location": "L50"
     },
     {
-      "id": "lib_social_inbox_tests_inbox_flow_test_lastreply",
-      "label": "lastReply()",
+      "id": "lib_telegram_bot_api_sendgroupmessage",
+      "label": "sendGroupMessage()",
       "_callable": true,
       "_origin": "ast",
       "community": 14,
       "community_name": "social-inbox/telegram-handler.ts",
       "file_type": "code",
-      "norm_label": "lastreply()",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L82"
+      "norm_label": "sendgroupmessage()",
+      "source_file": "lib/telegram/bot-api.ts",
+      "source_location": "L59"
     },
     {
-      "id": "lib_social_inbox_tests_inbox_flow_test_reply",
-      "label": "reply()",
+      "id": "lib_telegram_bot_api_sendgroupphoto",
+      "label": "sendGroupPhoto()",
       "_callable": true,
       "_origin": "ast",
       "community": 14,
       "community_name": "social-inbox/telegram-handler.ts",
       "file_type": "code",
-      "norm_label": "reply()",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L76"
+      "norm_label": "sendgroupphoto()",
+      "source_file": "lib/telegram/bot-api.ts",
+      "source_location": "L83"
     },
     {
       "id": "lib_telegram_operators_authorizetelegramaction",
@@ -65730,6 +66030,126 @@
       "source_location": "L18"
     },
     {
+      "id": "app_api_email_unsubscribe_reason_route_post",
+      "label": "POST()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/api/email/unsubscribe/reason/route.ts",
+      "source_location": "L33"
+    },
+    {
+      "id": "app_api_email_unsubscribe_reason_tests_route_test_post",
+      "label": "post()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/api/email/unsubscribe/reason/__tests__/route.test.ts",
+      "source_location": "L42"
+    },
+    {
+      "id": "app_api_email_unsubscribe_reason_tests_route_test_signed",
+      "label": "signed()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "signed()",
+      "source_file": "app/api/email/unsubscribe/reason/__tests__/route.test.ts",
+      "source_location": "L50"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_probeunsubscriberoute",
+      "label": "probeUnsubscribeRoute()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "probeunsubscriberoute()",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L146"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_reasons_server_recordunsubscribereason",
+      "label": "recordUnsubscribeReason()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "recordunsubscribereason()",
+      "source_file": "lib/marketing-consent/unsubscribe-reasons-server.ts",
+      "source_location": "L39"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_route_check_main",
+      "label": "main()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "main()",
+      "source_file": "lib/marketing-consent/unsubscribe-route.check.ts",
+      "source_location": "L24"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_secretfromenv",
+      "label": "secretFromEnv()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "secretfromenv()",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L43"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_unsubscribeconfigured",
+      "label": "unsubscribeConfigured()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "unsubscribeconfigured()",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L46"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_unsubscribetoken",
+      "label": "unsubscribeToken()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "unsubscribetoken()",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L51"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_verifyunsubscribelink",
+      "label": "verifyUnsubscribeLink()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "verifyunsubscribelink()",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L79"
+    },
+    {
       "id": "lib_crm_tests_lifecycle_stage_sql_test_before",
       "label": "before()",
       "_callable": true,
@@ -75414,6 +75834,18 @@
       "source_location": "L109"
     },
     {
+      "id": "lib_reviews_cards_parsereviewcallback",
+      "label": "parseReviewCallback()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "parsereviewcallback()",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L69"
+    },
+    {
       "id": "lib_reviews_cards_placesopencard",
       "label": "placesOpenCard()",
       "_callable": true,
@@ -75472,6 +75904,18 @@
       "norm_label": "rendergooglecardwithin()",
       "source_file": "lib/reviews/cards.ts",
       "source_location": "L176"
+    },
+    {
+      "id": "lib_reviews_cards_rendergooglereviewcard",
+      "label": "renderGoogleReviewCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "rendergooglereviewcard()",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L167"
     },
     {
       "id": "lib_reviews_cards_rendermissedreviewsnotice",
@@ -75534,30 +75978,6 @@
       "source_location": "L87"
     },
     {
-      "id": "lib_reviews_draft_reply_draftinputfor",
-      "label": "draftInputFor()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "draftinputfor()",
-      "source_file": "lib/reviews/draft-reply.ts",
-      "source_location": "L86"
-    },
-    {
-      "id": "lib_reviews_places_poll_purgeexpiredplacesreviews",
-      "label": "purgeExpiredPlacesReviews()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "purgeexpiredplacesreviews()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L135"
-    },
-    {
       "id": "lib_reviews_preview_buildreviewcardpreview",
       "label": "buildReviewCardPreview()",
       "_callable": true,
@@ -75618,66 +76038,6 @@
       "source_location": "L244"
     },
     {
-      "id": "lib_reviews_reply_rules_issupportwhatsapp",
-      "label": "isSupportWhatsApp()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "issupportwhatsapp()",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L26"
-    },
-    {
-      "id": "lib_reviews_reply_rules_mentionssupportwhatsapp",
-      "label": "mentionsSupportWhatsApp()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "mentionssupportwhatsapp()",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L32"
-    },
-    {
-      "id": "lib_reviews_reply_rules_normalizereplytext",
-      "label": "normalizeReplyText()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "normalizereplytext()",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L77"
-    },
-    {
-      "id": "lib_reviews_reply_rules_phonenumbers",
-      "label": "phoneNumbers()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "phonenumbers()",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_reviews_reply_rules_replywarnings",
-      "label": "replyWarnings()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "replywarnings()",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L66"
-    },
-    {
       "id": "lib_reviews_reply_style_replystylefor",
       "label": "replyStyleFor()",
       "_callable": true,
@@ -75726,6 +76086,30 @@
       "source_location": "L18"
     },
     {
+      "id": "lib_reviews_tests_telegram_handler_test_lastalert",
+      "label": "lastAlert()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "lastalert()",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L91"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_lastedittext",
+      "label": "lastEditText()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "lastedittext()",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L92"
+    },
+    {
       "id": "lib_reviews_tests_telegram_handler_test_post",
       "label": "post()",
       "_callable": true,
@@ -75736,6 +76120,78 @@
       "norm_label": "post()",
       "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
       "source_location": "L90"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_review",
+      "label": "review()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "review()",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L68"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_reviews",
+      "label": "reviews()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "reviews()",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L67"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_say",
+      "label": "say()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "say()",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L76"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_tap",
+      "label": "tap()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "tap()",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L70"
+    },
+    {
+      "id": "lib_social_inbox_cards_renderinboxcard",
+      "label": "renderInboxCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "renderinboxcard()",
+      "source_file": "lib/social-inbox/cards.ts",
+      "source_location": "L95"
+    },
+    {
+      "id": "lib_social_inbox_preview_inboxpreviewcard",
+      "label": "inboxPreviewCard()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "inboxpreviewcard()",
+      "source_file": "lib/social-inbox/preview.ts",
+      "source_location": "L10"
     },
     {
       "id": "scripts_telegram_review_preview_main",
@@ -80502,18 +80958,6 @@
       "source_location": "L385"
     },
     {
-      "id": "lib_social_inbox_platforms_humanagentenabled",
-      "label": "humanAgentEnabled()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 40,
-      "community_name": "meta.ts",
-      "file_type": "code",
-      "norm_label": "humanagentenabled()",
-      "source_file": "lib/social-inbox/platforms.ts",
-      "source_location": "L48"
-    },
-    {
       "id": "lib_social_inbox_send_sendtocustomer",
       "label": "sendToCustomer()",
       "_callable": true,
@@ -83740,6 +84184,18 @@
       "norm_label": "getpartnerrows()",
       "source_file": "lib/partners/index.ts",
       "source_location": "L115"
+    },
+    {
+      "id": "lib_partners_index_getpartners",
+      "label": "getPartners()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 446,
+      "community_name": "locations/index.ts",
+      "file_type": "code",
+      "norm_label": "getpartners()",
+      "source_file": "lib/partners/index.ts",
+      "source_location": "L105"
     },
     {
       "id": "lib_customer_pillow_bought_boughtpillows",
@@ -96078,42 +96534,6 @@
       "source_location": "L26"
     },
     {
-      "id": "app_api_email_unsubscribe_reason_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/api/email/unsubscribe/reason/route.ts",
-      "source_location": "L33"
-    },
-    {
-      "id": "app_api_email_unsubscribe_reason_tests_route_test_post",
-      "label": "post()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/api/email/unsubscribe/reason/__tests__/route.test.ts",
-      "source_location": "L42"
-    },
-    {
-      "id": "app_api_email_unsubscribe_reason_tests_route_test_signed",
-      "label": "signed()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "signed()",
-      "source_file": "app/api/email/unsubscribe/reason/__tests__/route.test.ts",
-      "source_location": "L50"
-    },
-    {
       "id": "app_api_webhooks_google_reviews_route_post",
       "label": "POST()",
       "_callable": true,
@@ -96208,90 +96628,6 @@
       "norm_label": "verifywebhooksignature()",
       "source_file": "lib/email/resend-webhook.ts",
       "source_location": "L59"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_probeunsubscriberoute",
-      "label": "probeUnsubscribeRoute()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "probeunsubscriberoute()",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L146"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_reasons_server_recordunsubscribereason",
-      "label": "recordUnsubscribeReason()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "recordunsubscribereason()",
-      "source_file": "lib/marketing-consent/unsubscribe-reasons-server.ts",
-      "source_location": "L39"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_route_check_main",
-      "label": "main()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "main()",
-      "source_file": "lib/marketing-consent/unsubscribe-route.check.ts",
-      "source_location": "L24"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_secretfromenv",
-      "label": "secretFromEnv()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "secretfromenv()",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L43"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_unsubscribeconfigured",
-      "label": "unsubscribeConfigured()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "unsubscribeconfigured()",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L46"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_unsubscribetoken",
-      "label": "unsubscribeToken()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "unsubscribetoken()",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L51"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_verifyunsubscribelink",
-      "label": "verifyUnsubscribeLink()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "verifyunsubscribelink()",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L79"
     },
     {
       "id": "lib_reviews_pubsub_isreviewnotification",
@@ -96822,16 +97158,16 @@
       "source_location": "L14"
     },
     {
-      "id": "lib_reviews_cards_rendergooglereviewcard",
-      "label": "renderGoogleReviewCard()",
+      "id": "lib_reviews_draft_reply_draftinputfor",
+      "label": "draftInputFor()",
       "_callable": true,
       "_origin": "ast",
       "community": 67,
       "community_name": "google-sync.ts",
       "file_type": "code",
-      "norm_label": "rendergooglereviewcard()",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L167"
+      "norm_label": "draftinputfor()",
+      "source_file": "lib/reviews/draft-reply.ts",
+      "source_location": "L86"
     },
     {
       "id": "lib_reviews_google_sync_adoptplacesrow",
@@ -96916,198 +97252,6 @@
       "norm_label": "writeclaudedraft()",
       "source_file": "lib/reviews/google-sync.ts",
       "source_location": "L172"
-    },
-    {
-      "id": "lib_reviews_places_poll_claimplacesread",
-      "label": "claimPlacesRead()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "claimplacesread()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L89"
-    },
-    {
-      "id": "lib_reviews_places_poll_getplacespollstatus",
-      "label": "getPlacesPollStatus()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "getplacespollstatus()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L242"
-    },
-    {
-      "id": "lib_reviews_places_poll_lastratingcount",
-      "label": "lastRatingCount()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "lastratingcount()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L123"
-    },
-    {
-      "id": "lib_reviews_places_poll_lastsuccessfulread",
-      "label": "lastSuccessfulRead()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "lastsuccessfulread()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L111"
-    },
-    {
-      "id": "lib_reviews_places_poll_placespollmonthlycap",
-      "label": "placesPollMonthlyCap()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "placespollmonthlycap()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L54"
-    },
-    {
-      "id": "lib_reviews_places_poll_placestosyncreview",
-      "label": "placesToSyncReview()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "placestosyncreview()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L67"
-    },
-    {
-      "id": "lib_reviews_places_poll_pollmonth",
-      "label": "pollMonth()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "pollmonth()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L60"
-    },
-    {
-      "id": "lib_reviews_places_poll_pollplacesreviews",
-      "label": "pollPlacesReviews()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "pollplacesreviews()",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L185"
-    },
-    {
-      "id": "lib_reviews_status_checkbusinessprofilesetup",
-      "label": "checkBusinessProfileSetup()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "checkbusinessprofilesetup()",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L94"
-    },
-    {
-      "id": "lib_reviews_status_clip",
-      "label": "clip()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "clip()",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L73"
-    },
-    {
-      "id": "lib_reviews_status_env",
-      "label": "env()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "env()",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L69"
-    },
-    {
-      "id": "lib_reviews_status_explain",
-      "label": "explain()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "explain()",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L78"
-    },
-    {
-      "id": "lib_reviews_status_getgooglereviewsstatus",
-      "label": "getGoogleReviewsStatus()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "getgooglereviewsstatus()",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L208"
-    },
-    {
-      "id": "lib_reviews_status_googlecallerror_constructor",
-      "label": ".constructor()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": ".constructor()",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L61"
-    },
-    {
-      "id": "lib_reviews_status_refreshaccesstoken",
-      "label": "refreshAccessToken()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "refreshaccesstoken()",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L86"
-    },
-    {
-      "id": "lib_reviews_status_storedcounts",
-      "label": "storedCounts()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "storedcounts()",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L198"
     },
     {
       "id": "scripts_google_business_setup_call",
@@ -102340,138 +102484,6 @@
       "norm_label": "params()",
       "source_file": "app/api/staff/telegram-operators/__tests__/route.test.ts",
       "source_location": "L53"
-    },
-    {
-      "id": "lib_analytics_tests_journey_aggregates_test_matches",
-      "label": "matches()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "matches()",
-      "source_file": "lib/analytics/__tests__/journey-aggregates.test.ts",
-      "source_location": "L22"
-    },
-    {
-      "id": "lib_reviews_tests_fake_supabase_createfakesupabase",
-      "label": "createFakeSupabase()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "createfakesupabase()",
-      "source_file": "lib/reviews/__tests__/fake-supabase.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "lib_reviews_tests_fake_supabase_createfakesupabase_from",
-      "label": "from()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "from()",
-      "source_file": "lib/reviews/__tests__/fake-supabase.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_reviews_tests_fake_supabase_createfakesupabase_from_execute",
-      "label": "execute()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "execute()",
-      "source_file": "lib/reviews/__tests__/fake-supabase.ts",
-      "source_location": "L53"
-    },
-    {
-      "id": "lib_reviews_tests_fake_supabase_createfakesupabase_from_run",
-      "label": "run()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "run()",
-      "source_file": "lib/reviews/__tests__/fake-supabase.ts",
-      "source_location": "L48"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_lastalert",
-      "label": "lastAlert()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "lastalert()",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L91"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_lastedittext",
-      "label": "lastEditText()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "lastedittext()",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L92"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_review",
-      "label": "review()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "review()",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L68"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_reviews",
-      "label": "reviews()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "reviews()",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L67"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_say",
-      "label": "say()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "say()",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L76"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_tap",
-      "label": "tap()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "tap()",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L70"
     },
     {
       "id": "lib_telegram_link_admin_actionsrefusal",
@@ -108882,18 +108894,6 @@
       "source_location": "L217"
     },
     {
-      "id": "lib_reviews_cards_parsereviewcallback",
-      "label": "parseReviewCallback()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 944,
-      "community_name": "reviews/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "parsereviewcallback()",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L69"
-    },
-    {
       "id": "lib_reviews_google_actions_actorfields",
       "label": "actorFields()",
       "_callable": true,
@@ -109012,6 +109012,66 @@
       "norm_label": "checkreplytext()",
       "source_file": "lib/reviews/reply-rules.ts",
       "source_location": "L86"
+    },
+    {
+      "id": "lib_reviews_reply_rules_issupportwhatsapp",
+      "label": "isSupportWhatsApp()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "issupportwhatsapp()",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L26"
+    },
+    {
+      "id": "lib_reviews_reply_rules_mentionssupportwhatsapp",
+      "label": "mentionsSupportWhatsApp()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "mentionssupportwhatsapp()",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L32"
+    },
+    {
+      "id": "lib_reviews_reply_rules_normalizereplytext",
+      "label": "normalizeReplyText()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "normalizereplytext()",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L77"
+    },
+    {
+      "id": "lib_reviews_reply_rules_phonenumbers",
+      "label": "phoneNumbers()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "phonenumbers()",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "lib_reviews_reply_rules_replywarnings",
+      "label": "replyWarnings()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "replywarnings()",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L66"
     },
     {
       "id": "lib_reviews_shop_reviews_getshopreviewbycard",
@@ -109338,30 +109398,6 @@
       "source_location": "L153"
     },
     {
-      "id": "lib_telegram_bot_api_replyingroup",
-      "label": "replyInGroup()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 944,
-      "community_name": "reviews/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "replyingroup()",
-      "source_file": "lib/telegram/bot-api.ts",
-      "source_location": "L142"
-    },
-    {
-      "id": "lib_telegram_bot_api_replyto",
-      "label": "replyTo()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 944,
-      "community_name": "reviews/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "replyto()",
-      "source_file": "lib/telegram/bot-api.ts",
-      "source_location": "L50"
-    },
-    {
       "id": "lib_telegram_bot_api_sendgroupcard",
       "label": "sendGroupCard()",
       "_callable": true,
@@ -109372,30 +109408,6 @@
       "norm_label": "sendgroupcard()",
       "source_file": "lib/telegram/bot-api.ts",
       "source_location": "L98"
-    },
-    {
-      "id": "lib_telegram_bot_api_sendgroupmessage",
-      "label": "sendGroupMessage()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 944,
-      "community_name": "reviews/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "sendgroupmessage()",
-      "source_file": "lib/telegram/bot-api.ts",
-      "source_location": "L59"
-    },
-    {
-      "id": "lib_telegram_bot_api_sendgroupphoto",
-      "label": "sendGroupPhoto()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 944,
-      "community_name": "reviews/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "sendgroupphoto()",
-      "source_file": "lib/telegram/bot-api.ts",
-      "source_location": "L83"
     },
     {
       "id": "lib_telegram_roles_describeactions",
@@ -111184,18 +111196,6 @@
       "norm_label": "setmarketingemail()",
       "source_file": "lib/marketing-consent/consent.ts",
       "source_location": "L51"
-    },
-    {
-      "id": "lib_partners_index_getpartners",
-      "label": "getPartners()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 982,
-      "community_name": "responses-list.ts",
-      "file_type": "code",
-      "norm_label": "getpartners()",
-      "source_file": "lib/partners/index.ts",
-      "source_location": "L105"
     },
     {
       "id": "lib_aftercare_checkup_deliveredbefore",
@@ -125286,50 +125286,6 @@
       "source_location": ""
     },
     {
-      "id": "lib_google_places_reviews",
-      "label": "places-reviews.ts",
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "places-reviews.ts",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_google_places_reviews_default_min_review_rating",
-      "label": "DEFAULT_MIN_REVIEW_RATING",
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "default_min_review_rating",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L66"
-    },
-    {
-      "id": "lib_google_places_reviews_place_reviews_revalidate_seconds",
-      "label": "PLACE_REVIEWS_REVALIDATE_SECONDS",
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "place_reviews_revalidate_seconds",
-      "source_file": "lib/google/places-reviews.ts",
-      "source_location": "L80"
-    },
-    {
-      "id": "lib_google_tests_places_reviews_test",
-      "label": "places-reviews.test.ts",
-      "_origin": "ast",
-      "community": 112,
-      "community_name": "places-poll.test.ts",
-      "file_type": "code",
-      "norm_label": "places-reviews.test.ts",
-      "source_file": "lib/google/__tests__/places-reviews.test.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "lib_reviews_tests_fake_supabase",
       "label": "fake-supabase.ts",
       "_origin": "ast",
@@ -125506,6 +125462,72 @@
       "source_location": "L64"
     },
     {
+      "id": "lib_social_inbox_tests_inbox_flow_test",
+      "label": "inbox-flow.test.ts",
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "inbox-flow.test.ts",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_h",
+      "label": "h",
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "h",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_ivan",
+      "label": "IVAN",
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "ivan",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L13"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_rita",
+      "label": "RITA",
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "rita",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L15"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_sam",
+      "label": "SAM",
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "sam",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L14"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_stranger",
+      "label": "STRANGER",
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "code",
+      "norm_label": "stranger",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L16"
+    },
+    {
       "id": "lib_social_inbox_tests_tiktok_token_test",
       "label": "tiktok-token.test.ts",
       "_origin": "ast",
@@ -125537,6 +125559,17 @@
       "norm_label": "now",
       "source_file": "lib/social-inbox/__tests__/tiktok-token.test.ts",
       "source_location": "L16"
+    },
+    {
+      "id": "lib_social_inbox_tests_inbox_flow_test_ts_docref_adr_0023",
+      "label": "ADR-0023",
+      "_origin": "ast",
+      "community": 112,
+      "community_name": "places-poll.test.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0023",
+      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
+      "source_location": "L94"
     },
     {
       "id": "supabase_migrations_20261031144854_consent_customisation_appointment_sql_public_customer_consent_events",
@@ -131161,76 +131194,148 @@
       "source_location": "L36"
     },
     {
-      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr",
-      "label": "01-glossary-locations-adr.md",
+      "id": "lib_google_places_reviews",
+      "label": "places-reviews.ts",
       "_origin": "ast",
       "community": 128,
-      "community_name": "01 \u2014 Glossary + ADRs: Location, Source clarification, custom booking",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "01-glossary-locations-adr.md",
-      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "places-reviews.ts",
+      "source_file": "lib/google/places-reviews.ts",
       "source_location": "L1"
     },
     {
-      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_01_glossary_adrs_location_source_clarification_custom_booking",
-      "label": "01 \u2014 Glossary + ADRs: Location, Source clarification, custom booking",
+      "id": "lib_google_places_reviews_default_min_review_rating",
+      "label": "DEFAULT_MIN_REVIEW_RATING",
       "_origin": "ast",
       "community": 128,
-      "community_name": "01 \u2014 Glossary + ADRs: Location, Source clarification, custom booking",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "01 \u2014 glossary + adrs: location, source clarification, custom booking",
-      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "default_min_review_rating",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L66"
+    },
+    {
+      "id": "lib_google_places_reviews_place_reviews_revalidate_seconds",
+      "label": "PLACE_REVIEWS_REVALIDATE_SECONDS",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "place_reviews_revalidate_seconds",
+      "source_file": "lib/google/places-reviews.ts",
+      "source_location": "L80"
+    },
+    {
+      "id": "lib_google_tests_places_reviews_test",
+      "label": "places-reviews.test.ts",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "places-reviews.test.ts",
+      "source_file": "lib/google/__tests__/places-reviews.test.ts",
       "source_location": "L1"
     },
     {
-      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_acceptance_criteria",
-      "label": "Acceptance criteria",
+      "id": "lib_reviews_places_poll",
+      "label": "places-poll.ts",
       "_origin": "ast",
       "community": 128,
-      "community_name": "01 \u2014 Glossary + ADRs: Location, Source clarification, custom booking",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "acceptance criteria",
-      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
-      "source_location": "L27"
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "places-poll.ts",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L1"
     },
     {
-      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_blocked_by",
-      "label": "Blocked by",
+      "id": "lib_reviews_places_poll_default_places_poll_cap",
+      "label": "DEFAULT_PLACES_POLL_CAP",
       "_origin": "ast",
       "community": 128,
-      "community_name": "01 \u2014 Glossary + ADRs: Location, Source clarification, custom booking",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "blocked by",
-      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
-      "source_location": "L35"
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "default_places_poll_cap",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L46"
     },
     {
-      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_parent",
-      "label": "Parent",
+      "id": "lib_reviews_places_poll_places_free_reads_per_month",
+      "label": "PLACES_FREE_READS_PER_MONTH",
       "_origin": "ast",
       "community": 128,
-      "community_name": "01 \u2014 Glossary + ADRs: Location, Source clarification, custom booking",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "parent",
-      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
-      "source_location": "L3"
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "places_free_reads_per_month",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L44"
     },
     {
-      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_what_to_build",
-      "label": "What to build",
+      "id": "lib_reviews_places_poll_places_retention_days",
+      "label": "PLACES_RETENTION_DAYS",
       "_origin": "ast",
       "community": 128,
-      "community_name": "01 \u2014 Glossary + ADRs: Location, Source clarification, custom booking",
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "places_retention_days",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L50"
+    },
+    {
+      "id": "lib_reviews_places_poll_stars",
+      "label": "STARS",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "stars",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L64"
+    },
+    {
+      "id": "lib_reviews_status",
+      "label": "reviews/status.ts",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "reviews/status.ts",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_reviews_status_business_profile_env",
+      "label": "BUSINESS_PROFILE_ENV",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "code",
+      "norm_label": "business_profile_env",
+      "source_file": "lib/reviews/status.ts",
+      "source_location": "L24"
+    },
+    {
+      "id": "lib_reviews_places_poll_ts_docref_adr_0035",
+      "label": "ADR-0035",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0035",
+      "source_file": "lib/reviews/places-poll.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "claude_graphify_knowledge_graph",
+      "label": "graphify knowledge graph",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "places-poll.ts",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "what to build",
-      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
-      "source_location": "L7"
+      "norm_label": "graphify knowledge graph",
+      "source_file": "CLAUDE.md",
+      "source_location": "L110"
     },
     {
       "id": "claude_prd_mobile_ux_optimization_jul2026_mobile_ux_optimization_jul2026_prd",
@@ -134760,17 +134865,6 @@
       "source_location": "L15"
     },
     {
-      "id": "lib_social_inbox_preview",
-      "label": "social-inbox/preview.ts",
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "social-inbox/preview.ts",
-      "source_file": "lib/social-inbox/preview.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "lib_social_inbox_store",
       "label": "social-inbox/store.ts",
       "_origin": "ast",
@@ -134826,72 +134920,6 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_social_inbox_tests_inbox_flow_test",
-      "label": "inbox-flow.test.ts",
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "inbox-flow.test.ts",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_social_inbox_tests_inbox_flow_test_h",
-      "label": "h",
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "h",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_social_inbox_tests_inbox_flow_test_ivan",
-      "label": "IVAN",
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "ivan",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "lib_social_inbox_tests_inbox_flow_test_rita",
-      "label": "RITA",
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "rita",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L15"
-    },
-    {
-      "id": "lib_social_inbox_tests_inbox_flow_test_sam",
-      "label": "SAM",
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "sam",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "lib_social_inbox_tests_inbox_flow_test_stranger",
-      "label": "STRANGER",
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "code",
-      "norm_label": "stranger",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L16"
-    },
-    {
       "id": "lib_social_inbox_types",
       "label": "social-inbox/types.ts",
       "_origin": "ast",
@@ -134901,17 +134929,6 @@
       "norm_label": "social-inbox/types.ts",
       "source_file": "lib/social-inbox/types.ts",
       "source_location": "L1"
-    },
-    {
-      "id": "lib_social_inbox_tests_inbox_flow_test_ts_docref_adr_0023",
-      "label": "ADR-0023",
-      "_origin": "ast",
-      "community": 14,
-      "community_name": "social-inbox/telegram-handler.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0023",
-      "source_file": "lib/social-inbox/__tests__/inbox-flow.test.ts",
-      "source_location": "L94"
     },
     {
       "id": "lib_crm_customer_overview",
@@ -165311,6 +165328,160 @@
       "source_location": "L1"
     },
     {
+      "id": "app_api_email_unsubscribe_reason_route",
+      "label": "reason/route.ts",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "reason/route.ts",
+      "source_file": "app/api/email/unsubscribe/reason/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_api_email_unsubscribe_reason_route_bodyschema",
+      "label": "BodySchema",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "bodyschema",
+      "source_file": "app/api/email/unsubscribe/reason/route.ts",
+      "source_location": "L13"
+    },
+    {
+      "id": "app_api_email_unsubscribe_reason_route_runtime",
+      "label": "runtime",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "runtime",
+      "source_file": "app/api/email/unsubscribe/reason/route.ts",
+      "source_location": "L8"
+    },
+    {
+      "id": "app_api_email_unsubscribe_reason_tests_route_test",
+      "label": "reason/__tests__/route.test.ts",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "reason/__tests__/route.test.ts",
+      "source_file": "app/api/email/unsubscribe/reason/__tests__/route.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_api_email_unsubscribe_reason_tests_route_test_h",
+      "label": "h",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "h",
+      "source_file": "app/api/email/unsubscribe/reason/__tests__/route.test.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_marketing_consent_tests_unsubscribe_test",
+      "label": "unsubscribe.test.ts",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "unsubscribe.test.ts",
+      "source_file": "lib/marketing-consent/__tests__/unsubscribe.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe",
+      "label": "unsubscribe.ts",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "unsubscribe.ts",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_invalid_link",
+      "label": "INVALID_LINK",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "invalid_link",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L37"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_not_configured",
+      "label": "NOT_CONFIGURED",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "not_configured",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L39"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_route_check",
+      "label": "unsubscribe-route.check.ts",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "unsubscribe-route.check.ts",
+      "source_file": "lib/marketing-consent/unsubscribe-route.check.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_unsubscribe_route",
+      "label": "UNSUBSCRIBE_ROUTE",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "code",
+      "norm_label": "unsubscribe_route",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L32"
+    },
+    {
+      "id": "lib_marketing_consent_tests_unsubscribe_test_ts_docref_rfc_8058",
+      "label": "RFC-8058",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "concept",
+      "norm_label": "rfc-8058",
+      "source_file": "lib/marketing-consent/__tests__/unsubscribe.test.ts",
+      "source_location": "L18"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_ts_docref_adr_0029",
+      "label": "ADR-0029",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0029",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L2"
+    },
+    {
+      "id": "lib_marketing_consent_unsubscribe_ts_docref_rfc_8058",
+      "label": "RFC-8058",
+      "_origin": "ast",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "file_type": "concept",
+      "norm_label": "rfc-8058",
+      "source_file": "lib/marketing-consent/unsubscribe.ts",
+      "source_location": "L3"
+    },
+    {
       "id": "claude_prd_template_linked_customisation_issues_05_mpillow_hold_path",
       "label": "05-mpillow-hold-path.md",
       "_origin": "ast",
@@ -172733,6 +172904,42 @@
       "source_location": "L1"
     },
     {
+      "id": "claude",
+      "label": "CLAUDE.md",
+      "_origin": "ast",
+      "community": 268,
+      "community_name": "name",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "claude.md",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_commit_author",
+      "label": "Commit author",
+      "_origin": "ast",
+      "community": 268,
+      "community_name": "name",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "commit author",
+      "source_file": "CLAUDE.md",
+      "source_location": "L52"
+    },
+    {
+      "id": "claude_mp_agent_guide",
+      "label": "mp \u2014 agent guide",
+      "_origin": "ast",
+      "community": 268,
+      "community_name": "name",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "mp \u2014 agent guide",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1"
+    },
+    {
       "id": "claude_prd_users_permissions_rbac_issues_07_staff_profiles",
       "label": "07-staff-profiles.md",
       "_origin": "ast",
@@ -172805,16 +173012,40 @@
       "source_location": "L9"
     },
     {
-      "id": "claude_skills_plan_to_3d_skill_1_intake",
-      "label": "1. Intake",
+      "id": "claude_project_context",
+      "label": "Project context",
       "_origin": "ast",
       "community": 268,
       "community_name": "name",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "1. intake",
-      "source_file": ".claude/skills/plan-to-3d/SKILL.md",
-      "source_location": "L69"
+      "norm_label": "project context",
+      "source_file": "CLAUDE.md",
+      "source_location": "L3"
+    },
+    {
+      "id": "claude_shopify_is_being_replaced",
+      "label": "Shopify is being replaced",
+      "_origin": "ast",
+      "community": 268,
+      "community_name": "name",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "shopify is being replaced",
+      "source_file": "CLAUDE.md",
+      "source_location": "L20"
+    },
+    {
+      "id": "claude_show_what_you_changed",
+      "label": "Show what you changed",
+      "_origin": "ast",
+      "community": 268,
+      "community_name": "name",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "show what you changed",
+      "source_file": "CLAUDE.md",
+      "source_location": "L35"
     },
     {
       "id": "docs_adr_0049_guest_email_on_the_first_question",
@@ -184259,17 +184490,6 @@
       "source_location": "L51"
     },
     {
-      "id": "lib_reviews_cards_review_callback_prefix",
-      "label": "REVIEW_CALLBACK_PREFIX",
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "review_callback_prefix",
-      "source_file": "lib/reviews/cards.ts",
-      "source_location": "L44"
-    },
-    {
       "id": "lib_reviews_cards_settled",
       "label": "SETTLED",
       "_origin": "ast",
@@ -184312,39 +184532,6 @@
       "norm_label": "preview_intro",
       "source_file": "lib/reviews/preview.ts",
       "source_location": "L28"
-    },
-    {
-      "id": "lib_reviews_reply_rules",
-      "label": "reply-rules.ts",
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "reply-rules.ts",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_reviews_reply_rules_checks",
-      "label": "CHECKS",
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "checks",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L36"
-    },
-    {
-      "id": "lib_reviews_reply_rules_max_reply_chars",
-      "label": "MAX_REPLY_CHARS",
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "max_reply_chars",
-      "source_file": "lib/reviews/reply-rules.ts",
-      "source_location": "L17"
     },
     {
       "id": "lib_reviews_reply_style",
@@ -184413,17 +184600,6 @@
       "source_location": "L17"
     },
     {
-      "id": "lib_reviews_tests_reply_rules_test",
-      "label": "reply-rules.test.ts",
-      "_origin": "ast",
-      "community": 34,
-      "community_name": "reviews/cards.ts",
-      "file_type": "code",
-      "norm_label": "reply-rules.test.ts",
-      "source_file": "lib/reviews/__tests__/reply-rules.test.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "lib_reviews_tests_reply_style_test",
       "label": "reply-style.test.ts",
       "_origin": "ast",
@@ -184432,6 +184608,72 @@
       "file_type": "code",
       "norm_label": "reply-style.test.ts",
       "source_file": "lib/reviews/__tests__/reply-style.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test",
+      "label": "telegram-handler.test.ts",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "telegram-handler.test.ts",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_h",
+      "label": "h",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "h",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L31"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_ivan",
+      "label": "IVAN",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "ivan",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L22"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_sam",
+      "label": "SAM",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "sam",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L23"
+    },
+    {
+      "id": "lib_reviews_tests_telegram_handler_test_stranger",
+      "label": "STRANGER",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "stranger",
+      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
+      "source_location": "L24"
+    },
+    {
+      "id": "lib_social_inbox_preview",
+      "label": "social-inbox/preview.ts",
+      "_origin": "ast",
+      "community": 34,
+      "community_name": "reviews/cards.ts",
+      "file_type": "code",
+      "norm_label": "social-inbox/preview.ts",
+      "source_file": "lib/social-inbox/preview.ts",
       "source_location": "L1"
     },
     {
@@ -186042,6 +186284,78 @@
       "norm_label": "public.readjustment_bookings",
       "source_file": "",
       "source_location": ""
+    },
+    {
+      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr",
+      "label": "01-glossary-locations-adr.md",
+      "_origin": "ast",
+      "community": 351,
+      "community_name": "partner",
+      "file_type": "document",
+      "node_kind": "page",
+      "norm_label": "01-glossary-locations-adr.md",
+      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_01_glossary_adrs_location_source_clarification_custom_booking",
+      "label": "01 \u2014 Glossary + ADRs: Location, Source clarification, custom booking",
+      "_origin": "ast",
+      "community": 351,
+      "community_name": "partner",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "01 \u2014 glossary + adrs: location, source clarification, custom booking",
+      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_acceptance_criteria",
+      "label": "Acceptance criteria",
+      "_origin": "ast",
+      "community": 351,
+      "community_name": "partner",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "acceptance criteria",
+      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
+      "source_location": "L27"
+    },
+    {
+      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_blocked_by",
+      "label": "Blocked by",
+      "_origin": "ast",
+      "community": 351,
+      "community_name": "partner",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "blocked by",
+      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
+      "source_location": "L35"
+    },
+    {
+      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_parent",
+      "label": "Parent",
+      "_origin": "ast",
+      "community": 351,
+      "community_name": "partner",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "parent",
+      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
+      "source_location": "L3"
+    },
+    {
+      "id": "claude_prd_locations_booking_issues_01_glossary_locations_adr_what_to_build",
+      "label": "What to build",
+      "_origin": "ast",
+      "community": 351,
+      "community_name": "partner",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "what to build",
+      "source_file": ".claude/PRD-locations-booking/issues/01-glossary-locations-adr.md",
+      "source_location": "L7"
     },
     {
       "id": "claude_prd_locations_booking_issues_03_locations_admin_page_03_locations_admin_page_type_address_postal_own_studios",
@@ -211720,7 +212034,7 @@
       "node_kind": "heading",
       "norm_label": "consequences",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L215"
+      "source_location": "L219"
     },
     {
       "id": "docs_adr_0042_google_form_fitting_records_considered_options",
@@ -211732,7 +212046,7 @@
       "node_kind": "heading",
       "norm_label": "considered options",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L178"
+      "source_location": "L182"
     },
     {
       "id": "docs_adr_0042_google_form_fitting_records_context",
@@ -217236,6 +217550,18 @@
       "norm_label": "0. check the machine",
       "source_file": ".claude/skills/plan-to-3d/SKILL.md",
       "source_location": "L46"
+    },
+    {
+      "id": "claude_skills_plan_to_3d_skill_1_intake",
+      "label": "1. Intake",
+      "_origin": "ast",
+      "community": 577,
+      "community_name": "Workflow",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "1. intake",
+      "source_file": ".claude/skills/plan-to-3d/SKILL.md",
+      "source_location": "L69"
     },
     {
       "id": "claude_skills_plan_to_3d_skill_2_calibrate_from_the_dimension_chains",
@@ -225874,61 +226200,6 @@
       "source_location": "L6"
     },
     {
-      "id": "app_api_email_unsubscribe_reason_route",
-      "label": "reason/route.ts",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "reason/route.ts",
-      "source_file": "app/api/email/unsubscribe/reason/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_api_email_unsubscribe_reason_route_bodyschema",
-      "label": "BodySchema",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "bodyschema",
-      "source_file": "app/api/email/unsubscribe/reason/route.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "app_api_email_unsubscribe_reason_route_runtime",
-      "label": "runtime",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "runtime",
-      "source_file": "app/api/email/unsubscribe/reason/route.ts",
-      "source_location": "L8"
-    },
-    {
-      "id": "app_api_email_unsubscribe_reason_tests_route_test",
-      "label": "reason/__tests__/route.test.ts",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "reason/__tests__/route.test.ts",
-      "source_file": "app/api/email/unsubscribe/reason/__tests__/route.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_api_email_unsubscribe_reason_tests_route_test_h",
-      "label": "h",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "h",
-      "source_file": "app/api/email/unsubscribe/reason/__tests__/route.test.ts",
-      "source_location": "L12"
-    },
-    {
       "id": "app_api_webhooks_google_reviews_route",
       "label": "webhooks/google-reviews/route.ts",
       "_origin": "ast",
@@ -226017,72 +226288,6 @@
       "source_location": "L24"
     },
     {
-      "id": "lib_marketing_consent_tests_unsubscribe_test",
-      "label": "unsubscribe.test.ts",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "unsubscribe.test.ts",
-      "source_file": "lib/marketing-consent/__tests__/unsubscribe.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe",
-      "label": "unsubscribe.ts",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "unsubscribe.ts",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_invalid_link",
-      "label": "INVALID_LINK",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "invalid_link",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L37"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_not_configured",
-      "label": "NOT_CONFIGURED",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "not_configured",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L39"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_route_check",
-      "label": "unsubscribe-route.check.ts",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "unsubscribe-route.check.ts",
-      "source_file": "lib/marketing-consent/unsubscribe-route.check.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_unsubscribe_route",
-      "label": "UNSUBSCRIBE_ROUTE",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "code",
-      "norm_label": "unsubscribe_route",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L32"
-    },
-    {
       "id": "lib_reviews_pubsub",
       "label": "pubsub.ts",
       "_origin": "ast",
@@ -226103,39 +226308,6 @@
       "norm_label": "review_types",
       "source_file": "lib/reviews/pubsub.ts",
       "source_location": "L8"
-    },
-    {
-      "id": "lib_marketing_consent_tests_unsubscribe_test_ts_docref_rfc_8058",
-      "label": "RFC-8058",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "concept",
-      "norm_label": "rfc-8058",
-      "source_file": "lib/marketing-consent/__tests__/unsubscribe.test.ts",
-      "source_location": "L18"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_ts_docref_adr_0029",
-      "label": "ADR-0029",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "concept",
-      "norm_label": "adr-0029",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L2"
-    },
-    {
-      "id": "lib_marketing_consent_unsubscribe_ts_docref_rfc_8058",
-      "label": "RFC-8058",
-      "_origin": "ast",
-      "community": 643,
-      "community_name": "secretMatches",
-      "file_type": "concept",
-      "norm_label": "rfc-8058",
-      "source_file": "lib/marketing-consent/unsubscribe.ts",
-      "source_location": "L3"
     },
     {
       "id": "lib_discovery_source_forms_preview_contact_check",
@@ -229052,83 +229224,6 @@
       "source_location": "L55"
     },
     {
-      "id": "lib_reviews_places_poll",
-      "label": "places-poll.ts",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "places-poll.ts",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_reviews_places_poll_default_places_poll_cap",
-      "label": "DEFAULT_PLACES_POLL_CAP",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "default_places_poll_cap",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L46"
-    },
-    {
-      "id": "lib_reviews_places_poll_places_free_reads_per_month",
-      "label": "PLACES_FREE_READS_PER_MONTH",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "places_free_reads_per_month",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L44"
-    },
-    {
-      "id": "lib_reviews_places_poll_places_retention_days",
-      "label": "PLACES_RETENTION_DAYS",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "places_retention_days",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L50"
-    },
-    {
-      "id": "lib_reviews_places_poll_stars",
-      "label": "STARS",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "stars",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L64"
-    },
-    {
-      "id": "lib_reviews_status",
-      "label": "reviews/status.ts",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "reviews/status.ts",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_reviews_status_business_profile_env",
-      "label": "BUSINESS_PROFILE_ENV",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "code",
-      "norm_label": "business_profile_env",
-      "source_file": "lib/reviews/status.ts",
-      "source_location": "L24"
-    },
-    {
       "id": "scripts_google_business_setup",
       "label": "google-business-setup.ts",
       "_origin": "ast",
@@ -229184,17 +229279,6 @@
       "source_location": "L9"
     },
     {
-      "id": "lib_reviews_places_poll_ts_docref_adr_0035",
-      "label": "ADR-0035",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0035",
-      "source_file": "lib/reviews/places-poll.ts",
-      "source_location": "L21"
-    },
-    {
       "id": "ref_google_auth_library",
       "label": "google-auth-library",
       "_origin": "ast",
@@ -229204,90 +229288,6 @@
       "norm_label": "google-auth-library",
       "source_file": "package.json",
       "source_location": "L99"
-    },
-    {
-      "id": "claude",
-      "label": "CLAUDE.md",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "document",
-      "node_kind": "page",
-      "norm_label": "claude.md",
-      "source_file": "CLAUDE.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_commit_author",
-      "label": "Commit author",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "commit author",
-      "source_file": "CLAUDE.md",
-      "source_location": "L52"
-    },
-    {
-      "id": "claude_graphify_knowledge_graph",
-      "label": "graphify knowledge graph",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "graphify knowledge graph",
-      "source_file": "CLAUDE.md",
-      "source_location": "L110"
-    },
-    {
-      "id": "claude_mp_agent_guide",
-      "label": "mp \u2014 agent guide",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "mp \u2014 agent guide",
-      "source_file": "CLAUDE.md",
-      "source_location": "L1"
-    },
-    {
-      "id": "claude_project_context",
-      "label": "Project context",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "project context",
-      "source_file": "CLAUDE.md",
-      "source_location": "L3"
-    },
-    {
-      "id": "claude_shopify_is_being_replaced",
-      "label": "Shopify is being replaced",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "shopify is being replaced",
-      "source_file": "CLAUDE.md",
-      "source_location": "L20"
-    },
-    {
-      "id": "claude_show_what_you_changed",
-      "label": "Show what you changed",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "google-sync.ts",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "show what you changed",
-      "source_file": "CLAUDE.md",
-      "source_location": "L35"
     },
     {
       "id": "claude_prd_paired_build_issues_readme",
@@ -244189,61 +244189,6 @@
       "source_location": "L30"
     },
     {
-      "id": "lib_reviews_tests_telegram_handler_test",
-      "label": "telegram-handler.test.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "telegram-handler.test.ts",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_h",
-      "label": "h",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "h",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L31"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_ivan",
-      "label": "IVAN",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "ivan",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L22"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_sam",
-      "label": "SAM",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "sam",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L23"
-    },
-    {
-      "id": "lib_reviews_tests_telegram_handler_test_stranger",
-      "label": "STRANGER",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "link-admin.ts",
-      "file_type": "code",
-      "norm_label": "stranger",
-      "source_file": "lib/reviews/__tests__/telegram-handler.test.ts",
-      "source_location": "L24"
-    },
-    {
       "id": "lib_telegram_link_admin",
       "label": "link-admin.ts",
       "_origin": "ast",
@@ -257103,6 +257048,17 @@
       "source_location": "L8"
     },
     {
+      "id": "lib_reviews_cards_review_callback_prefix",
+      "label": "REVIEW_CALLBACK_PREFIX",
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "review_callback_prefix",
+      "source_file": "lib/reviews/cards.ts",
+      "source_location": "L44"
+    },
+    {
       "id": "lib_reviews_google_actions",
       "label": "google-actions.ts",
       "_origin": "ast",
@@ -257112,6 +257068,39 @@
       "norm_label": "google-actions.ts",
       "source_file": "lib/reviews/google-actions.ts",
       "source_location": "L1"
+    },
+    {
+      "id": "lib_reviews_reply_rules",
+      "label": "reply-rules.ts",
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "reply-rules.ts",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_reviews_reply_rules_checks",
+      "label": "CHECKS",
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "checks",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L36"
+    },
+    {
+      "id": "lib_reviews_reply_rules_max_reply_chars",
+      "label": "MAX_REPLY_CHARS",
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "max_reply_chars",
+      "source_file": "lib/reviews/reply-rules.ts",
+      "source_location": "L17"
     },
     {
       "id": "lib_reviews_shop_reviews",
@@ -257145,6 +257134,17 @@
       "norm_label": "preview_effect",
       "source_file": "lib/reviews/telegram-handler.ts",
       "source_location": "L164"
+    },
+    {
+      "id": "lib_reviews_tests_reply_rules_test",
+      "label": "reply-rules.test.ts",
+      "_origin": "ast",
+      "community": 944,
+      "community_name": "reviews/telegram-handler.ts",
+      "file_type": "code",
+      "norm_label": "reply-rules.test.ts",
+      "source_file": "lib/reviews/__tests__/reply-rules.test.ts",
+      "source_location": "L1"
     },
     {
       "id": "lib_telegram_bot_api",
@@ -262235,6 +262235,18 @@
       "type": "external"
     },
     {
+      "id": "ref_node_crypto",
+      "label": "ref_node_crypto",
+      "_origin": "semantic",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_crypto",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "lib_rules_engine_index_validateforpublish",
       "label": "lib_rules_engine_index_validateforpublish",
       "_origin": "semantic",
@@ -263119,18 +263131,6 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "shapely_geometry",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "ref_node_crypto",
-      "label": "ref_node_crypto",
-      "_origin": "semantic",
-      "community": 643,
-      "community_name": "secretMatches",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_crypto",
       "source_file": "",
       "type": "external"
     },
@@ -264326,8 +264326,8 @@
       "id": "dataflow_endpoint_api_email_unsubscribe_reason",
       "label": "/api/email/unsubscribe/reason",
       "_origin": "dataflow",
-      "community": 643,
-      "community_name": "secretMatches",
+      "community": 245,
+      "community_name": "unsubscribe.ts",
       "file_type": "code",
       "_dataflow": "endpoint",
       "norm_label": "/api/email/unsubscribe/reason",
@@ -685413,7 +685413,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L178",
+      "source_location": "L182",
       "weight": 1.0
     },
     {
@@ -685424,7 +685424,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L215",
+      "source_location": "L219",
       "weight": 1.0
     },
     {
@@ -835950,7 +835950,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L218",
+      "source_location": "L222",
       "weight": 1.0
     },
     {
@@ -835962,7 +835962,7 @@
       "confidence_score": 0.95,
       "context": "customers",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L184",
+      "source_location": "L188",
       "weight": 1.0
     },
     {
@@ -839826,7 +839826,7 @@
       "confidence_score": 0.95,
       "context": "latestPurchase",
       "source_file": "docs/adr/0042-google-form-fitting-records.md",
-      "source_location": "L161",
+      "source_location": "L165",
       "weight": 1.0
     },
     {
@@ -850843,6 +850843,18 @@
       "context": "upsertShopifyOrderMirror",
       "source_file": ".claude/PRD-analytics-db-channel-facts/issues/05-chained-catchup-backfill.md",
       "source_location": "L27",
+      "weight": 1.0
+    },
+    {
+      "source": "claude_commit_author",
+      "target": "lib_email_campaigns_store_name",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "context": "user.name",
+      "source_file": "CLAUDE.md",
+      "source_location": "L75",
       "weight": 1.0
     },
     {
@@ -881476,5 +881488,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "98c8977e2ecd74febf4aed6c904af28c9f7437e4"
+  "built_at_commit": "293ad82ec036c0df5507c0f725579c9cde0d0108"
 }
