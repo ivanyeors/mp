@@ -19,7 +19,8 @@ export type CustomSectionType =
   | "featured_products"
   | "shop_cta"
   | "faq"
-  | "delivery_estimator";
+  | "delivery_estimator"
+  | "tiktok_videos";
 
 export type SectionType = BuiltInSectionType | CustomSectionType;
 
@@ -151,6 +152,31 @@ export interface DeliveryEstimatorContent {
   subtitle?: string;
 }
 
+/**
+ * One TikTok post in a TikTok videos section. Every post carries its own link
+ * (`buttonUrl`): the video is shown for display, the button is where it leads.
+ */
+export interface TikTokVideoItemContent {
+  /** The post's link on TikTok, stored in canonical form by the editor. */
+  tiktokUrl?: string;
+  /** Cover image, picked from the media library. */
+  image?: string;
+  media_asset_id?: string | null;
+  alt?: string;
+  /** Short hook printed on the card. */
+  hook?: string;
+  buttonLabel?: string; // defaults to common.shopNow
+  buttonUrl?: string; // required: a path on this site or an https URL
+}
+
+/** A scrolling band of TikTok cover cards; title/subtitle fall back to the `tiktok` messages. */
+export interface TikTokVideosContent {
+  title?: string;
+  subtitle?: string;
+  direction?: "left" | "right";
+  videos?: TikTokVideoItemContent[];
+}
+
 /** Placement only — Q&A copy lives in Settings → Page FAQs (`home` surface). */
 export type FaqContent = Record<string, never>;
 
@@ -163,6 +189,11 @@ export const CUSTOM_SECTION_TEMPLATES: Array<{
   { type: "custom_text_image", label: "Text + Image", description: "Two-column layout with text and an image" },
   { type: "custom_full_width_image", label: "Full-Width Image", description: "A full-width image banner" },
   { type: "custom_video", label: "Video Embed", description: "YouTube video with title and subtitle" },
+  {
+    type: "tiktok_videos",
+    label: "TikTok videos",
+    description: "Scrolling band of TikTok videos; each opens in a player with its own button link",
+  },
   { type: "custom_rich_text", label: "Rich Text", description: "Markdown-based content section" },
   { type: "featured_products", label: "Featured Products", description: "Grid of featured products from the shop" },
   { type: "shop_cta", label: "Shop CTA Banner", description: "Full-width banner with a call-to-action linking to the shop" },

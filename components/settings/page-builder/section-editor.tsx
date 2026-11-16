@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ImagePicker } from "@/components/ui/image-picker";
+import { TikTokVideosEditor } from "@/components/settings/page-builder/tiktok-videos-editor";
 import {
   Dialog,
   DialogContent,
@@ -694,6 +695,9 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
             </p>
           </>
         );
+
+      case "tiktok_videos":
+        return <TikTokVideosEditor content={content} locale={locale} setContent={setContent} />;
 
       default:
         return <p className="text-sm text-muted-foreground">No editable fields for this section type.</p>;
