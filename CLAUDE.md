@@ -125,15 +125,14 @@ things fast; read the code before you change it.
 - Use `explain` and `path`: they return exact edges. `query "<prose>"` picks
   start nodes by matching words in the question and pulls in unrelated code.
   Use it only with a specific name, and never as the first step.
-- When you grep for a table or a page URL, a hook adds its entry from
-  `graphify-out/DATA_LAYER.md`. Its **"Written by"** list is every code path
-  that changes the table. Check each one before changing a table's schema or
-  the meaning of a column.
+- `graphify-out/DATA_LAYER.md` lists, per table, every code path that writes
+  it ("Written by"). Check each one before changing a table's schema or the
+  meaning of a column.
 - `docs/data-flows/` explains the stock, purchase and pricing flows. Read it
   before changing inventory, order or Costings code.
 
-**After changing code**, run `./scripts/graphify update .` (~50s, no tokens)
-and commit `graphify-out/` in the same commit. CI fails the pull request when
-the committed graph does not match the source. Never run a bare `graphify
-update`. How it is built, the digest check and community labels are covered in
-`docs/graphify.md`.
+The graph is refreshed **only when the user asks**, so it may lag the code:
+treat its file:line as a hint and confirm in the source. Don't run
+`./scripts/graphify update .` or commit `graphify-out/` unless asked. Never run
+a bare `graphify update`. How it is built, the digest check and community
+labels are covered in `docs/graphify.md`.

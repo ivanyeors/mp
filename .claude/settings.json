@@ -14,17 +14,6 @@
         ]
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash|Grep",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/scripts/graph-hint\""
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
