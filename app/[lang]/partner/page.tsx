@@ -2,11 +2,19 @@ import Link from "next/link";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { requirePartnerPage } from "@/lib/auth/partner";
-import { needsReaccept } from "@/lib/partner-application";
+import {
+  canWithdrawApplication,
+  needsReaccept,
+  type ApplicationFields,
+} from "@/lib/partner-application";
+import { applicantLogoFolder, isStoredLogoUrl } from "@/lib/partner-upload/urls";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAgreementMarkdown } from "@/lib/partners";
 import { ensureReferralCode } from "@/lib/referrals";
 import { getSiteOrigin } from "@/lib/site-url";
 import { ReacceptForm } from "@/components/partner/reaccept-form";
+import { ListingPreview } from "@/components/partner/listing-preview";
+import { WithdrawApplication } from "@/components/partner/withdraw-application";
 import { ReferralShareCard } from "@/components/partner/referral-share-card";
 import { MilestoneTrack } from "@/components/partner/milestone-track";
 import { CommissionChoiceCard } from "@/components/partner/commission-choice-card";
@@ -32,12 +40,7 @@ export default async function PartnerHubPage({
   const ctx = await requirePartnerPage(locale);
 
   if (ctx.status === "pending") {
-    return (
-      <PartnerStatusScreen
-        title="Application under review"
-        body="Thanks for applying to the Mpillow Partner programme. We're reviewing your application and will email you once a decision is made."
-      />
-    );
+    return <PendingApplicationScreen lang={locale} userId={ctx.userId} partnerId={ctx.partnerId} />;
   }
 
   if (ctx.status === "rejected") {
@@ -117,11 +120,85 @@ export default async function PartnerHubPage({
   );
 }
 
-function PartnerStatusScreen({ title, body }: { title: string; body: string }) {
+function PartnerStatusScreen({
+  title,
+  body,
+  children,
+}: {
+  title: string;
+  body: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-16 text-center">
+    <div className="mx-auto w-full max-w-lg space-y-4 px-4 pt-16 pb-[calc(4rem+var(--app-dock-clearance))] text-center">
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
       <p className="text-sm text-muted-foreground">{body}</p>
+      {children}
     </div>
+  );
+}
+
+/**
+ * Under review: the listing they sent as it will look on /our-partners once
+ * approved, and a way to withdraw. Both read the applicant's own row by their
+ * login, the only row withdrawing may delete.
+ */
+async function PendingApplicationScreen({
+  lang,
+  userId,
+  partnerId,
+}: {
+  lang: Locale;
+  userId: string;
+  partnerId: string | null;
+}) {
+  const { data: row } = await supabaseAdmin()
+    .from("partner_users")
+    .select("questionnaire")
+    .eq("auth_user_id", userId)
+    .maybeSingle();
+  const q = (row?.questionnaire ?? {}) as Partial<ApplicationFields>;
+  const canWithdraw = Boolean(row) && canWithdrawApplication("pending", partnerId);
+  const logoUrl = isStoredLogoUrl(q.logoUrl, applicantLogoFolder(userId)) ? (q.logoUrl as string) : null;
+
+  return (
+    <PartnerStatusScreen
+      title="Application under review"
+      body="Thanks for applying to the Mpillow Partner programme. We're reviewing your application and will email you once a decision is made."
+    >
+      {/* App type scale: the marketing scope would size this heading like the page title. */}
+      {q.companyName ? (
+        <section
+          aria-labelledby="listing-preview"
+          data-typography-scope="app"
+          className="space-y-3 pt-6 text-left"
+        >
+          <div>
+            <h2 id="listing-preview" className="text-base font-semibold">
+              Your listing on Our partners
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              It goes live when we approve you. After that you can change it in Partner Hub
+              settings.
+            </p>
+          </div>
+          <ListingPreview
+            name={q.companyName}
+            logoUrl={logoUrl}
+            description={q.description?.trim() || null}
+            website={q.website ?? null}
+          />
+        </section>
+      ) : null}
+      {canWithdraw ? (
+        <div data-typography-scope="app" className="space-y-2 pt-6">
+          <WithdrawApplication lang={lang} />
+          <p className="text-xs text-muted-foreground">
+            Changed your mind? Withdrawing deletes your application, and you can apply again any
+            time.
+          </p>
+        </div>
+      ) : null}
+    </PartnerStatusScreen>
   );
 }

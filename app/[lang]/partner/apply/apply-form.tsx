@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AgreementContent } from "@/components/partner/agreement-content";
+import { PartnerLogoField } from "@/components/partner/partner-logo-field";
 import {
   BUSINESS_CATEGORIES,
   BUSINESS_CATEGORY_LABELS,
@@ -37,11 +38,14 @@ type FormValues = Omit<ApplicationFields, "category"> & { category: BusinessCate
 function Field({
   id,
   label,
+  hint,
   error,
   children,
 }: {
   id: string;
   label: string;
+  /** Short help under the control, e.g. who sees the answer. */
+  hint?: string;
   error?: string;
   children: React.ReactNode;
 }) {
@@ -49,6 +53,7 @@ function Field({
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {children}
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
   );
@@ -58,10 +63,13 @@ export function ApplyForm({
   lang,
   initialEmail,
   agreementMd,
+  withdrawn = false,
 }: {
   lang: string;
   initialEmail: string;
   agreementMd: string;
+  /** They just withdrew an application: say so above the empty form. */
+  withdrawn?: boolean;
 }) {
   const [values, setValues] = useState<FormValues>({
     companyName: "",
@@ -72,16 +80,28 @@ export function ApplyForm({
     contactMobile: "",
     businessEmail: initialEmail,
     introPlan: "",
+    description: "",
+    logoUrl: null,
   });
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [agreed, setAgreed] = useState(false);
   const [agreementOpen, setAgreementOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // Errors only the server can find (e.g. a logo it doesn't recognise); a field's
+  // clears when the applicant changes it.
+  const [serverErrors, setServerErrors] = useState<Partial<Record<keyof FormValues, string>>>({});
   const [pending, startTransition] = useTransition();
 
-  const errors = validateApplication(values as ApplicationFields);
+  const errors = { ...serverErrors, ...validateApplication(values as ApplicationFields) };
 
-  const set = (patch: Partial<FormValues>) => setValues((v) => ({ ...v, ...patch }));
+  const set = (patch: Partial<FormValues>) => {
+    setValues((v) => ({ ...v, ...patch }));
+    setServerErrors((e) => {
+      const next = { ...e };
+      for (const key of Object.keys(patch)) delete next[key as keyof FormValues];
+      return next;
+    });
+  };
   const blur = (key: keyof FormValues) => setTouched((t) => new Set(t).add(key));
   const errorFor = (key: keyof FormValues) => (touched.has(key) ? errors[key] : undefined);
 
@@ -96,7 +116,8 @@ export function ApplyForm({
     startTransition(async () => {
       const res = await submitApplication(lang, values as ApplicationFields, agreed);
       // Reached only on failure (success redirects server-side).
-      if (res?.fieldErrors) {
+      if (res?.fieldErrors && Object.keys(res.fieldErrors).length > 0) {
+        setServerErrors(res.fieldErrors);
         setTouched(new Set(Object.keys(res.fieldErrors)));
         setAgreementOpen(false); // close so inline field errors are visible
       }
@@ -114,8 +135,16 @@ export function ApplyForm({
         </p>
       </div>
 
+      {withdrawn ? (
+        <p role="status" className="rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+          Your application was withdrawn. Fill this in again whenever you&apos;re ready to apply.
+        </p>
+      ) : null}
+
+      {/* App type scale: the marketing scope would size hints above their labels. */}
       <form
         className="space-y-6"
+        data-typography-scope="app"
         onSubmit={(e) => {
           e.preventDefault();
           openAgreement();
@@ -142,7 +171,12 @@ export function ApplyForm({
           />
         </Field>
 
-        <Field id="website" label="Business website or social link" error={errorFor("website")}>
+        <Field
+          id="website"
+          label="Business website or social link"
+          hint="Your listing on Our partners links here."
+          error={errorFor("website")}
+        >
           <Input
             id="website"
             value={values.website}
@@ -211,6 +245,7 @@ export function ApplyForm({
         <Field
           id="introPlan"
           label="How do you plan to introduce Mpillow to your clients?"
+          hint="Only the Mpillow team sees this."
           error={errorFor("introPlan")}
         >
           <Textarea
@@ -222,6 +257,47 @@ export function ApplyForm({
             aria-invalid={!!errorFor("introPlan")}
           />
         </Field>
+
+        <section aria-labelledby="listing-heading" className="space-y-6 border-t pt-6">
+          <div>
+            <h2 id="listing-heading" className="text-lg font-semibold tracking-tight">
+              Your listing on Our partners
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Once you&apos;re approved, your logo, this write-up and your website appear on our Our
+              partners page. You can change them any time in Partner Hub.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="logo">Logo (optional)</Label>
+            <PartnerLogoField
+              id="logo"
+              value={values.logoUrl ?? null}
+              onChange={(url) => set({ logoUrl: url })}
+              uploadUrl="/api/partner/apply/logo"
+              uploadedMessage="Logo added to your application."
+              error={errorFor("logoUrl")}
+            />
+          </div>
+
+          <Field
+            id="description"
+            label="What your practice does"
+            hint="Shown to customers. The first line or two appears on your card."
+            error={errorFor("description")}
+          >
+            <Textarea
+              id="description"
+              rows={4}
+              value={values.description}
+              onChange={(e) => set({ description: e.target.value })}
+              onBlur={() => blur("description")}
+              placeholder="e.g. Sports physiotherapy and clinical pilates for desk-bound backs and necks."
+              aria-invalid={!!errorFor("description")}
+            />
+          </Field>
+        </section>
 
         <Button type="submit" className="w-full">
           Become a Partner

@@ -1144,7 +1144,7 @@ Changed from pages: `/partner/settings`
   - `PATCH()` [upsert] — app/api/partner/payment-details/route.ts:69
   - `POST()` [upsert] — app/api/partner/payment-details/route.ts:40
 - Read by:
-  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:41
+  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:44
   - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:59
 
 ### partner_payouts
@@ -1164,14 +1164,16 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
 - Written by:
   - `POST()` [select,update] — app/api/partner/backup-email/route.ts:48
   - `POST()` [select,update] — app/api/partner/backup-email/verify/route.ts:30
-  - `approveApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:103
+  - `approveApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:107
   - `loadPartnerRow()` [select,update] — lib/auth/partner.ts:44
-  - `reacceptAgreement()` [select,update] — app/[lang]/partner/apply/actions.ts:81
-  - `rejectApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:197
-  - `submitApplication()` [insert,select] — app/[lang]/partner/apply/actions.ts:47
+  - `reacceptAgreement()` [select,update] — app/[lang]/partner/apply/actions.ts:146
+  - `rejectApplication()` [select,update] — app/[lang]/settings/partner-applications/actions.ts:225
+  - `submitApplication()` [insert,select] — app/[lang]/partner/apply/actions.ts:74
+  - `withdrawApplication()` [delete] — app/[lang]/partner/apply/actions.ts:117
 - Read by:
-  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:36
-  - `/settings/partner-applications` (page) [select] — app/[lang]/settings/partner-applications/page.tsx:56
+  - `/partner` (page) [select] — app/[lang]/partner/page.tsx:155
+  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:39
+  - `/settings/partner-applications` (page) [select] — app/[lang]/settings/partner-applications/page.tsx:61
   - `/settings/partner-commissions` (page) [select] — components/settings/partner-terms-editor.tsx:33
   - `isSelfReferral()` [select] — lib/referrals/index.ts:62
   - `notifyPartnerWhatsApp()` [select] — lib/whatsapp/partner-notify.ts:89
@@ -1193,12 +1195,12 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
   - `/settings/partners/hide` (page) [select,update] — app/[lang]/settings/partners/hide/page.tsx:37
   - `DELETE()` [delete] — app/api/partners/[id]/route.ts:101
   - `PATCH()` [update] — app/api/partner/notify/route.ts:29
-  - `PATCH()` [select,update] — app/api/partner/profile/route.ts:96
+  - `PATCH()` [select,update] — app/api/partner/profile/route.ts:73
   - `PATCH()` [update] — app/api/partners/[id]/route.ts:48
   - `PATCH()` [update] — app/api/settings/appointments/locations/route.ts:52
   - `POST()` [delete,insert,select] — app/api/partners/route.ts:59
   - `PUT()` [update] — app/api/partners/reorder/route.ts:23
-  - `approveApplication()` [insert,select,update] — app/[lang]/settings/partner-applications/actions.ts:127
+  - `approveApplication()` [delete,insert,select,update] — app/[lang]/settings/partner-applications/actions.ts:140
   - `ensureReferralCode()` [select,update] — lib/referrals/index.ts:117
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:389
   - `savePartnerBranches()` [delete,insert,select,update] — lib/locations/save-branches.ts:51
@@ -1206,9 +1208,9 @@ Changed from pages: `/partner`, `/partner/settings`, `/settings/appointments`, `
   - `updatePartnerTerms()` [select,update] — app/[lang]/settings/partner-commissions/actions.ts:31
   - `upsertSelfPurchaseRate()` [update] — app/[lang]/settings/partner-commissions/self-purchase-actions.ts:37
 - Read by:
-  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:25
+  - `/partner/settings` (page) [select] — app/[lang]/partner/settings/page.tsx:26
   - `/settings/partner-commissions` (page) [select] — app/[lang]/settings/partner-commissions/partner-payouts.tsx:49
-  - `buildPartnerContext()` [select] — lib/auth/partner.ts:90
+  - `buildPartnerContext()` [select] — lib/auth/partner.ts:92
   - `createHeldCommissionsForOrder()` [select] — lib/commissions/ledger.ts:50
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1042
   - `getLocation()` [select] — lib/locations/index.ts:104
@@ -2588,23 +2590,24 @@ app/[lang]/page-builder-preview/[page]/page.tsx
 
 ### /partner
 app/[lang]/partner/page.tsx
-- Server actions: `reacceptAgreement()`
+- Server actions: `reacceptAgreement()`, `withdrawApplication()`
 - Loads: `ensureReferralCode()`, `getAgreementMarkdown()`, `getPartnerContext()`, `loadMilestoneDashboard()`, `loadPartnerMoneyReferrals()`, `loadSelfPurchaseAllowance()`, `releasedBalance()`, `requirePartnerPage()`
 - Writes: `partners`
-- Reads: `partner_payouts`
+- Reads: `partner_payouts`, `partner_users`
 - Changes, through its actions, endpoints and their calls: `commissions`, `partner_emails`, `partner_milestones`, `partner_users`, `partner_whatsapp`, `partners`
 - Reads, through the same: `coupons`, `email_template_copy`, `milestone_bonuses`, `milestone_rungs`, `mp_config_responses`, `orders`, `partner_payouts`, `partners_page`
 
 ### /partner/apply
 app/[lang]/partner/apply/page.tsx
 - Server actions: `submitApplication()`
+- Endpoints: `/api/partner/apply/logo`
 - Loads: `getAgreementMarkdown()`, `loadPartnerRow()`
 - Changes, through its actions, endpoints and their calls: `partner_users`
 - Reads, through the same: `partners_page`
 
 ### /partner/settings
 app/[lang]/partner/settings/page.tsx
-- Endpoints: `/api/partner/backup-email [POST]`, `/api/partner/backup-email/verify [POST]`, `/api/partner/logo [POST]`, `/api/partner/notify [PATCH]`, `/api/partner/payment-details [PATCH,POST]`, `/api/partner/profile [PATCH]`
+- Endpoints: `/api/partner/backup-email [POST]`, `/api/partner/backup-email/verify [POST]`, `/api/partner/logo`, `/api/partner/notify [PATCH]`, `/api/partner/payment-details [PATCH,POST]`, `/api/partner/profile [PATCH]`
 - Loads: `requireActivePartnerPage()`
 - Reads: `partner_payment_details`, `partner_users`, `partners`
 - Changes, through its actions, endpoints and their calls: `partner_payment_details`, `partner_users`, `partners`

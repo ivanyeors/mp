@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { Loader2, Upload, CheckCircle2, MessageCircle } from "lucide-react";
+import { PartnerLogoField } from "@/components/partner/partner-logo-field";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,12 +23,13 @@ import {
   toLocationDrafts,
   type LocationDraft,
 } from "@/components/partner/partner-locations-fields";
-import { LOGO_GUIDELINES, checkLogoFile } from "@/lib/partner-upload/limits";
 import { checkPayoutImage } from "@/lib/payout-upload/limits";
 
 type Profile = {
   name: string;
   description: string;
+  /** Website or social page, as typed; the server normalises it to a link. */
+  website: string;
   logo_url: string | null;
 };
 
@@ -43,6 +45,8 @@ type PaymentDetails = {
 export function PartnerSettingsClient({
   whatsappNumber,
   initialProfile,
+  listed,
+  partnersPageHref,
   initialLocations,
   backupEmail,
   paymentDetails,
@@ -50,6 +54,9 @@ export function PartnerSettingsClient({
 }: {
   whatsappNumber: string;
   initialProfile: Profile;
+  /** Whether the listing shows on /our-partners (`partners.visible`, Staff's switch). */
+  listed: boolean;
+  partnersPageHref: string;
   /** Their main location, then their other clinics. */
   initialLocations: { main: Place; branches: Place[] };
   backupEmail: { email: string | null; verified: boolean; pending: string | null };
@@ -61,35 +68,9 @@ export function PartnerSettingsClient({
     toLocationDrafts(initialLocations.main, initialLocations.branches),
   );
   const [savingProfile, setSavingProfile] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) =>
     setProfile((p) => ({ ...p, [k]: v }));
-
-  async function onPickLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (fileRef.current) fileRef.current.value = "";
-    if (!file) return;
-    const err = checkLogoFile(file);
-    if (err) return toast.error(err);
-
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/partner/logo", { method: "POST", body: form });
-      const json = await res.json().catch(() => null);
-      if (res.ok && json?.ok) {
-        set("logo_url", json.url as string);
-        toast.success("Logo uploaded — Save to publish it.");
-      } else {
-        toast.error(json?.error ?? "Upload failed");
-      }
-    } finally {
-      setUploading(false);
-    }
-  }
 
   async function saveProfile() {
     if (!profile.name.trim()) return toast.error("Company name is required.");
@@ -135,8 +116,28 @@ export function PartnerSettingsClient({
         <CardHeader>
           <CardTitle>Public profile</CardTitle>
           <CardDescription>
-            Shown on <span>/our-partners</span> and the booking picker.
+            Shown on <span>/our-partners</span> and the booking picker. Changes go live when you
+            save.
           </CardDescription>
+          <p className="pt-1 text-sm">
+            {listed ? (
+              <>
+                <span className="font-medium">Listed on Our partners.</span>{" "}
+                <a
+                  href={partnersPageHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-4"
+                >
+                  View it
+                </a>
+              </>
+            ) : (
+              <span className="text-muted-foreground">
+                Not listed on Our partners right now. The Mpillow team shows it there.
+              </span>
+            )}
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -145,47 +146,14 @@ export function PartnerSettingsClient({
           </div>
 
           <div className="space-y-2">
-            <Label>Logo</Label>
-            <div className="flex items-center gap-4">
-              {profile.logo_url ? (
-                <Image
-                  src={profile.logo_url}
-                  alt="Logo preview"
-                  width={64}
-                  height={64}
-                  className="h-16 w-16 rounded-md border object-contain"
-                  unoptimized
-                />
-              ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-md border text-xs text-muted-foreground">
-                  None
-                </div>
-              )}
-              <div>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={onPickLogo}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploading}
-                  onClick={() => fileRef.current?.click()}
-                >
-                  {uploading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="mr-2 h-4 w-4" />
-                  )}
-                  Upload logo
-                </Button>
-                <p className="mt-1 text-xs text-muted-foreground">{LOGO_GUIDELINES}</p>
-              </div>
-            </div>
+            <Label htmlFor="logo">Logo</Label>
+            <PartnerLogoField
+              id="logo"
+              value={profile.logo_url}
+              onChange={(url) => set("logo_url", url)}
+              uploadUrl="/api/partner/logo"
+              uploadedMessage="Logo uploaded. Save to publish it."
+            />
           </div>
 
           <div className="space-y-2">
@@ -197,6 +165,21 @@ export function PartnerSettingsClient({
               onChange={(e) => set("description", e.target.value)}
               placeholder="Tell patients about your practice."
             />
+            <p className="text-xs text-muted-foreground">
+              The first line or two appears on your card.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="website">Website or social page</Label>
+            <Input
+              id="website"
+              value={profile.website}
+              onChange={(e) => set("website", e.target.value)}
+              placeholder="https://"
+              inputMode="url"
+            />
+            <p className="text-xs text-muted-foreground">Your card on Our partners links here.</p>
           </div>
 
           <div className="space-y-2">

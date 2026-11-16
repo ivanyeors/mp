@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { withLocale } from "@/lib/i18n/routing";
 import { requireActivePartnerPage } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { signedImageUrl } from "@/lib/payout-upload";
@@ -24,7 +25,9 @@ export default async function PartnerSettingsPage({
   const [{ data: partner }, { data: branches }, { data: pu }, { data: pay }] = await Promise.all([
     admin
       .from("partners")
-      .select("name, description, address, postal_code, branch_name, logo_url, notify_whatsapp")
+      .select(
+        "name, description, website_url, address, postal_code, branch_name, logo_url, visible, notify_whatsapp",
+      )
       .eq("id", ctx.partnerId)
       .maybeSingle(),
     // The partner's other clinics (ADR 0037), scoped to their own main row.
@@ -55,8 +58,11 @@ export default async function PartnerSettingsPage({
       initialProfile={{
         name: partner?.name ?? ctx.partnerName ?? "",
         description: partner?.description ?? "",
+        website: partner?.website_url ?? "",
         logo_url: partner?.logo_url ?? null,
       }}
+      listed={Boolean(partner?.visible)}
+      partnersPageHref={withLocale("/our-partners", locale)}
       initialLocations={{
         main: {
           branch_name: partner?.branch_name ?? "",

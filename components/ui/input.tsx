@@ -155,7 +155,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
               aria-label="Decrease value"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => bumpValue(-1)}
-              className="text-muted-foreground hover:text-foreground hover:bg-accent inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/70 shadow-xs backdrop-blur-sm"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background shadow-xs"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                 <path d="M5 12h14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -167,7 +167,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
               aria-label="Increase value"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => bumpValue(1)}
-              className="text-muted-foreground hover:text-foreground hover:bg-accent inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/70 shadow-xs backdrop-blur-sm"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background shadow-xs"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                 <path
