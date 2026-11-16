@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import type { SectionType, CustomSectionType } from "@/lib/types/landing-sections";
+import { tiktokPostId } from "@/lib/tiktok/embed";
 
 /**
  * Write-path validation for Landing sections (see CONTEXT.md — **Landing section**).
@@ -34,6 +35,7 @@ export const CUSTOM_SECTION_TYPES = [
   "shop_cta",
   "faq",
   "delivery_estimator",
+  "tiktok_videos",
 ] as const;
 
 export const SECTION_TYPES = [...BUILT_IN_SECTION_TYPES, ...CUSTOM_SECTION_TYPES] as const;
@@ -134,4 +136,81 @@ export const SectionContentSchema = z
   });
 
 export type ValidatedSectionContent = z.infer<typeof SectionContentSchema>;
+
+/** A button link: a path on this site, or an https URL. */
+export function isAllowedLinkUrl(value: string): boolean {
+  const url = value.trim();
+  if (url.startsWith("/")) return !url.startsWith("//") && !url.startsWith("/\\");
+  try {
+    return new URL(url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** More than this and the band is a wall, not a pick; the cards are meant to be curated. */
+export const MAX_TIKTOK_VIDEOS = 20;
+/** Hard ceiling on a card's hook. The card shows three lines (about 50 characters). */
+export const TIKTOK_HOOK_MAX_CHARS = 120;
+
+/** Every string in a value that may be a bare string or a locale map. */
+function localisedStrings(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return Object.values(value).filter((v): v is string => typeof v === "string");
+  }
+  return [];
+}
+
+/**
+ * A TikTok videos section's content. Each video needs its post link, a cover and
+ * a button link — the video is shown for display and the button is where it leads,
+ * so a video without one is refused rather than shown as a dead end.
+ */
+export function tiktokVideosContentErrors(content: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const { direction, videos } = content;
+
+  if (direction !== undefined && direction !== "left" && direction !== "right") {
+    errors.push('Direction must be "left" or "right".');
+  }
+  if (videos === undefined) return errors;
+  if (!Array.isArray(videos)) return [...errors, "Videos must be a list."];
+  if (videos.length > MAX_TIKTOK_VIDEOS) {
+    errors.push(`Keep it to ${MAX_TIKTOK_VIDEOS} videos or fewer.`);
+  }
+
+  videos.forEach((raw, i) => {
+    const n = `Video ${i + 1}`;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      errors.push(`${n} is not a video.`);
+      return;
+    }
+    const video = raw as Record<string, unknown>;
+
+    if (typeof video.tiktokUrl !== "string" || !tiktokPostId(video.tiktokUrl)) {
+      errors.push(`${n}: paste the link to the video on TikTok.`);
+    }
+    if (typeof video.image !== "string" || video.image.trim() === "") {
+      errors.push(`${n}: pick a cover image.`);
+    } else if (!isAllowedImageUrl(video.image)) {
+      errors.push(`${n}: pick the cover from the media library instead of pasting a link.`);
+    }
+    if (typeof video.buttonUrl !== "string" || video.buttonUrl.trim() === "") {
+      errors.push(`${n}: add the button link (a page such as /shop, or an https:// address).`);
+    } else if (!isAllowedLinkUrl(video.buttonUrl)) {
+      errors.push(`${n}: the button link must start with / or https://.`);
+    }
+    if (localisedStrings(video.hook).some((hook) => hook.length > TIKTOK_HOOK_MAX_CHARS)) {
+      errors.push(`${n}: keep the hook under ${TIKTOK_HOOK_MAX_CHARS} characters.`);
+    }
+  });
+
+  return errors;
+}
+
+/** Content rules for one section type, beyond the image-host check every type gets. */
+export function sectionContentErrors(sectionType: string, content: Record<string, unknown>): string[] {
+  return sectionType === "tiktok_videos" ? tiktokVideosContentErrors(content) : [];
+}
 export type KnownSectionType = SectionType;

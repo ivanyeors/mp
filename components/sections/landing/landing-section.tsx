@@ -19,6 +19,7 @@ import { CustomFullWidthImageSection } from "./custom-full-width-image-section";
 import { FeaturedProductsSection } from "./featured-products-section";
 import { ShopCtaSection } from "./shop-cta-section";
 import { DeliveryEstimatorSection } from "./delivery-estimator-section";
+import { TikTokVideosSection } from "./tiktok-videos-section";
 import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 
 import type { LandingRatings } from "@/lib/seo/review-aggregate";
@@ -137,6 +138,9 @@ export function LandingSection({
 
     case "delivery_estimator":
       return <DeliveryEstimatorSection section={section} locale={locale} />;
+
+    case "tiktok_videos":
+      return <TikTokVideosSection section={section} messages={messages} locale={locale} />;
 
     default:
       return null;

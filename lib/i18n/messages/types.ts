@@ -88,6 +88,21 @@ export type Messages = {
       subtitle: string;
     };
   };
+  /** TikTok videos section and the shared TikTok player (components/tiktok). */
+  tiktok: {
+    title: string;
+    subtitle: string;
+    playVideo: string;
+    pauseScrolling: string;
+    resumeScrolling: string;
+    previousVideo: string;
+    nextVideo: string;
+    watchOnTikTok: string;
+    /** "{current} of {total}" */
+    position: string;
+    /** "TikTok video {n}" */
+    untitled: string;
+  };
   slides: {
     ambassadors: {
       trigger: string;

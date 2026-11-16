@@ -110,6 +110,18 @@ export const zhCN: Messages = {
       subtitle: "阅读顾客在 Google 上的真实评价，了解定制枕头带来的睡眠与颈部舒适。",
     },
   },
+  tiktok: {
+    title: "TikTok 上的我们",
+    subtitle: "点按视频，在这里观看。",
+    playVideo: "播放视频",
+    pauseScrolling: "暂停滚动",
+    resumeScrolling: "继续滚动",
+    previousVideo: "上一个视频",
+    nextVideo: "下一个视频",
+    watchOnTikTok: "在 TikTok 上观看",
+    position: "第 {current} 个，共 {total} 个",
+    untitled: "TikTok 视频 {n}",
+  },
   slides: {
     ambassadors: {
       trigger: "了解方法",

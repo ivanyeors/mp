@@ -120,6 +120,18 @@ export const enUS: Messages = {
       subtitle: "Read real Google reviews from our customers about custom-fit sleep and neck comfort.",
     },
   },
+  tiktok: {
+    title: "Seen on TikTok",
+    subtitle: "Tap a video to watch it here.",
+    playVideo: "Play video",
+    pauseScrolling: "Pause videos",
+    resumeScrolling: "Play videos",
+    previousVideo: "Previous video",
+    nextVideo: "Next video",
+    watchOnTikTok: "Watch on TikTok",
+    position: "{current} of {total}",
+    untitled: "TikTok video {n}",
+  },
   slides: {
     ambassadors: {
       trigger: "Learn how",

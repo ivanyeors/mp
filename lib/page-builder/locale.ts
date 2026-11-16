@@ -26,6 +26,8 @@ const NON_LOCALISED_KEYS = new Set([
   "media_asset_id",
   "videoId",
   "buttonUrl",
+  "tiktokUrl",
+  "direction",
   "flip",
   "limit",
   "key",
