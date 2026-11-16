@@ -9,10 +9,13 @@ import { ApplyForm } from "./apply-form";
 
 export default async function PartnerApplyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ withdrawn?: string }>;
 }) {
   const { lang } = await params;
+  const { withdrawn } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
   const user = await getAuthUser();
@@ -32,6 +35,7 @@ export default async function PartnerApplyPage({
       lang={locale}
       initialEmail={user.email.toLowerCase().trim()}
       agreementMd={agreementMd}
+      withdrawn={withdrawn === "1"}
     />
   );
 }

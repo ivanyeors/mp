@@ -26,6 +26,7 @@ export function ReviewActions({ id, companyName }: { id: string; companyName: st
   const [open, setOpen] = useState(false);
   const [pool, setPool] = useState(String(SCHEDULE_COMMISSION_POOL));
   const [customerDiscount, setCustomerDiscount] = useState(false);
+  const [list, setList] = useState(true);
 
   const poolValue = Number(pool);
   const poolValid = pool.trim() !== "" && Number.isFinite(poolValue) && poolValue >= 0;
@@ -107,6 +108,22 @@ export function ReviewActions({ id, companyName }: { id: string; companyName: st
                 className="mt-1"
               />
             </div>
+
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor={`list-${id}`}>List them on Our partners now</Label>
+                <p className="text-xs text-muted-foreground">
+                  Shows the logo, write-up and website they sent. Turn off to keep the listing
+                  hidden until you show it in Partners.
+                </p>
+              </div>
+              <Switch
+                id={`list-${id}`}
+                checked={list}
+                onCheckedChange={setList}
+                className="mt-1"
+              />
+            </div>
           </div>
 
           <DialogFooter>
@@ -117,7 +134,7 @@ export function ReviewActions({ id, companyName }: { id: string; companyName: st
               disabled={pending || !poolValid}
               onClick={() =>
                 run(
-                  () => approveApplication(id, { pool: poolValue, customerDiscount }),
+                  () => approveApplication(id, { pool: poolValue, customerDiscount, list }),
                   "Application approved",
                 )
               }

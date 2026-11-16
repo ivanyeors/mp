@@ -6,6 +6,7 @@ import {
   LOGO_ALLOWED_MIME,
   LOGO_GUIDELINES,
 } from "./limits";
+import { applicantLogoFolder, partnerLogoFolder } from "./urls";
 
 const BUCKET = "media"; // public bucket — logos are shown on /our-partners
 
@@ -33,17 +34,17 @@ export function assertLogoAllowed(fileSize: number, mimeType: string): void {
 }
 
 /**
- * Optimize → upload under `media/partner-logos/{partnerId}/…webp` → return the
- * PUBLIC url. Unlike saveConfigUpload we insert no DB row: the caller writes the
- * url onto `partners.logo_url`. Dimension/squareness is enforced here (needs the
- * decoded image), mirroring the guideline text in {@link LOGO_GUIDELINES}.
+ * Optimize → upload under `media/{folder}…webp` → return the PUBLIC url. Unlike
+ * saveConfigUpload we insert no DB row: the caller records the url. Dimension/
+ * squareness is enforced here (needs the decoded image), mirroring the
+ * guideline text in {@link LOGO_GUIDELINES}.
  */
-export async function savePartnerLogo(opts: {
-  partnerId: string;
-  bytes: Buffer;
-  originalName?: string;
-}): Promise<{ url: string; width: number; height: number }> {
-  const optimized = await optimizeImageForWeb(opts.bytes);
+async function saveLogoIn(
+  folder: string,
+  bytes: Buffer,
+  originalName?: string,
+): Promise<{ url: string; width: number; height: number }> {
+  const optimized = await optimizeImageForWeb(bytes);
   const { width, height } = optimized;
 
   if (width < LOGO_MIN_DIMENSION || height < LOGO_MIN_DIMENSION) {
@@ -57,7 +58,7 @@ export async function savePartnerLogo(opts: {
     throw new LogoRefusedError("Logo should be square (roughly equal width and height).");
   }
 
-  const storagePath = `partner-logos/${opts.partnerId}/${optimizedStorageName(opts.originalName)}`;
+  const storagePath = `${folder}${optimizedStorageName(originalName)}`;
   const admin = supabaseAdmin();
 
   const { error: uploadError } = await admin.storage.from(BUCKET).upload(storagePath, optimized.buffer, {
@@ -69,4 +70,46 @@ export async function savePartnerLogo(opts: {
 
   const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(storagePath);
   return { url: pub.publicUrl, width, height };
+}
+
+/** A logo uploaded in Partner Hub settings, filed under the partner's own folder. */
+export function savePartnerLogo(opts: {
+  partnerId: string;
+  bytes: Buffer;
+  originalName?: string;
+}): Promise<{ url: string; width: number; height: number }> {
+  return saveLogoIn(partnerLogoFolder(opts.partnerId), opts.bytes, opts.originalName);
+}
+
+/**
+ * A logo uploaded with a Partner application, before any partner row exists.
+ * Filed under the applicant's auth user id; approval puts the url on the new
+ * partner row as it is.
+ */
+export function saveApplicantLogo(opts: {
+  authUserId: string;
+  bytes: Buffer;
+  originalName?: string;
+}): Promise<{ url: string; width: number; height: number }> {
+  return saveLogoIn(applicantLogoFolder(opts.authUserId), opts.bytes, opts.originalName);
+}
+
+/**
+ * Delete every logo an applicant uploaded (a withdrawn application). Best
+ * effort: a leftover file is harmless, so failures are logged, not thrown.
+ */
+export async function removeApplicantLogos(authUserId: string): Promise<void> {
+  const folder = applicantLogoFolder(authUserId);
+  try {
+    const bucket = supabaseAdmin().storage.from(BUCKET);
+    const { data, error } = await bucket.list(folder.replace(/\/$/, ""), { limit: 100 });
+    if (error) throw new Error(error.message);
+    const paths = (data ?? []).map((f) => `${folder}${f.name}`);
+    if (paths.length > 0) {
+      const { error: removeError } = await bucket.remove(paths);
+      if (removeError) throw new Error(removeError.message);
+    }
+  } catch (e) {
+    console.error("[partner-upload] could not remove applicant logos:", (e as Error).message);
+  }
 }
