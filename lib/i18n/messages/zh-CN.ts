@@ -121,6 +121,12 @@ export const zhCN: Messages = {
     watchOnTikTok: "在 TikTok 上观看",
     position: "第 {current} 个，共 {total} 个",
     untitled: "TikTok 视频 {n}",
+    player: "视频播放器",
+    closePlayer: "关闭视频",
+    enlargePlayer: "放大视频",
+    shrinkPlayer: "缩小视频",
+    movePlayer: "把视频移到另一边",
+    nowPlaying: "正在播放",
   },
   slides: {
     ambassadors: {

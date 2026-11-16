@@ -19,6 +19,7 @@ import { TopLoadingBar } from "@/components/ui/top-loading-bar";
 import { BookAppointmentOverlay } from "@/components/slide-in-pages/book-appointment-overlay";
 import { SlideInContentProvider } from "@/components/slide-in-pages/slide-in-content";
 import { SupportChatRoot } from "@/components/support/support-chat-root";
+import { TikTokPipProvider } from "@/components/tiktok/tiktok-pip-provider";
 import { GoogleAnalytics } from "@/components/seo/google-analytics";
 import { Haptics } from "@/components/haptics";
 import { RegisterSW } from "@/components/register-sw";
@@ -128,14 +129,17 @@ export default async function RootLayout({
           <SlideInContentProvider rows={slideInRows}>
             <CurrencyProvider>
               <CartProvider>
-                <HomeHeader />
-                <RouteScope>{children}</RouteScope>
-                <MarketingFooter />
-                <BookAppointmentOverlay />
-                <AppDock />
-                <CartShell />
-                {/* The website chat: up here so a chat started on /support follows the visitor between pages. */}
-                <SupportChatRoot />
+                {/* The floating TikTok player: up here so a video keeps playing on the page its button opens. */}
+                <TikTokPipProvider>
+                  <HomeHeader />
+                  <RouteScope>{children}</RouteScope>
+                  <MarketingFooter />
+                  <BookAppointmentOverlay />
+                  <AppDock />
+                  <CartShell />
+                  {/* The website chat: up here so a chat started on /support follows the visitor between pages. */}
+                  <SupportChatRoot />
+                </TikTokPipProvider>
               </CartProvider>
             </CurrencyProvider>
           </SlideInContentProvider>

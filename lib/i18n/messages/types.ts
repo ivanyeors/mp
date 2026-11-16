@@ -102,6 +102,14 @@ export type Messages = {
     position: string;
     /** "TikTok video {n}" */
     untitled: string;
+    /** The floating player's spoken name. */
+    player: string;
+    closePlayer: string;
+    enlargePlayer: string;
+    shrinkPlayer: string;
+    movePlayer: string;
+    /** On the card whose video is playing. */
+    nowPlaying: string;
   };
   slides: {
     ambassadors: {

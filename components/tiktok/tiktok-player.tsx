@@ -39,7 +39,7 @@ interface TikTokPlayerProps {
  * box, which should be 9:16 for a video post.
  *
  * Each player is a full TikTok page, and TikTok limits embeds per domain, so
- * put this behind a click (a cover card, as `TikTokVideoViewer` does) rather
+ * put this behind a click (a cover card opening `TikTokPip`) rather
  * than rendering many at once.
  */
 export const TikTokPlayer = React.forwardRef<TikTokPlayerHandle, TikTokPlayerProps>(function TikTokPlayer(

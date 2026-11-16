@@ -131,6 +131,12 @@ export const enUS: Messages = {
     watchOnTikTok: "Watch on TikTok",
     position: "{current} of {total}",
     untitled: "TikTok video {n}",
+    player: "Video player",
+    closePlayer: "Close video",
+    enlargePlayer: "Make video bigger",
+    shrinkPlayer: "Make video smaller",
+    movePlayer: "Move video to the other side",
+    nowPlaying: "Playing",
   },
   slides: {
     ambassadors: {

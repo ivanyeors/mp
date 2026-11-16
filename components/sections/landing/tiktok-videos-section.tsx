@@ -21,15 +21,22 @@ export function TikTokVideosSection({ section, messages: m, locale }: TikTokVide
 
   if (videos.length === 0) return null;
 
+  const t = m.tiktok;
   const labels: TikTokLabels = {
-    playVideo: m.tiktok.playVideo,
-    pauseScrolling: m.tiktok.pauseScrolling,
-    resumeScrolling: m.tiktok.resumeScrolling,
-    previousVideo: m.tiktok.previousVideo,
-    nextVideo: m.tiktok.nextVideo,
-    watchOnTikTok: m.tiktok.watchOnTikTok,
-    position: m.tiktok.position,
-    untitled: m.tiktok.untitled,
+    playVideo: t.playVideo,
+    pauseScrolling: t.pauseScrolling,
+    resumeScrolling: t.resumeScrolling,
+    previousVideo: t.previousVideo,
+    nextVideo: t.nextVideo,
+    watchOnTikTok: t.watchOnTikTok,
+    position: t.position,
+    untitled: t.untitled,
+    player: t.player,
+    closePlayer: t.closePlayer,
+    enlargePlayer: t.enlargePlayer,
+    shrinkPlayer: t.shrinkPlayer,
+    movePlayer: t.movePlayer,
+    nowPlaying: t.nowPlaying,
   };
 
   return (

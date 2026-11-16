@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Pause, Play } from "lucide-react";
+import { AudioLines, Pause, Play } from "lucide-react";
 
 import { TikTokIcon } from "@/components/tiktok/tiktok-icon";
-import { TikTokVideoViewer } from "@/components/tiktok/tiktok-video-viewer";
+import { preloadTikTokPip, useTikTokPip } from "@/components/tiktok/tiktok-pip-provider";
 import { DEFAULT_TIKTOK_LABELS, fillLabel, type TikTokLabels, type TikTokVideo } from "@/lib/tiktok/types";
 import { cn } from "@/lib/utils";
 
@@ -25,22 +25,30 @@ function VideoCard({
   video,
   label,
   hidden,
+  playing,
+  playingLabel,
   onOpen,
 }: {
   video: TikTokVideo;
   label: string;
   /** A repeat that only fills the loop: hidden from assistive tech and the tab order. */
   hidden: boolean;
-  onOpen: () => void;
+  /** Its video is the one in the floating player. */
+  playing: boolean;
+  playingLabel: string;
+  onOpen: (opener: HTMLElement) => void;
 }) {
   return (
     <li className={cn("shrink-0 pr-3 md:pr-4", hidden && "motion-reduce:hidden")} aria-hidden={hidden || undefined}>
       <button
         type="button"
-        onClick={onOpen}
+        onClick={(e) => onOpen(e.currentTarget)}
         tabIndex={hidden ? -1 : undefined}
-        aria-label={label}
-        className="group/card relative block aspect-[9/16] w-36 overflow-hidden rounded-2xl border bg-muted text-left shadow-sm transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-44 md:w-52"
+        aria-label={playing ? `${label} (${playingLabel})` : label}
+        className={cn(
+          "group/card relative block aspect-[9/16] w-36 overflow-hidden rounded-2xl border bg-muted text-left shadow-sm transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-44 md:w-52",
+          playing && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        )}
       >
         <Image
           src={video.cover}
@@ -57,12 +65,22 @@ function VideoCard({
         >
           <TikTokIcon className="size-3.5" />
         </span>
-        <span
-          aria-hidden
-          className="absolute left-1/2 top-1/2 inline-flex size-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow-md transition-transform duration-300 group-hover/card:scale-110 motion-reduce:transition-none"
-        >
-          <Play className="ml-0.5 size-5 fill-current" />
-        </span>
+        {playing ? (
+          <span
+            aria-hidden
+            className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-black shadow-md"
+          >
+            <AudioLines className="size-4" />
+            {playingLabel}
+          </span>
+        ) : (
+          <span
+            aria-hidden
+            className="absolute left-1/2 top-1/2 inline-flex size-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow-md transition-transform duration-300 group-hover/card:scale-110 motion-reduce:transition-none"
+          >
+            <Play className="ml-0.5 size-5 fill-current" />
+          </span>
+        )}
         {video.hook && (
           <span aria-hidden className="absolute inset-x-0 bottom-0 line-clamp-3 p-3 text-sm font-medium leading-snug text-white">
             {video.hook}
@@ -75,11 +93,13 @@ function VideoCard({
 
 /**
  * A slow, endless band of TikTok cover cards (the landing page's marquee
- * motion, `mp-marquee-track`). A card opens the post in `TikTokVideoViewer`.
+ * motion, `mp-marquee-track`). A card plays its post in the floating player
+ * (`TikTokPip`), which stays in a corner while the visitor carries on; the
+ * card playing is marked.
  *
- * Movement stops while the pointer or keyboard focus is on the band, while a
- * video is open, and from the visible pause button (WCAG 2.2.2). With reduced
- * motion it is a still row that scrolls sideways.
+ * Movement stops while the pointer or keyboard focus is on the band, while one
+ * of its videos is playing, and from the visible pause button (WCAG 2.2.2).
+ * With reduced motion it is a still row that scrolls sideways.
  */
 export function TikTokVideoMarquee({
   videos,
@@ -89,7 +109,7 @@ export function TikTokVideoMarquee({
   className,
 }: TikTokVideoMarqueeProps) {
   const [paused, setPaused] = React.useState(false);
-  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
+  const pip = useTikTokPip();
 
   if (videos.length === 0) return null;
 
@@ -97,13 +117,14 @@ export function TikTokVideoMarquee({
   const repeats = Math.max(1, Math.ceil(MIN_CARDS_PER_HALF / videos.length));
   const half = Array.from({ length: repeats }, () => videos).flat();
   const strip = [...half, ...half];
-  const stopped = paused || openIndex !== null;
+  const playingHere = pip.playingId !== null && videos.some((v) => v.id === pip.playingId);
+  const stopped = paused || playingHere;
 
   const cardLabel = (video: TikTokVideo, n: number) =>
     `${labels.playVideo}: ${video.hook?.trim() || video.alt?.trim() || fillLabel(labels.untitled, { n })}`;
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative", className)} onPointerEnter={preloadTikTokPip} onFocus={preloadTikTokPip}>
       <div className="group/marquee overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)] motion-reduce:overflow-x-auto motion-reduce:[mask-image:none]">
         <ul
           className="mp-marquee-track flex w-max py-2 will-change-transform group-focus-within/marquee:[animation-play-state:paused] group-hover/marquee:[animation-play-state:paused] motion-reduce:animate-none"
@@ -123,7 +144,9 @@ export function TikTokVideoMarquee({
                 video={video}
                 label={cardLabel(video, n + 1)}
                 hidden={i >= videos.length}
-                onOpen={() => setOpenIndex(n)}
+                playing={video.id === pip.playingId}
+                playingLabel={labels.nowPlaying}
+                onOpen={(opener) => pip.open(videos, n, { labels, opener })}
               />
             );
           })}
@@ -142,7 +165,6 @@ export function TikTokVideoMarquee({
         </button>
       </div>
 
-      <TikTokVideoViewer videos={videos} index={openIndex} onIndexChange={setOpenIndex} labels={labels} />
     </div>
   );
 }

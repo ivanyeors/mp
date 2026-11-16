@@ -1,4 +1,4 @@
-/** One TikTok post as the site shows it: a cover card that opens the player, and a link. */
+/** One TikTok post as the site shows it: a cover card that opens the floating player, and a button link. */
 export interface TikTokVideo {
   /** TikTok post id (the long number in the post link). */
   id: string;
@@ -28,6 +28,14 @@ export interface TikTokLabels {
   position: string;
   /** Spoken title for a video with no hook: "TikTok video {n}". */
   untitled: string;
+  /** The floating player's spoken name. */
+  player: string;
+  closePlayer: string;
+  enlargePlayer: string;
+  shrinkPlayer: string;
+  movePlayer: string;
+  /** On the card whose video is playing. */
+  nowPlaying: string;
 }
 
 export const DEFAULT_TIKTOK_LABELS: TikTokLabels = {
@@ -39,6 +47,12 @@ export const DEFAULT_TIKTOK_LABELS: TikTokLabels = {
   watchOnTikTok: "Watch on TikTok",
   position: "{current} of {total}",
   untitled: "TikTok video {n}",
+  player: "Video player",
+  closePlayer: "Close video",
+  enlargePlayer: "Make video bigger",
+  shrinkPlayer: "Make video smaller",
+  movePlayer: "Move video to the other side",
+  nowPlaying: "Playing",
 };
 
 export function fillLabel(template: string, values: Record<string, string | number>): string {
