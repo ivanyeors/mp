@@ -10,6 +10,8 @@ import { getSupportInbox } from "@/lib/email/contact";
 import { getSiteOrigin } from "@/lib/site-url";
 import { withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { toWebUrl } from "@/lib/format/web-url";
+import { isStoredLogoUrl, partnerLogoFolder } from "@/lib/partner-upload/urls";
 import {
   BranchSaveError,
   BranchesSchema,
@@ -25,28 +27,12 @@ const bodySchema = z.object({
   address: z.string().trim().max(500).optional().nullable(),
   postal_code: z.string().trim().max(20).optional().nullable(),
   branch_name: z.string().trim().max(120).optional().nullable(),
+  /** Website or social page as typed; stored as an http(s) link. */
+  website: z.string().trim().max(500).optional().nullable(),
   logo_url: z.string().url().max(2000).optional().nullable(),
   /** The partner's other clinics; replaces the list when sent (ADR 0037). */
   branches: BranchesSchema.optional(),
 });
-
-/**
- * True when `url` is a public logo we stored under the caller's own partner
- * folder: our own Supabase project's storage, not just a matching path on any
- * host (the Admin Panel renders it as a raw <img>).
- */
-function isOwnLogoUrl(url: string, partnerId: string): boolean {
-  try {
-    const parsed = new URL(url);
-    const storageOrigin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").origin;
-    return (
-      parsed.origin === storageOrigin &&
-      parsed.pathname.startsWith(`/storage/v1/object/public/media/partner-logos/${partnerId}/`)
-    );
-  } catch {
-    return false;
-  }
-}
 
 /** Notify Staff that a partner edited their public listing, with a 1-click hide. */
 async function notifyStaff(partnerId: string, name: string): Promise<void> {
@@ -80,13 +66,33 @@ export async function PATCH(req: Request) {
   const b = parsed.data;
 
   // logo_url must be a re-encoded logo we stored for THIS partner (savePartnerLogo
-  // writes media/partner-logos/{partnerId}/…). Reject arbitrary URLs so PATCH
-  // can't bypass the optimize/size/dimension guards on the upload route (AC3).
-  if (b.logo_url && !isOwnLogoUrl(b.logo_url, ctx.partnerId)) {
-    return NextResponse.json({ error: "Invalid logo URL" }, { status: 400 });
+  // writes media/partner-logos/{partnerId}/…), or the one already on their row
+  // (the logo they applied with, or one Staff set). Reject any other URL so
+  // PATCH can't bypass the optimize/size/dimension guards on the upload route (AC3).
+  if (b.logo_url && !isStoredLogoUrl(b.logo_url, partnerLogoFolder(ctx.partnerId))) {
+    const { data: current } = await supabaseAdmin()
+      .from("partners")
+      .select("logo_url")
+      .eq("id", ctx.partnerId)
+      .maybeSingle();
+    if (b.logo_url !== current?.logo_url) {
+      return NextResponse.json({ error: "Invalid logo URL" }, { status: 400 });
+    }
+  }
+
+  let websiteUrl: string | null | undefined;
+  if (b.website !== undefined) {
+    websiteUrl = toWebUrl(b.website);
+    if (b.website && !websiteUrl) {
+      return NextResponse.json(
+        { error: "Enter your website as a full link, like https://yourclinic.com" },
+        { status: 400 },
+      );
+    }
   }
 
   const update: Record<string, unknown> = { name: b.name };
+  if (websiteUrl !== undefined) update.website_url = websiteUrl;
   if (b.description !== undefined) update.description = b.description || null;
   if (b.address !== undefined) update.address = b.address || null;
   if (b.postal_code !== undefined) update.postal_code = b.postal_code || null;

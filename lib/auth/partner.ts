@@ -68,6 +68,8 @@ export async function loadPartnerRow(user: User): Promise<PartnerRow | null> {
         .update({ auth_user_id: user.id })
         .eq("id", byEmail.id)
         .is("auth_user_id", null);
+      // The row as it now is, so callers that check ownership (withdraw) see the link.
+      return { ...byEmail, auth_user_id: user.id } as PartnerRow;
     }
     return byEmail as PartnerRow;
   }

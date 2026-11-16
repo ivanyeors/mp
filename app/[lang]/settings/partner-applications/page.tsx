@@ -13,12 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { applicantLogoFolder, isStoredLogoUrl } from "@/lib/partner-upload/urls";
 import { ReviewActions } from "./review-actions";
 import { InfoTip } from "@/components/ui/info-tip";
 import { EmptyState } from "@/components/settings/empty-state";
 
 interface PendingApplication {
   id: string;
+  auth_user_id: string | null;
   email: string;
   questionnaire: Partial<ApplicationFields> | null;
   created_at: string;
@@ -35,7 +37,10 @@ function formatDate(value: string): string {
 }
 
 /** Human value for one questionnaire field (category → label). */
-function fieldValue(field: keyof ApplicationFields, q: Partial<ApplicationFields>): string {
+function fieldValue(
+  field: Exclude<keyof ApplicationFields, "logoUrl">,
+  q: Partial<ApplicationFields>,
+): string {
   const raw = q[field];
   if (raw == null || String(raw).trim() === "") return "—";
   if (field === "category") {
@@ -55,7 +60,7 @@ export default async function PartnerApplicationsPage({
 
   const { data } = await supabaseAdmin()
     .from("partner_users")
-    .select("id, email, questionnaire, created_at")
+    .select("id, auth_user_id, email, questionnaire, created_at")
     .eq("application_status", "pending")
     .order("created_at", { ascending: true });
 
@@ -67,8 +72,9 @@ export default async function PartnerApplicationsPage({
         <h1 className="text-2xl font-semibold tracking-tight">Partner applications</h1>
         <InfoTip label="About Partner applications">
           Verify ACRA and the website yourself, then approve or reject. Approving sets the
-          partner&apos;s Commission Pool and customer discount, issues their Promo Code and adds a
-          hidden partner location. Make it visible later in Partners.
+          partner&apos;s Commission Pool and customer discount, issues their Promo Code and lists
+          them on Our partners with the logo and write-up they sent, unless you keep the listing
+          hidden. They can change it later in Partner Hub.
         </InfoTip>
       </div>
 
@@ -78,6 +84,11 @@ export default async function PartnerApplicationsPage({
         <div className="space-y-4">
           {applications.map((app) => {
             const q = app.questionnaire ?? {};
+            // Only the applicant's own upload is shown: the questionnaire is jsonb.
+            const logoUrl =
+              app.auth_user_id && isStoredLogoUrl(q.logoUrl, applicantLogoFolder(app.auth_user_id))
+                ? (q.logoUrl as string)
+                : null;
             return (
               <Card key={app.id}>
                 {/* Phones: the actions get their own full-width row, so the name and email aren't squeezed. */}
@@ -94,10 +105,30 @@ export default async function PartnerApplicationsPage({
                 </CardHeader>
                 <CardContent>
                   <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Logo
+                      </dt>
+                      <dd className="mt-1">
+                        {logoUrl ? (
+                          // A raw <img>: the URL is verified as our own storage above.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={logoUrl}
+                            alt={`${q.companyName || app.email} logo`}
+                            className="h-16 w-16 rounded-md border bg-background object-contain"
+                          />
+                        ) : (
+                          <span className="text-sm">None sent</span>
+                        )}
+                      </dd>
+                    </div>
                     {APPLICATION_FIELD_LABELS.map(([field, label]) => (
                       <div
                         key={field}
-                        className={field === "introPlan" ? "sm:col-span-2" : undefined}
+                        className={
+                          field === "introPlan" || field === "description" ? "sm:col-span-2" : undefined
+                        }
                       >
                         <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           {label}

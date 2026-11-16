@@ -32,6 +32,18 @@ export function canTransitionApplication(
 }
 
 /**
+ * Whether the applicant may withdraw their application: only while it is
+ * `pending` and not yet linked to a partner row. Withdrawing deletes the
+ * application, so it is not a status — to join later they apply again.
+ */
+export function canWithdrawApplication(
+  status: ApplicationStatus,
+  partnerId: string | null | undefined,
+): boolean {
+  return status === "pending" && !partnerId;
+}
+
+/**
  * True when an approved partner's recorded `agreed_version` no longer matches
  * the current agreement (null/missing ⇒ true), so the hub must gate them
  * through re-acceptance before rendering.
@@ -72,10 +84,24 @@ export interface ApplicationFields {
   contactMobile: string;
   businessEmail: string;
   introPlan: string;
+  /**
+   * The public write-up for their /our-partners listing ("what your practice
+   * does"). Becomes `partners.description` on approval. Absent on applications
+   * made before 2026-11-16.
+   */
+  description: string;
+  /**
+   * Their logo, uploaded with the application (`partner-logos/applicants/…`).
+   * Optional. Becomes `partners.logo_url` on approval.
+   */
+  logoUrl?: string | null;
 }
 
-/** Ordered questionnaire fields + labels for the Staff review queue (#76). */
-export const APPLICATION_FIELD_LABELS: Array<[keyof ApplicationFields, string]> = [
+/** Longest public write-up, the same cap as the Partner Hub profile. */
+export const DESCRIPTION_MAX = 4000;
+
+/** Ordered questionnaire fields + labels for the Staff review queue (#76). The logo is shown as an image. */
+export const APPLICATION_FIELD_LABELS: Array<[Exclude<keyof ApplicationFields, "logoUrl">, string]> = [
   ["companyName", "Company name"],
   ["uen", "ACRA UEN"],
   ["website", "Business website or social link"],
@@ -84,6 +110,7 @@ export const APPLICATION_FIELD_LABELS: Array<[keyof ApplicationFields, string]> 
   ["contactMobile", "Contact mobile"],
   ["businessEmail", "Business email"],
   ["introPlan", "How they'll introduce Mpillow"],
+  ["description", "Public write-up"],
 ];
 
 export type ApplicationOutcome = "approved" | "rejected";
@@ -107,6 +134,10 @@ export function validateApplication(
   require("website", "Business website or social link is required");
   require("contactName", "Contact person name is required");
   require("introPlan", "Tell us how you'll introduce Mpillow to your clients");
+  require("description", "Tell customers what your practice does");
+  if (String(fields.description ?? "").trim().length > DESCRIPTION_MAX) {
+    errors.description = `Keep it under ${DESCRIPTION_MAX} characters`;
+  }
 
   const uen = String(fields.uen ?? "").trim().toUpperCase();
   if (!uen) errors.uen = "ACRA UEN is required";
