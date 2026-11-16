@@ -1,8 +1,11 @@
-# Shop checkout pays on our page, with Apple Pay beside the card form
+# Shop checkout pays on our page, with Apple Pay and Google Pay beside the card form
 
 Status: Accepted (owner request 2026-11-16: "Apple Pay in our website when the user wants to pay").
 Amended 2026-11-16 (owner: "keep our layout and add an Apple Pay button beside the pay with stripe
-button"): see **Apple Pay beside the checkout button** below.
+button"): see **Wallet buttons beside the checkout button** below.
+Amended again 2026-11-16 (owner: "Apple Pay button shows only for iPhone users / Google pay shows
+for android. mac and windows should have 3 options in the future when Google pay is live"):
+Google Pay joins it, and a computer shows both.
 Amends nothing: the hosted page stays as the fallback, and every other Checkout is unchanged.
 
 ## Context
@@ -63,40 +66,62 @@ redeploy. Unsetting it and redeploying turns it off. Vercel preview URLs change 
 cannot be registered, so Apple Pay on our page shows only on registered domains; card and PayNow
 work on any.
 
-## Apple Pay beside the checkout button
+## Wallet buttons beside the checkout button
 
-The payment step above stays as it is. The form also gets an Apple Pay button beside the checkout
-button, so an iPhone shopper can pay with one tap, without first reaching the payment step.
+The payment step above stays as it is. The form also gets wallet buttons beside the checkout
+button, so a shopper can pay with one tap without first reaching the payment step.
 
-- **Why it cannot use the Session directly.** Apple Pay's sheet must open on the tap, and a
+| Device | Beside the checkout button |
+|---|---|
+| iPhone | Apple Pay, **Card or PayNow** |
+| Android phone | Google Pay, **Card or PayNow** |
+| Mac or PC | Apple Pay, Google Pay, **Card or PayNow** |
+
+- **Which wallets show.** On phones and tablets each wallet shows only where it is set up
+  (Stripe's `paymentMethods: "auto"`): an iPhone with a card in Wallet gets Apple Pay, an Android
+  phone with Google Pay gets Google Pay, and neither shows on the other. On a computer (a mouse or
+  trackpad is the main pointer, `(hover: hover) and (pointer: fine)`) both show whether set up or
+  not (`"always"`): Apple Pay in Safari, and in Chrome, Edge and Firefox by scanning a code with an
+  iPhone; Google Pay in Chrome and Edge, and in Safari and Firefox. Stripe makes "always" a
+  condition for both of those cross-browser cases. It is still Stripe's call per browser:
+  Stripe's notes say the scan-a-code Apple Pay is not offered on Windows yet, so a PC may show
+  Google Pay and card only until it is. The payment step uses the same setting.
+- **Google Pay is off until the Dashboard turns it on.** On 2026-11-16 the account's payment method
+  configuration had `google_pay` off. Until it is on (Stripe Dashboard → Settings → Payment
+  methods → Google Pay), Stripe offers no Google Pay button, so a phone shows Apple Pay or nothing
+  and a computer shows Apple Pay and the checkout button. Turning it on needs no deploy. The
+  registered payment method domain covers Google Pay as well as Apple Pay.
+- **Where they sit.** Apple Pay, Google Pay, then the checkout button, at equal widths: three
+  columns inline on a wide screen, two in the phone's sticky bar, which holds one wallet (the one
+  the phone has). Each wallet is its own button in its own Elements group
+  (`app/[lang]/shop/checkout/wallet-button.tsx`), so the page lays them out itself. Until Stripe
+  says a wallet can show, its button sits unseen, so nothing moves on a device without it. Beside
+  a wallet, the checkout button reads **Card or PayNow**. Link stays on the payment step.
+- **Why they cannot use the Session directly.** A wallet's sheet must open on the tap, and a
   Session-backed Express Checkout Element only exists once the Session does. Making the Order
-  every time the form is filled in would leave an abandoned Order for every visitor. So this
-  button runs in Stripe's **deferred mode** (`elements({ mode: "payment", amount, currency,
-  paymentMethodCreation: "manual" })`, `app/[lang]/shop/checkout/apple-pay-button.tsx`). The
-  sheet shows the page's total, and approving it only makes a PaymentMethod.
+  every time the form is filled in would leave an abandoned Order for every visitor. So these
+  buttons run in Stripe's **deferred mode** (`elements({ mode: "payment", amount, currency,
+  paymentMethodCreation: "manual" })`). The sheet shows the page's total, and approving it only
+  makes a PaymentMethod.
 - **Then the usual path.** After approval the page makes the Order through the same
   `POST /api/shop/checkout` (`payment_ui: "elements"`) and pays its Session with
   `checkout.confirm({ paymentMethod })` (`lib/stripe/wallet.ts`). Stripe documents this as
-  confirming with "a previously collected PaymentMethod". Fulfilment, expiry, reconcile and
-  refunds still read a Checkout Session. There is no second fulfilment path, which is what ruled
-  out Payment Intents above.
+  confirming with "a previously collected PaymentMethod". Apple Pay and Google Pay both hand over
+  a `card` PaymentMethod, so the Session pays the same way for either. Fulfilment, expiry,
+  reconcile and refunds still read a Checkout Session. There is no second fulfilment path, which
+  is what ruled out Payment Intents above.
 - **The amount the shopper approved is the amount charged, or nothing is.** The page's total
   leaves out what only the server prices: exclusive tax, Stripe Tax, a partner's own-purchase
   discount, a price that moved. If the Session's total differs from what the sheet showed, it is
-  not confirmed. The shopper lands on the payment step, which shows the real total, with Apple
-  Pay on top, and a line saying nothing was charged.
+  not confirmed. The shopper lands on the payment step, which shows the real total, with the
+  wallets on top, and a line saying nothing was charged.
 - **Failures leave nothing behind.** If the sheet hands over no PaymentMethod, nothing was made.
   If the Session will not load or the payment is declined, the Order is closed through
-  `/api/shop/checkout/release`, as **Edit** does, and the shopper can tap again or use the other
+  `/api/shop/checkout/release`, as **Edit** does, and the shopper can tap again or use another
   button.
 - **The tap checks the form first.** It is checked exactly as the checkout button checks it, and
   the sheet stays shut while it has errors or another payment is under way. Nothing on the tap
   waits on the network, because Stripe allows one second.
-- **What shows.** Apple Pay only: Google Pay and Link stay on the payment step. The button shows
-  only where Stripe says Apple Pay can pay (an Apple device with a card in Wallet, on a registered
-  domain, with the publishable key set). Until then it sits unseen, so nothing moves on any other
-  device. Beside it, the checkout button reads **Card or PayNow**. There is one Apple Pay button
-  at a time: inline on a wide screen, in the sticky bar on a phone.
 
 ## Considered options
 
@@ -125,8 +150,8 @@ button, so an iPhone shopper can pay with one tap, without first reaching the pa
 - New dependencies: `@stripe/stripe-js`, `@stripe/react-stripe-js` (the payment step is loaded
   only when the shopper reaches it).
 - The checkout button reads **Continue to payment** when the step is on this page, and **Pay with
-  Stripe** when it is not. Beside the Apple Pay button it reads **Card or PayNow**.
-- Amendment: `app/[lang]/shop/checkout/apple-pay-button.tsx` and `lib/stripe/wallet.ts`. No
+  Stripe** when it is not. Beside a wallet button it reads **Card or PayNow**.
+- Amendments: `app/[lang]/shop/checkout/wallet-button.tsx` and `lib/stripe/wallet.ts`. No
   server change.
 - New Order timeline event `checkout_released`.
 - Unchanged: Staff-order payment links, Result holds and top-ups, Re-adjustment Checkouts. They

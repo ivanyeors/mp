@@ -60,9 +60,20 @@ import {
 import { useCheckoutCode } from "@/lib/checkout-code/use-checkout-code";
 import { POINTS_PER_DOLLAR, formatPoints, pointsToDollars } from "@/lib/points/value";
 import { stripeJs } from "@/lib/stripe/browser";
-import { confirmWithWallet, fromMinorUnits, toMinorUnits } from "@/lib/stripe/wallet";
+import {
+  COMPUTER_MEDIA_QUERY,
+  WALLETS,
+  WALLET_NAMES,
+  confirmWithWallet,
+  fromMinorUnits,
+  toMinorUnits,
+  walletsBeside,
+  type Wallet,
+  type WalletDisplay,
+} from "@/lib/stripe/wallet";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 
 /**
  * The on-page payment step (ADR 0052), loaded only once the shopper reaches it:
@@ -74,10 +85,11 @@ const PayOnPage = dynamic(() => import("./pay-on-page"), {
 });
 
 /**
- * Apple Pay beside the checkout button (ADR 0052), loaded only once Stripe.js
- * is here. It shows nothing until Stripe says this device can pay with it.
+ * Apple Pay and Google Pay beside the checkout button (ADR 0052), loaded only
+ * once Stripe.js is here. Each shows nothing until Stripe says this device can
+ * pay with it.
  */
-const ApplePayButton = dynamic(() => import("./apple-pay-button"), { ssr: false });
+const WalletButton = dynamic(() => import("./wallet-button"), { ssr: false });
 
 /** An Order made and its Checkout Session opened on this page, awaiting payment. */
 interface OnPagePayment {
@@ -204,15 +216,18 @@ export default function CheckoutPage() {
   // Stripe's hosted page as before.
   const [stripeReady, setStripeReady] = useState(false);
   const [payment, setPayment] = useState<OnPagePayment | null>(null);
-  // Said above the payment step when Apple Pay on the form could not charge.
+  // Said above the payment step when a wallet on the form could not charge.
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   // Closing the Order the shopper went back from; a new submit waits for it,
   // so the points that Order reserved are free again.
   const releasing = useRef<Promise<unknown> | null>(null);
-  // One Apple Pay button at a time: inline beside the button on a wide screen,
-  // in the sticky bar on a phone. `walletAt` is where Stripe said it can show.
+  // Wallet buttons beside the checkout button: inline on a wide screen, in the
+  // sticky bar on a phone. `walletsAt` is where Stripe said each can show.
   const wide = useMediaQuery("(min-width: 768px)");
-  const [walletAt, setWalletAt] = useState<"inline" | "bar" | null>(null);
+  // A computer shows Apple Pay and Google Pay whether set up or not; a phone
+  // shows the one it has (`WalletDisplay`).
+  const computer = useMediaQuery(COMPUTER_MEDIA_QUERY);
+  const [walletsAt, setWalletsAt] = useState<Partial<Record<Wallet, "inline" | "bar">>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -652,10 +667,10 @@ export default function CheckoutPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Apple Pay beside the checkout button (ADR 0052)
+  // Apple Pay and Google Pay beside the checkout button (ADR 0052)
   // ---------------------------------------------------------------------------
 
-  // What the Apple Pay sheet shows: the page's total, in the cart's currency.
+  // What the wallet's sheet shows: the page's total, in the cart's currency.
   const walletAmount = toMinorUnits(total, currency);
 
   /**
@@ -663,18 +678,19 @@ export default function CheckoutPage() {
    * the form is checked as the checkout button checks it, and an open sheet
    * stays shut while another payment is under way.
    */
-  function tapApplePay(): boolean {
+  function tapWallet(): boolean {
     setSubmitError(null);
     if (submitting) return false;
     return validate();
   }
 
   /**
-   * The shopper approved `authorizedMinor` in the sheet, which has closed. Make
-   * the Order exactly as the checkout button does, then pay its Checkout
-   * Session with the Apple Pay payment method.
+   * The shopper approved `authorizedMinor` in the wallet's sheet, which has
+   * closed. Make the Order exactly as the checkout button does, then pay its
+   * Checkout Session with the wallet's payment method.
    */
-  async function payWithApplePay(paymentMethodId: string, authorizedMinor: number) {
+  async function payWithWallet(wallet: Wallet, paymentMethodId: string, authorizedMinor: number) {
+    const name = WALLET_NAMES[wallet];
     setSubmitError(null);
     setSubmitting(true);
     let leaving = false;
@@ -684,7 +700,7 @@ export default function CheckoutPage() {
 
       if (!data.client_secret || !data.session_id) {
         // This deploy cannot pay on the page after all: Stripe's page, where
-        // Apple Pay shows too. The approved payment method is simply unused.
+        // the wallets show too. The approved payment method is simply unused.
         const checkoutUrl: string | undefined = data.checkout_url ?? data.url;
         if (!checkoutUrl) throw new Error("No checkout URL returned from server.");
         leaving = true;
@@ -711,11 +727,11 @@ export default function CheckoutPage() {
       }
 
       if (result.type === "total_changed") {
-        // Keep this Order: its payment step shows the real total, with Apple
-        // Pay on top again, and charges nothing until the shopper agrees.
+        // Keep this Order: its payment step shows the real total, with the
+        // wallets on top again, and charges nothing until the shopper agrees.
         setPaymentNotice(
           `Your total is ${formatCurrency(result.total, currency)}, not the ` +
-            `${formatCurrency(fromMinorUnits(authorizedMinor, currency), currency)} Apple Pay showed, ` +
+            `${formatCurrency(fromMinorUnits(authorizedMinor, currency), currency)} ${name} showed, ` +
             `so nothing has been charged. Check it and pay below.`,
         );
         setPayment({
@@ -729,9 +745,9 @@ export default function CheckoutPage() {
 
       // Declined, or the Session would not load: close this Order so that
       // another try starts clean and its points are free again.
-      console.warn("[checkout] Apple Pay payment did not go through:", result.message);
+      console.warn(`[checkout] ${name} payment did not go through:`, result.message);
       releaseSession(data.session_id);
-      throw new Error("Apple Pay didn't go through, and nothing has been charged. Try again, or pay by card or PayNow.");
+      throw new Error(walletFailedMessage(wallet));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
       setSubmitError(message);
@@ -741,8 +757,12 @@ export default function CheckoutPage() {
     }
   }
 
-  function applePayFailed() {
-    const message = "Apple Pay didn't go through, and nothing has been charged. Try again, or pay by card or PayNow.";
+  function walletFailedMessage(wallet: Wallet): string {
+    return `${WALLET_NAMES[wallet]} didn't go through, and nothing has been charged. Try again, or pay by card or PayNow.`;
+  }
+
+  function walletFailed(wallet: Wallet) {
+    const message = walletFailedMessage(wallet);
     setSubmitError(message);
     toast.error(message);
   }
@@ -905,7 +925,11 @@ export default function CheckoutPage() {
   // Shared Pay CTA label so the inline (desktop) and sticky (mobile) buttons
   // never drift.
   const walletPlace = wide ? "inline" : "bar";
-  const walletShown = walletAt === walletPlace;
+  const walletDisplay: WalletDisplay = computer ? "always" : "auto";
+  const walletsShown = walletsBeside(
+    WALLETS.filter((wallet) => walletsAt[wallet] === walletPlace),
+    wide,
+  );
   const payLabel = submitting ? (
     <>
       <Loader2 className="size-4 animate-spin" />
@@ -914,40 +938,59 @@ export default function CheckoutPage() {
   ) : (
     <>
       <CreditCard className="size-4" />
-      {/* Beside Apple Pay, say what this button is for instead. */}
-      {walletShown ? "Card or PayNow" : stripeReady ? "Continue to payment" : "Pay with Stripe"}
+      {/* Beside a wallet, say what this button is for instead. */}
+      {walletsShown.length > 0 ? "Card or PayNow" : stripeReady ? "Continue to payment" : "Pay with Stripe"}
     </>
   );
 
   /**
-   * The checkout button, with Apple Pay beside it where this device can use it.
-   * Only one Apple Pay button is mounted: here when `place` is where it shows
-   * at this width. Until Stripe says Apple Pay can show, it sits unseen under
-   * the checkout button, so nothing moves on a device without it.
+   * The checkout button, with Apple Pay and Google Pay beside it where this
+   * device can use them: Apple Pay, Google Pay, then card or PayNow, at equal
+   * widths. The wallet buttons are mounted only in the `place` that shows at
+   * this width. Until Stripe says a wallet can show, its button sits unseen
+   * under the checkout button, so nothing moves on a device without it.
    */
   function checkoutButtons(place: "inline" | "bar") {
-    const withWallet = stripeReady && walletAmount > 0 && place === walletPlace;
-    // Two equal columns once Apple Pay shows (flex would make the padded button wider).
+    const withWallets = stripeReady && walletAmount > 0 && place === walletPlace;
+    const columns = withWallets ? walletsShown.length : 0;
+    // Equal columns once a wallet shows (flex would make the padded button wider).
     return (
-      <div className={walletShown ? "grid grid-cols-2 gap-3" : "relative"}>
-        {withWallet && (
-          <div
-            className={
-              walletShown ? "min-w-0" : "pointer-events-none invisible absolute inset-x-0 top-0"
-            }
-            aria-hidden={walletShown ? undefined : true}
-          >
-            <ApplePayButton
-              amountMinor={walletAmount}
-              currency={currency}
-              height={place === "bar" ? 44 : 40}
-              onAvailable={(ok) => setWalletAt(ok ? place : null)}
-              onTap={tapApplePay}
-              onApproved={payWithApplePay}
-              onFailed={applePayFailed}
-            />
-          </div>
+      <div
+        className={cn(
+          "relative",
+          columns > 0 && "grid gap-3",
+          columns === 1 && "grid-cols-2",
+          columns === 2 && "grid-cols-3",
         )}
+      >
+        {withWallets &&
+          WALLETS.map((wallet) => {
+            const seen = walletsShown.includes(wallet);
+            return (
+              <div
+                // A new display setting is a new Stripe button.
+                key={`${wallet}-${walletDisplay}`}
+                className={seen ? "min-w-0" : "pointer-events-none invisible absolute inset-x-0 top-0"}
+                aria-hidden={seen ? undefined : true}
+              >
+                <WalletButton
+                  wallet={wallet}
+                  display={walletDisplay}
+                  amountMinor={walletAmount}
+                  currency={currency}
+                  height={place === "bar" ? 44 : 40}
+                  onAvailable={(ok) =>
+                    setWalletsAt((at) => ({ ...at, [wallet]: ok ? place : undefined }))
+                  }
+                  onTap={tapWallet}
+                  onApproved={(paymentMethodId, authorizedMinor) =>
+                    payWithWallet(wallet, paymentMethodId, authorizedMinor)
+                  }
+                  onFailed={() => walletFailed(wallet)}
+                />
+              </div>
+            );
+          })}
         <Button
           type="submit"
           form="checkout-form"
@@ -1004,6 +1047,7 @@ export default function CheckoutPage() {
               key={payment.clientSecret}
               clientSecret={payment.clientSecret}
               notice={paymentNotice}
+              walletDisplay={walletDisplay}
               email={form.email}
               shipTo={[
                 form.recipient,

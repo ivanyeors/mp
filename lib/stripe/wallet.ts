@@ -1,16 +1,55 @@
 import type { Stripe } from "@stripe/stripe-js";
 
 /**
- * Apple Pay from the checkout form (ADR 0052, "Apple Pay beside the checkout
- * button"). Browser only, but free of React so it can be tested on its own.
+ * Apple Pay and Google Pay from the checkout form (ADR 0052, "Wallet buttons
+ * beside the checkout button"). Browser only, but free of React so it can be
+ * tested on its own.
  *
- * The Apple Pay button sits on the form, before any Order exists, so it runs in
+ * The wallet buttons sit on the form, before any Order exists, so they run in
  * Stripe's deferred mode: the sheet shows the page's total, and approving it
  * only makes a PaymentMethod. The Order and its Checkout Session are made after
  * that, by the same `/api/shop/checkout` as every other path, and the Session
  * is then paid with that PaymentMethod. Fulfilment, expiry, reconcile and
  * refunds still read a Checkout Session and cannot tell the difference.
  */
+
+/** The wallets offered beside the checkout button, in the order they sit. */
+export const WALLETS = ["applePay", "googlePay"] as const;
+export type Wallet = (typeof WALLETS)[number];
+
+export const WALLET_NAMES: Record<Wallet, string> = {
+  applePay: "Apple Pay",
+  googlePay: "Google Pay",
+};
+
+/**
+ * How widely a wallet shows (Stripe's `paymentMethods` option for it).
+ *
+ * - `"auto"`, on phones and tablets: only where it is set up. An iPhone with a
+ *   card in Wallet gets Apple Pay; an Android phone with Google Pay gets
+ *   Google Pay. Neither shows on the other.
+ * - `"always"`, on computers: wherever the browser can offer it, set up or
+ *   not. Apple Pay in Safari, and in Chrome, Edge and Firefox by scanning a
+ *   code with an iPhone; Google Pay in Chrome and Edge, and in Safari and
+ *   Firefox. So a Mac or PC shows both, beside card and PayNow.
+ *
+ * Either way a wallet shows only once it is on in the Stripe Dashboard and the
+ * domain is registered there.
+ */
+export type WalletDisplay = "auto" | "always";
+
+/** A computer: its main pointer is a mouse or trackpad, not a finger. */
+export const COMPUTER_MEDIA_QUERY = "(hover: hover) and (pointer: fine)";
+
+/**
+ * The wallet buttons to show beside the checkout button, in order, out of the
+ * ones Stripe said can show: both on a wide screen, the first on a phone,
+ * where the sticky bar has room for one beside the checkout button.
+ */
+export function walletsBeside(available: Iterable<Wallet>, wide: boolean): Wallet[] {
+  const can = new Set(available);
+  return WALLETS.filter((wallet) => can.has(wallet)).slice(0, wide ? WALLETS.length : 1);
+}
 
 /** Stripe's zero-decimal currencies: amounts in these are already whole units. */
 const ZERO_DECIMAL = new Set([

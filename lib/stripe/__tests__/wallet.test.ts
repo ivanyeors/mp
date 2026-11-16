@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Stripe } from "@stripe/stripe-js";
-import { confirmWithWallet, fromMinorUnits, toMinorUnits } from "../wallet";
+import { confirmWithWallet, fromMinorUnits, toMinorUnits, walletsBeside } from "../wallet";
 
 /**
- * Apple Pay beside the checkout button (ADR 0052): the sheet shows the page's
- * total, and the Checkout Session the server then makes is paid only if it
- * totals exactly that.
+ * Wallet buttons beside the checkout button (ADR 0052): the sheet shows the
+ * page's total, and the Checkout Session the server then makes is paid only if
+ * it totals exactly that.
  */
 
 function fakeStripe(opts: {
@@ -76,5 +76,24 @@ describe("minor units", () => {
   it("leaves a zero-decimal currency in whole units", () => {
     expect(toMinorUnits(1500, "JPY")).toBe(1500);
     expect(fromMinorUnits(1500, "jpy")).toBe(1500);
+  });
+});
+
+describe("walletsBeside", () => {
+  it("shows Apple Pay, Google Pay, then the checkout button on a computer that has both", () => {
+    expect(walletsBeside(["googlePay", "applePay"], true)).toEqual(["applePay", "googlePay"]);
+  });
+
+  it("shows the one wallet a phone has", () => {
+    expect(walletsBeside(["applePay"], false)).toEqual(["applePay"]);
+    expect(walletsBeside(["googlePay"], false)).toEqual(["googlePay"]);
+  });
+
+  it("keeps one wallet beside the button in a phone's bar, even if both could show", () => {
+    expect(walletsBeside(["applePay", "googlePay"], false)).toEqual(["applePay"]);
+  });
+
+  it("shows none where Stripe offers neither, as while Google Pay is off on a PC", () => {
+    expect(walletsBeside([], true)).toEqual([]);
   });
 });

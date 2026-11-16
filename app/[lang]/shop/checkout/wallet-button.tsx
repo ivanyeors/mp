@@ -15,20 +15,25 @@ import {
   type ExpressCheckoutElementProps,
 } from "@stripe/react-stripe-js";
 import { stripeJs } from "@/lib/stripe/browser";
+import type { Wallet, WalletDisplay } from "@/lib/stripe/wallet";
 
 /**
- * The Apple Pay button beside the checkout button (ADR 0052, "Apple Pay beside
- * the checkout button").
+ * One wallet button beside the checkout button: Apple Pay or Google Pay (ADR
+ * 0052, "Wallet buttons beside the checkout button").
  *
  * No Order exists yet, so this runs in Stripe's deferred mode: the sheet shows
  * `amountMinor`, and approving it only makes a PaymentMethod. The page then
- * makes the Order and pays its Checkout Session with it (`onApproved`). Apple
- * Pay only: card and PayNow stay on the button beside it.
+ * makes the Order and pays its Checkout Session with it (`onApproved`). One
+ * wallet per button, each in its own Elements group, so the page lays the
+ * buttons out side by side at equal widths. Card and PayNow stay on the
+ * checkout button beside them.
  *
- * Shown only where Apple Pay can pay (an Apple device with a card in Wallet, on
- * a domain registered in Stripe); `onAvailable` says whether that is so.
+ * Shown only where Stripe says this wallet can pay; `onAvailable` says whether
+ * that is so. `display` decides how widely (see `WalletDisplay`).
  */
-export interface ApplePayButtonProps {
+export interface WalletButtonProps {
+  wallet: Wallet;
+  display: WalletDisplay;
   /** What the sheet shows and the shopper approves, in minor units. More than 0. */
   amountMinor: number;
   /** The cart's currency, which Stripe charges in. */
@@ -44,14 +49,14 @@ export interface ApplePayButtonProps {
   onTap: () => boolean;
   /** Approved and the sheet is closed: make the Order and pay it with this. */
   onApproved: (paymentMethodId: string, authorizedMinor: number) => void;
-  /** Apple Pay handed over nothing. Nothing was made or charged. */
+  /** The wallet handed over nothing. Nothing was made or charged. */
   onFailed: () => void;
 }
 
 /** The site's button radius (`--radius-button`, app/globals.css). */
 const BUTTON_RADIUS = "16px";
 
-export default function ApplePayButton(props: ApplePayButtonProps) {
+export default function WalletButton(props: WalletButtonProps) {
   const { resolvedTheme } = useTheme();
   // One Stripe.js for the page; the provider must get the same promise every render.
   const [stripe] = useState(() => stripeJs());
@@ -72,12 +77,14 @@ export default function ApplePayButton(props: ApplePayButtonProps) {
 
   return (
     <Elements stripe={stripe} options={options}>
-      <WalletButton {...props} dark={dark} />
+      <ExpressButton {...props} dark={dark} />
     </Elements>
   );
 }
 
-function WalletButton({
+function ExpressButton({
+  wallet,
+  display,
   amountMinor,
   height,
   dark,
@@ -85,7 +92,7 @@ function WalletButton({
   onTap,
   onApproved,
   onFailed,
-}: ApplePayButtonProps & { dark: boolean }) {
+}: WalletButtonProps & { dark: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
   // The amount Elements held when the sheet opened: what the shopper approved.
@@ -94,19 +101,19 @@ function WalletButton({
   const options = useMemo<NonNullable<ExpressCheckoutElementProps["options"]>>(
     () => ({
       buttonHeight: height,
-      buttonTheme: { applePay: dark ? "white" : "black" },
-      buttonType: { applePay: "plain" },
+      buttonTheme: { [wallet]: dark ? "white" : "black" },
+      buttonType: { [wallet]: "plain" },
       layout: { maxColumns: 1, maxRows: 1, overflow: "never" },
       paymentMethods: {
-        applePay: "auto",
-        googlePay: "never",
+        applePay: wallet === "applePay" ? display : "never",
+        googlePay: wallet === "googlePay" ? display : "never",
         link: "never",
         paypal: "never",
         amazonPay: "never",
         klarna: "never",
       },
     }),
-    [height, dark],
+    [wallet, display, height, dark],
   );
 
   function tap(event: StripeExpressCheckoutElementClickEvent) {
@@ -127,7 +134,7 @@ function WalletButton({
     const created = submitted.error ? null : await stripe.createPaymentMethod({ elements });
     const error = submitted.error ?? created?.error;
     if (error || !created?.paymentMethod) {
-      console.warn("[checkout] Apple Pay did not hand over a payment method:", error?.message);
+      console.warn(`[checkout] ${wallet} did not hand over a payment method:`, error?.message);
       event.paymentFailed({ reason: "fail" });
       onFailed();
       return;
@@ -138,7 +145,7 @@ function WalletButton({
   return (
     <ExpressCheckoutElement
       options={options}
-      onReady={(e) => onAvailable(Boolean(e.availablePaymentMethods?.applePay))}
+      onReady={(e) => onAvailable(Boolean(e.availablePaymentMethods?.[wallet]))}
       onLoadError={() => onAvailable(false)}
       onClick={tap}
       onConfirm={approve}

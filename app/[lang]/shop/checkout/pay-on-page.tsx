@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { MobileStickyActionBar } from "@/components/ui/mobile-sticky-action-bar";
 import { stripeJs } from "@/lib/stripe/browser";
 import { formatCurrency } from "@/lib/i18n/currencies";
+import type { WalletDisplay } from "@/lib/stripe/wallet";
 
 /**
  * The payment step of shop checkout, on our own page (ADR 0052).
@@ -46,10 +47,12 @@ export interface PayOnPageProps {
   /** The delivery method's name. */
   delivery: string;
   /**
-   * Why the shopper is here instead of paid: Apple Pay beside the checkout
+   * Why the shopper is here instead of paid: a wallet beside the checkout
    * button showed a total that the server's pricing did not match.
    */
   notice?: string | null;
+  /** How widely Apple Pay and Google Pay show, as beside the checkout button. */
+  walletDisplay: WalletDisplay;
   onEdit: (opts?: { payOnStripe?: boolean }) => void;
 }
 
@@ -72,14 +75,17 @@ function appearance(dark: boolean): Appearance {
   };
 }
 
-function expressOptions(dark: boolean): NonNullable<ExpressCheckoutElementProps["options"]> {
+function expressOptions(
+  dark: boolean,
+  walletDisplay: WalletDisplay,
+): NonNullable<ExpressCheckoutElementProps["options"]> {
   return {
     buttonHeight: 48,
     buttonTheme: { applePay: dark ? "white" : "black", googlePay: dark ? "white" : "black" },
     buttonType: { applePay: "plain", googlePay: "plain" },
     layout: { maxColumns: 2, maxRows: 2, overflow: "never" },
     paymentMethodOrder: ["apple_pay", "google_pay", "link"],
-    paymentMethods: undefined,
+    paymentMethods: { applePay: walletDisplay, googlePay: walletDisplay },
   };
 }
 
@@ -106,7 +112,15 @@ export default function PayOnPage(props: PayOnPageProps) {
   );
 }
 
-function PaymentStep({ email, shipTo, delivery, notice, onEdit, dark }: PayOnPageProps & { dark: boolean }) {
+function PaymentStep({
+  email,
+  shipTo,
+  delivery,
+  notice,
+  walletDisplay,
+  onEdit,
+  dark,
+}: PayOnPageProps & { dark: boolean }) {
   const state = useCheckoutElements();
   const [wallets, setWallets] = useState<"pending" | "shown" | "none">("pending");
   const [paying, setPaying] = useState(false);
@@ -208,9 +222,11 @@ function PaymentStep({ email, shipTo, delivery, notice, onEdit, dark }: PayOnPag
           </div>
         ) : (
           <>
-            {/* Apple Pay / Google Pay / Link: only those this device can use. */}
+            {/* Apple Pay / Google Pay / Link: those this device can use (on a computer,
+                Apple Pay and Google Pay whether set up or not, `WalletDisplay`). */}
             <ExpressCheckoutElement
-              options={expressOptions(dark)}
+              key={walletDisplay}
+              options={expressOptions(dark, walletDisplay)}
               onReady={(e) => setWallets(e.availablePaymentMethods ? "shown" : "none")}
               onConfirm={payWithWallet}
             />
