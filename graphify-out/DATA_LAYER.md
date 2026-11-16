@@ -787,8 +787,8 @@ Changed from pages: `/settings/inventory`
 Defined in supabase/migrations/0027_landing_sections.sql:2
 Changed from pages: `/settings/media`, `/settings/page-builder`
 - Written by:
-  - `DELETE()` [select,update] — app/api/landing-sections/[id]/route.ts:157
-  - `PATCH()` [select,update] — app/api/landing-sections/[id]/route.ts:44
+  - `DELETE()` [select,update] — app/api/landing-sections/[id]/route.ts:173
+  - `PATCH()` [select,update] — app/api/landing-sections/[id]/route.ts:49
   - `POST()` [insert,select] — app/api/landing-sections/route.ts:68
   - `PUT()` [select,upsert] — app/api/landing-sections/reorder/route.ts:39
   - `runReplaceEverywhere()` [select,update] — lib/media/replace.ts:385
@@ -1978,7 +1978,7 @@ Defined in supabase/migrations/20261021140000_points_spending.sql:66
   - `reservePoints()` — lib/points/spend.ts:163
 
 ### restore_landing_snapshot
-Defined in supabase/migrations/20261002090000_easyship_shipping.sql:147
+Defined in supabase/migrations/20261116090000_landing_tiktok_videos.sql:9
 - Called by:
   - `POST()` — app/api/landing-sections/history/route.ts:74
 
@@ -2879,7 +2879,7 @@ app/[lang]/settings/orders/[id]/page.tsx
 
 ### /settings/page-builder
 app/[lang]/settings/page-builder/page.tsx
-- Endpoints: `/api/landing-sections [GET,POST]`, `/api/landing-sections/[id] [DELETE,PATCH]`, `/api/landing-sections/history`, `/api/landing-sections/publish`, `/api/landing-sections/reorder [PUT]`, `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`, `/api/slide-in-sections/[page]`, `/api/slide-in-sections/[page]/[slug] [PATCH]`
+- Endpoints: `/api/landing-sections [GET,POST]`, `/api/landing-sections/[id] [DELETE,PATCH]`, `/api/landing-sections/history`, `/api/landing-sections/publish`, `/api/landing-sections/reorder [PUT]`, `/api/media [POST]`, `/api/media-folders [GET]`, `/api/media/drive/browse [GET]`, `/api/media/import/drive [POST]`, `/api/media/usage [GET]`, `/api/slide-in-sections/[page]`, `/api/slide-in-sections/[page]/[slug] [PATCH]`, `/api/tiktok/resolve [POST]`
 - Loads: `listLandingSectionRows()`, `listSlideInRows()`, `requireAdminPage()`
 - Changes, through its actions, endpoints and their calls: `admin_audit_log`, `landing_sections`, `media_assets`, `media_folders`, `mp_staff`, `slide_in_sections`
 - Reads, through the same: `admin_roles`, `admin_users`, `blog_posts`, `categories`, `email_campaigns`, `item_overlay_mappings`, `items`, `landing_page_publishes`, `partners`, `partners_page`, `product_images`, `product_variants`, `site_settings`

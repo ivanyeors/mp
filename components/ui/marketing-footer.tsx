@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Facebook, Instagram, Linkedin, Youtube } from "lucide-react";
 
 import { FooterSignUp } from "@/components/auth/footer-sign-up";
+import { TikTokIcon } from "@/components/tiktok/tiktok-icon";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -27,19 +28,6 @@ const FOOTER_LINKS = [
   { label: "Contact us", href: "/support" },
   { label: "FAQ", href: "/faq" },
 ] as const;
-
-function TikTokIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="currentColor"
-    >
-      <path d="M20.027 10.168a5.125 5.125 0 0 1-4.76-2.294v7.893a5.833 5.833 0 1 1-5.834-5.834c.122 0 .241.011.361.019v2.874c-.12-.014-.237-.036-.36-.036a2.977 2.977 0 0 0 0 5.954c1.644 0 3.096-1.295 3.096-2.94L12.56 2.4h2.75a5.122 5.122 0 0 0 4.72 4.573v3.195" />
-    </svg>
-  );
-}
 
 const SOCIAL_LINKS = [
   {
