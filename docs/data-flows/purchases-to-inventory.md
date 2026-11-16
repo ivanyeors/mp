@@ -79,6 +79,17 @@ goods, and every other call sees it set and stops.
 
 1. **`POST /api/shop/checkout`** creates the Order (`status 'pending'`) and
    its `order_items`, then a Stripe Checkout Session carrying `order_id`.
+   The shopper pays it on our page (`ui_mode: "elements"`: Apple Pay and
+   Google Pay above the card and PayNow form) or, without a publishable key
+   or Stripe.js, on Stripe's hosted page (ADR 0053). Either way it is the same
+   Session, and everything below reads it the same way. Going back from the
+   on-page step calls `POST /api/shop/checkout/release`, which expires the
+   Session and cancels the Order at once, as `checkout.session.expired` would.
+   The Apple Pay and Google Pay buttons beside the checkout button make the
+   Order the same way, only after the shopper approves in the wallet's sheet,
+   then pay its Session with that wallet's payment method if the Session
+   totals what the sheet showed. If not, they charge nothing and open the
+   on-page step. A declined payment releases the Order the same way.
    It validates stock without writing any:
    - Standard lines are checked against `variant_stock.stock_available`.
    - Customised lines are re-quoted from Costings by `quoteCustomization`.
