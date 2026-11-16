@@ -60,6 +60,9 @@ import {
 import { useCheckoutCode } from "@/lib/checkout-code/use-checkout-code";
 import { POINTS_PER_DOLLAR, formatPoints, pointsToDollars } from "@/lib/points/value";
 import { stripeJs } from "@/lib/stripe/browser";
+import { confirmWithWallet, fromMinorUnits, toMinorUnits } from "@/lib/stripe/wallet";
+import { formatCurrency } from "@/lib/i18n/currencies";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 /**
  * The on-page payment step (ADR 0052), loaded only once the shopper reaches it:
@@ -69,6 +72,12 @@ const PayOnPage = dynamic(() => import("./pay-on-page"), {
   ssr: false,
   loading: () => <div className="h-64 animate-pulse rounded-lg bg-muted" aria-busy="true" />,
 });
+
+/**
+ * Apple Pay beside the checkout button (ADR 0052), loaded only once Stripe.js
+ * is here. It shows nothing until Stripe says this device can pay with it.
+ */
+const ApplePayButton = dynamic(() => import("./apple-pay-button"), { ssr: false });
 
 /** An Order made and its Checkout Session opened on this page, awaiting payment. */
 interface OnPagePayment {
@@ -195,9 +204,15 @@ export default function CheckoutPage() {
   // Stripe's hosted page as before.
   const [stripeReady, setStripeReady] = useState(false);
   const [payment, setPayment] = useState<OnPagePayment | null>(null);
+  // Said above the payment step when Apple Pay on the form could not charge.
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   // Closing the Order the shopper went back from; a new submit waits for it,
   // so the points that Order reserved are free again.
   const releasing = useRef<Promise<unknown> | null>(null);
+  // One Apple Pay button at a time: inline beside the button on a wide screen,
+  // in the sticky bar on a phone. `walletAt` is where Stripe said it can show.
+  const wide = useMediaQuery("(min-width: 768px)");
+  const [walletAt, setWalletAt] = useState<"inline" | "bar" | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,17 +224,22 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  function editDetails(opts?: { payOnStripe?: boolean }) {
-    if (!payment) return;
-    const { sessionId } = payment;
-    // The form could not load here: the next attempt goes to Stripe's page.
-    if (opts?.payOnStripe) setStripeReady(false);
+  /** Close an unpaid on-page Order now; the next submit waits for this. */
+  function releaseSession(sessionId: string) {
     releasing.current = fetch("/api/shop/checkout/release", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sessionId }),
     }).catch(() => undefined);
+  }
+
+  function editDetails(opts?: { payOnStripe?: boolean }) {
+    if (!payment) return;
+    // The form could not load here: the next attempt goes to Stripe's page.
+    if (opts?.payOnStripe) setStripeReady(false);
+    releaseSession(payment.sessionId);
     setPayment(null);
+    setPaymentNotice(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -488,14 +508,11 @@ export default function CheckoutPage() {
   // Submit
   // ---------------------------------------------------------------------------
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitError(null);
-
-    if (!validate()) return;
-
-    setSubmitting(true);
-
+  /**
+   * Price and make the Order, the same for every way of paying. Throws with
+   * the server's message when it refuses.
+   */
+  async function createOrder(paymentUi: "elements" | "hosted") {
     if (releasing.current) {
       await releasing.current;
       releasing.current = null;
@@ -525,73 +542,88 @@ export default function CheckoutPage() {
       }
     }
 
-    try {
-      const payload = {
-        email: form.email,
+    const payload = {
+      email: form.email,
+      phone: form.phone || undefined,
+      marketing_email: marketingEmail,
+      shipping_address: {
+        recipient: form.recipient,
+        line1: form.line1,
+        line2: form.line2 || undefined,
+        city: form.city,
+        state: form.state || undefined,
+        postal_code: form.postal_code,
+        country: form.country,
         phone: form.phone || undefined,
-        marketing_email: marketingEmail,
-        shipping_address: {
-          recipient: form.recipient,
-          line1: form.line1,
-          line2: form.line2 || undefined,
-          city: form.city,
-          state: form.state || undefined,
-          postal_code: form.postal_code,
-          country: form.country,
-          phone: form.phone || undefined,
-        },
-        shipping_method_id: chosenShipping,
-        // Resolved and priced again on the server; the page only asks.
-        code: checkoutCodeToSend(code, codeStatus),
-        // Checked and reserved again on the server; the page only asks.
-        points: pointsToUse > 0 ? pointsToUse : undefined,
-        // Pay on this page once Stripe.js is here; the server may still say hosted.
-        payment_ui: stripeReady ? "elements" : "hosted",
-        locale: lang,
+      },
+      shipping_method_id: chosenShipping,
+      // Resolved and priced again on the server; the page only asks.
+      code: checkoutCodeToSend(code, codeStatus),
+      // Checked and reserved again on the server; the page only asks.
+      points: pointsToUse > 0 ? pointsToUse : undefined,
+      // Pay on this page once Stripe.js is here; the server may still say hosted.
+      payment_ui: paymentUi,
+      locale: lang,
+      items: items.map((item) => ({
+        variant_id: item.variantId,
+        quantity: item.quantity,
+        customization_id: item.customizationId,
+        unit_price: item.price,
+        product_title: item.productTitle,
+        variant_title: item.variantTitle,
+        image_url: item.imageUrl,
+      })),
+    };
+
+    const res = await fetch("/api/shop/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? data.message ?? "Checkout failed. Please try again.");
+    }
+
+    return res.json();
+  }
+
+  function beginCheckoutEvent() {
+    return {
+      name: "begin_checkout",
+      params: {
+        value: total,
+        currency,
+        ...(codeStatus.state === "discount" ? { coupon: codeStatus.code } : {}),
         items: items.map((item) => ({
-          variant_id: item.variantId,
+          item_id: item.variantId,
+          item_name: item.productTitle,
+          ...(item.variantTitle ? { item_variant: item.variantTitle } : {}),
+          price: item.price,
           quantity: item.quantity,
-          customization_id: item.customizationId,
-          unit_price: item.price,
-          product_title: item.productTitle,
-          variant_title: item.variantTitle,
-          image_url: item.imageUrl,
         })),
-      };
+      },
+    } as const;
+  }
 
-      const res = await fetch("/api/shop/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitError(null);
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? data.message ?? "Checkout failed. Please try again.");
-      }
+    if (!validate()) return;
 
-      const data = await res.json();
+    setSubmitting(true);
 
-      const beginCheckout = {
-        name: "begin_checkout",
-        params: {
-          value: total,
-          currency,
-          ...(codeStatus.state === "discount" ? { coupon: codeStatus.code } : {}),
-          items: items.map((item) => ({
-            item_id: item.variantId,
-            item_name: item.productTitle,
-            ...(item.variantTitle ? { item_variant: item.variantTitle } : {}),
-            price: item.price,
-            quantity: item.quantity,
-          })),
-        },
-      } as const;
+    try {
+      const data = await createOrder(stripeReady ? "elements" : "hosted");
+      const beginCheckout = beginCheckoutEvent();
 
       if (data.client_secret && data.session_id) {
         // The Order is made and its Checkout open: pay for it right here. The
         // cart stays until the confirmation page, exactly as for Stripe's page.
         trackGaEvent(beginCheckout);
+        setPaymentNotice(null);
         setPayment({
           clientSecret: data.client_secret,
           sessionId: data.session_id,
@@ -617,6 +649,102 @@ export default function CheckoutPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Apple Pay beside the checkout button (ADR 0052)
+  // ---------------------------------------------------------------------------
+
+  // What the Apple Pay sheet shows: the page's total, in the cart's currency.
+  const walletAmount = toMinorUnits(total, currency);
+
+  /**
+   * The tap must open the sheet at once, so nothing here waits on the network:
+   * the form is checked as the checkout button checks it, and an open sheet
+   * stays shut while another payment is under way.
+   */
+  function tapApplePay(): boolean {
+    setSubmitError(null);
+    if (submitting) return false;
+    return validate();
+  }
+
+  /**
+   * The shopper approved `authorizedMinor` in the sheet, which has closed. Make
+   * the Order exactly as the checkout button does, then pay its Checkout
+   * Session with the Apple Pay payment method.
+   */
+  async function payWithApplePay(paymentMethodId: string, authorizedMinor: number) {
+    setSubmitError(null);
+    setSubmitting(true);
+    let leaving = false;
+    try {
+      const data = await createOrder("elements");
+      const beginCheckout = beginCheckoutEvent();
+
+      if (!data.client_secret || !data.session_id) {
+        // This deploy cannot pay on the page after all: Stripe's page, where
+        // Apple Pay shows too. The approved payment method is simply unused.
+        const checkoutUrl: string | undefined = data.checkout_url ?? data.url;
+        if (!checkoutUrl) throw new Error("No checkout URL returned from server.");
+        leaving = true;
+        trackGaEventThen(beginCheckout, () => {
+          window.location.href = checkoutUrl;
+        });
+        return;
+      }
+
+      trackGaEvent(beginCheckout);
+      const stripe = await stripeJs();
+      const result = stripe
+        ? await confirmWithWallet(stripe, {
+            clientSecret: data.client_secret,
+            paymentMethodId,
+            authorizedMinor,
+          })
+        : ({ type: "failed", message: "Stripe.js is not loaded." } as const);
+
+      if (result.type === "paid") {
+        // Stripe is taking this tab to the confirmation page.
+        leaving = true;
+        return;
+      }
+
+      if (result.type === "total_changed") {
+        // Keep this Order: its payment step shows the real total, with Apple
+        // Pay on top again, and charges nothing until the shopper agrees.
+        setPaymentNotice(
+          `Your total is ${formatCurrency(result.total, currency)}, not the ` +
+            `${formatCurrency(fromMinorUnits(authorizedMinor, currency), currency)} Apple Pay showed, ` +
+            `so nothing has been charged. Check it and pay below.`,
+        );
+        setPayment({
+          clientSecret: data.client_secret,
+          sessionId: data.session_id,
+          orderNumber: data.order_number,
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      // Declined, or the Session would not load: close this Order so that
+      // another try starts clean and its points are free again.
+      console.warn("[checkout] Apple Pay payment did not go through:", result.message);
+      releaseSession(data.session_id);
+      throw new Error("Apple Pay didn't go through, and nothing has been charged. Try again, or pay by card or PayNow.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      if (!leaving) setSubmitting(false);
+    }
+  }
+
+  function applePayFailed() {
+    const message = "Apple Pay didn't go through, and nothing has been charged. Try again, or pay by card or PayNow.";
+    setSubmitError(message);
+    toast.error(message);
   }
 
   // ---------------------------------------------------------------------------
@@ -776,6 +904,8 @@ export default function CheckoutPage() {
 
   // Shared Pay CTA label so the inline (desktop) and sticky (mobile) buttons
   // never drift.
+  const walletPlace = wide ? "inline" : "bar";
+  const walletShown = walletAt === walletPlace;
   const payLabel = submitting ? (
     <>
       <Loader2 className="size-4 animate-spin" />
@@ -784,9 +914,52 @@ export default function CheckoutPage() {
   ) : (
     <>
       <CreditCard className="size-4" />
-      {stripeReady ? "Continue to payment" : "Pay with Stripe"}
+      {/* Beside Apple Pay, say what this button is for instead. */}
+      {walletShown ? "Card or PayNow" : stripeReady ? "Continue to payment" : "Pay with Stripe"}
     </>
   );
+
+  /**
+   * The checkout button, with Apple Pay beside it where this device can use it.
+   * Only one Apple Pay button is mounted: here when `place` is where it shows
+   * at this width. Until Stripe says Apple Pay can show, it sits unseen under
+   * the checkout button, so nothing moves on a device without it.
+   */
+  function checkoutButtons(place: "inline" | "bar") {
+    const withWallet = stripeReady && walletAmount > 0 && place === walletPlace;
+    // Two equal columns once Apple Pay shows (flex would make the padded button wider).
+    return (
+      <div className={walletShown ? "grid grid-cols-2 gap-3" : "relative"}>
+        {withWallet && (
+          <div
+            className={
+              walletShown ? "min-w-0" : "pointer-events-none invisible absolute inset-x-0 top-0"
+            }
+            aria-hidden={walletShown ? undefined : true}
+          >
+            <ApplePayButton
+              amountMinor={walletAmount}
+              currency={currency}
+              height={place === "bar" ? 44 : 40}
+              onAvailable={(ok) => setWalletAt(ok ? place : null)}
+              onTap={tapApplePay}
+              onApproved={payWithApplePay}
+              onFailed={applePayFailed}
+            />
+          </div>
+        )}
+        <Button
+          type="submit"
+          form="checkout-form"
+          size="lg"
+          className="w-full min-w-0"
+          disabled={submitting}
+        >
+          {payLabel}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className={`max-w-5xl mx-auto px-4 py-8 ${mobileStickyActionBarSpacerClassName}`}>
@@ -830,6 +1003,7 @@ export default function CheckoutPage() {
             <PayOnPage
               key={payment.clientSecret}
               clientSecret={payment.clientSecret}
+              notice={paymentNotice}
               email={form.email}
               shipTo={[
                 form.recipient,
@@ -1271,14 +1445,7 @@ export default function CheckoutPage() {
 
             {/* Submit / payment handoff (desktop inline) */}
             <div id="payment" data-section="payment" className="max-md:hidden">
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full"
-              disabled={submitting}
-            >
-              {payLabel}
-            </Button>
+              {checkoutButtons("inline")}
             </div>
           </form>
           )}
@@ -1287,19 +1454,7 @@ export default function CheckoutPage() {
         {/* Mobile sticky Pay CTA — submits the same #checkout-form via the
             button's form attribute, so no duplicated submit logic. The payment
             step brings its own bar, with the Pay button. */}
-        {!payment && (
-          <MobileStickyActionBar>
-            <Button
-              type="submit"
-              form="checkout-form"
-              size="lg"
-              className="w-full"
-              disabled={submitting}
-            >
-              {payLabel}
-            </Button>
-          </MobileStickyActionBar>
-        )}
+        {!payment && <MobileStickyActionBar>{checkoutButtons("bar")}</MobileStickyActionBar>}
 
         {/* Right: Desktop order summary */}
         <div className="hidden lg:block lg:col-span-2" id="order-summary" data-section="order-summary">

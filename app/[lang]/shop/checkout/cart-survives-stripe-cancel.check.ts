@@ -1,7 +1,7 @@
 /**
  * The local cart must survive a cancelled Stripe Checkout: the checkout page
- * redirects to Stripe (or opens the on-page payment step, ADR 0052) without
- * clearing the cart, and the confirmation page clears it only after the paid
+ * redirects to Stripe (or opens the on-page payment step, or pays with Apple
+ * Pay from the form, ADR 0052) without clearing the cart, and the confirmation page clears it only after the paid
  * order is loaded for the Stripe session.
  * Run: npx tsx "app/[lang]/shop/checkout/cart-survives-stripe-cancel.check.ts"
  * CI runs it through `__tests__/checkout-page-surface.test.ts`.
@@ -13,6 +13,7 @@ import { join } from "node:path";
 const ROOT = process.cwd();
 const checkout = readFileSync(join(ROOT, "app/[lang]/shop/checkout/page.tsx"), "utf8");
 const payOnPage = readFileSync(join(ROOT, "app/[lang]/shop/checkout/pay-on-page.tsx"), "utf8");
+const applePay = readFileSync(join(ROOT, "app/[lang]/shop/checkout/apple-pay-button.tsx"), "utf8");
 const confirmation = readFileSync(
   join(ROOT, "app/[lang]/shop/checkout/confirmation/page.tsx"),
   "utf8"
@@ -22,6 +23,7 @@ const confirmation = readFileSync(
 // page or on ours.
 assert.doesNotMatch(checkout, /clearCart\(\)/);
 assert.doesNotMatch(payOnPage, /clearCart|useCart/);
+assert.doesNotMatch(applePay, /clearCart|useCart/);
 assert.match(checkout, /const checkoutUrl: string = data\.checkout_url \?\? data\.url;/);
 assert.match(checkout, /window\.location\.href = checkoutUrl;/);
 

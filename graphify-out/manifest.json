@@ -8166,9 +8166,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/shop/checkout/cart-survives-stripe-cancel.check.ts": {
-    "mtime": 1794826729.755438,
-    "seen": 1794827423.6570356,
-    "ast_hash": "d6b01e6370bf153c8494975e3f8f5e97",
+    "mtime": 1794833799.9121358,
+    "seen": 1794834114.4502215,
+    "ast_hash": "0c5e0cca0174806af3272d99a3efc7a4",
     "semantic_hash": ""
   },
   "app/api/results/[id]/finish/route.ts": {
@@ -14148,9 +14148,9 @@
     "semantic_hash": ""
   },
   "docs/data-flows/purchases-to-inventory.md": {
-    "mtime": 1794826770.7674296,
-    "seen": 1794827423.6613848,
-    "ast_hash": "493f4cc0f5efd9ffeaec86123f55bb00",
+    "mtime": 1794834027.9278228,
+    "seen": 1794834114.4541812,
+    "ast_hash": "d442139d16a3757da834bb801c7cc1f4",
     "semantic_hash": ""
   },
   "docs/data-flows/settings.md": {
@@ -16734,9 +16734,9 @@
     "semantic_hash": ""
   },
   "docs/adr/README.md": {
-    "mtime": 1794826770.766539,
-    "seen": 1794827423.6613748,
-    "ast_hash": "550815c894fd23381f7047552724c08c",
+    "mtime": 1794834052.8451629,
+    "seen": 1794834114.4541726,
+    "ast_hash": "2985a73bcf3855d11dc93f19585b74a2",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/shop.mjs": {
@@ -18930,9 +18930,21 @@
     "semantic_hash": ""
   },
   "docs/adr/0052-shop-checkout-pays-on-our-page.md": {
-    "mtime": 1794826761.168632,
-    "seen": 1794827423.6613731,
-    "ast_hash": "f4281f731768b7b24db9275caa971bcf",
+    "mtime": 1794834052.8419802,
+    "seen": 1794834114.454171,
+    "ast_hash": "88764346258de49f5fe9847149ae96da",
+    "semantic_hash": ""
+  },
+  "lib/stripe/__tests__/wallet.test.ts": {
+    "mtime": 1794833793.167809,
+    "seen": 1794834114.4526327,
+    "ast_hash": "96e411a52650baf582fae31368e548d4",
+    "semantic_hash": ""
+  },
+  "lib/stripe/wallet.ts": {
+    "mtime": 1794833706.3091896,
+    "seen": 1794834114.4526553,
+    "ast_hash": "ec2c936960391ba2cfb81773e35f5917",
     "semantic_hash": ""
   }
 }

@@ -1,6 +1,8 @@
 # Shop checkout pays on our page, with Apple Pay beside the card form
 
 Status: Accepted (owner request 2026-11-16: "Apple Pay in our website when the user wants to pay").
+Amended 2026-11-16 (owner: "keep our layout and add an Apple Pay button beside the pay with stripe
+button"): see **Apple Pay beside the checkout button** below.
 Amends nothing: the hosted page stays as the fallback, and every other Checkout is unchanged.
 
 ## Context
@@ -61,15 +63,51 @@ redeploy. Unsetting it and redeploying turns it off. Vercel preview URLs change 
 cannot be registered, so Apple Pay on our page shows only on registered domains; card and PayNow
 work on any.
 
+## Apple Pay beside the checkout button
+
+The payment step above stays as it is. The form also gets an Apple Pay button beside the checkout
+button, so an iPhone shopper can pay with one tap, without first reaching the payment step.
+
+- **Why it cannot use the Session directly.** Apple Pay's sheet must open on the tap, and a
+  Session-backed Express Checkout Element only exists once the Session does. Making the Order
+  every time the form is filled in would leave an abandoned Order for every visitor. So this
+  button runs in Stripe's **deferred mode** (`elements({ mode: "payment", amount, currency,
+  paymentMethodCreation: "manual" })`, `app/[lang]/shop/checkout/apple-pay-button.tsx`). The
+  sheet shows the page's total, and approving it only makes a PaymentMethod.
+- **Then the usual path.** After approval the page makes the Order through the same
+  `POST /api/shop/checkout` (`payment_ui: "elements"`) and pays its Session with
+  `checkout.confirm({ paymentMethod })` (`lib/stripe/wallet.ts`). Stripe documents this as
+  confirming with "a previously collected PaymentMethod". Fulfilment, expiry, reconcile and
+  refunds still read a Checkout Session. There is no second fulfilment path, which is what ruled
+  out Payment Intents above.
+- **The amount the shopper approved is the amount charged, or nothing is.** The page's total
+  leaves out what only the server prices: exclusive tax, Stripe Tax, a partner's own-purchase
+  discount, a price that moved. If the Session's total differs from what the sheet showed, it is
+  not confirmed. The shopper lands on the payment step, which shows the real total, with Apple
+  Pay on top, and a line saying nothing was charged.
+- **Failures leave nothing behind.** If the sheet hands over no PaymentMethod, nothing was made.
+  If the Session will not load or the payment is declined, the Order is closed through
+  `/api/shop/checkout/release`, as **Edit** does, and the shopper can tap again or use the other
+  button.
+- **The tap checks the form first.** It is checked exactly as the checkout button checks it, and
+  the sheet stays shut while it has errors or another payment is under way. Nothing on the tap
+  waits on the network, because Stripe allows one second.
+- **What shows.** Apple Pay only: Google Pay and Link stay on the payment step. The button shows
+  only where Stripe says Apple Pay can pay (an Apple device with a card in Wallet, on a registered
+  domain, with the publishable key set). Until then it sits unseen, so nothing moves on any other
+  device. Beside it, the checkout button reads **Card or PayNow**. There is one Apple Pay button
+  at a time: inline on a wide screen, in the sticky bar on a phone.
+
 ## Considered options
 
 - **Leave it on Stripe's page** — rejected as the whole answer, kept as the fallback. Apple Pay
   works there today, but only after a redirect off our site.
 - **Payment Intents with a deferred intent** (the Express Checkout Element shows before any
-  server object exists, and the Order is made on confirm) — rejected. It is the only way to put
-  Apple Pay *above* the form with nothing created yet, but it moves shop payment off Checkout
-  Sessions: a second fulfilment path in the webhook (`payment_intent.succeeded`), its own expiry,
-  its own reconcile, for every order, to save one tap.
+  server object exists, and the Order is made on confirm) — rejected. It moves shop payment off
+  Checkout Sessions: a second fulfilment path in the webhook (`payment_intent.succeeded`), its
+  own expiry, its own reconcile, for every order, to save one tap. The amendment above keeps the
+  deferred button and drops the Payment Intent: the PaymentMethod it makes pays a Checkout
+  Session.
 - **Apple Pay sheet collects the address** (express checkout before the form) — not now. Our
   shipping is priced live by Easyship and has no fallback (ADR 0020, 0022), so the sheet would
   have to re-quote on every `shippingaddresschange` within Apple's time limit. Possible later on
@@ -87,7 +125,9 @@ work on any.
 - New dependencies: `@stripe/stripe-js`, `@stripe/react-stripe-js` (the payment step is loaded
   only when the shopper reaches it).
 - The checkout button reads **Continue to payment** when the step is on this page, and **Pay with
-  Stripe** when it is not.
+  Stripe** when it is not. Beside the Apple Pay button it reads **Card or PayNow**.
+- Amendment: `app/[lang]/shop/checkout/apple-pay-button.tsx` and `lib/stripe/wallet.ts`. No
+  server change.
 - New Order timeline event `checkout_released`.
 - Unchanged: Staff-order payment links, Result holds and top-ups, Re-adjustment Checkouts. They
   stay on the hosted page, where Apple Pay already shows.

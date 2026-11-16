@@ -85,6 +85,11 @@ goods, and every other call sees it set and stops.
    Session, and everything below reads it the same way. Going back from the
    on-page step calls `POST /api/shop/checkout/release`, which expires the
    Session and cancels the Order at once, as `checkout.session.expired` would.
+   The Apple Pay button beside the checkout button makes the Order the same
+   way, only after the shopper approves in the Apple Pay sheet, then pays its
+   Session with that Apple Pay payment method if the Session totals what the
+   sheet showed. If not, it charges nothing and opens the on-page step. A
+   declined payment releases the Order the same way.
    It validates stock without writing any:
    - Standard lines are checked against `variant_stock.stock_available`.
    - Customised lines are re-quoted from Costings by `quoteCustomization`.

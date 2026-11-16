@@ -45,6 +45,11 @@ export interface PayOnPageProps {
   shipTo: string;
   /** The delivery method's name. */
   delivery: string;
+  /**
+   * Why the shopper is here instead of paid: Apple Pay beside the checkout
+   * button showed a total that the server's pricing did not match.
+   */
+  notice?: string | null;
   onEdit: (opts?: { payOnStripe?: boolean }) => void;
 }
 
@@ -101,7 +106,7 @@ export default function PayOnPage(props: PayOnPageProps) {
   );
 }
 
-function PaymentStep({ email, shipTo, delivery, onEdit, dark }: PayOnPageProps & { dark: boolean }) {
+function PaymentStep({ email, shipTo, delivery, notice, onEdit, dark }: PayOnPageProps & { dark: boolean }) {
   const state = useCheckoutElements();
   const [wallets, setWallets] = useState<"pending" | "shown" | "none">("pending");
   const [paying, setPaying] = useState(false);
@@ -181,6 +186,12 @@ function PaymentStep({ email, shipTo, delivery, onEdit, dark }: PayOnPageProps &
 
       <section id="payment" data-section="payment" className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold">Payment</h2>
+
+        {notice && (
+          <div role="status" className="rounded-lg border bg-muted/50 px-4 py-3 text-sm">
+            {notice}
+          </div>
+        )}
 
         {failed ? (
           <div
