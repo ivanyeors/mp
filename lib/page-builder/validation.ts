@@ -1,6 +1,7 @@
 import { z } from "zod/v4";
 import type { SectionType, CustomSectionType } from "@/lib/types/landing-sections";
 import { tiktokPostId } from "@/lib/tiktok/embed";
+import { MAX_TIKTOK_VIDEOS, TIKTOK_HOOK_MAX_CHARS, isAllowedLinkUrl } from "@/lib/page-builder/link-rules";
 
 /**
  * Write-path validation for Landing sections (see CONTEXT.md — **Landing section**).
@@ -137,21 +138,7 @@ export const SectionContentSchema = z
 
 export type ValidatedSectionContent = z.infer<typeof SectionContentSchema>;
 
-/** A button link: a path on this site, or an https URL. */
-export function isAllowedLinkUrl(value: string): boolean {
-  const url = value.trim();
-  if (url.startsWith("/")) return !url.startsWith("//") && !url.startsWith("/\\");
-  try {
-    return new URL(url).protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-/** More than this and the band is a wall, not a pick; the cards are meant to be curated. */
-export const MAX_TIKTOK_VIDEOS = 20;
-/** Hard ceiling on a card's hook. The card shows three lines (about 50 characters). */
-export const TIKTOK_HOOK_MAX_CHARS = 120;
+export { isAllowedLinkUrl, MAX_TIKTOK_VIDEOS, TIKTOK_HOOK_MAX_CHARS };
 
 /** Every string in a value that may be a bare string or a locale map. */
 function localisedStrings(value: unknown): string[] {

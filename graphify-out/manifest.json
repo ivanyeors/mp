@@ -7362,9 +7362,9 @@
     "semantic_hash": ""
   },
   "lib/page-builder/validation.ts": {
-    "mtime": 1794802323.6092162,
-    "seen": 1794802976.9183164,
-    "ast_hash": "476b6d702f0f727e65f8ae5b9a8812a8",
+    "mtime": 1794803129.1589177,
+    "seen": 1794803189.2514703,
+    "ast_hash": "0ffbeef0ef6e0b9fc6de8834d7e55b0c",
     "semantic_hash": ""
   },
   "lib/page-builder/__tests__/locale.test.ts": {
@@ -18945,6 +18945,12 @@
     "mtime": 1794802525.7391346,
     "seen": 1794802976.9192886,
     "ast_hash": "580673419fbc7517dad8829bc0362d67",
+    "semantic_hash": ""
+  },
+  "lib/page-builder/link-rules.ts": {
+    "mtime": 1794803124.4985824,
+    "seen": 1794803189.2514658,
+    "ast_hash": "ff5812a9f9af073f556f55ecf0678bf2",
     "semantic_hash": ""
   }
 }

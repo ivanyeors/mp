@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
-import { MAX_TIKTOK_VIDEOS, isAllowedLinkUrl } from "@/lib/page-builder/validation";
+import { MAX_TIKTOK_VIDEOS, isAllowedLinkUrl } from "@/lib/page-builder/link-rules";
 import { readLocalisedField, writeLocalisedField, writeLocalisedValue } from "@/lib/page-builder/locale";
 import { tiktokPostId } from "@/lib/tiktok/embed";
 
