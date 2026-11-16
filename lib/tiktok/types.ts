@@ -21,9 +21,6 @@ export interface TikTokLabels {
   playVideo: string;
   pauseScrolling: string;
   resumeScrolling: string;
-  previousVideo: string;
-  nextVideo: string;
-  watchOnTikTok: string;
   /** "{current} of {total}". */
   position: string;
   /** Spoken title for a video with no hook: "TikTok video {n}". */
@@ -31,9 +28,6 @@ export interface TikTokLabels {
   /** The floating player's spoken name. */
   player: string;
   closePlayer: string;
-  enlargePlayer: string;
-  shrinkPlayer: string;
-  movePlayer: string;
   /** On the card whose video is playing. */
   nowPlaying: string;
 }
@@ -42,16 +36,10 @@ export const DEFAULT_TIKTOK_LABELS: TikTokLabels = {
   playVideo: "Play video",
   pauseScrolling: "Pause videos",
   resumeScrolling: "Play videos",
-  previousVideo: "Previous video",
-  nextVideo: "Next video",
-  watchOnTikTok: "Watch on TikTok",
   position: "{current} of {total}",
   untitled: "TikTok video {n}",
   player: "Video player",
   closePlayer: "Close video",
-  enlargePlayer: "Make video bigger",
-  shrinkPlayer: "Make video smaller",
-  movePlayer: "Move video to the other side",
   nowPlaying: "Playing",
 };
 

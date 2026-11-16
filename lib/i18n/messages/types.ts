@@ -95,9 +95,6 @@ export type Messages = {
     playVideo: string;
     pauseScrolling: string;
     resumeScrolling: string;
-    previousVideo: string;
-    nextVideo: string;
-    watchOnTikTok: string;
     /** "{current} of {total}" */
     position: string;
     /** "TikTok video {n}" */
@@ -105,9 +102,6 @@ export type Messages = {
     /** The floating player's spoken name. */
     player: string;
     closePlayer: string;
-    enlargePlayer: string;
-    shrinkPlayer: string;
-    movePlayer: string;
     /** On the card whose video is playing. */
     nowPlaying: string;
   };

@@ -1,24 +1,24 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Maximize2, Minimize2, X } from "lucide-react";
+import { X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { TikTokIcon } from "@/components/tiktok/tiktok-icon";
 import { TikTokPlayer, type TikTokPlayerHandle } from "@/components/tiktok/tiktok-player";
 import type { TikTokPipSession } from "@/components/tiktok/tiktok-pip-provider";
-import { stripLocale } from "@/lib/i18n/routing";
-import type { TikTokPlayerOptions } from "@/lib/tiktok/embed";
-import { DEFAULT_PIP_CORNER, nearestPipCorner, otherSidePipCorner, type PipCorner } from "@/lib/tiktok/pip";
+import {
+  TIKTOK_STATE_BUFFERING,
+  TIKTOK_STATE_PLAYING,
+  type TikTokPlayerEvent,
+  type TikTokPlayerOptions,
+} from "@/lib/tiktok/embed";
 import { fillLabel } from "@/lib/tiktok/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Opened by a tap, so the player may start with sound. Our own button sits
- * under the player, so TikTok's caption and sound credit are left off; the end
- * screen recommends only this account's posts (see `tiktokPlayerSrc`).
+ * Opened by a tap, so the player may start with sound. Only TikTok's play,
+ * volume and progress controls show (volume matters: where a browser starts the
+ * video muted, it is how the visitor turns the sound on). The end screen
+ * recommends only this account's posts (see `tiktokPlayerSrc`).
  */
 const PLAYER: TikTokPlayerOptions = {
   autoplay: true,
@@ -26,64 +26,44 @@ const PLAYER: TikTokPlayerOptions = {
   closedCaption: true,
   description: false,
   musicInfo: false,
+  fullscreenButton: false,
+  timestamp: false,
 };
 
-const SIDE = "1rem";
-/**
- * `--tiktok-pip-top`, set by class on the window: below the floating logo pill
- * on a phone, which a top corner would otherwise cover. From md up the pill is
- * well clear of the corners.
- */
+/** The site's navy-to-blue (the dock's gradient) ending in its bright accent, glowing under the window. */
+const GLOW = "linear-gradient(160deg, #001736 0%, #18478f 40%, #2b69bc 70%, #1298ff 100%)";
+
+const SIDE = "0.75rem";
+/** `--tiktok-pip-top`, set by class: below the floating logo pill on a phone. */
 const TOP = "var(--tiktok-pip-top)";
 /**
  * The chat bubble's offset (support-chat-window.tsx): above the phone dock, a
  * page's or the cart's action bar, and the analytics notice.
  */
 const BOTTOM =
-  "calc(max(var(--safe-bottom), var(--app-dock-clearance), var(--mobile-bottom-bar-height, 0px)) + var(--analytics-notice-clearance, 0px) + 1rem)";
+  "calc(max(var(--safe-bottom), var(--app-dock-clearance), var(--mobile-bottom-bar-height, 0px)) + var(--analytics-notice-clearance, 0px) + 0.75rem)";
+/** The size set by class, narrowed when the window is too short for a 9:16 video that wide. */
+const WIDTH = `min(var(--tiktok-pip-w), calc((100dvh - ${TOP} - ${BOTTOM}) * 9 / 16))`;
+
 /**
- * The large size: as wide as fits the window's height between those offsets,
- * after the header and button (`--tiktok-pip-chrome`): at most 20rem, and
- * never narrower than the small size on a tablet.
+ * Where the window sits for a position the visitor dragged it to: CSS keeps it
+ * inside those margins, on every frame of a drag and whenever the window resizes.
  */
-const LARGE_WIDTH = `max(11rem, min(20rem, calc(100vw - 2 * ${SIDE}), calc((100dvh - ${TOP} - ${BOTTOM} - var(--tiktok-pip-chrome)) * 9 / 16)))`;
+const leftAt = (x: number) => `clamp(${SIDE}, ${Math.round(x)}px, calc(100% - ${SIDE} - var(--tiktok-pip-width)))`;
+const topAt = (y: number) =>
+  `clamp(${TOP}, ${Math.round(y)}px, calc(100% - ${BOTTOM} - var(--tiktok-pip-width) * 16 / 9))`;
 
-function cornerStyle(corner: PipCorner): React.CSSProperties {
-  const [vertical, horizontal] = corner.split("-") as ["top" | "bottom", "left" | "right"];
-  return { [vertical]: vertical === "top" ? TOP : BOTTOM, [horizontal]: SIDE };
-}
+/** Where the visitor last left it, for the next video this visit. Starts bottom right. */
+const remembered = { x: 1e5, y: 1e5 };
 
-function isInternal(href: string): boolean {
-  return href.startsWith("/") && !href.startsWith("//");
-}
+/** Below this much movement a press is a tap (play or pause), not a drag. */
+const DRAG_THRESHOLD = 4;
 
-/** Whether a button link points at the page the visitor is on. */
-function isCurrentPage(href: string, pathname: string): boolean {
-  if (!isInternal(href)) return false;
-  return stripLocale(href.split(/[?#]/)[0]) === stripLocale(pathname);
-}
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-/** Where the visitor last left it and at what size, for the next video this visit. */
-const remembered: { corner: PipCorner; large: boolean } = { corner: DEFAULT_PIP_CORNER, large: false };
-
-function HeaderButton({ label, className, ...props }: React.ComponentProps<"button"> & { label: string }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      className={cn(
-        "inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
+/**
+ * Leaves TikTok's control row at the bottom of the video to TikTok: everything
+ * above it is the surface the window is dragged by.
+ */
+const CONTROLS_HEIGHT = "3.5rem";
 
 interface TikTokPipProps {
   session: TikTokPipSession;
@@ -92,65 +72,33 @@ interface TikTokPipProps {
 }
 
 /**
- * A TikTok video in a small window docked to a corner of the screen, over the
- * page rather than in front of it: the page keeps scrolling and working, and
- * the window follows the visitor to the page its button opens.
- *
- * Drag it by its top bar to any corner, or use the move button for the other
- * side. It has a small and a large size, previous and next through the set,
- * and moves on to the next video when one ends. Opened through
- * `useTikTokPip().open` (tiktok-pip-provider.tsx).
+ * A TikTok video floating over the page, nothing around it but a blue glow:
+ * the page keeps scrolling and working behind it, and it follows the visitor
+ * to other pages. Drag it anywhere by the video; a tap plays or pauses. The
+ * one control of ours is close, which shows while the pointer is over the
+ * window (always, on touch screens). It moves on to the next video in the set
+ * when one ends. Opened through `useTikTokPip().open` (tiktok-pip-provider.tsx).
  */
 export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPipProps) {
   const { videos, index, labels, opener, openCount } = session;
   const video = videos[index];
   const many = videos.length > 1;
-  const pathname = usePathname() ?? "/";
 
-  const [corner, setCorner] = React.useState<PipCorner>(remembered.corner);
-  const [large, setLarge] = React.useState(remembered.large);
+  const [position, setPosition] = React.useState(remembered);
   const [dragging, setDragging] = React.useState(false);
-  // Bumped on every snap, so a drag let go in the same corner still slides home.
-  const [snaps, setSnaps] = React.useState(0);
 
   const box = React.useRef<HTMLElement>(null);
   const player = React.useRef<TikTokPlayerHandle>(null);
-  const drag = React.useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
-  const slideFrom = React.useRef<DOMRect | null>(null);
+  const drag = React.useRef<{ id: number; x: number; y: number; left: number; top: number; moved: boolean } | null>(
+    null,
+  );
+  // Autoplay is on, so assume playing until TikTok says otherwise.
+  const playing = React.useRef(true);
 
   // Take focus each time a video is picked, so keyboard and screen reader users land in the player.
   React.useEffect(() => {
     box.current?.focus({ preventScroll: true });
   }, [openCount]);
-
-  // Slide from where it was (mid-drag, or the old corner) to where it now docks.
-  React.useLayoutEffect(() => {
-    const el = box.current;
-    const from = slideFrom.current;
-    slideFrom.current = null;
-    if (!el || !from) return;
-    el.style.transform = "";
-    const to = el.getBoundingClientRect();
-    const dx = from.left - to.left;
-    const dy = from.top - to.top;
-    if ((dx === 0 && dy === 0) || prefersReducedMotion()) return;
-    el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }], {
-      duration: 220,
-      easing: "cubic-bezier(0.2, 0, 0, 1)",
-    });
-  }, [corner, snaps]);
-
-  const dock = (next: PipCorner) => {
-    if (box.current) slideFrom.current = box.current.getBoundingClientRect();
-    remembered.corner = next;
-    setCorner(next);
-    setSnaps((n) => n + 1);
-  };
-
-  const resize = (next: boolean) => {
-    remembered.large = next;
-    setLarge(next);
-  };
 
   /** Closes; focus goes back to the card that opened it when the visitor closed it from the keyboard. */
   const close = (fromKeyboard: boolean) => {
@@ -160,16 +108,32 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
     }
   };
 
-  const go = (step: number) => onIndexChange((index + step + videos.length) % videos.length);
+  const go = (step: number) => {
+    playing.current = true;
+    onIndexChange((index + step + videos.length) % videos.length);
+  };
 
   // Stop after the last one rather than looping the visitor forever.
   const onEnded = () => {
-    if (index < videos.length - 1) onIndexChange(index + 1);
+    if (index < videos.length - 1) go(1);
+  };
+
+  const onEvent = (event: TikTokPlayerEvent) => {
+    if (event.type === "onStateChange") {
+      playing.current = event.value === TIKTOK_STATE_PLAYING || event.value === TIKTOK_STATE_BUFFERING;
+    }
+  };
+
+  const togglePlay = () => {
+    if (playing.current) player.current?.pause();
+    else player.current?.play();
+    playing.current = !playing.current;
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || (e.target as HTMLElement).closest("button, a")) return;
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+    if (e.button !== 0 || !box.current) return;
+    const r = box.current.getBoundingClientRect();
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, left: r.left, top: r.top, moved: false };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -179,34 +143,33 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
     const dx = e.clientX - d.x;
     const dy = e.clientY - d.y;
     if (!d.moved) {
-      if (Math.hypot(dx, dy) < 4) return;
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       d.moved = true;
       setDragging(true);
     }
-    box.current.style.transform = `translate(${dx}px, ${dy}px)`;
+    // Straight to the element: a re-render per pointer move is wasted work.
+    box.current.style.left = leftAt(d.left + dx);
+    box.current.style.top = topAt(d.top + dy);
   };
 
   const onPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
     if (!d || d.id !== e.pointerId) return;
     drag.current = null;
-    if (!d.moved || !box.current) return;
+    if (!d.moved) {
+      if (e.type === "pointerup") togglePlay();
+      return;
+    }
     setDragging(false);
-    const r = box.current.getBoundingClientRect();
-    dock(
-      nearestPipCorner(
-        { x: r.left + r.width / 2, y: r.top + r.height / 2 },
-        { width: window.innerWidth, height: window.innerHeight },
-      ),
-    );
+    const next = { x: d.left + e.clientX - d.x, y: d.top + e.clientY - d.y };
+    remembered.x = next.x;
+    remembered.y = next.y;
+    setPosition(next);
   };
 
   if (!video) return null;
 
   const title = video.hook?.trim() || fillLabel(labels.untitled, { n: index + 1 });
-  const external = !isInternal(video.buttonUrl);
-  // Once the visitor has followed the button, it would only reload the page they are on.
-  const showButton = !isCurrentPage(video.buttonUrl, pathname);
 
   return (
     <section
@@ -214,10 +177,6 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
       tabIndex={-1}
       aria-label={`${labels.player}: ${title}`}
       data-tiktok-pip=""
-      data-corner={corner}
-      data-size={large ? "large" : "small"}
-      // Public pages force headings and some text sizes; this window sizes its own.
-      data-typography-scope="app"
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.stopPropagation();
@@ -229,61 +188,28 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
         }
       }}
       className={cn(
-        "@container fixed z-40 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        "transition-[width] duration-200 ease-out motion-reduce:transition-none",
-        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4",
-        "[--tiktok-pip-top:calc(var(--mobile-top-clearance)_+_4.75rem)] md:[--tiktok-pip-top:1rem]",
-        // Header and button around the video in the large size (the hook joins them from md up).
-        "[--tiktok-pip-chrome:6.5rem] md:[--tiktok-pip-chrome:9.5rem]",
-        !large && "w-40 sm:w-44 md:w-52",
+        "group/pip fixed z-40 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95",
+        "[--tiktok-pip-top:calc(var(--mobile-top-clearance)_+_4.75rem)] md:[--tiktok-pip-top:0.75rem]",
+        "[--tiktok-pip-w:10rem] sm:[--tiktok-pip-w:11rem] md:[--tiktok-pip-w:14rem]",
       )}
-      style={{ ...cornerStyle(corner), ...(large ? { width: LARGE_WIDTH } : null) }}
+      style={
+        {
+          "--tiktok-pip-width": WIDTH,
+          width: "var(--tiktok-pip-width)",
+          left: leftAt(position.x),
+          top: topAt(position.y),
+        } as React.CSSProperties
+      }
     >
-      {/* The bar is the handle it is dragged by; its buttons work as usual. */}
+      {/* The drop shadow: the brand gradient, blurred, showing round the window's edges. */}
       <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
-        className={cn(
-          "flex h-9 shrink-0 touch-none select-none items-center gap-0.5 px-1",
-          dragging ? "cursor-grabbing" : "cursor-grab",
-        )}
-      >
-        <HeaderButton label={labels.movePlayer} onClick={() => dock(otherSidePipCorner(corner))}>
-          <ArrowLeftRight />
-        </HeaderButton>
-        {many && (
-          // Dropped when the window is too narrow for them (the small size on a phone): it
-          // still moves on when a video ends, and the large size has room.
-          <div className="flex items-center gap-0.5 @max-[10.5rem]:hidden">
-            <HeaderButton label={labels.previousVideo} onClick={() => go(-1)}>
-              <ChevronLeft />
-            </HeaderButton>
-            <span aria-hidden className="min-w-8 text-center text-xs tabular-nums text-muted-foreground @max-[14.5rem]:hidden">
-              {index + 1}/{videos.length}
-            </span>
-            <HeaderButton label={labels.nextVideo} onClick={() => go(1)}>
-              <ChevronRight />
-            </HeaderButton>
-          </div>
-        )}
-        <span className="flex-1" />
-        <HeaderButton label={large ? labels.shrinkPlayer : labels.enlargePlayer} onClick={() => resize(!large)}>
-          {large ? <Minimize2 /> : <Maximize2 />}
-        </HeaderButton>
-        <HeaderButton label={labels.closePlayer} onClick={(e) => close(e.detail === 0)}>
-          <X />
-        </HeaderButton>
-      </div>
+        aria-hidden
+        className="pointer-events-none absolute -inset-x-1 -bottom-4 top-6 -z-10 rounded-[1.75rem] opacity-90 blur-xl"
+        style={{ backgroundImage: GLOW }}
+      />
 
-      <span className="sr-only" aria-live="polite">
-        {many ? `${fillLabel(labels.position, { current: index + 1, total: videos.length })}: ` : ""}
-        {title}
-      </span>
-
-      {/* A drag that crosses the player would hand the pointer to TikTok's frame. */}
-      <div className={cn("relative aspect-[9/16] w-full shrink-0 bg-black", dragging && "pointer-events-none")}>
+      <div className="relative aspect-[9/16] w-full overflow-hidden rounded-2xl bg-black ring-1 ring-white/10">
         <TikTokPlayer
           key={video.id}
           ref={player}
@@ -292,47 +218,45 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
           loading="eager"
           options={PLAYER}
           onEnded={onEnded}
+          onEvent={onEvent}
+          // A drag that crosses the control row would hand the pointer to TikTok's frame.
+          className={cn(dragging && "pointer-events-none")}
         />
+
+        {/* Drag anywhere above TikTok's controls; a tap there plays or pauses. */}
+        <div
+          aria-hidden
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          className={cn(
+            "absolute inset-x-0 top-0 touch-none select-none",
+            dragging ? "cursor-grabbing" : "cursor-grab",
+          )}
+          style={{ bottom: CONTROLS_HEIGHT }}
+        />
+
+        <button
+          type="button"
+          onClick={(e) => close(e.detail === 0)}
+          aria-label={labels.closePlayer}
+          title={labels.closePlayer}
+          className={cn(
+            "absolute left-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity duration-150 hover:bg-black/70 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white pointer-coarse:size-8",
+            // Shown while the pointer is over the window; always there on touch screens.
+            // and when the window was reached from the keyboard.
+            "[@media(hover:hover)]:opacity-0 group-hover/pip:opacity-100 group-focus-visible/pip:opacity-100",
+          )}
+        >
+          <X className="size-3.5" strokeWidth={2.5} />
+        </button>
       </div>
 
-      {(showButton || large) && (
-        <div className="space-y-2 p-2">
-          {large && video.hook?.trim() && (
-            <p aria-hidden className="line-clamp-2 px-1 text-sm font-medium leading-snug max-md:hidden">
-              {video.hook}
-            </p>
-          )}
-          <div className="flex items-center justify-end gap-1">
-            {showButton && (
-              <Button asChild size="sm" className={cn("min-w-0 flex-1 rounded-full", large ? "h-10" : "h-9")}>
-                {external ? (
-                  <a href={video.buttonUrl} target="_blank" rel="noopener noreferrer" onClick={() => player.current?.pause()}>
-                    <span className="truncate">{video.buttonLabel}</span>
-                  </a>
-                ) : (
-                  // Stays playing on the page the button opens, out of the way in the small size.
-                  <Link href={video.buttonUrl} onClick={() => resize(false)}>
-                    <span className="truncate">{video.buttonLabel}</span>
-                  </Link>
-                )}
-              </Button>
-            )}
-            {large && (
-              <a
-                href={video.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={labels.watchOnTikTok}
-                title={labels.watchOnTikTok}
-                onClick={() => player.current?.pause()}
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <TikTokIcon className="size-4" />
-              </a>
-            )}
-          </div>
-        </div>
-      )}
+      <span className="sr-only" aria-live="polite">
+        {many ? `${fillLabel(labels.position, { current: index + 1, total: videos.length })}: ` : ""}
+        {title}
+      </span>
     </section>
   );
 }

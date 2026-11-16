@@ -185,6 +185,8 @@ export type TikTokPlayerEvent =
   | { type: "onPlayerError"; value: { errorCode?: number; errorType?: string } };
 
 export const TIKTOK_STATE_ENDED = 0;
+export const TIKTOK_STATE_PLAYING = 1;
+export const TIKTOK_STATE_BUFFERING = 3;
 
 /** A message from the player, or null for anything else arriving on `window`. */
 export function readTikTokPlayerMessage(origin: string, data: unknown): TikTokPlayerEvent | null {

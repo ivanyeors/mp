@@ -1,31 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { nearestPipCorner, otherSidePipCorner, pipFollowsTo } from "@/lib/tiktok/pip";
-
-describe("nearestPipCorner", () => {
-  const viewport = { width: 400, height: 800 };
-
-  it("docks to the quarter of the screen the player was let go in", () => {
-    expect(nearestPipCorner({ x: 50, y: 50 }, viewport)).toBe("top-left");
-    expect(nearestPipCorner({ x: 350, y: 50 }, viewport)).toBe("top-right");
-    expect(nearestPipCorner({ x: 50, y: 750 }, viewport)).toBe("bottom-left");
-    expect(nearestPipCorner({ x: 350, y: 750 }, viewport)).toBe("bottom-right");
-  });
-
-  it("handles a player dragged partly off screen", () => {
-    expect(nearestPipCorner({ x: -40, y: 900 }, viewport)).toBe("bottom-left");
-    expect(nearestPipCorner({ x: 520, y: -10 }, viewport)).toBe("top-right");
-  });
-});
-
-describe("otherSidePipCorner", () => {
-  it("swaps sides and keeps the edge", () => {
-    expect(otherSidePipCorner("bottom-right")).toBe("bottom-left");
-    expect(otherSidePipCorner("bottom-left")).toBe("bottom-right");
-    expect(otherSidePipCorner("top-left")).toBe("top-right");
-    expect(otherSidePipCorner("top-right")).toBe("top-left");
-  });
-});
+import { pipFollowsTo } from "@/lib/tiktok/pip";
 
 describe("pipFollowsTo", () => {
   it("follows the visitor around the public site, the shop and the configurators", () => {

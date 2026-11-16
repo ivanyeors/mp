@@ -26,16 +26,10 @@ export function TikTokVideosSection({ section, messages: m, locale }: TikTokVide
     playVideo: t.playVideo,
     pauseScrolling: t.pauseScrolling,
     resumeScrolling: t.resumeScrolling,
-    previousVideo: t.previousVideo,
-    nextVideo: t.nextVideo,
-    watchOnTikTok: t.watchOnTikTok,
     position: t.position,
     untitled: t.untitled,
     player: t.player,
     closePlayer: t.closePlayer,
-    enlargePlayer: t.enlargePlayer,
-    shrinkPlayer: t.shrinkPlayer,
-    movePlayer: t.movePlayer,
     nowPlaying: t.nowPlaying,
   };
 
