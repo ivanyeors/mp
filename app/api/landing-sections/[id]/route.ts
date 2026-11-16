@@ -4,7 +4,12 @@ import { z } from "zod/v4";
 import { requireAdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { touchLastUsed } from "@/lib/media-assets";
-import { SectionContentSchema, SlugSchema, isCustomSectionType } from "@/lib/page-builder/validation";
+import {
+  SectionContentSchema,
+  SlugSchema,
+  isCustomSectionType,
+  sectionContentErrors,
+} from "@/lib/page-builder/validation";
 import { formatCopyFitIssues, validateSectionCopy } from "@/lib/page-builder/copy-fit";
 
 export const runtime = "nodejs";
@@ -75,6 +80,11 @@ export async function PATCH(
           { status: 400 },
         );
       }
+
+      const contentErrors = sectionContentErrors(before.section_type, parsed.content);
+      if (contentErrors.length > 0) {
+        return NextResponse.json({ error: contentErrors.join(" ") }, { status: 400 });
+      }
     }
 
     // Edits land in the Section draft, not on the live page. Slug is the exception:
@@ -107,12 +117,18 @@ export async function PATCH(
 
     // Drafts count as Used (CONTEXT.md), so a pending image is still marked in the DAM.
     if (parsed.content) {
-      const image = parsed.content.image;
-      const assetId = parsed.content.media_asset_id;
-      await touchLastUsed({
-        urls: typeof image === "string" && image.startsWith("http") ? [image] : [],
-        assetIds: typeof assetId === "string" ? [assetId] : [],
-      }).catch(() => {});
+      // The section's own image, plus any cards that carry one (a TikTok video's cover).
+      const holders = [
+        parsed.content,
+        ...(Array.isArray(parsed.content.videos) ? (parsed.content.videos as unknown[]) : []),
+      ].filter((h): h is Record<string, unknown> => Boolean(h) && typeof h === "object");
+      const urls = holders
+        .map((h) => h.image)
+        .filter((u): u is string => typeof u === "string" && u.startsWith("http"));
+      const assetIds = holders
+        .map((h) => h.media_asset_id)
+        .filter((id): id is string => typeof id === "string");
+      await touchLastUsed({ urls, assetIds }).catch(() => {});
     }
 
     await recordAdminAction({
