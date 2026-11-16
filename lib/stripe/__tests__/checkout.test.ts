@@ -168,3 +168,42 @@ describe("createCheckoutSession — discount + Stripe Tax", () => {
     expect(lineItemsArg().some((i) => i.price_data?.product_data.name === "GST (9%)")).toBe(true);
   });
 });
+
+describe("createCheckoutSession — where the shopper pays (ADR 0052)", () => {
+  it("defaults to Stripe's hosted page: success and cancel URLs, no ui_mode", async () => {
+    const out = await createCheckoutSession({ ...base, lineItems: [{ variant: variant(), quantity: 1 }] });
+    const params = sessionArg();
+    expect(params.ui_mode).toBeUndefined();
+    expect(params.success_url).toBe("https://x/success");
+    expect(params.cancel_url).toBe("https://x/cancel");
+    expect(params.return_url).toBeUndefined();
+    expect(out).toMatchObject({ sessionId: "cs_test_123", url: "https://stripe.test/cs_test_123", clientSecret: null });
+  });
+
+  it("opens an elements Session that returns to the success URL and hands back its client secret", async () => {
+    createSession.mockResolvedValueOnce({
+      id: "cs_test_456",
+      url: null,
+      client_secret: "cs_test_456_secret_x",
+    } as unknown as { id: string; url: string });
+    const out = await createCheckoutSession({
+      ...base,
+      ui: "elements",
+      lineItems: [{ variant: variant(), quantity: 1 }],
+      shippingAmount: 8,
+      discountAmount: 5,
+    });
+    const params = sessionArg();
+    expect(params.ui_mode).toBe("elements");
+    expect(params.return_url).toBe("https://x/success");
+    expect(params.success_url).toBeUndefined();
+    expect(params.cancel_url).toBeUndefined();
+    // Everything the webhook and reconcile read is the same as hosted.
+    expect(params.metadata).toMatchObject({ order_id: "o1", order_number: "MP-1" });
+    expect(params.payment_intent_data?.metadata).toMatchObject({ order_id: "o1" });
+    expect(params.shipping_options).toHaveLength(1);
+    expect(params.discounts).toEqual([{ coupon: "coupon_test" }]);
+    expect(params.expires_at).toEqual(expect.any(Number));
+    expect(out).toEqual({ sessionId: "cs_test_456", url: null, clientSecret: "cs_test_456_secret_x" });
+  });
+});

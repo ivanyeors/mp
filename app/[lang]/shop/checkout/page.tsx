@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, CreditCard, Loader2, Minus, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/shop/cart-context";
@@ -42,9 +43,9 @@ import {
   useShippingQuote,
 } from "@/lib/shop/use-shipping-quote";
 import { useDeliveryCountries } from "@/lib/shop/use-delivery-countries";
-import { findCountry, usesPostalCode } from "@/lib/shipping/countries";
+import { countryName, findCountry, usesPostalCode } from "@/lib/shipping/countries";
 import { shownDeliveryTime } from "@/lib/shipping/delivery-time";
-import { trackGaEventThen } from "@/lib/analytics/ga-events";
+import { trackGaEvent, trackGaEventThen } from "@/lib/analytics/ga-events";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { POINTS_ACCOUNT_ERROR, POINTS_CHECKOUT_COPY } from "@/lib/points/spend";
@@ -58,6 +59,23 @@ import {
 } from "@/lib/checkout-code/shared";
 import { useCheckoutCode } from "@/lib/checkout-code/use-checkout-code";
 import { POINTS_PER_DOLLAR, formatPoints, pointsToDollars } from "@/lib/points/value";
+import { stripeJs } from "@/lib/stripe/browser";
+
+/**
+ * The on-page payment step (ADR 0052), loaded only once the shopper reaches it:
+ * it carries React Stripe.js, which nobody filling in the form needs yet.
+ */
+const PayOnPage = dynamic(() => import("./pay-on-page"), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse rounded-lg bg-muted" aria-busy="true" />,
+});
+
+/** An Order made and its Checkout Session opened on this page, awaiting payment. */
+interface OnPagePayment {
+  clientSecret: string;
+  sessionId: string;
+  orderNumber: string;
+}
 
 const NEW_ADDRESS = "new";
 
@@ -170,6 +188,40 @@ export default function CheckoutPage() {
   // Submission
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Paying on this page (ADR 0052) needs Stripe.js in this browser before the
+  // Order is made: an on-page Session has no Stripe page to fall back to. Until
+  // it loads, or when it cannot (no key, an ad blocker), the shopper pays on
+  // Stripe's hosted page as before.
+  const [stripeReady, setStripeReady] = useState(false);
+  const [payment, setPayment] = useState<OnPagePayment | null>(null);
+  // Closing the Order the shopper went back from; a new submit waits for it,
+  // so the points that Order reserved are free again.
+  const releasing = useRef<Promise<unknown> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    stripeJs().then((stripe) => {
+      if (!cancelled) setStripeReady(Boolean(stripe));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function editDetails(opts?: { payOnStripe?: boolean }) {
+    if (!payment) return;
+    const { sessionId } = payment;
+    // The form could not load here: the next attempt goes to Stripe's page.
+    if (opts?.payOnStripe) setStripeReady(false);
+    releasing.current = fetch("/api/shop/checkout/release", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    }).catch(() => undefined);
+    setPayment(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   // Order summary collapsible on mobile
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -444,6 +496,11 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
 
+    if (releasing.current) {
+      await releasing.current;
+      releasing.current = null;
+    }
+
     // Optionally persist a newly entered address to the signed-in account.
     // Best-effort: a failure here must not block checkout.
     if (signedIn && selectedAddressId === NEW_ADDRESS && saveNewAddress) {
@@ -488,6 +545,8 @@ export default function CheckoutPage() {
         code: checkoutCodeToSend(code, codeStatus),
         // Checked and reserved again on the server; the page only asks.
         points: pointsToUse > 0 ? pointsToUse : undefined,
+        // Pay on this page once Stripe.js is here; the server may still say hosted.
+        payment_ui: stripeReady ? "elements" : "hosted",
         locale: lang,
         items: items.map((item) => ({
           variant_id: item.variantId,
@@ -513,32 +572,41 @@ export default function CheckoutPage() {
 
       const data = await res.json();
 
-      if (data.checkout_url || data.url) {
+      const beginCheckout = {
+        name: "begin_checkout",
+        params: {
+          value: total,
+          currency,
+          ...(codeStatus.state === "discount" ? { coupon: codeStatus.code } : {}),
+          items: items.map((item) => ({
+            item_id: item.variantId,
+            item_name: item.productTitle,
+            ...(item.variantTitle ? { item_variant: item.variantTitle } : {}),
+            price: item.price,
+            quantity: item.quantity,
+          })),
+        },
+      } as const;
+
+      if (data.client_secret && data.session_id) {
+        // The Order is made and its Checkout open: pay for it right here. The
+        // cart stays until the confirmation page, exactly as for Stripe's page.
+        trackGaEvent(beginCheckout);
+        setPayment({
+          clientSecret: data.client_secret,
+          sessionId: data.session_id,
+          orderNumber: data.order_number,
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (data.checkout_url || data.url) {
         // Do NOT clear the cart here. The shopper has not paid yet: Stripe's
         // cancel_url and the browser back button both land on this page, and
         // the cart must still be there so they can review it or retry. The
         // confirmation page clears it once the paid order is confirmed.
         const checkoutUrl: string = data.checkout_url ?? data.url;
-        trackGaEventThen(
-          {
-            name: "begin_checkout",
-            params: {
-              value: total,
-              currency,
-              ...(codeStatus.state === "discount" ? { coupon: codeStatus.code } : {}),
-              items: items.map((item) => ({
-                item_id: item.variantId,
-                item_name: item.productTitle,
-                ...(item.variantTitle ? { item_variant: item.variantTitle } : {}),
-                price: item.price,
-                quantity: item.quantity,
-              })),
-            },
-          },
-          () => {
-            window.location.href = checkoutUrl;
-          },
-        );
+        trackGaEventThen(beginCheckout, () => {
+          window.location.href = checkoutUrl;
+        });
       } else {
         throw new Error("No checkout URL returned from server.");
       }
@@ -716,7 +784,7 @@ export default function CheckoutPage() {
   ) : (
     <>
       <CreditCard className="size-4" />
-      Pay with Stripe
+      {stripeReady ? "Continue to payment" : "Pay with Stripe"}
     </>
   );
 
@@ -758,6 +826,28 @@ export default function CheckoutPage() {
       <div className="lg:grid lg:grid-cols-5 lg:gap-8">
         {/* Left: Form */}
         <div className="lg:col-span-3">
+          {payment ? (
+            <PayOnPage
+              key={payment.clientSecret}
+              clientSecret={payment.clientSecret}
+              email={form.email}
+              shipTo={[
+                form.recipient,
+                form.line1,
+                form.line2,
+                [form.city, form.state, form.postal_code].filter(Boolean).join(" "),
+                countryName(form.country),
+              ]
+                .filter(Boolean)
+                .join(", ")}
+              delivery={
+                selectedMethod
+                  ? getShippingContent(selectedMethod.content, selectedMethod.slug, lang).name
+                  : "—"
+              }
+              onEdit={editDetails}
+            />
+          ) : (
           <form id="checkout-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
             {/* Contact */}
             <section id="contact" data-section="contact">
@@ -1191,21 +1281,25 @@ export default function CheckoutPage() {
             </Button>
             </div>
           </form>
+          )}
         </div>
 
         {/* Mobile sticky Pay CTA — submits the same #checkout-form via the
-            button's form attribute, so no duplicated submit logic. */}
-        <MobileStickyActionBar>
-          <Button
-            type="submit"
-            form="checkout-form"
-            size="lg"
-            className="w-full"
-            disabled={submitting}
-          >
-            {payLabel}
-          </Button>
-        </MobileStickyActionBar>
+            button's form attribute, so no duplicated submit logic. The payment
+            step brings its own bar, with the Pay button. */}
+        {!payment && (
+          <MobileStickyActionBar>
+            <Button
+              type="submit"
+              form="checkout-form"
+              size="lg"
+              className="w-full"
+              disabled={submitting}
+            >
+              {payLabel}
+            </Button>
+          </MobileStickyActionBar>
+        )}
 
         {/* Right: Desktop order summary */}
         <div className="hidden lg:block lg:col-span-2" id="order-summary" data-section="order-summary">

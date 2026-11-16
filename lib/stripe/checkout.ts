@@ -3,6 +3,7 @@ import { getStripe } from "./client";
 import { stripePriceIdOf } from "./mode";
 import type { ProductVariant } from "@/lib/types/ecommerce";
 import { SHOP_CHECKOUT_LIFETIME_MS } from "@/lib/stripe/checkout-lifetime";
+import type { PaymentUi } from "./payment-ui";
 
 interface CheckoutLineItem {
   variant: ProductVariant;
@@ -23,8 +24,19 @@ interface CreateCheckoutOpts {
   customerEmail: string;
   orderId: string;
   orderNumber: string;
+  /**
+   * Where Stripe sends the shopper once paid. Hosted: the session's
+   * `success_url`. Elements: its `return_url` (ADR 0052). Both may carry
+   * `{CHECKOUT_SESSION_ID}`.
+   */
   successUrl: string;
+  /** Hosted only: an elements-mode shopper never leaves our page to cancel. */
   cancelUrl: string;
+  /**
+   * `hosted` (default): Stripe's page, reached through the returned `url`.
+   * `elements`: our page, opened with the returned `clientSecret` (ADR 0052).
+   */
+  ui?: PaymentUi;
   shippingAmount?: number;
   shippingLabel?: string;
   /**
@@ -145,11 +157,18 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
     ...opts.metadata,
   };
 
+  // Everything else below is identical in both modes, so the webhook, expiry,
+  // reconcile and refunds cannot tell the two apart (ADR 0052). Stripe refuses
+  // success_url / cancel_url on an elements-mode Session.
+  const page: Partial<Stripe.Checkout.SessionCreateParams> =
+    opts.ui === "elements"
+      ? { ui_mode: "elements", return_url: opts.successUrl }
+      : { success_url: opts.successUrl, cancel_url: opts.cancelUrl };
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "payment",
     line_items: lineItems,
-    success_url: opts.successUrl,
-    cancel_url: opts.cancelUrl,
+    ...page,
     metadata,
     // Mirror metadata onto the PaymentIntent so payment_intent.* webhook events
     // (e.g. payment_failed) can be linked back to the order before the order
@@ -226,6 +245,9 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
 
   return {
     sessionId: session.id,
+    /** Hosted only; null for an elements-mode Session. */
     url: session.url,
+    /** Elements only; what the page opens the Session with. */
+    clientSecret: session.client_secret ?? null,
   };
 }

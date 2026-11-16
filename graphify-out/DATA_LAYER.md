@@ -484,7 +484,7 @@ Changed from pages: `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, 
   - `handleApply()` [insert] — app/api/shop/customize/route.ts:630
   - `handleApplyBolster()` [insert] — app/api/shop/customize/route.ts:746
 - Read by:
-  - `POST()` [select] — app/api/shop/checkout/route.ts:284
+  - `POST()` [select] — app/api/shop/checkout/route.ts:292
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:168
 
 ### exchange_rates
@@ -970,8 +970,8 @@ Changed from pages: `/appointments`, `/mp-basic`, `/mp-config`, `/results/[id]`,
 - Written by:
   - `POST()` [insert] — app/api/readjustments/checkout/route.ts:200
   - `POST()` [insert] — app/api/results/[id]/accept/route.ts:605
-  - `POST()` [insert] — app/api/shop/checkout/route.ts:812
-  - `abandonPendingOrder()` [delete] — app/api/shop/checkout/route.ts:944
+  - `POST()` [insert] — app/api/shop/checkout/route.ts:820
+  - `abandonPendingOrder()` [delete] — app/api/shop/checkout/route.ts:974
   - `createStaffOrder()` [insert] — lib/staff-orders/create.ts:122
   - `restockOrderItem()` [update] — lib/ecommerce/restock-order.ts:147
 - Read by:
@@ -1013,7 +1013,7 @@ References: `orders`
 Changed from pages: `/settings/customers/[id]`, `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shop/checkout`
 - Written by:
   - `GET()` [update] — app/api/shop/orders/[id]/easyship/label/route.ts:45
-  - `POST()` [insert] — app/api/shop/checkout/route.ts:778
+  - `POST()` [insert] — app/api/shop/checkout/route.ts:786
   - `applyShipmentToOrder()` [upsert] — lib/shipping/order-shipment.ts:224
   - `buyOrderLabel()` [update,upsert] — lib/shipping/order-shipment.ts:290
   - `cancelOrderLabel()` [update] — lib/shipping/order-shipment.ts:412
@@ -1025,7 +1025,7 @@ Changed from pages: `/settings/customers/[id]`, `/settings/orders/[id]`, `/setti
 ### order_timeline
 Defined in supabase/migrations/0028_ecommerce.sql:480
 References: `orders`
-Changed from pages: `/account/orders/[orderNumber]`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders/[id]`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`
+Changed from pages: `/account/orders/[orderNumber]`, `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders/[id]`, `/settings/rma/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shop/checkout`
 - Written by:
   - `POST()` [insert] — app/api/results/[id]/accept/route.ts:792
   - `POST()` [insert] — app/api/shipping/easyship/webhook/route.ts:74
@@ -1054,12 +1054,13 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `POST()` [delete,insert,update] — app/api/results/[id]/accept/route.ts:527
   - `POST()` [update] — app/api/settings/readjustments/[id]/route.ts:137
   - `POST()` [select,update] — app/api/shipping/easyship/webhook/route.ts:53
-  - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:728
+  - `POST()` [select,update] — app/api/shop/checkout/release/route.ts:47
+  - `POST()` [delete,insert,update] — app/api/shop/checkout/route.ts:736
   - `POST()` [select,update] — app/api/shop/orders/[id]/cancel/route.ts:22
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund-request/route.ts:43
   - `POST()` [select,update] — app/api/shop/orders/[id]/refund/route.ts:122
   - `POST()` [select,update] — app/api/stripe/webhook/route.ts:288
-  - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:937
+  - `abandonPendingOrder()` [delete,update] — app/api/shop/checkout/route.ts:967
   - `applyShipmentToOrder()` [update] — lib/shipping/order-shipment.ts:241
   - `associateGuestOrdersToCustomer()` [update] — lib/auth/customer-identity.ts:273
   - `createStaffOrder()` [delete,insert] — lib/staff-orders/create.ts:49
@@ -1251,7 +1252,7 @@ Changed from pages: `/account`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `
   - `POST()` [select] — app/[lang]/settings/inventory/configure/save/route.ts:118
   - `POST()` [select] — app/[lang]/settings/inventory/configure/templates/apply/route.ts:59
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:69
-  - `POST()` [select] — app/api/shop/checkout/route.ts:374
+  - `POST()` [select] — app/api/shop/checkout/route.ts:382
   - `buildShopifyAdminState()` [select] — app/[lang]/settings/inventory/actions.ts:696
   - `createMpConfigFromCustomization()` [select] — lib/ecommerce/mp-config-sync.ts:194
   - `fetchProductSummaries()` [select] — app/[lang]/settings/costings/save/route.ts:161
@@ -1374,7 +1375,7 @@ Changed from pages: `/mp-basic`, `/mp-config`, `/results/[id]`, `/settings/costi
   - `GET()` [select] — app/api/mp-config/assist/context/route.ts:49
   - `GET()` [select] — app/api/shop/products/[id]/variants/route.ts:35
   - `POST()` [select] — app/api/mp-basic/recommend/route.ts:84
-  - `POST()` [select] — app/api/shop/checkout/route.ts:173
+  - `POST()` [select] — app/api/shop/checkout/route.ts:181
   - `archiveUnsellableItemProducts()` [select] — lib/ecommerce/inventory-sync.ts:301
   - `buildRestockTransactions()` [select] — lib/ecommerce/restock-order.ts:103
   - `fetchConsumerRows()` [select] — lib/media/image-usages.ts:1036
@@ -2248,7 +2249,7 @@ Changed from pages: `/`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-mak
   - `POST()` [select] — app/api/results/[id]/finish/route.ts:95
   - `POST()` [select] — app/api/results/[id]/reconfigure/route.ts:143
   - `POST()` [select] — app/api/results/hold/route.ts:575
-  - `POST()` [select] — app/api/shop/checkout/route.ts:512
+  - `POST()` [select] — app/api/shop/checkout/route.ts:520
   - `buildPublicSummary()` [select] — app/api/results/[id]/route.ts:215
   - `getActiveShippingMethods()` [select] — lib/ecommerce/shipping.ts:7
   - `getAllShippingMethods()` [select] — lib/ecommerce/shipping.ts:20
@@ -2438,7 +2439,7 @@ Changed from pages: `/settings/users`
 Defined in supabase/migrations/20260630120000_variant_stock_bolster.sql:10
 - Read by:
   - `GET()` [select] — app/api/shop/stock/route.ts:32
-  - `POST()` [select] — app/api/shop/checkout/route.ts:241
+  - `POST()` [select] — app/api/shop/checkout/route.ts:249
   - `attachStockAvailable()` [select] — lib/ecommerce/products.ts:21
   - `checkGoodsStock()` [select] — lib/staff-orders/quote.ts:405
   - `loadStaffOrderOptions()` [select] — lib/staff-orders/options.ts:95
@@ -3027,8 +3028,8 @@ app/[lang]/shop/cart/page.tsx
 
 ### /shop/checkout
 app/[lang]/shop/checkout/page.tsx
-- Endpoints: `/api/account/addresses [GET,POST]`, `/api/checkout/code [POST]`, `/api/shop/checkout [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/points/allowance [POST]`, `/api/shop/shipping [GET]`
-- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `analytics_visitors`, `customer_addresses`, `customers`, `exchange_rates`, `mp_staff`, `order_items`, `order_shipments`, `orders`, `partner_users`, `shipping_methods`, `shipping_rate_quotes`
+- Endpoints: `/api/account/addresses [GET,POST]`, `/api/checkout/code [POST]`, `/api/shop/checkout [POST]`, `/api/shop/checkout/release [POST]`, `/api/shop/exchange-rates [GET]`, `/api/shop/points/allowance [POST]`, `/api/shop/shipping [GET]`
+- Changes, through its actions, endpoints and their calls: `admin_audit_log`, `analytics_visitors`, `customer_addresses`, `customers`, `exchange_rates`, `mp_staff`, `order_items`, `order_shipments`, `order_timeline`, `orders`, `partner_users`, `shipping_methods`, `shipping_rate_quotes`
 - Reads, through the same: `admin_roles`, `admin_users`, `bolster_bom_lines`, `bolster_length_config`, `bom_lines`, `coupons`, `customization_configs`, `inventory_balances`, `item_prices`, `items`, `mp_config_responses`, `partners`, `pillow_products`, `points_ledger`, `product_prices`, `product_variants`, `products`, `site_settings`, `tax_rates`, `variant_stock`
 
 ### /shop/checkout/confirmation
