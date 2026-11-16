@@ -1,7 +1,7 @@
 /**
  * The local cart must survive a cancelled Stripe Checkout: the checkout page
  * redirects to Stripe (or opens the on-page payment step, or pays with Apple
- * Pay or Google Pay from the form, ADR 0052) without clearing the cart, and
+ * Pay or Google Pay from the form, ADR 0053) without clearing the cart, and
  * the confirmation page clears it only after the paid order is loaded for the
  * Stripe session.
  * Run: npx tsx "app/[lang]/shop/checkout/cart-survives-stripe-cancel.check.ts"

@@ -76,7 +76,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 /**
- * The on-page payment step (ADR 0052), loaded only once the shopper reaches it:
+ * The on-page payment step (ADR 0053), loaded only once the shopper reaches it:
  * it carries React Stripe.js, which nobody filling in the form needs yet.
  */
 const PayOnPage = dynamic(() => import("./pay-on-page"), {
@@ -85,7 +85,7 @@ const PayOnPage = dynamic(() => import("./pay-on-page"), {
 });
 
 /**
- * Apple Pay and Google Pay beside the checkout button (ADR 0052), loaded only
+ * Apple Pay and Google Pay beside the checkout button (ADR 0053), loaded only
  * once Stripe.js is here. Each shows nothing until Stripe says this device can
  * pay with it.
  */
@@ -210,7 +210,7 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Paying on this page (ADR 0052) needs Stripe.js in this browser before the
+  // Paying on this page (ADR 0053) needs Stripe.js in this browser before the
   // Order is made: an on-page Session has no Stripe page to fall back to. Until
   // it loads, or when it cannot (no key, an ad blocker), the shopper pays on
   // Stripe's hosted page as before.
@@ -667,7 +667,7 @@ export default function CheckoutPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Apple Pay and Google Pay beside the checkout button (ADR 0052)
+  // Apple Pay and Google Pay beside the checkout button (ADR 0053)
   // ---------------------------------------------------------------------------
 
   // What the wallet's sheet shows: the page's total, in the cart's currency.

@@ -1,7 +1,7 @@
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 
 /**
- * Stripe.js for the on-page payment step (ADR 0052). Browser only.
+ * Stripe.js for the on-page payment step (ADR 0053). Browser only.
  *
  * `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is inlined at build time. Blank, and
  * the checkout page never asks to pay on the page: every shopper goes to

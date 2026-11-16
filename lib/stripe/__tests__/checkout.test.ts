@@ -169,7 +169,7 @@ describe("createCheckoutSession — discount + Stripe Tax", () => {
   });
 });
 
-describe("createCheckoutSession — where the shopper pays (ADR 0052)", () => {
+describe("createCheckoutSession — where the shopper pays (ADR 0053)", () => {
   it("defaults to Stripe's hosted page: success and cancel URLs, no ui_mode", async () => {
     const out = await createCheckoutSession({ ...base, lineItems: [{ variant: variant(), quantity: 1 }] });
     const params = sessionArg();

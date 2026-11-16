@@ -23,7 +23,7 @@ import { formatCurrency } from "@/lib/i18n/currencies";
 import type { WalletDisplay } from "@/lib/stripe/wallet";
 
 /**
- * The payment step of shop checkout, on our own page (ADR 0052).
+ * The payment step of shop checkout, on our own page (ADR 0053).
  *
  * The Order and its Checkout Session already exist: the shopper's details,
  * delivery, code and points were priced and locked by `/api/shop/checkout`,

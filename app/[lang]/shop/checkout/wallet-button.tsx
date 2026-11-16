@@ -19,7 +19,7 @@ import type { Wallet, WalletDisplay } from "@/lib/stripe/wallet";
 
 /**
  * One wallet button beside the checkout button: Apple Pay or Google Pay (ADR
- * 0052, "Wallet buttons beside the checkout button").
+ * 0053, "Wallet buttons beside the checkout button").
  *
  * No Order exists yet, so this runs in Stripe's deferred mode: the sheet shows
  * `amountMinor`, and approving it only makes a PaymentMethod. The page then

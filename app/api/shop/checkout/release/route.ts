@@ -14,7 +14,7 @@ const ReleaseSchema = z.object({
 
 /**
  * Closes the Checkout behind an unpaid shop Order when the shopper leaves the
- * on-page payment step to edit their details (ADR 0052).
+ * on-page payment step to edit their details (ADR 0053).
  *
  * Paying on our page means the Order and its Checkout Session exist before
  * the shopper pays, and "Edit details" sends them back to a form that makes a

@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6c65abc5`
+- Built from commit: `5210c9e4`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1704,7 +1704,7 @@ Nodes (29): completed(), h, refunded(), Acceptance criteria, Blocked by, Slice 0
 
 ### Community 182 - "wallet.ts"
 Cohesion: 0.12
-Nodes (17): ADR-0052, PAY, ADR-0052, COMPUTER_MEDIA_QUERY, confirmWithWallet(), fromMinorUnits(), minorPerMajor(), toMinorUnits() (+9 more)
+Nodes (17): ADR-0053, PAY, ADR-0053, COMPUTER_MEDIA_QUERY, confirmWithWallet(), fromMinorUnits(), minorPerMajor(), toMinorUnits() (+9 more)
 
 ### Community 183 - "Slice 02 — Shopify order mirror schema + sync cursor"
 Cohesion: 0.33
@@ -2412,7 +2412,7 @@ Nodes (22): blogSlugFate, MERGED_BLOG_SLUGS, RETIRED_BLOG_SLUGS, BlogHeading, ex
 
 ### Community 365 - "ref_node_assert"
 Cohesion: 0.04
-Nodes (41): dialog, source, checkout, confirmation, payOnPage, ROOT, ADR-0052, walletButton (+33 more)
+Nodes (41): dialog, source, checkout, confirmation, payOnPage, ROOT, ADR-0053, walletButton (+33 more)
 
 ### Community 367 - "Product: Bolsters"
 Cohesion: 0.33

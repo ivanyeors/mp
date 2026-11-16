@@ -1,7 +1,7 @@
 import type { Stripe } from "@stripe/stripe-js";
 
 /**
- * Apple Pay and Google Pay from the checkout form (ADR 0052, "Wallet buttons
+ * Apple Pay and Google Pay from the checkout form (ADR 0053, "Wallet buttons
  * beside the checkout button"). Browser only, but free of React so it can be
  * tested on its own.
  *

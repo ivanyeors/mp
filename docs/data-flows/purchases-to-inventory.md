@@ -81,7 +81,7 @@ goods, and every other call sees it set and stops.
    its `order_items`, then a Stripe Checkout Session carrying `order_id`.
    The shopper pays it on our page (`ui_mode: "elements"`: Apple Pay and
    Google Pay above the card and PayNow form) or, without a publishable key
-   or Stripe.js, on Stripe's hosted page (ADR 0052). Either way it is the same
+   or Stripe.js, on Stripe's hosted page (ADR 0053). Either way it is the same
    Session, and everything below reads it the same way. Going back from the
    on-page step calls `POST /api/shop/checkout/release`, which expires the
    Session and cancels the Order at once, as `checkout.session.expired` would.

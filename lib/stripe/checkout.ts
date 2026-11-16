@@ -26,7 +26,7 @@ interface CreateCheckoutOpts {
   orderNumber: string;
   /**
    * Where Stripe sends the shopper once paid. Hosted: the session's
-   * `success_url`. Elements: its `return_url` (ADR 0052). Both may carry
+   * `success_url`. Elements: its `return_url` (ADR 0053). Both may carry
    * `{CHECKOUT_SESSION_ID}`.
    */
   successUrl: string;
@@ -34,7 +34,7 @@ interface CreateCheckoutOpts {
   cancelUrl: string;
   /**
    * `hosted` (default): Stripe's page, reached through the returned `url`.
-   * `elements`: our page, opened with the returned `clientSecret` (ADR 0052).
+   * `elements`: our page, opened with the returned `clientSecret` (ADR 0053).
    */
   ui?: PaymentUi;
   shippingAmount?: number;
@@ -158,7 +158,7 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
   };
 
   // Everything else below is identical in both modes, so the webhook, expiry,
-  // reconcile and refunds cannot tell the two apart (ADR 0052). Stripe refuses
+  // reconcile and refunds cannot tell the two apart (ADR 0053). Stripe refuses
   // success_url / cancel_url on an elements-mode Session.
   const page: Partial<Stripe.Checkout.SessionCreateParams> =
     opts.ui === "elements"

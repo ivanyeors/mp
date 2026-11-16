@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { onPagePublishableKey, resolvePaymentUi } from "../payment-ui";
 
-/** ADR 0052: the shopper pays on our page only with a publishable key for the secret key's account. */
+/** ADR 0053: the shopper pays on our page only with a publishable key for the secret key's account. */
 
 const SAVED = {
   secret: process.env.STRIPE_SECRET_KEY,

@@ -117,7 +117,7 @@ const CheckoutSchema = z.object({
    */
   points: z.number().optional(),
   /**
-   * Where the shopper wants to pay (ADR 0052). The page sends `elements` only
+   * Where the shopper wants to pay (ADR 0053). The page sends `elements` only
    * once Stripe.js has loaded, so it can mount Apple Pay and the card form on
    * itself; the server downgrades it to `hosted` when this deploy has no
    * publishable key for the secret key's account. Absent is `hosted`.

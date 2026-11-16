@@ -1494,9 +1494,9 @@
     "semantic_hash": ""
   },
   "lib/stripe/__tests__/checkout.test.ts": {
-    "mtime": 1794826701.9726286,
-    "seen": 1794835502.4002547,
-    "ast_hash": "0c3b8d2cef08a3c7b4d8b39583931891",
+    "mtime": 1794835964.6963453,
+    "seen": 1794836031.1998377,
+    "ast_hash": "543f4cb1d004c202b3aa38726432173d",
     "semantic_hash": ""
   },
   "lib/stripe/__tests__/reconcile.test.ts": {
@@ -1518,9 +1518,9 @@
     "semantic_hash": ""
   },
   "lib/stripe/checkout.ts": {
-    "mtime": 1794826639.532625,
-    "seen": 1794835502.400272,
-    "ast_hash": "d6e78b8f39f47ed28cc1fa2995bbcc7b",
+    "mtime": 1794835964.7053914,
+    "seen": 1794836031.1998608,
+    "ast_hash": "ccce5fe99723f618beabc1aa5e536cb8",
     "semantic_hash": ""
   },
   "lib/stripe/client.ts": {
@@ -2082,9 +2082,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/checkout/route.ts": {
-    "mtime": 1794826639.532625,
-    "seen": 1794835502.3979273,
-    "ast_hash": "4d4ecb573a50447e318465b6ce66a003",
+    "mtime": 1794835964.6874075,
+    "seen": 1794836031.1961503,
+    "ast_hash": "72b36822f7f53392b564766221f48bb9",
     "semantic_hash": ""
   },
   "app/api/shop/coupons/[id]/route.ts": {
@@ -8166,9 +8166,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/shop/checkout/cart-survives-stripe-cancel.check.ts": {
-    "mtime": 1794834840.1053355,
-    "seen": 1794835502.3974783,
-    "ast_hash": "3741cac4a47d20a71c80c16b90e14ead",
+    "mtime": 1794835964.6692653,
+    "seen": 1794836031.1957054,
+    "ast_hash": "e50017496bcfb490b91d8a38dd5d168b",
     "semantic_hash": ""
   },
   "app/api/results/[id]/finish/route.ts": {
@@ -14148,9 +14148,9 @@
     "semantic_hash": ""
   },
   "docs/data-flows/purchases-to-inventory.md": {
-    "mtime": 1794834899.594489,
-    "seen": 1794835502.4036539,
-    "ast_hash": "f991e013057b705c67cf3905299af4e2",
+    "mtime": 1794835964.6942375,
+    "seen": 1794836031.2028203,
+    "ast_hash": "54079aee795e5b1c784f49fc55f1692a",
     "semantic_hash": ""
   },
   "docs/data-flows/settings.md": {
@@ -16734,9 +16734,9 @@
     "semantic_hash": ""
   },
   "docs/adr/README.md": {
-    "mtime": 1794834899.5954092,
-    "seen": 1794835502.403644,
-    "ast_hash": "f5758ce07fae2d0c3c89e352bed5d6db",
+    "mtime": 1794835964.6915143,
+    "seen": 1794836031.2028089,
+    "ast_hash": "71afc654ebbf880f40f52d9283520089",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/shop.mjs": {
@@ -18972,56 +18972,56 @@
     "semantic_hash": ""
   },
   "app/api/shop/checkout/__tests__/payment-ui.test.ts": {
-    "mtime": 1794826714.8552506,
-    "seen": 1794835502.3979204,
-    "ast_hash": "1cf000147c1aa29678dc6d79213159ba",
+    "mtime": 1794835964.6790757,
+    "seen": 1794836031.1961424,
+    "ast_hash": "5487615c745016419e2fb7ab87a6ce21",
     "semantic_hash": ""
   },
   "app/api/shop/checkout/__tests__/release.test.ts": {
-    "mtime": 1794826685.2886276,
-    "seen": 1794835502.3979242,
-    "ast_hash": "f60c952cc784aed821010672733b67f7",
+    "mtime": 1794835964.6817853,
+    "seen": 1794836031.1961465,
+    "ast_hash": "1ba8756e4d2adf0fc8d893e993e1f4f1",
     "semantic_hash": ""
   },
   "app/api/shop/checkout/release/route.ts": {
-    "mtime": 1794826366.9726088,
-    "seen": 1794835502.3979254,
-    "ast_hash": "30193bcb0fdd6afd1905aaa0e7506ef7",
+    "mtime": 1794835964.6842334,
+    "seen": 1794836031.1961484,
+    "ast_hash": "02044b4475f709d714895286a92f0a52",
     "semantic_hash": ""
   },
   "lib/stripe/__tests__/payment-ui.test.ts": {
-    "mtime": 1794826701.9766285,
-    "seen": 1794835502.4002607,
-    "ast_hash": "7283a776d554f0c84ea43aea0653f515",
+    "mtime": 1794835964.698278,
+    "seen": 1794836031.1998456,
+    "ast_hash": "62b12b4b863aac6a56500f17c54e9d66",
     "semantic_hash": ""
   },
   "lib/stripe/__tests__/wallet.test.ts": {
-    "mtime": 1794834840.1053355,
-    "seen": 1794835502.4002678,
-    "ast_hash": "0913749cc17f6bfd31c3b21856e94a33",
+    "mtime": 1794835964.7002528,
+    "seen": 1794836031.1998549,
+    "ast_hash": "595429a2a4f0c1bfd85ae076478ab043",
     "semantic_hash": ""
   },
   "lib/stripe/browser.ts": {
-    "mtime": 1794826396.7366104,
-    "seen": 1794835502.4002688,
-    "ast_hash": "c8a973dcc72af275233ba3c1762164d1",
+    "mtime": 1794835964.7035148,
+    "seen": 1794836031.1998568,
+    "ast_hash": "aab7217e6b66f2929efcb92c3d0ad8b8",
     "semantic_hash": ""
   },
   "lib/stripe/payment-ui.ts": {
-    "mtime": 1794826315.2646055,
-    "seen": 1794835502.400286,
-    "ast_hash": "ba0538d0041ba3012471b0c36c46cb5e",
+    "mtime": 1794835964.7078826,
+    "seen": 1794836031.1998732,
+    "ast_hash": "5509d55b43d8abee8021064e4d82b57f",
     "semantic_hash": ""
   },
   "lib/stripe/wallet.ts": {
-    "mtime": 1794834840.1053355,
-    "seen": 1794835502.4002924,
-    "ast_hash": "07b72fd2d1987fdcda4f8a9d90ec46ce",
+    "mtime": 1794835964.710243,
+    "seen": 1794836031.1998825,
+    "ast_hash": "5e80e8db4b76b926ef9927e23f41cb30",
     "semantic_hash": ""
   },
-  "docs/adr/0052-shop-checkout-pays-on-our-page.md": {
+  "docs/adr/0053-shop-checkout-pays-on-our-page.md": {
     "mtime": 1794834899.5957706,
-    "seen": 1794835502.4036424,
+    "seen": 1794836031.2028058,
     "ast_hash": "5377d792c0e7f55469ccf3a8cd8ef885",
     "semantic_hash": ""
   }

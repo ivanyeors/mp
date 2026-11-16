@@ -1,7 +1,7 @@
 import { stripeMode, type StripeMode } from "./mode";
 
 /**
- * Where a shop-cart shopper pays (ADR 0052).
+ * Where a shop-cart shopper pays (ADR 0053).
  *
  * - `elements`: on our checkout page. The Checkout Session is created with
  *   `ui_mode: "elements"`, and the page mounts Stripe's Express Checkout

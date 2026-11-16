@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
 /**
- * Where a shop-cart shopper pays (ADR 0052): on our page, so Apple Pay and
+ * Where a shop-cart shopper pays (ADR 0053): on our page, so Apple Pay and
  * Google Pay show beside the card form, or on Stripe's hosted page.
  *
  * Real handler and real session construction; faked tables and Stripe client.

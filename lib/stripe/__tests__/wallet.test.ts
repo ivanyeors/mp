@@ -3,7 +3,7 @@ import type { Stripe } from "@stripe/stripe-js";
 import { confirmWithWallet, fromMinorUnits, toMinorUnits, walletsBeside } from "../wallet";
 
 /**
- * Wallet buttons beside the checkout button (ADR 0052): the sheet shows the
+ * Wallet buttons beside the checkout button (ADR 0053): the sheet shows the
  * page's total, and the Checkout Session the server then makes is paid only if
  * it totals exactly that.
  */
