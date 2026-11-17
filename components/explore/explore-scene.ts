@@ -13,9 +13,10 @@ import type { Rgb, SkyState } from "@/lib/explore/sky";
  * The land and the clouds are painted after the owner's two reference
  * pictures. From the first, the colours: cream where the light falls,
  * lavender in the shade, yellow-greens for the grass. From the second, the
- * cliff: turf that rolls over its edge onto rock cut in flat planes, with a
- * warm colour worked into each light and a cool one into each shade, and
- * plants of several kinds and sizes on top. The shapes stay simple. Every
+ * cliff: turf that hangs over the edge of a sheer wall of rock, the rock in
+ * flat planes that meet in sharp edges, with a warm colour worked into each
+ * light and a cool one into each shade; boulders made the same way on top,
+ * and plants of several kinds and sizes. The shapes stay simple. Every
  * colour is written as it should appear on screen (the shaders work in sRGB
  * and skip three's colour conversion), so the scene matches the CSS fallback
  * behind it exactly.
@@ -272,67 +273,12 @@ void main() {
   gl_FragColor = vec4(mix(col, uHaze, uFade), alpha);
 }`;
 
-/** Painted leaves: three flat tones with a brushy edge between them, and two more colours dabbed in. */
-const PAINT_TONE = /* glsl */ `
-uniform vec3 uHi, uMid, uLo, uWarm, uCool, uLight;
-uniform vec2 uGrain;
-uniform vec3 uStroke; // brushwork: the strokes' angle, how fine they are, how strongly they show
-${NOISE}
-// Paint laid on in strokes, as in the reference pictures: long along their direction, thin across it.
-float strokes(vec3 paint, float turn, float fine) {
-  vec2 p = paint.xy + vec2(paint.z * 0.6, paint.z * 0.25);
-  float c = cos(turn), s = sin(turn);
-  vec2 q = vec2(c * p.x + s * p.y, c * p.y - s * p.x) * fine;
-  return noise(vec2(q.x * 0.9, q.y * 5.5)) * 0.65 + noise(vec2(q.x * 2.3 + 3.1, q.y * 11.0)) * 0.35;
-}
-vec3 tone(vec3 n, vec3 paint) {
-  float st = strokes(paint, uStroke.x, uStroke.y);
-  float brush = (noise(paint.xy * uGrain.x + paint.z * 1.7) - 0.5) * uGrain.y + (st - 0.5) * uStroke.z;
-  float s = dot(n, uLight) * 0.5 + 0.5 + brush + n.y * 0.1;
-  // Firm edges between the tones, as a loaded brush leaves them.
-  vec3 col = mix(uLo, uMid, smoothstep(0.39, 0.43, s));
-  col = mix(col, uHi, smoothstep(0.67, 0.71, s));
-  // Each stroke a touch lighter or darker than the one beside it.
-  col *= 1.0 + (st - 0.5) * uStroke.z * 0.5;
-  // A warm colour dabbed into the light and a cool one into the shade.
-  float lit = smoothstep(0.4, 0.7, s);
-  col = mix(col, uWarm, smoothstep(0.6, 0.66, strokes(paint + 5.3, uStroke.x - 0.8, uStroke.y * 0.7)) * (0.2 + 0.4 * lit));
-  col = mix(col, uCool, smoothstep(0.62, 0.68, strokes(paint + 13.7, uStroke.x + 0.6, uStroke.y * 0.6)) * (0.5 - 0.35 * lit));
-  return col;
-}`;
-
-const PAINT_VERT = /* glsl */ `
-varying vec3 vNormal;
-varying vec3 vPaint;
-uniform vec3 uLandOrigin;
-uniform float uLandInv;
-void main() {
-  #ifdef USE_INSTANCING
-    mat4 m = modelMatrix * instanceMatrix;
-  #else
-    mat4 m = modelMatrix;
-  #endif
-  vec4 w = m * vec4(position, 1.0);
-  vPaint = (w.xyz - uLandOrigin) * uLandInv;
-  vNormal = normalize(transpose(inverse(mat3(m))) * normal);
-  gl_Position = projectionMatrix * viewMatrix * w;
-}`;
-
-const PAINT_FRAG = /* glsl */ `
-precision highp float;
-varying vec3 vNormal;
-varying vec3 vPaint;
-uniform vec3 uTint;
-${PAINT_TONE}
-void main() {
-  gl_FragColor = vec4(tone(normalize(vNormal), vPaint) * uTint, 1.0);
-}`;
-
 /**
- * The cliff's two paints: turf and rock. Each is three flat tones laid in
- * strokes, with a warm colour worked into its light and a cool one into its
- * shade, the way the owner's reference pictures are painted. The blades of
- * grass use the turf's, so they are the colour of the ground they grow from.
+ * The cliff's two paints: turf and rock. Each is three flat tones laid on in
+ * strokes, a row at a time, with a warm colour worked into its light and a
+ * cool one into its shade, the way the owner's reference pictures are
+ * painted. The blades of grass use the turf's, so they are the colour of the
+ * ground they grow from.
  */
 const LAND_TONE = /* glsl */ `
 uniform vec3 uLight, uBounce;
@@ -340,58 +286,81 @@ uniform vec3 uGrassHi, uGrassMid, uGrassLo, uGrassWarm, uGrassCool;
 uniform vec3 uRockHi, uRockMid, uRockLo, uRockWarm, uRockCool, uRockDeep;
 uniform float uSeaY;
 ${NOISE}
-// A dab of paint: long one way, thin the other.
-float dab(vec2 p, float turn, float fine) {
+// Strokes of a loaded brush, laid in rows across a surface. x and y: two numbers of the stroke's own, 0 to 1.
+// z: how far in from the stroke's edge this is.
+vec3 stroke(vec2 p, float turn, vec2 size) {
   float c = cos(turn), s = sin(turn);
-  vec2 q = vec2(c * p.x + s * p.y, c * p.y - s * p.x) * fine;
-  return noise(vec2(q.x * 0.9, q.y * 5.5)) * 0.65 + noise(vec2(q.x * 2.3 + 3.1, q.y * 11.0)) * 0.35;
+  vec2 q = vec2(c * p.x + s * p.y, c * p.y - s * p.x);
+  // A hand is not a ruler: the rows waver.
+  q += (vec2(noise(q * 2.3), noise(q * 2.3 + 31.7)) - 0.5) * 0.3;
+  q /= size;
+  float row = floor(q.y);
+  // Each row starts somewhere else, and its strokes are their own length.
+  q.x = q.x * (0.7 + 0.6 * hash(vec2(row, 9.0))) + hash(vec2(row, 5.0)) * 9.0;
+  vec2 id = vec2(floor(q.x), row);
+  vec2 f = fract(q);
+  float edge = min(min(f.x, 1.0 - f.x) * size.x, min(f.y, 1.0 - f.y) * size.y);
+  return vec3(hash(id), hash(id + 17.3), edge);
 }
 vec3 grassTone(vec3 n, vec3 p) {
   // The strokes lie along the ground.
   vec2 g = vec2(p.x + p.y * 0.4, p.z * 1.5 + p.y * 1.2);
-  float st = dab(g, 0.3, 1.8);
+  vec3 st = stroke(g, 0.3, vec2(0.5, 0.11));
   // Broad masses of light and dark first, then the strokes inside them.
   float mass = noise(g * 0.55 + 4.0) - 0.5;
-  float s = 0.34 + 0.3 * (dot(n, uLight) * 0.5 + 0.5) + mass * 0.34 + (st - 0.5) * 0.3 + n.y * 0.06;
+  float s = 0.34 + 0.3 * (dot(n, uLight) * 0.5 + 0.5) + mass * 0.34 + (st.x - 0.5) * 0.3 + n.y * 0.06;
   vec3 col = mix(uGrassLo, uGrassMid, smoothstep(0.39, 0.43, s));
   col = mix(col, uGrassHi, smoothstep(0.66, 0.7, s));
-  col *= 1.0 + (st - 0.5) * 0.14;
+  col *= 0.95 + st.y * 0.1;
   float lit = smoothstep(0.42, 0.7, s);
-  col = mix(col, uGrassWarm, smoothstep(0.6, 0.66, dab(g + 7.3, -0.4, 1.25)) * (0.18 + 0.5 * lit));
-  col = mix(col, uGrassCool, smoothstep(0.62, 0.68, dab(g + 19.1, 0.8, 1.05)) * (0.6 - 0.45 * lit));
+  float dab = stroke(g + 7.3, -0.4, vec2(0.36, 0.09)).x;
+  col = mix(col, uGrassWarm, step(0.8, dab) * (0.2 + 0.5 * lit));
+  col = mix(col, uGrassCool, step(dab, 0.16) * (0.6 - 0.45 * lit));
   return col;
 }
-vec3 rockTone(vec3 n, vec3 p) {
-  // Round the wall, and up it.
-  vec2 w = vec2(p.x + p.z * 0.6, p.y + p.z * 0.25);
-  float st = dab(w, 0.06, 1.5);
-  // Beds of rock: level bands, each its own shade, some with a dark crack under them.
-  float layer = p.y * 3.1 + noise(vec2(w.x * 0.8, p.y * 0.5)) * 1.2;
-  float bed = floor(layer);
-  float s = mix(0.5, dot(n, uLight) * 0.5 + 0.5, 0.75) + (hash(vec2(bed, 7.0)) - 0.5) * 0.26 + (st - 0.5) * 0.22 + n.y * 0.16;
-  vec3 col = mix(uRockLo, uRockMid, smoothstep(0.4, 0.44, s));
-  col = mix(col, uRockHi, smoothstep(0.66, 0.7, s));
-  col *= 1.0 + (st - 0.5) * 0.12;
+// tone: a number of the plane's own, 0 to 1, so that each face of rock is painted a little differently.
+vec3 rockTone(vec3 n, vec3 p, float tone) {
+  // Each plane is painted across itself: along a wall and up it, or flat on a ledge.
+  vec2 along = normalize(vec2(-n.z, n.x) + 0.0001);
+  vec2 w = abs(n.y) > 0.75 ? p.xz : vec2(dot(p.xz, along), p.y);
+  // And with its own slant of the brush.
+  float turn = (tone - 0.5) * 0.5;
+  vec3 st = stroke(w, turn, vec2(0.8, 0.13));
+  // A plane is one tone, by how it faces the light: tops light, faces in the middle, sides and undersides dark.
+  float s = 0.05 + 0.7 * (dot(n, uLight) * 0.5 + 0.5) + (tone - 0.5) * 0.34 + (st.x - 0.5) * 0.07 + n.y * 0.12;
+  // Firm edges between the tones, as a palette knife leaves them.
+  vec3 col = mix(uRockLo, uRockMid, smoothstep(0.4, 0.43, s));
+  col = mix(col, uRockHi, smoothstep(0.67, 0.7, s));
+  // Within it, each stroke is its own mix: a touch lighter or darker, a touch warmer or cooler.
+  col *= 0.93 + st.x * 0.14;
+  col = mix(col, st.y > 0.5 ? uRockWarm : uRockCool, abs(st.y - 0.5) * 0.24);
+  // And here and there a stroke of another colour altogether: warm in the light, cool in the shade.
   float lit = smoothstep(0.42, 0.7, s);
-  col = mix(col, uRockWarm, smoothstep(0.62, 0.68, dab(w + 3.7, 0.5, 1.15)) * (0.2 + 0.4 * lit));
-  col = mix(col, uRockCool, smoothstep(0.61, 0.67, dab(w + 11.9, -0.3, 0.95)) * (0.62 - 0.47 * lit));
-  float f = fract(layer);
-  col = mix(col, uRockDeep, 0.5 * step(0.5, hash(vec2(bed, 3.0))) * (1.0 - smoothstep(0.0, 0.07, f)));
+  float dab = stroke(w + 3.7, turn + 0.4, vec2(0.4, 0.075)).x;
+  col = mix(col, uRockWarm, step(0.88, dab) * (0.35 + 0.4 * lit));
+  col = mix(col, uRockCool, step(dab, 0.11) * (0.6 - 0.4 * lit));
   // The sea throws its own colour back up the foot of the rock.
   return mix(col, uBounce, 0.16 * (1.0 - smoothstep(uSeaY, uSeaY + 0.7, p.y)));
 }`;
 
-const LAND_VERT = /* glsl */ `
+/** How far down its wall the turf hangs, at a place: a wavering line with a few longer tongues, ragged like a brush's edge. */
+const HANG = /* glsl */ `
+float hang(vec3 p, float drape) {
+  float along = p.x * 1.15 + p.z * 0.8;
+  return max(0.03, drape + 0.1 + 0.05 * sin(p.x * 2.3 + p.z * 1.1) + 0.04 * sin(p.z * 3.7 - p.x * 1.9 + 1.3)
+       + 0.16 * pow(max(0.0, sin(along + 0.6)), 8.0) + 0.09 * pow(max(0.0, sin(along * 1.9 + 2.1)), 6.0)
+       + (noise(vec2(along * 9.0, 1.7)) - 0.5) * 0.12);
+}`;
+
+const TURF_VERT = /* glsl */ `
 attribute float aDepth;
 varying vec3 vNormal;
 varying vec3 vPaint;
-varying vec3 vWorld;
 varying float vDepth;
 uniform vec3 uLandOrigin;
 uniform float uLandInv;
 void main() {
   vec4 w = modelMatrix * vec4(position, 1.0);
-  vWorld = w.xyz;
   vPaint = (w.xyz - uLandOrigin) * uLandInv;
   vNormal = normalize(mat3(modelMatrix) * normal);
   vDepth = aDepth;
@@ -399,43 +368,93 @@ void main() {
 }`;
 
 /**
- * A bluff: turf on top that hangs a little way down its own wall, and rock
- * below. Where one ends and the other begins is painted, not modelled: a
- * wavering line with a few long tongues of grass, so the two read as one
- * piece of land. The rock is shaded in flat planes, like blocks cut with a
- * palette knife.
+ * The turf: a blanket over the top of a bluff that turns its corner and hangs
+ * a little way down the wall. Its lower edge is painted, not modelled, and
+ * the rock shows below it, so the two read as one piece of land.
  */
-const LAND_FRAG = /* glsl */ `
+const TURF_FRAG = /* glsl */ `
 precision highp float;
 varying vec3 vNormal;
 varying vec3 vPaint;
-varying vec3 vWorld;
 varying float vDepth;
 uniform vec3 uTint;
 uniform float uDrape;
 ${LAND_TONE}
+${HANG}
 void main() {
-  vec3 p = vPaint;
-  float along = p.x * 1.15 + p.z * 0.8;
-  float hang = uDrape + 0.1 + 0.05 * sin(p.x * 2.3 + p.z * 1.1) + 0.04 * sin(p.z * 3.7 - p.x * 1.9 + 1.3)
-             + 0.16 * pow(max(0.0, sin(along + 0.6)), 8.0) + 0.09 * pow(max(0.0, sin(along * 1.9 + 2.1)), 6.0)
-             + (noise(vec2(p.x * 6.0 + p.z * 4.0, p.y * 5.0)) - 0.5) * 0.07
-             + (noise(vec2(along * 9.0, 1.7)) - 0.5) * 0.12;
-  float below = vDepth - hang;
+  float below = vDepth - hang(vPaint, uDrape);
   float aa = max(fwidth(below), 0.0005);
   float turf = 1.0 - smoothstep(-aa, aa, below);
-
-  vec3 face = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
-  if (dot(face, cameraPosition - vWorld) < 0.0) face = -face;
-  vec3 rock = rockTone(face, p);
-  // The turf's own shadow on the rock just under it.
-  rock = mix(rock, uRockDeep, 0.7 * (1.0 - smoothstep(0.0, 0.22, below)));
-
-  vec3 grass = grassTone(normalize(vNormal), p);
+  if (turf <= 0.0) discard;
+  vec3 grass = grassTone(normalize(vNormal), vPaint);
   // Turf that hangs over the edge is in its own shade.
   grass = mix(grass, uGrassLo * 0.92, 0.5 * smoothstep(0.05, 0.3, vDepth));
+  gl_FragColor = vec4(grass * uTint, turf);
+}`;
 
-  gl_FragColor = vec4(mix(rock, grass, turf) * uTint, 1.0);
+const ROCK_VERT = /* glsl */ `
+attribute float aDepth, aTone, aShade;
+attribute vec4 aEdges, aKinds;
+varying vec3 vPaint;
+varying vec3 vWorld;
+varying float vDepth, vTone, vShade;
+varying vec4 vEdges, vKinds;
+uniform vec3 uLandOrigin;
+uniform float uLandInv;
+void main() {
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vWorld = w.xyz;
+  vPaint = (w.xyz - uLandOrigin) * uLandInv;
+  vDepth = aDepth;
+  vTone = aTone;
+  vShade = aShade;
+  vEdges = aEdges;
+  vKinds = aKinds;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+
+/**
+ * Rock, for the cliff's wall and the boulders on top. Every face is a flat
+ * plane, lit as one, and painted across itself in strokes. Then its edges are
+ * picked out as a painter of rocks does: light dragged along the edges that
+ * stand proud, most of all the top ones, and dark in the joints where one
+ * block sits back from the next. Each face carries how far each point is
+ * from its four edges, and which kind each edge is (1 proud, -1 a joint).
+ */
+const ROCK_FRAG = /* glsl */ `
+precision highp float;
+varying vec3 vPaint;
+varying vec3 vWorld;
+varying float vDepth, vTone, vShade;
+varying vec4 vEdges, vKinds;
+uniform vec3 uTint;
+uniform float uDrape;
+${LAND_TONE}
+${HANG}
+void main() {
+  vec3 p = vPaint;
+  vec3 face = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
+  if (dot(face, cameraPosition - vWorld) < 0.0) face = -face;
+  vec3 col = rockTone(face, p, vTone);
+  // A block is lighter at its top than at its foot.
+  col *= 1.06 - 0.14 * clamp(vEdges.z / max(vEdges.z + vEdges.w, 0.001), 0.0, 1.0) * step(vEdges.w, 50.0);
+
+  // A dry brush skips: the lines along the edges are broken ones.
+  float ragged = noise(p.xy * 7.0 + p.z * 5.0);
+  vec4 e = vEdges + (ragged - 0.5) * 0.016;
+  vec4 proud = step(0.5, vKinds) * (1.0 - smoothstep(0.0, 0.045, e));
+  vec4 joint = step(vKinds, vec4(-0.5)) * (1.0 - smoothstep(0.0, 0.022, e));
+  float lit = dot(face, uLight) * 0.5 + 0.5;
+  float light = max(max(proud.x, proud.y) * 0.6, proud.z) * smoothstep(0.25, 0.55, ragged + 0.15) * (0.4 + 0.6 * lit);
+  col = mix(col, uRockHi * 1.04, light);
+  col = mix(col, uRockDeep, max(max(joint.x, joint.y), max(joint.z, joint.w)) * 0.75);
+  // Under a block that stands out above it: that block's shadow.
+  col = mix(col, uRockDeep, step(vKinds.z, -0.5) * (1.0 - smoothstep(0.0, 0.11, vEdges.z)) * 0.4);
+  // The turf's own shadow on the rock just under it.
+  col = mix(col, uRockDeep, 0.7 * (1.0 - smoothstep(0.0, 0.22, vDepth - hang(p, uDrape))));
+  // And darker where a boulder goes into the ground.
+  col = mix(col, uRockDeep, 0.5 * vShade);
+  gl_FragColor = vec4(col * uTint, 1.0);
 }`;
 
 /**
@@ -565,6 +584,20 @@ const FLOWERS = [
   { x: -2.05, z: 1.0, kind: "buttercup", stem: 0.27, size: 0.8 },
   { x: -2.3, z: 0.0, kind: "pom", stem: 0.66, size: 0.95 },
   { x: -1.72, z: 0.35, kind: "tulip", stem: 0.56, size: 1.05 },
+] as const;
+
+/**
+ * The boulders on the grass: where each sits, its size across, up and
+ * through, how it is turned, and the number its shape is cut from. A big one
+ * with smaller ones by it, as rocks lie; none where a flower grows.
+ */
+const STONES = [
+  { x: 0.1, z: -1.2, wide: 0.5, tall: 0.4, deep: 0.42, turn: 0.4, seed: 3 },
+  { x: -0.5, z: -1.42, wide: 0.27, tall: 0.2, deep: 0.24, turn: 1.3, seed: 7 },
+  { x: 0.42, z: -0.62, wide: 0.16, tall: 0.11, deep: 0.14, turn: 2.2, seed: 11 },
+  { x: 1.1, z: -0.95, wide: 0.48, tall: 0.36, deep: 0.44, turn: 0.9, seed: 5 },
+  { x: 0.86, z: -0.3, wide: 0.24, tall: 0.17, deep: 0.22, turn: 2.6, seed: 13 },
+  { x: -2.3, z: -0.95, wide: 0.18, tall: 0.12, deep: 0.16, turn: 0.8, seed: 23 },
 ] as const;
 
 /** The lines of wind: where each starts (as a share of the view), its size, and how often it blows. */
@@ -790,7 +823,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   /**
    * The land's colours, shared by the turf, the rock under it and the blades
    * that grow from it: the reference pictures' yellow-greens with gold worked
-   * into the light and blue-green into the shade; cream and ochre rock with
+   * into the light and blue-green into the shade; cream and brown rock with
    * orange in its light, and violet and dusty blue in its shade.
    */
   const landUniforms = {
@@ -813,82 +846,90 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     uLandInv: shared.uLandInv,
   };
 
-  /** A bluff: a grassy top that rolls over its edge into a wall of rock. Its outline is a reach in each direction from its middle. */
-  type Bluff = { x: number; z: number; rim: (a: number) => number; top: (x: number, z: number) => number };
-  /** How far the turf dips as it rolls over the edge. */
-  const ROLL = 0.1;
+  /**
+   * A bluff: a flat grassy top that ends at a sheer wall of rock. Its outline
+   * is a reach in each direction from its middle, and it is not smooth: the
+   * rock breaks along upright joints into ribs, each standing a little
+   * further out or back than the next, so the edge of the top is a run of
+   * straight pieces with corners between them, as a cliff's edge is.
+   */
+  type Rib = { from: number; to: number; stand: number; lean: number };
+  type Bluff = { x: number; z: number; ribs: Rib[]; reach: (rib: Rib, column: number) => number; rim: (a: number) => number; top: (x: number, z: number) => number };
+  const AROUND = 64;
+  const bluff = (x: number, z: number, shape: (a: number) => number, top: (x: number, z: number) => number, seed: number): Bluff => {
+    const r = rng(seed);
+    const ribs: Rib[] = [];
+    for (let c = 0; c < AROUND; ) {
+      // Most ribs are a few columns wide; now and then a narrow one sits well back, a cleft in the face.
+      const cleft = r() < 0.13;
+      const wide = Math.min(AROUND - c, cleft ? 1 : 2 + Math.floor(r() * 4));
+      ribs.push({ from: c, to: c + wide, stand: cleft ? -0.2 : (r() - 0.5) * 0.2, lean: cleft ? 0 : (r() - 0.5) * 0.14 });
+      c += wide;
+    }
+    const reach = (rib: Rib, column: number) => shape((column / AROUND) * Math.PI * 2) + rib.stand + rib.lean * ((column - rib.from) / (rib.to - rib.from) - 0.5);
+    const rim = (a: number) => {
+      const column = ((((a / (Math.PI * 2)) % 1) + 1) % 1) * AROUND;
+      return reach(ribs.find((rib) => column >= rib.from && column < rib.to) ?? ribs[0]!, column);
+    };
+    return { x, z, ribs, reach, rim, top };
+  };
+  /** How far the turf dips as it comes to the edge: a little, so the corner is a corner. */
+  const ROLL = 0.04;
   /** The ground on a bluff's top, and how far out towards its edge that is (1 at the edge). */
   const onTop = (b: Bluff, x: number, z: number) => {
     const s = Math.hypot(x - b.x, z - b.z) / b.rim(Math.atan2(z - b.z, x - b.x));
-    return { y: b.top(x, z) - ROLL * ease(0.7, 1, s), s };
+    return { y: b.top(x, z) - ROLL * ease(0.8, 1, s), s };
   };
   const normalOn = (b: Bluff, x: number, z: number) => {
     const e = 0.04;
     return new THREE.Vector3(onTop(b, x - e, z).y - onTop(b, x + e, z).y, 2 * e, onTop(b, x, z - e).y - onTop(b, x, z + e).y).normalize();
   };
-  /** The wall, by how far down it: how far it stands out from the edge above. A nose of rock under the turf, an undercut, then a buttress. */
-  const WALL: readonly (readonly [number, number])[] = [
-    [0.07, 0.03],
-    [0.18, 0.045],
-    [0.34, 0.04],
-    [0.54, -0.03],
-    [0.8, -0.17],
-    [1.12, -0.2],
-    [1.55, -0.1],
-    [2.2, 0.06],
-    [3.0, 0.3],
-  ];
-  /** The rings of the top, as a share of the way out to the edge: closer together where the turf rolls over. */
+  /** The edge of a bluff's top where one of its ribs meets a column line: the place, and the way out from the middle. */
+  const edgeOf = (b: Bluff, rib: Rib, column: number) => {
+    const a = (column / AROUND) * Math.PI * 2;
+    const dx = Math.cos(a);
+    const dz = Math.sin(a);
+    const x = b.x + dx * b.reach(rib, column);
+    const z = b.z + dz * b.reach(rib, column);
+    return { dx, dz, x, z, y: b.top(x, z) - ROLL };
+  };
+
+  /** The turf's blanket: the top, ring by ring out to its edge, then a skirt that hangs straight down the wall, standing just clear of the rock. */
   const CAP = [0, 0.3, 0.55, 0.74, 0.87, 0.95, 1];
-  const AROUND = 64;
-  const bluffGeometry = (b: Bluff, seed: number) => {
-    // The same every visit, and the same at both ends of the seam.
-    const jitter = (i: number, j: number, k: number) => {
-      const v = Math.sin(i * 12.9898 + j * 78.233 + k * 37.719 + seed) * 43758.5453;
-      return v - Math.floor(v) - 0.5;
-    };
+  const SKIRT: readonly (readonly [number, number])[] = [
+    [0.07, 0.03],
+    [0.18, 0.04],
+    [0.32, 0.04],
+    [0.5, 0.035],
+  ];
+  const turfGeometry = (b: Bluff) => {
+    // Round the edge rib by rib: where two ribs meet there are two points, one for each, and the step between them.
+    const rim = b.ribs.flatMap((rib) => Array.from({ length: rib.to - rib.from + 1 }, (_, i) => edgeOf(b, rib, rib.from + i)));
     const position: number[] = [];
     const depth: number[] = [];
     const index: number[] = [];
-    const rows = CAP.length + WALL.length;
+    const rows = CAP.length + SKIRT.length;
     for (let j = 0; j < rows; j += 1) {
-      const w = j - CAP.length; // below 0 on the top; then one row of wall for each step down
-      // The first rows of wall are turf and stay smooth. Below them the rock is in blocks, two or three columns
-      // wide and a band deep, each standing a little further out or back than its neighbours: flat faces, with
-      // a joint between one block and the next.
-      const rough = w >= 2;
-      const band = w <= 3 ? 0 : w <= 5 ? 1 : 2;
-      for (let i = 0; i <= AROUND; i += 1) {
-        const col = i % AROUND;
-        const block = Math.floor((col + band * 3) / (band === 1 ? 2 : 3));
-        const a = ((col + (rough ? jitter(col, band, 1) * 0.3 : 0)) / AROUND) * Math.PI * 2;
-        const dx = Math.cos(a);
-        const dz = Math.sin(a);
-        const r = b.rim(a);
-        if (w < 0) {
+      for (let i = 0; i <= rim.length; i += 1) {
+        const at = rim[i % rim.length]!;
+        if (j < CAP.length) {
           const s = CAP[j]!;
-          const x = b.x + dx * r * s;
-          const z = b.z + dz * r * s;
-          position.push(x, onTop(b, x, z).y, z);
-          depth.push(-(1 - s) * r);
+          const x = b.x + (at.x - b.x) * s;
+          const z = b.z + (at.z - b.z) * s;
+          position.push(x, b.top(x, z) - ROLL * ease(0.8, 1, s), z);
+          depth.push(-(1 - s) * Math.hypot(at.x - b.x, at.z - b.z));
         } else {
-          const [down, out] = WALL[w]!;
-          const edgeX = b.x + dx * r;
-          const edgeZ = b.z + dz * r;
-          // The nose stands further out in some places than others: buttresses.
-          const stand = out * (w <= 3 ? 0.6 + 0.5 * (0.5 + 0.5 * Math.sin(a * 5 + seed)) : 1) + (rough ? jitter(block, band, 2) * 0.2 + jitter(col, j, 4) * 0.03 : 0);
-          position.push(edgeX + dx * stand, onTop(b, edgeX, edgeZ).y - down + (rough ? jitter(block, j, 3) * 0.07 : 0), edgeZ + dz * stand);
+          const [down, out] = SKIRT[j - CAP.length]!;
+          position.push(at.x + at.dx * out, at.y - down, at.z + at.dz * out);
           depth.push(down);
         }
       }
     }
     for (let j = 0; j < rows - 1; j += 1) {
-      for (let i = 0; i < AROUND; i += 1) {
-        const inner = j * (AROUND + 1) + i;
-        const outer = inner + AROUND + 1;
-        // Split each square the other way from its neighbours, so the planes do not all lean one way.
-        if ((i + j) % 2) index.push(inner, inner + 1, outer + 1, inner, outer + 1, outer);
-        else index.push(inner, inner + 1, outer, inner + 1, outer + 1, outer);
+      for (let i = 0; i < rim.length; i += 1) {
+        const inner = j * (rim.length + 1) + i;
+        const outer = inner + rim.length + 1;
+        index.push(inner, inner + 1, outer, inner + 1, outer + 1, outer);
       }
     }
     const geometry = keep(new THREE.BufferGeometry());
@@ -899,6 +940,181 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     return geometry;
   };
 
+  /**
+   * Rock is gathered a flat face at a time. With each corner goes what the
+   * painter needs: how far down from the turf it is, a number of the face's
+   * own, how far it is from the face's edges (left, right, top, bottom), and
+   * which kind each of those edges is: 1 where the face stands proud of its
+   * neighbour, -1 where it sits back in a joint, 0 where nothing shows.
+   */
+  type Corner = { at: THREE.Vector3; edges: readonly [number, number, number, number]; depth?: number; shade?: number };
+  const FAR = [99, 99, 99, 99] as const;
+  const PLAIN = [0, 0, 0, 0] as const;
+  const gatherRock = () => {
+    const position: number[] = [];
+    const depth: number[] = [];
+    const tone: number[] = [];
+    const shade: number[] = [];
+    const edges: number[] = [];
+    const kinds: number[] = [];
+    const face = (corners: readonly Corner[], kind: readonly number[], own: number) => {
+      // Three corners make one triangle; four, two.
+      for (const i of corners.length === 4 ? [0, 1, 2, 1, 3, 2] : [0, 1, 2]) {
+        const c = corners[i]!;
+        position.push(c.at.x, c.at.y, c.at.z);
+        depth.push(c.depth ?? 99);
+        tone.push(own);
+        shade.push(c.shade ?? 0);
+        edges.push(...c.edges);
+        kinds.push(...kind);
+      }
+    };
+    const mesh = (drape: number) => {
+      const geometry = keep(new THREE.BufferGeometry());
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(position, 3));
+      geometry.setAttribute("aDepth", new THREE.Float32BufferAttribute(depth, 1));
+      geometry.setAttribute("aTone", new THREE.Float32BufferAttribute(tone, 1));
+      geometry.setAttribute("aShade", new THREE.Float32BufferAttribute(shade, 1));
+      geometry.setAttribute("aEdges", new THREE.Float32BufferAttribute(edges, 4));
+      geometry.setAttribute("aKinds", new THREE.Float32BufferAttribute(kinds, 4));
+      const material = keep(
+        new THREE.ShaderMaterial({
+          vertexShader: ROCK_VERT,
+          fragmentShader: ROCK_FRAG,
+          uniforms: { ...landUniforms, uDrape: { value: drape } },
+          side: THREE.DoubleSide,
+        }),
+      );
+      const out = new THREE.Mesh(geometry, material);
+      out.frustumCulled = false;
+      return out;
+    };
+    return { face, mesh };
+  };
+
+  /**
+   * A cliff's wall, built as cliffs break: each rib of the bluff goes straight
+   * down from the edge of the top, cracked across into blocks at heights of
+   * its own, so no course runs round the cliff as in a built wall. Every
+   * block's face is one flat plane, a little forward or back of the one
+   * above and tipped a little, so no two catch the light alike; the wall is
+   * sheer, and its edges are sharp.
+   */
+  const wallOf = (b: Bluff, seed: number, drape: number) => {
+    const r = rng(seed);
+    const rock = gatherRock();
+    const FOOT = -1.2;
+    // The cracks dip as they run round the cliff, all together, as strata do.
+    const dip = r() * 6;
+    const dipAt = (column: number) => 0.07 * Math.sin((column / AROUND) * Math.PI * 2 + dip);
+    type Block = { floor: number; stand: number; lean: number; tip: number; own: number };
+    const built = b.ribs.map((rib) => {
+      const columns = Array.from({ length: rib.to - rib.from + 1 }, (_, i) => rib.from + i);
+      const edges = columns.map((c) => edgeOf(b, rib, c));
+      const blocks: Block[] = [];
+      // Blocks are shallow near the top, where they are seen, and deeper under the sea.
+      for (let y = Math.min(...edges.map((e) => e.y)) - 0.22 - r() * 0.4; y > FOOT + 0.3; y -= 0.3 + r() * 0.5 + blocks.length * 0.1) {
+        const pick = r();
+        blocks.push(
+          blocks.length === 0
+            ? // The top block keeps under the turf.
+              { floor: y, stand: -0.025, lean: (r() - 0.5) * 0.03, tip: (r() - 0.5) * 0.03, own: r() }
+            : // Below it, most sit a little back, a few well back, a few stand out.
+              { floor: y, stand: pick < 0.15 ? -0.13 : pick > 0.9 ? 0.04 : -0.02 + (r() - 0.5) * 0.09, lean: (r() - 0.5) * 0.12, tip: (r() - 0.5) * 0.09, own: r() },
+        );
+      }
+      blocks.push({ floor: FOOT, stand: -0.02, lean: 0, tip: 0, own: r() });
+      const at = (column: number) => edges[column - rib.from]!;
+      const floorAt = (k: number, column: number) => (k === blocks.length - 1 ? FOOT : blocks[k]!.floor + dipAt(column));
+      const roofAt = (k: number, column: number) => (k === 0 ? at(column).y : floorAt(k - 1, column));
+      /** How far out a block's face stands from the edge above: `column` may fall between two; `down` runs 0 to 1 from its roof to its floor. */
+      const standOn = (k: number, column: number, down: number) =>
+        blocks[k]!.stand + blocks[k]!.lean * ((column - rib.from) / (rib.to - rib.from) - 0.5) + blocks[k]!.tip * (down - 0.5);
+      /** A point on this rib's wall, on a column line, at a height. */
+      const wallAt = (column: number, y: number) => {
+        const k = Math.max(0, blocks.findIndex((_, i) => y >= floorAt(i, column)));
+        const stand = standOn(k, column, (roofAt(k, column) - y) / Math.max(1e-4, roofAt(k, column) - floorAt(k, column)));
+        return { stand, out: b.reach(rib, column) + stand, at: new THREE.Vector3(at(column).x + at(column).dx * stand, y, at(column).z + at(column).dz * stand) };
+      };
+      return { rib, blocks, at, floorAt, roofAt, standOn, wallAt };
+    });
+    /** Which way a step between two faces shows: this one proud, this one back, or no step to speak of. */
+    const step = (mine: number, other: number) => (mine - other > 0.02 ? 1 : mine - other < -0.02 ? -1 : 0);
+
+    built.forEach((mine, i) => {
+      const { rib, blocks, at, floorAt, roofAt, standOn } = mine;
+      const before = built[(i + built.length - 1) % built.length]!;
+      const after = built[(i + 1) % built.length]!;
+      const corner = (column: number, y: number, stand: number, edges: readonly [number, number, number, number] = FAR): Corner => ({
+        at: new THREE.Vector3(at(column).x + at(column).dx * stand, y, at(column).z + at(column).dz * stand),
+        edges,
+        depth: at(column).y - y,
+      });
+      blocks.forEach((block, k) => {
+        const middle = (column: number) => (roofAt(k, column) + floorAt(k, column)) / 2;
+        // Against the ribs to either side, at this block's height.
+        const beside = [
+          step(b.reach(rib, rib.from) + standOn(k, rib.from, 0.5), before.wallAt(before.rib.to, middle(rib.from)).out),
+          step(b.reach(rib, rib.to) + standOn(k, rib.to, 0.5), after.wallAt(after.rib.from, middle(rib.to)).out),
+        ];
+        for (let c = rib.from; c < rib.to; c += 1) {
+          const wide = Math.hypot(at(c + 1).x - at(c).x, at(c + 1).z - at(c).z);
+          const left = (c - rib.from) * wide;
+          const right = (rib.to - c - 1) * wide;
+          const tall = [roofAt(k, c) - floorAt(k, c), roofAt(k, c + 1) - floorAt(k, c + 1)] as const;
+          rock.face(
+            [
+              corner(c, roofAt(k, c), standOn(k, c, 0), [left, right + wide, 0, tall[0]]),
+              corner(c + 1, roofAt(k, c + 1), standOn(k, c + 1, 0), [left + wide, right, 0, tall[1]]),
+              corner(c, floorAt(k, c), standOn(k, c, 1), [left, right + wide, tall[0], 0]),
+              corner(c + 1, floorAt(k, c + 1), standOn(k, c + 1, 1), [left + wide, right, tall[1], 0]),
+            ],
+            [
+              beside[0]!,
+              beside[1]!,
+              k === 0 ? 0 : step(standOn(k, c + 0.5, 0), standOn(k - 1, c + 0.5, 1)),
+              k === blocks.length - 1 ? 0 : Math.min(0, step(standOn(k, c + 0.5, 1), standOn(k + 1, c + 0.5, 0))),
+            ],
+            block.own,
+          );
+          // The ledge between this block and the one under it: a step out, or the underside of an overhang.
+          if (k < blocks.length - 1) {
+            rock.face(
+              [
+                corner(c, floorAt(k, c), standOn(k, c, 1)),
+                corner(c + 1, floorAt(k, c + 1), standOn(k, c + 1, 1)),
+                corner(c, floorAt(k, c), standOn(k + 1, c, 0)),
+                corner(c + 1, floorAt(k, c + 1), standOn(k + 1, c + 1, 0)),
+              ],
+              PLAIN,
+              r(),
+            );
+          }
+        }
+      });
+      // The joint between this rib and the one before it: the side of whichever stands further out, from the
+      // turf to the foot, in a piece for each stretch between one crack and the next on either side.
+      const levels = [
+        Math.min(at(rib.from).y, before.at(before.rib.to).y),
+        ...blocks.map((_, k) => floorAt(k, rib.from)),
+        ...before.blocks.map((_, k) => before.floorAt(k, before.rib.to)),
+      ]
+        .filter((y, _, all) => y <= all[0]!)
+        .sort((p, q) => q - p);
+      for (let j = 0; j < levels.length - 1; j += 1) {
+        const [high, low] = [levels[j]! - 1e-3, levels[j + 1]! + 1e-3];
+        if (high <= low) continue;
+        const side = (wall: { at: THREE.Vector3 }): Corner => ({ at: wall.at, edges: FAR, depth: levels[0]! - wall.at.y });
+        rock.face(
+          [side(before.wallAt(before.rib.to, high)), side(mine.wallAt(rib.from, high)), side(before.wallAt(before.rib.to, low)), side(mine.wallAt(rib.from, low))],
+          PLAIN,
+          r(),
+        );
+      }
+    });
+    return rock.mesh(drape);
+  };
+
   /** A rounded outline with its own reach to each side, and a waver so it is not an oval. */
   const outline = (left: number, right: number, front: number, back: number, k: number) => (a: number) => {
     const c = Math.cos(a);
@@ -907,85 +1123,133 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     return oval * (1 + 0.07 * Math.sin(a * 3 + k) + 0.045 * Math.sin(a * 5 + k * 2.3) + 0.025 * Math.sin(a * 9 + k * 0.7));
   };
   /** The patch the flowers grow on. Its nose points out to sea on the left; its near edge is the cliff the visitor looks down. It rises to the right and to the back. */
-  const PATCH: Bluff = {
-    x: 0,
-    z: 0,
-    rim: outline(2.75, 3.2, 1.5, 2.3, 0.5),
-    top: (x, z) => 1.78 + 0.05 * (x + 2.75) + 0.055 * (1.5 - z) + 0.04 * Math.sin(x * 1.7 + 0.4) * Math.sin(z * 1.3 + 1.1),
-  };
+  const PATCH = bluff(
+    0,
+    0,
+    outline(2.75, 3.2, 1.5, 2.3, 0.5),
+    (x, z) => 1.78 + 0.05 * (x + 2.75) + 0.055 * (1.5 - z) + 0.04 * Math.sin(x * 1.7 + 0.4) * Math.sin(z * 1.3 + 1.1),
+    29,
+  );
   /** The headland behind it, a step higher, running off to the right. */
-  const RIDGE: Bluff = {
-    x: 4.2,
-    z: -1.6,
-    rim: outline(3.75, 3.75, 2.9, 2.9, 2.1),
-    top: (x, z) => 2.34 + 0.04 * (x - 0.5) + 0.05 * Math.sin(x * 1.3 + 2) * Math.sin(z * 1.1),
-  };
-  const land = (b: Bluff, seed: number, drape: number) =>
-    cliff.add(
-      new THREE.Mesh(
-        bluffGeometry(b, seed),
-        keep(new THREE.ShaderMaterial({ vertexShader: LAND_VERT, fragmentShader: LAND_FRAG, uniforms: { ...landUniforms, uDrape: { value: drape } } })),
-      ),
+  const RIDGE = bluff(4.2, -1.6, outline(3.75, 3.75, 2.9, 2.9, 2.1), (x, z) => 2.34 + 0.04 * (x - 0.5) + 0.05 * Math.sin(x * 1.3 + 2) * Math.sin(z * 1.1), 31);
+  const land = (b: Bluff, seed: number, drape: number) => {
+    const turf = keep(
+      new THREE.ShaderMaterial({
+        vertexShader: TURF_VERT,
+        fragmentShader: TURF_FRAG,
+        uniforms: { ...landUniforms, uDrape: { value: drape } },
+        // The turf's ragged lower edge is cut out of its skirt; this keeps that cut smooth.
+        alphaToCoverage: true,
+      }),
     );
-  land(PATCH, 1.7, 0);
+    cliff.add(wallOf(b, seed, drape), new THREE.Mesh(turfGeometry(b), turf));
+  };
+  land(PATCH, 17, 0);
   // More of the step up to the headland is turf: it is a bank, not a second cliff.
-  land(RIDGE, 4.3, 0.16);
+  land(RIDGE, 43, 0.12);
 
   const underRidge = (x: number, z: number) => onTop(RIDGE, x, z).s < 1.03;
   /** The ground at a point: the headland where it stands, the patch elsewhere. */
   const ground = (x: number, z: number) => (onTop(RIDGE, x, z).s < 1 ? onTop(RIDGE, x, z).y : onTop(PATCH, x, z).y);
   /** Nothing further right than this is ever in view. */
   const SEEN = 2.6;
+
+  // Boulders on the grass, made the way a modeller makes a rock: a block whose corners and edges are sliced
+  // off by flat cuts, until what is left is all planes that meet in sharp edges.
+  {
+    const rock = gatherRock();
+    /** Keep the part of a solid that lies behind a flat cut, and close the cut with a new face. */
+    const slice = (faces: THREE.Vector3[][], n: THREE.Vector3, d: number) => {
+      const out: THREE.Vector3[][] = [];
+      const cut: THREE.Vector3[] = [];
+      for (const face of faces) {
+        const kept: THREE.Vector3[] = [];
+        face.forEach((a, i) => {
+          const b = face[(i + 1) % face.length]!;
+          const da = a.dot(n) - d;
+          const db = b.dot(n) - d;
+          if (da <= 0) kept.push(a);
+          if (da * db < 0) {
+            const p = a.clone().lerp(b, da / (da - db));
+            kept.push(p);
+            if (!cut.some((q) => q.distanceTo(p) < 1e-4)) cut.push(p);
+          }
+        });
+        if (kept.length >= 3) out.push(kept);
+      }
+      if (cut.length >= 3) {
+        // Put the cut's corners in order round it.
+        const mid = cut.reduce((sum, p) => sum.add(p), new THREE.Vector3()).multiplyScalar(1 / cut.length);
+        const u = new THREE.Vector3().crossVectors(n, Math.abs(n.y) < 0.9 ? up : new THREE.Vector3(1, 0, 0)).normalize();
+        const v = new THREE.Vector3().crossVectors(n, u);
+        const turnOf = (p: THREE.Vector3) => Math.atan2(p.clone().sub(mid).dot(v), p.clone().sub(mid).dot(u));
+        out.push(cut.sort((p, q) => turnOf(p) - turnOf(q)));
+      }
+      return out;
+    };
+    for (const stone of STONES) {
+      const r = rng(stone.seed);
+      // A block...
+      const corner = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+      let faces: THREE.Vector3[][] = [
+        [corner(1, -1, -1), corner(1, 1, -1), corner(1, 1, 1), corner(1, -1, 1)],
+        [corner(-1, -1, 1), corner(-1, 1, 1), corner(-1, 1, -1), corner(-1, -1, -1)],
+        [corner(-1, 1, -1), corner(-1, 1, 1), corner(1, 1, 1), corner(1, 1, -1)],
+        [corner(-1, -1, 1), corner(-1, -1, -1), corner(1, -1, -1), corner(1, -1, 1)],
+        [corner(-1, -1, 1), corner(1, -1, 1), corner(1, 1, 1), corner(-1, 1, 1)],
+        [corner(1, -1, -1), corner(-1, -1, -1), corner(-1, 1, -1), corner(1, 1, -1)],
+      ];
+      // ...with cuts taken off it from the sides and above: deep ones first for its shape, then shallow ones for its edges.
+      for (let i = 0; i < 10; i += 1) {
+        const n = new THREE.Vector3(r() * 2 - 1, r() * 1.3 - 0.25, r() * 2 - 1).normalize();
+        faces = slice(faces, n, i < 4 ? 0.62 + r() * 0.2 : 0.84 + r() * 0.2);
+      }
+      // Set it in its place, turned and tipped a little, part of it in the ground.
+      const floor = ground(stone.x, stone.z);
+      const set = new THREE.Matrix4().compose(
+        new THREE.Vector3(stone.x, floor + stone.tall * 0.5, stone.z),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler((r() - 0.5) * 0.3, stone.turn, (r() - 0.5) * 0.3)),
+        new THREE.Vector3(stone.wide, stone.tall, stone.deep),
+      );
+      for (const face of faces) {
+        const at = face.map((p) => p.clone().applyMatrix4(set));
+        const mid = at.reduce((sum, p) => sum.add(p), new THREE.Vector3()).multiplyScalar(1 / at.length);
+        const normal = new THREE.Vector3().crossVectors(at[1]!.clone().sub(at[0]!), at[2]!.clone().sub(at[0]!)).normalize();
+        const own = r();
+        const shade = (p: THREE.Vector3) => 1 - ease(0, 0.2, p.y - floor);
+        at.forEach((a, i) => {
+          const b = at[(i + 1) % at.length]!;
+          // How far the face's middle is from this edge: the corners on the edge are at nought.
+          const along = b.clone().sub(a).normalize();
+          const from = mid.clone().sub(a);
+          const far = from.sub(along.multiplyScalar(from.dot(along))).length();
+          // Faces that look up have their edges picked out strongly, as a top edge; the rest as a side edge.
+          const slot = (dist: number) => (normal.y > 0.25 ? ([99, 99, dist, 99] as const) : ([dist, 99, 99, 99] as const));
+          rock.face(
+            [
+              { at: mid, edges: slot(far), shade: shade(mid) },
+              { at: a, edges: slot(0), shade: shade(a) },
+              { at: b, edges: slot(0), shade: shade(b) },
+            ],
+            normal.y > 0.25 ? [0, 0, 1, 0] : [1, 0, 0, 0],
+            own,
+          );
+        });
+      }
+    }
+    cliff.add(rock.mesh(0));
+  }
+
   /** A point on a bluff's top, anywhere on it. */
   const spot = (b: Bluff, reach = 0.97) => {
     const a = landRandom() * Math.PI * 2;
     const r = b.rim(a) * Math.sqrt(landRandom()) * reach;
     return [b.x + Math.cos(a) * r, b.z + Math.sin(a) * r] as const;
   };
-  /** Not on top of a flower. */
+  /** Not under a flower, by this much. */
   const clear = (x: number, z: number, by: number) => FLOWERS.every((f) => Math.hypot(f.x - x, f.z - z) > by);
-
-  const painted = (o: { hi: string; mid: string; lo: string; warm: string; cool: string; grain: readonly [number, number]; stroke: readonly [number, number, number] }) =>
-    keep(
-      new THREE.ShaderMaterial({
-        vertexShader: PAINT_VERT,
-        fragmentShader: PAINT_FRAG,
-        uniforms: {
-          uHi: { value: hex(o.hi) },
-          uMid: { value: hex(o.mid) },
-          uLo: { value: hex(o.lo) },
-          uWarm: { value: hex(o.warm) },
-          uCool: { value: hex(o.cool) },
-          uGrain: { value: new THREE.Vector2(...o.grain) },
-          uStroke: { value: new THREE.Vector3(...o.stroke) },
-          uLight: shared.uLight,
-          uTint: shared.uTint,
-          uLandOrigin: shared.uLandOrigin,
-          uLandInv: shared.uLandInv,
-        },
-      }),
-    );
-  const blob = keep(new THREE.IcosahedronGeometry(1, 3));
-
-  // Bushes behind the patch, rounded like the reference's, each its own size and build.
-  const bushMat = painted({ hi: "#bccb58", mid: "#5d9a4c", lo: "#285e50", warm: "#e3cf62", cool: "#2a6f7a", grain: [2.4, 0.3], stroke: [0.9, 2.6, 0.34] });
-  for (const [bx, bz, bs, squat, leaves] of [
-    [1.25, -0.75, 0.5, 0.86, 5],
-    [2.4, -0.4, 0.58, 0.8, 6],
-    [0.2, -1.6, 0.4, 1.05, 4],
-    [-0.9, -1.55, 0.26, 0.7, 3],
-  ] as const) {
-    const bush = new THREE.Group();
-    for (let i = 0; i < leaves; i += 1) {
-      const leaf = new THREE.Mesh(blob, bushMat);
-      const r = bs * between(0.55, 0.95);
-      leaf.scale.set(r, r * squat, r);
-      leaf.position.set((landRandom() - 0.5) * bs * 1.3, r * 0.6 + landRandom() * bs * 0.35, (landRandom() - 0.5) * bs * 0.8);
-      bush.add(leaf);
-    }
-    bush.position.set(bx, ground(bx, bz) - 0.1, bz);
-    cliff.add(bush);
-  }
+  /** Not under a boulder. */
+  const open = (x: number, z: number) => STONES.every((s) => ((x - s.x) / s.wide) ** 2 + ((z - s.z) / s.deep) ** 2 > 0.8);
 
   // Grass, in the ground's own colours: a short lawn, tufts of long grass, and a fringe that hangs over the cliff's edge.
   const bladeGeo = keep(new THREE.BufferGeometry());
@@ -1017,7 +1281,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   const lawn = (b: Bluff, count: number) => {
     for (let n = 0, tries = 0; n < count && tries < count * 8; tries += 1) {
       const [x, z] = spot(b);
-      if (x > SEEN || (b === PATCH && underRidge(x, z))) continue;
+      if (x > SEEN || !open(x, z) || (b === PATCH && underRidge(x, z))) continue;
       // Gathered in tufts; now and then a blade twice the height of its neighbours.
       const tuft = 0.75 + 0.5 * Math.sin(x * 3.1) * Math.sin(z * 2.7);
       sow(b, x, z, between(0.09, 0.22) * tuft * (landRandom() < 0.12 ? 1.9 : 1));
@@ -1029,7 +1293,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   // Tufts of long grass: a dozen or so blades from one root, fanning out.
   for (let n = 0, tries = 0; n < 22 && tries < 400; tries += 1) {
     const [x, z] = spot(PATCH, 0.9);
-    if (x > SEEN || underRidge(x, z) || !clear(x, z, 0.4)) continue;
+    if (x > SEEN || underRidge(x, z) || !open(x, z) || !clear(x, z, 0.4)) continue;
     const height = between(0.32, 0.6);
     const count = 9 + Math.floor(landRandom() * 9);
     for (let k = 0; k < count; k += 1) {
@@ -1040,7 +1304,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     }
     n += 1;
   }
-  // The fringe: rooted on the lip and the first of the wall, growing out over the drop.
+  // The fringe: rooted on the corner and the first of the wall, growing out over the drop.
   const fringe = (b: Bluff, count: number) => {
     for (let n = 0, tries = 0; n < count && tries < count * 8; tries += 1) {
       const a = landRandom() * Math.PI * 2;
@@ -1050,7 +1314,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       const z = b.z + out.z * r;
       if (x > SEEN || (b === PATCH && underRidge(x, z))) continue;
       const down = between(0, 0.12);
-      const stand = 0.02 + down * 0.6;
+      const stand = 0.02 + Math.min(down, 0.07) * 0.3;
       // One in four is long and droops over the rock.
       const long = landRandom() < 0.25;
       sown.push({
@@ -1119,7 +1383,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     const turn = new THREE.Euler();
     for (let n = 0, tries = 0; n < 11 && tries < 400; tries += 1) {
       const [x, z] = spot(PATCH, 0.88);
-      if (x > SEEN || underRidge(x, z) || !clear(x, z, 0.32)) continue;
+      if (x > SEEN || underRidge(x, z) || !open(x, z) || !clear(x, z, 0.32)) continue;
       const size = between(0.6, 1.6);
       const count = 4 + Math.floor(landRandom() * 4);
       const root = new THREE.Vector3(x, ground(x, z), z);
@@ -1142,12 +1406,12 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   const reedMat = toon("#e9c56a", hex("#b98b48"));
   const reeds: THREE.Group[] = [];
   for (const [x, z, tall] of [
-    [0.55, -0.45, 0.78],
-    [0.7, -0.3, 0.6],
-    [-0.3, -1.2, 0.7],
-    [-2.05, -0.75, 0.55],
-    [-1.9, -0.9, 0.72],
-    [0.95, 0.35, 0.62],
+    [0.3, -0.2, 0.78],
+    [0.5, -0.05, 0.6],
+    [-1.05, -1.25, 0.7],
+    [-2.05, -0.6, 0.55],
+    [-1.9, -0.75, 0.72],
+    [0.95, 0.4, 0.62],
     [-0.15, 0.2, 0.5],
   ] as const) {
     const root = new THREE.Group();
