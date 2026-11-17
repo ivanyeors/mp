@@ -335,6 +335,11 @@ export function PointsSettingsCard() {
                             Points for past purchases given: {summary.pastPurchaseGrants.toLocaleString("en-SG")}, worth{" "}
                             {formatPoints(summary.pastPurchasePoints)}
                         </p>
+                        <p>
+                            Welcome bonuses claimed on Explore: {summary.welcomeBonuses.toLocaleString("en-SG")}, worth{" "}
+                            {formatPoints(summary.welcomeBonusPoints)}
+                        </p>
+                        <p>Flowers picked on Explore: {formatPoints(summary.flowerPoints)}</p>
                     </div>
                 ) : null}
             </CardContent>

@@ -30,6 +30,33 @@ behind, and no copy of their data is kept longer than needed.
 6. **Update the privacy policy.** Shopify is no longer a processor. Keep the migration paragraph
    from slice 07.
 
+## Moving www.mpillow.com here
+
+Planned for Thu 31 Dec 2026 (owner, 13 Nov 2026). The code is ready, so the day is DNS, one
+setting and a redeploy:
+
+- `lib/shopify-redirects.ts` sends every old Shopify address to its new page in one hop, from
+  the redirect map approved 11 and 13 Nov 2026. It already answers on custom.mpillow.com, so the
+  agency can test the map there before the day.
+- `proxy.ts` sends custom., work. and the bare domain to the host in `NEXT_PUBLIC_SITE_URL`,
+  except `/api` (webhooks and crons stay on custom.mpillow.com) and `/auth`. It never sends
+  www. away.
+
+On the day, in this order:
+
+1. **DNS first.** In Vercel DNS, delete `A @ 23.227.38.65` and `CNAME www shops.myshopify.com`.
+   Leave the mail, SPF, DKIM and verification records alone. www now serves this site, still
+   naming custom. as the main address for a few minutes.
+2. **Then the setting.** Set `NEXT_PUBLIC_SITE_URL=https://www.mpillow.com` for Production and
+   redeploy (the value is fixed at build). custom. now forwards to www.
+   Doing this before step 1 would send custom.mpillow.com visitors to Shopify until DNS moves.
+3. Supabase → Authentication → URL configuration: Site URL `https://www.mpillow.com`, keeping
+   custom.mpillow.com in the redirect list.
+
+**Rollback:** Vercel Instant Rollback to the last deployment built with custom., then add the
+two Shopify records back. Redirects carry `Cache-Control: max-age=3600`, so no browser keeps one
+for more than an hour.
+
 ## Acceptance criteria
 
 - [ ] The delta batch reconciles, and its counts are recorded here.

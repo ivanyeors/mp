@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { buildPageMetadata, buildFaqPageJsonLd } from "@/lib/seo";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
@@ -40,13 +41,7 @@ export default async function GuideHubPage({ params }: Props) {
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const guide = getGuideContent(topic as GuideTopic, locale);
 
-  if (!guide) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold">Guide not found</h1>
-      </div>
-    );
-  }
+  if (!guide) notFound();
 
   const faqJsonLd = buildFaqPageJsonLd(guide.faqs);
   const reviews = isGuideTopic(topic) ? await getTopicReviews(topic) : [];

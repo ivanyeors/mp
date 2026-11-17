@@ -99,6 +99,9 @@ describe("consent", () => {
   it("does not let a box left ticked out of habit put the team on the list; their own sign-up does", () => {
     expect(consentToRecord(intent({ consent: "sign_in" }), true)).toBeNull();
     expect(consentToRecord(intent({ consent: "newsletter" }), true)).toBe("newsletter");
+    // The Explore page's Claim is their own press too, Staff or not.
+    expect(consentToRecord(intent({ consent: "explore_claim" }), true)).toBe("explore_claim");
+    expect(consentToRecord(intent({ consent: "explore_claim" }), false)).toBe("explore_claim");
   });
 
   it("tells them what it did", () => {

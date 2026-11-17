@@ -125,6 +125,12 @@ export const ENGLISH_ONLY_PAGE_META = {
     description:
       "Mpillow shipping timelines, returns, refunds, exchanges, adjustments and warranties for Basic Mpillow, Premium Mpillow and Mbolster, all in one place.",
   },
+  explore: {
+    path: "/explore",
+    title: "Our new home opens 31 December",
+    description:
+      "Mpillow's new website opens at 23:59 on 31 December 2026, Singapore time. Sign in or create your account early and claim welcome points while they last.",
+  },
   points: {
     path: "/points",
     title: "How points work",

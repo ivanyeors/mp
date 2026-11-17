@@ -102,6 +102,9 @@ export const MERGED_BLOG_SLUGS: Readonly<Record<string, string>> = {
     "how-to-choose-the-best-pillow-in-singapore",
   "which-type-of-pillow-is-best-for-sleep-amp-neck-pain-relief":
     "how-to-choose-the-best-pillow-in-singapore",
+  // The same post under its address on the old store, which has no "-amp-".
+  "which-type-of-pillow-is-best-for-sleep-neck-pain-relief":
+    "how-to-choose-the-best-pillow-in-singapore",
   "2024-pillow-revolution-embracing-customization-for-blissful-sleep":
     "tailored-to-you-understanding-the-process-of-crafting-custom-made-pillows-for-better-sleep",
   "custom-made-pillow-the-ultimate-solution-for-back-and-neck-pain":

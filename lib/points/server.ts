@@ -182,6 +182,11 @@ export interface PointsSummary {
   /** Past-purchase points granted (ADR 0030, 2026-11-08): entries and points. */
   pastPurchaseGrants: number;
   pastPurchasePoints: number;
+  /** Welcome bonuses claimed on the Explore page (ADR 0030, 2026-11-17): entries and points. */
+  welcomeBonuses: number;
+  welcomeBonusPoints: number;
+  /** Points given for flowers picked on the Explore page. */
+  flowerPoints: number;
 }
 
 /** What points cost now (`admin_points_summary`). Throws on a failed read. */
@@ -202,6 +207,9 @@ export async function readPointsSummary(admin: SupabaseClient): Promise<PointsSu
     milestoneBonusPoints: int(r.milestone_bonus_points),
     pastPurchaseGrants: int(r.past_purchase_grants),
     pastPurchasePoints: int(r.past_purchase_points),
+    welcomeBonuses: int(r.welcome_bonuses),
+    welcomeBonusPoints: int(r.welcome_bonus_points),
+    flowerPoints: int(r.flower_points),
   };
 }
 

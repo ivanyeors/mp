@@ -6,6 +6,8 @@ import { recordCampaignClick, stripClickToken } from "@/lib/email-campaigns/clic
 import { FONT_STACK } from "@/lib/font-stack";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { shopifyRedirect, shopifyRedirectUrl } from "@/lib/shopify-redirects";
+import { getSiteOrigin } from "@/lib/site-url";
 import { refreshSupabaseSession } from "@/lib/supabase/middleware";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -53,8 +55,40 @@ function blogGoneResponse(locale: Locale): NextResponse {
   return new NextResponse(html, { status: 410, headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
-const LEGACY_HOST = "work.mpillow.com";
-const CANONICAL_ORIGIN = "https://custom.mpillow.com";
+/**
+ * Other names of this site, each sent to the canonical host (the one in
+ * NEXT_PUBLIC_SITE_URL), so the move to www.mpillow.com is that one setting and
+ * a redeploy (ADR 0029). www.mpillow.com is never sent away: on the day its DNS
+ * moves here first, and for the minutes before the redeploy it simply serves
+ * the site, instead of answering with a 301 to custom.mpillow.com that
+ * browsers would keep.
+ *
+ * The API never moves: Stripe, Meta, TikTok, Resend and the crons keep calling
+ * custom.mpillow.com/api. Nor does /auth, which the matcher skips, so a sign-in
+ * link finishes on the host that sent it. A preview or localhost stays put.
+ */
+const MOVED_HOSTS: ReadonlySet<string> = new Set(["mpillow.com", "custom.mpillow.com", "work.mpillow.com"]);
+const OUR_HOSTS: ReadonlySet<string> = new Set([...MOVED_HOSTS, "www.mpillow.com"]);
+
+/** The canonical host, only when it is one of ours: a missing or stray setting moves nobody. */
+function canonicalOrigin(): URL | null {
+  try {
+    const url = new URL(getSiteOrigin());
+    return OUR_HOSTS.has(url.hostname) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A redirect browsers check again within the hour. A cutover rolled back on the
+ * day must not leave anyone on a cached 301 to an address that is Shopify again.
+ */
+function redirectFor(url: URL, status: number): NextResponse {
+  const res = NextResponse.redirect(url, status);
+  res.headers.set("Cache-Control", "max-age=3600");
+  return res;
+}
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
@@ -76,12 +110,25 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     event.waitUntil(recordCrawlerHit(supabaseAdmin(), crawler, pathname));
   }
 
-  // Domain migration: proxy runs before next.config redirects, so host
-  // cutover must live here or locale 307 wins and work. never 301s.
-  const host = request.headers.get("host")?.split(":")[0]?.toLowerCase();
-  if (host === LEGACY_HOST) {
-    const dest = new URL(pathname + request.nextUrl.search, CANONICAL_ORIGIN);
-    return NextResponse.redirect(dest, 301);
+  // Host and old-store addresses, before the static-file skip (a Shopify feed or
+  // sitemap has a dot) and before the locale redirect, or it 307s first.
+  const host = (request.headers.get("host") ?? request.nextUrl.host).split(":")[0].toLowerCase();
+  const canonical = canonicalOrigin();
+  const ours = canonical !== null && OUR_HOSTS.has(host);
+  const origin = ours ? canonical.origin : request.nextUrl.origin;
+
+  // The old Shopify store's addresses, in one hop from any of our hosts.
+  const legacy = shopifyRedirect(pathname);
+  if (legacy?.status === 410) return new NextResponse("Gone", { status: 410 });
+  if (legacy) {
+    return redirectFor(shopifyRedirectUrl(legacy.to, origin, request.nextUrl.searchParams), legacy.status);
+  }
+
+  // Another name of this site: the same address on the canonical host. A write
+  // (a stale tab's form) keeps its method.
+  if (ours && MOVED_HOSTS.has(host) && host !== canonical.hostname) {
+    const dest = new URL(pathname + request.nextUrl.search, canonical.origin);
+    return redirectFor(dest, request.method === "GET" || request.method === "HEAD" ? 301 : 308);
   }
 
   // Skip Next internals, auth callback, dev tooling, and direct file requests.

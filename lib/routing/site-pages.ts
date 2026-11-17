@@ -25,6 +25,7 @@ export const SITE_PAGES = [
   "/articles",
   "/blog",
   "/blog/[slug]",
+  "/explore",
   "/faq",
   "/guides/[topic]",
   "/mbolster-config",

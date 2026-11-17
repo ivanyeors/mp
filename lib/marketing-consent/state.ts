@@ -11,14 +11,15 @@ import { formatAdminDateMY } from "@/lib/format/admin-date";
  * appends every change to `customer_consent_events`. Nothing moves a Customer
  * back to `not_subscribed`, and nothing moves `unsubscribed` → `subscribed`
  * except the customer's own `account` action. The import's default, the
- * boxes (checkout, customisation, booking, Sign in) and the footer sign-up
- * subscribe only someone nobody has asked (ADR 0039).
+ * boxes (checkout, customisation, booking, Sign in), the footer sign-up and
+ * the Explore page's Claim button subscribe only someone nobody has asked
+ * (ADR 0039).
  */
 
 export const MARKETING_EMAIL_STATES = ["subscribed", "not_subscribed", "unsubscribed"] as const;
 export type MarketingEmailState = (typeof MARKETING_EMAIL_STATES)[number];
 
-/** Who or what made a change. The migrations' checks list the same twelve (20261101031444). */
+/** Who or what made a change. The migrations' checks list the same thirteen (20261117100000). */
 export const CONSENT_SOURCES = [
   "shopify_import",
   "import_default",
@@ -28,6 +29,7 @@ export const CONSENT_SOURCES = [
   "appointment",
   "sign_in",
   "newsletter",
+  "explore_claim",
   "account",
   "unsubscribe_link",
   "complaint",
@@ -71,6 +73,7 @@ export const CONSENT_SOURCE_LABEL: Record<ConsentSource, string> = {
   appointment: "the box when they booked",
   sign_in: "the box when they signed in",
   newsletter: "the email sign-up in the site footer",
+  explore_claim: "the Claim button on the Explore page",
   account: "the customer, in their account",
   unsubscribe_link: "the unsubscribe link in an email",
   complaint: "a spam complaint",
