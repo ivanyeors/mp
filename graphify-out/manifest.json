@@ -10236,9 +10236,9 @@
     "semantic_hash": ""
   },
   "lib/easyship/__tests__/sync.test.ts": {
-    "mtime": 1794904019.8339384,
-    "seen": 1794904104.8026228,
-    "ast_hash": "6e34cd0eda873b81c43c9f7892e9c657",
+    "mtime": 1794921502.9856591,
+    "seen": 1794921697.7350223,
+    "ast_hash": "30333bdefb1586458efac1947ea40d23",
     "semantic_hash": ""
   },
   "lib/easyship/client.ts": {
@@ -10266,9 +10266,9 @@
     "semantic_hash": ""
   },
   "lib/easyship/sync.ts": {
-    "mtime": 1794729701.5868173,
-    "seen": 1794904104.8026307,
-    "ast_hash": "a1da27918f353f81a365561c78361d02",
+    "mtime": 1794921509.2365863,
+    "seen": 1794921697.7350292,
+    "ast_hash": "69456274d9cf30256dd8339730528a85",
     "semantic_hash": ""
   },
   ".claude/PRD-easyship-settings-sync/easyship-settings-sync-prd.md": {

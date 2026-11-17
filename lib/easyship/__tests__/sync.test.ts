@@ -88,6 +88,8 @@ describe("syncEasyship", () => {
 
     expect(find("PATCH", "/addresses/a1")[0].body?.default_for).toEqual({ pickup: true, billing: true, sender: true, return: true });
     expect(find("POST", "/addresses")).toHaveLength(1);
+    // Easyship rejects `false` flags on create: an address that is default for nothing sends none.
+    expect("default_for" in find("POST", "/addresses")[0].body!).toBe(false);
 
     expect(find("POST", "/boxes").map((c) => c.body?.name)).toEqual(["New"]);
     expect(find("DELETE", "/boxes/b-old")).toHaveLength(1);
@@ -135,6 +137,22 @@ describe("syncEasyship", () => {
     await syncEasyship(renamed, ENDPOINT);
     expect(find("POST", "/addresses")).toHaveLength(0);
     expect(find("PATCH", "/addresses/a1")[0].body?.company_name).toBe("Mellow Life");
+  });
+
+  it("creates a moved address with only its true default flags", async () => {
+    // The studio moved: a new line 1 and postal code match no live address, so it is created.
+    const moved = {
+      ...desired,
+      addresses: [{
+        ...HQ, line_1: "8 New Studio Road", line_2: "#01-01", postal_code: "654321",
+        default_for: { pickup: true, billing: false, sender: true, return: true },
+      }],
+    };
+    const { report } = await syncEasyship(moved, ENDPOINT);
+    const [created] = find("POST", "/addresses");
+    expect(created.body).toMatchObject({ line_1: "8 New Studio Road", postal_code: "654321" });
+    expect(created.body?.default_for).toEqual({ pickup: true, sender: true, return: true });
+    expect(report.steps.find((s) => s.area === "addresses")?.action).toBe("created");
   });
 });
 

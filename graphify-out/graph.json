@@ -39139,7 +39139,7 @@
       "file_type": "code",
       "norm_label": "clausesequal()",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L62"
+      "source_location": "L66"
     },
     {
       "id": "lib_easyship_sync_courieremailstatuses",
@@ -39151,7 +39151,7 @@
       "file_type": "code",
       "norm_label": "courieremailstatuses()",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L74"
+      "source_location": "L78"
     },
     {
       "id": "lib_easyship_sync_norm",
@@ -39187,7 +39187,7 @@
       "file_type": "code",
       "norm_label": "stablejson()",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L54"
+      "source_location": "L58"
     },
     {
       "id": "lib_easyship_sync_synceasyship",
@@ -39199,7 +39199,7 @@
       "file_type": "code",
       "norm_label": "synceasyship()",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L79"
+      "source_location": "L83"
     },
     {
       "id": "lib_easyship_sync_trackingbody",
@@ -39211,7 +39211,7 @@
       "file_type": "code",
       "norm_label": "trackingbody()",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L68"
+      "source_location": "L72"
     },
     {
       "id": "lib_easyship_sync_trueflags",
@@ -39223,7 +39223,7 @@
       "file_type": "code",
       "norm_label": "trueflags()",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L50"
+      "source_location": "L54"
     },
     {
       "id": "lib_easyship_tests_schema_test_box",
@@ -54463,7 +54463,7 @@
       "file_type": "code",
       "norm_label": "readlivesnapshot()",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L266"
+      "source_location": "L273"
     },
     {
       "id": "lib_easyship_sync_webhookendpoint",
@@ -332785,7 +332785,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L64",
+      "source_location": "L68",
       "weight": 1.0
     },
     {
@@ -332797,7 +332797,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L268",
+      "source_location": "L275",
       "weight": 1.0
     },
     {
@@ -332809,7 +332809,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L270",
+      "source_location": "L277",
       "weight": 1.0
     },
     {
@@ -332833,115 +332833,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L57",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_courieremailstatuses",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L100",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_trackingbody",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L100",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_norm",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L115",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_sameplace",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L115",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_trueflags",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L117",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_addressfields",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L119",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_addressdiffers",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L124",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_clausesequal",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L179",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_easyship_sync_synceasyship",
-      "target": "lib_easyship_sync_stablejson",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "lib/easyship/sync.ts",
-      "source_location": "L221",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
@@ -332953,7 +332845,115 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L97",
+      "source_location": "L101",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_courieremailstatuses",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L104",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_trackingbody",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L104",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_norm",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L119",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_sameplace",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L119",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_trueflags",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L121",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_addressfields",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L125",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_addressdiffers",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L131",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_clausesequal",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L186",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_easyship_sync_synceasyship",
+      "target": "lib_easyship_sync_stablejson",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "lib/easyship/sync.ts",
+      "source_location": "L228",
       "weight": 1.0
     },
     {
@@ -332977,7 +332977,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/easyship/__tests__/sync.test.ts",
-      "source_location": "L145",
+      "source_location": "L163",
       "weight": 1.0
     },
     {
@@ -408438,7 +408438,7 @@
       "context": "import",
       "deferred": true,
       "source_file": "lib/easyship/__tests__/sync.test.ts",
-      "source_location": "L143",
+      "source_location": "L161",
       "weight": 1.0
     },
     {
@@ -736803,7 +736803,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L266",
+      "source_location": "L273",
       "weight": 1.0
     },
     {
@@ -736858,7 +736858,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L50",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
@@ -736869,7 +736869,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L54",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -736880,7 +736880,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L62",
+      "source_location": "L66",
       "weight": 1.0
     },
     {
@@ -736891,7 +736891,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L68",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -736902,7 +736902,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L74",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -736913,7 +736913,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/easyship/sync.ts",
-      "source_location": "L79",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -897756,5 +897756,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a8eee8c17db0b8ae60bc1a8666ab50470426e15f"
+  "built_at_commit": "bdb0a47a98ace3f4bc917e057c306061c66fa005"
 }
