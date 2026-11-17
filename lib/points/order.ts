@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPartnerCustomer, readPointsSettings } from "./server";
 import type { OrderEarn } from "./order-lines";
 
-export { orderEarnLine, pointsUsedRow, type OrderEarn } from "./order-lines";
+export { orderEarnLine, pointsUsedRow, splitOrderDiscount, type OrderEarn } from "./order-lines";
 
 export interface OrderPoints {
   /** Points spent on the Order at checkout; 0 for none. */

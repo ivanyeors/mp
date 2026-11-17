@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Order } from "@/lib/types/ecommerce";
 import { formatCurrency as formatPrice } from "@/lib/i18n/currencies";
 import { trackGaEventOnce } from "@/lib/analytics/ga-events";
+import { splitOrderDiscount } from "@/lib/points/order-lines";
 
 // ---------------------------------------------------------------------------
 // Confirmation Page
@@ -75,6 +76,10 @@ export default function OrderConfirmationPage() {
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, [orderNumber, sessionId, clearCart]);
+
+  // The code and the points each on their own line: the points' dollars are
+  // inside discount_amount (PRD-loyalty-points slice 04).
+  const discount = order ? splitOrderDiscount(order.discount_amount, order.points_spent) : null;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -180,13 +185,20 @@ export default function OrderConfirmationPage() {
                 </div>
               )}
 
-              {order.discount_amount > 0 && (
+              {discount && discount.discount > 0 && (
                 <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>
                     Discount
                     {order.coupon_code ? ` (${order.coupon_code})` : ""}
                   </span>
-                  <span>-{formatPrice(order.discount_amount, order.currency)}</span>
+                  <span>-{formatPrice(discount.discount, order.currency)}</span>
+                </div>
+              )}
+
+              {discount?.pointsUsed && (
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span>{discount.pointsUsed.label}</span>
+                  <span>-{formatPrice(discount.pointsUsed.dollars, order.currency)}</span>
                 </div>
               )}
 
