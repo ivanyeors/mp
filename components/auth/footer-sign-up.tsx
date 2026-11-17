@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { authErrorMessage } from "@/lib/auth/error-message";
@@ -20,8 +19,7 @@ import { Input } from "@/components/ui/input";
  * consent on it. Nothing is stored until they confirm. After sending, it
  * opens Sign in at the code step; once confirmed they come back to this page.
  *
- * Someone signed in already has an address we know: they manage their emails
- * in their Profile, so the field is replaced by a link there.
+ * Someone signed in already has an address we know, so it renders nothing.
  */
 export function FooterSignUp({ locale, returnTo }: { locale: Locale; returnTo: string }) {
   const fieldId = useId();
@@ -45,17 +43,7 @@ export function FooterSignUp({ locale, returnTo }: { locale: Locale; returnTo: s
     };
   }, []);
 
-  if (signedIn) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Choose which emails you get in your{" "}
-        <Link href={withLocale("/account", locale)} className="underline underline-offset-4 hover:text-foreground">
-          Profile
-        </Link>
-        .
-      </p>
-    );
-  }
+  if (signedIn) return null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
