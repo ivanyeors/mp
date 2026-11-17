@@ -429,9 +429,9 @@ For new customers, please kindly book an appointment with the button below for y
 For Our Existing Customers
 If you wish to make adjustments to your Premium Mpillow, please click on the link below to make an appointment
 Our Headquarters
-512 Chai Chee Lane
-Singapore 469028
-#02-10
+22 Sin Ming Lane
+#08-83, Midview City
+Singapore 573969
 WhatsApp us at
 +65 87805311
 for any enquries or booking.
@@ -572,9 +572,9 @@ Singapore Pain Care Center
 pain specialist medical group specialising in the chronic and acute pain management in Singapore.
 Led by Dr. Bernard Lee Mun Kam, the medical group focuses on delivering quality pain care solutions through either removing pain generators and/or interrupting pain signals through, among others, minimally invasive procedures and specialised injections.
 Our Headquarters
-512 Chai Chee Lane
-Singapore 469028
-#02-10
+22 Sin Ming Lane
+#08-83, Midview City
+Singapore 573969
 By Appointment only
 
 

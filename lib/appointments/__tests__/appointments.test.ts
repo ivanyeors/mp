@@ -721,7 +721,7 @@ describe("calendar extract helpers", () => {
 
   it("resolves an event's Location: stamped id first, then exact address, else null", () => {
     const locations = [
-      { id: "own", name: "Chai Chee Studio", address: "512 Chai Chee Lane #02-10" },
+      { id: "own", name: "Sin Ming Studio", address: "22 Sin Ming Lane, #08-83, Midview City" },
       { id: "clinic", name: "Spine Clinic", address: "1 Clinic Ave" },
     ];
     // stamped id wins even when the address text points elsewhere
@@ -740,7 +740,7 @@ describe("calendar extract helpers", () => {
     ).toBe("clinic");
     // whitespace/case-insensitive address match
     expect(
-      resolveEventLocation({ location: "  512 Chai Chee   Lane #02-10 " }, locations)?.id,
+      resolveEventLocation({ location: "  22 sin ming   Lane, #08-83,  Midview City " }, locations)?.id,
     ).toBe("own");
     expect(resolveEventLocation({ location: "Somewhere else" }, locations)).toBeNull();
     expect(resolveEventLocation({}, locations)).toBeNull();

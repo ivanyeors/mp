@@ -46,7 +46,11 @@ function addressDiffers(a: EasyshipAddress, b: LiveAddress): boolean {
   return (Object.keys(f) as (keyof typeof f)[]).some((k) => norm(f[k] as string | null) !== norm(b[k] as string | null));
 }
 
-/** PATCH only accepts `true` flags; omitted flags are left as they are. */
+/**
+ * Easyship accepts only `true` default flags, on POST and PATCH alike (`false`
+ * fails its schema: "false isn't part of the enum"); omitted flags are left as
+ * they are.
+ */
 function trueFlags(df: EasyshipAddress["default_for"]): Record<string, true> {
   return Object.fromEntries(Object.entries(df).filter(([, v]) => v).map(([k]) => [k, true as const]));
 }
@@ -116,7 +120,10 @@ export async function syncEasyship(desired: EasyshipSettings, endpoint: string |
         live.find((l) => samePlace(a, l));
       const flags = trueFlags(a.default_for);
       if (!match) {
-        await easyship("/addresses", { method: "POST", body: { ...addressFields(a), default_for: a.default_for } });
+        await easyship("/addresses", {
+          method: "POST",
+          body: { ...addressFields(a), ...(Object.keys(flags).length ? { default_for: flags } : {}) },
+        });
         step({ area: "addresses", action: "created", target });
         continue;
       }

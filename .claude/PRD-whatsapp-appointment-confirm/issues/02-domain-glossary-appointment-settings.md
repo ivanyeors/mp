@@ -10,7 +10,7 @@ User stories covered: 20–25, 38
 Land domain vocabulary and the operator-facing settings surface so appointment rules are editable without redeploying secrets.
 
 - **CONTEXT.md glossary:** add **Appointment**, **Appointment reminder**, **Customisation appointment**, **Re-adjustment appointment** with `_Avoid_` disambiguation (no Order link in v1).
-- **`appointment-settings` module:** typed parse/store for `site_settings` keys — venue (default `512 Chai Chee Lane Singapore 469028 #02-10`), duration (60), open/close hours (10:00–18:00 last bookable start), bookable days (Tue–Sun), two Google booking URLs, summary match strings. Pattern mirrors SLA settings.
+- **`appointment-settings` module:** typed parse/store for `site_settings` keys — venue (default `22 Sin Ming Lane, #08-83, Midview City, Singapore 573969`), duration (60), open/close hours (10:00–18:00 last bookable start), bookable days (Tue–Sun), two Google booking URLs, summary match strings. Pattern mirrors SLA settings.
 - **API route:** `GET`/`PUT` appointment settings with admin permission, zod validation, merge with defaults.
 - **Settings UI:** `/settings/appointments` under General in settings nav + breadcrumbs; form for all editable fields; toast on save. Secrets not shown (env only).
 - No `appointment_reminders` table or cron in this slice — settings-only vertical slice.

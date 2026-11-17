@@ -12,8 +12,8 @@ import {
 const STUDIO = {
   id: "88fdfa10-ea2d-4f23-8573-55c0e58b4ae7",
   name: "Mpillow Singapore",
-  address: "512 Chai Chee Lane #02-10",
-  postal_code: "469028",
+  address: "22 Sin Ming Lane, #08-83, Midview City",
+  postal_code: "573969",
 };
 
 /** `partners` by id: the one read the resolver makes. */
