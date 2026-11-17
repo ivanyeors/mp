@@ -21,6 +21,12 @@ export interface SkyBody {
   elevation: number;
   /** Degrees from due south-or-north at its highest: negative rising, positive setting. */
   hourAngle: number;
+  /**
+   * Where it is on its daily turn, in degrees: 180 as it rises out of the
+   * sea, 90 at its highest, 0 (or 360) as it sets, 270 at its lowest under
+   * the horizon. The scene draws the sun and moon on a wheel at this angle.
+   */
+  wheel: number;
 }
 
 export interface MoonState extends SkyBody {
@@ -82,6 +88,19 @@ function declination(at: Date): number {
   return -23.44 * Math.cos((2 * Math.PI * (dayOfYear(at) + 10)) / 365);
 }
 
+/**
+ * Pure — a body's place on its daily turn. The horizon is always at 180 and
+ * 0, whatever the season or latitude, so it rises and sets where the scene's
+ * sea is; between them the angle follows how high it is.
+ */
+function wheelOf(latDeg: number, declDeg: number, elevation: number, hourAngle: number): number {
+  const highest = Math.max(1, 90 - Math.abs(latDeg - declDeg));
+  const lowest = Math.max(1, 90 - Math.abs(latDeg + declDeg));
+  const share = Math.max(-1, Math.min(1, elevation >= 0 ? elevation / highest : elevation / lowest));
+  const angle = share * 90;
+  return (((hourAngle < 0 ? 180 - angle : angle) % 360) + 360) % 360;
+}
+
 function elevationOf(latDeg: number, declDeg: number, hourAngleDeg: number): number {
   const lat = latDeg * RAD;
   const decl = declDeg * RAD;
@@ -95,7 +114,9 @@ export function sunPosition(at: Date, place: Place): SkyBody {
   const equationOfTime = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b); // minutes
   const utcHours = at.getUTCHours() + at.getUTCMinutes() / 60 + at.getUTCSeconds() / 3600;
   const hourAngle = wrap180((utcHours + place.lon / 15 + equationOfTime / 60 - 12) * 15);
-  return { elevation: elevationOf(place.lat, declination(at), hourAngle), hourAngle };
+  const decl = declination(at);
+  const elevation = elevationOf(place.lat, decl, hourAngle);
+  return { elevation, hourAngle, wheel: wheelOf(place.lat, decl, elevation, hourAngle) };
 }
 
 /** A new moon: 6 January 2000, 18:14 UTC. */
@@ -118,9 +139,11 @@ export function moonPosition(at: Date, place: Place): MoonState {
   const sun = sunPosition(at, place);
   const hourAngle = wrap180(sun.hourAngle - phase * 360);
   const decl = declination(at) * Math.cos(2 * Math.PI * phase);
+  const elevation = elevationOf(place.lat, decl, hourAngle);
   return {
-    elevation: elevationOf(place.lat, decl, hourAngle),
+    elevation,
     hourAngle,
+    wheel: wheelOf(place.lat, decl, elevation, hourAngle),
     phase,
     lit: (1 - Math.cos(2 * Math.PI * phase)) / 2,
   };
@@ -160,15 +183,15 @@ const stop = (at: number, c: Record<Exclude<keyof Stop, "at" | "stars">, string>
 });
 
 const NIGHT = stop(-18, { top: "#0a0f2c", mid: "#151d4a", horizon: "#2c3470", sun: "#ffd9a8", glow: "#39407e", cloud: "#39437f", cloudShade: "#1f2756", seaDeep: "#080d2a", seaShallow: "#1c2760", tint: "#5d6aa8" }, 1);
-const DAY_LOW = stop(12, { top: "#3f93e6", mid: "#96ccf6", horizon: "#e4f3fc", sun: "#fff6d8", glow: "#fff1c4", cloud: "#ffffff", cloudShade: "#cfe3f6", seaDeep: "#1b78c2", seaShallow: "#79d2e8", tint: "#ffffff" }, 0);
-const DAY_HIGH = stop(40, { top: "#3390ee", mid: "#86c8f8", horizon: "#dff2fd", sun: "#fffdf0", glow: "#fff8dc", cloud: "#ffffff", cloudShade: "#d3e7f8", seaDeep: "#1675c6", seaShallow: "#6fd3ea", tint: "#ffffff" }, 0);
+const DAY_LOW = stop(12, { top: "#3f93e6", mid: "#96ccf6", horizon: "#e4f3fc", sun: "#ffeaa6", glow: "#fff1c4", cloud: "#fffaf0", cloudShade: "#b4bfea", seaDeep: "#1b78c2", seaShallow: "#79d2e8", tint: "#ffffff" }, 0);
+const DAY_HIGH = stop(40, { top: "#3390ee", mid: "#86c8f8", horizon: "#dff2fd", sun: "#fffdf0", glow: "#fff8dc", cloud: "#fffbf2", cloudShade: "#b8c3ec", seaDeep: "#1675c6", seaShallow: "#6fd3ea", tint: "#ffffff" }, 0);
 
 /** Dusk: orange into violet. */
 const EVENING: readonly Stop[] = [
   NIGHT,
   stop(-7, { top: "#161c4e", mid: "#43397a", horizon: "#b8607c", sun: "#ff9a6b", glow: "#c4607e", cloud: "#6f5590", cloudShade: "#3a3168", seaDeep: "#12173f", seaShallow: "#5b447f", tint: "#8d86c0" }, 0.75),
-  stop(-1.5, { top: "#33458f", mid: "#b56f9c", horizon: "#ffab73", sun: "#ff9257", glow: "#ffa26a", cloud: "#f6a59c", cloudShade: "#8b6aa2", seaDeep: "#2a2f6e", seaShallow: "#e59a86", tint: "#d9b0c4" }, 0.2),
-  stop(4, { top: "#4f86d2", mid: "#f0b29c", horizon: "#ffd89c", sun: "#ffc27a", glow: "#ffcf90", cloud: "#ffeedd", cloudShade: "#e3a99c", seaDeep: "#2b62ae", seaShallow: "#f5c9a2", tint: "#ffe6d2" }, 0),
+  stop(-1.5, { top: "#33458f", mid: "#b56f9c", horizon: "#ffab73", sun: "#ff7d47", glow: "#ffa26a", cloud: "#f6a59c", cloudShade: "#8b6aa2", seaDeep: "#2a2f6e", seaShallow: "#e59a86", tint: "#d9b0c4" }, 0.2),
+  stop(4, { top: "#4f86d2", mid: "#f0b29c", horizon: "#ffd89c", sun: "#ff9d4d", glow: "#ffcf90", cloud: "#ffeedd", cloudShade: "#e3a99c", seaDeep: "#2b62ae", seaShallow: "#f5c9a2", tint: "#ffe6d2" }, 0),
   DAY_LOW,
   DAY_HIGH,
 ];
@@ -177,8 +200,8 @@ const EVENING: readonly Stop[] = [
 const MORNING: readonly Stop[] = [
   NIGHT,
   stop(-7, { top: "#141b4c", mid: "#3a3f80", horizon: "#a8709a", sun: "#ffb59a", glow: "#b47aa0", cloud: "#65609a", cloudShade: "#343a70", seaDeep: "#10173f", seaShallow: "#4f4f8a", tint: "#8a8cc4" }, 0.75),
-  stop(-1.5, { top: "#3a55a0", mid: "#c28db4", horizon: "#ffc09a", sun: "#ffb080", glow: "#ffb999", cloud: "#f9bdc0", cloudShade: "#9580b4", seaDeep: "#2a3a7c", seaShallow: "#e9b0ac", tint: "#e0c0d2" }, 0.2),
-  stop(4, { top: "#5a98dc", mid: "#f6c8c0", horizon: "#ffe6bc", sun: "#ffdca0", glow: "#ffe2b0", cloud: "#fff3ea", cloudShade: "#ecbcc0", seaDeep: "#2f6fb8", seaShallow: "#f7d6c0", tint: "#fff0e4" }, 0),
+  stop(-1.5, { top: "#3a55a0", mid: "#c28db4", horizon: "#ffc09a", sun: "#ff9668", glow: "#ffb999", cloud: "#f9bdc0", cloudShade: "#9580b4", seaDeep: "#2a3a7c", seaShallow: "#e9b0ac", tint: "#e0c0d2" }, 0.2),
+  stop(4, { top: "#5a98dc", mid: "#f6c8c0", horizon: "#ffe6bc", sun: "#ffb765", glow: "#ffe2b0", cloud: "#fff3ea", cloudShade: "#ecbcc0", seaDeep: "#2f6fb8", seaShallow: "#f7d6c0", tint: "#fff0e4" }, 0),
   DAY_LOW,
   DAY_HIGH,
 ];

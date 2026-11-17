@@ -21,6 +21,34 @@ describe("sunPosition", () => {
     expect(sunPosition(sgt(16), SINGAPORE).hourAngle).toBeGreaterThan(0);
   });
 
+  it("turns like a wheel: out of the sea at 180, highest at 90, into the sea at 0, lowest at 270", () => {
+    const turn = (h: number, m = 0) => sunPosition(sgt(h, m), SINGAPORE).wheel;
+    expect(Math.abs(turn(6, 47) - 180)).toBeLessThan(4); // sunrise
+    expect(Math.abs(turn(12, 50) - 90)).toBeLessThan(4); // solar noon
+    const set = turn(18, 51); // sunset: 0, give or take, from either side
+    expect(Math.min(set, 360 - set)).toBeLessThan(4);
+    expect(Math.abs(turn(0, 50) - 270)).toBeLessThan(4); // the middle of the night
+  });
+
+  it("never jumps: a minute moves the wheel by under a degree, all day and all night", () => {
+    let before = sunPosition(sgt(0), SINGAPORE).wheel;
+    for (let minute = 1; minute <= 24 * 60; minute += 1) {
+      const now = sunPosition(sgt(0, minute), SINGAPORE).wheel;
+      const step = Math.abs(now - before);
+      expect(Math.min(step, 360 - step)).toBeLessThan(1);
+      before = now;
+    }
+  });
+
+  it("meets the horizon at sunrise and sunset far from the equator too", () => {
+    const oslo = { lat: 59.9, lon: 10.75 };
+    for (let minute = 0; minute < 24 * 60; minute += 5) {
+      const sun = sunPosition(new Date(Date.UTC(2026, 11, 21, 0, minute)), oslo);
+      const above = sun.wheel > 0 && sun.wheel < 180;
+      if (Math.abs(sun.elevation) > 0.5) expect(above).toBe(sun.elevation > 0);
+    }
+  });
+
   it("follows the place, not the server: noon in Singapore is night in New York", () => {
     expect(sunPosition(sgt(12, 30), { lat: 40.7, lon: -74 }).elevation).toBeLessThan(0);
   });
@@ -36,6 +64,12 @@ describe("the moon", () => {
   it("is nearly all lit when full and nearly dark when new", () => {
     expect(moonPosition(new Date(Date.UTC(2026, 11, 24, 1, 28)), SINGAPORE).lit).toBeGreaterThan(0.95);
     expect(moonPosition(new Date(Date.UTC(2026, 11, 9, 0, 52)), SINGAPORE).lit).toBeLessThan(0.05);
+  });
+
+  it("a full moon is across the wheel from the sun", () => {
+    const at = new Date(Date.UTC(2026, 11, 24, 14, 0)); // 22:00 in Singapore
+    const apart = Math.abs(moonPosition(at, SINGAPORE).wheel - sunPosition(at, SINGAPORE).wheel);
+    expect(Math.abs(Math.min(apart, 360 - apart) - 180)).toBeLessThan(25);
   });
 
   it("a full moon is up at midnight and down at midday", () => {
