@@ -183,8 +183,8 @@ const stop = (at: number, c: Record<Exclude<keyof Stop, "at" | "stars">, string>
 });
 
 const NIGHT = stop(-18, { top: "#0a0f2c", mid: "#151d4a", horizon: "#2c3470", sun: "#ffd9a8", glow: "#39407e", cloud: "#39437f", cloudShade: "#1f2756", seaDeep: "#080d2a", seaShallow: "#1c2760", tint: "#5d6aa8" }, 1);
-const DAY_LOW = stop(12, { top: "#3f93e6", mid: "#96ccf6", horizon: "#e4f3fc", sun: "#ffeaa6", glow: "#fff1c4", cloud: "#fffaf0", cloudShade: "#b4bfea", seaDeep: "#1b78c2", seaShallow: "#79d2e8", tint: "#ffffff" }, 0);
-const DAY_HIGH = stop(40, { top: "#3390ee", mid: "#86c8f8", horizon: "#dff2fd", sun: "#fffdf0", glow: "#fff8dc", cloud: "#fffbf2", cloudShade: "#b8c3ec", seaDeep: "#1675c6", seaShallow: "#6fd3ea", tint: "#ffffff" }, 0);
+const DAY_LOW = stop(12, { top: "#3f93e6", mid: "#96ccf6", horizon: "#e4f3fc", sun: "#ffeaa6", glow: "#fff1c4", cloud: "#fff6e2", cloudShade: "#a4a8e2", seaDeep: "#1b78c2", seaShallow: "#79d2e8", tint: "#ffffff" }, 0);
+const DAY_HIGH = stop(40, { top: "#3390ee", mid: "#86c8f8", horizon: "#dff2fd", sun: "#fffdf0", glow: "#fff8dc", cloud: "#fff7e4", cloudShade: "#a9ade4", seaDeep: "#1675c6", seaShallow: "#6fd3ea", tint: "#ffffff" }, 0);
 
 /** Dusk: orange into violet. */
 const EVENING: readonly Stop[] = [

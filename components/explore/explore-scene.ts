@@ -227,8 +227,8 @@ varying vec2 vP;
 uniform vec3 uBalls[8];
 uniform vec3 uLit, uShade, uHaze;
 uniform vec2 uLightPos, uRes;
-uniform float uAspect, uFade;
-
+uniform float uAspect, uFade, uSeed;
+${NOISE}
 float field(vec2 p) {
   float f = 0.0;
   for (int i = 0; i < 8; i++) {
@@ -242,8 +242,10 @@ float field(vec2 p) {
 }
 
 void main() {
+  // Painted by hand: the outline wavers a little.
+  vec2 p = vP + (vec2(noise(vP * 4.2 + uSeed), noise(vP * 4.2 + uSeed + 9.7)) - 0.5) * 0.07;
   // Capped, so the middle of each round (where the field runs away) stays solid.
-  float f = min(field(vP), 3.0);
+  float f = min(field(p), 3.0);
   float aa = fwidth(f) * 1.1;
   float alpha = smoothstep(1.0 - aa, 1.0 + aa, f);
   if (alpha < 0.004) discard;
@@ -253,11 +255,14 @@ void main() {
   vec2 toLight = (uLightPos - ndc) * vec2(uAspect, 1.0);
   vec2 L = normalize(toLight + vec2(0.0, 0.35));
   // Step towards the light: where that soon leaves the cloud, this edge faces it.
-  float edge = 1.0 - smoothstep(0.9, 1.3, field(vP + L * 0.2));
-  float body = 1.0 - smoothstep(0.8, 2.6, field(vP + L * 0.46));
-  float under = 1.0 - smoothstep(0.08, 0.5, vP.y);
+  float edge = 1.0 - smoothstep(0.9, 1.3, field(p + L * 0.2));
+  float body = 1.0 - smoothstep(0.8, 2.6, field(p + L * 0.46));
+  float under = 1.0 - smoothstep(0.08, 0.5, p.y);
   float lit = clamp(edge + body * 0.55, 0.0, 1.0) * (1.0 - under * 0.8);
-  vec3 col = mix(uShade, uLit, lit);
+  // The light goes on thick, in short level dabs with broken edges; the shade is thinner paint.
+  float dab = noise(vec2(p.x * 2.4 + uSeed, p.y * 6.5));
+  lit = smoothstep(0.34, 0.5, lit + (dab - 0.5) * 0.34);
+  vec3 col = mix(uShade * (1.0 + (dab - 0.5) * 0.07), uLit, lit);
   col = mix(col, uShade * 0.92, under * 0.3);
   gl_FragColor = vec4(mix(col, uHaze, uFade), alpha);
 }`;
@@ -268,19 +273,31 @@ uniform vec3 uHi, uMid, uLo, uLight, uBounce;
 uniform vec2 uGrain;
 uniform vec3 uFoot; // darker towards an edge: amount, from height, to height
 uniform vec3 uCap;  // in shade under an overhang: amount, from height, to height
+uniform vec3 uStroke; // brushwork: the strokes' angle, how fine they are, how strongly they show
 uniform float uStrata, uBounceAmt, uDirect;
 ${NOISE}
+// Paint laid on in strokes, as in the reference picture: long along their direction, thin across it.
+float strokes(vec3 paint) {
+  vec2 p = paint.xy + vec2(paint.z * 0.6, paint.z * 0.25);
+  float c = cos(uStroke.x), s = sin(uStroke.x);
+  vec2 q = vec2(c * p.x + s * p.y, c * p.y - s * p.x) * uStroke.y;
+  return noise(vec2(q.x * 0.9, q.y * 5.5)) * 0.65 + noise(vec2(q.x * 2.3 + 3.1, q.y * 11.0)) * 0.35;
+}
 vec3 tone(vec3 n, vec3 paint) {
   // How much the tone follows the light rather than the surface's own pattern.
   float d = mix(0.5, dot(n, uLight) * 0.5 + 0.5, uDirect);
-  float brush = (noise(paint.xy * uGrain.x + paint.z * 1.7) - 0.5) * uGrain.y;
+  float st = strokes(paint);
+  float brush = (noise(paint.xy * uGrain.x + paint.z * 1.7) - 0.5) * uGrain.y + (st - 0.5) * uStroke.z;
   // Layers of rock: level bands of uneven depth, wavering as they run round, each its own shade.
   float layer = paint.y * 3.4 + noise(vec2((paint.x + paint.z) * 0.8, paint.y * 0.5)) * 1.3;
   float bed = floor(layer + 0.35 * sin(floor(layer) * 2.7));
   float strata = (hash(vec2(bed, 7.0)) - 0.5) * uStrata;
   float s = d + brush + strata + n.y * 0.1;
-  vec3 col = mix(uLo, uMid, smoothstep(0.38, 0.44, s));
-  col = mix(col, uHi, smoothstep(0.66, 0.72, s));
+  // Firm edges between the tones, as a loaded brush leaves them.
+  vec3 col = mix(uLo, uMid, smoothstep(0.39, 0.43, s));
+  col = mix(col, uHi, smoothstep(0.67, 0.71, s));
+  // Each stroke a touch lighter or darker than the one beside it.
+  col *= 1.0 + (st - 0.5) * uStroke.z * 0.5;
   col *= 1.0 - uFoot.x * (1.0 - smoothstep(uFoot.y, uFoot.z, paint.y));
   col = mix(col, uLo, uCap.x * smoothstep(uCap.y, uCap.z, paint.y));
   // The sea throws its own colour back up the foot of the rock.
@@ -595,6 +612,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
           uRes: shared.uRes,
           uAspect: shared.uAspect,
           uFade: { value: fade },
+          uSeed: { value: cloudRandom() * 40 },
         },
         transparent: true,
         depthWrite: false,
@@ -623,12 +641,12 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   }
   // Middle and near: larger, crossing in front of them.
   for (const [x, y, z, s, f] of [
-    [-30, 10.5, -84, 4.4, 0.3],
-    [34, 16, -80, 4.8, 0.26],
-    [-64, 19, -88, 4, 0.34],
-    [10, 6.4, -62, 3.6, 0.14],
-    [-44, 5.2, -58, 3.2, 0.1],
-    [62, 8, -64, 3.8, 0.16],
+    [-30, 10.5, -84, 5.4, 0.3],
+    [34, 16, -80, 5.8, 0.26],
+    [-64, 19, -88, 4.8, 0.34],
+    [10, 6.4, -62, 4.2, 0.14],
+    [-44, 5.2, -58, 3.8, 0.1],
+    [62, 8, -64, 4.4, 0.16],
   ] as const) {
     addCloud(FRONT, x, y, z, s, f, fairClouds);
   }
@@ -658,6 +676,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     foot?: readonly [number, number, number];
     cap?: readonly [number, number, number];
     direct?: number;
+    stroke?: readonly [number, number, number];
   }) => ({
     uHi: { value: hex(o.hi) },
     uMid: { value: hex(o.mid) },
@@ -669,6 +688,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     uCap: { value: new THREE.Vector3(...(o.cap ?? [0, 0, 1])) },
     uStrata: { value: o.strata ?? 0 },
     uDirect: { value: o.direct ?? 1 },
+    uStroke: { value: new THREE.Vector3(...(o.stroke ?? [0.2, 1.6, 0.2])) },
     uBounceAmt: { value: o.bounce ?? 0 },
     uTint: shared.uTint,
     uLandOrigin: shared.uLandOrigin,
@@ -678,7 +698,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     keep(new THREE.ShaderMaterial({ vertexShader: PAINT_VERT, fragmentShader: PAINT_FRAG, uniforms: paint(o) }));
 
   // Rock: cream in the light, sand between, lavender in the shade, as the reference paints its shore.
-  const ROCK = { hi: "#f6e7ca", mid: "#d2b292", lo: "#8f84b0", grain: [3.2, 0.08], strata: 0.56, bounce: 0.16, cap: [0.85, 1.05, 1.5], direct: 0.6 } as const;
+  const ROCK = { hi: "#f6e7ca", mid: "#d2b292", lo: "#8f84b0", grain: [3.2, 0.06], strata: 0.56, bounce: 0.16, cap: [0.85, 1.05, 1.5], direct: 0.6, stroke: [0.08, 1.5, 0.26] } as const;
   const rockGeo = keep(new THREE.CylinderGeometry(1, 1, 1, 64, 22, false));
   {
     const pos = rockGeo.attributes.position!;
@@ -715,7 +735,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
 
   // A spit of pale sand at its foot, and a few stones on it.
   const blob = keep(new THREE.IcosahedronGeometry(1, 3));
-  const sand = new THREE.Mesh(blob, painted({ hi: "#fbf1d8", mid: "#efdfbd", lo: "#c4b4c4", grain: [1.2, 0.12] }));
+  const sand = new THREE.Mesh(blob, painted({ hi: "#fbf1d8", mid: "#efdfbd", lo: "#c4b4c4", grain: [1.2, 0.1], stroke: [0.0, 1.4, 0.16] }));
   sand.scale.set(2.5, 0.16, 1.25);
   sand.position.set(-2.35, -0.02, 1.35);
   sand.rotation.y = -0.25;
@@ -735,7 +755,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
 
   // Grass: a round hill over the rock, lapping over its edge. Yellow-green in the light, blue-green in the shade.
   const HILL = { rx: 2.75, ry: 1.0, rz: 2.3, y: 1.55 };
-  const GRASS = { hi: "#c9de7c", mid: "#8fc066", lo: "#4f9068", grain: [1.7, 0.42], foot: [0.26, HILL.y - 0.1, HILL.y + 0.42] } as const;
+  const GRASS = { hi: "#cbd86a", mid: "#86b455", lo: "#3f7c5a", grain: [1.7, 0.3], foot: [0.26, HILL.y - 0.1, HILL.y + 0.42], stroke: [0.5, 1.9, 0.3] } as const;
   const hillAt = (x: number, z: number) => {
     const k = 1 - (x / HILL.rx) ** 2 - (z / HILL.rz) ** 2;
     return HILL.y + HILL.ry * Math.sqrt(Math.max(0, k));
@@ -748,13 +768,13 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   hill.scale.set(HILL.rx, HILL.ry, HILL.rz);
   hill.position.y = HILL.y;
   cliff.add(hill);
-  const hillBack = new THREE.Mesh(hillGeo, painted({ ...GRASS, hi: "#bfd67a", mid: "#86b866", lo: "#4a8a68", foot: [0.26, 2.05, 2.6] }));
+  const hillBack = new THREE.Mesh(hillGeo, painted({ ...GRASS, hi: "#c2d06c", mid: "#7fac58", lo: "#3c765a", foot: [0.26, 2.05, 2.6] }));
   hillBack.scale.set(3.75, 1.2, 2.9);
   hillBack.position.set(4.2, 2.15, -1.6);
   cliff.add(hillBack);
 
   // Bushes behind the patch, rounded like the reference's.
-  const bushMat = painted({ hi: "#bcd568", mid: "#63a65b", lo: "#2f705c", grain: [2.4, 0.4] });
+  const bushMat = painted({ hi: "#bccb58", mid: "#5d9a4c", lo: "#285e50", grain: [2.4, 0.3], stroke: [0.9, 2.6, 0.34] });
   for (const [bx, bz, bs] of [
     [1.15, -0.55, 0.62],
     [2.5, 0.1, 0.8],
@@ -797,7 +817,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     new THREE.ShaderMaterial({
       vertexShader: BLADE_VERT,
       fragmentShader: BLADE_FRAG,
-      uniforms: { ...paint(GRASS), uTip: { value: hex("#e2ef9c") }, uTime: shared.uTime, uWind: { value: moving ? 0.55 : 0.2 } },
+      uniforms: { ...paint(GRASS), uTip: { value: hex("#e3e88c") }, uTime: shared.uTime, uWind: { value: moving ? 0.55 : 0.2 } },
       side: THREE.DoubleSide,
     }),
   );
