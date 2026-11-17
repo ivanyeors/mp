@@ -92,7 +92,10 @@ assert.doesNotMatch(bolster, /plainLanguageWhy|recommendation\.explanation/, "no
 const assignPage = read("app/[lang]/settings/results/[id]/result-detail-client.tsx");
 assert.match(assignPage, /resolveAssignHintTemplateId/);
 assert.match(assignPage, /Engine recommendation|plainLanguageWhy/);
-assert.match(assignPage, /Staff assist mix/);
+// #406 (de315ed2): the "Staff assist mix" banner became the editor opening on the
+// mix saved on the Result, with the hint/template only a reference.
+assert.match(assignPage, /if \(editable && hasSavedMix\) \{/);
+assert.match(assignPage, /Showing the mix saved on this result\. Save assignment confirms it; the template is only a reference\./);
 
 const prep = read("lib/results/assign-prep.ts");
 assert.match(prep, /preferredTemplateId/);

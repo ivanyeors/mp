@@ -11,6 +11,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
+import { HERO_LEDE_WORD_MAX, HERO_LEDE_WORD_MIN } from "@/lib/i18n/copy-bands";
 import { resolveAnswerLede } from "@/lib/seo/answer-lede";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { enUS } from "@/lib/i18n/messages/en-US";
@@ -98,8 +99,18 @@ assert.match(read("app/[lang]/mbolster-config/page.tsx"), /answerLede=\{intro\.l
 assert.match(read("components/seo/configurator-seo-intro.tsx"), /answerLede/);
 
 // --- Home i18n density ---
-assertEnLede("home", enUS.home.hero.seoAnswer);
-assertZhLede("home", zhCN.home.hero.seoAnswer);
+// The home hero lede is a ≤4-line band over the product image (line-clamp-4, 28–40 words):
+// 54de7ec0 "enforce copy-fit standards" (CONTEXT.md "Copy fit"); #333 (6ee678f1) cut the
+// zh translation to match. Its zh floor scales the same way (70 × 28/50 ≈ 40, the isWeakZh line).
+const MIN_CJK_HOME = 40;
+const homeEn = enWords(enUS.home.hero.seoAnswer);
+assert.ok(
+  homeEn >= HERO_LEDE_WORD_MIN && homeEn <= HERO_LEDE_WORD_MAX,
+  `home en lede ${homeEn} words, need ${HERO_LEDE_WORD_MIN}–${HERO_LEDE_WORD_MAX} (≤4 lines)`,
+);
+assert.match(read("components/sections/landing/hero-section.tsx"), /line-clamp-4[^\n]*\n[^\n]*\n\s*\{m\.home\.hero\.seoAnswer\}/);
+const homeZh = cjkChars(zhCN.home.hero.seoAnswer);
+assert.ok(homeZh >= MIN_CJK_HOME, `home zh lede too thin (${homeZh} CJK chars, need ~${MIN_CJK_HOME}+)`);
 
 // --- Configurator shell density ---
 const mpSrc = read("app/[lang]/mp-config/page.tsx");

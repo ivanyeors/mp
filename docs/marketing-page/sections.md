@@ -2,10 +2,7 @@
 
 Use this document as the **single source of truth** when implementing or editing **page sections** (marketing sections, landing sections, stacked blocks).
 
-This doc is **sections-only**. If the request is about theming, layout primitives, or padding scales outside section work, defer to:
-- `agent/theme.md`
-- `agent/layout.md`
-- `agent/padding.md`
+This doc is **sections-only**. For layout primitives outside section work, see `layout.md` in this folder.
 
 ---
 
@@ -29,7 +26,7 @@ Not a section:
 ### Section padding (always top + bottom)
 
 - **Every section wrapper must have top and bottom padding.**
-- Default vertical padding tokens (from `agent/padding.md` section guardrails):
+- Default vertical padding tokens:
   - **Mobile**: `py-6`
   - **Desktop**: `md:py-8 lg:py-10`
 - If a section is explicitly meant to be a “hero” or needs more breathing room:
@@ -152,9 +149,9 @@ export function MarketingSection({
 ```
 
 Implementation notes:
-- **Media must reserve space** using `AspectRatio` (per `agent/layout.md`) to avoid CLS.
+- **Media must reserve space** using `AspectRatio` (per `layout.md`) to avoid CLS.
 - **CTA hit targets** should remain comfortable; prefer `h-11` (44px) as a safe baseline.
-- **Theme safety**: use tokens/classes that work in light and dark (per `agent/theme.md`).
+- **Theme safety**: use tokens/classes that work in light and dark.
 
 ---
 

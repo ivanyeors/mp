@@ -38,9 +38,11 @@ assert.match(
   /Math\.max\(minHoleRadius, holeRadiusProp \* scale\)/,
   "hole radius must be floored for the mobile trigger",
 );
-assert.match(sunburst, /isMobile \? "text-xs" : "text-\[10px\]"/, "wedge labels step up on phones");
-assert.match(sunburst, /isMobile \? "size-5" : "size-4"/, "wedge icons step up on phones");
-assert.match(sunburst, /labelCharW = isMobile \? MOBILE_LABEL_CHAR_W/, "hug width follows the phone font");
+// #411 (62045b88): `largeLabels` gives a large desktop bloom the phone type too; phones always get it.
+assert.match(sunburst, /const bigType = isMobile \|\| largeLabels;/, "phones always get the bigger type");
+assert.match(sunburst, /bigType \? "text-xs" : "text-\[10px\]"/, "wedge labels step up on phones");
+assert.match(sunburst, /bigType \? "size-5" : "size-4"/, "wedge icons step up on phones");
+assert.match(sunburst, /labelCharW = bigType \? MOBILE_LABEL_CHAR_W/, "hug width follows the phone font");
 const layout = read("components/ui/sunburst-menu-layout.ts");
 assert.match(layout, /labelCharW\?: number;/, "layout must accept the glyph width");
 
@@ -49,9 +51,10 @@ assert.match(layout, /labelCharW\?: number;/, "layout must accept the glyph widt
 // narrow dive column), with thicker rings and a 26px hole (= 44px trigger).
 const xray = read("components/spatial/xray-pillow.tsx");
 const bolster = read("components/spatial/bolster-compartment-list.tsx");
-assert.match(xray, /size=\{isMobile \? 280 : 220\}/);
-assert.match(xray, /ringWidth=\{isMobile \? 48 : 40\}/);
-assert.match(xray, /holeRadius=\{isMobile \? 26 : 18\}/);
+// #411 (62045b88): a desktop with docked controls ("slotted") draws a larger bloom; phones are unchanged.
+assert.match(xray, /size=\{isMobile \? 280 : slotted \? SLOTTED_BLOOM_PX : 220\}/);
+assert.match(xray, /ringWidth=\{isMobile \? 48 : slotted \? 56 : 40\}/);
+assert.match(xray, /holeRadius=\{isMobile \? 26 : slotted \? 24 : 18\}/);
 assert.match(xray, /width: isMobile\s*\?\s*"100%"/, "phone bloom container must be the stage width");
 assert.match(bolster, /size=\{isMobile \? 280 : 200\}/);
 assert.match(bolster, /ringWidth=\{isMobile \? 48 : 40\}/);

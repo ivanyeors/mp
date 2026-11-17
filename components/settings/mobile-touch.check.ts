@@ -58,13 +58,21 @@ const css = read("app/globals.css");
 assert.match(css, /\.w-md-editor \.w-md-editor-toolbar li > button:active \{\s*background-color: var\(--press\);/);
 assert.match(css, /@media \(max-width: 767px\) \{\s*\.w-md-editor \.w-md-editor-toolbar \{[\s\S]{0,200}width: 44px;\s*height: 44px;/);
 
-// Subject and preview line wrap and grow instead of cutting off.
+// Subject and preview line wrap and grow instead of cutting off. Since #377 (3ea5323c)
+// they are one-line RichText inputs (Variables as chips), not SentenceField: the box
+// wraps and grows with its words, and pasted line breaks become spaces.
 const campaign = read("app/[lang]/settings/campaigns/campaign-editor.tsx");
-assert.match(campaign, /<SentenceField id="c-subject"/);
-assert.match(campaign, /<SentenceField id="c-preheader"/);
-const sentence = read("components/settings/sentence-field.tsx");
-assert.match(sentence, /replace\(\/\\s\*\[\\r\\n\]\+\\s\*\/g, " "\)/);
-assert.match(read("app/[lang]/settings/email-templates/email-copy-editor.tsx"), /from "@\/components\/settings\/sentence-field"/);
+assert.match(campaign, /<RichText\s[^>]*?id="c-subject"\s+singleLine\b/);
+assert.match(campaign, /<RichText\s[^>]*?id="c-preheader"\s+singleLine\b/);
+const richTextBox = read("components/block-editor/rich-text-style.ts");
+assert.match(richTextBox, /RICH_TEXT_BOX = \[\s*"[^"]*\bbreak-words whitespace-pre-wrap\b/);
+assert.match(read("components/block-editor/rich-text-editor.tsx"), /class: cn\(RICH_TEXT_BOX,/);
+const oneLine = read("components/block-editor/rich-text-schema.ts");
+assert.match(oneLine, /transformPastedText: \(text\) => text\.replace\(\/\\s\*\[\\r\\n\]\+\\s\*\/g, " "\)/);
+assert.match(oneLine, /if \(singleLine\) out\.push\(OneLine\);/);
+const emailCopy = read("app/[lang]/settings/email-templates/email-copy-editor.tsx");
+assert.match(emailCopy, /from "@\/components\/block-editor\/rich-text"/);
+assert.match(emailCopy, /singleLine=\{isOneLine\(field\)\}/);
 
 // SheetGrid: a tap edits (no typing-to-edit on touch), 44px rows, a touch hint.
 const grid = read("components/ui/sheet-grid.tsx");

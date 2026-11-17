@@ -97,7 +97,7 @@ export function CustomerPillowCard({
     }
 
     return (
-        <Card data-section="pillow">
+        <Card>
             <CardHeader className="pb-3">
                 {/* The buttons share the title's row, so the description below keeps the card's width. */}
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">

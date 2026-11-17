@@ -122,7 +122,12 @@ const client = readFileSync(
   join(root, "app/[lang]/settings/analytics/AnalyticsClient.tsx"),
   "utf8",
 );
-assert.match(client, /<ProspectJourneyCard[\s\S]*?<ProductConfigurationCard/);
+// #376 (18582951) split Analytics into tabs by question: the journey graph is on
+// Traffic, Product Configuration on Stock (no longer one page in order).
+const trafficTab = client.match(/<TabsContent value="traffic"[\s\S]*?<\/TabsContent>/)?.[0] ?? "";
+assert.match(trafficTab, /<ProspectJourneyCard\b/);
+const stockTab = client.match(/function StockTab\([\s\S]*?(?=\nfunction )/)?.[0] ?? "";
+assert.match(stockTab, /<ProductConfigurationCard\b/);
 
 const actions = readFileSync(
   join(root, "app/[lang]/settings/analytics/actions.ts"),

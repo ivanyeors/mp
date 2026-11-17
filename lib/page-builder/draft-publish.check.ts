@@ -104,9 +104,14 @@ assert.match(replace, /select\("id, content, draft_content"\)/, "replace-everywh
 assert.match(replace, /draft_content: next\.draft_content/, "replace-everywhere writes drafts back");
 
 // --- Builder surfaces the draft state ---
+// #407 (8be29642) moved these into PublishBar, shared by every page the builder edits;
+// the landing page mounts it with the default "the live site".
 const client = read("app/[lang]/settings/page-builder/page-builder-client.tsx");
-assert.match(client, /data-page-builder-draft-state/, "the header shows draft state");
-assert.match(client, /Publish to the live site\?/, "publish asks for confirmation");
-assert.match(client, /Discard/, "discard is available");
+assert.match(client, /<PublishBar pending=\{pending\}/, "the builder header mounts the publish bar");
+const bar = read("components/settings/page-builder/publish-bar.tsx");
+assert.match(bar, /data-page-builder-draft-state/, "the header shows draft state");
+assert.match(bar, /liveLabel = "the live site"/, "the landing page publishes to the live site");
+assert.match(bar, /<DialogTitle>Publish to \{liveLabel\}\?<\/DialogTitle>[\s\S]*?run\("POST"\)/, "publish asks for confirmation");
+assert.match(bar, /onClick=\{\(\) => run\("DELETE"\)\}[\s\S]{0,120}Discard/, "discard is available");
 
 console.log("landing-draft-publish self-check ok");

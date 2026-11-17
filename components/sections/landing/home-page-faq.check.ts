@@ -30,7 +30,10 @@ assert.match(typesSrc, /\| "faq"/);
 assert.match(typesSrc, /FaqContent/);
 
 const picker = read("app/[lang]/settings/page-builder/page-builder-client.tsx");
-assert.match(picker, /faq:\s*"Page FAQs"/);
+// The type labels moved into the section tree in slice 07 (4ea4fd3); the picker imports them.
+const sectionTree = read("components/settings/page-builder/section-tree.tsx");
+assert.match(sectionTree, /SECTION_TYPE_LABELS[\s\S]*?faq:\s*"Page FAQs"/);
+assert.match(picker, /SECTION_TYPE_LABELS[^;]*from "@\/components\/settings\/page-builder\/section-tree"/);
 assert.match(picker, /CUSTOM_SECTION_TEMPLATES/);
 
 const editor = read("components/settings/page-builder/section-editor.tsx");

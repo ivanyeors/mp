@@ -51,6 +51,10 @@ next-env.d.ts
 supabase/.temp/
 .claude/worktrees/
 
+# personal Claude Code files: your own instructions and permission rules
+CLAUDE.local.md
+.claude/settings.local.json
+
 # graphify — generated index artifacts
 # graph.json / GRAPH_REPORT.md / manifest.json ARE committed so a fresh clone
 # has the graph without a rebuild. These are not:

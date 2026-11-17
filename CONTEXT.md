@@ -1132,7 +1132,7 @@ _Avoid_: inline copy in config files; untyped i18n blobs wired to templates
 
 **Content preservation (non-negotiable)**: Refactor is layout/template extraction only. All existing i18n copy, images, videos, and section content must be retained — reorder allowed per approved recipes; do not delete or omit content that exists today.
 
-**Agent catalog**: TypeScript types in `lib/product-slide-sections/` (source of truth) + agent playbook at `.cursor/marketing-page/product-slide-sections.md`. Templates are reusable code blocks; Staff reorder, hide and edit them per sub page in the Page Builder (**Slide-in section**, ADR 0046).
+**Agent catalog**: TypeScript types in `lib/product-slide-sections/` (source of truth) + agent playbook at `docs/marketing-page/product-slide-sections.md`. Templates are reusable code blocks; Staff reorder, hide and edit them per sub page in the Page Builder (**Slide-in section**, ADR 0046).
 
 **Size Matters**: `press_quote` → `split_hero`(size matters) → `measure_carousel` → `split_hero`(head shapes) → `split_hero`(why unique) → `split_hero`(sleep position) → `split_hero`(configurations)
 
