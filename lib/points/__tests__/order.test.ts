@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
-import { orderEarnLine, pointsUsedRow, readOrderPoints, type OrderPointsRow } from "../order";
+import { orderEarnLine, pointsUsedRow, readOrderPoints, splitOrderDiscount, type OrderPointsRow } from "../order";
 
 /**
  * One Order's points, as the order pages and the confirmation email show them
@@ -93,5 +93,17 @@ describe("the lines", () => {
   it("put points used on their own line", () => {
     expect(pointsUsedRow(2000)).toEqual({ label: "Points used (2,000)", dollars: 20 });
     expect(pointsUsedRow(0)).toBeNull();
+  });
+
+  it("split discount_amount into the code and the points, so points never show as a code", () => {
+    // Points alone: no Discount line, only the points.
+    expect(splitOrderDiscount(10, 1000)).toEqual({ discount: 0, pointsUsed: { label: "Points used (1,000)", dollars: 10 } });
+    // A S$15 code and 1,000 points: S$25 off in all, S$15 of it the code.
+    expect(splitOrderDiscount(25, 1000)).toEqual({ discount: 15, pointsUsed: { label: "Points used (1,000)", dollars: 10 } });
+    // No points: the whole discount is the code's.
+    expect(splitOrderDiscount(12.5, 0)).toEqual({ discount: 12.5, pointsUsed: null });
+    expect(splitOrderDiscount(12.5, null)).toEqual({ discount: 12.5, pointsUsed: null });
+    // Cents stay exact: 19.99 − 7.00 is 12.99, not 12.989999….
+    expect(splitOrderDiscount(19.99, 700).discount).toBe(12.99);
   });
 });

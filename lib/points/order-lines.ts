@@ -39,3 +39,19 @@ export function pointsUsedRow(spent: number): { label: string; dollars: number }
   if (spent <= 0) return null;
   return { label: `Points used (${Math.round(spent).toLocaleString("en-SG")})`, dollars: pointsToDollars(spent) };
 }
+
+/**
+ * Pure — an Order's `discount_amount` as a totals table shows it: the code
+ * (and partner pricing) on the Discount line, and the points on a line of
+ * their own. The points' dollars are inside `discount_amount` (ADR 0030), so
+ * the Discount line is what is left once they are taken out. Every order page
+ * and email reads the split here, so none can show points as a code.
+ */
+export function splitOrderDiscount(
+  discountAmount: number,
+  pointsSpent: number | null | undefined,
+): { discount: number; pointsUsed: { label: string; dollars: number } | null } {
+  const pointsUsed = pointsUsedRow(Number(pointsSpent ?? 0));
+  const discount = Math.round((Number(discountAmount) - (pointsUsed?.dollars ?? 0)) * 100) / 100;
+  return { discount: Math.max(0, discount), pointsUsed };
+}

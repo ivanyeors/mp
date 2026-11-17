@@ -70,7 +70,7 @@ import {
 import { CELLS } from "@/lib/spatial-fillings/cells";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
-import { orderEarnLine, pointsUsedRow, type OrderEarn } from "@/lib/points/order-lines";
+import { orderEarnLine, splitOrderDiscount, type OrderEarn } from "@/lib/points/order-lines";
 import { collectLocationOf } from "@/lib/shipping/self-collect";
 import { isSoldOrderStatus } from "@/lib/ecommerce/sold-status";
 import { orderStatusLabel } from "@/lib/shop/order-display";
@@ -654,8 +654,7 @@ export default function OrderDetailPage({
     const badgeVariant = orderStatusBadgeVariant(order.status);
     // Points used are their own line, apart from the coupon; their dollars are
     // inside discount_amount (PRD-loyalty-points slice 04).
-    const pointsUsed = pointsUsedRow(Number(order.points_spent ?? 0));
-    const couponDiscount = Math.round((order.discount_amount - (pointsUsed?.dollars ?? 0)) * 100) / 100;
+    const { discount: couponDiscount, pointsUsed } = splitOrderDiscount(order.discount_amount, order.points_spent);
     const hasUnitCost = (order.items ?? []).some(
         (item) => item.unit_cost != null && item.unit_cost > 0
     );
