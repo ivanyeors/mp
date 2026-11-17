@@ -10,11 +10,15 @@ import type { Rgb, SkyState } from "@/lib/explore/sky";
  * page mounts it; the page drives it through the methods below and hears
  * about a tapped flower through `onFlower`.
  *
- * The land and the clouds are painted in the colours of the owner's
- * reference picture: cream where the light falls, lavender in the shade,
- * yellow-greens for the grass. Every colour is written as it should appear
- * on screen (the shaders work in sRGB and skip three's colour conversion), so
- * the scene matches the CSS fallback behind it exactly.
+ * The land and the clouds are painted after the owner's two reference
+ * pictures. From the first, the colours: cream where the light falls,
+ * lavender in the shade, yellow-greens for the grass. From the second, the
+ * cliff: turf that rolls over its edge onto rock cut in flat planes, with a
+ * warm colour worked into each light and a cool one into each shade, and
+ * plants of several kinds and sizes on top. The shapes stay simple. Every
+ * colour is written as it should appear on screen (the shaders work in sRGB
+ * and skip three's colour conversion), so the scene matches the CSS fallback
+ * behind it exactly.
  *
  * It is drawn in four passes, back to front, so the sun and moon can sit
  * between cloud layers: the sky and the far clouds; the sun and moon; the
@@ -268,41 +272,33 @@ void main() {
   gl_FragColor = vec4(mix(col, uHaze, uFade), alpha);
 }`;
 
-/** Painted land: three flat tones with a brushy edge between them. */
+/** Painted leaves: three flat tones with a brushy edge between them, and two more colours dabbed in. */
 const PAINT_TONE = /* glsl */ `
-uniform vec3 uHi, uMid, uLo, uLight, uBounce;
+uniform vec3 uHi, uMid, uLo, uWarm, uCool, uLight;
 uniform vec2 uGrain;
-uniform vec3 uFoot; // darker towards an edge: amount, from height, to height
-uniform vec3 uCap;  // in shade under an overhang: amount, from height, to height
 uniform vec3 uStroke; // brushwork: the strokes' angle, how fine they are, how strongly they show
-uniform float uStrata, uBounceAmt, uDirect, uSeaY;
 ${NOISE}
-// Paint laid on in strokes, as in the reference picture: long along their direction, thin across it.
-float strokes(vec3 paint) {
+// Paint laid on in strokes, as in the reference pictures: long along their direction, thin across it.
+float strokes(vec3 paint, float turn, float fine) {
   vec2 p = paint.xy + vec2(paint.z * 0.6, paint.z * 0.25);
-  float c = cos(uStroke.x), s = sin(uStroke.x);
-  vec2 q = vec2(c * p.x + s * p.y, c * p.y - s * p.x) * uStroke.y;
+  float c = cos(turn), s = sin(turn);
+  vec2 q = vec2(c * p.x + s * p.y, c * p.y - s * p.x) * fine;
   return noise(vec2(q.x * 0.9, q.y * 5.5)) * 0.65 + noise(vec2(q.x * 2.3 + 3.1, q.y * 11.0)) * 0.35;
 }
 vec3 tone(vec3 n, vec3 paint) {
-  // How much the tone follows the light rather than the surface's own pattern.
-  float d = mix(0.5, dot(n, uLight) * 0.5 + 0.5, uDirect);
-  float st = strokes(paint);
+  float st = strokes(paint, uStroke.x, uStroke.y);
   float brush = (noise(paint.xy * uGrain.x + paint.z * 1.7) - 0.5) * uGrain.y + (st - 0.5) * uStroke.z;
-  // Layers of rock: level bands of uneven depth, wavering as they run round, each its own shade.
-  float layer = paint.y * 3.4 + noise(vec2((paint.x + paint.z) * 0.8, paint.y * 0.5)) * 1.3;
-  float bed = floor(layer + 0.35 * sin(floor(layer) * 2.7));
-  float strata = (hash(vec2(bed, 7.0)) - 0.5) * uStrata;
-  float s = d + brush + strata + n.y * 0.1;
+  float s = dot(n, uLight) * 0.5 + 0.5 + brush + n.y * 0.1;
   // Firm edges between the tones, as a loaded brush leaves them.
   vec3 col = mix(uLo, uMid, smoothstep(0.39, 0.43, s));
   col = mix(col, uHi, smoothstep(0.67, 0.71, s));
   // Each stroke a touch lighter or darker than the one beside it.
   col *= 1.0 + (st - 0.5) * uStroke.z * 0.5;
-  col *= 1.0 - uFoot.x * (1.0 - smoothstep(uFoot.y, uFoot.z, paint.y));
-  col = mix(col, uLo, uCap.x * smoothstep(uCap.y, uCap.z, paint.y));
-  // The sea throws its own colour back up the foot of the rock.
-  return mix(col, uBounce, uBounceAmt * (1.0 - smoothstep(uSeaY, uSeaY + 0.7, paint.y)));
+  // A warm colour dabbed into the light and a cool one into the shade.
+  float lit = smoothstep(0.4, 0.7, s);
+  col = mix(col, uWarm, smoothstep(0.6, 0.66, strokes(paint + 5.3, uStroke.x - 0.8, uStroke.y * 0.7)) * (0.2 + 0.4 * lit));
+  col = mix(col, uCool, smoothstep(0.62, 0.68, strokes(paint + 13.7, uStroke.x + 0.6, uStroke.y * 0.6)) * (0.5 - 0.35 * lit));
+  return col;
 }`;
 
 const PAINT_VERT = /* glsl */ `
@@ -333,9 +329,119 @@ void main() {
 }`;
 
 /**
- * A blade of grass. It takes the hill's own colour where it stands, so the
+ * The cliff's two paints: turf and rock. Each is three flat tones laid in
+ * strokes, with a warm colour worked into its light and a cool one into its
+ * shade, the way the owner's reference pictures are painted. The blades of
+ * grass use the turf's, so they are the colour of the ground they grow from.
+ */
+const LAND_TONE = /* glsl */ `
+uniform vec3 uLight, uBounce;
+uniform vec3 uGrassHi, uGrassMid, uGrassLo, uGrassWarm, uGrassCool;
+uniform vec3 uRockHi, uRockMid, uRockLo, uRockWarm, uRockCool, uRockDeep;
+uniform float uSeaY;
+${NOISE}
+// A dab of paint: long one way, thin the other.
+float dab(vec2 p, float turn, float fine) {
+  float c = cos(turn), s = sin(turn);
+  vec2 q = vec2(c * p.x + s * p.y, c * p.y - s * p.x) * fine;
+  return noise(vec2(q.x * 0.9, q.y * 5.5)) * 0.65 + noise(vec2(q.x * 2.3 + 3.1, q.y * 11.0)) * 0.35;
+}
+vec3 grassTone(vec3 n, vec3 p) {
+  // The strokes lie along the ground.
+  vec2 g = vec2(p.x + p.y * 0.4, p.z * 1.5 + p.y * 1.2);
+  float st = dab(g, 0.3, 1.8);
+  // Broad masses of light and dark first, then the strokes inside them.
+  float mass = noise(g * 0.55 + 4.0) - 0.5;
+  float s = 0.34 + 0.3 * (dot(n, uLight) * 0.5 + 0.5) + mass * 0.34 + (st - 0.5) * 0.3 + n.y * 0.06;
+  vec3 col = mix(uGrassLo, uGrassMid, smoothstep(0.39, 0.43, s));
+  col = mix(col, uGrassHi, smoothstep(0.66, 0.7, s));
+  col *= 1.0 + (st - 0.5) * 0.14;
+  float lit = smoothstep(0.42, 0.7, s);
+  col = mix(col, uGrassWarm, smoothstep(0.6, 0.66, dab(g + 7.3, -0.4, 1.25)) * (0.18 + 0.5 * lit));
+  col = mix(col, uGrassCool, smoothstep(0.62, 0.68, dab(g + 19.1, 0.8, 1.05)) * (0.6 - 0.45 * lit));
+  return col;
+}
+vec3 rockTone(vec3 n, vec3 p) {
+  // Round the wall, and up it.
+  vec2 w = vec2(p.x + p.z * 0.6, p.y + p.z * 0.25);
+  float st = dab(w, 0.06, 1.5);
+  // Beds of rock: level bands, each its own shade, some with a dark crack under them.
+  float layer = p.y * 3.1 + noise(vec2(w.x * 0.8, p.y * 0.5)) * 1.2;
+  float bed = floor(layer);
+  float s = mix(0.5, dot(n, uLight) * 0.5 + 0.5, 0.75) + (hash(vec2(bed, 7.0)) - 0.5) * 0.26 + (st - 0.5) * 0.22 + n.y * 0.16;
+  vec3 col = mix(uRockLo, uRockMid, smoothstep(0.4, 0.44, s));
+  col = mix(col, uRockHi, smoothstep(0.66, 0.7, s));
+  col *= 1.0 + (st - 0.5) * 0.12;
+  float lit = smoothstep(0.42, 0.7, s);
+  col = mix(col, uRockWarm, smoothstep(0.62, 0.68, dab(w + 3.7, 0.5, 1.15)) * (0.2 + 0.4 * lit));
+  col = mix(col, uRockCool, smoothstep(0.61, 0.67, dab(w + 11.9, -0.3, 0.95)) * (0.62 - 0.47 * lit));
+  float f = fract(layer);
+  col = mix(col, uRockDeep, 0.5 * step(0.5, hash(vec2(bed, 3.0))) * (1.0 - smoothstep(0.0, 0.07, f)));
+  // The sea throws its own colour back up the foot of the rock.
+  return mix(col, uBounce, 0.16 * (1.0 - smoothstep(uSeaY, uSeaY + 0.7, p.y)));
+}`;
+
+const LAND_VERT = /* glsl */ `
+attribute float aDepth;
+varying vec3 vNormal;
+varying vec3 vPaint;
+varying vec3 vWorld;
+varying float vDepth;
+uniform vec3 uLandOrigin;
+uniform float uLandInv;
+void main() {
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vWorld = w.xyz;
+  vPaint = (w.xyz - uLandOrigin) * uLandInv;
+  vNormal = normalize(mat3(modelMatrix) * normal);
+  vDepth = aDepth;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+
+/**
+ * A bluff: turf on top that hangs a little way down its own wall, and rock
+ * below. Where one ends and the other begins is painted, not modelled: a
+ * wavering line with a few long tongues of grass, so the two read as one
+ * piece of land. The rock is shaded in flat planes, like blocks cut with a
+ * palette knife.
+ */
+const LAND_FRAG = /* glsl */ `
+precision highp float;
+varying vec3 vNormal;
+varying vec3 vPaint;
+varying vec3 vWorld;
+varying float vDepth;
+uniform vec3 uTint;
+uniform float uDrape;
+${LAND_TONE}
+void main() {
+  vec3 p = vPaint;
+  float along = p.x * 1.15 + p.z * 0.8;
+  float hang = uDrape + 0.1 + 0.05 * sin(p.x * 2.3 + p.z * 1.1) + 0.04 * sin(p.z * 3.7 - p.x * 1.9 + 1.3)
+             + 0.16 * pow(max(0.0, sin(along + 0.6)), 8.0) + 0.09 * pow(max(0.0, sin(along * 1.9 + 2.1)), 6.0)
+             + (noise(vec2(p.x * 6.0 + p.z * 4.0, p.y * 5.0)) - 0.5) * 0.07
+             + (noise(vec2(along * 9.0, 1.7)) - 0.5) * 0.12;
+  float below = vDepth - hang;
+  float aa = max(fwidth(below), 0.0005);
+  float turf = 1.0 - smoothstep(-aa, aa, below);
+
+  vec3 face = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
+  if (dot(face, cameraPosition - vWorld) < 0.0) face = -face;
+  vec3 rock = rockTone(face, p);
+  // The turf's own shadow on the rock just under it.
+  rock = mix(rock, uRockDeep, 0.7 * (1.0 - smoothstep(0.0, 0.22, below)));
+
+  vec3 grass = grassTone(normalize(vNormal), p);
+  // Turf that hangs over the edge is in its own shade.
+  grass = mix(grass, uGrassLo * 0.92, 0.5 * smoothstep(0.05, 0.3, vDepth));
+
+  gl_FragColor = vec4(mix(rock, grass, turf) * uTint, 1.0);
+}`;
+
+/**
+ * A blade of grass. It takes the ground's own colour where it stands, so the
  * blades grow out of the patch rather than sit on it, and lightens to its
- * tip. The wind bends it in gusts that cross the hill.
+ * tip. The wind bends it in gusts that cross the cliff.
  */
 const BLADE_VERT = /* glsl */ `
 attribute vec3 aGround;
@@ -373,10 +479,12 @@ varying vec3 vPaint;
 varying float vH;
 varying float vSeed;
 uniform vec3 uTint, uTip;
-${PAINT_TONE}
+${LAND_TONE}
 void main() {
-  vec3 col = tone(normalize(vGround), vPaint);
-  col = mix(col, uTip, vH * vH * (0.3 + 0.35 * vSeed));
+  vec3 col = grassTone(normalize(vGround), vPaint);
+  // Most blades pale to their tip; some go to seed and tip gold.
+  vec3 tip = mix(uTip, uGrassWarm, step(0.7, vSeed) * 0.85);
+  col = mix(col, tip, vH * vH * (0.3 + 0.35 * vSeed));
   gl_FragColor = vec4(col * uTint, 1.0);
 }`;
 
@@ -446,14 +554,18 @@ void main() { gl_FragColor = vec4(uColor, vAlpha * uOpacity); }`;
 type Uniforms = Record<string, THREE.IUniform>;
 
 const FLOWER_COLOURS = ["#ff9cc2", "#fff6f0", "#ffd45c", "#b9a6ff", "#ff9078"];
-/** Where the flowers grow: across the slope of the hill that faces the visitor. */
-const FLOWER_SPOTS: readonly (readonly [number, number])[] = [
-  [-1.25, 1.5],
-  [-0.65, 1.05],
-  [-1.9, 0.95],
-  [-2.3, 0.3],
-  [-1.5, 0.4],
-];
+/**
+ * The flowers: where each grows on the patch, what kind it is, how tall its
+ * stalk and how big it is beside the others. Tall ones stand behind short
+ * ones, so none hides another.
+ */
+const FLOWERS = [
+  { x: -1.2, z: 0.95, kind: "cosmos", stem: 0.52, size: 1.25 },
+  { x: -0.55, z: 0.7, kind: "daisy", stem: 0.44, size: 1 },
+  { x: -2.05, z: 1.0, kind: "buttercup", stem: 0.27, size: 0.8 },
+  { x: -2.3, z: 0.0, kind: "pom", stem: 0.66, size: 0.95 },
+  { x: -1.72, z: 0.35, kind: "tulip", stem: 0.56, size: 1.05 },
+] as const;
 
 /** The lines of wind: where each starts (as a share of the view), its size, and how often it blows. */
 const WIND_LINES = [
@@ -668,120 +780,214 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   const cliff = new THREE.Group();
   scene.add(cliff);
   const landRandom = rng(11);
+  const between = (a: number, b: number) => a + (b - a) * landRandom();
+  const ease = (a: number, b: number, v: number) => {
+    const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+  const up = new THREE.Vector3(0, 1, 0);
 
-  const paint = (o: {
-    hi: string;
-    mid: string;
-    lo: string;
-    grain?: readonly [number, number];
-    strata?: number;
-    bounce?: number;
-    foot?: readonly [number, number, number];
-    cap?: readonly [number, number, number];
-    direct?: number;
-    stroke?: readonly [number, number, number];
-  }) => ({
-    uHi: { value: hex(o.hi) },
-    uMid: { value: hex(o.mid) },
-    uLo: { value: hex(o.lo) },
+  /**
+   * The land's colours, shared by the turf, the rock under it and the blades
+   * that grow from it: the reference pictures' yellow-greens with gold worked
+   * into the light and blue-green into the shade; cream and ochre rock with
+   * orange in its light, and violet and dusty blue in its shade.
+   */
+  const landUniforms = {
+    uGrassHi: { value: hex("#cbd86a") },
+    uGrassMid: { value: hex("#86b455") },
+    uGrassLo: { value: hex("#3f7c5a") },
+    uGrassWarm: { value: hex("#edc95a") },
+    uGrassCool: { value: hex("#2f8a82") },
+    uRockHi: { value: hex("#efd6a6") },
+    uRockMid: { value: hex("#b58a63") },
+    uRockLo: { value: hex("#746a92") },
+    uRockWarm: { value: hex("#d3935c") },
+    uRockCool: { value: hex("#6c86b6") },
+    uRockDeep: { value: hex("#463c60") },
     uLight: shared.uLight,
     uBounce: shared.uSeaLight,
-    uGrain: { value: new THREE.Vector2(...(o.grain ?? [1.4, 0.16])) },
-    uFoot: { value: new THREE.Vector3(...(o.foot ?? [0, 0, 1])) },
-    uCap: { value: new THREE.Vector3(...(o.cap ?? [0, 0, 1])) },
-    uStrata: { value: o.strata ?? 0 },
-    uDirect: { value: o.direct ?? 1 },
-    uStroke: { value: new THREE.Vector3(...(o.stroke ?? [0.2, 1.6, 0.2])) },
-    uBounceAmt: { value: o.bounce ?? 0 },
+    uSeaY: shared.uSeaY,
     uTint: shared.uTint,
     uLandOrigin: shared.uLandOrigin,
     uLandInv: shared.uLandInv,
-    uSeaY: shared.uSeaY,
-  });
-  const painted = (o: Parameters<typeof paint>[0]) =>
-    keep(new THREE.ShaderMaterial({ vertexShader: PAINT_VERT, fragmentShader: PAINT_FRAG, uniforms: paint(o) }));
+  };
 
-  // Rock: cream in the light, sand between, lavender in the shade, as the reference paints its shore.
-  const ROCK = { hi: "#f6e7ca", mid: "#d2b292", lo: "#8f84b0", grain: [3.2, 0.06], strata: 0.56, bounce: 0.16, cap: [0.85, 1.2, 1.44], direct: 0.6, stroke: [0.08, 1.5, 0.26] } as const;
-  const rockGeo = keep(new THREE.CylinderGeometry(1, 1, 1, 64, 22, false));
-  {
-    const pos = rockGeo.attributes.position!;
-    const ease = (a: number, b: number, v: number) => {
-      const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
-      return t * t * (3 - 2 * t);
+  /** A bluff: a grassy top that rolls over its edge into a wall of rock. Its outline is a reach in each direction from its middle. */
+  type Bluff = { x: number; z: number; rim: (a: number) => number; top: (x: number, z: number) => number };
+  /** How far the turf dips as it rolls over the edge. */
+  const ROLL = 0.1;
+  /** The ground on a bluff's top, and how far out towards its edge that is (1 at the edge). */
+  const onTop = (b: Bluff, x: number, z: number) => {
+    const s = Math.hypot(x - b.x, z - b.z) / b.rim(Math.atan2(z - b.z, x - b.x));
+    return { y: b.top(x, z) - ROLL * ease(0.7, 1, s), s };
+  };
+  const normalOn = (b: Bluff, x: number, z: number) => {
+    const e = 0.04;
+    return new THREE.Vector3(onTop(b, x - e, z).y - onTop(b, x + e, z).y, 2 * e, onTop(b, x, z - e).y - onTop(b, x, z + e).y).normalize();
+  };
+  /** The wall, by how far down it: how far it stands out from the edge above. A nose of rock under the turf, an undercut, then a buttress. */
+  const WALL: readonly (readonly [number, number])[] = [
+    [0.07, 0.03],
+    [0.18, 0.045],
+    [0.34, 0.04],
+    [0.54, -0.03],
+    [0.8, -0.17],
+    [1.12, -0.2],
+    [1.55, -0.1],
+    [2.2, 0.06],
+    [3.0, 0.3],
+  ];
+  /** The rings of the top, as a share of the way out to the edge: closer together where the turf rolls over. */
+  const CAP = [0, 0.3, 0.55, 0.74, 0.87, 0.95, 1];
+  const AROUND = 64;
+  const bluffGeometry = (b: Bluff, seed: number) => {
+    // The same every visit, and the same at both ends of the seam.
+    const jitter = (i: number, j: number, k: number) => {
+      const v = Math.sin(i * 12.9898 + j * 78.233 + k * 37.719 + seed) * 43758.5453;
+      return v - Math.floor(v) - 0.5;
     };
-    for (let i = 0; i < pos.count; i += 1) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = pos.getZ(i);
-      const v = y + 0.5; // 0 at the foot, 1 at the top
-      const a = Math.atan2(z, x);
-      // A flared foot, a waist, a ledge two-thirds up, and a wall that stands straight under the grass, in the light.
-      const profile = 1.26 - 0.34 * ease(0, 0.4, v) + 0.1 * ease(0.56, 0.64, v) - 0.05 * ease(0.66, 0.9, v) + 0.03 * ease(0.9, 1, v);
-      const lumps = 1 + Math.sin(a * 3 + v * 4) * 0.07 + Math.sin(a * 7 - v * 9 + 1.3) * 0.04 + Math.sin(a * 13 + v * 17) * 0.02;
-      // Only the wall moves: the caps keep their centres.
-      const wall = Math.hypot(x, z) > 0.5 ? profile * lumps : 1;
-      pos.setXYZ(i, x * wall, y, z * wall);
+    const position: number[] = [];
+    const depth: number[] = [];
+    const index: number[] = [];
+    const rows = CAP.length + WALL.length;
+    for (let j = 0; j < rows; j += 1) {
+      const w = j - CAP.length; // below 0 on the top; then one row of wall for each step down
+      // The first rows of wall are turf and stay smooth. Below them the rock is in blocks, two or three columns
+      // wide and a band deep, each standing a little further out or back than its neighbours: flat faces, with
+      // a joint between one block and the next.
+      const rough = w >= 2;
+      const band = w <= 3 ? 0 : w <= 5 ? 1 : 2;
+      for (let i = 0; i <= AROUND; i += 1) {
+        const col = i % AROUND;
+        const block = Math.floor((col + band * 3) / (band === 1 ? 2 : 3));
+        const a = ((col + (rough ? jitter(col, band, 1) * 0.3 : 0)) / AROUND) * Math.PI * 2;
+        const dx = Math.cos(a);
+        const dz = Math.sin(a);
+        const r = b.rim(a);
+        if (w < 0) {
+          const s = CAP[j]!;
+          const x = b.x + dx * r * s;
+          const z = b.z + dz * r * s;
+          position.push(x, onTop(b, x, z).y, z);
+          depth.push(-(1 - s) * r);
+        } else {
+          const [down, out] = WALL[w]!;
+          const edgeX = b.x + dx * r;
+          const edgeZ = b.z + dz * r;
+          // The nose stands further out in some places than others: buttresses.
+          const stand = out * (w <= 3 ? 0.6 + 0.5 * (0.5 + 0.5 * Math.sin(a * 5 + seed)) : 1) + (rough ? jitter(block, band, 2) * 0.2 + jitter(col, j, 4) * 0.03 : 0);
+          position.push(edgeX + dx * stand, onTop(b, edgeX, edgeZ).y - down + (rough ? jitter(block, j, 3) * 0.07 : 0), edgeZ + dz * stand);
+          depth.push(down);
+        }
+      }
     }
-    rockGeo.computeVertexNormals();
-  }
-  const rockMat = painted(ROCK);
-  const rock = new THREE.Mesh(rockGeo, rockMat);
-  rock.scale.set(2.3, 3.7, 1.95);
-  rock.position.set(0, -0.25, 0);
-  cliff.add(rock);
-  // The headland carries on to the right, a little taller and further back.
-  const RIDGE = { x: 4.2, y: 1.6, z: -1.6, rx: 3.75, ry: 1.0, rz: 2.9 };
-  const rockBack = new THREE.Mesh(rockGeo, painted({ ...ROCK, cap: [0.85, RIDGE.y - 0.35, RIDGE.y - 0.11] }));
-  rockBack.scale.set(3.3, 4.7, 2.5);
-  rockBack.rotation.y = 1.9;
-  rockBack.position.set(RIDGE.x, RIDGE.y - 2.3, RIDGE.z);
-  cliff.add(rockBack);
+    for (let j = 0; j < rows - 1; j += 1) {
+      for (let i = 0; i < AROUND; i += 1) {
+        const inner = j * (AROUND + 1) + i;
+        const outer = inner + AROUND + 1;
+        // Split each square the other way from its neighbours, so the planes do not all lean one way.
+        if ((i + j) % 2) index.push(inner, inner + 1, outer + 1, inner, outer + 1, outer);
+        else index.push(inner, inner + 1, outer, inner + 1, outer + 1, outer);
+      }
+    }
+    const geometry = keep(new THREE.BufferGeometry());
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(position, 3));
+    geometry.setAttribute("aDepth", new THREE.Float32BufferAttribute(depth, 1));
+    geometry.setIndex(index);
+    geometry.computeVertexNormals();
+    return geometry;
+  };
 
+  /** A rounded outline with its own reach to each side, and a waver so it is not an oval. */
+  const outline = (left: number, right: number, front: number, back: number, k: number) => (a: number) => {
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    const oval = 1 / Math.hypot(c / (c < 0 ? left : right), s / (s > 0 ? front : back));
+    return oval * (1 + 0.07 * Math.sin(a * 3 + k) + 0.045 * Math.sin(a * 5 + k * 2.3) + 0.025 * Math.sin(a * 9 + k * 0.7));
+  };
+  /** The patch the flowers grow on. Its nose points out to sea on the left; its near edge is the cliff the visitor looks down. It rises to the right and to the back. */
+  const PATCH: Bluff = {
+    x: 0,
+    z: 0,
+    rim: outline(2.75, 3.2, 1.5, 2.3, 0.5),
+    top: (x, z) => 1.78 + 0.05 * (x + 2.75) + 0.055 * (1.5 - z) + 0.04 * Math.sin(x * 1.7 + 0.4) * Math.sin(z * 1.3 + 1.1),
+  };
+  /** The headland behind it, a step higher, running off to the right. */
+  const RIDGE: Bluff = {
+    x: 4.2,
+    z: -1.6,
+    rim: outline(3.75, 3.75, 2.9, 2.9, 2.1),
+    top: (x, z) => 2.34 + 0.04 * (x - 0.5) + 0.05 * Math.sin(x * 1.3 + 2) * Math.sin(z * 1.1),
+  };
+  const land = (b: Bluff, seed: number, drape: number) =>
+    cliff.add(
+      new THREE.Mesh(
+        bluffGeometry(b, seed),
+        keep(new THREE.ShaderMaterial({ vertexShader: LAND_VERT, fragmentShader: LAND_FRAG, uniforms: { ...landUniforms, uDrape: { value: drape } } })),
+      ),
+    );
+  land(PATCH, 1.7, 0);
+  // More of the step up to the headland is turf: it is a bank, not a second cliff.
+  land(RIDGE, 4.3, 0.16);
+
+  const underRidge = (x: number, z: number) => onTop(RIDGE, x, z).s < 1.03;
+  /** The ground at a point: the headland where it stands, the patch elsewhere. */
+  const ground = (x: number, z: number) => (onTop(RIDGE, x, z).s < 1 ? onTop(RIDGE, x, z).y : onTop(PATCH, x, z).y);
+  /** Nothing further right than this is ever in view. */
+  const SEEN = 2.6;
+  /** A point on a bluff's top, anywhere on it. */
+  const spot = (b: Bluff, reach = 0.97) => {
+    const a = landRandom() * Math.PI * 2;
+    const r = b.rim(a) * Math.sqrt(landRandom()) * reach;
+    return [b.x + Math.cos(a) * r, b.z + Math.sin(a) * r] as const;
+  };
+  /** Not on top of a flower. */
+  const clear = (x: number, z: number, by: number) => FLOWERS.every((f) => Math.hypot(f.x - x, f.z - z) > by);
+
+  const painted = (o: { hi: string; mid: string; lo: string; warm: string; cool: string; grain: readonly [number, number]; stroke: readonly [number, number, number] }) =>
+    keep(
+      new THREE.ShaderMaterial({
+        vertexShader: PAINT_VERT,
+        fragmentShader: PAINT_FRAG,
+        uniforms: {
+          uHi: { value: hex(o.hi) },
+          uMid: { value: hex(o.mid) },
+          uLo: { value: hex(o.lo) },
+          uWarm: { value: hex(o.warm) },
+          uCool: { value: hex(o.cool) },
+          uGrain: { value: new THREE.Vector2(...o.grain) },
+          uStroke: { value: new THREE.Vector3(...o.stroke) },
+          uLight: shared.uLight,
+          uTint: shared.uTint,
+          uLandOrigin: shared.uLandOrigin,
+          uLandInv: shared.uLandInv,
+        },
+      }),
+    );
   const blob = keep(new THREE.IcosahedronGeometry(1, 3));
 
-  // Grass: a round hill over the rock, lapping over its edge. Yellow-green in the light, blue-green in the shade.
-  const HILL = { rx: 2.75, ry: 0.75, rz: 2.3, y: 1.55 };
-  const GRASS = { hi: "#cbd86a", mid: "#86b455", lo: "#3f7c5a", grain: [1.7, 0.3], foot: [0.26, HILL.y - 0.1, HILL.y + 0.42], stroke: [0.5, 1.9, 0.3] } as const;
-  const hillAt = (x: number, z: number) => {
-    const k = 1 - (x / HILL.rx) ** 2 - (z / HILL.rz) ** 2;
-    return HILL.y + HILL.ry * Math.sqrt(Math.max(0, k));
-  };
-  const ridgeAt = (x: number, z: number) =>
-    RIDGE.y + RIDGE.ry * Math.sqrt(Math.max(0, 1 - ((x - RIDGE.x) / RIDGE.rx) ** 2 - ((z - RIDGE.z) / RIDGE.rz) ** 2));
-  /** The hill's outward direction at a point on it. */
-  const hillNormal = (x: number, z: number) =>
-    new THREE.Vector3(x / HILL.rx ** 2, (hillAt(x, z) - HILL.y) / HILL.ry ** 2, z / HILL.rz ** 2).normalize();
-  const hillGeo = keep(new THREE.SphereGeometry(1, 56, 24, 0, Math.PI * 2, 0, Math.PI * 0.53));
-  const hill = new THREE.Mesh(hillGeo, painted(GRASS));
-  hill.scale.set(HILL.rx, HILL.ry, HILL.rz);
-  hill.position.y = HILL.y;
-  cliff.add(hill);
-  const hillBack = new THREE.Mesh(hillGeo, painted({ ...GRASS, hi: "#c2d06c", mid: "#7fac58", lo: "#3c765a", foot: [0.26, RIDGE.y - 0.1, RIDGE.y + 0.42] }));
-  hillBack.scale.set(RIDGE.rx, RIDGE.ry, RIDGE.rz);
-  hillBack.position.set(RIDGE.x, RIDGE.y, RIDGE.z);
-  cliff.add(hillBack);
-
-  // Bushes behind the patch, rounded like the reference's.
-  const bushMat = painted({ hi: "#bccb58", mid: "#5d9a4c", lo: "#285e50", grain: [2.4, 0.3], stroke: [0.9, 2.6, 0.34] });
-  for (const [bx, bz, bs] of [
-    [1.15, -0.55, 0.62],
-    [2.5, 0.1, 0.8],
-    [0.2, -1.35, 0.5],
+  // Bushes behind the patch, rounded like the reference's, each its own size and build.
+  const bushMat = painted({ hi: "#bccb58", mid: "#5d9a4c", lo: "#285e50", warm: "#e3cf62", cool: "#2a6f7a", grain: [2.4, 0.3], stroke: [0.9, 2.6, 0.34] });
+  for (const [bx, bz, bs, squat, leaves] of [
+    [1.25, -0.75, 0.5, 0.86, 5],
+    [2.4, -0.4, 0.58, 0.8, 6],
+    [0.2, -1.6, 0.4, 1.05, 4],
+    [-0.9, -1.55, 0.26, 0.7, 3],
   ] as const) {
     const bush = new THREE.Group();
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < leaves; i += 1) {
       const leaf = new THREE.Mesh(blob, bushMat);
-      const r = bs * (0.55 + landRandom() * 0.4);
-      leaf.scale.set(r, r * 0.86, r);
+      const r = bs * between(0.55, 0.95);
+      leaf.scale.set(r, r * squat, r);
       leaf.position.set((landRandom() - 0.5) * bs * 1.3, r * 0.6 + landRandom() * bs * 0.35, (landRandom() - 0.5) * bs * 0.8);
       bush.add(leaf);
     }
-    bush.position.set(bx, (bx > 2 ? ridgeAt(bx, bz) : hillAt(bx, bz)) - 0.12, bz);
+    bush.position.set(bx, ground(bx, bz) - 0.1, bz);
     cliff.add(bush);
   }
 
-  // Blades of grass, in the hill's own colours, thickest on the slope that faces the visitor.
+  // Grass, in the ground's own colours: a short lawn, tufts of long grass, and a fringe that hangs over the cliff's edge.
   const bladeGeo = keep(new THREE.BufferGeometry());
   {
     // A tapering blade in three steps, leaning forward a little as it rises.
@@ -799,48 +1005,96 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     });
     bladeGeo.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
   }
-  const BLADES = 4200;
-  const RIM_BLADES = 520;
-  const ground = new Float32Array((BLADES + RIM_BLADES) * 3);
+  type Blade = { at: THREE.Vector3; ground: THREE.Vector3; grow: THREE.Vector3; tall: number; wide: number };
+  const sown: Blade[] = [];
+  /** A blade on a bluff's top: partly upright, partly out from the ground, so the outline is soft with grass. */
+  const sow = (b: Bluff, x: number, z: number, tall: number, wide = 1, splay?: THREE.Vector3) => {
+    const n = normalOn(b, x, z);
+    const grow = n.clone().lerp(up, 0.55);
+    if (splay) grow.add(splay);
+    sown.push({ at: new THREE.Vector3(x, onTop(b, x, z).y - 0.02, z), ground: n, grow: grow.normalize(), tall, wide });
+  };
+  const lawn = (b: Bluff, count: number) => {
+    for (let n = 0, tries = 0; n < count && tries < count * 8; tries += 1) {
+      const [x, z] = spot(b);
+      if (x > SEEN || (b === PATCH && underRidge(x, z))) continue;
+      // Gathered in tufts; now and then a blade twice the height of its neighbours.
+      const tuft = 0.75 + 0.5 * Math.sin(x * 3.1) * Math.sin(z * 2.7);
+      sow(b, x, z, between(0.09, 0.22) * tuft * (landRandom() < 0.12 ? 1.9 : 1));
+      n += 1;
+    }
+  };
+  lawn(PATCH, 3600);
+  lawn(RIDGE, 520);
+  // Tufts of long grass: a dozen or so blades from one root, fanning out.
+  for (let n = 0, tries = 0; n < 22 && tries < 400; tries += 1) {
+    const [x, z] = spot(PATCH, 0.9);
+    if (x > SEEN || underRidge(x, z) || !clear(x, z, 0.4)) continue;
+    const height = between(0.32, 0.6);
+    const count = 9 + Math.floor(landRandom() * 9);
+    for (let k = 0; k < count; k += 1) {
+      const a = landRandom() * Math.PI * 2;
+      const out = landRandom();
+      const splay = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(out * 0.5);
+      sow(PATCH, x + Math.cos(a) * out * 0.07, z + Math.sin(a) * out * 0.07, height * between(0.6, 1), 1.5, splay);
+    }
+    n += 1;
+  }
+  // The fringe: rooted on the lip and the first of the wall, growing out over the drop.
+  const fringe = (b: Bluff, count: number) => {
+    for (let n = 0, tries = 0; n < count && tries < count * 8; tries += 1) {
+      const a = landRandom() * Math.PI * 2;
+      const out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+      const r = b.rim(a);
+      const x = b.x + out.x * r;
+      const z = b.z + out.z * r;
+      if (x > SEEN || (b === PATCH && underRidge(x, z))) continue;
+      const down = between(0, 0.12);
+      const stand = 0.02 + down * 0.6;
+      // One in four is long and droops over the rock.
+      const long = landRandom() < 0.25;
+      sown.push({
+        at: new THREE.Vector3(x + out.x * stand, onTop(b, x, z).y - down, z + out.z * stand),
+        ground: out.clone().multiplyScalar(0.5).add(up).normalize(),
+        grow: out.clone().multiplyScalar(long ? between(1.6, 2.6) : between(0.7, 1.5)).add(up).normalize(),
+        tall: long ? between(0.3, 0.46) : between(0.14, 0.32),
+        wide: long ? 1.4 : 1.1,
+      });
+      n += 1;
+    }
+  };
+  fringe(PATCH, 1100);
+  fringe(RIDGE, 260);
+
   const bladeMat = keep(
     new THREE.ShaderMaterial({
       vertexShader: BLADE_VERT,
       fragmentShader: BLADE_FRAG,
-      uniforms: { ...paint(GRASS), uTip: { value: hex("#e3e88c") }, uTime: shared.uTime, uWind: { value: moving ? 0.55 : 0.2 } },
+      uniforms: { ...landUniforms, uTip: { value: hex("#e3e88c") }, uTime: shared.uTime, uWind: { value: moving ? 0.55 : 0.2 } },
       side: THREE.DoubleSide,
     }),
   );
-  const blades = new THREE.InstancedMesh(bladeGeo, bladeMat, BLADES + RIM_BLADES);
+  const blades = new THREE.InstancedMesh(bladeGeo, bladeMat, sown.length);
   {
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const lean = new THREE.Quaternion();
-    const up = new THREE.Vector3(0, 1, 0);
     const spin = new THREE.Quaternion();
-    for (let i = 0; i < BLADES + RIM_BLADES; i += 1) {
-      const rim = i >= BLADES;
-      const a = landRandom() * Math.PI * 2;
-      // The patch: everywhere, gathered in tufts. The rim: a fringe hanging over the rock's edge.
-      const r = rim ? 0.955 + landRandom() * 0.04 : Math.sqrt(landRandom()) * 0.95;
-      const x = Math.cos(a) * r * HILL.rx;
-      const z = (rim ? Math.sin(a) : Math.abs(Math.sin(a)) * (landRandom() < 0.82 ? 1 : -1)) * r * HILL.rz;
-      const n = hillNormal(x, z);
-      // Stand partly upright, partly out from the hill, so the outline is soft with grass.
-      lean.setFromUnitVectors(up, n.clone().lerp(up, rim ? 0.15 : 0.55).normalize());
+    const size = new THREE.Vector3();
+    const under = new Float32Array(sown.length * 3);
+    sown.forEach((blade, i) => {
+      lean.setFromUnitVectors(up, blade.grow);
       spin.setFromAxisAngle(up, landRandom() * Math.PI * 2);
-      q.copy(lean).multiply(spin);
-      const tuft = 0.75 + 0.5 * Math.sin(x * 3.1) * Math.sin(z * 2.7);
-      const tall = (rim ? 0.2 + landRandom() * 0.14 : 0.1 + landRandom() * 0.14) * tuft;
-      m.compose(new THREE.Vector3(x, hillAt(x, z) - 0.02, z), q, new THREE.Vector3(1, tall, 1));
+      m.compose(blade.at, q.copy(lean).multiply(spin), size.set(blade.wide, blade.tall, 1));
       blades.setMatrixAt(i, m);
-      ground.set([n.x, n.y, n.z], i * 3);
-    }
+      under.set([blade.ground.x, blade.ground.y, blade.ground.z], i * 3);
+    });
+    bladeGeo.setAttribute("aGround", new THREE.InstancedBufferAttribute(under, 3));
   }
-  bladeGeo.setAttribute("aGround", new THREE.InstancedBufferAttribute(ground, 3));
   blades.frustumCulled = false;
   cliff.add(blades);
 
-  // ------------------------------------------------------------------ flowers
+  // ------------------------------------------------------------------ flowers and other plants
   const toon = (color: string, shade: THREE.Vector3) =>
     keep(
       new THREE.ShaderMaterial({
@@ -855,41 +1109,145 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   const stemMat = toon("#7fbf62", hex("#4a8f5c"));
   const centreMat = toon("#ffc93c", hex("#f09a2e"));
   const petalMats = FLOWER_COLOURS.map((c) => toon(c, hex(c).multiplyScalar(0.82)));
-  type Flower = { root: THREE.Group; hit: THREE.Mesh; shown: boolean; picked: boolean; scale: number };
+
+  // Low plants among the grass: a few broad leaves from one root, each plant its own size.
+  {
+    // Seen from this low, it is mostly their undersides that show: a middle green, not a dark one.
+    const leafMat = toon("#a3cf5f", hex("#58a058"));
+    const leaves: THREE.Matrix4[] = [];
+    const q = new THREE.Quaternion();
+    const turn = new THREE.Euler();
+    for (let n = 0, tries = 0; n < 11 && tries < 400; tries += 1) {
+      const [x, z] = spot(PATCH, 0.88);
+      if (x > SEEN || underRidge(x, z) || !clear(x, z, 0.32)) continue;
+      const size = between(0.6, 1.6);
+      const count = 4 + Math.floor(landRandom() * 4);
+      const root = new THREE.Vector3(x, ground(x, z), z);
+      for (let k = 0; k < count; k += 1) {
+        const long = 0.16 * size * between(0.7, 1.15);
+        // A leaf is long along its own z; turn it round the root, then lift its far end.
+        q.setFromEuler(turn.set(-between(0.35, 0.95), (k / count) * Math.PI * 2 + landRandom(), 0, "YXZ"));
+        const along = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+        leaves.push(new THREE.Matrix4().compose(root.clone().addScaledVector(along, long * 0.9), q, new THREE.Vector3(long * 0.42, 0.014, long)));
+      }
+      n += 1;
+    }
+    const mesh = new THREE.InstancedMesh(petalGeo, leafMat, leaves.length);
+    leaves.forEach((m, i) => mesh.setMatrixAt(i, m));
+    mesh.frustumCulled = false;
+    cliff.add(mesh);
+  }
+
+  // Grass gone to seed: a thin stalk with a gold head, taller than the lawn, nodding in the wind.
+  const reedMat = toon("#e9c56a", hex("#b98b48"));
+  const reeds: THREE.Group[] = [];
+  for (const [x, z, tall] of [
+    [0.55, -0.45, 0.78],
+    [0.7, -0.3, 0.6],
+    [-0.3, -1.2, 0.7],
+    [-2.05, -0.75, 0.55],
+    [-1.9, -0.9, 0.72],
+    [0.95, 0.35, 0.62],
+    [-0.15, 0.2, 0.5],
+  ] as const) {
+    const root = new THREE.Group();
+    const stalk = new THREE.Mesh(stemGeo, stemMat);
+    stalk.scale.set(0.7, tall, 0.7);
+    root.add(stalk);
+    const seed = new THREE.Mesh(petalGeo, reedMat);
+    seed.scale.set(0.03, 0.1, 0.03);
+    seed.position.y = tall + 0.06;
+    root.add(seed);
+    root.position.set(x, ground(x, z) - 0.02, z);
+    cliff.add(root);
+    reeds.push(root);
+  }
+
+  type Flower = { root: THREE.Group; hit: THREE.Mesh; shown: boolean; picked: boolean; scale: number; size: number };
   const flowers: Flower[] = [];
   const hitGeo = keep(new THREE.SphereGeometry(0.42, 8, 6));
   const hitMat = keep(new THREE.MeshBasicMaterial({ visible: false }));
-  FLOWER_SPOTS.forEach(([x, z], i) => {
+  FLOWERS.forEach((spec, i) => {
+    const petalMat = petalMats[i % petalMats.length]!;
     const root = new THREE.Group();
-    const stemHeight = 0.42 + (i % 3) * 0.07;
     const stem = new THREE.Mesh(stemGeo, stemMat);
-    stem.scale.y = stemHeight;
+    stem.scale.y = spec.stem;
     root.add(stem);
     const head = new THREE.Group();
-    head.position.y = stemHeight;
-    head.rotation.x = 0.95; // looks up and out at the visitor
-    for (let p = 0; p < 6; p += 1) {
-      const petal = new THREE.Mesh(petalGeo, petalMats[i % petalMats.length]!);
-      const a = (p / 6) * Math.PI * 2;
-      petal.scale.set(0.085, 0.03, 0.12);
-      petal.position.set(Math.sin(a) * 0.13, 0, Math.cos(a) * 0.13);
-      petal.rotation.y = a;
-      head.add(petal);
+    head.position.y = spec.stem;
+    /** A ring of petals: each long along its own z, set out from the middle, its far end lifted by `cup`. */
+    const ring = (count: number, reach: number, sx: number, sy: number, sz: number, cup = 0, lift = 0, parent: THREE.Object3D = head, mat: THREE.Material = petalMat) => {
+      for (let p = 0; p < count; p += 1) {
+        const arm = new THREE.Group();
+        arm.rotation.y = (p / count) * Math.PI * 2;
+        const petal = new THREE.Mesh(petalGeo, mat);
+        petal.scale.set(sx, sy, sz);
+        petal.position.set(0, lift, reach);
+        petal.rotation.x = -cup;
+        arm.add(petal);
+        parent.add(arm);
+      }
+    };
+    const centre = (r: number) => {
+      const mesh = new THREE.Mesh(petalGeo, centreMat);
+      mesh.scale.set(r, r * 0.65, r);
+      mesh.position.y = 0.02;
+      head.add(mesh);
+    };
+    if (spec.kind === "cosmos") {
+      // Five broad petals, wide open.
+      ring(5, 0.13, 0.115, 0.03, 0.15);
+      centre(0.07);
+      head.rotation.x = 0.95; // looks up and out at the visitor
+    } else if (spec.kind === "daisy") {
+      // Many thin petals round a big eye.
+      ring(9, 0.145, 0.042, 0.02, 0.125);
+      centre(0.088);
+      head.rotation.x = 0.95;
+    } else if (spec.kind === "buttercup") {
+      // Small and cupped, close to the ground.
+      ring(5, 0.07, 0.07, 0.03, 0.08, 0.4);
+      centre(0.045);
+      head.rotation.x = 0.75;
+    } else if (spec.kind === "pom") {
+      // A round head of many small florets, on a tall stalk.
+      const ball = new THREE.Mesh(petalGeo, petalMat);
+      ball.scale.setScalar(0.13);
+      ball.position.y = 0.09;
+      head.add(ball);
+      const r = rng(i + 71);
+      for (let k = 0; k < 9; k += 1) {
+        const floret = new THREE.Mesh(petalGeo, petalMat);
+        const a = r() * Math.PI * 2;
+        const tilt = 0.25 + r() * 1.5;
+        floret.scale.setScalar(0.05 + r() * 0.02);
+        floret.position.set(Math.sin(tilt) * Math.cos(a) * 0.12, 0.09 + Math.cos(tilt) * 0.12, Math.sin(tilt) * Math.sin(a) * 0.12);
+        head.add(floret);
+      }
+    } else {
+      // A tulip: a cup of upright petals, and two long leaves from the root.
+      ring(5, 0.05, 0.062, 0.034, 0.125, 1.2, 0.1);
+      head.rotation.x = 0.22;
+      ring(2, 0.13, 0.04, 0.012, 0.19, 1.05, 0.12, root, stemMat);
     }
-    const centre = new THREE.Mesh(petalGeo, centreMat);
-    centre.scale.set(0.075, 0.05, 0.075);
-    centre.position.y = 0.02;
-    head.add(centre);
+    if (spec.kind !== "tulip" && spec.kind !== "buttercup") {
+      // A leaf or two on the stalk.
+      const leafy = new THREE.Group();
+      leafy.position.y = spec.stem * 0.32;
+      leafy.rotation.y = i * 2.1;
+      ring(spec.kind === "pom" ? 2 : 1, 0.085, 0.032, 0.011, 0.1, 0.55, 0.03, leafy, stemMat);
+      root.add(leafy);
+    }
     root.add(head);
     const hit = new THREE.Mesh(hitGeo, hitMat);
-    hit.position.y = stemHeight;
+    hit.position.y = spec.stem;
     hit.userData.flower = i;
     root.add(hit);
-    root.position.set(x, hillAt(x, z) - 0.02, z);
+    root.position.set(spec.x, ground(spec.x, spec.z) - 0.02, spec.z);
     root.scale.setScalar(0);
     root.visible = false;
     cliff.add(root);
-    flowers.push({ root, hit, shown: false, picked: false, scale: 0 });
+    flowers.push({ root, hit, shown: false, picked: false, scale: 0, size: spec.size });
   });
   into(FRONT, cliff);
 
@@ -1162,7 +1520,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         f.scale += (target - f.scale) * Math.min(1, dt * k);
         if (Math.abs(target - f.scale) < 0.004) f.scale = target;
         const s = target ? f.scale * (1 + 0.25 * Math.sin(f.scale * Math.PI)) : f.scale;
-        f.root.scale.setScalar(s * (portrait ? 1.35 : 1));
+        f.root.scale.setScalar(s * f.size * (portrait ? 1.35 : 1));
         f.root.visible = f.scale > 0.001;
         animating = true;
       }
@@ -1172,6 +1530,14 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         const gust = gustAt(p.x, p.z, t);
         f.root.rotation.z = -(0.05 + 0.2 * gust) + Math.sin(t * 3.1 + p.x * 5) * 0.025;
         f.root.rotation.x = (gust - 0.5) * 0.1;
+      }
+    }
+    if (moving) {
+      for (const reed of reeds) {
+        const p = reed.position;
+        const gust = gustAt(p.x, p.z, t);
+        reed.rotation.z = -(0.06 + 0.3 * gust) + Math.sin(t * 2.6 + p.x * 7) * 0.04;
+        reed.rotation.x = (gust - 0.5) * 0.14;
       }
     }
     for (let i = loose.length - 1; i >= 0; i -= 1) {
