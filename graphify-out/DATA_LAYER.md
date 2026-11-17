@@ -425,7 +425,7 @@ Changed from pages: `/settings/customers/[id]`
 
 ### customers
 Defined in supabase/migrations/0028_ecommerce.sql:212
-Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/filters`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
+Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/explore`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/results`, `/results/[id]`, `/settings/customers`, `/settings/customers/[id]`, `/settings/customers/filters`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
 - Written by:
   - `PATCH()` [select,update] — app/api/shop/customers/[id]/route.ts:47
   - `POST()` [insert] — app/api/shop/customers/route.ts:44
@@ -459,6 +459,7 @@ Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/
   - `planCheckups()` [select] — lib/aftercare/checkup-server.ts:299
   - `planReviewRequests()` [select] — lib/aftercare/review-request-server.ts:228
   - `readAftercareView()` [select] — lib/aftercare/preferences.ts:149
+  - `readExploreViewer()` [select] — lib/explore/viewer.ts:57
   - `readMarketingConsentView()` [select] — lib/marketing-consent/consent.ts:162
   - `readMarketingEmailState()` [select] — lib/marketing-consent/consent.ts:133
   - `readProfileAftercare()` [select] — lib/aftercare/preferences.ts:203
@@ -1033,7 +1034,7 @@ Changed from pages: `/account/orders/[orderNumber]`, `/mp-basic`, `/mp-config`, 
 ### orders
 Defined in supabase/migrations/0028_ecommerce.sql:384
 References: `coupons`, `customers`, `partners`, `shipping_methods`
-Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/pay/[token]`, `/results`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
+Changed from pages: `/`, `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/explore`, `/mbolster-config`, `/mp-basic`, `/mp-config`, `/mp-maker`, `/page-builder-preview`, `/pay/[token]`, `/results`, `/results/[id]`, `/settings/appointments`, `/settings/customers/[id]`, `/settings/orders/[id]`, `/settings/shipping`, `/settings/shipping/couriers`, `/shipping-refund-policies`, `/shop`, `/shop/[slug]`, `/shop/cart`, `/shop/checkout`, `/shop/checkout/confirmation`, `/support`
 - Written by:
   - `PATCH()` [select,update] — app/api/shop/orders/[id]/route.ts:66
   - `POST()` [select,update] — app/api/account/orders/[orderNumber]/refund-request/route.ts:34
@@ -1459,9 +1460,9 @@ Defined in supabase/migrations/20260902000002_admin_orders_revenue_summary.sql:1
   - `loadOrdersDashboard()` — lib/ecommerce/admin/orders-dashboard.ts:62
 
 ### admin_points_summary
-Defined in supabase/migrations/20261031032017_points_never_expire.sql:132
+Defined in supabase/migrations/20261117100000_explore_welcome_points.sql:449
 - Read by:
-  - `readPointsSummary()` [select] — lib/points/server.ts:189
+  - `readPointsSummary()` [select] — lib/points/server.ts:194
 
 ### admin_returning_customer_cohorts
 Defined in supabase/migrations/20261101081512_returning_customer_cohorts.sql:25
@@ -1535,7 +1536,7 @@ References: `customer_campaign_sends`, `customers`
 ### customer_emails
 Defined in supabase/migrations/20261020112000_customer_emails.sql:22
 References: `customers`
-Changed from pages: `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/results`, `/settings/customers`
+Changed from pages: `/account`, `/account/addresses`, `/account/orders`, `/account/orders/[orderNumber]`, `/account/welcome`, `/appointments`, `/appointments/confirmed`, `/explore`, `/results`, `/settings/customers`
 - Written by:
   - `markCustomerEmailFailed()` [update] — lib/email/customer-emails.ts:78
   - `markCustomerEmailSent()` [update] — lib/email/customer-emails.ts:62
@@ -1730,6 +1731,11 @@ Changed from pages: `/settings/email-templates/[id]`
   - `readSavedCopy()` [select] — lib/email/copy-admin.ts:77
   - `readSavedEmailCopy()` [select] — lib/email/copy-store.ts:36
 
+### explore_flowers
+Defined in supabase/migrations/20261117100000_explore_welcome_points.sql:379
+- Called by:
+  - `readExploreFlowers()` — lib/explore/viewer.ts:73
+
 ### finish_campaign_send
 Defined in supabase/migrations/20261031152709_campaign_clicks_and_unsubscribes.sql:63
 - Called by:
@@ -1780,7 +1786,12 @@ Defined in supabase/migrations/20261023120000_points_milestones.sql:181
 ### grant_past_purchase_points
 Defined in supabase/migrations/20261108100100_past_purchase_points.sql:134
 - Called by:
-  - `grantPastPurchasePoints()` — lib/points/server.ts:259
+  - `grantPastPurchasePoints()` — lib/points/server.ts:267
+
+### grant_welcome_bonus
+Defined in supabase/migrations/20261117100000_explore_welcome_points.sql:288
+- Called by:
+  - `grantWelcomeBonus()` — lib/points/welcome.ts:109
 
 ### import_fitting_rows
 Defined in supabase/migrations/20261101100000_customer_fittings.sql:323
@@ -1830,6 +1841,7 @@ References: `customer_addresses`, `customer_import_batches`, `customers`
   - `getMigratedCustomer()` [select] — lib/customer-migration/overview.ts:113
   - `loadCustomerPillow()` [select] — lib/customer-pillow/load.ts:143
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:25
+  - `readExploreViewer()` [select] — lib/explore/viewer.ts:55
   - `sources/account.ts` [select] — lib/crm/timeline/sources/account.ts:38
 
 ### mint_claim_link
@@ -1858,7 +1870,12 @@ Changed from pages: `/settings/customers/[id]`, `/settings/orders/[id]`
 ### past_purchase_points_preview
 Defined in supabase/migrations/20261108100100_past_purchase_points.sql:92
 - Called by:
-  - `readPastPurchasePreview()` — lib/points/server.ts:233
+  - `readPastPurchasePreview()` — lib/points/server.ts:241
+
+### pick_explore_flower
+Defined in supabase/migrations/20261117100000_explore_welcome_points.sql:402
+- Called by:
+  - `pickFlower()` — lib/explore/viewer.ts:91
 
 ### points_balance
 Defined in supabase/migrations/20261031032017_points_never_expire.sql:157
@@ -1871,6 +1888,7 @@ References: `customers`, `mp_staff`, `orders`
 - Read by:
   - `pointsWereReleased()` [select] — app/api/stripe/webhook/route.ts:136
   - `readClaimBonusView()` [select] — lib/points/claim-bonus.ts:24
+  - `readExploreViewer()` [select] — lib/explore/viewer.ts:54
   - `readOrderPoints()` [select] — lib/points/order.ts:45
   - `readPointsHistory()` [select] — lib/points/server.ts:88
   - `sendClaimBonusEmail()` [select] — lib/customer-migration/claim.ts:105
@@ -1983,7 +2001,7 @@ Defined in supabase/migrations/20261020114000_aftercare_preferences.sql:84
   - `setAftercarePreference()` — lib/aftercare/preferences.ts:49
 
 ### set_marketing_email
-Defined in supabase/migrations/20261101031444_consent_sign_up.sql:44
+Defined in supabase/migrations/20261117100000_explore_welcome_points.sql:73
 - Called by:
   - `setMarketingEmail()` — lib/marketing-consent/consent.ts:65
 
@@ -2057,6 +2075,11 @@ Defined in supabase/migrations/20261020120100_customer_import_marketing_consent.
 Defined in supabase/migrations/20261020134000_customer_google_reviews.sql:256
 - Called by:
   - `unlinkGoogleReview()` — lib/crm/google-review-links.ts:87
+
+### welcome_bonus_standing
+Defined in supabase/migrations/20261117100000_explore_welcome_points.sql:258
+- Called by:
+  - `readWelcomeSteps()` — lib/points/welcome.ts:83
 
 ### whatsapp_auto_replies
 Defined in supabase/migrations/20261019152211_appointment_reminder_errors.sql:21
@@ -2519,6 +2542,14 @@ app/[lang]/blog/[slug]/page.tsx
 app/dev/email-preview/page.tsx
 - Endpoints: `/dev/email-preview/[id]`
 
+### /explore
+app/[lang]/explore/page.tsx
+- Server actions: `claimExplorePoints()`, `finishSignIn()`, `pickExploreFlower()`, `resubscribeMe()`
+- Endpoints: `/api/explore/weather [GET]`
+- Loads: `getCurrentCustomerId()`, `readExploreFlowers()`, `readExploreViewer()`, `readPointsSettings()`, `readWelcomeSteps()`
+- Changes, through its actions, endpoints and their calls: `customer_emails`, `customers`, `orders`
+- Reads, through the same: `email_template_copy`, `migrated_customers`, `points_ledger`, `site_settings`
+
 ### /faq
 app/[lang]/faq/page.tsx
 - Loads: `getFaqPageData()`
@@ -2606,7 +2637,7 @@ app/[lang]/pay/[token]/page.tsx
 
 ### /points
 app/[lang]/points/page.tsx
-- Loads: `readPointsSettings()`
+- Loads: `readPointsSettings()`, `readWelcomeSteps()`
 - Reads, through the same: `site_settings`
 
 ### /results
@@ -3040,5 +3071,5 @@ app/[lang]/unsubscribe/page.tsx
 Names in the source with no matching table, function or route (dynamic,
 external, or a typo).
 
-- endpoint: `/api/**`, `/api/*/orders.json`, `/api/cron`, `/api/media-assets*`, `/api/settings/customers/google-reviews/*`, `/api/social-inbox/tiktok`, `/api/webhooks`
+- endpoint: `/api/**`, `/api/*/orders.json`, `/api/cron`, `/api/media-assets*`, `/api/rainfall`, `/api/settings/customers/google-reviews/*`, `/api/social-inbox/tiktok`, `/api/webhooks`
 - table: `bolster_products`

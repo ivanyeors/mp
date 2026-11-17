@@ -1,3 +1,4 @@
+import { isExploreRoute } from "@/lib/routing/explore-route";
 import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
 
 export function isMarketingRoute(basePathname: string): boolean {
@@ -10,5 +11,7 @@ export function isMarketingRoute(basePathname: string): boolean {
   if (basePathname === "/auth" || basePathname.startsWith("/auth/")) return false;
   if (basePathname === "/results" || basePathname.startsWith("/results/")) return false;
   if (["/mp-config", "/mp-basic", "/mp-maker", "/mbolster-config"].includes(basePathname)) return false;
+  // The Explore page is one full screen with its own logo and nothing else.
+  if (isExploreRoute(basePathname)) return false;
   return true;
 }

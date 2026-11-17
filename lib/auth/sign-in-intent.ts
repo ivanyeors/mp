@@ -31,8 +31,12 @@ export type SignInAudience = (typeof SIGN_IN_AUDIENCES)[number];
 /** The two tabs. The Partner Hub has none. */
 export type SignInTab = Exclude<SignInAudience, "partner">;
 
-/** The consent a customer sign-in may carry: the Sign in box, or the footer sign-up. */
-export const SIGN_UP_CONSENTS = ["sign_in", "newsletter"] as const;
+/**
+ * The consent a customer sign-in may carry: the Sign in box, the footer
+ * sign-up, or the Explore page's Claim button (pressed under the line that
+ * says what the emails are; no box).
+ */
+export const SIGN_UP_CONSENTS = ["sign_in", "newsletter", "explore_claim"] as const;
 export type SignUpConsent = (typeof SIGN_UP_CONSENTS)[number];
 
 export interface SignInIntent {

@@ -1182,9 +1182,9 @@
     "semantic_hash": ""
   },
   "lib/routing/is-marketing-route.ts": {
-    "mtime": 1794037689.4412417,
-    "seen": 1794570790.139983,
-    "ast_hash": "8b4a9d9673449acdd67272f8988db013",
+    "mtime": 1794879681.4573011,
+    "seen": 1794880769.666907,
+    "ast_hash": "d319477fcbe992029553db1eb325c94c",
     "semantic_hash": ""
   },
   "lib/seo/answer-lede-coverage.check.ts": {
@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1794360474.3139372,
-    "seen": 1794570790.1421826,
-    "ast_hash": "4045a65d83cbe5c2080ab23e5de99237",
+    "mtime": 1794879681.4551976,
+    "seen": 1794880769.6685266,
+    "ast_hash": "ae614030c9a465f2273ec36dd8b53f2d",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -13680,9 +13680,9 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/fake-consent.ts": {
-    "mtime": 1794037689.4325294,
-    "seen": 1794570790.1395922,
-    "ast_hash": "9489819896be223dba39c0dcaff12a07",
+    "mtime": 1794879681.4565516,
+    "seen": 1794880769.666504,
+    "ast_hash": "eb288e7a9948bf4296fe9880e7d86e45",
     "semantic_hash": ""
   },
   "lib/marketing-consent/__tests__/unsubscribe.test.ts": {
@@ -13698,9 +13698,9 @@
     "semantic_hash": ""
   },
   "lib/marketing-consent/state.ts": {
-    "mtime": 1794037689.4325294,
-    "seen": 1794570790.1395977,
-    "ast_hash": "6183e7d408deecf839d036785aec25a1",
+    "mtime": 1794879681.4565516,
+    "seen": 1794880769.666511,
+    "ast_hash": "428dbcbfe65643ea547b157fdee13cf8",
     "semantic_hash": ""
   },
   "lib/marketing-consent/unsubscribe-route.check.ts": {
@@ -14370,9 +14370,9 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/terms.test.ts": {
-    "mtime": 1794360474.5720012,
-    "seen": 1794570790.1397347,
-    "ast_hash": "dfc9eed36a23e887e71d9036a51222e4",
+    "mtime": 1794879681.4565516,
+    "seen": 1794880769.6666467,
+    "ast_hash": "8d65ec86c546eed706f1e6e8220f6eb9",
     "semantic_hash": ""
   },
   "lib/points/claim-bonus.ts": {
@@ -14388,9 +14388,9 @@
     "semantic_hash": ""
   },
   "lib/points/kinds.ts": {
-    "mtime": 1794360474.5720012,
-    "seen": 1794570790.1397393,
-    "ast_hash": "5cb45b3a1b8ec29a71197fa5117c8447",
+    "mtime": 1794879681.4565516,
+    "seen": 1794880769.6666517,
+    "ast_hash": "3c13d6cd892997bd5ceb335c80a1adf0",
     "semantic_hash": ""
   },
   "lib/points/offer.ts": {
@@ -14418,9 +14418,9 @@
     "semantic_hash": ""
   },
   "lib/points/server.ts": {
-    "mtime": 1794360474.5720012,
-    "seen": 1794570790.1397471,
-    "ast_hash": "2441816237d9eb3baab8004195be1e87",
+    "mtime": 1794879681.4571817,
+    "seen": 1794880769.6666589,
+    "ast_hash": "6e187c2a13b103646cbcdaab67bfe1b6",
     "semantic_hash": ""
   },
   "lib/points/settings.ts": {
@@ -14436,9 +14436,9 @@
     "semantic_hash": ""
   },
   "lib/points/terms.ts": {
-    "mtime": 1794360474.5720012,
-    "seen": 1794570790.1397505,
-    "ast_hash": "8b0b00f5b60959bb8326afd3c792e3e0",
+    "mtime": 1794879681.4573011,
+    "seen": 1794880769.6666622,
+    "ast_hash": "2556cc80bc663c1f68022c59d49b4b77",
     "semantic_hash": ""
   },
   "lib/points/value.ts": {
@@ -14610,9 +14610,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0030-loyalty-points.md": {
-    "mtime": 1794360474.4414275,
-    "seen": 1794570790.1422672,
-    "ast_hash": "8694f2870f4fa8e4d130863402b7d70d",
+    "mtime": 1794879681.4563105,
+    "seen": 1794880769.6686168,
+    "ast_hash": "ad3884470f215f35af0fe953588dc107",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/countries/route.ts": {
@@ -16554,9 +16554,9 @@
     "semantic_hash": ""
   },
   "lib/routing/site-pages.ts": {
-    "mtime": 1794360474.5720012,
-    "seen": 1794570790.139985,
-    "ast_hash": "1c920b50f896dffe0ab4d919f7e8986d",
+    "mtime": 1794879681.4573011,
+    "seen": 1794880769.6669097,
+    "ast_hash": "66a48074c11f74fbe6224633c856ea9b",
     "semantic_hash": ""
   },
   "scripts/eval-campaign-drafts.ts": {
@@ -16830,9 +16830,9 @@
     "semantic_hash": ""
   },
   "lib/seo/page-meta.ts": {
-    "mtime": 1794037689.4426923,
-    "seen": 1794570790.1400723,
-    "ast_hash": "63b5c30dcf11d41d7c70e4fc8d72e1e8",
+    "mtime": 1794879681.4575481,
+    "seen": 1794880769.6670122,
+    "ast_hash": "aaa35cb78fdbe9f39496a03128479e09",
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/partners.mjs": {
@@ -16902,9 +16902,9 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/points.mjs": {
-    "mtime": 1794360474.3139372,
-    "seen": 1794570790.1371324,
-    "ast_hash": "ad46f77b5c999bfcaea24b97f48c9841",
+    "mtime": 1794879681.451225,
+    "seen": 1794880769.6643922,
+    "ast_hash": "05acdb2a729d150af596d0d28fa5e9db",
     "semantic_hash": ""
   },
   "supabase/migrations/20261031032017_points_never_expire.sql": {
@@ -17040,9 +17040,9 @@
     "semantic_hash": ""
   },
   "lib/auth/__tests__/sign-in-intent.test.ts": {
-    "mtime": 1794037689.4112928,
-    "seen": 1794570790.1385298,
-    "ast_hash": "cdedb0b910ec9fd77efa14163de3125d",
+    "mtime": 1794879681.4563105,
+    "seen": 1794880769.66563,
+    "ast_hash": "e633663ffbdc13266c94557bea6c3b92",
     "semantic_hash": ""
   },
   "lib/auth/complete-sign-in.ts": {
@@ -17058,9 +17058,9 @@
     "semantic_hash": ""
   },
   "lib/auth/sign-in-intent.ts": {
-    "mtime": 1794037689.4112928,
-    "seen": 1794570790.1385708,
-    "ast_hash": "6f42d7349966a4f25c64bfa99d13ba70",
+    "mtime": 1794879681.4565516,
+    "seen": 1794880769.6656659,
+    "ast_hash": "a06295d37cd5926ee46e96b4632ff87a",
     "semantic_hash": ""
   },
   "lib/crm/reach-filters.check.ts": {
@@ -18651,6 +18651,114 @@
     "mtime": 1794570166.415733,
     "seen": 1794570790.1401453,
     "ast_hash": "fb4c63d2d1d52ed44b631869a0e6d028",
+    "semantic_hash": ""
+  },
+  ".claude/skills/preview/fixtures/explore.mjs": {
+    "mtime": 1794878501.251155,
+    "seen": 1794880769.6643708,
+    "ast_hash": "e71d0bb7695c8bf52e09f28a5d6b0516",
+    "semantic_hash": ""
+  },
+  "app/[lang]/explore/actions.ts": {
+    "mtime": 1794878174.6631963,
+    "seen": 1794880769.6644444,
+    "ast_hash": "48826e787e07282512cca147bbc09982",
+    "semantic_hash": ""
+  },
+  "app/api/explore/weather/route.ts": {
+    "mtime": 1794877906.7711196,
+    "seen": 1794880769.6647766,
+    "ast_hash": "5e588bf015b7a177e68c14fd349848d5",
+    "semantic_hash": ""
+  },
+  "lib/explore/__tests__/launch.test.ts": {
+    "mtime": 1794879530.555094,
+    "seen": 1794880769.666379,
+    "ast_hash": "0308b490aabc273cd6dfea6d3083075a",
+    "semantic_hash": ""
+  },
+  "lib/explore/__tests__/sky.test.ts": {
+    "mtime": 1794879530.5563712,
+    "seen": 1794880769.6663797,
+    "ast_hash": "72b8bd9dd8124e316922c0dbdfa08954",
+    "semantic_hash": ""
+  },
+  "lib/explore/__tests__/viewer.test.ts": {
+    "mtime": 1794879530.558872,
+    "seen": 1794880769.666381,
+    "ast_hash": "fe8b6f9686048c141e30fc7dee9278ec",
+    "semantic_hash": ""
+  },
+  "lib/explore/__tests__/weather.test.ts": {
+    "mtime": 1794879530.5575752,
+    "seen": 1794880769.6663816,
+    "ast_hash": "8a1f44df867610616e8396fb4c93ae4d",
+    "semantic_hash": ""
+  },
+  "lib/explore/launch.ts": {
+    "mtime": 1794879759.8201413,
+    "seen": 1794880769.6663826,
+    "ast_hash": "dc5a1d621dc4e999ca4c0b169e9030ed",
+    "semantic_hash": ""
+  },
+  "lib/explore/sky.ts": {
+    "mtime": 1794878724.5956504,
+    "seen": 1794880769.6663835,
+    "ast_hash": "b31ae9c85ee1711d3db2645d5636b07c",
+    "semantic_hash": ""
+  },
+  "lib/explore/viewer.ts": {
+    "mtime": 1794878174.6606731,
+    "seen": 1794880769.6663847,
+    "ast_hash": "b3b16cc05d7549479cf39d9144fcad14",
+    "semantic_hash": ""
+  },
+  "lib/explore/weather.ts": {
+    "mtime": 1794877906.7694705,
+    "seen": 1794880769.6663857,
+    "ast_hash": "bfa6b51a8488c5df3bbfd7c5463348d1",
+    "semantic_hash": ""
+  },
+  "lib/points/__tests__/welcome.test.ts": {
+    "mtime": 1794879530.5537364,
+    "seen": 1794880769.6666481,
+    "ast_hash": "3870735cf0b134e62bf85c55449f2d4b",
+    "semantic_hash": ""
+  },
+  "lib/points/welcome.ts": {
+    "mtime": 1794879451.7891767,
+    "seen": 1794880769.6666641,
+    "ast_hash": "45c32feb32cb282212d686b5966ed584",
+    "semantic_hash": ""
+  },
+  "lib/routing/explore-route.ts": {
+    "mtime": 1794878250.9147508,
+    "seen": 1794880769.6669052,
+    "ast_hash": "7b6d862c65bea34ba81f4c7aeb78be6f",
+    "semantic_hash": ""
+  },
+  "scripts/check-explore-points-sql.sh": {
+    "mtime": 1794877665.40273,
+    "seen": 1794880769.6674159,
+    "ast_hash": "492033803cb46d3184f6c2895dc8acdc",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261117100000_explore_welcome_points.sql": {
+    "mtime": 1794877821.402834,
+    "seen": 1794880769.6679246,
+    "ast_hash": "a82b33719c951c06c2af32ec62f252c9",
+    "semantic_hash": ""
+  },
+  "supabase/tests/explore-points/assert-explore-points.sql": {
+    "mtime": 1794877665.3991053,
+    "seen": 1794880769.6679583,
+    "ast_hash": "f5b805333dac93461997d50bfad5b9f0",
+    "semantic_hash": ""
+  },
+  "supabase/tests/explore-points/fixture.sql": {
+    "mtime": 1794877665.3983583,
+    "seen": 1794880769.6679592,
+    "ast_hash": "d98419140527dce59f67e4405aa6afcf",
     "semantic_hash": ""
   }
 }

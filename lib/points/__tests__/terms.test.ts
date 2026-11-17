@@ -75,6 +75,31 @@ describe("pointsTermsSections", () => {
   });
 });
 
+describe("the Welcome bonus and the flowers in the terms", () => {
+  const ladder = [
+    { until: "2026-12-01T00:00:00+08:00", points: 1000, allocation: 500 },
+    { until: "2026-12-31T23:59:00+08:00", points: 600, allocation: 500 },
+  ];
+  const withLadder = pointsTermsSections(POINTS_DEFAULTS, ladder)
+    .flatMap((x) => [x.heading, ...x.paragraphs])
+    .join("\n");
+
+  it("states each step in points, when it ends, and that the number is limited", () => {
+    expect(withLadder).toContain("Welcome points");
+    expect(withLadder).toContain("1,000 points until the end of 30 November");
+    expect(withLadder).toContain("600 points until 23:59 on 31 December");
+    expect(withLadder).toContain("limited number to give (500)");
+  });
+
+  it("says nothing of a Welcome bonus when there is no ladder", () => {
+    expect(text()).not.toContain("Welcome points");
+  });
+
+  it("states the flower rule", () => {
+    expect(text()).toContain("adds 1 to 5 points to your account, once for each flower each day");
+  });
+});
+
 describe("pointsLive", () => {
   const now = new Date("2026-11-02T00:00:00Z");
   it("is on and launched", () => {

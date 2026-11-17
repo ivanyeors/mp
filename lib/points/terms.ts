@@ -6,6 +6,7 @@
  */
 import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 import type { PointsSettings } from "./settings";
+import { stepEndLabel, type WelcomeStep } from "./welcome";
 import { POINTS_PER_DOLLAR, formatDollarsShort, formatEarnRate, formatPointsCount, pointsToDollars } from "./value";
 
 export interface PointsTermsSection {
@@ -14,13 +15,17 @@ export interface PointsTermsSection {
 }
 
 /** When the terms last changed. Changes come with 30 days' notice (the last section). */
-export const POINTS_TERMS_UPDATED = "8 November 2026";
+export const POINTS_TERMS_UPDATED = "17 November 2026";
 
 const share = (s: number) => (s === 0.5 ? "half" : `${Math.round(s * 100)}%`);
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 
-/** Pure — every rule, in plain words, with the numbers from `s`. */
-export function pointsTermsSections(s: PointsSettings): PointsTermsSection[] {
+/**
+ * Pure — every rule, in plain words, with the numbers from `s`. `welcome` is
+ * the Welcome bonus ladder (lib/points/welcome.ts); with none, the terms say
+ * nothing about it.
+ */
+export function pointsTermsSections(s: PointsSettings, welcome: readonly Pick<WelcomeStep, "until" | "points" | "allocation">[] = []): PointsTermsSection[] {
   const min = formatDollarsShort(pointsToDollars(s.minRedeem));
   const bonus = s.claimBonus > 0 ? `${formatPointsCount(s.claimBonus)} (${formatDollarsShort(pointsToDollars(s.claimBonus))})` : null;
   const worth = (points: number) => `${formatPointsCount(points)} (${formatDollarsShort(pointsToDollars(points))})`;
@@ -79,6 +84,26 @@ export function pointsTermsSections(s: PointsSettings): PointsTermsSection[] {
           },
         ]
       : []),
+    // ADR 0030, amendment of 2026-11-17: the Welcome bonus and the Explore page's flowers.
+    ...(welcome.length
+      ? [
+          {
+            heading: "Welcome points",
+            paragraphs: [
+              `If you did not have an Mpillow account before our new website, claiming on our Explore page adds welcome points to your account, once. How many depends on when you claim, in Singapore time: ${welcome
+                .map((w) => `${formatPointsCount(w.points)} until ${stepEndLabel(w.until)}`)
+                .join("; ")}.`,
+              `Each of these has a limited number to give (${[...new Set(welcome.map((w) => w.allocation.toLocaleString("en-SG")))].join(", ")}). When they have all been claimed, the next one starts early. The Explore page shows how many are left. If you had an account with us before, you get the points for signing in instead.`,
+            ],
+          },
+        ]
+      : []),
+    {
+      heading: "Flowers on the Explore page",
+      paragraphs: [
+        "On some days flowers grow on our Explore page. Picking one while you are signed in adds 1 to 5 points to your account, once for each flower each day.",
+      ],
+    },
     {
       heading: "Points don't expire",
       paragraphs: ["Your points stay in your account for as long as you have it, however long it is between orders."],

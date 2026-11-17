@@ -6,6 +6,7 @@ import { withLocale } from "@/lib/i18n/routing";
 import { readPointsSettings } from "@/lib/points/server";
 import { POINTS_DEFAULTS, pointsLive } from "@/lib/points/settings";
 import { POINTS_TERMS_UPDATED, pointsTermsSections } from "@/lib/points/terms";
+import { readWelcomeSteps } from "@/lib/points/welcome";
 import { englishOnlyPageMetadata } from "@/lib/seo/page-meta";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -25,8 +26,12 @@ export default async function PointsTermsPage({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  const settings = await readPointsSettings(supabaseAdmin()).catch(() => POINTS_DEFAULTS);
-  const sections = pointsTermsSections(settings);
+  const admin = supabaseAdmin();
+  const [settings, welcome] = await Promise.all([
+    readPointsSettings(admin).catch(() => POINTS_DEFAULTS),
+    readWelcomeSteps(admin).catch(() => []),
+  ]);
+  const sections = pointsTermsSections(settings, welcome);
   const live = pointsLive(settings);
 
   return (

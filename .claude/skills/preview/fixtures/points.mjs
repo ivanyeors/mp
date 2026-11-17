@@ -107,6 +107,9 @@ export default function points({ now }) {
             milestone_bonus_points: sum(ledger, (r) => r.kind === "milestone_bonus"),
             past_purchase_grants: ledger.filter((r) => r.kind === "past_purchases").length,
             past_purchase_points: sum(ledger, (r) => r.kind === "past_purchases"),
+            welcome_bonuses: ledger.filter((r) => r.kind === "welcome_bonus").length,
+            welcome_bonus_points: sum(ledger, (r) => r.kind === "welcome_bonus"),
+            flower_points: sum(ledger, (r) => r.kind === "explore_flower"),
           },
         ];
       },
@@ -127,7 +130,10 @@ export default function points({ now }) {
         },
       ],
       grant_past_purchase_points: ({ p_expect_customers, p_expect_points }) => [{ customers: p_expect_customers, points: p_expect_points }],
-      points_balance: ({ p_customer_id }) => [{ available: held(p_customer_id), pending: pending(p_customer_id) }],
+      // Summed from the live rows, so points granted during a run (a Welcome bonus, a flower) show in the balance.
+      points_balance: ({ p_customer_id }, { tables }) => [
+        { available: sum(tables?.points_ledger ?? ledger, (r) => r.customer_id === p_customer_id), pending: pending(p_customer_id) },
+      ],
       is_partner_customer: () => false,
     },
   };

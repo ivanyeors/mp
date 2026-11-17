@@ -573,11 +573,11 @@ _Avoid_: "verified mobile" — nothing verifies a phone number by code; letting 
 ## Loyalty points (ADR 0030)
 
 **Points**:
-A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, from a one-time **Claim bonus**, and, for a **Migrated customer**, once as **Past-purchase points**. Points never expire. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
+A **Customer**'s balance, worth S$0.01 each (100 points = S$1), spent only as money off a shop **Order**. Earned on what the customer pays for, from a one-time **Claim bonus** (a **Migrated customer**) or **Welcome bonus** (anyone else, on the **Explore page**), and, for a **Migrated customer**, once as **Past-purchase points**. Points never expire. Points cannot be cashed out, transferred, bought, or used on a **Result**, and points used are never refunded. Partners neither earn nor spend them; their reward is the partner milestone tiers.
 _Avoid_: "store credit", "wallet", "cashback" (each implies cash value or a refund); "rewards" (there is no catalogue); "tier" or "member" for customers (a **Member** is **Staff**; tiers are the partners')
 
 **Points ledger**:
-The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, Past-purchase points, spend, spend release, clawback and Staff adjustment. There is no expiry entry: points never expire (ADR 0030, 2026-10-31). The balance is the sum of the entries and is never stored on `customers`.
+The append-only record of every change to a balance (`points_ledger`): earn, Claim bonus, Milestone bonus, Past-purchase points, Welcome bonus, Flower points, spend, spend release, clawback and Staff adjustment. There is no expiry entry: points never expire (ADR 0030, 2026-10-31). The balance is the sum of the entries and is never stored on `customers`.
 _Avoid_: editing or deleting an entry — a correction is a new `adjust` entry with a reason
 
 **Pending points**:
@@ -587,6 +587,16 @@ _Avoid_: letting pending points be spent, or counting them in the balance
 **Claim bonus**:
 1,000 points a **Migrated customer** receives once (`kind = 'claim_bonus'`), when their **Claim** falls within 3 months of the first campaign email we sent them, or of the first wave if we never emailed them. A customer who claimed before points existed receives it at their next **Sign in**.
 _Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
+
+**Welcome bonus**:
+Points a **Customer** who is not a **Migrated customer** receives once (`kind = 'welcome_bonus'`) for claiming on the **Explore page**. Its size is the open step of a ladder the owner sets (`points_welcome_steps`): each step ends at a published time and has a limited number to give, and a step that runs out hands over to the next early. The count shown is the ledger's, never a made-up one. A **Migrated customer** gets the **Claim bonus** instead, never both; a partner gets neither (ADR 0030, decision 18).
+_Avoid_: sign-up bonus, launch voucher
+
+**Flower points**:
+1 to 5 points (`kind = 'explore_flower'`) for a flower picked on the **Explore page** by a signed-in **Customer**, once per flower per Singapore day. The database chooses the days flowers grow, how many, and the points (ADR 0030, decision 20).
+
+**Explore page**:
+`/explore`: one screen that does not scroll, with the countdown to the launch (23:59 on 31 December 2026, Singapore time) and the claim of the **Welcome bonus** in a popup, over a scene whose sky follows the visitor's own day and night. Pressing Claim there is consent to marketing email, recorded as `explore_claim`.
 
 **Past-purchase points**:
 Points a **Migrated customer** is given once (`kind = 'past_purchases'`) for what they spent on the old shop: the earn rate × their Shopify-era spend (`migrated_customers.shopify_amount_spent`), rounded down (ADR 0030, 2026-11-08). **Staff** give them in one run from Settings → Discounts → Points, after a preview of how many customers and points; a later run reaches only customers imported since. Not earned on an **Order**, so they never move a **Milestone bonus**; partners get none.

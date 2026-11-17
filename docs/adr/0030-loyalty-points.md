@@ -260,3 +260,70 @@ points are about S$7,931 (above). The terms and the Staff guide read the rate fr
 so they say 1 point once it is saved. The accountant should know the new rate before launch
 (slice 08).
 
+## Amendment (2026-11-17): the Welcome bonus, flower points, and the Explore page's claim
+
+The owner wants a launch page (`/explore`) that gives people a reason to make their account
+before the new site opens at 23:59 on 31 December 2026, Singapore time: a countdown, "Claim my
+points", and a number of bonuses that visibly runs down (owner, 2026-11-16 and 2026-11-17). The
+Claim bonus (decision 10) only ever reached Migrated customers.
+
+**Decision 18.** A Customer who is not a Migrated customer gets a one-time **Welcome bonus** when
+they claim on the Explore page. Its size falls on published dates, and each step has a limited
+number to give. A Migrated customer gets the Claim bonus and Past-purchase points as before, and
+never both: their emails already promise them 3 months, so theirs is neither capped nor reduced.
+
+- **(x) The ladder** is one setting (`points_welcome_steps`), "until|points|allocation" steps,
+  seeded with the owner's schedule: 1,000 until the end of November, 800 until 14 December, 600
+  until the opening, 500 through January, each with 500 to give, and nothing from 1 February. A
+  missing or malformed value is no ladder and no bonus, never a default.
+- **(y) The open step** is the first whose time has not come and whose allocation is not used
+  up. A step that runs out hands over to the next one early; what a step did not give away lapses
+  with it. SQL alone decides (`welcome_bonus_standing`), so the page and the grant cannot
+  disagree.
+- **(z) Every number shown is the count.** The page's "left" is the allocation less the entries
+  in the ledger, on a bar that only goes down. Nothing is made up, rounded for effect or reset
+  (CCS, 18 May 2026: no false urgency).
+- **(aa) One per Customer**, held unique, under a lock so two claims at once never exceed an
+  allocation. Never a partner (rule r). Granted while points are on, launched or not, as the
+  Claim bonus is.
+- **(ab) The value is shown after the claim, not before** (owner, 2026-11-16): the offer says
+  points; the balance that follows says points and dollars, as rule (b) requires of a balance.
+
+**Decision 19.** Pressing Claim is the consent to marketing email, said in a line under the
+button at a readable size, with no box (owner, 2026-11-16; PDPC advisory guidelines, 29 April
+2026: an offer may be conditional on consent, and consent is an action). It is recorded under its
+own source, `explore_claim`, which acts as the boxes do (ADR 0039): it subscribes only someone
+nobody has asked and never unsubscribes anyone. Someone who unsubscribed gets their points and an
+"Email me again" link, recorded as `account`.
+
+**Decision 20.** On some Singapore days (about two in five, the same for everyone, fixed for the
+day) the Explore page's cliff grows three to five flowers. A signed-in Customer who picks one
+gets 1 to 5 points, once per flower per day: at most 25 points (S$0.25) a day. Only while points
+are live, never a partner, and the database chooses the days, the flowers and the points, so the
+page cannot be made to pay more. Signed out, a flower says to sign in.
+
+**Considered.**
+
+- *One pool of 2,000 bonuses for the whole ladder:* rejected, because a bar that starts at 2,000
+  barely moves in the first weeks. Each step has its own 500.
+- *The Welcome bonus for Migrated customers too:* rejected. They would hold two welcomes, and the
+  cap would break a promise already emailed to them.
+- *A box, ticked or not, under the button:* rejected by the owner. The PDPC calls pre-ticked
+  boxes "not appropriate"; a press under a line that says what it agrees to is the cleaner
+  consent.
+- *Flowers that bloom at random in the visitor's browser:* rejected. Anything the page decides,
+  a script can decide; the days and the picks are the database's.
+- *Rain from a worldwide weather service:* the free ones forbid commercial use or need
+  attribution on the page. Rain is Singapore's own gauges (NEA, on data.gov.sg, open licence);
+  elsewhere the sky stays dry.
+
+**What it costs.** At most 2,000 Welcome bonuses: S$5,000 at 1,000 points, S$4,000 at 800,
+S$3,000 at 600 and S$2,500 at 500, so S$14,500 if every one is claimed and spent. Flowers cost at
+most S$0.25 per Customer per day they visit, on about two days in five. Settings → Discounts →
+Points counts both. The accountant should know before the page is advertised (slice 08).
+
+**Consequences.** The ledger has two more kinds, `welcome_bonus` (with `welcome_step`) and
+`explore_flower`; consent has a thirteenth source. The terms gained two sections and are dated
+17 November 2026. Points must be switched on before the page is advertised (owner, 2026-11-16);
+with points off the page offers sign-in only and promises nothing. The ladder has no editor yet:
+changing it is a change to the setting's row.

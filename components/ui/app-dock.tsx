@@ -12,6 +12,7 @@ import {
 import { BolsterIcon, PillowIcon } from "@/components/icons/product-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isExploreRoute } from "@/lib/routing/explore-route";
 import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 import { openBookAppointment } from "@/lib/book-appointment";
@@ -274,6 +275,8 @@ export function AppDock() {
   // Preview mode is the landing page inside the Page Builder: a fixed dock would cover
   // what Staff are reviewing and swallow clicks meant for section selection.
   if (previewRoute) return null;
+  // The Explore page is one full screen that does not scroll: a dock would sit on its sea.
+  if (isExploreRoute(basePathname)) return null;
   return (
     <>
       <div
