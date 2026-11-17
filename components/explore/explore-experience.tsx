@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import { claimExplorePoints, pickExploreFlower } from "@/app/[lang]/explore/actions";
 import { ExploreClaimDialog, type ClaimStage } from "@/components/explore/explore-claim-dialog";
+import { ExploreFlowerDialog, type FlowerPopup } from "@/components/explore/explore-flower-dialog";
 import type { ExploreScene } from "@/components/explore/explore-scene";
 import { resubscribeMe } from "@/lib/auth/sign-in-actions";
 import { LOGO_SRC } from "@/lib/brand-logo";
@@ -26,10 +28,16 @@ import { cn } from "@/lib/utils";
  * The scene is the picture, never the content: everything a visitor needs is
  * in the words over it, and they read the same over a plain gradient where
  * the scene cannot load.
+ *
+ * The flowers are an Easter egg (owner, 2026-11-17): a picked one's petals
+ * drift to the grass, then a popup shows the 1 to 3 points it held, or, signed
+ * out, asks them to sign up for those points (explore-flower-dialog.tsx).
  */
 
 type Look = { hour: number | null; rain: boolean | null };
 type Float = { id: number; x: number; y: number; text: string };
+
+const wait = (ms: number) => new Promise<void>((done) => window.setTimeout(done, ms));
 
 const number = (n: number) => n.toLocaleString("en-SG");
 const two = (n: number) => String(n).padStart(2, "0");
@@ -59,11 +67,13 @@ export function ExploreExperience({
   initialSky,
   offer: initialOffer,
   pointsOn,
+  pointsLive,
   rules,
   signedIn,
   viewer: initialViewer,
   flowers: initialFlowers,
   finishClaim,
+  finishFlower,
   look,
 }: {
   locale: Locale;
@@ -73,18 +83,21 @@ export function ExploreExperience({
   initialSky: SkyState;
   offer: WelcomeOffer | null;
   pointsOn: boolean;
+  /** Points are on and launched: a signed-in visitor's flower would pay. */
+  pointsLive: boolean;
   rules: { minRedeem: number; maxShare: number };
   signedIn: boolean;
   viewer: ExploreViewer | null;
   flowers: ExploreFlowers;
   /** Back from signing in with `?claim=1`: finish the claim. */
   finishClaim: boolean;
+  /** Back from signing in with `?flower=N`: pick that flower for them. */
+  finishFlower: number | null;
   look: Look;
 }) {
   const links = useMemo(
     () => ({
       home: withLocale("/", locale),
-      shop: withLocale("/shop", locale),
       account: withLocale("/account", locale),
       points: withLocale("/points", locale),
       privacy: withLocale("/privacy-policy", locale),
@@ -92,6 +105,7 @@ export function ExploreExperience({
     [locale],
   );
   const claimPath = `${withLocale("/explore", locale)}?claim=1`;
+  const flowerPath = (flower: number) => `${withLocale("/explore", locale)}?flower=${flower}`;
 
   // ------------------------------------------------------------ the clock
   const [now, setNow] = useState(serverNow);
@@ -154,7 +168,9 @@ export function ExploreExperience({
   const [floats, setFloats] = useState<Float[]>([]);
   const floatId = useRef(0);
 
-  const canClaim = Boolean(offer?.current) && (signedIn ? (viewer ? viewer.canClaim : true) : true);
+  // From the launch, Explore offers no claim: only signing up or in (owner, 2026-11-17).
+  const launched = left.done;
+  const canClaim = !launched && Boolean(offer?.current) && (signedIn ? (viewer ? viewer.canClaim : true) : true);
   const holdsPoints = signedIn && !canClaim;
 
   const claim = async (agree: boolean) => {
@@ -205,23 +221,43 @@ export function ExploreExperience({
     window.setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 2200);
   };
 
+  const [flowerPopup, setFlowerPopup] = useState<FlowerPopup | null>(null);
+
+  /**
+   * A flower was picked: it goes and its petals fall, and once they have, the
+   * popup. Signed in, the database says how many points it held; signed out,
+   * the popup asks them to sign up for them.
+   */
   const onFlower = async (index: number, at: { x: number; y: number }) => {
+    const falling = wait(sceneRef.current?.popFlower(index) ?? 0);
+    setFlowers((f) => ({ ...f, picked: [...f.picked, index] }));
     if (!signedIn) {
-      float(at, "Sign in to pick flowers for points");
+      if (!pointsLive) {
+        float(at, "A flower for you");
+        return;
+      }
+      await falling;
+      setFlowerPopup({ kind: "sign_up", flower: index });
       return;
     }
-    sceneRef.current?.popFlower(index);
-    setFlowers((f) => ({ ...f, picked: [...f.picked, index] }));
     if (!flowers.givesPoints) {
       float(at, "A flower for you");
       return;
     }
-    const res = await pickExploreFlower(index).catch(() => null);
+    const [res] = await Promise.all([pickExploreFlower(index).catch(() => null), falling]);
     if (res?.state === "picked") {
-      float(at, `+${res.points} ${res.points === 1 ? "point" : "points"}`);
       setViewer((v) => (v ? { ...v, points: res.balance } : v));
+      setFlowerPopup({ kind: "won", points: res.points, balance: res.balance });
+    } else if (res?.state === "signed_out") {
+      setFlowerPopup({ kind: "sign_up", flower: index });
     } else if (res?.state === "nothing" && res.reason === "already") {
-      float(at, "Picked already today");
+      float(at, "A flower for you");
+    } else if (res?.state === "nothing" && res.reason === "spent") {
+      // Every flower point found: from now on they are just flowers.
+      setFlowers((f) => ({ ...f, givesPoints: false }));
+      float(at, "A flower for you");
+    } else if (!res || (res.state === "nothing" && res.reason === "error")) {
+      float(at, "That did not go through. Try again later");
     }
   };
   // The scene is made once; it calls whatever this is now.
@@ -267,6 +303,25 @@ export function ExploreExperience({
       sceneRef.current = null;
     };
   }, []);
+
+  // Back from signing up for a flower's points: pick that flower for them, once
+  // the scene has grown it again (or straight away, where there is no scene).
+  const flowerFinished = useRef(false);
+  useEffect(() => {
+    if (finishFlower == null || flowerFinished.current) return;
+    const go = () => {
+      if (flowerFinished.current) return;
+      flowerFinished.current = true;
+      const url = new URL(window.location.href);
+      url.searchParams.delete("flower");
+      window.history.replaceState(window.history.state, "", url);
+      // Not a flower today (an old link): nothing. Picked already: the database says so.
+      if (finishFlower >= flowersRef.current.count) return;
+      void onFlowerRef.current(finishFlower, { x: window.innerWidth * 0.72, y: window.innerHeight * 0.55 });
+    };
+    const timer = window.setTimeout(go, sceneOn ? 1100 : 2500);
+    return () => window.clearTimeout(timer);
+  }, [finishFlower, sceneOn]);
 
   const dark = sky.ink === "dark";
   const share = offer ? welcomeLeftShare(offer) : 0;
@@ -324,8 +379,11 @@ export function ExploreExperience({
         >
           {left.done ? (
             <>
-              <h1 className="text-[clamp(2.75rem,min(11vw,13vh),6rem)] font-semibold leading-none tracking-tight">We are open.</h1>
-              <p className="mt-4 max-w-md text-base sm:text-lg">Welcome to Mpillow&apos;s new home.</p>
+              <p className="text-base font-medium sm:text-lg">The wait is over</p>
+              <h1 className="mt-3 text-[clamp(2.75rem,min(11vw,13vh),6rem)] font-semibold leading-none tracking-tight">
+                Mpillow is now live.
+              </h1>
+              <p className="mt-4 max-w-md text-base sm:text-lg">Our new home is open. Come on in.</p>
             </>
           ) : (
             <>
@@ -356,38 +414,45 @@ export function ExploreExperience({
           <div className="pointer-events-auto mt-7 flex flex-col items-center gap-3 [text-shadow:none] lg:items-start">
             <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               {left.done ? (
+                // The launch has come: the way in to the real home page, which no longer sends anyone here.
                 <Link
-                  href={links.shop}
+                  href={links.home}
                   className={cn(
-                    "inline-flex h-12 items-center rounded-button px-6 text-base font-medium shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)] transition-transform active:scale-[0.97] motion-reduce:transition-none",
+                    "inline-flex h-12 items-center gap-2 rounded-button px-7 text-base font-medium shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)] transition-transform active:scale-[0.97] motion-reduce:transition-none",
                     dark ? "bg-[#0d1b33] text-white" : "bg-white text-[#0d1b33]",
                   )}
                 >
-                  Start shopping
+                  Enter Mpillow
+                  <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
               ) : null}
-              <button
-                type="button"
-                onClick={openPopup}
-                className={cn(
-                  "inline-flex h-12 items-center rounded-button px-6 text-base font-medium transition-transform active:scale-[0.97] motion-reduce:transition-none",
-                  left.done
-                    ? dark
-                      ? "border border-[#0d1b33]/40 bg-white/40 text-[#0d1b33] backdrop-blur-sm"
-                      : "border border-white/50 bg-white/10 text-white backdrop-blur-sm"
-                    : dark
-                      ? "bg-[#0d1b33] text-white shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]"
-                      : "bg-white text-[#0d1b33] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]",
-                )}
-              >
-                {holdsPoints
-                  ? `My points: ${number(viewer?.points ?? 0)}`
-                  : canClaim
-                    ? "Claim my welcome points"
-                    : pointsOn
-                      ? "Sign in or create an account"
-                      : "Sign in for an early look"}
-              </button>
+              {/* After the launch, no claim: "Sign up or sign in" for a visitor, and nothing more for someone signed in. */}
+              {launched && signedIn ? null : (
+                <button
+                  type="button"
+                  onClick={openPopup}
+                  className={cn(
+                    "inline-flex h-12 items-center rounded-button px-6 text-base font-medium transition-transform active:scale-[0.97] motion-reduce:transition-none",
+                    left.done
+                      ? dark
+                        ? "border border-[#0d1b33]/40 bg-white/40 text-[#0d1b33] backdrop-blur-sm"
+                        : "border border-white/50 bg-white/10 text-white backdrop-blur-sm"
+                      : dark
+                        ? "bg-[#0d1b33] text-white shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]"
+                        : "bg-white text-[#0d1b33] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]",
+                  )}
+                >
+                  {launched
+                    ? "Sign up or sign in"
+                    : holdsPoints
+                      ? `My points: ${number(viewer?.points ?? 0)}`
+                      : canClaim
+                        ? "Claim my welcome points"
+                        : pointsOn
+                          ? "Sign in or create an account"
+                          : "Sign in for an early look"}
+                </button>
+              )}
             </div>
             {canClaim && offer?.current ? (
               <div className={cn("w-64 max-w-full", dark ? "[text-shadow:0_0_18px_rgba(255,255,255,0.7)]" : "[text-shadow:0_1px_14px_rgba(6,10,36,0.6)]")}>
@@ -448,17 +513,31 @@ export function ExploreExperience({
         open={open}
         onOpenChange={setOpen}
         stage={stage}
-        offer={offer}
+        // After the launch the popup is a plain sign-in, which goes on to the home page.
+        offer={launched ? null : offer}
         signedIn={signedIn}
         viewer={viewer}
         doneReason={doneReason}
         rules={rules}
-        claimPath={claimPath}
+        claimPath={launched ? links.home : claimPath}
         links={links}
         onClaim={() => void claim(true)}
         onEmailMeAgain={async () => {
           const res = await resubscribeMe().catch(() => ({ ok: false }));
           if (res.ok) setViewer((v) => (v ? { ...v, marketing: "subscribed" } : v));
+        }}
+      />
+
+      <ExploreFlowerDialog
+        popup={flowerPopup}
+        onOpenChange={(next) => {
+          if (!next) setFlowerPopup(null);
+        }}
+        signUpPath={flowerPath}
+        canClaim={canClaim}
+        onClaim={() => {
+          setFlowerPopup(null);
+          openPopup();
         }}
       />
     </main>

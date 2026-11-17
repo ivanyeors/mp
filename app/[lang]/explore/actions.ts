@@ -68,7 +68,12 @@ export type FlowerOutcome =
   | { state: "picked"; points: number; balance: number }
   | { state: "nothing"; reason: Exclude<FlowerPickReason, "picked"> | "error" };
 
-/** A flower on the cliff was tapped. Signed in and points live: 1 to 5 points, once per flower per day. */
+/**
+ * A flower on the cliff was picked. Signed in and points live: 1 to 3 points.
+ * The flower then grows back for them at a random time 24 to 36 hours later
+ * ("already" until then), until their flowers have given 500 points (S$5);
+ * then never again ("spent").
+ */
 export async function pickExploreFlower(flower: number): Promise<FlowerOutcome> {
   if (!Number.isInteger(flower) || flower < 0 || flower > 4) return { state: "nothing", reason: "none" };
   const customerId = await getCurrentCustomerId();

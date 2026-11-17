@@ -26,9 +26,9 @@ export interface ExploreViewer {
 export interface ExploreFlowers {
   /** How many flowers grow today; 0 for none. */
   count: number;
-  /** The ones this visitor has picked today. */
+  /** The ones this visitor picked that have not grown back yet (24 to 36 hours after each pick). */
   picked: number[];
-  /** A pick would give this visitor points. */
+  /** A pick would give this visitor points: signed in, points live, not a partner, and under the S$5 cap. */
   givesPoints: boolean;
 }
 
@@ -80,9 +80,13 @@ export async function readExploreFlowers(admin: SupabaseClient, customerId: stri
   };
 }
 
-export type FlowerPickReason = "picked" | "off" | "partner" | "none" | "already";
+export type FlowerPickReason = "picked" | "off" | "partner" | "none" | "already" | "spent";
 
-/** Picks a flower (`pick_explore_flower`): 1 to 5 points, once per flower per day. */
+/**
+ * Picks a flower (`pick_explore_flower`): 1 to 3 points, and the flower grows
+ * back for them at a random time 24 to 36 hours later ("already" until then),
+ * until their flowers have given 500 points (S$5); then "spent", for good.
+ */
 export async function pickFlower(
   admin: SupabaseClient,
   customerId: string,
@@ -91,6 +95,6 @@ export async function pickFlower(
   const { data, error } = await admin.rpc("pick_explore_flower", { p_customer_id: customerId, p_flower: flower });
   if (error) throw new Error(`Could not pick the flower: ${error.message}`);
   const r = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
-  const reason = (["picked", "off", "partner", "none", "already"] as const).find((x) => x === r?.reason) ?? "none";
+  const reason = (["picked", "off", "partner", "none", "already", "spent"] as const).find((x) => x === r?.reason) ?? "none";
   return { picked: r?.picked === true, points: int(r?.points), reason };
 }

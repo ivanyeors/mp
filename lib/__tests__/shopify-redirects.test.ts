@@ -49,10 +49,16 @@ describe("the approved redirect map, after the switch", () => {
     },
   );
 
-  it("leaves the home page to the language redirect", async () => {
-    const res = await hit(`${WWW}/`, WWW);
-    expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe(`${WWW}/en-US`);
+  it("leaves the home page to the language redirect, once Explore's launch has passed", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2027-01-01T00:00:00+08:00"));
+    try {
+      const res = await hit(`${WWW}/`, WWW);
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe(`${WWW}/en-US`);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

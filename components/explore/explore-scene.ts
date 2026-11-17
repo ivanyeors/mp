@@ -31,8 +31,12 @@ export interface ExploreScene {
   setSky(sky: SkyState): void;
   /** How many flowers grow today, and which this visitor has already picked. */
   setFlowers(count: number, picked: readonly number[]): void;
-  /** A flower was picked: it bursts into petals and goes. */
-  popFlower(index: number): void;
+  /**
+   * A flower was picked: it goes, and its petals drift down to the grass, lie
+   * there a moment and fade. Returns how long until the last petal has gone,
+   * in ms (0 with reduced motion, when nothing falls).
+   */
+  popFlower(index: number): number;
   dispose(): void;
 }
 
@@ -42,6 +46,13 @@ export interface ExploreSceneOptions {
   /** A flower was tapped; the point is in page pixels. */
   onFlower: (index: number, at: { x: number; y: number }) => void;
 }
+
+/** A picked flower's petals: how many, how long they take to reach the grass, lie there and fade, in seconds. */
+const PETALS_PER_FLOWER = 7;
+const PETAL_FALL_MIN = 0.8;
+const PETAL_FALL_MAX = 1.1;
+const PETAL_REST = 0.25;
+const PETAL_FADE = 0.35;
 
 const CAM_Y = 2.2;
 const CAM_Z = 14;
@@ -1515,8 +1526,20 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   });
   into(FRONT, cliff);
 
-  // Petals thrown up when a flower is picked.
-  type Petal = { mesh: THREE.Mesh; v: THREE.Vector3; spin: number; born: number };
+  // A picked flower's petals, drifting down to the grass, then fading there.
+  type Petal = {
+    mesh: THREE.Mesh;
+    from: THREE.Vector3;
+    to: THREE.Vector3;
+    size: THREE.Vector3;
+    /** Seconds to reach the grass. */
+    fall: number;
+    sway: number;
+    phase: number;
+    turn: number;
+    spin: number;
+    born: number;
+  };
   const loose: Petal[] = [];
 
   // ------------------------------------------------------------------ wind
@@ -1807,14 +1830,21 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     for (let i = loose.length - 1; i >= 0; i -= 1) {
       const p = loose[i]!;
       const age = t - p.born;
-      p.v.y -= 2.2 * dt;
-      p.v.x += 0.9 * dt; // carried off on the wind
-      p.mesh.position.addScaledVector(p.v, dt);
-      p.mesh.rotation.x += p.spin * dt;
-      p.mesh.rotation.z += p.spin * 0.7 * dt;
-      p.mesh.scale.multiplyScalar(1 - dt * 0.9);
+      const u = Math.min(1, age / p.fall);
+      // Falling as a petal does: side to side and tipping over, the swing
+      // dying away as it nears the grass, where it comes to lie flat.
+      const swing = Math.sin(p.phase + u * Math.PI * 3);
+      const calm = 1 - u;
+      p.mesh.position.set(
+        p.from.x + (p.to.x - p.from.x) * u + swing * p.sway * calm,
+        p.from.y + (p.to.y - p.from.y) * u * (0.55 + 0.45 * u),
+        p.from.z + (p.to.z - p.from.z) * u + Math.cos(p.phase + u * Math.PI * 2) * p.sway * 0.4 * calm,
+      );
+      p.mesh.rotation.set((0.5 + swing * 0.8) * calm, p.turn + p.spin * u, Math.cos(p.phase + u * Math.PI * 3) * 0.6 * calm);
+      const fade = Math.min(1, Math.max(0, (age - p.fall - PETAL_REST) / PETAL_FADE));
+      p.mesh.scale.copy(p.size).multiplyScalar(1 - fade * fade);
       animating = true;
-      if (age > 1.4) {
+      if (fade >= 1) {
         cliff.remove(p.mesh);
         loose.splice(i, 1);
       }
@@ -1889,19 +1919,43 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     },
     popFlower(index) {
       const f = flowers[index];
-      if (!f || f.picked) return;
+      if (!f || f.picked) return 0;
       f.picked = true;
-      if (!moving) return;
-      const r = rng(index + 31);
-      for (let i = 0; i < 9; i += 1) {
+      dirty = true;
+      if (!moving) return 0;
+      // Where the head was, in the cliff's own space, at the size it was drawn.
+      const head = cliff.worldToLocal(f.hit.getWorldPosition(new THREE.Vector3()));
+      const s = f.size * (portrait ? 1.35 : 1);
+      const r = rng(index * 7 + Math.floor(shared.uTime.value * 10));
+      let longest = 0;
+      for (let i = 0; i < PETALS_PER_FLOWER; i += 1) {
         const mesh = new THREE.Mesh(petalGeo, petalMats[index % petalMats.length]!);
         mesh.layers.set(FRONT);
-        mesh.scale.set(0.07, 0.022, 0.1);
-        mesh.position.copy(f.root.position).add(new THREE.Vector3(0, f.hit.position.y, 0));
+        const size = new THREE.Vector3(0.075 * s, 0.02 * s, 0.1 * s);
+        mesh.scale.copy(size);
+        const from = head.clone().add(new THREE.Vector3((r() - 0.5) * 0.08 * s, (r() - 0.5) * 0.05 * s, (r() - 0.5) * 0.08 * s));
+        // Down onto the grass near the stalk, nudged along by the wind and never out over the edge.
+        const x = from.x + 0.05 + (r() - 0.5) * 0.3 * s;
+        const z = from.z - r() * 0.22 * s;
+        const to = new THREE.Vector3(x, ground(x, z) + 0.05, z);
+        const fall = PETAL_FALL_MIN + r() * (PETAL_FALL_MAX - PETAL_FALL_MIN);
+        longest = Math.max(longest, fall);
+        mesh.position.copy(from);
         cliff.add(mesh);
-        const a = r() * Math.PI * 2;
-        loose.push({ mesh, v: new THREE.Vector3(Math.cos(a) * (0.5 + r()), 1.4 + r() * 1.2, Math.sin(a) * 0.5 + 0.3), spin: 3 + r() * 5, born: shared.uTime.value });
+        loose.push({
+          mesh,
+          from,
+          to,
+          size,
+          fall,
+          sway: (0.05 + r() * 0.06) * s,
+          phase: r() * Math.PI * 2,
+          turn: r() * Math.PI * 2,
+          spin: (r() - 0.5) * 5,
+          born: shared.uTime.value,
+        });
       }
+      return Math.round((longest + PETAL_REST + PETAL_FADE) * 1000);
     },
     dispose() {
       disposed = true;
