@@ -422,7 +422,7 @@ export function ExploreExperience({
           </button>
         ) : null}
 
-        <footer className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/85 [text-shadow:0_1px_10px_rgba(4,8,30,0.6)]">
+        <footer className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/85 [text-shadow:0_1px_2px_rgba(4,8,30,0.5),0_1px_10px_rgba(4,8,30,0.6)]">
           <span>&copy; 2026 Mellow Life Pte Ltd</span>
           <Link href={links.points} className="pointer-events-auto inline-flex min-h-6 items-center underline-offset-4 hover:underline">
             How points work

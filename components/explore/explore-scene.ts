@@ -40,7 +40,8 @@ export interface ExploreSceneOptions {
 
 const CAM_Y = 2.2;
 const CAM_Z = 14;
-const CLIFF_Z = 5;
+/** The cliff stands close to the visitor, so its foot is under the bottom edge and only its top shows. */
+const CLIFF_Z = 7;
 const SEA_FAR = 230;
 export const MAX_FLOWERS = 5;
 
@@ -274,7 +275,7 @@ uniform vec2 uGrain;
 uniform vec3 uFoot; // darker towards an edge: amount, from height, to height
 uniform vec3 uCap;  // in shade under an overhang: amount, from height, to height
 uniform vec3 uStroke; // brushwork: the strokes' angle, how fine they are, how strongly they show
-uniform float uStrata, uBounceAmt, uDirect;
+uniform float uStrata, uBounceAmt, uDirect, uSeaY;
 ${NOISE}
 // Paint laid on in strokes, as in the reference picture: long along their direction, thin across it.
 float strokes(vec3 paint) {
@@ -301,7 +302,7 @@ vec3 tone(vec3 n, vec3 paint) {
   col *= 1.0 - uFoot.x * (1.0 - smoothstep(uFoot.y, uFoot.z, paint.y));
   col = mix(col, uLo, uCap.x * smoothstep(uCap.y, uCap.z, paint.y));
   // The sea throws its own colour back up the foot of the rock.
-  return mix(col, uBounce, uBounceAmt * (1.0 - smoothstep(0.0, 0.7, paint.y)));
+  return mix(col, uBounce, uBounceAmt * (1.0 - smoothstep(uSeaY, uSeaY + 0.7, paint.y)));
 }`;
 
 const PAINT_VERT = /* glsl */ `
@@ -494,6 +495,8 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     uAspect: { value: 1 },
     uLandOrigin: { value: new THREE.Vector3() },
     uLandInv: { value: 1 },
+    /** How high the sea stands on the land, in the land's own measure. */
+    uSeaY: { value: 0 },
   };
 
   // ------------------------------------------------------------------ sky
@@ -693,12 +696,13 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     uTint: shared.uTint,
     uLandOrigin: shared.uLandOrigin,
     uLandInv: shared.uLandInv,
+    uSeaY: shared.uSeaY,
   });
   const painted = (o: Parameters<typeof paint>[0]) =>
     keep(new THREE.ShaderMaterial({ vertexShader: PAINT_VERT, fragmentShader: PAINT_FRAG, uniforms: paint(o) }));
 
   // Rock: cream in the light, sand between, lavender in the shade, as the reference paints its shore.
-  const ROCK = { hi: "#f6e7ca", mid: "#d2b292", lo: "#8f84b0", grain: [3.2, 0.06], strata: 0.56, bounce: 0.16, cap: [0.85, 1.05, 1.5], direct: 0.6, stroke: [0.08, 1.5, 0.26] } as const;
+  const ROCK = { hi: "#f6e7ca", mid: "#d2b292", lo: "#8f84b0", grain: [3.2, 0.06], strata: 0.56, bounce: 0.16, cap: [0.85, 1.2, 1.44], direct: 0.6, stroke: [0.08, 1.5, 0.26] } as const;
   const rockGeo = keep(new THREE.CylinderGeometry(1, 1, 1, 64, 22, false));
   {
     const pos = rockGeo.attributes.position!;
@@ -712,8 +716,8 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       const z = pos.getZ(i);
       const v = y + 0.5; // 0 at the foot, 1 at the top
       const a = Math.atan2(z, x);
-      // A flared foot, a waist, a ledge two-thirds up, and a lip that overhangs.
-      const profile = 1.26 - 0.34 * ease(0, 0.4, v) + 0.1 * ease(0.56, 0.64, v) - 0.05 * ease(0.66, 0.9, v) + 0.12 * ease(0.9, 1, v);
+      // A flared foot, a waist, a ledge two-thirds up, and a wall that stands straight under the grass, in the light.
+      const profile = 1.26 - 0.34 * ease(0, 0.4, v) + 0.1 * ease(0.56, 0.64, v) - 0.05 * ease(0.66, 0.9, v) + 0.03 * ease(0.9, 1, v);
       const lumps = 1 + Math.sin(a * 3 + v * 4) * 0.07 + Math.sin(a * 7 - v * 9 + 1.3) * 0.04 + Math.sin(a * 13 + v * 17) * 0.02;
       // Only the wall moves: the caps keep their centres.
       const wall = Math.hypot(x, z) > 0.5 ? profile * lumps : 1;
@@ -727,50 +731,35 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   rock.position.set(0, -0.25, 0);
   cliff.add(rock);
   // The headland carries on to the right, a little taller and further back.
-  const rockBack = new THREE.Mesh(rockGeo, painted({ ...ROCK, cap: [0.85, 1.6, 2.1] }));
+  const RIDGE = { x: 4.2, y: 1.6, z: -1.6, rx: 3.75, ry: 1.0, rz: 2.9 };
+  const rockBack = new THREE.Mesh(rockGeo, painted({ ...ROCK, cap: [0.85, RIDGE.y - 0.35, RIDGE.y - 0.11] }));
   rockBack.scale.set(3.3, 4.7, 2.5);
   rockBack.rotation.y = 1.9;
-  rockBack.position.set(4.2, -0.15, -1.6);
+  rockBack.position.set(RIDGE.x, RIDGE.y - 2.3, RIDGE.z);
   cliff.add(rockBack);
 
-  // A spit of pale sand at its foot, and a few stones on it.
   const blob = keep(new THREE.IcosahedronGeometry(1, 3));
-  const sand = new THREE.Mesh(blob, painted({ hi: "#fbf1d8", mid: "#efdfbd", lo: "#c4b4c4", grain: [1.2, 0.1], stroke: [0.0, 1.4, 0.16] }));
-  sand.scale.set(2.5, 0.16, 1.25);
-  sand.position.set(-2.35, -0.02, 1.35);
-  sand.rotation.y = -0.25;
-  cliff.add(sand);
-  const stoneMat = painted({ hi: "#f1e2c6", mid: "#c9ab90", lo: "#8f84b0", grain: [2.2, 0.18] });
-  for (const [x, z, s] of [
-    [-2.95, 1.55, 0.36],
-    [-3.6, 0.85, 0.22],
-    [-2.2, 2.25, 0.26],
-  ] as const) {
-    const stone = new THREE.Mesh(blob, stoneMat);
-    stone.scale.set(s * 1.35, s * 0.8, s);
-    stone.position.set(x, 0.1, z);
-    stone.rotation.y = x * 2;
-    cliff.add(stone);
-  }
 
   // Grass: a round hill over the rock, lapping over its edge. Yellow-green in the light, blue-green in the shade.
-  const HILL = { rx: 2.75, ry: 1.0, rz: 2.3, y: 1.55 };
+  const HILL = { rx: 2.75, ry: 0.75, rz: 2.3, y: 1.55 };
   const GRASS = { hi: "#cbd86a", mid: "#86b455", lo: "#3f7c5a", grain: [1.7, 0.3], foot: [0.26, HILL.y - 0.1, HILL.y + 0.42], stroke: [0.5, 1.9, 0.3] } as const;
   const hillAt = (x: number, z: number) => {
     const k = 1 - (x / HILL.rx) ** 2 - (z / HILL.rz) ** 2;
     return HILL.y + HILL.ry * Math.sqrt(Math.max(0, k));
   };
+  const ridgeAt = (x: number, z: number) =>
+    RIDGE.y + RIDGE.ry * Math.sqrt(Math.max(0, 1 - ((x - RIDGE.x) / RIDGE.rx) ** 2 - ((z - RIDGE.z) / RIDGE.rz) ** 2));
   /** The hill's outward direction at a point on it. */
   const hillNormal = (x: number, z: number) =>
     new THREE.Vector3(x / HILL.rx ** 2, (hillAt(x, z) - HILL.y) / HILL.ry ** 2, z / HILL.rz ** 2).normalize();
-  const hillGeo = keep(new THREE.SphereGeometry(1, 56, 24, 0, Math.PI * 2, 0, Math.PI * 0.56));
+  const hillGeo = keep(new THREE.SphereGeometry(1, 56, 24, 0, Math.PI * 2, 0, Math.PI * 0.53));
   const hill = new THREE.Mesh(hillGeo, painted(GRASS));
   hill.scale.set(HILL.rx, HILL.ry, HILL.rz);
   hill.position.y = HILL.y;
   cliff.add(hill);
-  const hillBack = new THREE.Mesh(hillGeo, painted({ ...GRASS, hi: "#c2d06c", mid: "#7fac58", lo: "#3c765a", foot: [0.26, 2.05, 2.6] }));
-  hillBack.scale.set(3.75, 1.2, 2.9);
-  hillBack.position.set(4.2, 2.15, -1.6);
+  const hillBack = new THREE.Mesh(hillGeo, painted({ ...GRASS, hi: "#c2d06c", mid: "#7fac58", lo: "#3c765a", foot: [0.26, RIDGE.y - 0.1, RIDGE.y + 0.42] }));
+  hillBack.scale.set(RIDGE.rx, RIDGE.ry, RIDGE.rz);
+  hillBack.position.set(RIDGE.x, RIDGE.y, RIDGE.z);
   cliff.add(hillBack);
 
   // Bushes behind the patch, rounded like the reference's.
@@ -788,7 +777,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       leaf.position.set((landRandom() - 0.5) * bs * 1.3, r * 0.6 + landRandom() * bs * 0.35, (landRandom() - 0.5) * bs * 0.8);
       bush.add(leaf);
     }
-    bush.position.set(bx, (bx > 2 ? 3.0 : hillAt(bx, bz)) - 0.12, bz);
+    bush.position.set(bx, (bx > 2 ? ridgeAt(bx, bz) : hillAt(bx, bz)) - 0.12, bz);
     cliff.add(bush);
   }
 
@@ -1066,18 +1055,21 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       wheel.x = 0;
       wheel.r = Math.min(0.32, 0.8 * aspect);
     } else {
-      // To the right of the countdown: they rise in the gap of sea beside it and set behind the headland.
+      // To the right of the countdown: they rise from the sea beside it and set into it, above the headland.
       wheel.x = 0.4;
       wheel.r = Math.min(0.68, 0.42 * aspect);
     }
 
-    // The cliff keeps to the right edge, whatever the shape of the screen.
+    // The cliff keeps to the bottom right corner, whatever the shape of the screen: its grass under
+    // the horizon, a little of its rock above the bottom edge, and the sea open over all of it.
     const halfWidth = (CAM_Z - CLIFF_Z) * half * aspect;
-    const scale = portrait ? 0.56 : Math.min(1, Math.max(0.72, aspect / 1.6));
+    const scale = portrait ? 0.44 : 0.78 * Math.min(1, Math.max(0.72, aspect / 1.6));
+    const sunk = portrait ? 0 : 0.35;
     cliff.scale.setScalar(scale);
-    cliff.position.set(halfWidth - (portrait ? 0.45 : 1.1) * scale, 0, CLIFF_Z);
+    cliff.position.set(halfWidth - (portrait ? 0.45 : 1.1) * scale, -sunk * scale, CLIFF_Z);
     shared.uLandOrigin.value.copy(cliff.position);
     shared.uLandInv.value = 1 / scale;
+    shared.uSeaY.value = sunk;
 
     // The wind lines cross the view at a fixed depth in front of the camera.
     windHalf.value.set(10 * half * aspect, 10 * half);
