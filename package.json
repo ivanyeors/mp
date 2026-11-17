@@ -104,7 +104,7 @@
     "lucide": "^0.542.0",
     "lucide-react": "^0.542.0",
     "motion": "^12.23.12",
-    "next": "^16.4.3",
+    "next": "^16.4.5",
     "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
     "ogl": "^1.0.11",
@@ -145,7 +145,9 @@
     "overrides": {
       "@vercel/cli-config>zod": "^4.6.7",
       "gray-matter>js-yaml": "^3.15.2",
-      "lodash": "^4.18.1"
+      "lodash": "^4.18.1",
+      "@babel/core@<7.29.6": "^7.29.6",
+      "vfile-matter>yaml": "^2.8.3"
     }
   }
 }
