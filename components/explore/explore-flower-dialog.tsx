@@ -11,8 +11,9 @@ import { formatPoints } from "@/lib/points/value";
  * The Explore page's flowers are an Easter egg (owner, 2026-11-17): a picked
  * flower's petals drift to the grass, and then this popup. Signed in, it is
  * the surprise, the 1 to 3 points the database gave. Signed out, it asks them
- * to sign up for those points; the sign-in comes back to `?flower=N` and the
- * page picks that same flower for them (ADR 0030, decision 20, amended).
+ * to sign in and says nothing of points, so the surprise stays one; the
+ * sign-in comes back to `?flower=N` and the page picks that same flower for
+ * them (ADR 0030, decision 22).
  */
 
 export type FlowerPopup = { kind: "won"; points: number; balance: number } | { kind: "sign_up"; flower: number };
@@ -45,7 +46,12 @@ export function ExploreFlowerDialog({
 }) {
   return (
     <Dialog open={popup !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm" data-typography-scope="app">
+      <DialogContent
+        className="sm:max-w-sm"
+        data-typography-scope="app"
+        // The sign-in has a title and nothing more to say: no description to point to.
+        {...(popup?.kind === "sign_up" ? { "aria-describedby": undefined } : {})}
+      >
         <style>{`@keyframes explore-pop{0%{opacity:0;transform:scale(.4) rotate(-25deg)}100%{opacity:1;transform:scale(1) rotate(0)}}`}</style>
         {popup?.kind === "won" ? (
           <div className="space-y-5 text-center">
@@ -74,10 +80,7 @@ export function ExploreFlowerDialog({
           <div className="space-y-5">
             <FlowerBadge />
             <DialogHeader className="items-center text-center sm:text-center">
-              <DialogTitle className="text-2xl font-semibold tracking-tight">This flower is hiding points</DialogTitle>
-              <DialogDescription>
-                Sign up or sign in and they are yours: 1 to 3 points for every flower you find. One step, no password.
-              </DialogDescription>
+              <DialogTitle className="text-2xl font-semibold tracking-tight">Sign in to see what you found</DialogTitle>
             </DialogHeader>
             <LoginForm audience="customer" nextPath={signUpPath(popup.flower)} submitLabel="Email me a sign-in code" />
           </div>

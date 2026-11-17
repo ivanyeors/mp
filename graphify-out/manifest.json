@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1794926308.7583919,
-    "seen": 1794926500.0301154,
-    "ast_hash": "c88c691454ba530f8c51917409cddda2",
+    "mtime": 1794927104.6072211,
+    "seen": 1794927230.1878922,
+    "ast_hash": "a412bb8c520c973df4bfde71b3a944a3",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -14370,9 +14370,9 @@
     "semantic_hash": ""
   },
   "lib/points/__tests__/terms.test.ts": {
-    "mtime": 1794925724.041762,
-    "seen": 1794926500.0264246,
-    "ast_hash": "929cd200c60f02ec32e754597e4bfdff",
+    "mtime": 1794927095.1036716,
+    "seen": 1794927230.1851225,
+    "ast_hash": "28b20199c7fafb09212939be034d574f",
     "semantic_hash": ""
   },
   "lib/points/claim-bonus.ts": {
@@ -14436,9 +14436,9 @@
     "semantic_hash": ""
   },
   "lib/points/terms.ts": {
-    "mtime": 1794925724.041407,
-    "seen": 1794926500.0264525,
-    "ast_hash": "f28f7ae18532f324cd6d119b2a62f621",
+    "mtime": 1794927095.1032383,
+    "seen": 1794927230.185143,
+    "ast_hash": "26ac6f882409b378e3bc7d5c77e7cc81",
     "semantic_hash": ""
   },
   "lib/points/value.ts": {
@@ -14610,9 +14610,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0030-loyalty-points.md": {
-    "mtime": 1794926572.6820512,
-    "seen": 1794926938.7416844,
-    "ast_hash": "6659af5d509ab9a8366eb6e30caf8183",
+    "mtime": 1794927104.604958,
+    "seen": 1794927230.1879668,
+    "ast_hash": "3c25151faeab2c28a82cd211fa5fb963",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/countries/route.ts": {

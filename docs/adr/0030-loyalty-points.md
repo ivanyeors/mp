@@ -348,9 +348,14 @@ of decision 21's S$1,000 and is each Customer's own. A lock per Customer makes t
 count one after the other, so it holds.
 
 On the page, a picked flower goes and its petals drift down to the grass, lie there a moment and
-fade; then a popup shows the points it held. Signed out, the popup asks them to sign up for those
-points, and the sign-in comes back to `/explore?flower=N`, where the page picks that same flower
-for them. The database still chooses the days, the flowers and the points.
+fade; then a popup shows the points it held. Signed out, the popup only asks them to sign in ("Sign
+in to see what you found"), and the sign-in comes back to `/explore?flower=N`, where the page picks
+that same flower for them. The database still chooses the days, the flowers and the points.
+
+Nothing says flowers give points before one does (owner, 2026-11-17: "it's supposed to be Easter
+eggs"): not the signed-out popup, and not the points terms, which drop the flowers section decision
+20 added. The surprise popup after a pick, and the customer's own points history, are the only
+places it shows.
 
 **Decision 23. The way in.** Until the launch, someone who arrives at the home page of mpillow.com
 or www.mpillow.com is sent to `/explore` (307, not cached; `lib/routing/explore-entry.ts`). Only

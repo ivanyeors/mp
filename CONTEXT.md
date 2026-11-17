@@ -597,7 +597,7 @@ Points a **Customer** who is not a **Migrated customer** receives once (`kind = 
 _Avoid_: sign-up bonus, launch voucher
 
 **Flower points**:
-1 to 3 points (`kind = 'explore_flower'`) for a flower picked on the **Explore page** by a signed-in **Customer**, once per flower per Singapore day, and at most 500 points (S$5) per **Customer** ever: an Easter egg, after which their flowers never give points again. The database chooses the days flowers grow, how many, and the points (ADR 0030, decisions 20 and 22).
+1 to 3 points (`kind = 'explore_flower'`) for a flower picked on the **Explore page** by a signed-in **Customer**, once per flower per Singapore day, and at most 500 points (S$5) per **Customer** ever: an Easter egg, after which their flowers never give points again. Never advertised: the terms and the sign-in popup say nothing of it; only the surprise after a pick does. The database chooses the days flowers grow, how many, and the points (ADR 0030, decisions 20 and 22).
 
 **Explore page**:
 `/explore`: one screen that does not scroll, with the countdown to the launch (23:59 on 31 December 2026, Singapore time) and the claim of the **Welcome bonus** in a popup, over a scene whose sky follows the visitor's own day and night. Pressing Claim there is consent to marketing email, recorded as `explore_claim`. Until the launch, an arrival at the home page of mpillow.com or www.mpillow.com is sent here; once it has come, the page says the site is live and leads to the home page (ADR 0030, decision 23).
