@@ -51,7 +51,7 @@ usually still switching.
       events, up from 9.
 - [ ] Endpoint host is `custom.mpillow.com`. Stripe does not follow redirects and
       `work.mpillow.com` 308s; that has already broken delivery on this account.
-- [ ] **Terminal Location** registered for Chai Chee with its real address
+- [ ] **Terminal Location** registered for Sin Ming with its real address
       (slice 02), country SG.
 - [ ] Counter payments toggled **on** (slice 07).
 - [ ] An assigned **Result** with a real price to charge, and a second one for the

@@ -70,7 +70,7 @@ Reuse patterns from [`app/api/cron/results-sla/route.ts`](app/api/cron/results-s
 | Cancel | `events.delete` (or cancel); WhatsApp + link: [Customisation](https://calendar.app.google/wtLKP75zQRDB5gqC7) or [Re-adjustment](https://calendar.app.google/RGe6GCxzBhX1coGV8). |
 | Contacts | On reminder send: People API search-by-phone upsert display name. |
 | State | Supabase table e.g. `appointment_reminders` keyed by `calendar_event_id`: phone, name, type, starts_at, status (`pending` / `reminded` / `confirmed` / `offering_slots` / `rescheduled` / `cancelled` / `morning_sent` / `skipped_invalid_phone`), offered slot ids, wa message ids. |
-| Settings UI | `/settings/appointments` under General: venue (default `512 Chai Chee Lane Singapore 469028 #02-10`), duration, open/close (last bookable start), bookable days, two booking URLs, summary match strings. API like SLA settings → `site_settings`. Secrets stay in env. |
+| Settings UI | `/settings/appointments` under General: venue (default `22 Sin Ming Lane, #08-83, Midview City, Singapore 573969`), duration, open/close (last bookable start), bookable days, two booking URLs, summary match strings. API like SLA settings → `site_settings`. Secrets stay in env. |
 
 ## Key files to add/touch
 

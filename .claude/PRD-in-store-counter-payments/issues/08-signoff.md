@@ -37,7 +37,7 @@ nothing else is blocked by it.
       redirects for webhooks and `work.mpillow.com` 308s, which has already broken
       delivery once on this account.
 - [ ] Counter payments toggled on (slice 07), and the **Terminal Location**
-      registered for Chai Chee with the real address (slice 02).
+      registered for Sin Ming with the real address (slice 02).
 
 ## Test matrix
 

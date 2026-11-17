@@ -11,7 +11,7 @@ type Call = { method: string; path: string; body?: Record<string, unknown> };
 const ENDPOINT = "https://custom.mpillow.com/api/shipping/easyship/webhook";
 
 const HQ = {
-  line_1: "512 Chai Chee lane", line_2: "#02-10", city: "Singapore", state: null, postal_code: "469028",
+  line_1: "22 Sin Ming Lane", line_2: "#08-83, Midview City", city: "Singapore", state: null, postal_code: "573969",
   country_alpha2: "SG", company_name: "Mpillow Singapore", contact_name: "Mpillow SG",
   contact_phone: "87805311", contact_email: "sg@mpillow.com",
 };
@@ -88,6 +88,8 @@ describe("syncEasyship", () => {
 
     expect(find("PATCH", "/addresses/a1")[0].body?.default_for).toEqual({ pickup: true, billing: true, sender: true, return: true });
     expect(find("POST", "/addresses")).toHaveLength(1);
+    // Easyship rejects `false` flags on create: an address that is default for nothing sends none.
+    expect("default_for" in find("POST", "/addresses")[0].body!).toBe(false);
 
     expect(find("POST", "/boxes").map((c) => c.body?.name)).toEqual(["New"]);
     expect(find("DELETE", "/boxes/b-old")).toHaveLength(1);
@@ -135,6 +137,22 @@ describe("syncEasyship", () => {
     await syncEasyship(renamed, ENDPOINT);
     expect(find("POST", "/addresses")).toHaveLength(0);
     expect(find("PATCH", "/addresses/a1")[0].body?.company_name).toBe("Mellow Life");
+  });
+
+  it("creates a moved address with only its true default flags", async () => {
+    // The studio moved: a new line 1 and postal code match no live address, so it is created.
+    const moved = {
+      ...desired,
+      addresses: [{
+        ...HQ, line_1: "8 New Studio Road", line_2: "#01-01", postal_code: "654321",
+        default_for: { pickup: true, billing: false, sender: true, return: true },
+      }],
+    };
+    const { report } = await syncEasyship(moved, ENDPOINT);
+    const [created] = find("POST", "/addresses");
+    expect(created.body).toMatchObject({ line_1: "8 New Studio Road", postal_code: "654321" });
+    expect(created.body?.default_for).toEqual({ pickup: true, sender: true, return: true });
+    expect(report.steps.find((s) => s.area === "addresses")?.action).toBe("created");
   });
 });
 
