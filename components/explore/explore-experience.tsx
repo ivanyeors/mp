@@ -168,7 +168,9 @@ export function ExploreExperience({
   const [floats, setFloats] = useState<Float[]>([]);
   const floatId = useRef(0);
 
-  const canClaim = Boolean(offer?.current) && (signedIn ? (viewer ? viewer.canClaim : true) : true);
+  // From the launch, Explore offers no claim: only signing up or in (owner, 2026-11-17).
+  const launched = left.done;
+  const canClaim = !launched && Boolean(offer?.current) && (signedIn ? (viewer ? viewer.canClaim : true) : true);
   const holdsPoints = signedIn && !canClaim;
 
   const claim = async (agree: boolean) => {
@@ -249,7 +251,7 @@ export function ExploreExperience({
     } else if (res?.state === "signed_out") {
       setFlowerPopup({ kind: "sign_up", flower: index });
     } else if (res?.state === "nothing" && res.reason === "already") {
-      float(at, "Picked already today");
+      float(at, "A flower for you");
     } else if (res?.state === "nothing" && res.reason === "spent") {
       // Every flower point found: from now on they are just flowers.
       setFlowers((f) => ({ ...f, givesPoints: false }));
@@ -424,33 +426,35 @@ export function ExploreExperience({
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
               ) : null}
-              {/* After the launch, only when there is still something of theirs here: January's welcome step, or their points. */}
-              {left.done && !canClaim && !holdsPoints ? null : (
-              <button
-                type="button"
-                onClick={openPopup}
-                className={cn(
-                  "inline-flex h-12 items-center rounded-button px-6 text-base font-medium transition-transform active:scale-[0.97] motion-reduce:transition-none",
-                  left.done
-                    ? dark
-                      ? "border border-[#0d1b33]/40 bg-white/40 text-[#0d1b33] backdrop-blur-sm"
-                      : "border border-white/50 bg-white/10 text-white backdrop-blur-sm"
-                    : dark
-                      ? "bg-[#0d1b33] text-white shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]"
-                      : "bg-white text-[#0d1b33] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]",
-                )}
-              >
-                {holdsPoints
-                  ? `My points: ${number(viewer?.points ?? 0)}`
-                  : canClaim
-                    ? "Claim my welcome points"
-                    : pointsOn
-                      ? "Sign in or create an account"
-                      : "Sign in for an early look"}
-              </button>
+              {/* After the launch, no claim: "Sign up or sign in" for a visitor, and nothing more for someone signed in. */}
+              {launched && signedIn ? null : (
+                <button
+                  type="button"
+                  onClick={openPopup}
+                  className={cn(
+                    "inline-flex h-12 items-center rounded-button px-6 text-base font-medium transition-transform active:scale-[0.97] motion-reduce:transition-none",
+                    left.done
+                      ? dark
+                        ? "border border-[#0d1b33]/40 bg-white/40 text-[#0d1b33] backdrop-blur-sm"
+                        : "border border-white/50 bg-white/10 text-white backdrop-blur-sm"
+                      : dark
+                        ? "bg-[#0d1b33] text-white shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]"
+                        : "bg-white text-[#0d1b33] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)]",
+                  )}
+                >
+                  {launched
+                    ? "Sign up or sign in"
+                    : holdsPoints
+                      ? `My points: ${number(viewer?.points ?? 0)}`
+                      : canClaim
+                        ? "Claim my welcome points"
+                        : pointsOn
+                          ? "Sign in or create an account"
+                          : "Sign in for an early look"}
+                </button>
               )}
             </div>
-            {canClaim && offer?.current && !left.done ? (
+            {canClaim && offer?.current ? (
               <div className={cn("w-64 max-w-full", dark ? "[text-shadow:0_0_18px_rgba(255,255,255,0.7)]" : "[text-shadow:0_1px_14px_rgba(6,10,36,0.6)]")}>
                 <div
                   className={cn("h-1 w-full overflow-hidden rounded-full", dark ? "bg-[#0d1b33]/20" : "bg-white/30")}
@@ -509,12 +513,13 @@ export function ExploreExperience({
         open={open}
         onOpenChange={setOpen}
         stage={stage}
-        offer={offer}
+        // After the launch the popup is a plain sign-in, which goes on to the home page.
+        offer={launched ? null : offer}
         signedIn={signedIn}
         viewer={viewer}
         doneReason={doneReason}
         rules={rules}
-        claimPath={claimPath}
+        claimPath={launched ? links.home : claimPath}
         links={links}
         onClaim={() => void claim(true)}
         onEmailMeAgain={async () => {

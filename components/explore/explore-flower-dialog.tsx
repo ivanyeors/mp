@@ -10,8 +10,8 @@ import { formatPoints } from "@/lib/points/value";
 /**
  * The Explore page's flowers are an Easter egg (owner, 2026-11-17): a picked
  * flower's petals drift to the grass, and then this popup. Signed in, it is
- * the surprise, the 1 to 3 points the database gave. Signed out, it asks them
- * to sign in and says nothing of points, so the surprise stays one; the
+ * the surprise, the 1 to 3 points the database gave. Signed out, it is a plain
+ * sign-in with no hint of a flower or points, so the surprise stays one; the
  * sign-in comes back to `?flower=N` and the page picks that same flower for
  * them (ADR 0030, decision 22).
  */
@@ -78,9 +78,8 @@ export function ExploreFlowerDialog({
           </div>
         ) : popup?.kind === "sign_up" ? (
           <div className="space-y-5">
-            <FlowerBadge />
-            <DialogHeader className="items-center text-center sm:text-center">
-              <DialogTitle className="text-2xl font-semibold tracking-tight">Sign in to see what you found</DialogTitle>
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-semibold tracking-tight">Sign in or create your account</DialogTitle>
             </DialogHeader>
             <LoginForm audience="customer" nextPath={signUpPath(popup.flower)} submitLabel="Email me a sign-in code" />
           </div>

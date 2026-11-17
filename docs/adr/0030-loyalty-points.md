@@ -348,14 +348,15 @@ of decision 21's S$1,000 and is each Customer's own. A lock per Customer makes t
 count one after the other, so it holds.
 
 On the page, a picked flower goes and its petals drift down to the grass, lie there a moment and
-fade; then a popup shows the points it held. Signed out, the popup only asks them to sign in ("Sign
-in to see what you found"), and the sign-in comes back to `/explore?flower=N`, where the page picks
-that same flower for them. The database still chooses the days, the flowers and the points.
+fade; then a popup shows the points it held. Signed out, the popup is a plain sign-in ("Sign in or
+create your account", no flower, no hint), and the sign-in comes back to `/explore?flower=N`, where
+the page picks that same flower for them. The database still chooses the days, the flowers and the
+points.
 
-Nothing says flowers give points before one does (owner, 2026-11-17: "it's supposed to be Easter
-eggs"): not the signed-out popup, and not the points terms, which drop the flowers section decision
-20 added. The surprise popup after a pick, and the customer's own points history, are the only
-places it shows.
+Nothing hints at the flowers before one is picked (owner, 2026-11-17: "it's supposed to be Easter
+eggs"): not the signed-out popup, not a message after a pick that gave nothing (only "A flower for
+you"), and not the points terms, which drop the flowers section decision 20 added. The surprise
+popup after a pick, and the customer's own points history, are the only places it shows.
 
 **Decision 23. The way in.** Until the launch, someone who arrives at the home page of mpillow.com
 or www.mpillow.com is sent to `/explore` (307, not cached; `lib/routing/explore-entry.ts`). Only
@@ -363,7 +364,9 @@ an arrival is: a typed address, a bookmark or a link from another site. A click 
 (`Sec-Fetch-Site: same-origin`, or a Referer from the same host) reaches the home page, so Explore's
 logo still leads home. custom.mpillow.com, previews and localhost keep their home page. From 23:59
 on 31 December the redirect stops, and Explore says the site is live with an "Enter Mpillow" button
-to the home page. Both hosts are still the Shopify store until their DNS moves (slice 10 of the
+to the home page. From then it offers no claim (owner, 2026-11-17): a visitor gets "Sign up or sign
+in", a plain sign-in that goes on to the home page, and someone signed in gets only "Enter Mpillow".
+Both hosts are still the Shopify store until their DNS moves (slice 10 of the
 customer migration), so the redirect takes effect only from then.
 
 **What it costs now.** At most S$994 in Welcome bonuses, plus at most S$5 per Customer who finds
