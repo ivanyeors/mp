@@ -101,7 +101,7 @@ export function pointsTermsSections(s: PointsSettings, welcome: readonly Pick<We
     {
       heading: "Flowers on the Explore page",
       paragraphs: [
-        "On some days flowers grow on our Explore page. Picking one while you are signed in adds 1 to 5 points to your account, once for each flower each day.",
+        "On some days flowers grow on our Explore page. Picking one while you are signed in adds 1 to 3 points to your account, once for each flower each day, up to 500 points (S$5) in all. After that, the flowers are just for looking at.",
       ],
     },
     {

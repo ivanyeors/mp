@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Runs the Explore points migration (ADR 0030, amendment of 2026-11-17)
+# Runs the Explore points migrations (ADR 0030, amendment of 2026-11-17)
 # against a throwaway local Postgres holding a stand-in for the parts of the
-# live schema it touches, twice (it must be idempotent), then the assertions
-# in supabase/tests/explore-points/: the ladder reads only a well-formed
-# setting, a Welcome bonus is granted once and never past a step's
-# allocation, a used-up step hands over early, Migrated customers and
-# partners get none, a flower pays 1 to 5 points once a day and only while
-# points are live, the claim's consent subscribes only someone nobody has
-# asked, and only the service role can run any of it.
+# live schema they touch, each twice (they must be idempotent), then the
+# assertions in supabase/tests/explore-points/: the ladder reads only a
+# well-formed setting and costs at most S$1,000, a Welcome bonus is granted
+# once and never past a step's allocation, a used-up step hands over early,
+# Migrated customers and partners get none, a flower pays 1 to 3 points once
+# a day, only while points are live and never past 500 points per Customer,
+# the claim's consent subscribes only someone nobody has asked, and only the
+# service role can run any of it.
 #
 #   ./scripts/check-explore-points-sql.sh
 #
@@ -16,7 +17,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BIN="${PG_BIN:-$(dirname "$(command -v initdb 2>/dev/null || ls /usr/lib/postgresql/*/bin/initdb | tail -1)")}"
-MIGRATIONS=(supabase/migrations/20261117100000_explore_welcome_points.sql)
+MIGRATIONS=(
+  supabase/migrations/20261117100000_explore_welcome_points.sql
+  supabase/migrations/20261117144229_explore_points_budget.sql
+)
 ASSERTS=(supabase/tests/explore-points/assert-*.sql)
 
 DIR="$(mktemp -d)"
@@ -42,4 +46,4 @@ done
 for a in "${ASSERTS[@]}"; do
   "${PSQL[@]}" -t -A -f "$a" || { echo "FAIL: $a"; exit 1; }
 done
-echo "explore points sql ok (${#MIGRATIONS[@]} migration, run twice; ${#ASSERTS[@]} assert file)"
+echo "explore points sql ok (${#MIGRATIONS[@]} migrations, each run twice; ${#ASSERTS[@]} assert files)"

@@ -96,7 +96,7 @@ describe("the Welcome bonus and the flowers in the terms", () => {
   });
 
   it("states the flower rule", () => {
-    expect(text()).toContain("adds 1 to 5 points to your account, once for each flower each day");
+    expect(text()).toContain("adds 1 to 3 points to your account, once for each flower each day, up to 500 points (S$5) in all");
   });
 });
 
