@@ -72,7 +72,7 @@ from the create call's 200.
 |---|---|---|
 | `idle` | **Charge at the counter — SGD 460.00** | Primary button; reader name beneath if more than one |
 | `creating` | *Waking the reader…* | Disabled, spinner |
-| `waiting_for_card` | **Ask for the card** · *Reader: Chai Chee counter* | Prominent; *Cancel* secondary |
+| `waiting_for_card` | **Ask for the card** · *Reader: Sin Ming counter* | Prominent; *Cancel* secondary |
 | `processing` | *Authorising…* | No cancel — the card is committed |
 | `approved` | **Approved · SGD 460.00** | *Complete the sale* → the existing accept action |
 | `declined` | mapped copy, see below | **Try again** (reuses the intent) · *Send a link instead* |

@@ -1411,7 +1411,7 @@ describe("Paired build — Self-collect", () => {
         },
       ],
       partners: [
-        { id: STUDIO, name: "Mpillow Singapore", type: "own", address: "512 Chai Chee Lane #02-10", postal_code: "469028" },
+        { id: STUDIO, name: "Mpillow Singapore", type: "own", address: "22 Sin Ming Lane, #08-83, Midview City", postal_code: "573969" },
       ],
     });
   });
@@ -1425,9 +1425,9 @@ describe("Paired build — Self-collect", () => {
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     const studioAddress = {
       recipient: "Ada",
-      line1: "512 Chai Chee Lane #02-10",
+      line1: "22 Sin Ming Lane, #08-83, Midview City",
       city: "Singapore",
-      postal_code: "469028",
+      postal_code: "573969",
       country: "SG",
       collect_location: { id: STUDIO, name: "Mpillow Singapore" },
     };

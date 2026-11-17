@@ -8,7 +8,7 @@
 ## Goal
 
 Make a **Card reader** reachable from this codebase. Nothing charges yet; this
-slice ends with the **Admin Panel** able to say *"Chai Chee: one reader, online"*
+slice ends with the **Admin Panel** able to say *"Sin Ming: one reader, online"*
 against a simulated reader, which is the precondition for every slice after it.
 
 Additive and inert: a nullable column and one settings section. No existing

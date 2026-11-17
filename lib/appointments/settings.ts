@@ -61,7 +61,7 @@ const DEFAULT_WINDOW = DEFAULT_AVAILABILITY_WINDOW;
 
 export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
   whatsappEnabled: true,
-  venue: "512 Chai Chee Lane Singapore 469028 #02-10",
+  venue: "22 Sin Ming Lane, #08-83, Midview City, Singapore 573969",
   durationMinutes: 60,
   // Sun, Tue–Sat 10:00–19:00 (last 60-min start 18:00); Monday closed.
   availability: [0, 2, 3, 4, 5, 6].reduce<WeeklyAvailability>(

@@ -11,7 +11,7 @@ type Call = { method: string; path: string; body?: Record<string, unknown> };
 const ENDPOINT = "https://custom.mpillow.com/api/shipping/easyship/webhook";
 
 const HQ = {
-  line_1: "512 Chai Chee lane", line_2: "#02-10", city: "Singapore", state: null, postal_code: "469028",
+  line_1: "22 Sin Ming Lane", line_2: "#08-83, Midview City", city: "Singapore", state: null, postal_code: "573969",
   country_alpha2: "SG", company_name: "Mpillow Singapore", contact_name: "Mpillow SG",
   contact_phone: "87805311", contact_email: "sg@mpillow.com",
 };
