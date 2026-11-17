@@ -26,7 +26,8 @@ export default function explore({ scenario, now }) {
   const flowerPoints = (tables, id) =>
     (tables.points_ledger ?? []).filter((r) => r.customer_id === id && r.kind === "explore_flower").reduce((n, r) => n + r.points, 0);
   const FLOWERS = 4;
-  const picks = new Map(); // customer id -> Set of flowers picked today
+  // customer id -> flowers picked and not grown back yet (that takes 24 to 36 hours, longer than any preview run)
+  const picks = new Map();
 
   const standing = (tables) => {
     const claimedAt = (n) => (tables.points_ledger ?? []).filter((r) => r.kind === "welcome_bonus" && r.welcome_step === n).length;

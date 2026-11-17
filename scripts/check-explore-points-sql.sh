@@ -5,8 +5,9 @@
 # assertions in supabase/tests/explore-points/: the ladder reads only a
 # well-formed setting and costs at most S$1,000, a Welcome bonus is granted
 # once and never past a step's allocation, a used-up step hands over early,
-# Migrated customers and partners get none, a flower pays 1 to 3 points once
-# a day, only while points are live and never past 500 points per Customer,
+# Migrated customers and partners get none, a flower pays 1 to 3 points, grows
+# back for that Customer 24 to 36 hours after a pick, pays only while points
+# are live and never past 500 points per Customer,
 # the claim's consent subscribes only someone nobody has asked, and only the
 # service role can run any of it.
 #
@@ -20,6 +21,7 @@ BIN="${PG_BIN:-$(dirname "$(command -v initdb 2>/dev/null || ls /usr/lib/postgre
 MIGRATIONS=(
   supabase/migrations/20261117100000_explore_welcome_points.sql
   supabase/migrations/20261117144229_explore_points_budget.sql
+  supabase/migrations/20261117153541_explore_flower_regrow.sql
 )
 ASSERTS=(supabase/tests/explore-points/assert-*.sql)
 

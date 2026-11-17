@@ -5826,9 +5826,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1794927104.6072211,
-    "seen": 1794927230.1878922,
-    "ast_hash": "a412bb8c520c973df4bfde71b3a944a3",
+    "mtime": 1794929795.8983355,
+    "seen": 1794929861.6666737,
+    "ast_hash": "7bf90da7d5c6a0dde66019c878ad5c65",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -14610,9 +14610,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0030-loyalty-points.md": {
-    "mtime": 1794927337.2855144,
-    "seen": 1794927528.5607164,
-    "ast_hash": "f053adddc7a8c223a25e1388456825f2",
+    "mtime": 1794929795.8847463,
+    "seen": 1794929861.6667652,
+    "ast_hash": "d710f03cf7fc3fa1c56f717eb791ac70",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/countries/route.ts": {
@@ -19068,15 +19068,15 @@
     "semantic_hash": ""
   },
   ".claude/skills/preview/fixtures/explore.mjs": {
-    "mtime": 1794926572.6833007,
-    "seen": 1794926938.7370117,
-    "ast_hash": "212a65b07d7523925c9ad7a031c6de04",
+    "mtime": 1794929801.8693008,
+    "seen": 1794929861.661946,
+    "ast_hash": "5d2f87652535fbb7f3279ce20bcbef50",
     "semantic_hash": ""
   },
   "app/[lang]/explore/actions.ts": {
-    "mtime": 1794925724.0422196,
-    "seen": 1794926500.0231028,
-    "ast_hash": "f8e87b312c83049eef4878ed1252cf3a",
+    "mtime": 1794929795.882031,
+    "seen": 1794929861.6620395,
+    "ast_hash": "d7979b0e42d9dbbc09f531c22300b23e",
     "semantic_hash": ""
   },
   "app/api/explore/weather/route.ts": {
@@ -19134,9 +19134,9 @@
     "semantic_hash": ""
   },
   "lib/explore/viewer.ts": {
-    "mtime": 1794925713.7991548,
-    "seen": 1794926500.0259812,
-    "ast_hash": "be072b1d7cd081f15908dd8f986fc993",
+    "mtime": 1794929795.883119,
+    "seen": 1794929861.6640685,
+    "ast_hash": "2f766df00f8b8101ef0c4c1e1bf0db3a",
     "semantic_hash": ""
   },
   "lib/explore/weather.ts": {
@@ -19170,9 +19170,9 @@
     "semantic_hash": ""
   },
   "scripts/check-explore-points-sql.sh": {
-    "mtime": 1794926572.681386,
-    "seen": 1794926938.7402127,
-    "ast_hash": "9188ed8dd1ec0de0226ebeb7689f112d",
+    "mtime": 1794929784.1312242,
+    "seen": 1794929861.6652355,
+    "ast_hash": "ecf5fea6ef88b618e4dcf1ac315d0d82",
     "semantic_hash": ""
   },
   "supabase/migrations/20261117100000_explore_welcome_points.sql": {
@@ -19206,15 +19206,27 @@
     "semantic_hash": ""
   },
   "supabase/tests/explore-points/assert-explore-budget.sql": {
-    "mtime": 1794926572.6805959,
-    "seen": 1794926938.740858,
-    "ast_hash": "4e38e31fe9da270469dc94aa444f31dc",
+    "mtime": 1794929719.791041,
+    "seen": 1794929861.6659095,
+    "ast_hash": "439f7f3cc99180377955fae26301527a",
     "semantic_hash": ""
   },
   "supabase/migrations/20261117144229_explore_points_budget.sql": {
     "mtime": 1794925668.0229936,
     "seen": 1794926938.740808,
     "ast_hash": "f223044a8ebc182b4d287ccef649fea8",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261117153541_explore_flower_regrow.sql": {
+    "mtime": 1794929701.6197858,
+    "seen": 1794929861.6658604,
+    "ast_hash": "b3a8906bc38072dcb21a983bd2cb3489",
+    "semantic_hash": ""
+  },
+  "supabase/tests/explore-points/assert-explore-regrow.sql": {
+    "mtime": 1794929784.1305952,
+    "seen": 1794929861.6659126,
+    "ast_hash": "0f82c2d2d8c40fcfd91aac8c7742bc82",
     "semantic_hash": ""
   }
 }

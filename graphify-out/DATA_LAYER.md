@@ -1749,7 +1749,7 @@ Changed from pages: `/settings/email-templates/[id]`
   - `readSavedEmailCopy()` [select] — lib/email/copy-store.ts:36
 
 ### explore_flowers
-Defined in supabase/migrations/20261117144229_explore_points_budget.sql:73
+Defined in supabase/migrations/20261117153541_explore_flower_regrow.sql:23
 - Called by:
   - `readExploreFlowers()` — lib/explore/viewer.ts:73
 
@@ -1890,7 +1890,7 @@ Defined in supabase/migrations/20261108100100_past_purchase_points.sql:92
   - `readPastPurchasePreview()` — lib/points/server.ts:241
 
 ### pick_explore_flower
-Defined in supabase/migrations/20261117144229_explore_points_budget.sql:98
+Defined in supabase/migrations/20261117153541_explore_flower_regrow.sql:48
 - Called by:
   - `pickFlower()` — lib/explore/viewer.ts:95
 

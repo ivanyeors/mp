@@ -341,7 +341,11 @@ counts (decision 18 (y), (aa)). Applied as `points_welcome_steps` by
 `20261117144229_explore_points_budget.sql`; nothing had been claimed under the old allocations.
 
 **Decision 22. Flowers are an Easter egg**, worth at most S$5 (500 points) to each Customer who
-finds them, ever. A pick gives 1 to 3 points (was 1 to 5), still once per flower per day; the pick
+finds them, ever, on any day the cliff blooms, before the launch or after. A pick gives 1 to 3 points
+(was 1 to 5), and the flower is then gone for that Customer until a random time 24 to 36 hours
+later, when it grows back (owner, 2026-11-17: "flowers clicked will only reappear at random after
+24hrs"; `regrows_at`, `20261117153541_explore_flower_regrow.sql`). Before, it came back at the next
+Singapore midnight, minutes later for a pick at 23:50. The pick
 that reaches 500 gives what is left of it, and after that the Customer's flowers never give points
 again (`pick_explore_flower` answers `spent`; `explore_flowers` says no points). The cap is on top
 of decision 21's S$1,000 and is each Customer's own. A lock per Customer makes two picks at once

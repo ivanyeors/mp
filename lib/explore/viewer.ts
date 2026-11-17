@@ -26,7 +26,7 @@ export interface ExploreViewer {
 export interface ExploreFlowers {
   /** How many flowers grow today; 0 for none. */
   count: number;
-  /** The ones this visitor has picked today. */
+  /** The ones this visitor picked that have not grown back yet (24 to 36 hours after each pick). */
   picked: number[];
   /** A pick would give this visitor points: signed in, points live, not a partner, and under the S$5 cap. */
   givesPoints: boolean;
@@ -83,9 +83,9 @@ export async function readExploreFlowers(admin: SupabaseClient, customerId: stri
 export type FlowerPickReason = "picked" | "off" | "partner" | "none" | "already" | "spent";
 
 /**
- * Picks a flower (`pick_explore_flower`): 1 to 3 points, once per flower per
- * day, until this Customer's flowers have given 500 points (S$5); then
- * "spent", for good.
+ * Picks a flower (`pick_explore_flower`): 1 to 3 points, and the flower grows
+ * back for them at a random time 24 to 36 hours later ("already" until then),
+ * until their flowers have given 500 points (S$5); then "spent", for good.
  */
 export async function pickFlower(
   admin: SupabaseClient,

@@ -74,7 +74,7 @@ begin
 
   -- The picks table holds 1 to 3 only.
   begin
-    insert into explore_flower_picks (customer_id, day, flower, points) values (b, current_date - 1, 0, 4);
+    insert into explore_flower_picks (customer_id, day, flower, points, regrows_at) values (b, current_date - 1, 0, 4, now());
     assert false, 'a pick of 4 is refused';
   exception when check_violation then null;
   end;
