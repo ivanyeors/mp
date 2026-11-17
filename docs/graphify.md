@@ -60,9 +60,9 @@ stale and CI fails.
 ## The freshness check
 
 `.github/workflows/graphify-freshness.yml` runs the same `./scripts/graphify
-update .` on every pull request. It fails if the rebuilt graph's digest differs
-from the committed one, so a refresh belongs in the same commit as the code
-change. To check before pushing:
+update .` when started by hand (Actions -> graphify freshness -> Run workflow).
+It fails if the rebuilt graph's digest differs from the committed one. The
+graph is refreshed on demand, not with every change. To check locally:
 
 ```bash
 ./scripts/graphify-digest.py graphify-out/graph.json   # before

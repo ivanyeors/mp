@@ -9,11 +9,10 @@ name: graphify freshness
 # Previously this drifted 176 commits behind, so the guard is the mechanism —
 # not a reminder to refresh by hand.
 
+# Manual only (Actions tab -> Run workflow): the graph is rebuilt on demand,
+# not on every pull request, to save Actions minutes.
 on:
-  pull_request:
-
-# Pull-request only: the check passes on the PR's merge commit before it can
-# merge, so re-running it on push to main only duplicates that and burns minutes.
+  workflow_dispatch:
 
 # A newer push makes an in-flight run irrelevant.
 concurrency:

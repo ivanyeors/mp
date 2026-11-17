@@ -2,10 +2,10 @@ name: pr guard
 
 # Runs on a BRANCH PUSH, on purpose, and that is the whole point of it.
 #
-# ci.yml and graphify-freshness.yml both trigger on `pull_request`, and GitHub
+# ci.yml triggers on `pull_request`, and GitHub
 # builds those runs against a merge commit of the branch and its base. When a
 # pull request conflicts with `main`, that merge commit cannot be created, so
-# those workflows do not fail — they never start. The pull request sits with no
+# it does not fail — it never starts. The pull request sits with no
 # checks at all, which on the Checks tab is indistinguishable from checks that
 # are still running. #190 sat like that for forty minutes while `main` moved
 # underneath it, and nothing on the page said so.
@@ -129,17 +129,16 @@ jobs:
 
           # The annotation is what the pull request and the run summary show;
           # without it they say only "exit code 1" and the reason is in the log.
-          echo "::error title=Pull request #$pr conflicts with $base::Merge $base into this branch and push. Until then ci.yml and graphify-freshness.yml cannot run, so this pull request has no real checks."
+          echo "::error title=Pull request #$pr conflicts with $base::Merge $base into this branch and push. Until then ci.yml cannot run, so this pull request has no real checks."
 
           cat <<MSG
 
           ---------------------------------------------------------------
           Pull request #$pr conflicts with $base.
 
-          This is not only a merge problem. ci.yml and graphify-freshness.yml
-          run against a merge commit of this branch and $base, and GitHub
-          cannot build one while the conflict stands — so those workflows are
-          not failing, they are not running at all. Lint, typecheck, test and
+          This is not only a merge problem. ci.yml runs against a merge commit of this branch and $base, and GitHub
+          cannot build one while the conflict stands — so ci.yml is
+          not failing, it is not running at all. Lint, typecheck, test and
           build have not seen this code, and the pull request shows no checks
           rather than red ones.
 
@@ -147,8 +146,8 @@ jobs:
 
               git fetch origin $base
               git merge origin/$base
-              # resolve, then regenerate rather than hand-merge graphify-out/:
-              ./scripts/graphify update .
+              # resolve; for graphify-out/ take main's copy:
+              git checkout origin/$base -- graphify-out/
               git add -A && git commit
               git push
 
@@ -257,7 +256,7 @@ jobs:
           Open pull requests that can no longer be merged:$conflicting
 
           Their branches have not changed — main moved underneath them. While
-          this stands, ci.yml and graphify-freshness.yml cannot run on them at
+          this stands, ci.yml cannot run on them at
           all, so whatever checks they last showed describe older code.
 
           Each one needs its base merged in and pushed.
