@@ -57,7 +57,7 @@ first sign-in already makes the Customer.
   `lib/auth/sign-in-intent.ts`), so it survives the email, a second device and Google.
 - **"Get our emails" in the site footer** sends the same link and code with `newsletter`, then
   opens Sign in at the code step ("…to confirm your email and join our list"). Signed-in visitors
-  see a link to their Profile instead.
+  see nothing there.
 - **A notice on the page they land on**: "You're on our email list", "You're already on our email
   list", or, after a footer sign-up by someone who unsubscribed, "You unsubscribed from our
   emails before" with **Email me again** (their own click, recorded as `account`).
