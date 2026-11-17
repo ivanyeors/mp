@@ -44,6 +44,7 @@ export const reviewsAdapter: TimelineAdapter = {
           ref: { type: "product_review", id: r.id },
           summary: `Shop review: ${r.rating}★${product ? ` on ${product}` : ""}`,
           status: r.status,
+          rating: r.rating,
         };
       },
     );

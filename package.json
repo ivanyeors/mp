@@ -56,6 +56,8 @@
     "@radix-ui/react-tabs": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.4.1",
     "@shopify/shopify-api": "^12.2.0",
+    "@stripe/react-stripe-js": "7.0.1",
+    "@stripe/stripe-js": "10.2.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "@tabler/icons-react": "^3.49.0",

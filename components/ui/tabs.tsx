@@ -59,6 +59,21 @@ type TabsVariant = "default" | "line"
 /** Set by `TabsList`, read by its triggers, so a call site names it once. */
 const TabsVariantContext = React.createContext<TabsVariant>("default")
 
+/**
+ * `lg` is for `line` only: the tabs that divide a whole page (a Customer's
+ * Journey / Pillow and fittings / Reviews), where the row has to be found at a
+ * glance. 48px tall, 16px semibold labels, a 3px underline. `default` ignores
+ * it.
+ */
+type TabsSize = "default" | "lg"
+
+const TabsSizeContext = React.createContext<TabsSize>("default")
+
+const TABS_LIST_ROW_LG = "h-12 max-md:h-12"
+const TABS_LIST_SUMMARY_LG = "h-12 text-base font-semibold max-md:h-12"
+const TABS_TRIGGER_LG =
+  "gap-2 px-5 text-base font-semibold after:h-[3px] [&_svg:not([class*='size-'])]:size-[18px]"
+
 // A tab strip has exactly two legal shapes: one un-clipped row, or — when that
 // row cannot fit the width it is given — a single full-width button that opens
 // the same tablist as a menu. It never wraps onto a second line and it never
@@ -99,12 +114,15 @@ const TABS_LIST_SUMMARY_LINE_LABEL =
   "relative flex min-w-0 items-center gap-2 px-4 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary after:content-['']"
 
 function TabsList({
-  className,
+  className: classNameProp,
   collapsible = true,
   variant = "default",
+  size = "default",
   onClick,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> & {
+  /** `lg`: the larger `line` row for page-level sections. */
+  size?: TabsSize
   /** Opt out of collapse-to-menu, for a strip that must stay a row. */
   collapsible?: boolean
   /** `line`: underlined labels on a hairline instead of a filled control. */
@@ -116,6 +134,9 @@ function TabsList({
   const [overflowing, setOverflowing] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const collapsed = collapsible && overflowing
+  const large = variant === "line" && size === "lg"
+  // The size joins the caller's classes, ahead of the guard below.
+  const className = large ? cn(TABS_LIST_ROW_LG, classNameProp) : classNameProp
 
   const children = props.children
 
@@ -206,7 +227,7 @@ function TabsList({
           data-slot="tabs-list-summary"
           aria-expanded={open}
           onClick={() => setOpen((previous) => !previous)}
-          className={TABS_LIST_SUMMARY[variant]}
+          className={cn(TABS_LIST_SUMMARY[variant], large && TABS_LIST_SUMMARY_LG)}
         >
           {variant === "line" ? (
             <span className={TABS_LIST_SUMMARY_LINE_LABEL}>{summaryContent}</span>
@@ -218,6 +239,7 @@ function TabsList({
       {/* An open menu is the same popover for every variant, so its rows take
           the default trigger look: an underline means nothing in a column. */}
       <TabsVariantContext.Provider value={showAsMenu ? "default" : variant}>
+       <TabsSizeContext.Provider value={large && !showAsMenu ? "lg" : "default"}>
         <TabsPrimitive.List
           ref={listRef}
           data-slot="tabs-list"
@@ -244,6 +266,7 @@ function TabsList({
           }}
           {...props}
         />
+       </TabsSizeContext.Provider>
       </TabsVariantContext.Provider>
     </div>
   )
@@ -262,10 +285,13 @@ const TABS_TRIGGER: Record<TabsVariant, string> = {
 }
 
 function TabsTrigger({
-  className,
+  className: classNameProp,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
   const variant = React.useContext(TabsVariantContext)
+  const size = React.useContext(TabsSizeContext)
+  // The size joins the caller's classes, which still win over it.
+  const className = size === "lg" ? cn(TABS_TRIGGER_LG, classNameProp) : classNameProp
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"

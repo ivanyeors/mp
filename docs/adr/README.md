@@ -56,3 +56,6 @@ one is amended to point at it.
 | [0048](0048-staff-orders-paid-through-our-payment-link.md) | A Staff order is priced on the server and paid through our own payment link, which opens a fresh Stripe Checkout each time |
 | [0049](0049-guest-email-on-the-first-question.md) | A guest gives their email on the configurator's first question, and their Draft Result is not saved without it |
 | [0050](0050-continue-link-and-draft-reminders.md) | A guest's Draft reopens from a continue link, and a guest who stopped is reminded 1 day, 1 week and 1 month later |
+| [0051](0051-every-customisation-email-is-a-customer.md) | Every email given in a customisation is a Customer, and Staff link or create one from a Result |
+| [0052](0052-partner-application-carries-the-listing.md) | A Partner application carries the public listing, approval publishes it, and a pending applicant can withdraw |
+| [0053](0053-shop-checkout-pays-on-our-page.md) | Shop checkout pays on our page, with Apple Pay and Google Pay beside the card form and beside the checkout button, from the same Checkout Session |

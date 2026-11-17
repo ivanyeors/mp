@@ -38,3 +38,38 @@ fact, the **Drop-off reason** (PRD-crm-retention-loop slice 10, `drop_off_reason
 - never written into `analytics_visits`, never inferred from a path, and shown to Staff on
   Analytics beside the Drop-off graph as *Why people leave*.
 
+
+
+## Amendment (2026-11-13): the Visitor is tied to the Customer, and an Entry source names a platform
+
+Decision 3's merge existed but nothing called it, so no **Visit** reached a **Customer** or a paid
+**Order** (PRD-prospect-journey-analytics slice 16). Now:
+
+- **The merge has callers, and they are the places a shopper types their own email**: the
+  configurator's first question (ADR 0049), the hold, and shop checkout. Still deterministic only.
+  A signed-in Staff member or Partner is serving someone else on a shared device, so their
+  sessions merge nothing.
+- **A paid Order names the Visit that paid**, found through the Order's Customer or email, because
+  Stripe and Staff confirm payment with no Visitor cookie in reach. Shop checkouts and online
+  **Results** only: a Staff order, a readjustment fee, and an in-store or Assisted Result were
+  sold by a person, not by a Visit.
+- **First touch is derived, never stored**: the earliest Visit of every Visitor that shares the
+  Customer or the email. Decision 5's last touch stays the default; first touch is a second way
+  to count the same Orders.
+- **An Entry source records more, frozen with the rest**: landing path, `utm_content`, `utm_term`,
+  an ad click id, and the app whose built-in browser the Visit began in. The channel and the
+  **platform** (Google, Instagram, TikTok, …) are still decided at read time.
+- **The User-Agent is read once, for the app's name only.** Instagram, Facebook and TikTok open
+  links in their own browser and send no referrer; the name of that browser is the only sign of
+  where the Visit came from. It classifies a Visit. It is not kept, and it is never identity:
+  decision 3 stands.
+- **`fbclid` is not proof of an ad.** Meta adds it to organic links too, so it names the platform
+  and the Visit counts as Paid only with a paid `utm_medium`. Google, TikTok and Microsoft click
+  ids are added only by ads and do mean Paid.
+- **The Visitor cookie is sent back by the server** on ingest, since a cookie written by script
+  lasts 7 days in Safari.
+
+Rejected: storing first touch on the Customer (a later merge would leave it stale); a `visitor_id`
+column on Orders (the Customer or email already finds the Visitor, for Results as well as shop
+orders); reading ad platforms' APIs for spend (a separate, larger piece, not needed to map entry
+points).

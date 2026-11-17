@@ -70,10 +70,15 @@ export default function analytics({ scenario, now }) {
   const mp_config_responses = [];
   for (let i = 1; i <= 60; i++) {
     const mo = months[Math.floor(r() * months.length)];
+    // Drawn in the order they always were, so every other sample stays the same.
+    const isFinal = r() < 0.85;
+    const created = at(mo.start, mo.end, r).toISOString();
     mp_config_responses.push({
       id: `00000000-0000-4000-9000-${String(i).padStart(12, "0")}`,
-      is_final: r() < 0.85,
-      created_at: at(mo.start, mo.end, r).toISOString(),
+      is_final: isFinal,
+      created_at: created,
+      // Every row has one in Postgres; without it these sort above everything in Results.
+      updated_at: created,
       data: {
         gender: r() < 0.62 ? "female" : "male",
         ageGroup: pick(["18-24", "25-34", "25-34", "35-44", "35-44", "45-54", "45-54", "55-64", "65-plus"]),

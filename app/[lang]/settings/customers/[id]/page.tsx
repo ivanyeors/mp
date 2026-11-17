@@ -12,8 +12,10 @@ import { loadCustomerPillow } from "@/lib/customer-pillow/load";
 import type { CustomerPillowResult } from "@/lib/customer-pillow/view";
 import { readContactFacts } from "@/lib/crm/contact-facts";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
+import { readCustomerEntry } from "@/lib/crm/customer-entry";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types/ecommerce";
+import { parseCustomerTab } from "@/lib/crm/customer-tabs";
 import {
     CustomerDetailClient,
     type CustomerDetailInitialData,
@@ -24,18 +26,19 @@ export const runtime = "nodejs";
 /**
  * Customer detail. The `GET /api/shop/customers/[id]` request the client used
  * to make on mount is read here instead, with the Customer's notes and what the
- * Shopify import holds for them (the From Shopify card, migration slice 12).
+ * Shopify import holds for them (migration slice 12; shown on the Journey).
  * The **Lifecycle stage** (PRD-crm-retention-loop slice 03) is read from the
  * overview, and a failed read only leaves it out. So are the Customer's
  * **Fitting records** (ADR 0042), whose card says when they could not be read,
  * and their pillow (ADR 0042 j): a Staff link, else the latest fitting's
  * configuration type matched to its Filling Template, drawn in the x-ray.
- * The Contact and sign-in card (CRM slice 11) reads the customer row itself;
+ * The Contact details card (CRM slice 11) reads the customer row itself;
  * what is matched by phone (WhatsApp, the other numbers seen) is read here
- * once the row's number is known. The orders
- * and addresses panels keep their own fetches (`/api/shop/orders`,
- * `/api/shop/customers/[id]/addresses`), which are guarded by different
- * permissions and are outside this change.
+ * once the row's number is known. Addresses keep their own fetch
+ * (`/api/shop/customers/[id]/addresses`), and the Journey reads the Customer
+ * timeline and the Follow-ups from their routes, each guarded by its own
+ * permissions. `?tab=` names the section to open (PRD-customer-page-journey
+ * slice 01).
  *
  * A missing row is handed to the client as the same `{ error }` body the route
  * returns with its 404, so the screen behaves exactly as it does today.
@@ -47,10 +50,13 @@ export const runtime = "nodejs";
  */
 export default async function CustomerDetailPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ lang: string; id: string }>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-    const { lang, id } = await params;
+    const [{ lang, id }, query] = await Promise.all([params, searchParams]);
+    const tabParam = Array.isArray(query.tab) ? query.tab[0] : query.tab;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
     const ctx = await requireAdminPage("customers", locale);
@@ -70,9 +76,15 @@ export default async function CustomerDetailPage({
     ]);
 
     // Both need what the reads above returned; neither waits for the other.
-    const [pillow, contact] = customer.ok
-        ? await Promise.all([readPillow(id, fittings), readContact(customer.row as Customer, ctx)])
-        : [undefined, undefined];
+    // The third: how they found us (their first Visit's Entry source), read
+    // from journey analytics; their own answer only with `results`.
+    const [pillow, contact, entry] = customer.ok
+        ? await Promise.all([
+              readPillow(id, fittings),
+              readContact(customer.row as Customer, ctx),
+              readCustomerEntry(supabaseAdmin(), customer.row as Customer, { results: hasPermission(ctx, "results") }),
+          ])
+        : [undefined, undefined, undefined];
 
     const initialData: CustomerDetailInitialData = {
         customer: customer.ok
@@ -86,6 +98,7 @@ export default async function CustomerDetailPage({
         fittings,
         pillow,
         contact,
+        entry,
     };
 
     return (
@@ -95,6 +108,7 @@ export default async function CustomerDetailPage({
             canImport={hasPermission(ctx, "customer-import")}
             canCreateOrder={hasPermission(ctx, "orders")}
             viewer={{ userId: ctx.userId, grantsAll: ctx.grantsAll }}
+            initialTab={parseCustomerTab(tabParam)}
         />
     );
 }

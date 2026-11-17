@@ -159,7 +159,14 @@ for (const fn of ["movePiece(before, ref, { cell })", "reorderInLayer(before, re
   assert.ok(renderer.includes(fn), `moves go through the pure lib: ${fn}`);
 }
 assert.match(renderer, /toast\.error\(error\); \/\/ cap feedback, the add's path/, "a refused move uses the add's toast path");
-assert.equal(renderer.match(/label: "Undo"/g)?.length, 2, "Undo on the move toast, the Mirror pattern");
+assert.equal(renderer.match(/label: "Undo"/g)?.length, 3, "Undo on the move and remove toasts, the Mirror pattern (and on Mirror's own)");
+// --- Remove from the x-ray (owner, 15-11-2026): a bin, Delete, or a drag off it -----
+assert.match(renderer, /const next = removePiece\(before, ref, ref\.slot\);/, "every remove on the pillow goes through removePiece, with Undo");
+assert.match(renderer, /data-xray-remove-piece/, "the selected pouch carries a bin");
+assert.match(renderer, /e\.key === "Delete" \|\| e\.key === "Backspace"/, "Delete takes the selected pouch out, as its bin does");
+assert.match(renderer, /const removing = !underPointer && offXray\(e\.clientX, e\.clientY\);/, "off the x-ray means off every drop target too: a layer row beside or under the pillow still takes a drop");
+assert.match(renderer, /closest\("\[data-xray-dive-dock\]"\)/, "a drop that misses a layer row in the dive's controls does nothing; it never removes");
+assert.match(renderer, /if \(d\.removing && !canceled\) \{\s*takeOut\(d\.source\);/, "releasing a pouch carried off the x-ray takes it out; Escape still cancels");
 assert.match(renderer, /Undo unavailable — the mix changed after the move/, "a later edit makes the move's Undo unavailable");
 assert.match(renderer, /data-xray-selected-piece/, "selection outlines the piece (the settled ghost is drawn by the dive already)");
 assert.doesNotMatch(renderer, /data-xray-selected-cell/, "no dotted cell ring around the selection — the pad names the cell (26-9-2026 review)");

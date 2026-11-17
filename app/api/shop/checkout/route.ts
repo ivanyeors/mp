@@ -16,6 +16,7 @@ import {
 import { getCurrentCustomerId } from "@/lib/shop/customer-addresses";
 import { getPartnerByReferralCode, isSelfReferral } from "@/lib/referrals";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
+import { stitchShopperVisitor } from "@/lib/analytics/journey/stitch-server";
 import { computeSelfPurchaseDiscount } from "@/lib/partner-self-purchase";
 import { loadSelfPurchaseAllowance } from "@/lib/partner-self-purchase/allowance";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
@@ -25,6 +26,7 @@ import { readShippingSettings } from "@/lib/shipping/settings";
 import { usesPostalCode } from "@/lib/shipping/countries";
 import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
+import { resolvePaymentUi } from "@/lib/stripe/payment-ui";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
 import {
   buildCheckoutCustomizationSnapshot,
@@ -114,6 +116,13 @@ const CheckoutSchema = z.object({
    * in words rather than as a schema error.
    */
   points: z.number().optional(),
+  /**
+   * Where the shopper wants to pay (ADR 0053). The page sends `elements` only
+   * once Stripe.js has loaded, so it can mount Apple Pay and the card form on
+   * itself; the server downgrades it to `hosted` when this deploy has no
+   * publishable key for the secret key's account. Absent is `hosted`.
+   */
+  payment_ui: z.enum(["hosted", "elements"]).optional(),
   items: z.array(CheckoutItemSchema).min(1),
 });
 
@@ -838,7 +847,9 @@ export async function POST(req: Request) {
   const { getSiteOrigin } = await import("@/lib/site-url");
   const siteUrl = getSiteOrigin();
 
-  let stripeSession: { sessionId: string; url: string | null };
+  const paymentUi = resolvePaymentUi(parsed.data.payment_ui);
+
+  let stripeSession: { sessionId: string; url: string | null; clientSecret: string | null };
   try {
     stripeSession = await createCheckoutSession({
       lineItems: cart.items.map((item) => {
@@ -859,6 +870,7 @@ export async function POST(req: Request) {
         orderRow.order_number
       )}&session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${siteUrl}/${locale}/shop/checkout`,
+      ui: paymentUi,
       shippingAmount,
       shippingLabel,
       // The discount is applied as a Stripe coupon so the customer is charged
@@ -888,6 +900,12 @@ export async function POST(req: Request) {
       // instead of creating a duplicate.
       idempotencyKey: `checkout_${orderRow.id}`,
     });
+    // An elements-mode Session is only reachable through its client secret,
+    // and a hosted one through its URL. Without it the shopper has no way to
+    // pay this Order, so it is undone like any other failed Session.
+    if (paymentUi === "elements" ? !stripeSession.clientSecret : !stripeSession.url) {
+      throw new Error("Stripe did not return a way to pay this checkout. Please try again.");
+    }
   } catch (err) {
     // Clean up orphaned order and items on Stripe failure, giving back any
     // points reserved for it first.
@@ -902,12 +920,30 @@ export async function POST(req: Request) {
     .update({ stripe_session_id: stripeSession.sessionId })
     .eq("id", orderRow.id);
 
+  // This browser's Visits belong to the shopper checking out (ADR 0007), which
+  // is how the webhook finds the Visit that paid. Never on a Staff or Partner
+  // session, and never stops the checkout.
+  await stitchShopperVisitor(admin, req, { email: normalizedEmail, customerId: customer.id });
+
   // Note: coupon usage is incremented in the Stripe webhook after successful payment,
   // not here — avoids double-counting when checkout sessions are abandoned.
 
-  // 15. Return checkout URL and order number
+  // 15. Return how to pay, and the order number. Hosted: the page redirects
+  // to `checkout_url`. Elements: the page opens `client_secret` in place, and
+  // keeps `session_id` (the same capability token the confirmation page uses)
+  // to release the Order if the shopper goes back to edit it.
+  if (paymentUi === "elements") {
+    return NextResponse.json({
+      ok: true,
+      payment_ui: "elements",
+      client_secret: stripeSession.clientSecret,
+      session_id: stripeSession.sessionId,
+      order_number: orderRow.order_number,
+    });
+  }
   return NextResponse.json({
     ok: true,
+    payment_ui: "hosted",
     checkout_url: stripeSession.url,
     order_number: orderRow.order_number,
   });

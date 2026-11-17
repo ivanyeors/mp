@@ -48,3 +48,16 @@ export function formatWhatsAppDisplay(
 }
 
 export const SUPPORT_WHATSAPP_DISPLAY = formatWhatsAppDisplay();
+
+/**
+ * The mailbox Staff write to customers from, and who is copied (owner,
+ * 2026-11-15; PRD-customer-page-journey decision 4). The Customer page's Email
+ * button opens Gmail in this mailbox with the Cc filled in
+ * (lib/crm/contact-links.ts). Nothing is sent by the platform from here, so
+ * these are not sender addresses for transactional or campaign email.
+ *
+ * On a phone a link cannot choose the sender: the Gmail app writes from the
+ * account it used last. The Cc is filled in on every device.
+ */
+export const STAFF_MAILBOX = "sg@mpillow.com";
+export const STAFF_MAIL_CC = "admin@mpillow.com";

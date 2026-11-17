@@ -602,31 +602,33 @@ export function CrawlerPanel({ crawlers, annotations }: { crawlers: Crawlers; an
 const sgd = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD", maximumFractionDigits: 0 });
 const rate = (num: number, den: number) => (den > 0 ? `${((num / den) * 100).toFixed(1)}%` : "—");
 
-/** Presentational: visits by channel + per-channel funnel. */
-export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: Annotation[] }) {
+type Credit = "last" | "first";
+type FunnelLine = {
+  key: string;
+  label: string;
+  /** How a platform's Visits came (Paid, Social, …); absent on a channel row. */
+  via?: string;
+  visits: number;
+  configuratorVisits: number;
+  orders: number;
+  revenue: number;
+};
+
+/** Phone list and desktop table of one funnel, by channel or by platform. */
+function FunnelTable({ heading, rows, totalVisits }: { heading: string; rows: FunnelLine[]; totalVisits: number }) {
   return (
-    <div className="space-y-4">
-      <ChannelMixVisx buckets={mix.buckets} granularity={mix.granularity} annotations={annotations} />
-      {mix.aiSources.length ? (
-        <div className="text-xs text-muted-foreground">
-          AI assistants:{" "}
-          {mix.aiSources.map((a, i) => (
-            <span key={a.source}>
-              {i ? " · " : null}
-              <span className="text-foreground">{a.source}</span> {int.format(a.visits)} visits
-              {a.orders ? `, ${int.format(a.orders)} orders` : null}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      {/* Phone: one row per channel; the seven-column table hid its funnel columns off-screen. */}
+    <>
+      {/* Phone: one row each; the seven-column table hid its funnel columns off-screen. */}
       <MobileList className="rounded-md text-xs tabular-nums">
-        {mix.funnel.map((r) => (
-          <MobileListRow key={r.channel}>
+        {rows.map((r) => (
+          <MobileListRow key={r.key}>
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm font-medium">{CHANNEL_LABELS[r.channel]}</span>
+              <span className="text-sm font-medium">
+                {r.label}
+                {r.via ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">{r.via}</span> : null}
+              </span>
               <span className="shrink-0">
-                {int.format(r.visits)} visits <span className="text-muted-foreground">({rate(r.visits, mix.totalVisits)})</span>
+                {int.format(r.visits)} visits <span className="text-muted-foreground">({rate(r.visits, totalVisits)})</span>
               </span>
             </div>
             <div className="mt-0.5 flex flex-wrap gap-x-3 text-muted-foreground">
@@ -645,7 +647,7 @@ export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: 
         <table className="w-full min-w-[560px] text-xs tabular-nums">
           <thead className="bg-muted text-left">
             <tr>
-              <th className="px-2 py-1.5 font-medium">Channel</th>
+              <th className="px-2 py-1.5 font-medium">{heading}</th>
               <th className="px-2 py-1.5 text-right font-medium">Visits</th>
               <th className="px-2 py-1.5 text-right font-medium">Share</th>
               <th className="px-2 py-1.5 text-right font-medium" title="Visits that opened mp-config or mbolster-config">
@@ -657,11 +659,14 @@ export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: 
             </tr>
           </thead>
           <tbody>
-            {mix.funnel.map((r) => (
-              <tr key={r.channel} className="border-t">
-                <td className="px-2 py-1.5">{CHANNEL_LABELS[r.channel]}</td>
+            {rows.map((r) => (
+              <tr key={r.key} className="border-t">
+                <td className="px-2 py-1.5">
+                  {r.label}
+                  {r.via ? <span className="ml-1.5 text-muted-foreground">{r.via}</span> : null}
+                </td>
                 <td className="px-2 py-1.5 text-right">{int.format(r.visits)}</td>
-                <td className="px-2 py-1.5 text-right">{rate(r.visits, mix.totalVisits)}</td>
+                <td className="px-2 py-1.5 text-right">{rate(r.visits, totalVisits)}</td>
                 <td className="px-2 py-1.5 text-right">
                   {int.format(r.configuratorVisits)}{" "}
                   <span className="text-muted-foreground">({rate(r.configuratorVisits, r.visits)})</span>
@@ -674,9 +679,80 @@ export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: 
           </tbody>
         </table>
       </div>
+    </>
+  );
+}
+
+/** Presentational: visits by channel, the funnel per channel, and the same per platform. */
+export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: Annotation[] }) {
+  const [credit, setCredit] = useState<Credit>("last");
+  const counted = <T extends { orders: number; revenue: number; firstOrders: number; firstRevenue: number }>(r: T) =>
+    credit === "first" ? { orders: r.firstOrders, revenue: r.firstRevenue } : { orders: r.orders, revenue: r.revenue };
+  const channels: FunnelLine[] = mix.funnel.map((r) => ({
+    key: r.channel,
+    label: CHANNEL_LABELS[r.channel],
+    visits: r.visits,
+    configuratorVisits: r.configuratorVisits,
+    ...counted(r),
+  }));
+  const platforms: FunnelLine[] = mix.platforms.map((r) => ({
+    key: `${r.platform}:${r.channel}`,
+    label: r.platform,
+    via: CHANNEL_LABELS[r.channel],
+    visits: r.visits,
+    configuratorVisits: r.configuratorVisits,
+    ...counted(r),
+  }));
+
+  return (
+    <div className="space-y-4">
+      <ChannelMixVisx buckets={mix.buckets} granularity={mix.granularity} annotations={annotations} />
+      {mix.aiSources.length ? (
+        <div className="text-xs text-muted-foreground">
+          AI assistants:{" "}
+          {mix.aiSources.map((a, i) => (
+            <span key={a.source}>
+              {i ? " · " : null}
+              <span className="text-foreground">{a.source}</span> {int.format(a.visits)} visits
+              {a.orders ? `, ${int.format(a.orders)} orders` : null}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground">
+          {credit === "first"
+            ? "Orders are counted for where the shopper first came from."
+            : "Orders are counted for the visit that paid."}
+        </div>
+        <Tabs value={credit} onValueChange={(v) => setCredit(v === "first" ? "first" : "last")}>
+          <TabsList>
+            <TabsTrigger value="last">Visit that paid</TabsTrigger>
+            <TabsTrigger value="first">First visit</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      <FunnelTable heading="Channel" rows={channels} totalVisits={mix.totalVisits} />
+      <div className="space-y-2">
+        <div>
+          <h4 className="text-sm font-medium">By platform</h4>
+          <div className="text-xs text-muted-foreground">
+            Google, Instagram, TikTok and the rest, split by how the visit came: an ad, a search, or a post or profile link.
+          </div>
+        </div>
+        {platforms.length ? (
+          <FunnelTable heading="Platform" rows={platforms} totalVisits={mix.totalVisits} />
+        ) : (
+          <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+            No visit in this period named a platform.
+          </p>
+        )}
+      </div>
       <div className="text-xs text-muted-foreground">
         From first-party visit tracking (since Jul 2026). AI apps often send no referrer, so those visits count as Direct:
-        read the AI assistant figure as a minimum. Orders are last-touch: the visit that paid.
+        read the AI assistant figure as a minimum. An Instagram or Facebook ad counts as Paid only when its link is tagged
+        with a paid medium; Google and TikTok ads are recognised on their own. A first visit is the earliest we can tie to
+        the shopper, which is the same browser, or another one where they gave the same email.
       </div>
     </div>
   );

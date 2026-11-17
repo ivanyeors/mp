@@ -37,6 +37,7 @@ export const SECTION_TYPE_LABELS: Record<string, string> = {
   shop_cta: "Shop CTA banner",
   faq: "Page FAQs",
   delivery_estimator: "Delivery estimator",
+  tiktok_videos: "TikTok videos",
 };
 
 export function sectionTitle(section: Pick<LandingSection, "slug">): string {

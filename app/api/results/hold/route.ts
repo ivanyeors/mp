@@ -14,7 +14,7 @@ import { actingProfile } from "@/lib/staff/working-as";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
-import { recordBoxConsentByEmail } from "@/lib/marketing-consent/consent";
+import { customerForCustomisation } from "@/lib/crm/customisation-customer";
 import { sendTelegram, type TelegramStatus } from "@/lib/telegram/notify";
 import { renderOnlineResultHeld } from "@/lib/crm/telegram-updates";
 import { isOnlineResultNoticeOn } from "@/lib/crm/telegram-updates-server";
@@ -64,6 +64,7 @@ import {
   type ResultCouponTerms,
 } from "@/lib/results/discount";
 import { VISITOR_COOKIE, parseVisitorId } from "@/lib/analytics/journey/identity";
+import { stitchShopperVisitor } from "@/lib/analytics/journey/stitch-server";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
 import { getSiteSettings } from "@/lib/site-settings";
 import { SLA_SETTING_KEYS, parseSlaSettings } from "@/lib/sla-reminders";
@@ -1221,11 +1222,27 @@ export async function POST(req: Request) {
     }
   }
 
-  // The marketing email box (ADR 0039): the email typed on the contact step,
-  // so on a Staff member's device it is the shopper's, never the Staff login's.
-  // Subscribes a Customer nobody has asked, never one who unsubscribed, and
-  // never stops the hold.
-  await recordBoxConsentByEmail(admin, input.email, input.marketingEmail === true, "customisation");
+  // The email typed on the contact step is a Customer, ticked or not (ADR
+  // 0051): on a Staff member's device it is the shopper's, never the Staff
+  // login's. A Customer it matches is left as it is. The marketing email box
+  // (ADR 0039) subscribes a Customer nobody has asked, never one who
+  // unsubscribed. Never stops the hold.
+  await customerForCustomisation(
+    admin,
+    {
+      email: input.email,
+      name: typeof input.measurements?.name === "string" ? input.measurements.name : null,
+      phone: phoneNormalized,
+    },
+    input.marketingEmail === true,
+  );
+
+  // This browser's Visits belong to the shopper who just gave this email
+  // (ADR 0007). Not an Assisted customisation, whose device is Staff's, and
+  // never on a Staff or Partner session. Never stops the hold.
+  if (!input.deferred) {
+    await stitchShopperVisitor(admin, req, { email: input.email, customerId });
+  }
 
   // No inventory reserve or deduct on hold (US36).
 

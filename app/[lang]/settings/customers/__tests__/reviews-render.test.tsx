@@ -164,6 +164,7 @@ const DATA: CustomerReviewsData = {
       how: "suggestion",
       linkedAt: "2026-11-05T02:00:00.000Z",
       linkedBy: "Jess",
+      answer: { draft: null, posted: "Thank you, Jane.", url: null, urlIsReview: false, canMarkReplied: false },
     },
   ],
   shop: [{ id: "s1", rating: 4, product: "Premium Mpillow", status: "pending", createdAt: "2026-10-28T02:00:00.000Z" }],
@@ -217,5 +218,65 @@ describe("the Reviews card", () => {
     expect(html).toContain("No shop reviews.");
     expect(html).toContain("Not asked.");
     expect(body({ ...DATA, request: { ...DATA.request!, clickedAt: null, clickCount: 0 } }, true)).toContain("· not clicked");
+  });
+});
+
+// PRD-customer-page-journey slice 03: answer a Linked Google review from here.
+describe("answering a Linked Google review", () => {
+  const waiting = (answer: Partial<CustomerReviewsData["google"][number]["answer"]> = {}): CustomerReviewsData => ({
+    ...DATA,
+    google: [
+      {
+        ...DATA.google[0]!,
+        rating: 1,
+        reply: "waiting",
+        answer: {
+          draft: "Jane, I am sorry. Please message us on WhatsApp at +65 8780 5311.",
+          posted: null,
+          url: "https://maps.google.com/review/abc",
+          urlIsReview: true,
+          canMarkReplied: true,
+          ...answer,
+        },
+      },
+    ],
+  });
+
+  it("shows the reply on record, to everyone, with nothing to press", () => {
+    const html = body(DATA, false);
+    expect(html).toContain("Our reply");
+    expect(html).toContain("Thank you, Jane.");
+    expect(html).not.toContain("Copy reply");
+  });
+
+  it("suggests nothing until Staff ask: one button, and the review on Google", () => {
+    const html = body(waiting(), true);
+    expect(html).toContain("Generate reply suggestion");
+    expect(html).toContain("Nothing is drafted until you ask.");
+    expect(html).toContain("Open this review on Google");
+    expect(html).toContain('href="https://maps.google.com/review/abc"');
+    expect(html).toContain('target="_blank"');
+    // The draft the Telegram card holds is not shown, copied or marked before the press.
+    expect(html).not.toContain("Jane, I am sorry.");
+    for (const control of ["Copy reply", "Mark replied", "Generate again", "<textarea"]) expect(html, control).not.toContain(control);
+  });
+
+  it("offers the same button when no draft exists yet", () => {
+    const html = body(waiting({ draft: null }), true);
+    expect(html).toContain("Generate reply suggestion");
+    expect(html).not.toContain("Copy reply");
+    expect(html).not.toContain("Mark replied");
+  });
+
+  it("says so when the link opens the list, not the review", () => {
+    const html = body(waiting({ url: "https://search.google.com/local/reviews?placeid=x", urlIsReview: false }), true);
+    expect(html).toContain("Open our reviews on Google");
+  });
+
+  it("shows a view-only role none of it", () => {
+    const html = body(waiting(), false);
+    for (const control of ["Generate reply suggestion", "Suggested reply", "Copy reply", "Open this review on Google", "Mark replied"]) {
+      expect(html, control).not.toContain(control);
+    }
   });
 });

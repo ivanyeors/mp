@@ -3,12 +3,13 @@ import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 /**
- * The marketing email box on a customisation's contact step
- * (PRD-campaign-audiences slice 02; ADR 0039). The hold records it for the
- * email typed on the form, as `customisation`, once a Paired build included,
- * and only once every gate has passed. Same in-memory harness as
- * telegram-switch.test.ts; the consent write itself is
- * lib/marketing-consent/__tests__/box-consent.test.ts's.
+ * The email and the marketing email box on a customisation's contact step
+ * (PRD-campaign-audiences slice 02; ADR 0039, 0051). The hold makes the email
+ * typed on the form a Customer, ticked or not, with its name and mobile, and
+ * records the box with it, once a Paired build included, and only once every
+ * gate has passed. Same in-memory harness as telegram-switch.test.ts; finding
+ * or creating the Customer and the consent write are
+ * lib/crm/__tests__/customisation-customer.test.ts's.
  */
 
 const h = vi.hoisted(() => ({
@@ -23,7 +24,7 @@ const h = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   total: 200,
   fetch: vi.fn(),
-  recordBoxConsentByEmail: vi.fn(),
+  customerForCustomisation: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -144,7 +145,7 @@ vi.mock("@/lib/rules-engine", () => ({
   toPersistedRecommendationRecord: vi.fn(),
 }));
 
-vi.mock("@/lib/marketing-consent/consent", () => ({ recordBoxConsentByEmail: h.recordBoxConsentByEmail }));
+vi.mock("@/lib/crm/customisation-customer", () => ({ customerForCustomisation: h.customerForCustomisation }));
 
 const { POST } = await import("@/app/api/results/hold/route");
 
@@ -208,12 +209,13 @@ beforeEach(() => {
   h.requireAnyAdmin.mockResolvedValue(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
   h.createHoldCheckout.mockResolvedValue({ sessionId: "cs_1", url: "https://stripe.test/cs_1" });
   h.sendEmail.mockResolvedValue(undefined);
-  h.recordBoxConsentByEmail.mockResolvedValue(undefined);
+  h.customerForCustomisation.mockResolvedValue("c-1");
   h.fetch.mockResolvedValue(new Response("{}"));
   vi.stubGlobal("fetch", h.fetch);
 });
 
-const consentCalls = () => h.recordBoxConsentByEmail.mock.calls.map(([, email, ticked, source]) => ({ email, ticked, source }));
+const consentCalls = () =>
+  h.customerForCustomisation.mock.calls.map(([, contact, ticked]) => ({ email: contact.email, ticked, source: "customisation" }));
 
 describe("POST /api/results/hold — the marketing email box", () => {
   it("ticked: records it for the email typed, as customisation", async () => {
@@ -235,7 +237,7 @@ describe("POST /api/results/hold — the marketing email box", () => {
   it("reads the box only as a boolean", async () => {
     const res = await post({ marketingEmail: "yes" });
     expect(res.status).toBe(400);
-    expect(h.recordBoxConsentByEmail).not.toHaveBeenCalled();
+    expect(h.customerForCustomisation).not.toHaveBeenCalled();
   });
 
   it("asks once for a Paired build, on the anchor", async () => {
@@ -259,10 +261,20 @@ describe("POST /api/results/hold — the marketing email box", () => {
     expect(consentCalls()).toEqual([{ email: "shopper@x.test", ticked: true, source: "customisation" }]);
   });
 
+  it("makes the email a Customer with the name and mobile given, ticked or not (ADR 0051)", async () => {
+    const res = await post({ marketingEmail: false, measurements: { name: "Ada Lim" } });
+    expect(res.status).toBe(200);
+    expect(h.customerForCustomisation).toHaveBeenCalledWith(
+      expect.anything(),
+      { email: "owner@x.test", name: "Ada Lim", phone: "+6591234567" },
+      false,
+    );
+  });
+
   it("records nothing for a hold that is refused", async () => {
     h.rows.set(ID, { ...heldRow, status: "assigned" });
     const res = await post({ marketingEmail: true });
     expect(res.status).toBe(409);
-    expect(h.recordBoxConsentByEmail).not.toHaveBeenCalled();
+    expect(h.customerForCustomisation).not.toHaveBeenCalled();
   });
 });

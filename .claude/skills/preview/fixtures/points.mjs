@@ -73,6 +73,10 @@ export default function points({ now }) {
           email: "mei.tan@example.test",
           first_name: "Mei",
           last_name: "Tan",
+          // The mobile on her fitting record (fittings.mjs): the Customer page's WhatsApp and Call buttons need one.
+          phone: "9123 0007",
+          locale: "en-US",
+          tags: ["side sleeper"],
           marketing_email: "subscribed",
           total_orders: 2,
           total_spent: 379,

@@ -6,6 +6,10 @@
 // Every name, address and code here is made up.
 
 export const PARTNER = { id: "00000000-0000-4000-8000-000000000003", email: "partner@preview.local" };
+// A clinic whose application is still under review, with the listing it sent
+// (logo + write-up): `preview shoot --as applicant@preview.local /partner` shows
+// the under-review screen, and Settings → Partner applications lists it.
+export const APPLICANT = { id: "00000000-0000-4000-8000-000000000004", email: "applicant@preview.local" };
 
 const P = {
   alignwell: "00000000-0000-4000-8000-0000000a0001",
@@ -61,8 +65,15 @@ export default function partners({ now }) {
     referral_code: "TRANQUIL",
   });
 
+  // The fake Supabase serves every public storage object as a grey square.
+  const storage = `http://127.0.0.1:${process.env.PREVIEW_SUPABASE_PORT ?? 54329}`;
+  const appliedAt = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString();
+
   return {
-    users: [{ ...PARTNER, last_sign_in_at: now.toISOString(), user_metadata: { full_name: "Preview Partner" } }],
+    users: [
+      { ...PARTNER, last_sign_in_at: now.toISOString(), user_metadata: { full_name: "Preview Partner" } },
+      { ...APPLICANT, last_sign_in_at: now.toISOString(), user_metadata: { full_name: "Preview Applicant" } },
+    ],
     tables: {
       partners: [
         row({
@@ -137,6 +148,32 @@ export default function partners({ now }) {
           backup_email_verified: false,
           created_at: at,
           updated_at: at,
+        },
+        {
+          id: "00000000-0000-4000-8000-0000000b0002",
+          auth_user_id: APPLICANT.id,
+          partner_id: null,
+          email: APPLICANT.email,
+          application_status: "pending",
+          questionnaire: {
+            companyName: "Meadowbrook Physio & Pilates",
+            uen: "202412345K",
+            website: "meadowbrook-physio.example",
+            category: "physio",
+            contactName: "Dana Lim",
+            contactMobile: "91234567",
+            businessEmail: "hello@meadowbrook-physio.example",
+            introPlan: "We'd fit clients after neck and shoulder assessments and keep a demo pillow at the front desk.",
+            description:
+              "Physiotherapy and clinical pilates for neck, shoulder and back pain, with posture assessments for desk workers.",
+            logoUrl: `${storage}/storage/v1/object/public/media/partner-logos/applicants/${APPLICANT.id}/meadowbrook.webp`,
+          },
+          agreed_version: "2026-07-28",
+          agreed_at: appliedAt,
+          backup_email: null,
+          backup_email_verified: false,
+          created_at: appliedAt,
+          updated_at: appliedAt,
         },
       ],
     },

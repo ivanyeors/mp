@@ -81,6 +81,15 @@ describe('TabsList variant="line"', () => {
     expect(tabs).toMatch(/cn\(TABS_TRIGGER\[variant\], className\)/);
   });
 
+  it("has a larger size for page-level sections, which keeps the row's guards", () => {
+    // PRD-customer-page-journey slice 01: 48px, 16px semibold, a 3px underline.
+    expect(tabs).toMatch(/TABS_LIST_ROW_LG\s*=\s*"[^"]*h-12[^"]*"/);
+    expect(tabs).toMatch(/TABS_TRIGGER_LG\s*=\s*\n?\s*"[^"]*text-base font-semibold[^"]*after:h-\[3px\][^"]*"/);
+    // The size rides in on `className`, ahead of the guard, and only for `line`.
+    expect(tabs).toMatch(/const large = variant === "line" && size === "lg"/);
+    expect(tabs).not.toMatch(/TABS_(LIST_ROW|TRIGGER|LIST_SUMMARY)_LG\s*=\s*\n?\s*"[^"]*(flex-wrap|overflow-x-auto|bg-muted|shadow-sm)/);
+  });
+
   it("never fills, boxes or shadows the active tab", () => {
     for (const src of [row, summary, trigger]) {
       expect(src).not.toMatch(/bg-muted|bg-background|bg-input|border-input|shadow-sm|rounded-lg|\bp-1\b/);

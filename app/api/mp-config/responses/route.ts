@@ -15,13 +15,14 @@ import {
 } from "@/lib/discovery-source";
 import { getAdminContext, requireAnyAdmin } from "@/lib/auth/admin";
 import { getStaffByAssistCode } from "@/lib/assist-link";
-import { recordBoxConsentByEmail } from "@/lib/marketing-consent/consent";
+import { customerForCustomisation } from "@/lib/crm/customisation-customer";
 import { requireResultAccess } from "@/lib/results/access";
 import { clientIp, rateLimitExceeded } from "@/lib/rate-limit";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
 import { sizingPhotosForTelegram } from "@/lib/results/sizing-photos";
 import { getPublicOrigin } from "@/lib/site-url";
+import { stitchShopperVisitor } from "@/lib/analytics/journey/stitch-server";
 import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 
 export const runtime = "nodejs";
@@ -497,11 +498,33 @@ export async function POST(req: Request) {
   const { error } = await admin.from("mp_config_responses").upsert(row, { onConflict: "id" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // The marketing box beside the first question's email (ADR 0039, 0049):
-  // recorded once the Draft carrying that email is saved, for that email.
-  // Subscribes only someone nobody has asked, and never fails the save.
+  // The email is a Customer, ticked or not (ADR 0051): found, or a new Lead.
+  // The marketing box beside it (ADR 0039, 0049) is recorded with it, for that
+  // email, and subscribes only someone nobody has asked. Never fails the save.
   if (draftEmail) {
-    await recordBoxConsentByEmail(admin, draftEmail, parsed.data.marketingEmail === true, "customisation");
+    await customerForCustomisation(
+      admin,
+      { email: draftEmail, name: parsed.data.data.name },
+      parsed.data.marketingEmail === true,
+    );
+    // The earliest a guest names themselves: this browser's Visits, and the
+    // Entry source of the first, are theirs from here (ADR 0007). Never on a
+    // Staff or Partner device, and never fails the save.
+    await stitchShopperVisitor(admin, req, { email: draftEmail });
+  }
+
+  // *Save without purchasing*: the contact typed on the preview is a Customer
+  // too (ADR 0051), with the box shown beside it, as at the hold.
+  if (persistContact && typeof row.customer_email === "string") {
+    await customerForCustomisation(
+      admin,
+      {
+        email: row.customer_email,
+        name: parsed.data.data.name,
+        phone: typeof row.customer_phone === "string" ? row.customer_phone : null,
+      },
+      parsed.data.marketingEmail === true,
+    );
   }
 
   // Optional Telegram notify when a response is marked final (only on the first transition to final).

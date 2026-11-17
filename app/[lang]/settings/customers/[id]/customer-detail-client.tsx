@@ -4,35 +4,26 @@ import { useEffect, useState, useCallback, useRef, type ReactNode } from "react"
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-    User,
-    Mail,
-    Phone,
-    MapPin,
-    Plus,
-    Save,
-    Loader2,
+    BedDouble,
     ChevronLeft,
-    ShoppingCart,
-    DollarSign,
-    Clock,
-    Package,
-    CalendarCheck,
-    Globe,
-    type LucideIcon,
+    Gift,
+    KeyRound,
+    ListTodo,
+    Loader2,
+    MapPin,
+    Pencil,
+    Plus,
+    Route,
+    Save,
+    Search,
+    SlidersHorizontal,
+    Star,
+    StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
 import {
     Dialog,
     DialogContent,
@@ -41,32 +32,37 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import type { Customer, CustomerAddress, Order, OrderStatus } from "@/lib/types/ecommerce";
+import type { Customer, CustomerAddress } from "@/lib/types/ecommerce";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
-import { orderStatusLabel } from "@/lib/shop/order-display";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { toast } from "sonner";
 import { changedCustomerFields } from "@/lib/crm/customer-patch";
 import type { CustomerNote } from "@/lib/crm/note-rules";
-import { CustomerNotesCard, type CustomerNotesViewer } from "./customer-notes-card";
-import { CustomerTimelineCard } from "./customer-timeline-card";
 import type { MigratedCustomerResult } from "@/lib/customer-migration/overview";
-import { ContactCard, FromShopifyCard } from "./customer-account-cards";
+import { ContactCard, SignInFacts, signInSummary } from "./customer-account-cards";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { AftercareCard } from "./aftercare-card";
 import { MarketingConsentCard } from "./marketing-consent-card";
 import { PointsCard } from "./points-card";
-import { CustomerFollowUpsCard } from "./customer-followups-card";
+import { CustomerEntryCard } from "./customer-entry-card";
+import type { CustomerEntryResult } from "@/lib/crm/customer-entry";
 import { CustomerReviewsCard } from "./customer-reviews-card";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import { CustomerPillowCard } from "./customer-pillow-card";
 import { CreateOrderDialog } from "./create-order-dialog";
+import { CustomerJourney, type JourneyViewer } from "./customer-journey";
+import type { ComposerMode } from "./journey-composer";
+import { CallButton, CopyButton, CustomerShortcutsProvider, EmailButton, WhatsAppButton } from "./customer-shortcuts";
+import { RailRow, RailRows } from "./rail-rows";
 import type { CustomerPillowResult } from "@/lib/customer-pillow/view";
 import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import type { CustomerUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
 import type { NextStep } from "@/lib/crm/next-step";
+import { LIFECYCLE_STAGE_LABEL } from "@/lib/crm/lifecycle-stage";
+import { parseCustomerTab, type CustomerTab } from "@/lib/crm/customer-tabs";
 import { LifecycleStageBadge, UNENGAGED_TITLE, lifecycleNote } from "../lifecycle-stage-badge";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -80,36 +76,6 @@ function formatSGD(amount: number): string {
 
 function formatDate(dateStr: string): string {
     return formatAdminDateMY(dateStr);
-}
-
-type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
-
-function orderStatusBadgeVariant(status: OrderStatus): BadgeVariant {
-    switch (status) {
-        case "pending":
-            return "secondary";
-        case "confirmed":
-            return "default";
-        case "cancelled":
-            return "destructive";
-        case "refunded":
-            return "outline";
-        default:
-            return "default";
-    }
-}
-
-function orderStatusBadgeClass(status: OrderStatus): string {
-    switch (status) {
-        case "processing":
-            return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
-        case "shipped":
-            return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800";
-        case "delivered":
-            return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800";
-        default:
-            return "";
-    }
 }
 
 // ─── Address form initial state ───────────────────────────────────────────────
@@ -136,7 +102,7 @@ export type CustomerDetailInitialData = {
     customer: CustomerDetailResponse;
     /** The Customer's notes, or null when the server could not read them. */
     notes: CustomerNote[] | null;
-    /** What the Shopify import holds for them (migration slice 12): the From Shopify card. */
+    /** What the Shopify import holds for them (migration slice 12): shown on the Journey, in the import's chapter. */
     migration?: MigratedCustomerResult;
     /** WhatsApp and the other numbers seen, matched by phone on the server (CRM slice 11). */
     contact?: ContactFactsResult;
@@ -150,6 +116,8 @@ export type CustomerDetailInitialData = {
     fittings?: CustomerFittingsResult;
     /** Their pillow, drawn in the x-ray (ADR 0042 j); null when it could not be read. */
     pillow?: CustomerPillowResult;
+    /** How they found us: first Visit's Entry source, and their own answer. A failed read says so on the card. */
+    entry?: CustomerEntryResult;
 };
 
 const emptyAddress: AddressFormState = {
@@ -172,21 +140,25 @@ export function CustomerDetailClient({
     canImport = false,
     canCreateOrder = false,
     viewer,
+    initialTab = "journey",
 }: {
     initialData?: CustomerDetailInitialData;
     /**
      * Holds `customers-edit` (CRM slice 10). Without it every edit control is
      * left out and the fields read as text; the write routes refuse regardless.
-     * The same flag lets the Notes card add and delete notes, and the
-     * Follow-ups card add, complete, reassign and delete follow-ups.
+     * The same flag shows the Journey's composer and the buttons on its
+     * entries: add and delete notes; add, complete, reassign and delete
+     * follow-ups; draft a message; answer a review.
      */
     canEdit: boolean;
-    /** Holds `customer-import`: the From Shopify card links its batch in the import history. */
+    /** Holds `customer-import`: the From Shopify facts link their batch in the import history. */
     canImport?: boolean;
     /** Holds `orders`: Create order makes a Staff order for them, paid by link (ADR 0048). */
     canCreateOrder?: boolean;
     /** Who is looking: decides which notes they may delete (CRM 02). */
-    viewer: Omit<CustomerNotesViewer, "canEdit">;
+    viewer: JourneyViewer;
+    /** `?tab=` as the server read it, so a link opens on its tab with no flash. */
+    initialTab?: CustomerTab;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -205,12 +177,16 @@ export function CustomerDetailClient({
     const [loading, setLoading] = useState(!initialData);
 
     // The RSC page already read the customer — skip that mount fetch once. The
-    // orders and addresses fetches still run on mount as before.
+    // addresses fetch still runs on mount as before.
     const hydratedFromServer = useRef(Boolean(initialData));
 
-    // Orders
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [ordersLoading, setOrdersLoading] = useState(true);
+    // Which section is open, the composer's mode, and the Journey's cue to read again.
+    const [tab, setTab] = useState<CustomerTab>(initialTab);
+    const [composerMode, setComposerMode] = useState<ComposerMode>("note");
+    const [composerFocus, setComposerFocus] = useState(0);
+    const [journeyReload, setJourneyReload] = useState(0);
+    const [reviewCount, setReviewCount] = useState<number | null>(null);
+    const [editing, setEditing] = useState(false);
 
     // Addresses
     const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -260,21 +236,6 @@ export function CustomerDetailClient({
         }
     }, [customerId]);
 
-    const fetchOrders = useCallback(async () => {
-        setOrdersLoading(true);
-        try {
-            const res = await fetch(
-                `/api/shop/orders?customer_id=${customerId}&limit=50`
-            );
-            const json = await res.json();
-            setOrders(json.rows ?? []);
-        } catch {
-            setOrders([]);
-        } finally {
-            setOrdersLoading(false);
-        }
-    }, [customerId]);
-
     const fetchAddresses = useCallback(async () => {
         setAddressesLoading(true);
         try {
@@ -296,12 +257,11 @@ export function CustomerDetailClient({
         } else {
             fetchCustomer();
         }
-        fetchOrders();
         fetchAddresses();
-    }, [fetchCustomer, fetchOrders, fetchAddresses]);
+    }, [fetchCustomer, fetchAddresses]);
 
     // Sends only the fields that changed; an empty name or phone clears it.
-    // Notes save on their own, from the Notes card.
+    // Notes save on their own, from the Journey's composer.
     const saveChanges = async () => {
         if (!customer) return;
         const { after } = changedCustomerFields(customer, {
@@ -333,6 +293,7 @@ export function CustomerDetailClient({
             setLastName(row.last_name ?? "");
             setPhone(row.phone ?? "");
             setTags(row.tags ?? []);
+            setEditing(false);
             toast.success("Saved");
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Couldn't save the customer.");
@@ -399,662 +360,531 @@ export function CustomerDetailClient({
 
     const note = lifecycle ? lifecycleNote(lifecycle, { unsubscribeReason: initialData?.unsubscribeReason?.reason ?? null }) : null;
 
-    // Stats and columns follow the width the page has, not the window (a
+    // The open tab is kept in the address without a navigation, so the page
+    // is not read again and a copied link opens where the Staff member was.
+    const changeTab = (value: string) => {
+        const next = parseCustomerTab(value);
+        setTab(next);
+        const url = new URL(window.location.href);
+        if (next === "journey") url.searchParams.delete("tab");
+        else url.searchParams.set("tab", next);
+        window.history.replaceState(window.history.state, "", url);
+    };
+
+    /** Opens the Journey on the composer in `mode`, with the cursor in its field. */
+    const compose = (mode: ComposerMode) => {
+        changeTab("journey");
+        setComposerMode(mode);
+        setComposerFocus((n) => n + 1);
+        // After the tab has shown: the composer is not laid out while its tab is hidden.
+        requestAnimationFrame(() => document.getElementById("composer")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    };
+
+    const cancelEdit = () => {
+        setFirstName(customer.first_name ?? "");
+        setLastName(customer.last_name ?? "");
+        setPhone(customer.phone ?? "");
+        setTags(customer.tags ?? []);
+        setTagInput("");
+        setEditing(false);
+    };
+
+    const fittings = initialData?.fittings;
+    const hasPillowSection =
+        initialData?.pillow !== undefined || fittings === null || (Array.isArray(fittings) && fittings.length > 0);
+
+    const editForm = (
+        <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                    <Label htmlFor="first-name">First name</Label>
+                    <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                    <Label htmlFor="last-name">Last name</Label>
+                    <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                </div>
+            </div>
+            <div className="space-y-1.5">
+                <Label htmlFor="phone">
+                    Mobile <span className="text-muted-foreground font-normal">(optional)</span>
+                </Label>
+                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+65…" />
+            </div>
+            <div className="space-y-2">
+                <p className="text-sm font-medium">Tags</p>
+                {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 max-md:gap-2">
+                        {tags.map((tag) => (
+                            // The whole tag removes it: a 44px chip on a phone.
+                            <Badge
+                                key={tag}
+                                variant="secondary"
+                                className="cursor-pointer group pr-1.5 transition-colors active:bg-press max-md:min-h-11 max-md:px-3 max-md:text-sm"
+                                onClick={() => removeTag(tag)}
+                                title="Click to remove"
+                            >
+                                {tag}
+                                <span className="ml-1 text-xs leading-none opacity-100">×</span>
+                            </Badge>
+                        ))}
+                    </div>
+                )}
+                <div className="flex gap-2">
+                    <Input
+                        placeholder="Add a tag…"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                addTag();
+                            }
+                        }}
+                        className="flex-1"
+                    />
+                    <Button size="sm" variant="outline" onClick={addTag} disabled={!tagInput.trim()} aria-label="Add tag">
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+            <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={cancelEdit} disabled={saving}>
+                    Cancel
+                </Button>
+                <Button className="flex-1" onClick={saveChanges} disabled={saving}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save changes
+                </Button>
+            </div>
+        </div>
+    );
+
+    // The numbers and columns follow the width the page has, not the window (a
     // container query), so a collapsed sidebar counts.
     return (
-        <div className="@container space-y-4 md:space-y-6">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" asChild className="max-md:hidden">
-                    <Link href={to("/settings/customers")}>
-                        <ChevronLeft className="mr-1 h-4 w-4" />
-                        Customers
-                    </Link>
-                </Button>
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="text-2xl font-semibold tracking-tight">{displayName}</h1>
-                        {lifecycle ? (
-                            <LifecycleStageBadge stage={lifecycle.lifecycle_stage} undated={lifecycle.lifecycle_undated} />
-                        ) : null}
-                        {note ? (
-                            <span className="text-xs text-muted-foreground" title={lifecycle?.unengaged ? UNENGAGED_TITLE : undefined}>
-                                {note}
-                            </span>
-                        ) : null}
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                        Customer since {formatDate(customer.created_at)}
-                    </p>
-                </div>
-            </div>
-
-            {/* PRD-crm-retention-loop slice 05: what now. Nothing due, no line. */}
-            {initialData?.nextStep ? (
-                <div
-                    role="note"
-                    aria-label="Next step"
-                    className="flex flex-col gap-2 rounded-lg border border-dashed px-4 py-3 text-sm sm:flex-row sm:items-center sm:gap-3"
-                >
-                    <p className="min-w-0 flex-1">
-                        <span className="font-medium">Next step</span>{" "}
-                        <span className="text-muted-foreground">{initialData.nextStep.text}</span>
-                    </p>
-                    {initialData.nextStep.addFollowUp && canEdit ? (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="self-start sm:self-auto"
-                            onClick={() => {
-                                document.getElementById("follow-ups")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                document.getElementById("followup-title")?.focus({ preventScroll: true });
-                            }}
-                        >
-                            Add a follow-up
+        <CustomerShortcutsProvider
+            customerId={customer.id}
+            email={customer.email}
+            phone={customer.phone ?? null}
+            canLog={canEdit}
+            onLogged={() => setJourneyReload((n) => n + 1)}
+        >
+            <div className="@container space-y-4 md:space-y-6">
+                {/* Header: who they are, the numbers, and the ways to act */}
+                <div className="flex flex-col gap-3 @3xl:flex-row @3xl:items-start @3xl:justify-between">
+                    <div className="flex min-w-0 items-start gap-4">
+                        <Button variant="ghost" size="sm" asChild className="max-md:hidden">
+                            <Link href={to("/settings/customers")}>
+                                <ChevronLeft className="mr-1 h-4 w-4" />
+                                Customers
+                            </Link>
                         </Button>
-                    ) : null}
-                </div>
-            ) : null}
-
-            {/* Stats: one strip across the page, so the columns below hold only cards */}
-            <Card className="py-4">
-                <CardContent>
-                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 @xl:grid-cols-3 @5xl:grid-cols-6">
-                        {lifecycle ? (
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className="text-2xl font-semibold tracking-tight">{displayName}</h1>
+                                {lifecycle ? (
+                                    <LifecycleStageBadge stage={lifecycle.lifecycle_stage} undated={lifecycle.lifecycle_undated} />
+                                ) : null}
+                                {note ? (
+                                    <span className="text-xs text-muted-foreground" title={lifecycle?.unengaged ? UNENGAGED_TITLE : undefined}>
+                                        {note}
+                                    </span>
+                                ) : null}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                                Customer since {formatDate(customer.created_at)}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 @3xl:justify-end">
+                        <EmailButton size="default" />
+                        <WhatsAppButton size="default" />
+                        {canEdit ? (
                             <>
-                                <Stat
-                                    icon={Package}
-                                    label="Purchases"
-                                    title="Paid orders with a product on them, Shopify-era orders included. A re-adjustment fee is not one."
-                                >
-                                    {lifecycle.purchases}
-                                </Stat>
-                                <Stat
-                                    icon={CalendarCheck}
-                                    label="Bookings attended"
-                                    title="Re-adjustment bookings they came in for, including ones booked from the check-up reminder."
-                                >
-                                    {lifecycle.attended_bookings}
-                                </Stat>
-                                <Stat
-                                    icon={Clock}
-                                    label="Last purchase"
-                                    title={
-                                        lifecycle.last_purchase_dated_by_fitting
-                                            ? "A Shopify-era purchase, dated by their latest fitting record: the in-store visit such an order almost always was."
-                                            : undefined
-                                    }
-                                >
-                                    {lifecycle.last_purchase_at ? (
-                                        <>
-                                            {formatDate(lifecycle.last_purchase_at)}
-                                            {lifecycle.last_purchase_dated_by_fitting ? (
-                                                <span className="block text-xs font-normal text-muted-foreground">
-                                                    Fitting, on Shopify
-                                                </span>
-                                            ) : null}
-                                        </>
-                                    ) : lifecycle.lifecycle_undated ? (
-                                        "On Shopify"
-                                    ) : (
-                                        "None"
-                                    )}
-                                </Stat>
-                                <Stat icon={Clock} label="Last booking">
-                                    {lifecycle.last_readjusted_at ? formatDate(lifecycle.last_readjusted_at) : "None"}
-                                </Stat>
+                                <Button variant="outline" onClick={() => compose("note")}>
+                                    <StickyNote className="h-4 w-4" />
+                                    Note
+                                </Button>
+                                <Button variant="outline" onClick={() => compose("followup")}>
+                                    <ListTodo className="h-4 w-4" />
+                                    Follow-up
+                                </Button>
                             </>
                         ) : null}
-                        <Stat icon={ShoppingCart} label="Total orders">
-                            {customer.total_orders}
-                        </Stat>
-                        <Stat icon={DollarSign} label="Total spent">
-                            {formatSGD(customer.total_spent)}
-                        </Stat>
-                    </dl>
-                </CardContent>
-            </Card>
+                        {canCreateOrder ? (
+                            <Button onClick={() => setCreateOrderOpen(true)}>
+                                <Plus className="h-4 w-4" />
+                                Create order
+                            </Button>
+                        ) : null}
+                    </div>
+                </div>
 
-            {/*
-              The cards in three groups: who they are, what happened, and the
-              relationship since. One column; then what happened beside the
-              other two, stacked; then all three side by side. `auto 1fr` rows
-              keep the stacked pair together however long the timeline runs.
-            */}
-            <div className="grid grid-cols-1 items-start gap-4 md:gap-6 @3xl:grid-cols-5 @3xl:grid-rows-[auto_1fr] @5xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)] @5xl:grid-rows-1">
-                {/* ── Who they are: details, contact, addresses, where the record came from ── */}
-                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-2 @3xl:col-start-4 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-1">
-                    {/* Info Card: details and tags, saved together. Notes save on their own. */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                Customer info
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {canEdit ? (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="first-name">First name</Label>
-                                        <Input
-                                            id="first-name"
-                                            value={firstName}
-                                            onChange={(e) => setFirstName(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="last-name">Last name</Label>
-                                        <Input
-                                            id="last-name"
-                                            value={lastName}
-                                            onChange={(e) => setLastName(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-sm font-medium">
-                                    {[firstName, lastName].filter(Boolean).join(" ") || "—"}
-                                </p>
-                            )}
-                            <div className="space-y-1 text-sm">
-                                <div className="flex items-center gap-1.5 text-muted-foreground py-1">
-                                    <Mail className="h-3.5 w-3.5 shrink-0" />
-                                    <span className="truncate">{customer.email}</span>
-                                </div>
-                            </div>
-                            {canEdit ? (
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="phone">
-                                        Phone{" "}
-                                        <span className="text-muted-foreground font-normal">
-                                            (optional)
-                                        </span>
-                                    </Label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                                        <Input
-                                            id="phone"
-                                            value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            className="pl-9"
-                                            placeholder="+60…"
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                                    <Phone className="h-3.5 w-3.5 shrink-0" />
-                                    <span>{phone || "No phone"}</span>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Globe className="h-3.5 w-3.5" />
-                                <span>Locale: {customer.locale}</span>
-                            </div>
-                            <div className="space-y-2 border-t pt-3">
-                                <p className="text-sm font-medium">Tags</p>
-                            {!canEdit && tags.length === 0 && (
-                                <p className="text-sm text-muted-foreground">No tags.</p>
-                            )}
-                            {!canEdit && tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                    {tags.map((tag) => (
-                                        <Badge key={tag} variant="secondary">
-                                            {tag}
-                                        </Badge>
-                                    ))}
-                                </div>
-                            )}
-                            {canEdit && tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 max-md:gap-2">
-                                    {tags.map((tag) => (
-                                        // The whole tag removes it: a 44px chip on a phone.
-                                        <Badge
-                                            key={tag}
-                                            variant="secondary"
-                                            className="cursor-pointer group pr-1.5 transition-colors active:bg-press max-md:min-h-11 max-md:px-3 max-md:text-sm"
-                                            onClick={() => removeTag(tag)}
-                                            title="Click to remove"
-                                        >
-                                            {tag}
-                                            <span className="ml-1 text-xs leading-none opacity-100">
-                                                ×
-                                            </span>
-                                        </Badge>
-                                    ))}
-                                </div>
-                            )}
-                            {canEdit && (
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="Add a tag…"
-                                        value={tagInput}
-                                        onChange={(e) => setTagInput(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                addTag();
-                                            }
-                                        }}
-                                        className="flex-1"
-                                    />
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={addTag}
-                                        disabled={!tagInput.trim()}
-                                    >
-                                        <Plus className="h-4 w-4" />
+                {/* The numbers, in one line: what the Stats strip held */}
+                <dl className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
+                    {lifecycle ? (
+                        <>
+                            <Stat
+                                label="Purchases"
+                                title="Paid orders with a product on them, Shopify-era orders included. A re-adjustment fee is not one."
+                            >
+                                {lifecycle.purchases}
+                            </Stat>
+                            <Stat
+                                label="Bookings attended"
+                                title="Re-adjustment bookings they came in for, including ones booked from the check-up reminder."
+                            >
+                                {lifecycle.attended_bookings}
+                            </Stat>
+                            <Stat
+                                label="Last purchase"
+                                title={
+                                    lifecycle.last_purchase_dated_by_fitting
+                                        ? "A Shopify-era purchase, dated by their latest fitting record: the in-store visit such an order almost always was."
+                                        : undefined
+                                }
+                            >
+                                {lifecycle.last_purchase_at ? (
+                                    <>
+                                        {formatDate(lifecycle.last_purchase_at)}
+                                        {lifecycle.last_purchase_dated_by_fitting ? (
+                                            <span className="ml-1.5 text-xs font-normal text-muted-foreground">Fitting, on Shopify</span>
+                                        ) : null}
+                                    </>
+                                ) : lifecycle.lifecycle_undated ? (
+                                    "On Shopify"
+                                ) : (
+                                    "None"
+                                )}
+                            </Stat>
+                            <Stat label="Last booking">
+                                {lifecycle.last_readjusted_at ? formatDate(lifecycle.last_readjusted_at) : "None"}
+                            </Stat>
+                        </>
+                    ) : null}
+                    <Stat label="Total orders">{customer.total_orders}</Stat>
+                    <Stat label="Total spent">{formatSGD(customer.total_spent)}</Stat>
+                </dl>
+
+                {/* PRD-crm-retention-loop slice 05: what now. Nothing due, no line. */}
+                {initialData?.nextStep ? (
+                    <div
+                        role="note"
+                        aria-label="Next step"
+                        className="flex flex-col gap-2 rounded-lg border border-dashed px-4 py-3 text-sm sm:flex-row sm:items-center sm:gap-3"
+                    >
+                        <p className="min-w-0 flex-1">
+                            <span className="font-medium">Next step</span>{" "}
+                            <span className="text-muted-foreground">{initialData.nextStep.text}</span>
+                        </p>
+                        {initialData.nextStep.addFollowUp && canEdit ? (
+                            <Button size="sm" variant="outline" className="self-start sm:self-auto" onClick={() => compose("followup")}>
+                                Add a follow-up
+                            </Button>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {/*
+                  Who they are beside what happened. One column on a phone and a
+                  narrow page; from @4xl the rail sits left of the tabs.
+                */}
+                <div className="grid grid-cols-1 items-start gap-4 md:gap-6 @4xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+                    {/* ── The rail: how to reach them, then one row per section of the record ── */}
+                    <aside className="min-w-0 space-y-4 md:space-y-6">
+                        <ContactCard
+                            customer={customer}
+                            createdByImport={initialData?.migration?.ok ? initialData.migration.facts?.createdByImport : null}
+                            contact={initialData?.contact}
+                            headerAction={
+                                canEdit && !editing ? (
+                                    <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+                                        <Pencil className="h-4 w-4" />
+                                        Edit
                                     </Button>
-                                </div>
-                            )}
-                            </div>
-                            {canEdit && (
-                                <Button
-                                    className="w-full"
-                                    onClick={saveChanges}
-                                    disabled={saving}
-                                >
-                                    {saving ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : null
+                            }
+                            emailActions={
+                                <>
+                                    <EmailButton />
+                                    <CopyButton text={customer.email} />
+                                </>
+                            }
+                            mobileActions={
+                                <>
+                                    <WhatsAppButton />
+                                    <CallButton />
+                                    <CopyButton text={customer.phone ?? ""} />
+                                </>
+                            }
+                            editForm={editing ? editForm : undefined}
+                        >
+                            <div className="space-y-1.5">
+                                <dt className="text-xs text-muted-foreground">Tags</dt>
+                                <dd>
+                                    {tags.length > 0 ? (
+                                        <span className="flex flex-wrap gap-1.5">
+                                            {tags.map((tag) => (
+                                                <Badge key={tag} variant="secondary">
+                                                    {tag}
+                                                </Badge>
+                                            ))}
+                                        </span>
                                     ) : (
-                                        <Save className="mr-2 h-4 w-4" />
+                                        <span className="text-sm text-muted-foreground">No tags.</span>
                                     )}
-                                    Save changes
-                                </Button>
-                            )}
-                        </CardContent>
-                    </Card>
+                                </dd>
+                            </div>
+                            {customer.locale ? <p className="text-xs text-muted-foreground">Locale: {customer.locale}</p> : null}
+                        </ContactCard>
 
-                    {/* Contact status, for every Customer (CRM slice 11; migration slice 12's Account card) */}
-                    <ContactCard
-                        customer={customer}
-                        createdByImport={
-                            initialData?.migration?.ok ? initialData.migration.facts?.createdByImport : null
-                        }
-                        contact={initialData?.contact}
-                    />
+                        <RailRows>
+                            <RailRow icon={KeyRound} label="Sign-in" summary={signInSummary(customer)}>
+                                <SignInFacts customer={customer} />
+                            </RailRow>
 
-                    {/* Addresses */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <MapPin className="h-4 w-4" />
-                                Addresses
-                            </CardTitle>
-                            {canEdit && (
-                                <Dialog open={addAddressOpen} onOpenChange={setAddAddressOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button size="sm" variant="outline">
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Add address
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-lg">
-                                        <DialogHeader>
-                                            <DialogTitle>Add address</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="grid grid-cols-2 gap-3 py-2">
-                                            <div className="col-span-2 space-y-1.5">
-                                                <Label>Label</Label>
-                                                <Input
-                                                    placeholder="e.g. Home, Office"
-                                                    value={addressForm.label}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            label: e.target.value,
-                                                        }))
-                                                    }
-                                                />
+                            <RailRow
+                                icon={MapPin}
+                                label="Addresses"
+                                summary={addressesLoading ? "…" : addresses.length === 0 ? "None saved" : `${addresses.length} saved`}
+                            >
+                                {addressesLoading ? (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Loading addresses…
+                                    </div>
+                                ) : addresses.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">No saved addresses.</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {addresses.map((addr) => (
+                                            <div key={addr.id} className="space-y-1 border-b pb-3 text-sm last:border-b-0 last:pb-0">
+                                                <div className="flex items-center gap-2">
+                                                    {addr.label && <span className="font-medium">{addr.label}</span>}
+                                                    {addr.is_default && (
+                                                        <Badge variant="secondary" className="text-xs">
+                                                            Default
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <p className="font-medium">{addr.recipient}</p>
+                                                <p className="text-muted-foreground">
+                                                    {addr.line1}
+                                                    {addr.line2 && `, ${addr.line2}`}, {addr.city}
+                                                    {addr.state && `, ${addr.state}`} {addr.postal_code}, {addr.country}
+                                                </p>
+                                                {addr.phone && <p className="text-muted-foreground">{addr.phone}</p>}
                                             </div>
-                                            <div className="col-span-2 space-y-1.5">
-                                                <Label>Recipient</Label>
-                                                <Input
-                                                    placeholder="Full name"
-                                                    value={addressForm.recipient}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            recipient: e.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="col-span-2 space-y-1.5">
-                                                <Label>Address line 1</Label>
-                                                <Input
-                                                    value={addressForm.line1}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            line1: e.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="col-span-2 space-y-1.5">
-                                                <Label>
-                                                    Address line 2{" "}
-                                                    <span className="text-muted-foreground font-normal">
-                                                        (optional)
-                                                    </span>
-                                                </Label>
-                                                <Input
-                                                    value={addressForm.line2}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            line2: e.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <Label>City</Label>
-                                                <Input
-                                                    value={addressForm.city}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            city: e.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <Label>State</Label>
-                                                <Input
-                                                    value={addressForm.state}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            state: e.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <Label>Postal code</Label>
-                                                <Input
-                                                    value={addressForm.postal_code}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            postal_code: e.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <Label>Country</Label>
-                                                <Input
-                                                    value={addressForm.country}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            country: e.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="col-span-2 space-y-1.5">
-                                                <Label>
-                                                    Phone{" "}
-                                                    <span className="text-muted-foreground font-normal">
-                                                        (optional)
-                                                    </span>
-                                                </Label>
-                                                <Input
-                                                    value={addressForm.phone}
-                                                    onChange={(e) =>
-                                                        setAddressForm((f) => ({
-                                                            ...f,
-                                                            phone: e.target.value,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => setAddAddressOpen(false)}
-                                            >
-                                                Cancel
-                                            </Button>
-                                            <Button
-                                                onClick={saveAddress}
-                                                disabled={
-                                                    savingAddress ||
-                                                    !addressForm.recipient.trim() ||
-                                                    !addressForm.line1.trim() ||
-                                                    !addressForm.city.trim() ||
-                                                    !addressForm.postal_code.trim() ||
-                                                    !addressForm.country.trim()
-                                                }
-                                            >
-                                                {savingAddress ? (
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                )}
+                                        ))}
+                                    </div>
+                                )}
+                                {canEdit && (
+                                    <Dialog open={addAddressOpen} onOpenChange={setAddAddressOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm" variant="outline">
+                                                <Plus className="h-4 w-4" />
                                                 Add address
                                             </Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-                            )}
-                        </CardHeader>
-                        <CardContent>
-                            {addressesLoading ? (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading addresses…
-                                </div>
-                            ) : addresses.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                    No saved addresses.
-                                </p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {addresses.map((addr) => (
-                                        // Phones: rows split by a rule, not boxes inside the card.
-                                        <div
-                                            key={addr.id}
-                                            className="rounded-lg border p-3 text-sm space-y-1 max-md:rounded-none max-md:border-x-0 max-md:border-t-0 max-md:p-0 max-md:pb-3 max-md:last:border-b-0 max-md:last:pb-0"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                {addr.label && (
-                                                    <span className="font-medium">{addr.label}</span>
-                                                )}
-                                                {addr.is_default && (
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        Default
-                                                    </Badge>
-                                                )}
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-lg">
+                                            <DialogHeader>
+                                                <DialogTitle>Add address</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="grid grid-cols-2 gap-3 py-2">
+                                                <AddressField className="col-span-2" label="Label" placeholder="e.g. Home, Office" value={addressForm.label} onChange={(v) => setAddressForm((f) => ({ ...f, label: v }))} />
+                                                <AddressField className="col-span-2" label="Recipient" placeholder="Full name" value={addressForm.recipient} onChange={(v) => setAddressForm((f) => ({ ...f, recipient: v }))} />
+                                                <AddressField className="col-span-2" label="Address line 1" value={addressForm.line1} onChange={(v) => setAddressForm((f) => ({ ...f, line1: v }))} />
+                                                <AddressField className="col-span-2" label="Address line 2" optional value={addressForm.line2} onChange={(v) => setAddressForm((f) => ({ ...f, line2: v }))} />
+                                                <AddressField label="City" value={addressForm.city} onChange={(v) => setAddressForm((f) => ({ ...f, city: v }))} />
+                                                <AddressField label="State" value={addressForm.state} onChange={(v) => setAddressForm((f) => ({ ...f, state: v }))} />
+                                                <AddressField label="Postal code" value={addressForm.postal_code} onChange={(v) => setAddressForm((f) => ({ ...f, postal_code: v }))} />
+                                                <AddressField label="Country" value={addressForm.country} onChange={(v) => setAddressForm((f) => ({ ...f, country: v }))} />
+                                                <AddressField className="col-span-2" label="Phone" optional value={addressForm.phone} onChange={(v) => setAddressForm((f) => ({ ...f, phone: v }))} />
                                             </div>
-                                            <p className="font-medium">{addr.recipient}</p>
-                                            <p className="text-muted-foreground">
-                                                {addr.line1}
-                                                {addr.line2 && `, ${addr.line2}`},{" "}
-                                                {addr.city}
-                                                {addr.state && `, ${addr.state}`}{" "}
-                                                {addr.postal_code}, {addr.country}
-                                            </p>
-                                            {addr.phone && (
-                                                <p className="text-muted-foreground">
-                                                    {addr.phone}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setAddAddressOpen(false)}>
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    onClick={saveAddress}
+                                                    disabled={
+                                                        savingAddress ||
+                                                        !addressForm.recipient.trim() ||
+                                                        !addressForm.line1.trim() ||
+                                                        !addressForm.city.trim() ||
+                                                        !addressForm.postal_code.trim() ||
+                                                        !addressForm.country.trim()
+                                                    }
+                                                >
+                                                    {savingAddress ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                                                    Add address
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                )}
+                            </RailRow>
 
-                    {/* Shopify-era facts, only for a Migrated customer */}
-                    <FromShopifyCard
-                        migration={initialData?.migration}
-                        importHistoryHref={canImport ? to("/settings/customers/import") : null}
-                    />
-                </div>
+                            {/* The aftercare switches (CRM slice 13) and Marketing consent (migration slice 07) */}
+                            <RailRow
+                                icon={SlidersHorizontal}
+                                label="Preferences"
+                                summary={
+                                    customer.marketing_email
+                                        ? customer.marketing_email === "subscribed"
+                                            ? "Marketing email on"
+                                            : "Marketing email off"
+                                        : undefined
+                                }
+                            >
+                                <RowPart title="Aftercare">
+                                    <AftercareCard customerId={customer.id} canEdit={canEdit} />
+                                </RowPart>
+                                <RowPart title="Marketing consent">
+                                    <MarketingConsentCard customerId={customer.id} canEdit={canEdit} />
+                                </RowPart>
+                            </RailRow>
 
-                {/* ── What happened: orders, the to-dos and notes about them, then the timeline ── */}
-                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-3 @3xl:col-start-1 @3xl:row-span-2 @3xl:row-start-1 @5xl:col-span-1 @5xl:col-start-2 @5xl:row-span-1">
-                    {/* Order History */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <ShoppingCart className="h-4 w-4" />
-                                Order history
-                            </CardTitle>
-                            {canCreateOrder ? (
-                                <Button size="sm" onClick={() => setCreateOrderOpen(true)}>
-                                    <Plus className="h-4 w-4" />
-                                    Create order
-                                </Button>
+                            {/* Points (PRD-loyalty-points slice 02): balance, pending, history; Adjust needs customers-edit */}
+                            <RailRow icon={Gift} label="Points" summary="Balance and history">
+                                <PointsCard customerId={customer.id} canEdit={canEdit} />
+                            </RailRow>
+
+                            {/* How they found us: first Visit's Entry source beside their own answer (ADR 0007) */}
+                            {initialData?.entry ? (
+                                <RailRow icon={Search} label="How they found us">
+                                    <CustomerEntryCard entry={initialData.entry} />
+                                </RailRow>
                             ) : null}
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {ordersLoading ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                                </div>
-                            ) : orders.length === 0 ? (
-                                <div className="px-4 py-8 text-center">
-                                    <p className="text-sm text-muted-foreground">
-                                        No orders yet.
-                                        {canCreateOrder
-                                            ? " Create one to sell them a product or a service, paid by link."
-                                            : ""}
-                                    </p>
-                                </div>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                            <TableHead className="px-4">Order #</TableHead>
-                                            <TableHead className="px-4 hidden sm:table-cell">
-                                                Date
-                                            </TableHead>
-                                            <TableHead className="px-4">Status</TableHead>
-                                            <TableHead className="px-4 text-right">Total</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {orders.map((order) => {
-                                            const customClass = orderStatusBadgeClass(order.status);
-                                            const variant = orderStatusBadgeVariant(order.status);
-                                            return (
-                                                <TableRow key={order.id}>
-                                                    <TableCell className="px-4 py-3">
-                                                        <Link
-                                                            href={to(`/settings/orders/${order.id}`)}
-                                                            className="font-bold text-sm text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            #{order.order_number}
-                                                        </Link>
-                                                    </TableCell>
-                                                    <TableCell className="px-4 hidden sm:table-cell text-sm text-muted-foreground whitespace-nowrap">
-                                                        {formatDate(order.created_at)}
-                                                    </TableCell>
-                                                    <TableCell className="px-4">
-                                                        <Badge
-                                                            variant={
-                                                                customClass ? "outline" : variant
-                                                            }
-                                                            className={customClass}
-                                                        >
-                                                            {orderStatusLabel(order.status)}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="px-4 text-right text-sm font-medium">
-                                                        {formatSGD(order.total)}
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            )}
-                        </CardContent>
-                    </Card>
+                        </RailRows>
+                    </aside>
 
-                    {canCreateOrder ? (
-                        <CreateOrderDialog
-                            open={createOrderOpen}
-                            onOpenChange={setCreateOrderOpen}
-                            customerId={customer.id}
-                            customerName={displayName}
-                            customerEmail={customer.email}
-                            ordersHref={(orderId) => to(`/settings/orders/${orderId}`)}
-                            onCreated={() => void fetchOrders()}
-                        />
-                    ) : null}
+                    {/* ── The three sections. Each stays mounted, so a tab keeps what it loaded. ── */}
+                    <Tabs value={tab} onValueChange={changeTab} className="min-w-0 gap-4 md:gap-6">
+                        <div className="sticky top-0 z-20 -mx-1 bg-background/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                            <TabsList variant="line" size="lg" collapsible={false} aria-label="Customer sections">
+                                <TabsTrigger value="journey" className="min-w-0 max-md:flex-1 max-md:px-2">
+                                    <Route className="max-[420px]:hidden" />
+                                    <span className="truncate">Journey</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="pillow" className="min-w-0 max-md:flex-1 max-md:px-2">
+                                    <BedDouble className="max-[420px]:hidden" />
+                                    <span className="truncate md:hidden">Pillow</span>
+                                    <span className="truncate max-md:hidden">Pillow and fittings</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="reviews" className="min-w-0 max-md:flex-1 max-md:px-2">
+                                    <Star className="max-[420px]:hidden" />
+                                    <span className="truncate">Reviews</span>
+                                    {reviewCount ? (
+                                        <Badge variant="secondary" className="px-1.5 tabular-nums" aria-label={`${reviewCount} on record`}>
+                                            {reviewCount}
+                                        </Badge>
+                                    ) : null}
+                                </TabsTrigger>
+                            </TabsList>
+                        </div>
 
-                    {/* Pillow (ADR 0042 j): the x-ray of what they have, from a Staff link or their latest fitting */}
-                    <CustomerPillowCard customerId={customer.id} pillow={initialData?.pillow} canEdit={canEdit} />
+                        <TabsContent value="journey" forceMount className="data-[state=inactive]:hidden">
+                            <CustomerJourney
+                                customerId={customer.id}
+                                canEdit={canEdit}
+                                viewer={viewer}
+                                initialNotes={initialData ? initialData.notes : null}
+                                migration={initialData?.migration}
+                                importHistoryHref={canImport ? to("/settings/customers/import") : null}
+                                nextStepText={initialData?.nextStep?.text ?? null}
+                                stageLabel={lifecycle ? LIFECYCLE_STAGE_LABEL[lifecycle.lifecycle_stage] : null}
+                                composerMode={composerMode}
+                                onComposerModeChange={setComposerMode}
+                                composerFocus={composerFocus}
+                                reloadSignal={journeyReload}
+                                onAnswerReview={() => {
+                                    changeTab("reviews");
+                                    window.scrollTo({ top: 0, behavior: "smooth" });
+                                }}
+                            />
+                        </TabsContent>
 
-                    {/* Fitting history (ADR 0042): in-store fittings from the old Google Form, with their Drive photos */}
-                    <CustomerFittingsCard customerId={customer.id} fittings={initialData?.fittings} />
+                        <TabsContent value="pillow" forceMount className="space-y-4 data-[state=inactive]:hidden md:space-y-6">
+                            {/* Pillow (ADR 0042 j): the x-ray of what they have, from a Staff link or their latest fitting */}
+                            <CustomerPillowCard customerId={customer.id} pillow={initialData?.pillow} canEdit={canEdit} />
+                            {/* Fitting history (ADR 0042): in-store fittings from the old Google Form, with their Drive photos */}
+                            <CustomerFittingsCard customerId={customer.id} fittings={initialData?.fittings} />
+                            {!hasPillowSection ? (
+                                <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                                    No pillow or fitting is on record for this customer yet.
+                                </p>
+                            ) : null}
+                        </TabsContent>
 
-                    {/* Follow-ups (CRM 06): dated to-dos, each assigned to a Staff profile */}
-                    <CustomerFollowUpsCard customerId={customer.id} canEdit={canEdit} />
+                        <TabsContent value="reviews" forceMount className="data-[state=inactive]:hidden">
+                            {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}
+                            <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} onCount={setReviewCount} />
+                        </TabsContent>
+                    </Tabs>
+                </div>
 
-                    {/* Notes Card */}
-                    <CustomerNotesCard
+                {canCreateOrder ? (
+                    <CreateOrderDialog
+                        open={createOrderOpen}
+                        onOpenChange={setCreateOrderOpen}
                         customerId={customer.id}
-                        initialNotes={initialData ? initialData.notes : null}
-                        viewer={{ ...viewer, canEdit }}
+                        customerName={displayName}
+                        customerEmail={customer.email}
+                        ordersHref={(orderId) => to(`/settings/orders/${orderId}`)}
+                        onCreated={() => setJourneyReload((n) => n + 1)}
                     />
-
-                    {/* Timeline (CRM 03): everything that happened, newest first */}
-                    <CustomerTimelineCard customerId={customer.id} />
-                </div>
-
-                {/* ── The relationship: points, reviews, and what they agreed to receive ── */}
-                <div className="min-w-0 space-y-4 md:space-y-6 @3xl:col-span-2 @3xl:col-start-4 @3xl:row-start-2 @5xl:col-span-1 @5xl:col-start-3 @5xl:row-start-1">
-                    {/* Points (PRD-loyalty-points slice 02): balance, pending, history; Adjust needs customers-edit */}
-                    <PointsCard customerId={customer.id} canEdit={canEdit} />
-                    {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}
-                    <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} />
-
-                    {/* Aftercare switches (CRM slice 13): their own card, since the Contact card only reads */}
-                    <AftercareCard customerId={customer.id} canEdit={canEdit} />
-
-                    {/* Marketing consent, read-only but for a support unsubscribe (migration slice 07) */}
-                    <MarketingConsentCard customerId={customer.id} canEdit={canEdit} />
-                </div>
+                ) : null}
             </div>
+        </CustomerShortcutsProvider>
+    );
+}
+
+/** A titled part of a rail row that holds more than one card. */
+function RowPart({ title, children }: { title: string; children: ReactNode }) {
+    return (
+        <section className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+            {children}
+        </section>
+    );
+}
+
+function AddressField({
+    label,
+    value,
+    onChange,
+    placeholder,
+    optional = false,
+    className,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    optional?: boolean;
+    className?: string;
+}) {
+    return (
+        <div className={`space-y-1.5 ${className ?? ""}`}>
+            <Label>
+                {label}
+                {optional ? <span className="text-muted-foreground font-normal"> (optional)</span> : null}
+            </Label>
+            <Input placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
         </div>
     );
 }
 
-/** One number in the Stats strip; `title` explains a count on hover. */
-function Stat({
-    icon: Icon,
-    label,
-    title,
-    children,
-}: {
-    icon: LucideIcon;
-    label: string;
-    title?: string;
-    children: ReactNode;
-}) {
+/** One number in the header's line; `title` explains a count on hover. */
+function Stat({ label, title, children }: { label: string; title?: string; children: ReactNode }) {
     return (
-        <div className="min-w-0 space-y-1">
-            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate" title={title}>
-                    {label}
-                </span>
+        <div className="flex min-w-0 items-baseline gap-1.5">
+            <dt className="text-muted-foreground" title={title}>
+                {label}
             </dt>
-            <dd className="text-lg font-semibold tabular-nums">{children}</dd>
+            <dd className="font-semibold tabular-nums">{children}</dd>
         </div>
     );
 }
