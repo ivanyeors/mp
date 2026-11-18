@@ -19,6 +19,7 @@
  * word for word for one stage's Segment, and join them in
  * `PLAYBOOK_STARTERS` once the owner approves each one's words.
  */
+import { filtersKey } from "@/lib/crm/filters-key";
 import type { CampaignWords } from "./clear-all";
 import { CONTENT_VERSION, contentFromLegacy, emptyBlock, newBlockId, type CampaignContent, type EmailBlock, type EmailBlockType } from "./content";
 import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignAudience, type CampaignDraft } from "./rules";
@@ -26,8 +27,8 @@ import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignAudience, type
 /**
  * Who a Starter is written for: the audience it sets as it lands, in the same
  * step as its blocks. A Playbook names its stage's Segment, found among the
- * Segments by name; the Segment is left to choose when none has that name.
- * `filters` is the Customers list query that Segment saves (so Staff can make
+ * Segments by its filters (`playbookSegment`); the Segment is left to choose
+ * when none has them. `filters` is the Customers list query that Segment saves (so Staff can make
  * it once), and a win-back sets `includeUnengaged` (PRD-campaign-audiences
  * slice 12).
  */
@@ -247,7 +248,7 @@ export const PLAYBOOK_DRAFTS: readonly Starter[] = [
     words: {
       name: "How your pillow is made",
       subject: "How an Mpillow is made to fit you",
-      preheader: "Measured to you, its height and width tailored to you. Start on our website, or at a fitting.",
+      preheader: "Measured to you, its height and width tailored to you. Start by customising yours on our website.",
     },
     audience: { audience: "segment", segment: "Lead", filters: "stage=lead" },
     blocks: (id = newBlockId) => [
@@ -268,7 +269,7 @@ export const PLAYBOOK_DRAFTS: readonly Starter[] = [
       go(id, "Customise your Mpillow", "customise_mpillow"),
       // A fitting is Singapore-only (**Ships to**): the words say so, since a Lead's country is often unknown.
       text(id, ["If you're in Singapore, you can book an appointment for a fitting instead."]),
-      go(id, "Book a fitting", "book_fitting"),
+      go(id, "Book a fitting in Singapore", "book_fitting"),
     ],
   },
 ];
@@ -330,22 +331,59 @@ interface Audienced {
 }
 
 /**
- * Pure — who `s` sends the email to, or nothing for a Starter written for
- * anyone. A Playbook's Segment is the one of `segments` with its name, and a
- * win-back includes the Unengaged.
+ * A Segment a Playbook can be sent to: `filtersKey` is its filters as
+ * `filtersKey` writes them (lib/crm/filters-key.ts), null when it needs
+ * review, so it is never matched.
  */
-export function starterAudience(
-  s: Starter,
-  segments: readonly { id: string; name: string }[],
-): Partial<Audienced> & { includeUnengaged?: boolean } {
+export interface StarterSegment {
+  id: string;
+  name: string;
+  filtersKey?: string | null;
+}
+
+/**
+ * Pure — the Segment `s` is written for, or null (none has its filters, or
+ * `s` is not written for a Segment). Found by its filters, the same
+ * comparison as the Email funnel's *set up* (`customerFiltersSchema` →
+ * `customerFilterParams`), so a Segment Staff renamed is still found and one
+ * with the Playbook's name but other filters is not; among Segments with the
+ * same filters, the one with the Playbook's name.
+ */
+export function playbookSegment<S extends StarterSegment>(s: Starter, segments: readonly S[]): S | null {
+  const a = s.audience;
+  if (a?.audience !== "segment") return null;
+  const key = filtersKey(a.filters);
+  const same = key ? segments.filter((x) => x.filtersKey === key) : [];
+  return same.find((x) => x.name === a.segment) ?? same[0] ?? null;
+}
+
+/**
+ * Pure — who `s` sends the email to, or nothing for a Starter written for
+ * anyone. A Playbook's Segment is `playbookSegment`'s, or left to choose, and
+ * a win-back includes the Unengaged.
+ */
+export function starterAudience(s: Starter, segments: readonly StarterSegment[]): Partial<Audienced> & { includeUnengaged?: boolean } {
   const a = s.audience;
   if (!a) return {};
   if (a.audience !== "segment") return { audience: a.audience };
   return {
     audience: "segment",
-    segmentId: segments.find((x) => x.name === a.segment)?.id ?? "",
+    segmentId: playbookSegment(s, segments)?.id ?? "",
     ...(a.includeUnengaged ? { includeUnengaged: true } : {}),
   };
+}
+
+/**
+ * Pure — what *Create the Segment* sends to the Segments' own create
+ * (`POST /api/settings/customers/segments`, its permission, validation,
+ * unique name and audit row): the Playbook's name and its filters as the
+ * Customers list's parameters. *Include unengaged* is the campaign's, never a
+ * filter. Null for a Starter not written for a Segment.
+ */
+export function playbookSegmentToCreate(s: Starter): { name: string; filters: Record<string, string> } | null {
+  const a = s.audience;
+  if (a?.audience !== "segment") return null;
+  return { name: a.segment, filters: Object.fromEntries(new URLSearchParams(a.filters)) };
 }
 
 /**
@@ -359,7 +397,7 @@ export function startedFrom<T extends CampaignWords & Audienced & { includeUneng
   draft: T,
   s: Starter,
   blocks: EmailBlock[],
-  segments: readonly { id: string; name: string }[],
+  segments: readonly StarterSegment[],
 ): T {
   return {
     ...draft,
@@ -368,5 +406,37 @@ export function startedFrom<T extends CampaignWords & Audienced & { includeUneng
     button: { choice: "none", label: "", url: "" },
     content: { v: CONTENT_VERSION, blocks, fallbacks: draft.content?.fallbacks ?? {} },
     ...starterAudience(s, segments),
+  };
+}
+
+/**
+ * Pure — New campaign at `?starter=<id>` (PRD-email-funnel slice 04: the
+ * Email funnel's *Not set up* step links here): `base` (the empty campaign,
+ * or `?segment=`'s) started from that Starter as the Start panel starts it
+ * (`startedFrom`), with its words, blocks, audience and *Include unengaged*.
+ * Only a Starter that is offered (`starterById`): an unknown id, or a
+ * Playbook the owner has not approved, leaves `base` as it is. A Starter with
+ * no audience of its own keeps `base`'s. Nothing is saved: it is the
+ * editor's draft until Save.
+ */
+export function startedFromParam(
+  base: CampaignDraft,
+  starterParam: string | string[] | undefined,
+  segments: readonly StarterSegment[],
+  id: () => string = newBlockId,
+): CampaignDraft {
+  const wanted = Array.isArray(starterParam) ? starterParam[0] : starterParam;
+  const s = wanted ? starterById(wanted) : null;
+  if (!s) return base;
+  const goesTo = starterAudience(s, segments);
+  return {
+    ...base,
+    ...(s.words ? { name: s.words.name, subject: s.words.subject, preheader: s.words.preheader || null } : {}),
+    body: "",
+    button: null,
+    content: { v: CONTENT_VERSION, blocks: s.blocks(id), fallbacks: base.content?.fallbacks ?? {} },
+    ...(goesTo.audience ? { audience: goesTo.audience } : {}),
+    ...(goesTo.segmentId !== undefined ? { segmentId: goesTo.segmentId || null } : {}),
+    ...(goesTo.includeUnengaged ? { includeUnengaged: true } : {}),
   };
 }

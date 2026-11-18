@@ -93,7 +93,9 @@ import {
     type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
 import { UNENGAGED_WHO } from "@/lib/crm/engagement";
-import { emailSaysNothing, STARTERS, startedFrom, starterAudience, type Starter } from "@/lib/email-campaigns/starters";
+import { emailSaysNothing, playbookSegment, playbookSegmentToCreate, STARTERS, startedFrom, starterAudience, starterById, type Starter } from "@/lib/email-campaigns/starters";
+import { filtersKey } from "@/lib/crm/filters-key";
+import { segmentHref, type CustomerSegment } from "@/lib/crm/segment-rules";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignResults } from "@/lib/email-campaigns/results";
@@ -137,8 +139,11 @@ import { KeepSendingCard } from "./keep-sending-card";
 import { CampaignResultsPanel } from "./results-panel";
 import { keepSendingBlocker } from "@/lib/email-campaigns/keep-sending";
 
-/** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. */
-export type SegmentOption = { id: string; name: string; customersHref?: string | null };
+/**
+ * A Segment to send to; `customersHref` opens its list, for Staff holding
+ * `customers`; `filtersKey` is how a Playbook finds it (`playbookSegment`).
+ */
+export type SegmentOption = { id: string; name: string; customersHref?: string | null; filtersKey?: string | null };
 
 /** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. Convert to blocks shares it. */
 const CLEAR_ALL_TOAST = "campaign-clear-all";
@@ -251,13 +256,15 @@ export function CampaignEditor({
     draft: initial,
     stats,
     waves = [],
-    segments,
+    segments: givenSegments,
     staffEmail,
     pointsLive = false,
     ai = AI_OFF,
     keptToday = 0,
     results = null,
     initialTab,
+    starterId,
+    canCreateSegments = false,
 }: {
     /** Null for a new one. */
     campaign: Campaign | null;
@@ -278,11 +285,18 @@ export function CampaignEditor({
     results?: CampaignResults | null;
     /** Open on Results (`?tab=results`, the Email funnel's links); only once it has started. */
     initialTab?: "results";
+    /** New campaign's `?starter=` (PRD-email-funnel slice 04): the Starter `initial` was started from. */
+    starterId?: string;
+    /** May create Segments (`customers-edit`, the Segments' own create): *Create the Segment* for a Playbook's missing one. */
+    canCreateSegments?: boolean;
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
     const locked = Boolean(campaign?.lockedAt);
+    // The Segments, with any made here by *Create the Segment*.
+    const [madeSegments, setMadeSegments] = useState<SegmentOption[]>([]);
+    const segments = useMemo(() => [...givenSegments, ...madeSegments], [givenSegments, madeSegments]);
 
     // ── The draft ──────────────────────────────────────────────────────────
     // The draft is the history's: the email's words, its blocks and the greeting, and who it goes to.
@@ -845,8 +859,12 @@ export function CampaignEditor({
     // *Blank* puts the Start panel away until the next Clear all; words or a block in the email end it anyway.
     const [startPutAway, setStartPutAway] = useState(false);
     const offerStart = editable && !startPutAway && emailSaysNothing(words);
-    /** A Starter written for one audience sends the email to it, in the same step as its blocks: say so, as it changes. */
+    /**
+     * A Starter written for one audience sends the email to it, in the same step as its blocks: say so, as it changes.
+     * A Playbook is remembered, so its missing Segment can be named and created (PRD-email-funnel slice 04).
+     */
     const sayAudience = (s: Starter) => {
+        if (s.audience?.audience === "segment") setPlaybook(s);
         const goesTo = starterAudience(s, segments);
         const now = latest.current.value;
         if (!goesTo.audience || (goesTo.audience === now.audience && (goesTo.segmentId === undefined || goesTo.segmentId === now.segmentId))) return;
@@ -878,6 +896,61 @@ export function CampaignEditor({
         }),
     );
     const startersTab: PaletteItemsTab<EmailBlock> = { value: "starters", label: "Starters", items: starterItems };
+
+    // ── A Playbook's Segment (PRD-email-funnel slice 04) ───────────────────
+    // The Playbook the email was last started from (`?starter=`, the Start panel or the palette), and,
+    // while it is sent to no Segment and none has the Playbook's filters, a notice that offers to create it.
+    const [playbook, setPlaybook] = useState<Starter | null>(() => {
+        const s = starterId ? starterById(starterId) : null;
+        return s?.audience?.audience === "segment" ? s : null;
+    });
+    const playbookAudience = playbook?.audience?.audience === "segment" ? playbook.audience : null;
+    const segmentMissing =
+        !locked && playbook && playbookAudience && audience === "segment" && !segmentId && !playbookSegment(playbook, segments) ? playbookAudience : null;
+    const creatingSegment = useRef(false);
+    const [segmentBusy, setSegmentBusy] = useState(false);
+    const [segmentError, setSegmentError] = useState<string | null>(null);
+    /**
+     * *Create the Segment*: the Segments' own create (its permission, validation, unique name and audit row) with the
+     * Playbook's name and filters, then chosen. A name taken by a Segment with other filters comes back as the create's
+     * error and is shown, never overwritten. One create at a time; once made, the Playbook finds it and the button goes.
+     */
+    const createPlaybookSegment = async () => {
+        const body = playbook ? playbookSegmentToCreate(playbook) : null;
+        if (!body || creatingSegment.current) return;
+        creatingSegment.current = true;
+        setSegmentBusy(true);
+        setSegmentError(null);
+        try {
+            const res = await fetch("/api/settings/customers/segments", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const json = (await res.json().catch(() => null)) as { row?: CustomerSegment; error?: string } | null;
+            const row = res.ok ? json?.row : undefined;
+            if (!row) {
+                // 409: the name is a live Segment's, with other filters (with these, the Playbook would have found it).
+                setSegmentError(
+                    res.status === 409
+                        ? `${json?.error ?? "That name is taken."} It has other filters, so it was left as it is: rename it on Customers, or choose a Segment above.`
+                        : (json?.error ?? "Could not create the Segment. Try again."),
+                );
+                return;
+            }
+            setMadeSegments((made) => [
+                ...made,
+                { id: row.id, name: row.name, customersHref: segmentHref(to("/settings/customers"), row.params), filtersKey: filtersKey(row.params) },
+            ]);
+            history.set((e) => ({ ...e, audience: "segment", segmentId: row.id, excludeSegmentIds: e.excludeSegmentIds.filter((x) => x !== row.id) }));
+            toast(`Created the Segment “${row.name}” and chose it.`);
+        } catch {
+            setSegmentError("Could not create the Segment. Check your connection and try again.");
+        } finally {
+            creatingSegment.current = false;
+            setSegmentBusy(false);
+        }
+    };
 
     // ── Clear all (slice 01), one step of the history ──────────────────────
     // Writes nothing: the email is saved, and audited, only by Save.
@@ -1050,6 +1123,31 @@ export function CampaignEditor({
                         </Field>
                     ) : null}
                 </div>
+                {segmentMissing ? (
+                    <div role="status" aria-labelledby="c-playbook-segment" className="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
+                        <p id="c-playbook-segment">
+                            This Playbook sends to the Segment “{segmentMissing.segment}”, which doesn&apos;t exist yet.
+                        </p>
+                        {canCreateSegments ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button type="button" size="sm" onClick={() => void createPlaybookSegment()} disabled={segmentBusy} aria-busy={segmentBusy}>
+                                    {segmentBusy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                                    Create the Segment
+                                </Button>
+                                <span className="text-muted-foreground">Saved with the Playbook&apos;s filters, then chosen here.</span>
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground">
+                                Ask an Owner, or someone whose role can make changes on Customers, to create it. Then choose it here.
+                            </p>
+                        )}
+                        {segmentError ? (
+                            <p role="alert" className="text-destructive">
+                                {segmentError}
+                            </p>
+                        ) : null}
+                    </div>
+                ) : null}
                 {/* Slice 06 (PRD-campaign-audiences): Segments whose Customers this campaign leaves out, with any audience. */}
                 <Field
                     label="Leave out people in…"

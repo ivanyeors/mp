@@ -689,7 +689,7 @@ One run of an **Email campaign** to the next *n* eligible **Customers**, buyers 
 _Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)
 
 **Email funnel**:
-The page that lays every email the platform sends by itself along the **Lifecycle stages** (**Admin Panel** → Email campaigns → Funnel, `/settings/campaigns/funnel`; PRD-email-funnel, ADR 0054; owner, 2026-11-18). For each stage: the **Segments** that cut it, its **Email flow**, and what each email did for the people who were at that stage when it reached them. It reads what is set up and stores nothing; it sends nothing. Its stages are the **Lifecycle stage**'s five, so it starts at *Lead*: a **Visitor** who has given no email is not on it.
+The page that lays every email the platform sends by itself along the **Lifecycle stages** (**Admin Panel** → Email campaigns → Funnel, `/settings/campaigns/funnel`; PRD-email-funnel, ADR 0054; owner, 2026-11-18). For each stage: the **Segments** that cut it, its **Email flow**, and what each email did for the people who were at that stage when it reached them. It reads what is set up and stores nothing; it sends nothing. Its stages are the **Lifecycle stage**'s five, so it starts at *Lead*: a **Visitor** who has given no email is not on it. *Lost* is sent no marketing email; service emails about an order still go.
 _Avoid_: "marketing funnel" for the **Visitor** journey (that is Analytics, per **Visit**); a second list of stages for email; reading a stage's count as who will be emailed (consent, suppression, the **Rest period** and the sunset rule narrow it at each send)
 
 **Funnel step**:
@@ -697,7 +697,7 @@ One email in a stage of the **Email funnel**: an **Automatic email**, or an **Em
 _Avoid_: storing a campaign's step or stage; "node", "action" (a builder's words: nothing is built on the page)
 
 **Email flow**:
-The picture, for one **Lifecycle stage**, of its **Funnel steps** in order: who enters, what each email waits for, what state it is in (*On*, *Not set up*, *Keeps sending*, *Paused*), and what ends it. A follow-up hangs under the campaign its Segment reads (*got it*, *clicked it*, *got it, didn't click*), and the **Rest period** is drawn between two marketing emails. Drawn when the page is read, never stored or edited there.
+The picture, for one **Lifecycle stage**, of its **Funnel steps** in order: who enters, what each email waits for, what state it is in (*On*, *Not set up*, *Keeps sending*, *Paused*), and what ends it. A follow-up hangs under the campaign its Segment reads (*got it*, *clicked it*, *got it, didn't click*), and the **Rest period** is drawn between two marketing emails. Each email is a card with a thumbnail from the real renderer, and opens as it will be sent. Emails are added from it (*Add an email* for the stage, *Add a follow-up* to a campaign), each an ordinary **Email campaign** written in the campaign editor. Drawn when the page is read, never stored.
 _Avoid_: reading it as a flow builder or a branching automation (a step with two emails is two campaigns); "flow", "automation" or "drip" for **Kept sending** itself, as before; "journey" (the Customer page's tab, and Analytics)
 
 **Automatic email**:

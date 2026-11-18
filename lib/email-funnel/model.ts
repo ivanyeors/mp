@@ -23,14 +23,12 @@
  */
 
 import {
-  CUSTOMER_FILTER_KEYS,
-  customerFilterParams,
   customerFiltersSchema,
   stageFilterParam,
   type CampaignFilterState,
-  type CustomerFilters,
   type StageFilter,
 } from "@/lib/crm/customer-filters";
+import { filtersKey, parseFilters } from "@/lib/crm/filters-key";
 import { LIFECYCLE_DETAIL_STAGE, LIFECYCLE_STAGE_LABEL, LIFECYCLE_STAGE_RULE, type LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import type { LifecyclePartKey, LifecycleSummary } from "@/lib/crm/lifecycle-summary";
 import type { CustomerSegment } from "@/lib/crm/segment-rules";
@@ -55,6 +53,8 @@ import {
 
 /** `rate(part, whole)`: null when `whole` is 0. With the Results tab's `formatRate` and `formatSgd`. */
 export { formatRate, formatSgd, rate } from "@/lib/email-campaigns/results";
+/** *Same filters as the Playbook* (`customerFiltersSchema` → `customerFilterParams`), shared with New campaign. */
+export { filtersKey } from "@/lib/crm/filters-key";
 
 // ─── Facts: what the loader reads ────────────────────────────────────────────
 
@@ -187,8 +187,10 @@ export interface FunnelSegmentView {
   /** Null for a Playbook's Segment that is *Not created*. */
   id: string | null;
   name: string;
-  /** Its stored filters (a Not created one: the Playbook's), as URL parameters. */
+  /** Its stored filters (a Not created one: the Playbook's), as URL parameters, without `search` (see `searchHidden`). */
   params: Record<string, string>;
+  /** Its filters include a search, left out of `params` so no Customer's name or email reaches the page: show a chip without its words. */
+  searchHidden: boolean;
   /** Customers it chooses now; null when not counted. */
   count: number | null;
   needsReview: boolean;
@@ -236,8 +238,10 @@ export type FunnelResultRow =
 export interface FunnelStageTotals {
   /** Every campaign row's numbers added up. */
   campaigns: ResultNumbers;
-  /** Every counted Automatic row's `sent` added up. */
+  /** Every counted Automatic row's `sent` added up, except rows listed under several stages (`acrossStages`). */
   automaticSent: number;
+  /** The `sent` of counted `acrossStages` rows (the Check-up reminder): not split by stage, so shown beside the total and never added to it. */
+  automaticAcrossStages: number;
   /** Automatic rows not counted, so not in `automaticSent`. */
   automaticNotCounted: number;
 }
@@ -283,33 +287,6 @@ export interface FunnelView {
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
 
-const FILTER_KEYS = new Set<string>(CUSTOMER_FILTER_KEYS);
-
-/** Pure — stored or query filters, each parsed by the list's schema; null when any key or value does not parse. */
-function parseFilters(params: Readonly<Record<string, string | undefined>> | URLSearchParams): Partial<CustomerFilters> | null {
-  const entries = params instanceof URLSearchParams ? [...params.entries()] : Object.entries(params);
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of entries) {
-    if (value === undefined) continue;
-    if (!FILTER_KEYS.has(key)) return null;
-    const parsed = customerFiltersSchema.shape[key as keyof typeof customerFiltersSchema.shape].safeParse(value);
-    if (!parsed.success || parsed.data === undefined) return null;
-    out[key] = parsed.data;
-  }
-  return out as Partial<CustomerFilters>;
-}
-
-/**
- * Pure — filters as one canonical string (`customerFiltersSchema` →
- * `customerFilterParams`): two sets that choose the same Customers give the
- * same key, whatever their order. Null when any filter does not parse. What
- * *same filters as the Playbook* means here and on New campaign (slice 04).
- */
-export function filtersKey(params: Readonly<Record<string, string | undefined>> | URLSearchParams | string): string | null {
-  const f = parseFilters(typeof params === "string" ? new URLSearchParams(params) : params);
-  return f ? customerFilterParams(f).toString() : null;
-}
-
 /** Whether a Stage filter's values name `stage` or one of its sub-statuses. */
 const namesStage = (values: readonly StageFilter[], stage: LifecycleStage) =>
   values.some((v) => v === stage || (v in LIFECYCLE_DETAIL_STAGE && LIFECYCLE_DETAIL_STAGE[v as keyof typeof LIFECYCLE_DETAIL_STAGE] === stage));
@@ -340,8 +317,16 @@ function readSegment(fact: FunnelSegmentFact): ReadSegment {
   };
 }
 
-const plainParams = (params: Readonly<Record<string, string | undefined>>): Record<string, string> =>
-  Object.fromEntries(Object.entries(params).filter((e): e is [string, string] => e[1] !== undefined));
+/** The *Campaign* filter states that make a follow-up: got it, clicked it, got it and didn't click. */
+const FOLLOW_UP_STATES: ReadonlySet<CampaignFilterState> = new Set(["sent", "clicked", "not-clicked"]);
+
+/**
+ * Stored filters for the page, without a search's words: a search may be a
+ * Customer's name or email, and this page never names a Customer (PRD
+ * hazard). Matching still reads the whole stored filters.
+ */
+const shownParams = (params: Readonly<Record<string, string | undefined>>): Record<string, string> =>
+  Object.fromEntries(Object.entries(params).filter((e): e is [string, string] => e[1] !== undefined && e[0] !== "search"));
 
 // ─── States ──────────────────────────────────────────────────────────────────
 
@@ -395,6 +380,35 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
   const segmentOf = (c: FunnelCampaignFact) =>
     c.campaign.audience === "segment" && c.campaign.segmentId ? (segmentById.get(c.campaign.segmentId) ?? null) : null;
 
+  const byId = new Map(campaigns.map((c) => [c.campaign.id, c]));
+
+  // The live campaign `c` follows up: its Segment reads what that one did
+  // (*got it*, *clicked it*, *got it, didn't click*). *Didn't get it* is the
+  // people it never reached: an ordinary campaign, not a follow-up.
+  const followOf = (c: FunnelCampaignFact): { parent: FunnelCampaignFact; did: CampaignFilterState } | null => {
+    const read = segmentOf(c)?.campaign;
+    if (!read || !FOLLOW_UP_STATES.has(read.state) || read.id === c.campaign.id) return null;
+    const parent = byId.get(read.id);
+    return parent ? { parent, did: read.state } : null;
+  };
+
+  // The stages a campaign sits in: its Segment's own, or, for a follow-up
+  // whose Segment names none, the stages of the campaign it follows up. A
+  // cycle (A reads B, B reads A) ends with no stage.
+  const stagesMemo = new Map<string, ReadonlySet<LifecycleStage>>();
+  const stagesOf = (c: FunnelCampaignFact, seen: ReadonlySet<string> = new Set()): ReadonlySet<LifecycleStage> => {
+    const memo = stagesMemo.get(c.campaign.id);
+    if (memo) return memo;
+    const own = segmentOf(c)?.stages ?? new Set<LifecycleStage>();
+    let out: ReadonlySet<LifecycleStage> = own;
+    if (!own.size) {
+      const f = followOf(c);
+      out = f && !seen.has(f.parent.campaign.id) ? stagesOf(f.parent, new Set([...seen, c.campaign.id])) : own;
+    }
+    if (!seen.size) stagesMemo.set(c.campaign.id, out);
+    return out;
+  };
+
   // Each live campaign's rows, by id.
   const rowsByCampaign = new Map<string, Record<string, unknown>[]>();
   for (const row of facts.stageResults) {
@@ -406,7 +420,7 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
   const stages = FUNNEL_STAGES.map((stage): FunnelStageView => {
     const steps = stage === "lost" ? [] : stepsOfStage(programme, stage);
     const playbooks = steps.filter((s): s is PlaybookStep => s.kind === "playbook");
-    const inStage = campaigns.filter((c) => segmentOf(c)?.stages.has(stage));
+    const inStage = campaigns.filter((c) => stagesOf(c).has(stage));
 
     // Each Playbook's campaigns: those whose Segment has its filters.
     const playbookCampaigns = new Map(
@@ -428,10 +442,8 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
               .map((c): FlowStep => {
                 const seg = segmentOf(c)!;
                 const keeps = c.campaign.keepSending?.on === true;
-                const after =
-                  seg.campaign && seg.campaign.id !== c.campaign.id && stageCampaignIds.has(seg.campaign.id)
-                    ? { campaignId: seg.campaign.id, did: seg.campaign.state }
-                    : null;
+                const f = followOf(c);
+                const after = f && stageCampaignIds.has(f.parent.campaign.id) ? { campaignId: f.parent.campaign.id, did: f.did } : null;
                 const fc = flowCampaign(c);
                 return {
                   key: `campaign:${c.campaign.id}`,
@@ -459,7 +471,8 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
       .map((s) => ({
         id: s.fact.id,
         name: s.fact.name,
-        params: plainParams(s.fact.params),
+        params: shownParams(s.fact.params),
+        searchHidden: s.fact.params.search !== undefined,
         count: s.fact.count,
         needsReview: s.fact.needsReview,
         unreadable: s.unreadable,
@@ -476,7 +489,8 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
       .map((p) => ({
         id: null,
         name: p.segment.name,
-        params: Object.fromEntries(new URLSearchParams(p.segment.filters)),
+        params: shownParams(Object.fromEntries(new URLSearchParams(p.segment.filters))),
+        searchHidden: false,
         count: null,
         needsReview: false,
         unreadable: false,
@@ -534,7 +548,8 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
         rows: [...automaticRows, ...campaignRows],
         totals: {
           campaigns: campaignRows.length ? resultsFromRows(campaigns.flatMap(stageRows)).total : { ...NO_RESULTS },
-          automaticSent: counted.reduce((n, r) => n + (r.kind === "automatic" ? (r.sent ?? 0) : 0), 0),
+          automaticSent: counted.reduce((n, r) => n + (r.kind === "automatic" && !r.acrossStages ? (r.sent ?? 0) : 0), 0),
+          automaticAcrossStages: counted.reduce((n, r) => n + (r.kind === "automatic" && r.acrossStages ? (r.sent ?? 0) : 0), 0),
           automaticNotCounted: automaticRows.length - counted.length,
         },
         unsubscribedFrom:

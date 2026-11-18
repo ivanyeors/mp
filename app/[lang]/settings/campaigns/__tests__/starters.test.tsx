@@ -75,6 +75,7 @@ vi.mock("next/navigation", () => ({
 const { CampaignEditor } = await import("../campaign-editor");
 const { CONTENT_PLACEHOLDERS } = await import("@/lib/email-campaigns/content");
 const { CAMPAIGN_PLACEHOLDERS, newCampaignDraft } = await import("@/lib/email-campaigns/rules");
+const { filtersKey } = await import("@/lib/crm/filters-key");
 
 const CONTENT: CampaignContent = {
   v: 1,
@@ -108,7 +109,7 @@ const SAVED: Campaign = {
 };
 
 let root: Root | null = null;
-function mount(campaign: Campaign | null, draft: CampaignDraft, ai?: AiWritingAvailability, segments: { id: string; name: string }[] = []) {
+function mount(campaign: Campaign | null, draft: CampaignDraft, ai?: AiWritingAvailability, segments: { id: string; name: string; filtersKey?: string | null }[] = []) {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -202,10 +203,10 @@ describe("thumbnails", () => {
 });
 
 describe("a Playbook", () => {
-  it("starts Welcome back with its words, its stage's Segment found by name, and the Unengaged included", async () => {
+  it("starts Welcome back with its words, its stage's Segment found by its filters, and the Unengaged included", async () => {
     mount(null, newCampaignDraft(undefined, []), undefined, [
-      { id: "seg-loyal", name: "Loyal" },
-      { id: "seg-lapsed", name: "At risk · Lapsed" },
+      { id: "seg-loyal", name: "Loyal", filtersKey: filtersKey("stage=loyal") },
+      { id: "seg-lapsed", name: "At risk · Lapsed", filtersKey: filtersKey("stage=at-risk:lapsed") },
     ]);
     await until(startPanel);
     await click(choice("A Starter")!);
