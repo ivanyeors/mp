@@ -13,6 +13,7 @@ import { ProductCardSection } from "./product-card-section";
 import { CredibilitySection } from "./credibility-section";
 import { VideoSection } from "./video-section";
 import { FounderSection } from "./founder-section";
+import { ExploreSection } from "./explore-section";
 import { CustomTextImageSection } from "./custom-text-image-section";
 import { CustomRichTextSection } from "./custom-rich-text-section";
 import { CustomFullWidthImageSection } from "./custom-full-width-image-section";
@@ -111,6 +112,9 @@ export function LandingSection({
 
     case "founder_note":
       return <FounderSection section={section} messages={messages} images={images} />;
+
+    case "explore":
+      return <ExploreSection section={section} messages={messages} locale={locale} />;
 
     case "custom_text_image":
       return <CustomTextImageSection section={section} />;

@@ -613,6 +613,20 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
           </>
         );
 
+      case "explore":
+        return (
+          <>
+            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
+            <Field label="Alt text"><Input value={get("alt")} onChange={(e) => set("alt", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Default copy" /></Field>
+            <Field label="Text"><Textarea value={get("body")} onChange={(e) => set("body", e.target.value)} placeholder="Default copy" rows={2} /></Field>
+            <Field label="Button label"><Input value={get("buttonLabel")} onChange={(e) => set("buttonLabel", e.target.value)} placeholder="Default copy" /></Field>
+            <p className="text-xs text-muted-foreground">
+              Leads to the Explore page. Empty fields use the default still of its scenery and the default copy for the language.
+            </p>
+          </>
+        );
+
       // Custom section types
       case "custom_text_image":
         return (
