@@ -87,6 +87,19 @@ const SENT_CAMPAIGN = "00000000-0000-4000-8000-00000000e002";
 const CHECKUP_CAMPAIGN = "00000000-0000-4000-8000-00000000e003";
 // Slice 10: *November care tips* keeps sending (three went today); *Second purchase* the daily run paused.
 const SECOND_CAMPAIGN = "00000000-0000-4000-8000-00000000e004";
+// PRD-email-funnel slice 03: the Email funnel's sample programme. Each Playbook in a state the page
+// draws: *We miss you* keeps sending, *Welcome back* paused by the daily job, *Thank you* started,
+// *Second purchase* not set up (its Segment is saved, no campaign), *How your pillow is made* waits
+// for the owner. A Staff-written draft to New, a one-off to everyone subscribed, and a follow-up to
+// those who got *We miss you* and didn't click.
+const WE_MISS_YOU = "00000000-0000-4000-8000-00000000e005";
+const WELCOME_BACK = "00000000-0000-4000-8000-00000000e006";
+const THANK_YOU = "00000000-0000-4000-8000-00000000e007";
+const MBOLSTER_DRAFT = "00000000-0000-4000-8000-00000000e008";
+const YEAR_END = "00000000-0000-4000-8000-00000000e009";
+const SECOND_NOTE = "00000000-0000-4000-8000-00000000e00a";
+const NO_MBOLSTER_SEGMENT = "00000000-0000-4000-8000-00000000c020";
+const FOLLOW_UP_SEGMENT = "00000000-0000-4000-8000-00000000c021";
 const OFF = { keep_sending: false, keep_sending_daily_cap: 20, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null, holdout_at: null };
 
 /** A seeded generator, so every run draws the same sample results. */
@@ -151,6 +164,114 @@ function resultSends(ago) {
     };
   });
   return { rows, outcomes };
+}
+
+/**
+ * PRD-email-funnel slice 03: made-up sends of the funnel's sample campaigns, to
+ * made-up Customer ids (no Customer row), each with a stage at send and a
+ * seeded click, purchase and unsubscribe. `plan` is [stage, people, days ago
+ * of the first, days ago of the last]. Outcomes go into `outcomes`.
+ */
+function funnelSends(ago, outcomes) {
+  const draw = rng(54);
+  const click = { lead: 0.08, new: 0.14, loyal: 0.22, at_risk: 0.09 };
+  const buy = { lead: 0.015, new: 0.03, loyal: 0.06, at_risk: 0.025 };
+  const plans = [
+    [WE_MISS_YOU, "51", [["at_risk", 140, 40, 1]]],
+    [WELCOME_BACK, "52", [["at_risk", 60, 30, 3]]],
+    [THANK_YOU, "53", [["loyal", 90, 20, 20]]],
+    [YEAR_END, "54", [["lead", 120, 25, 25], ["new", 80, 25, 25], ["loyal", 40, 25, 25], ["at_risk", 30, 25, 25]]],
+    [SECOND_NOTE, "55", [["at_risk", 50, 15, 15]]],
+  ];
+  const rows = [];
+  for (const [campaign, prefix, plan] of plans) {
+    let k = 0;
+    for (const [stage, people, first, last] of plan) {
+      for (let i = 0; i < people; i++, k++) {
+        const days = first - ((first - last) * i) / Math.max(1, people - 1);
+        const id = `00000000-0000-4000-8001-${prefix}${String(k).padStart(10, "0")}`;
+        const clicked = draw() < click[stage];
+        const bought = draw() < buy[stage] * (clicked ? 3 : 1);
+        outcomes.set(id, {
+          bought,
+          spent: bought ? Math.round(160 + draw() * 280) : 0,
+          afterClick: bought && clicked,
+          unsubscribed: !clicked && draw() < (campaign === WELCOME_BACK ? 0.04 : 0.008),
+        });
+        rows.push({
+          id,
+          customer_id: `00000000-0000-4000-8002-${prefix}${String(k).padStart(10, "0")}`,
+          template: `campaign:${campaign}`,
+          campaign_id: campaign,
+          wave: days === first ? "w1" : `daily-${ago(days).slice(0, 10)}`,
+          status: "sent",
+          provider_message_id: `re_funnel_${prefix}_${k}`,
+          sent_at: ago(days),
+          attempts: 1,
+          last_error: null,
+          bounced_at: null,
+          // *Welcome back*'s daily job paused it on two spam reports.
+          complained_at: campaign === WELCOME_BACK && (k === 7 || k === 41) ? ago(days - 0.3) : null,
+          click_token_hash: null,
+          first_clicked_at: clicked ? ago(days - 0.2) : null,
+          clicks: clicked ? 1 : 0,
+          stage_at_send: stage,
+        });
+      }
+    }
+  }
+  return rows;
+}
+
+/**
+ * PRD-email-funnel slice 03: what the Automatic emails record, to made-up
+ * Customer ids (no Customer row, so no profile shows them). Draft reminders
+ * name Drafts: some are results.mjs's held Results (finished since), the rest
+ * no longer exist. Review requests asked and opened, and check-ups, a few
+ * followed by a booking.
+ */
+function automaticSample(ago) {
+  const cid = (group, n) => `00000000-0000-4000-8003-${group}${String(n).padStart(10, "0")}`;
+  const heldResults = [1, 2, 3, 4, 5].map((n) => `00000000-0000-4000-b200-${String(n).padStart(12, "0")}`);
+  const drafts = [...heldResults, ...Array.from({ length: 9 }, (_, n) => `00000000-0000-4000-b2ff-${String(n + 1).padStart(12, "0")}`)];
+  const emails = [];
+  let id = 900000;
+  const email = (customer_id, template, entity_id, days) =>
+    emails.push({ id: id++, customer_id, template, entity_id, status: "sent", sent_at: ago(days), created_at: ago(days) });
+  // 14 Drafts reminded after a day, 9 after a week, 5 after a month.
+  drafts.forEach((d, n) => {
+    email(cid("61", n), "results.draft_reminder_1d", d, 40 - n);
+    if (n >= 5) email(cid("61", n), "results.draft_reminder_1w", d, 34 - n);
+    if (n >= 9) email(cid("61", n), "results.draft_reminder_1m", d, 10 - n / 2);
+  });
+  const asked = Array.from({ length: 22 }, (_, n) => ({
+    customer_id: cid("62", n),
+    first_clicked_at: n % 5 < 2 ? ago(50 - n * 2) : null,
+    created_at: ago(52 - n * 2),
+  }));
+  asked.forEach((r, n) => {
+    if (n !== 3) email(r.customer_id, "aftercare.review_request", r.customer_id, 52 - n * 2);
+  });
+  const checkups = Array.from({ length: 16 }, (_, n) => cid("63", n));
+  checkups.forEach((c, n) => email(c, n < 12 ? "aftercare.checkup_12m" : "aftercare.checkup_24m", cid("64", n), 90 - n * 4));
+  const bookings = [0, 3, 9].map((n) => ({
+    id: cid("65", n),
+    customer_id: checkups[n],
+    status: "attended",
+    created_at: ago(80 - n * 4),
+  }));
+  // Two check-ups also went by WhatsApp: still one check-up each.
+  const whatsapp = [0, 1].map((n) => ({
+    id: 950000 + n,
+    customer_id: checkups[n],
+    template: "aftercare.checkup_12m",
+    entity_id: cid("64", n),
+    phone: "+6590000000",
+    status: "sent",
+    sent_at: ago(90 - n * 4),
+    created_at: ago(90 - n * 4),
+  }));
+  return { emails, asked, bookings, whatsapp };
 }
 
 /** `email_campaign_send_outcomes`, from the ledger and the sample outcomes: one row per send that went or was held out. */
@@ -218,7 +339,32 @@ export default function crm({ now }) {
   // Today's kept-sending Wave, as the daily job labels it: Singapore's date.
   const keptToday = `daily-${new Date(now.getTime() + 8 * 3_600_000).toISOString().slice(0, 10)}`;
   const results = resultSends(ago);
+  const funnel = funnelSends(ago, results.outcomes);
+  const automatic = automaticSample(ago);
   const left = unsubscribeSample(ago);
+  /** A sample campaign of the Email funnel, in `email_campaigns`' columns. */
+  const funnelCampaign = (id, name, subject, extra) => ({
+    id,
+    name,
+    subject,
+    preheader: "",
+    body: `${subject}.`,
+    content: null,
+    greeting: true,
+    button_label: null,
+    button_target: null,
+    button_url: null,
+    audience: "segment",
+    segment_id: null,
+    exclude_segment_ids: [],
+    created_by_profile_id: null,
+    created_at: ago(45),
+    updated_at: ago(1),
+    locked_at: null,
+    archived_at: null,
+    ...OFF,
+    ...extra,
+  });
   const customers = PEOPLE.map((p, i) => ({
     id: `00000000-0000-4000-8000-0000000c0${String(i + 1).padStart(3, "0")}`,
     email: `${p.first.toLowerCase().replace(/\s/g, "")}.${p.last.toLowerCase()}@example.com`,
@@ -315,6 +461,25 @@ export default function crm({ now }) {
           updated_at: ago(1),
           archived_at: null,
         })),
+        // PRD-email-funnel slice 03: a Staff-written Segment of New, and a follow-up's Segment.
+        {
+          id: NO_MBOLSTER_SEGMENT,
+          name: "New · no Mbolster yet",
+          filters: { stage: "new", not_bought: "mbolster" },
+          filters_version: 2,
+          created_at: ago(2),
+          updated_at: ago(2),
+          archived_at: null,
+        },
+        {
+          id: FOLLOW_UP_SEGMENT,
+          name: "At risk · got We miss you, didn't click",
+          filters: { stage: "at-risk", campaign: `${WE_MISS_YOU}:not-clicked` },
+          filters_version: 2,
+          created_at: ago(16),
+          updated_at: ago(16),
+          archived_at: null,
+        },
       ],
       email_campaigns: [
         {
@@ -433,6 +598,46 @@ export default function crm({ now }) {
           archived_at: null,
           ...OFF,
         },
+        // PRD-email-funnel slice 03: the funnel's sample campaigns (see the constants above).
+        funnelCampaign(WE_MISS_YOU, "We miss you", "It has been a while", {
+          segment_id: "00000000-0000-4000-8000-00000000c012",
+          locked_at: ago(40),
+          keep_sending: true,
+        }),
+        funnelCampaign(WELCOME_BACK, "Welcome back", "Your pillow, two years on", {
+          segment_id: "00000000-0000-4000-8000-00000000c013",
+          locked_at: ago(30),
+          keep_sending: true,
+          keep_sending_daily_cap: 15,
+          keep_sending_paused_at: ago(2),
+          keep_sending_paused_reason: "spam reports passed 0.1% in its last wave",
+        }),
+        funnelCampaign(THANK_YOU, "Thank you", "Thank you for coming back", {
+          segment_id: "00000000-0000-4000-8000-00000000c011",
+          locked_at: ago(20),
+        }),
+        funnelCampaign(MBOLSTER_DRAFT, "Pair it with an Mbolster", "An Mbolster made to match", {
+          segment_id: NO_MBOLSTER_SEGMENT,
+          exclude_segment_ids: [STAFF_SEGMENT],
+          created_at: ago(1),
+        }),
+        funnelCampaign(YEAR_END, "Year-end studio hours", "Our studio hours over the holidays", {
+          audience: "subscribed",
+          locked_at: ago(25),
+        }),
+        funnelCampaign(SECOND_NOTE, "We miss you: a second note", "Still sleeping well?", {
+          segment_id: FOLLOW_UP_SEGMENT,
+          locked_at: ago(15),
+        }),
+      ],
+      // PRD-email-funnel slice 03: the Automatic emails' own records.
+      customer_emails: automatic.emails,
+      customer_review_requests: automatic.asked,
+      readjustment_bookings: automatic.bookings,
+      customer_whatsapp: automatic.whatsapp,
+      site_settings: [
+        { key: "review_requests_enabled", value: "true" },
+        { key: "google_review_url", value: "https://g.page/r/sample-review" },
       ],
       customer_campaign_sends: [
         {
@@ -509,6 +714,7 @@ export default function crm({ now }) {
           clicks: 0,
         })),
         ...results.rows,
+        ...funnel,
       ],
       customer_consent_events: [
         {

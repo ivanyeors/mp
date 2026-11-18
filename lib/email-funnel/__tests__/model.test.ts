@@ -443,6 +443,34 @@ describe("results numbers", () => {
     // Service emails show no numbers.
     expect(stageOf(view, "new").results.rows.some((r) => r.kind === "automatic" && r.stepId === "new.order_emails")).toBe(false);
   });
+
+  it("carries an Automatic email's other counts, and none when not counted", () => {
+    const view = buildFunnel(
+      facts({
+        automatic: {
+          "new.review_request": { sent: 30, outcome: 6, also: [{ label: "Reviews linked", count: 2 }] },
+          "lead.draft_reminders": null,
+        },
+      }),
+    );
+    const review = stageOf(view, "new").results.rows.find((r) => r.kind === "automatic" && r.stepId === "new.review_request");
+    expect(review).toMatchObject({ also: [{ label: "Reviews linked", count: 2 }] });
+    const lead = stageOf(view, "lead").results.rows.find((r) => r.kind === "automatic" && r.stepId === "lead.draft_reminders");
+    expect(lead).toMatchObject({ counted: false, also: [] });
+  });
+});
+
+describe("a part not read", () => {
+  it("leaves the stage counts null, not 0, when the summary was not read", () => {
+    const view = buildFunnel(facts({ summary: null }));
+    expect(view.stages.map((s) => s.header.customers)).toEqual([null, null, null, null, null]);
+    expect(stageOf(buildFunnel(facts()), "lead").header.customers).toBe(400);
+  });
+
+  it("names the parts not read, and none by default", () => {
+    expect(buildFunnel(facts()).notRead).toEqual([]);
+    expect(buildFunnel(facts({ notRead: ["segments", "results"] })).notRead).toEqual(["segments", "results"]);
+  });
 });
 
 // ─── Lost ────────────────────────────────────────────────────────────────────

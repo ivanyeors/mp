@@ -257,6 +257,7 @@ export function CampaignEditor({
     ai = AI_OFF,
     keptToday = 0,
     results = null,
+    initialTab,
 }: {
     /** Null for a new one. */
     campaign: Campaign | null;
@@ -275,6 +276,8 @@ export function CampaignEditor({
     keptToday?: number;
     /** A started campaign's results by stage (slice 11); null when not read. */
     results?: CampaignResults | null;
+    /** Open on Results (`?tab=results`, the Email funnel's links); only once it has started. */
+    initialTab?: "results";
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
@@ -406,7 +409,7 @@ export function CampaignEditor({
     }, [campaign, input, locale, router]);
 
     // ── Write: tabs, selection, panes ──────────────────────────────────────
-    const [tab, setTab] = useState<"write" | "send" | "results">("write");
+    const [tab, setTab] = useState<"write" | "send" | "results">(initialTab === "results" && locked ? "results" : "write");
     const [selected, setSelected] = useState<string | null>(null);
     const [pane, setPane] = useState<"write" | "preview">("write");
     const [addOpen, setAddOpen] = useState(false);

@@ -76,11 +76,22 @@ export interface FunnelCampaignFact {
 export interface AutomaticCount {
   sent: number;
   outcome: number;
+  /** Other counts it records, shown beside the outcome (*Reviews linked*, each reminder's sends). */
+  also?: readonly AutomaticAlso[];
 }
 
+/** One more count an Automatic email records, in words. */
+export interface AutomaticAlso {
+  label: string;
+  count: number;
+}
+
+/** A part of the page whose read failed: the page says so instead of showing it empty. */
+export type FunnelPart = "summary" | "segments" | "campaigns" | "results" | "switches";
+
 export interface FunnelFacts {
-  /** Every Customer by stage now (`lifecycleSummary`). */
-  summary: LifecycleSummary;
+  /** Every Customer by stage now (`lifecycleSummary`); null when not read. */
+  summary: LifecycleSummary | null;
   /** Per stage, how many of its Customers are subscribed to marketing email; missing or null when not read. */
   subscribed: Readonly<Partial<Record<LifecycleStage, number | null>>>;
   /** Live Segments (not archived). */
@@ -97,6 +108,8 @@ export interface FunnelFacts {
    * (`reviewRequestBlock` / `checkupBlock` is null), and their timings.
    */
   switches: Readonly<Record<FunnelSwitch, boolean>> & { checkupMonths: number; reviewRequestDays?: number };
+  /** Parts whose read failed (their facts are then empty); missing for none. */
+  notRead?: readonly FunnelPart[];
 }
 
 // ─── The view ────────────────────────────────────────────────────────────────
@@ -214,6 +227,8 @@ export type FunnelResultRow =
       counted: boolean;
       sent: number | null;
       outcome: number | null;
+      /** Its other counts; empty when not counted. */
+      also: AutomaticAlso[];
       /** Listed under more than one stage (the Check-up reminder): its numbers are not split by stage. */
       acrossStages: boolean;
     };
@@ -234,7 +249,8 @@ export interface FunnelStageView {
   header: {
     label: string;
     rule: string;
-    customers: number;
+    /** Null when the counts were not read. */
+    customers: number | null;
     /** Of them, subscribed to marketing email; null when not read. */
     subscribed: number | null;
     /** Its sub-statuses, in bar order (`LIFECYCLE_PARTS`). */
@@ -261,6 +277,8 @@ export interface FunnelView {
   restPeriod: { days: number; maxPer30Days: number; text: string };
   /** *Bought within 30 days*. */
   resultWindowDays: number;
+  /** Parts whose read failed: the page says each could not be read. */
+  notRead: FunnelPart[];
 }
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
@@ -473,8 +491,10 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
       if (s.kind !== "automatic" || s.outcome === null) return [];
       const count = facts.automatic[s.id];
       const base = { kind: "automatic" as const, stepId: s.id, name: s.name, href: s.href, outcomeLabel: s.outcome, acrossStages: s.stages.length > 1 };
-      if (count == null) return [{ ...base, counted: false, sent: null, outcome: null }];
-      return count.sent > 0 ? [{ ...base, counted: true, sent: count.sent, outcome: count.outcome }] : [];
+      if (count == null) return [{ ...base, counted: false, sent: null, outcome: null, also: [] }];
+      return count.sent > 0
+        ? [{ ...base, counted: true, sent: count.sent, outcome: count.outcome, also: (count.also ?? []).map((a) => ({ ...a })) }]
+        : [];
     });
     const stageRows = (c: FunnelCampaignFact) => rowsOf(c).filter((r) => r.stage === stage);
     const campaignRows = [...campaigns]
@@ -496,14 +516,14 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
       });
     const counted = automaticRows.filter((r) => r.kind === "automatic" && r.counted);
 
-    const summary = facts.summary.stages.find((s) => s.stage === stage);
+    const summary = facts.summary?.stages.find((s) => s.stage === stage);
     return {
       stage,
       param: stageFilterParam(stage),
       header: {
         label: LIFECYCLE_STAGE_LABEL[stage],
         rule: LIFECYCLE_STAGE_RULE[stage],
-        customers: summary?.customers ?? 0,
+        customers: facts.summary ? (summary?.customers ?? 0) : null,
         subscribed: facts.subscribed[stage] ?? null,
         parts: (summary?.parts ?? []).map((p) => ({ key: p.key, label: p.label, customers: p.customers })),
       },
@@ -532,6 +552,7 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
     stages,
     restPeriod: { days: REST_DAYS, maxPer30Days: REST_MAX_PER_30_DAYS, text: REST_PERIOD_TEXT },
     resultWindowDays: RESULT_WINDOW_DAYS,
+    notRead: [...(facts.notRead ?? [])],
   };
 }
 

@@ -40,6 +40,7 @@ export default async function EmailTemplatesPage({ params }: { params: Promise<{
             <EmailsNav
                 current="templates"
                 campaignsHref={hasPermission(ctx, "campaigns") ? to("/settings/campaigns") : null}
+                funnelHref={hasPermission(ctx, "campaigns") ? to("/settings/campaigns/funnel") : null}
                 templatesHref={to("/settings/email-templates")}
             />
             <div className="flex items-center gap-1.5">
