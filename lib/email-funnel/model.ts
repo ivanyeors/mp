@@ -9,7 +9,12 @@
  * the stages its Segment's `stage` filter names, and a Playbook's step is set
  * up when a live campaign's Segment has the Playbook's filters, compared after
  * the Customers list's one schema (`customerFiltersSchema` →
- * `customerFilterParams`), so key order and defaults do not matter.
+ * `customerFilterParams`), so key order and defaults do not matter, AND the
+ * campaign still carries the Playbook's name or subject (its `words`, trimmed,
+ * in any case). Any other campaign to that Segment (*Add an email* on Loyal
+ * opens one with exactly `stage=loyal`, the *Thank you* Playbook's filters)
+ * is the marketer's own email, an ordinary campaign of the stage, and the
+ * Playbook stays a suggestion. An unapproved Playbook is claimed by none.
  *
  * Results follow the campaign Results tab (lib/email-campaigns/results.ts):
  * the `sent` cohort only, by the stage each person had when sent
@@ -35,7 +40,7 @@ import type { CustomerSegment } from "@/lib/crm/segment-rules";
 import type { KeepSending } from "@/lib/email-campaigns/keep-sending";
 import { NO_RESULTS, rate, RESULT_WINDOW_DAYS, resultsFromRows, type ResultNumbers } from "@/lib/email-campaigns/results";
 import { REST_DAYS, REST_MAX_PER_30_DAYS, REST_PERIOD_TEXT, type Campaign, type CampaignAudience } from "@/lib/email-campaigns/rules";
-import { APPROVED_PLAYBOOKS } from "@/lib/email-campaigns/starters";
+import { APPROVED_PLAYBOOKS, PLAYBOOK_DRAFTS } from "@/lib/email-campaigns/starters";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import {
   campaignPath,
@@ -66,7 +71,7 @@ export type FunnelSegmentFact = Pick<CustomerSegment, "id" | "name" | "count" | 
 
 /** A live campaign: `CampaignListItem` as `listCampaigns` returns it fits. */
 export interface FunnelCampaignFact {
-  campaign: Pick<Campaign, "id" | "name" | "audience" | "segmentId" | "excludeSegmentIds" | "lockedAt" | "createdAt"> & {
+  campaign: Pick<Campaign, "id" | "name" | "subject" | "audience" | "segmentId" | "excludeSegmentIds" | "lockedAt" | "createdAt"> & {
     keepSending?: Pick<KeepSending, "on" | "dailyCap" | "pausedAt" | "pausedReason" | "holdoutAt">;
   };
   stats: Pick<CampaignStats, "handed" | "firstSentAt" | "lastSentAt">;
@@ -75,6 +80,8 @@ export interface FunnelCampaignFact {
 /** What an Automatic email already records: how many were sent, and its one outcome. */
 export interface AutomaticCount {
   sent: number;
+  /** What `sent` counts, so a row says its basis (*Check-ups sent, by email or WhatsApp*); *Emails sent* when left out. */
+  sentLabel?: string;
   outcome: number;
   /** Other counts it records, shown beside the outcome (*Reviews linked*, each reminder's sends). */
   also?: readonly AutomaticAlso[];
@@ -228,6 +235,8 @@ export type FunnelResultRow =
       /** False when its count could not be read: *not counted*, never 0. */
       counted: boolean;
       sent: number | null;
+      /** What `sent` counts (*Emails sent*, *Customers asked, by email or WhatsApp*). */
+      sentLabel: string;
       outcome: number | null;
       /** Its other counts; empty when not counted. */
       also: AutomaticAlso[];
@@ -329,6 +338,18 @@ const shownParams = (params: Readonly<Record<string, string | undefined>>): Reco
   Object.fromEntries(Object.entries(params).filter((e): e is [string, string] => e[1] !== undefined && e[0] !== "search"));
 
 // ─── States ──────────────────────────────────────────────────────────────────
+
+/** Two words the same, trimmed and in any case; an empty one matches nothing. */
+const same = (a: string | null | undefined, b: string | null | undefined) => {
+  const x = (a ?? "").trim().toLowerCase();
+  return x !== "" && x === (b ?? "").trim().toLowerCase();
+};
+
+/** A Playbook's own name and subject (`PLAYBOOK_DRAFTS`), or null when it has none. */
+function playbookWords(starterId: string): { name: string; subject: string } | null {
+  const w = PLAYBOOK_DRAFTS.find((p) => p.id === starterId)?.words;
+  return w ? { name: w.name, subject: w.subject } : null;
+}
 
 /** Pure — a campaign's state: Draft → Started → Keeps sending, n a day → Paused with the reason. */
 export function campaignState(c: FunnelCampaignFact["campaign"]): StepState {
@@ -443,11 +464,18 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
     const playbooks = steps.filter((s): s is PlaybookStep => s.kind === "playbook");
     const inStage = campaigns.filter((c) => stagesOf(c).has(stage));
 
-    // Each Playbook's campaigns: those whose Segment has its filters.
+    // Each Playbook's campaigns: those whose Segment has its filters and that still carry its name or subject.
     const playbookCampaigns = new Map(
       playbooks.map((p) => {
         const key = filtersKey(p.segment.filters);
-        return [p.id, inStage.filter((c) => key !== null && segmentOf(c)?.key === key)] as const;
+        const words = playbookWords(p.starterId);
+        const claims = (c: FunnelCampaignFact) =>
+          APPROVED_PLAYBOOKS.has(p.starterId) &&
+          key !== null &&
+          segmentOf(c)?.key === key &&
+          words !== null &&
+          (same(c.campaign.name, words.name) || same(c.campaign.subject, words.subject));
+        return [p.id, inStage.filter(claims)] as const;
       }),
     );
     const claimed = new Set([...playbookCampaigns.values()].flat().map((c) => c.campaign.id));
@@ -526,9 +554,18 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
       if (s.kind !== "automatic" || s.outcome === null) return [];
       const count = facts.automatic[s.id];
       const base = { kind: "automatic" as const, stepId: s.id, name: s.name, href: s.href, outcomeLabel: s.outcome, acrossStages: s.stages.length > 1 };
-      if (count == null) return [{ ...base, counted: false, sent: null, outcome: null, also: [] }];
+      if (count == null) return [{ ...base, counted: false, sent: null, sentLabel: "Emails sent", outcome: null, also: [] }];
       return count.sent > 0
-        ? [{ ...base, counted: true, sent: count.sent, outcome: count.outcome, also: (count.also ?? []).map((a) => ({ ...a })) }]
+        ? [
+            {
+              ...base,
+              counted: true,
+              sent: count.sent,
+              sentLabel: count.sentLabel ?? "Emails sent",
+              outcome: count.outcome,
+              also: (count.also ?? []).map((a) => ({ ...a })),
+            },
+          ]
         : [];
     });
     const stageRows = (c: FunnelCampaignFact) => rowsOf(c).filter((r) => r.stage === stage);

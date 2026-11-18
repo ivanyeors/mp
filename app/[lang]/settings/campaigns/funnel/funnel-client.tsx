@@ -30,6 +30,8 @@ import {
     FOLLOW_UP_SHORT,
     followUpHref,
     GROUP_THUMBNAILS,
+    MAX_RENDER_KEYS,
+    canOpenWith,
     renderKeysOf,
     resultCells,
     sequenceDays,
@@ -94,8 +96,8 @@ interface Ctx {
     view: FunnelView;
     renders: Renders;
     to: (href: string) => string;
+    /** The page's one link rule (`canOpenWith`): paths without the locale. */
     canOpen: (href: string) => boolean;
-    canEditTemplates: boolean;
     open: (t: PreviewTarget) => void;
 }
 
@@ -103,26 +105,21 @@ export function FunnelClient({
     view,
     initialStage,
     locale,
-    canSeeCustomers,
-    canEditTemplates,
-    openable,
+    permissions,
 }: {
     view: FunnelView;
     initialStage: LifecycleStage;
     locale: Locale;
-    /** The role holds `customers`: links to the Customers list show. */
-    canSeeCustomers: boolean;
-    /** The role holds `email-templates`: an Automatic email offers *Edit words*. */
-    canEditTemplates: boolean;
-    /** Step links the role can open; others are not offered. */
-    openable: string[];
+    /** The role's permissions: every link on the page shows only where the role can open its page. */
+    permissions: readonly string[];
 }) {
     const [stage, setStage] = useState<LifecycleStage>(initialStage);
     const current = view.stages.find((s) => s.stage === stage) ?? view.stages[0];
     const names = useMemo(() => campaignNamesOf(view), [view]);
     const to = (href: string) => withLocale(href, locale);
     const stageHref = (s: FunnelStageView) => to(`/settings/campaigns/funnel?stage=${s.param}`);
-    const canOpen = (href: string) => openable.includes(href);
+    const canOpen = canOpenWith(permissions);
+    const nav = { to, canOpen };
 
     // The chosen stage's renders, asked for once the page shows; a stage seen before is not asked again.
     const [renders, setRenders] = useState<Renders>({});
@@ -131,11 +128,15 @@ export function FunnelClient({
         const keys = renderKeysOf(current).filter((k) => !asked.current.has(k));
         if (!keys.length) return;
         for (const k of keys) asked.current.add(k);
-        const settle = (got: Record<string, FunnelRender>) =>
-            setRenders((prev) => ({ ...prev, ...Object.fromEntries(keys.map((k) => [k, got[k] ?? null])) }));
-        renderFunnelEmails(keys)
-            .then((r) => settle(r.ok ? r.renders : {}))
-            .catch(() => settle({}));
+        // Asked in chunks of the action's limit, so every card of a long stage gets its render.
+        for (let i = 0; i < keys.length; i += MAX_RENDER_KEYS) {
+            const chunk = keys.slice(i, i + MAX_RENDER_KEYS);
+            const settle = (got: Record<string, FunnelRender>) =>
+                setRenders((prev) => ({ ...prev, ...Object.fromEntries(chunk.map((k) => [k, got[k] ?? null])) }));
+            renderFunnelEmails(chunk)
+                .then((r) => settle(r.ok ? r.renders : {}))
+                .catch(() => settle({}));
+        }
     }, [current]);
 
     const [target, setTarget] = useState<PreviewTarget | null>(null);
@@ -148,7 +149,7 @@ export function FunnelClient({
         window.history.replaceState(window.history.state, "", stageHref(s));
     };
 
-    const ctx: Ctx = { stage: current, view, renders, to, canOpen, canEditTemplates, open: setTarget };
+    const ctx: Ctx = { stage: current, view, renders, to, canOpen, open: setTarget };
 
     return (
         <div className="space-y-6">
@@ -181,13 +182,13 @@ export function FunnelClient({
 
             <FunnelPicture view={view} current={current.stage} href={stageHref} onChoose={choose} />
 
-            <StageHeader stage={current} customersHref={canSeeCustomers ? to(`/settings/customers?stage=${current.param}`) : null} />
+            <StageHeader stage={current} nav={nav} />
 
             <EmailFlow ctx={ctx} />
 
-            <Segments stage={current} names={names} to={to} canSeeCustomers={canSeeCustomers} />
+            <Segments stage={current} names={names} nav={nav} />
 
-            <Results stage={current} view={view} to={to} />
+            <Results stage={current} view={view} nav={nav} />
 
             <EmailPreviewDialog target={target} renders={renders} onClose={() => setTarget(null)} />
         </div>
@@ -363,7 +364,7 @@ function EmailFlow({ ctx }: { ctx: Ctx }) {
                     ))}
 
                     <Unit>
-                        <AddEmailCard stage={stage} to={ctx.to} main={!hasCampaign} />
+                        <AddEmailCard stage={stage} to={ctx.to} canOpen={ctx.canOpen} main={!hasCampaign} />
                     </Unit>
 
                     <Unit>
@@ -458,7 +459,6 @@ function StepNodes({ step, followUps, rest, ctx }: { step: FlowStep; followUps: 
             <>
                 {step.templates.map((t, i) => {
                     const sent = row?.also.find((a) => a.label === `After ${daysWords(days[i])}`)?.count;
-                    const last = i === step.templates.length - 1;
                     return (
                         <Unit key={t} chips={[`${daysWords(days[i])} after the last save`]} rest={i === 0 && rest}>
                                 <AutomaticCard
@@ -469,7 +469,7 @@ function StepNodes({ step, followUps, rest, ctx }: { step: FlowStep; followUps: 
                                         row && !row.counted
                                             ? "Not counted"
                                             : sent !== undefined
-                                              ? `Sent ${n(sent)}${last && row ? ` · ${row.outcomeLabel} ${countText(row.outcome)}` : ""}`
+                                              ? `Sent ${n(sent)}`
                                               : null
                                     }
                                     ctx={ctx}
@@ -520,7 +520,7 @@ function automaticNumbers(stage: FunnelStageView, step: FlowStep): string | null
     const row = automaticRow(stage, step.key);
     if (!row) return null;
     if (!row.counted) return "Not counted";
-    return `Sent ${countText(row.sent)} · ${row.outcomeLabel} ${countText(row.outcome)}`;
+    return `${row.sentLabel}: ${countText(row.sent)} · ${row.outcomeLabel}: ${countText(row.outcome)}`;
 }
 
 /** The email's picture: a skeleton while it renders, a plain card when it failed. */
@@ -617,9 +617,8 @@ function AutomaticCard({ step, template, title, numbers, ctx }: { step: FlowStep
 function automaticTarget(step: FlowStep, key: string, title: string, numbers: ReactNode, ctx: Ctx): PreviewTarget {
     const render = ctx.renders[key];
     const actions: PreviewTarget["actions"] = [];
-    if (ctx.canEditTemplates && render?.templateId) {
-        actions.push({ label: "Edit words", href: ctx.to(`${FUNNEL_PATHS.emailTemplates}/${encodeURIComponent(render.templateId)}`), primary: true });
-    }
+    const words = render?.templateId ? `${FUNNEL_PATHS.emailTemplates}/${encodeURIComponent(render.templateId)}` : null;
+    if (words && ctx.canOpen(words)) actions.push({ label: "Edit words", href: ctx.to(words), primary: true });
     if (step.href !== FUNNEL_PATHS.emailTemplates && ctx.canOpen(step.href)) {
         actions.push({ label: step.href === FUNNEL_PATHS.aftercare ? "Settings (Customers → Settings)" : "Settings (General)", href: ctx.to(step.href) });
     }
@@ -672,7 +671,7 @@ function GroupCard({ step, ctx }: { step: FlowStep; ctx: Ctx }) {
                         {kindOf(step)}
                     </Badge>
                 </div>
-                {ctx.canEditTemplates ? (
+                {ctx.canOpen(FUNNEL_PATHS.emailTemplates) ? (
                     <Link href={ctx.to(FUNNEL_PATHS.emailTemplates)} className="inline-block text-xs text-muted-foreground underline-offset-2 hover:underline">
                         All of them in Email templates
                     </Link>
@@ -702,12 +701,14 @@ function CampaignCard({ step, campaign: c, ctx }: { step: FlowStep; campaign: Fl
         </dl>
     ) : null;
     const started = c.state.state !== "draft";
-    const actions: PreviewTarget["actions"] = started
-        ? [
-              { label: "Open campaign", href: ctx.to(c.href), primary: true },
-              { label: "Results", href: ctx.to(`${c.href}?tab=results`) },
-          ]
-        : [{ label: "Edit", href: ctx.to(c.href), primary: true }];
+    const actions: PreviewTarget["actions"] = !ctx.canOpen(c.href)
+        ? []
+        : started
+          ? [
+                { label: "Open campaign", href: ctx.to(c.href), primary: true },
+                { label: "Results", href: ctx.to(`${c.href}?tab=results`) },
+            ]
+          : [{ label: "Edit", href: ctx.to(c.href), primary: true }];
     return (
         <EmailCard
             renderKey={key}
@@ -738,7 +739,7 @@ function CampaignCard({ step, campaign: c, ctx }: { step: FlowStep; campaign: Fl
                 })
             }
         >
-            <FollowUpLinks campaignId={c.id} to={ctx.to} />
+            {ctx.canOpen(followUpHref(c.id, "sent")) ? <FollowUpLinks campaignId={c.id} to={ctx.to} /> : null}
         </EmailCard>
     );
 }
@@ -810,8 +811,18 @@ export function SuggestedCard({ step, ctx }: { step: FlowStep; ctx: Ctx }) {
 }
 
 /** *Add an email* to the stage: the flow's last card, and its main call to action when the stage has no campaign. */
-export function AddEmailCard({ stage, to, main }: { stage: FunnelStageView; to: (href: string) => string; main: boolean }) {
-    if (stage.stage === "lost") {
+export function AddEmailCard({
+    stage,
+    to,
+    canOpen,
+    main,
+}: {
+    stage: FunnelStageView;
+    to: (href: string) => string;
+    canOpen: (href: string) => boolean;
+    main: boolean;
+}) {
+    if (stage.stage === "lost" || !canOpen(addEmailHref(stage.param))) {
         return (
             <EndCard icon={Plus} label="Add an email" muted>
                 People here unsubscribed from marketing email, so a campaign to this stage would reach nobody.

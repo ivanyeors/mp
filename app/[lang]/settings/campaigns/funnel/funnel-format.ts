@@ -13,6 +13,7 @@ import type { LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import { formatRate, formatSgd, resultRates, type FunnelStageView, type FunnelView } from "@/lib/email-funnel/model";
 import type { ResultNumbers } from "@/lib/email-campaigns/results";
 import { FUNNEL_PROGRAMME } from "@/lib/email-funnel/programme";
+import { permissionForHref } from "@/lib/auth/permissions";
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
@@ -117,6 +118,23 @@ export function flowTree(flow: FunnelStageView["flow"]): { step: FunnelStageView
     }
     return top.map((step) => ({ step, followUps: children.get(step.key) ?? [] }));
 }
+
+// ─── Links and renders ───────────────────────────────────────────────────────
+
+/**
+ * The page's one link rule, the sidebar's: a path (without the locale; a
+ * query is ignored) opens when no permission guards it or the role holds the
+ * one that does. Every link on the Email funnel goes through it.
+ */
+export function canOpenWith(permissions: readonly string[]): (href: string) => boolean {
+    return (href) => {
+        const key = permissionForHref(href.split("?")[0]);
+        return !key || permissions.includes(key);
+    };
+}
+
+/** The most renders one `renderFunnelEmails` call answers; the page asks in chunks of it. */
+export const MAX_RENDER_KEYS = 40;
 
 // ─── Creating from the funnel (owner, 2026-11-18) ────────────────────────────
 

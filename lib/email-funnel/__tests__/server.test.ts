@@ -171,6 +171,71 @@ describe("getEmailFunnel", () => {
   });
 });
 
+describe("Automatic emails on one basis", () => {
+  beforeEach(() => {
+    seed();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("counts check-ups by email or WhatsApp, and bookings after those: 1 email and 10 WhatsApp-only, 4 booking", async () => {
+    const at = (d: number) => `2026-09-${String(d).padStart(2, "0")}T00:00:00Z`;
+    const row = (n: number, d: number) => ({ id: 7000 + n, customer_id: uuid("b", n), template: "aftercare.checkup_12m", entity_id: uuid("f", n), status: "sent", sent_at: at(d) });
+    db.tables.customer_emails = [row(0, 1)];
+    db.tables.customer_whatsapp = Array.from({ length: 10 }, (_, k) => row(k + 1, 2));
+    db.tables.readjustment_bookings = [1, 2, 3, 4].map((n) => ({ id: uuid("a", n), customer_id: uuid("b", n), created_at: at(20), status: "booked" }));
+    const { getEmailFunnel } = await import("../server");
+    const checkup = automatic(await getEmailFunnel(), "aftercare.checkup_reminder");
+    expect(checkup).toMatchObject({ counted: true, sent: 11, outcome: 4, sentLabel: "Check-ups sent, by email or WhatsApp" });
+    expect(checkup?.also).toContainEqual({ label: "By email", count: 1 });
+  });
+
+  it("shows the Review request by Customers asked, even with no email sent", async () => {
+    db.tables.customer_emails = db.tables.customer_emails.filter((r) => r.template !== "aftercare.review_request");
+    db.tables.customer_review_requests = [
+      { customer_id: uuid("r", 1), first_clicked_at: "2026-10-05T00:00:00Z" },
+      { customer_id: uuid("r", 2), first_clicked_at: "2026-10-06T00:00:00Z" },
+      { customer_id: uuid("r", 3), first_clicked_at: null },
+    ];
+    const { getEmailFunnel } = await import("../server");
+    const review = automatic(await getEmailFunnel(), "new.review_request");
+    expect(review).toMatchObject({ counted: true, sent: 3, outcome: 2, sentLabel: "Customers asked, by email or WhatsApp" });
+    expect(review?.also).toContainEqual({ label: "By email", count: 0 });
+  });
+});
+
+describe("summariseFunnelCheckups", () => {
+  it("credits one booking once: a 12-month and a 24-month check-up, then one booking, is 1", async () => {
+    const { summariseFunnelCheckups } = await import("../server");
+    const send = (template: string, entity: string, sent_at: string) => ({ customer_id: "c1", template, entity_id: entity, sent_at });
+    const s = summariseFunnelCheckups({
+      email: [send("aftercare.checkup_12m", "o1", "2025-01-01T00:00:00Z"), send("aftercare.checkup_24m", "o1", "2026-01-01T00:00:00Z")],
+      // The same 24-month check-up by WhatsApp too: still one check-up.
+      whatsapp: [send("aftercare.checkup_24m", "o1", "2026-01-01T01:00:00Z")],
+      bookings: [
+        { customer_id: "c1", created_at: "2026-02-01T00:00:00Z", status: "attended" },
+        // Before any check-up, or not a booking: no credit.
+        { customer_id: "c1", created_at: "2024-06-01T00:00:00Z", status: "attended" },
+        { customer_id: "c1", created_at: "2026-03-01T00:00:00Z", status: "cancelled" },
+      ],
+    });
+    expect(s).toEqual({ sent: 2, byEmail: 2, followedByBooking: 1 });
+  });
+
+  it("credits a booking between two check-ups to the earlier one, and one after the later to the later", async () => {
+    const { summariseFunnelCheckups } = await import("../server");
+    const send = (template: string, sent_at: string) => ({ customer_id: "c1", template, entity_id: "o1", sent_at });
+    const s = summariseFunnelCheckups({
+      email: [send("aftercare.checkup_12m", "2025-01-01T00:00:00Z"), send("aftercare.checkup_24m", "2026-01-01T00:00:00Z")],
+      whatsapp: [],
+      bookings: [
+        { customer_id: "c1", created_at: "2025-02-01T00:00:00Z", status: "booked" },
+        { customer_id: "c1", created_at: "2026-02-01T00:00:00Z", status: "booked" },
+      ],
+    });
+    expect(s.followedByBooking).toBe(2);
+  });
+});
+
 describe("countDraftsFinished", () => {
   it("counts a Draft held since, or followed by a Result from the same email, never one started before it", async () => {
     const { countDraftsFinished } = await import("../server");

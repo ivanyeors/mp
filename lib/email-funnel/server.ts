@@ -17,7 +17,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CHECKUP_TEMPLATE_LIKE } from "@/lib/aftercare/checkup";
-import { summariseCheckupSends } from "@/lib/aftercare/checkup-counts";
 import { readAftercareSettings } from "@/lib/aftercare/card-server";
 import { readCheckupFee } from "@/lib/aftercare/checkup-server";
 import { checkupBlock, DEFAULT_CHECKUP_SETTINGS } from "@/lib/aftercare/checkup";
@@ -139,6 +138,7 @@ async function draftReminderCount(admin: SupabaseClient): Promise<AutomaticCount
         );
   return {
     sent: perReminder.reduce((a, b) => a + b, 0),
+    sentLabel: "Emails sent",
     outcome: countDraftsFinished(drafts, results),
     also: [
       { label: "Drafts reminded", count: draftIds.length },
@@ -157,14 +157,52 @@ async function reviewRequestCount(admin: SupabaseClient): Promise<AutomaticCount
     headCount("customer_review_requests opened", asked().not("first_clicked_at", "is", null)),
     countLinkedGoogleReviewsOfRequested(admin),
   ]);
+  // One basis: Customers asked, by either channel, and of them those who opened the link (shared by both).
   return {
-    sent,
+    sent: requests,
+    sentLabel: "Customers asked, by email or WhatsApp",
     outcome: opened,
     also: [
-      { label: "Asked, by email or WhatsApp", count: requests },
+      { label: "By email", count: sent },
       { label: "Reviews linked", count: linked },
     ],
   };
+}
+
+type CheckupSent = { customer_id: string; template: string; entity_id: string; sent_at: string };
+
+/**
+ * Pure — the funnel's check-up numbers, all time, on one basis: check-ups
+ * sent, one per Order and milestone whatever carried it (as
+ * `summariseCheckupSends` counts them), and of those, the ones followed by a
+ * booking. A booking is credited once: to the Customer's latest check-up at
+ * or before it, so a 12-month and a 24-month check-up followed by one booking
+ * count 1. (`summariseCheckupSends`, which the Aftercare card reads over a
+ * window, is left as it is.)
+ */
+export function summariseFunnelCheckups(input: {
+  email: readonly CheckupSent[];
+  whatsapp: readonly CheckupSent[];
+  bookings: ReadonlyArray<{ customer_id: string; created_at: string; status: string }>;
+}): { sent: number; byEmail: number; followedByBooking: number } {
+  const first = new Map<string, { customerId: string; at: number }>();
+  for (const row of [...input.email, ...input.whatsapp]) {
+    const key = `${row.customer_id}|${row.template}|${row.entity_id}`;
+    const at = Date.parse(row.sent_at);
+    const prev = first.get(key);
+    if (!prev || at < prev.at) first.set(key, { customerId: row.customer_id, at });
+  }
+  const byCustomer = new Map<string, number[]>();
+  for (const { customerId, at } of first.values()) byCustomer.set(customerId, [...(byCustomer.get(customerId) ?? []), at]);
+  const credited = new Set<string>();
+  for (const b of input.bookings) {
+    if (!BOOKED.includes(b.status)) continue;
+    const t = Date.parse(b.created_at);
+    const before = (byCustomer.get(b.customer_id) ?? []).filter((at) => at <= t);
+    if (before.length) credited.add(`${b.customer_id}|${Math.max(...before)}`);
+  }
+  const emailed = new Set(input.email.map((r) => `${r.customer_id}|${r.template}|${r.entity_id}`));
+  return { sent: first.size, byEmail: emailed.size, followedByBooking: credited.size };
 }
 
 /** A booking that is a booking (as lib/aftercare/checkup-counts reads them). */
@@ -190,11 +228,12 @@ async function checkupCount(admin: SupabaseClient): Promise<AutomaticCount> {
       admin.from("readjustment_bookings").select("id, customer_id, created_at, status").in("status", BOOKED).order("id"),
     ),
   ]);
-  const s = summariseCheckupSends({ email, whatsapp, bookings });
+  const s = summariseFunnelCheckups({ email, whatsapp, bookings });
   return {
-    sent: s.email,
+    sent: s.sent,
+    sentLabel: "Check-ups sent, by email or WhatsApp",
     outcome: s.followedByBooking,
-    also: [{ label: "Check-ups, by email or WhatsApp", count: s.sent }],
+    also: [{ label: "By email", count: s.byEmail }],
   };
 }
 
@@ -237,6 +276,9 @@ export async function getEmailFunnel({ admin = supabaseAdmin(), now = new Date()
   const [summary, subscribed, segments, campaigns, stageResults, switches, drafts, review, checkup] = await Promise.all([
     getLifecycleSummary(),
     Promise.all(FUNNEL_STAGES.map((s) => orElse(`subscribed ${s}`, subscribedOf(s), null))),
+    // ponytail: listSegments and listCampaigns read their tables in one request each, so past
+    // 1,000 live Segments or campaigns the rest are missing. Far off (dozens today); the upgrade
+    // is to page them to the end, as every other read here does.
     settle("segments", listSegments({ now })),
     settle("campaigns", listCampaigns(admin)),
     settle(
