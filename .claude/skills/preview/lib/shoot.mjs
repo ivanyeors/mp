@@ -240,11 +240,13 @@ for (const [vname, vopts] of viewports) {
       await hideOverlays(page);
       if (shot.element) await page.locator(shot.element).first().screenshot({ path: file });
       else {
-        // A sandboxed frame (the Email funnel's and Start panel's thumbnails) runs in
-        // its own process, and a full-page shot leaves it blank below the fold. With
-        // one on the page, the window is made as tall as the page for the shot instead.
+        // An email drawn in a sandboxed `srcdoc` frame (the Email funnel's cards, the
+        // Start panel's thumbnails) runs in its own process, and a full-page shot leaves
+        // it blank below the fold. Only on a page with such a frame is the window made as
+        // tall as the page for the shot (up to 16,000 px); every other page, video and
+        // embed frames included, is shot as before, so its vh-sized parts are unchanged.
         const vp = page.viewportSize();
-        const framed = opt.fullPage && vp && (await page.locator("main iframe").count()) > 0;
+        const framed = opt.fullPage && vp && (await page.locator("main iframe[srcdoc]").count()) > 0;
         if (framed) {
           const height = await page.evaluate(() => document.documentElement.scrollHeight);
           await page.setViewportSize({ width: vp.width, height: Math.min(height, 16_000) });

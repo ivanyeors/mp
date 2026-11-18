@@ -16,6 +16,8 @@ import { SAMPLE_RECIPIENT } from "@/lib/email-campaigns/variables";
 import { FUNNEL_PROGRAMME } from "@/lib/email-funnel/programme";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { supabaseAdmin } from "@/lib/supabase/server";
+// The limit lives with the page's pure helpers: a "use server" file exports only actions.
+import { MAX_RENDER_KEYS } from "./funnel-format";
 
 /**
  * The Email funnel's email renders (PRD-email-funnel slice 03, owner
@@ -39,8 +41,6 @@ export type FunnelRender = {
   templateId?: string;
 };
 
-/** Every key one call may ask for: a stage's cards are well under it. */
-const MAX_RENDER_KEYS = 40;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROGRAMME_TEMPLATES = new Set(FUNNEL_PROGRAMME.flatMap((s) => (s.kind === "automatic" ? [...s.templates] : [])));

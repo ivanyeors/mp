@@ -31,7 +31,7 @@ const { FunnelClient } = await import("../funnel-client");
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const camp = (n: number, name: string, segment: number, lockedAt: string | null = "2026-11-01T02:00:00Z"): FunnelCampaignFact => ({
-  campaign: { id: id(n), name, audience: "segment", segmentId: id(segment), excludeSegmentIds: [], lockedAt, createdAt: "2026-10-30T02:00:00Z" },
+  campaign: { id: id(n), name, subject: "", audience: "segment", segmentId: id(segment), excludeSegmentIds: [], lockedAt, createdAt: "2026-10-30T02:00:00Z" },
   stats: { handed: 0, firstSentAt: lockedAt, lastSentAt: null },
 });
 
@@ -59,12 +59,15 @@ afterEach(() => {
   host?.remove();
 });
 
-async function show(view: FunnelView, stage: LifecycleStage, openable: string[] = []) {
+/** An Owner's reach on these pages; a test narrows it to a role. */
+const OWNER = ["campaigns", "customers", "email-templates", "api-configs"];
+
+async function show(view: FunnelView, stage: LifecycleStage, permissions: string[] = OWNER) {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
   await act(async () => {
-    root!.render(<FunnelClient view={view} initialStage={stage} locale="en-US" canSeeCustomers canEditTemplates openable={openable} />);
+    root!.render(<FunnelClient view={view} initialStage={stage} locale="en-US" permissions={permissions} />);
   });
   // The renders arrive after the page shows.
   await act(async () => {
@@ -96,8 +99,7 @@ describe("creating from the funnel", () => {
 
   it("starts a Suggested Playbook from itself, and gives one whose words wait no start at all", async () => {
     const view = buildFunnel(facts);
-    const setUp = view.stages.flatMap((s) => s.flow).flatMap((f) => (f.setUpHref ? [f.setUpHref] : []));
-    await show(view, "at_risk", setUp);
+    await show(view, "at_risk");
     // *Welcome back* is approved and not started here.
     const suggested = card("starter:playbook_welcome_back");
     expect(suggested?.textContent).toContain("Suggested");
@@ -106,7 +108,7 @@ describe("creating from the funnel", () => {
     root = null;
     host.remove();
 
-    await show(view, "lead", setUp);
+    await show(view, "lead");
     const waiting = card("starter:playbook_how_its_made");
     expect(waiting).not.toBeNull();
     expect(waiting?.textContent).toContain("Words waiting for the owner");
@@ -142,5 +144,87 @@ describe("the email cards", () => {
     await show(view, "at_risk");
     expect(host.querySelectorAll(`[data-card="campaign:${id(11)}"]`)).toHaveLength(1);
     expect(host.querySelectorAll(`[data-card="campaign:${id(12)}"]`)).toHaveLength(1);
+  });
+});
+
+describe("the review of slice 03", () => {
+  const unmount = () => {
+    act(() => root?.unmount());
+    root = null;
+    host.remove();
+  };
+  const withAutomatic: FunnelFacts = {
+    ...facts,
+    automatic: {
+      "lead.draft_reminders": {
+        sent: 100,
+        outcome: 30,
+        also: [
+          { label: "Drafts reminded", count: 60 },
+          { label: "After 1 day", count: 60 },
+          { label: "After 1 week", count: 35 },
+          { label: "After 1 month", count: 5 },
+        ],
+      },
+      "new.review_request": { sent: 20, sentLabel: "Customers asked, by email or WhatsApp", outcome: 8 },
+      "aftercare.checkup_reminder": { sent: 11, sentLabel: "Check-ups sent, by email or WhatsApp", outcome: 4 },
+    },
+  };
+
+  it("gates every link through the role's pages: campaigns only links to no Customers, settings or templates page", async () => {
+    for (const stage of ["lead", "new", "loyal", "at_risk", "lost"] as const) {
+      await show(buildFunnel(withAutomatic), stage, ["campaigns"]);
+      const links = [...host.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
+      expect(links.filter((h) => /\/settings\/(customers|general|email-templates)/.test(h)), stage).toEqual([]);
+      unmount();
+    }
+    // The rows still name their emails, as words.
+    await show(buildFunnel(withAutomatic), "new", ["campaigns"]);
+    expect(host.textContent).toContain("Review request");
+    unmount();
+    // An Owner gets the same rows as links.
+    await show(buildFunnel(withAutomatic), "new");
+    expect([...host.querySelectorAll("a")].some((a) => a.getAttribute("href") === "/en-US/settings/customers?view=settings")).toBe(true);
+  });
+
+  it("asks for a long stage's renders in chunks of the action's limit, so all 45 cards get theirs", async () => {
+    const { MAX_RENDER_KEYS } = await import("../funnel-format");
+    actions.renderFunnelEmails.mockClear();
+    const many = Array.from({ length: 45 }, (_, k) => camp(100 + k, `Note ${k}`, 1));
+    await show(buildFunnel({ ...facts, campaigns: many }), "at_risk");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const calls = actions.renderFunnelEmails.mock.calls.map((c) => c[0] as string[]);
+    expect(calls.every((keys) => keys.length <= MAX_RENDER_KEYS)).toBe(true);
+    for (let k = 0; k < 45; k++) {
+      expect(card(`campaign:${id(100 + k)}`)?.querySelector("[data-frame]")?.getAttribute("data-frame"), String(k)).toContain(`campaign:${id(100 + k)}`);
+    }
+  });
+
+  it("shows each draft reminder card its own sends, never the whole sequence's outcome", async () => {
+    await show(buildFunnel(withAutomatic), "lead");
+    const month = card("template:results.draft_reminder_1m");
+    expect(month?.textContent).toContain("Sent 5");
+    expect(month?.textContent).not.toContain("30");
+    expect(card("template:results.draft_reminder_1d")?.textContent).toContain("Sent 60");
+  });
+
+  it("offers neither Email this Segment nor Open in Customers for a Segment that needs review, and says why", async () => {
+    const flagged: FunnelFacts = {
+      ...facts,
+      segments: [...facts.segments, { id: id(3), name: "Old At risk", params: { stage: "at-risk" }, count: null, needsReview: true }],
+    };
+    await show(buildFunnel(flagged), "at_risk");
+    const item = [...host.querySelectorAll("li")].find((li) => li.querySelector("p")?.textContent === "Old At risk")!;
+    expect(item).toBeTruthy();
+    expect(item.textContent).not.toContain("Email this Segment");
+    expect(item.textContent).not.toContain("Open in Customers");
+    expect(item.querySelector("[data-segment-review]")?.textContent).toContain("needs review");
+    expect(hrefs(item)).toEqual(["/en-US/settings/customers"]);
+    unmount();
+    await show(buildFunnel(flagged), "at_risk", ["campaigns"]);
+    const plain = [...host.querySelectorAll("li")].find((li) => li.querySelector("p")?.textContent === "Old At risk")!;
+    expect(hrefs(plain)).toEqual([]);
   });
 });

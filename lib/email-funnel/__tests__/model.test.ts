@@ -39,12 +39,22 @@ type CampaignOpts = {
   createdAt?: string;
   keep?: { on: boolean; dailyCap?: number; pausedAt?: string | null; pausedReason?: string | null };
   firstSentAt?: string | null;
+  subject?: string;
 };
+
+/** The Playbooks' own subjects (lib/email-campaigns/starters.ts): a campaign keeping one still sets its Playbook up. */
+const SUBJECT = {
+  second: "Getting the most from {your_pillow}",
+  thanks: "Thank you for coming back to Mpillow",
+  miss: "It's been a while since we last saw you",
+  back: "Your pillow's fit can be retuned",
+} as const;
 
 const camp = (n: number, name: string, o: CampaignOpts = {}): FunnelCampaignFact => ({
   campaign: {
     id: id(n),
     name,
+    subject: o.subject ?? "",
     audience: o.audience ?? "segment",
     segmentId: o.segment != null ? id(o.segment) : null,
     excludeSegmentIds: (o.exclude ?? []).map(id),
@@ -248,7 +258,7 @@ describe("Segments by stage", () => {
 
 describe("a Playbook is set up by its Segment's filters", () => {
   const withSegment = (params: Record<string, string>) =>
-    buildFunnel(facts({ segments: [seg(1, "Renamed by Staff", params)], campaigns: [camp(11, "Second purchase", { segment: 1 })] }));
+    buildFunnel(facts({ segments: [seg(1, "Renamed by Staff", params)], campaigns: [camp(11, "Second purchase", { segment: 1, subject: SUBJECT.second })] }));
 
   it("is set up when the stored filters are the Playbook's in another key order", () => {
     const step = stepOf(withSegment({ delivered: "over:60", stage: "new" }), "new", "new.second_purchase");
@@ -271,6 +281,45 @@ describe("a Playbook is set up by its Segment's filters", () => {
     expect(filtersKey("stage=new&delivered=over:30")).not.toBe(filtersKey("stage=new&delivered=over:60"));
     expect(filtersKey("stage=nowhere")).toBeNull();
     expect(filtersKey("sort=oldest&stage=new")).toBeNull();
+  });
+});
+
+describe("a Playbook is set up only by a campaign that still carries its name or subject", () => {
+  const segments = [seg(1, "Lead", { stage: "lead" }), seg(2, "Loyal", { stage: "loyal" })];
+  const view = (...campaigns: FunnelCampaignFact[]) => buildFunnel(facts({ segments, campaigns }));
+
+  it("leaves a blank email added to Loyal as the stage's own, the Thank you suggestion beside it", () => {
+    const v = view(camp(11, "Holiday hours", { segment: 2, subject: "Our holiday hours" }));
+    const thanks = stepOf(v, "loyal", "loyal.thank_you");
+    expect(thanks.state.state).toBe("not_set_up");
+    expect(thanks.campaigns).toEqual([]);
+    expect(thanks.setUpHref).toBe("/settings/campaigns/new?starter=playbook_thank_you");
+    const own = stepOf(v, "loyal", `campaign:${id(11)}`);
+    expect(own).toMatchObject({ kind: "campaign", name: "Holiday hours" });
+    expect(own.when).not.toBe(thanks.when);
+  });
+
+  it("leaves a blank email added to Lead as the stage's own, How your pillow is made still waiting", () => {
+    const v = view(camp(11, "Holiday hours", { segment: 1, subject: "Our holiday hours" }));
+    expect(stepOf(v, "lead", "lead.how_its_made").state.state).toBe("words_waiting");
+    expect(stepOf(v, "lead", `campaign:${id(11)}`).kind).toBe("campaign");
+  });
+
+  it("is set up by one started from Thank you and renamed, keeping the subject (any case, spaces trimmed)", () => {
+    const v = view(camp(11, "Loyal thanks, Nov", { segment: 2, subject: `  ${SUBJECT.thanks.toUpperCase()} ` }));
+    expect(stepOf(v, "loyal", "loyal.thank_you").campaigns.map((c) => c.id)).toEqual([id(11)]);
+    expect(flowOf(v, "loyal").some((s) => s.key === `campaign:${id(11)}`)).toBe(false);
+  });
+
+  it("is set up by one keeping the Playbook's name with a new subject", () => {
+    const v = view(camp(11, "Thank you: what's new, and your points", { segment: 2, subject: "Something else" }));
+    expect(stepOf(v, "loyal", "loyal.thank_you").campaigns.map((c) => c.id)).toEqual([id(11)]);
+  });
+
+  it("is not set up by one with both changed: the suggestion shows beside it", () => {
+    const v = view(camp(11, "Loyal thanks, Nov", { segment: 2, subject: "A thank-you from the studio" }));
+    expect(stepOf(v, "loyal", "loyal.thank_you").state.state).toBe("not_set_up");
+    expect(stepOf(v, "loyal", `campaign:${id(11)}`).kind).toBe("campaign");
   });
 });
 
@@ -299,12 +348,12 @@ describe("each step's state", () => {
   });
 
   it("Draft, then Started", () => {
-    expect(state([camp(11, "Thanks", { segment: 2, lockedAt: null })], "loyal", "loyal.thank_you").state).toBe("draft");
-    expect(state([camp(11, "Thanks", { segment: 2 })], "loyal", "loyal.thank_you").state).toBe("started");
+    expect(state([camp(11, "Thanks", { segment: 2, lockedAt: null, subject: SUBJECT.thanks })], "loyal", "loyal.thank_you").state).toBe("draft");
+    expect(state([camp(11, "Thanks", { segment: 2, subject: SUBJECT.thanks })], "loyal", "loyal.thank_you").state).toBe("started");
   });
 
   it("Keeps sending, n a day", () => {
-    expect(state([camp(11, "Miss you", { segment: 3, keep: { on: true, dailyCap: 35 } })], "at_risk", "at_risk.we_miss_you")).toEqual({
+    expect(state([camp(11, "Miss you", { segment: 3, subject: SUBJECT.miss, keep: { on: true, dailyCap: 35 } })], "at_risk", "at_risk.we_miss_you")).toEqual({
       state: "keeps_sending",
       label: "Keeps sending, 35 a day",
       dailyCap: 35,
@@ -314,17 +363,19 @@ describe("each step's state", () => {
   it("Paused, carrying its reason; or paused by a person", () => {
     const why = "Bounces over 2% in the last Wave";
     expect(
-      state([camp(11, "Back", { segment: 4, keep: { on: true, pausedAt: "2026-11-10T00:00:00Z", pausedReason: why } })], "at_risk", "at_risk.welcome_back"),
+      state([camp(11, "Back", { segment: 4, subject: SUBJECT.back, keep: { on: true, pausedAt: "2026-11-10T00:00:00Z", pausedReason: why } })], "at_risk", "at_risk.welcome_back"),
     ).toEqual({ state: "paused", label: `Paused: ${why}`, reason: why });
     expect(
-      state([camp(11, "Back", { segment: 4, keep: { on: true, pausedAt: "2026-11-10T00:00:00Z" } })], "at_risk", "at_risk.welcome_back"),
+      state([camp(11, "Back", { segment: 4, subject: SUBJECT.back, keep: { on: true, pausedAt: "2026-11-10T00:00:00Z" } })], "at_risk", "at_risk.welcome_back"),
     ).toEqual({ state: "paused", label: "Paused by a person", reason: null });
   });
 
-  it("an unapproved Playbook stays waiting with a campaign to its Segment, which is listed under it", () => {
-    const step = stepOf(buildFunnel(facts({ segments, campaigns: [camp(11, "Made", { segment: 1 })] })), "lead", "lead.how_its_made");
+  it("an unapproved Playbook stays waiting and claims no campaign, even one with its own name, which is the stage's own", () => {
+    const view = buildFunnel(facts({ segments, campaigns: [camp(11, "How your pillow is made", { segment: 1 })] }));
+    const step = stepOf(view, "lead", "lead.how_its_made");
     expect(step.state.state).toBe("words_waiting");
-    expect(step.campaigns.map((c) => c.id)).toEqual([id(11)]);
+    expect(step.campaigns).toEqual([]);
+    expect(stepOf(view, "lead", `campaign:${id(11)}`).kind).toBe("campaign");
   });
 
   it("lists every matching campaign oldest started first, the step reading the furthest along", () => {
@@ -333,9 +384,9 @@ describe("each step's state", () => {
         facts({
           segments,
           campaigns: [
-            camp(12, "Later", { segment: 2, lockedAt: "2026-11-05T00:00:00Z", keep: { on: true } }),
-            camp(13, "Draft", { segment: 2, lockedAt: null, createdAt: "2026-10-01T00:00:00Z" }),
-            camp(11, "Earlier", { segment: 2, lockedAt: "2026-11-01T00:00:00Z" }),
+            camp(12, "Later", { segment: 2, subject: SUBJECT.thanks, lockedAt: "2026-11-05T00:00:00Z", keep: { on: true } }),
+            camp(13, "Draft", { segment: 2, subject: SUBJECT.thanks, lockedAt: null, createdAt: "2026-10-01T00:00:00Z" }),
+            camp(11, "Earlier", { segment: 2, subject: SUBJECT.thanks, lockedAt: "2026-11-01T00:00:00Z" }),
           ],
         }),
       ),

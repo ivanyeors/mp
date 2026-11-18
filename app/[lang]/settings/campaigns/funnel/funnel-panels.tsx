@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Bookmark, Mail, Send, Users } from "lucide-react";
 import { EmptyState } from "@/components/settings/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,28 @@ const n = (v: number) => v.toLocaleString("en-SG");
 const STAGE_HUE: Record<FunnelStageView["stage"], string> = { lead: "lead", new: "new", loyal: "loyal", at_risk: "risk", lost: "lost" };
 export const lifecycleStageColour = (stage: FunnelStageView["stage"]) => `var(--lc-${STAGE_HUE[stage]}-3)`;
 
+/**
+ * The page's one link rule: a link shows only where the role can open its
+ * page (`canOpen`, the sidebar's rule); elsewhere its words show as text.
+ * Paths are without the locale; `to` adds it.
+ */
+export interface Nav {
+    to: (href: string) => string;
+    canOpen: (href: string) => boolean;
+}
+
+/** A link through the rule: the role's page, or plain words. */
+export function Gated({ nav, href, className, children }: { nav: Nav; href: string; className?: string; children: ReactNode }) {
+    if (nav.canOpen(href)) {
+        return (
+            <Link href={nav.to(href)} className={cn(className, "hover:underline")}>
+                {children}
+            </Link>
+        );
+    }
+    return <span className={className}>{children}</span>;
+}
+
 /** A step's state, as a coloured badge: green sends, amber needs a person, grey waits. */
 export function StateBadge({ state }: { state: StepState }) {
     const tone: Record<StepState["state"], string> = {
@@ -47,7 +70,8 @@ export function StateBadge({ state }: { state: StepState }) {
 }
 
 /** The chosen stage: its rule, its sub-statuses, and the list on Customers. */
-export function StageHeader({ stage, customersHref }: { stage: FunnelStageView; customersHref: string | null }) {
+export function StageHeader({ stage, nav }: { stage: FunnelStageView; nav: Nav }) {
+    const customersHref = `/settings/customers?stage=${stage.param}`;
     // Sub-statuses only where a stage has more than one.
     const parts = stage.header.parts.length > 1 ? stage.header.parts.filter((p) => p.customers > 0) : [];
     return (
@@ -64,9 +88,9 @@ export function StageHeader({ stage, customersHref }: { stage: FunnelStageView; 
                     </p>
                 ) : null}
             </div>
-            {customersHref ? (
+            {nav.canOpen(customersHref) ? (
                 <Button asChild variant="outline" size="sm">
-                    <Link href={customersHref}>
+                    <Link href={nav.to(customersHref)}>
                         <Users className="mr-1 h-4 w-4" aria-hidden />
                         Open in Customers
                     </Link>
@@ -81,13 +105,11 @@ export function StageHeader({ stage, customersHref }: { stage: FunnelStageView; 
 export function Segments({
     stage,
     names,
-    to,
-    canSeeCustomers,
+    nav,
 }: {
     stage: FunnelStageView;
     names: ReadonlyMap<string, string>;
-    to: (href: string) => string;
-    canSeeCustomers: boolean;
+    nav: Nav;
 }) {
     return (
         <Card className="min-w-0">
@@ -105,10 +127,10 @@ export function Segments({
                 {stage.segments.length === 0 ? (
                     <EmptyState icon={Bookmark} className="md:p-8">
                         No Segment names this stage yet.
-                        {canSeeCustomers ? (
+                        {nav.canOpen("/settings/customers") ? (
                             <>
                                 {" "}
-                                <Link href={to(`/settings/customers?stage=${stage.param}`)} className="underline">
+                                <Link href={nav.to(`/settings/customers?stage=${stage.param}`)} className="underline">
                                     Filter Customers by it
                                 </Link>{" "}
                                 and save one.
@@ -118,7 +140,7 @@ export function Segments({
                 ) : (
                     <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         {stage.segments.map((s) => (
-                            <SegmentItem key={s.id ?? `nc-${s.name}`} segment={s} names={names} to={to} canSeeCustomers={canSeeCustomers} />
+                            <SegmentItem key={s.id ?? `nc-${s.name}`} segment={s} names={names} nav={nav} />
                         ))}
                     </ul>
                 )}
@@ -130,18 +152,19 @@ export function Segments({
 function SegmentItem({
     segment: s,
     names,
-    to,
-    canSeeCustomers,
+    nav,
 }: {
     segment: FunnelSegmentView;
     names: ReadonlyMap<string, string>;
-    to: (href: string) => string;
-    canSeeCustomers: boolean;
+    nav: Nav;
 }) {
+    // A Segment that needs review, or whose filters do not all read, is not emailed or listed from
+    // here: the list would hold only the filters still read, a wider one than the Segment.
+    const flagged = s.needsReview || s.unreadable;
+    const listHref = `/settings/customers?${new URLSearchParams(Object.fromEntries(Object.entries(s.params).filter(([k]) => k !== "search"))).toString()}`;
+    const emailHref = s.id ? `/settings/campaigns/new?segment=${s.id}` : null;
     const searchHidden = (s as FunnelSegmentView & { searchHidden?: boolean }).searchHidden === true;
     const chips = segmentChips(s.params, names, searchHidden);
-    // A search is never put in a link from here: it may hold a name or an email.
-    const listParams = Object.fromEntries(Object.entries(s.params).filter(([k]) => k !== "search"));
     return (
         <li className={cn("rounded-lg border p-3", s.notCreated && "border-dashed bg-muted/30")}>
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -183,9 +206,9 @@ function SegmentItem({
                                 {s.sendsTo.map((c, i) => (
                                     <span key={c.id}>
                                         {i ? ", " : ""}
-                                        <Link href={to(`/settings/campaigns/${c.id}`)} className="text-foreground hover:underline">
+                                        <Gated nav={nav} href={`/settings/campaigns/${c.id}`} className="text-foreground">
                                             {c.name}
-                                        </Link>
+                                        </Gated>
                                     </span>
                                 ))}
                             </>
@@ -199,25 +222,35 @@ function SegmentItem({
                             {s.leftOutBy.map((c, i) => (
                                 <span key={c.id}>
                                     {i ? ", " : ""}
-                                    <Link href={to(`/settings/campaigns/${c.id}`)} className="text-foreground hover:underline">
+                                    <Gated nav={nav} href={`/settings/campaigns/${c.id}`} className="text-foreground">
                                         {c.name}
-                                    </Link>
+                                    </Gated>
                                 </span>
                             ))}
                         </p>
                     ) : null}
                 </div>
             )}
-            {s.id ? (
+            {s.id && flagged ? (
+                <p className="mt-2.5 text-xs text-muted-foreground" data-segment-review>
+                    It needs review on{" "}
+                    <Gated nav={nav} href="/settings/customers" className="text-foreground underline-offset-2">
+                        Customers
+                    </Gated>{" "}
+                    before it can be emailed or listed from here.
+                </p>
+            ) : s.id ? (
                 <div className="mt-2.5 flex flex-wrap gap-2">
-                    {canSeeCustomers ? (
+                    {nav.canOpen(listHref) ? (
                         <Button asChild size="sm" variant="outline">
-                            <Link href={to(`/settings/customers?${new URLSearchParams(listParams).toString()}`)}>Open in Customers</Link>
+                            <Link href={nav.to(listHref)}>Open in Customers</Link>
                         </Button>
                     ) : null}
-                    <Button asChild size="sm" variant="outline">
-                        <Link href={to(`/settings/campaigns/new?segment=${s.id}`)}>Email this Segment</Link>
-                    </Button>
+                    {emailHref && nav.canOpen(emailHref) ? (
+                        <Button asChild size="sm" variant="outline">
+                            <Link href={nav.to(emailHref)}>Email this Segment</Link>
+                        </Button>
+                    ) : null}
                 </div>
             ) : null}
         </li>
@@ -236,11 +269,11 @@ export function outcomeText(r: Extract<FunnelResultRow, { kind: "automatic" }>):
     return [`${r.outcomeLabel}: ${countText(r.outcome)}`, ...r.also.map((a) => `${a.label}: ${n(a.count)}`)].join(" · ");
 }
 
-export function Results({ stage, view, to }: { stage: FunnelStageView; view: FunnelView; to: (href: string) => string }) {
+export function Results({ stage, view, nav }: { stage: FunnelStageView; view: FunnelView; nav: Nav }) {
     const { rows, totals, unsubscribedFrom } = stage.results;
     const campaignRows = rows.filter((r) => r.kind === "campaign");
     const counting = stillCounting(stage);
-    const href = (r: FunnelResultRow) => to(r.kind === "campaign" ? `${r.href}?tab=results` : r.href);
+    const href = (r: FunnelResultRow) => (r.kind === "campaign" ? `${r.href}?tab=results` : r.href);
     const total = resultCells(totals.campaigns);
     return (
         <Card className="min-w-0">
@@ -278,7 +311,7 @@ export function Results({ stage, view, to }: { stage: FunnelStageView; view: Fun
                         {/* Phone: one card per email. */}
                         <ul className="divide-y rounded-lg border md:hidden">
                             {rows.map((r) => (
-                                <ResultCard key={r.kind === "campaign" ? r.campaignId : r.stepId} row={r} href={href(r)} windowDays={view.resultWindowDays} />
+                                <ResultCard key={r.kind === "campaign" ? r.campaignId : r.stepId} row={r} href={href(r)} nav={nav} windowDays={view.resultWindowDays} />
                             ))}
                         </ul>
                         {/* Desktop: the table. */}
@@ -302,9 +335,10 @@ export function Results({ stage, view, to }: { stage: FunnelStageView; view: Fun
                                             return (
                                                 <TableRow key={r.stepId}>
                                                     <TableCell className="whitespace-normal">
-                                                        <Link href={href(r)} className="font-medium hover:underline">
+                                                        <Gated nav={nav} href={href(r)} className="font-medium">
                                                             {r.name}
-                                                        </Link>
+                                                        </Gated>
+                                                        {r.counted ? <p className="text-xs text-muted-foreground">{r.sentLabel}</p> : null}
                                                         {r.acrossStages ? (
                                                             <p className="text-xs text-muted-foreground">Every stage it reaches: not split by stage</p>
                                                         ) : null}
@@ -321,9 +355,9 @@ export function Results({ stage, view, to }: { stage: FunnelStageView; view: Fun
                                         return (
                                             <TableRow key={r.campaignId}>
                                                 <TableCell className="whitespace-normal">
-                                                    <Link href={href(r)} className="font-medium hover:underline">
+                                                    <Gated nav={nav} href={href(r)} className="font-medium">
                                                         {r.name}
-                                                    </Link>
+                                                    </Gated>
                                                     <p className="text-xs text-muted-foreground">{CAMPAIGN_AUDIENCE_LABEL[r.audience]}</p>
                                                 </TableCell>
                                                 <TableCell className="text-sm">{kindOfRow(r)}</TableCell>
@@ -376,9 +410,9 @@ export function Results({ stage, view, to }: { stage: FunnelStageView; view: Fun
                             <ul className="divide-y rounded-lg border text-sm">
                                 {unsubscribedFrom.map((c) => (
                                     <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                                        <Link href={to(`/settings/campaigns/${c.id}?tab=results`)} className="min-w-0 break-words hover:underline">
+                                        <Gated nav={nav} href={`/settings/campaigns/${c.id}?tab=results`} className="min-w-0 break-words">
                                             {c.name}
-                                        </Link>
+                                        </Gated>
                                         <span className="shrink-0 tabular-nums">{n(c.unsubscribed)}</span>
                                     </li>
                                 ))}
@@ -392,19 +426,21 @@ export function Results({ stage, view, to }: { stage: FunnelStageView; view: Fun
     );
 }
 
-function ResultCard({ row: r, href, windowDays }: { row: FunnelResultRow; href: string; windowDays: number }) {
+function ResultCard({ row: r, href, nav, windowDays }: { row: FunnelResultRow; href: string; nav: Nav; windowDays: number }) {
     if (r.kind === "automatic") {
         return (
             <li className="space-y-1 p-3 text-sm">
                 <div className="flex items-start justify-between gap-2">
-                    <Link href={href} className="min-w-0 break-words font-medium hover:underline">
+                    <Gated nav={nav} href={href} className="min-w-0 break-words font-medium">
                         {r.name}
-                    </Link>
+                    </Gated>
                     <Badge variant="secondary" className="shrink-0 font-normal">
                         Automatic
                     </Badge>
                 </div>
-                <p className="tabular-nums">Sent {r.counted ? countText(r.sent) : "—"}</p>
+                <p className="tabular-nums">
+                    {r.sentLabel}: {r.counted ? countText(r.sent) : "—"}
+                </p>
                 <p className="text-muted-foreground">{outcomeText(r)}</p>
                 {r.acrossStages ? <p className="text-xs text-muted-foreground">Every stage it reaches: not split by stage.</p> : null}
             </li>
@@ -414,9 +450,9 @@ function ResultCard({ row: r, href, windowDays }: { row: FunnelResultRow; href: 
     return (
         <li className="space-y-1 p-3 text-sm">
             <div className="flex items-start justify-between gap-2">
-                <Link href={href} className="min-w-0 break-words font-medium hover:underline">
+                <Gated nav={nav} href={href} className="min-w-0 break-words font-medium">
                     {r.name}
-                </Link>
+                </Gated>
                 <Badge variant="secondary" className="shrink-0 font-normal">
                     {kindOfRow(r)}
                 </Badge>

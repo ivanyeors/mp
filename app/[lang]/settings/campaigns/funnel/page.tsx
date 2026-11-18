@@ -1,5 +1,5 @@
 import { requireAdminPage } from "@/lib/auth/admin";
-import { hasPermission, permissionForHref } from "@/lib/auth/permissions";
+import { hasPermission } from "@/lib/auth/permissions";
 import { EmailsNav } from "@/components/settings/emails-nav";
 import { getEmailFunnel } from "@/lib/email-funnel/server";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -32,12 +32,6 @@ export default async function EmailFunnelPage({
     const to = (href: string) => withLocale(href, locale);
 
     const view = await getEmailFunnel();
-    // Where each step is changed, offered only when the role can open it (the sidebar's rule).
-    const stepHrefs = new Set(view.stages.flatMap((s) => s.flow.flatMap((f) => [f.href, ...(f.setUpHref ? [f.setUpHref] : [])])));
-    const openable = [...stepHrefs].filter((href) => {
-        const key = permissionForHref(href.split("?")[0]);
-        return !key || hasPermission(ctx, key);
-    });
 
     return (
         <div className="space-y-6">
@@ -51,9 +45,8 @@ export default async function EmailFunnelPage({
                 view={view}
                 initialStage={stageFromParam(view, query.stage)}
                 locale={locale}
-                canSeeCustomers={hasPermission(ctx, "customers")}
-                canEditTemplates={hasPermission(ctx, "email-templates")}
-                openable={openable}
+                // Every link on the page is offered only where the role can open it (`canOpenWith`).
+                permissions={[...ctx.permissions]}
             />
         </div>
     );
