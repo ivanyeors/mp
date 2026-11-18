@@ -344,8 +344,17 @@ interface Audienced {
 /** Pure — the Segment a Playbook is written for, as a wanted Segment; null for a Starter not written for one. */
 export function starterWants(s: Starter): WantedSegment | null {
   const a = s.audience;
-  return a?.audience === "segment" ? { name: a.segment, filters: a.filters, who: "This Playbook", playbook: true } : null;
+  return a?.audience === "segment" ? { address: { starter: s.id }, name: a.segment, filters: a.filters, who: "This Playbook", playbook: true } : null;
 }
+
+/**
+ * Pure — the wanted Segment once an email wanting `current` is started from
+ * `s`: a Starter with an Audience of its own brings its Segment, or none (the
+ * sign-in invitation); one with none ends a Playbook's (the email is no longer
+ * that Playbook) but keeps the address's, whose Audience the campaign keeps.
+ */
+export const wantedAfterStarter = (s: Starter, current: WantedSegment | null): WantedSegment | null =>
+  s.audience ? starterWants(s) : current?.playbook ? null : current;
 
 /** Pure — the live Segment `s` is written for, or null (`findWanted`). Server only: it reads Segments' filters. */
 export function playbookSegment<S extends MatchableSegment>(s: Starter, segments: readonly S[]): S | null {

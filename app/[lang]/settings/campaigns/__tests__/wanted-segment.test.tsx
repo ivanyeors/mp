@@ -153,8 +153,11 @@ beforeEach(() => {
   db.rows = [];
   window.localStorage.clear();
   vi.stubGlobal("fetch", fetchMock);
-  actions.findWantedSegmentAction.mockImplementation(async (w: { name: string; filters: string }) => {
-    const s = findWanted(w, matchable(db.rows.map(liveRow)));
+  // As the action answers (follow-up-actions.test.ts runs the real one): the address's wanted Segment, derived again.
+  actions.findWantedSegmentAction.mockImplementation(async (address: Record<string, string>) => {
+    const segments = matchable(db.rows.map(liveRow));
+    const { wanted } = newCampaignFromAddress(address, segments, WE_MISS_YOU);
+    const s = wanted ? findWanted(wanted, segments) : null;
     return { ok: true as const, segment: s ? { id: s.id, name: s.name } : null };
   });
 });
@@ -321,7 +324,7 @@ describe("review findings on the shared mechanism", () => {
     db.rows = [{ id: "seg-tab", name: "At risk", params: { stage: "at-risk" } }];
     await click(await until(createButton));
     await until(() => (notice() ? null : true));
-    expect(actions.findWantedSegmentAction).toHaveBeenCalledWith({ name: "At risk", filters: "stage=at-risk" });
+    expect(actions.findWantedSegmentAction).toHaveBeenCalledWith({ stage: "at-risk" });
     expect(chosenSegment()).toBe("At risk");
     expect(document.body.textContent).not.toContain("It has other filters");
     expect(db.rows).toHaveLength(1);
@@ -365,5 +368,88 @@ describe("review findings on the shared mechanism", () => {
     await choose(document.getElementById("c-audience")!, "Everyone subscribed to marketing email");
     await choose(document.getElementById("c-audience")!, "A saved Segment");
     expect(notice()).toBeNull();
+  });
+});
+
+describe("the wanted Segment moves with Undo and Redo (review, slice 06)", () => {
+  const undo = () => press("z", { ctrl: true }, document.body);
+  const redo = () => press("z", { ctrl: true, shift: true }, document.body);
+  const says = () => notice()?.querySelector("#c-playbook-segment")?.textContent ?? null;
+  const paletteAdd = async (label: string) => {
+    const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent === "Starters")!;
+    await act(async () => void tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 })));
+    await click(await until(() => [...document.querySelectorAll<HTMLButtonElement>("ul[aria-label='Starters'] button")].find((b) => b.textContent?.startsWith(label))));
+  };
+
+  it("a Playbook added from the palette, undone, gives back the first Playbook's Segment, and Redo the second's", async () => {
+    open({ starter: "playbook_we_miss_you" }, []);
+    await paletteAdd("Welcome back");
+    expect(says()).toContain("“At risk · Lapsed”");
+    await act(async () => undo());
+    expect(document.querySelector<HTMLInputElement>("#c-name")!.value).toBe("We miss you");
+    expect(says()).toContain("“At risk · 12 to 24 months”");
+    await act(async () => redo());
+    expect(says()).toContain("“At risk · Lapsed”");
+  });
+
+  it("a Playbook started on ?stage=, undone, gives back the stage's Segment, and Redo the Playbook's", async () => {
+    open({ stage: "at-risk" }, []);
+    await click(await until(() => choice("A Starter")));
+    await click(choice("We miss you")!);
+    expect(says()).toContain("This Playbook sends to the Segment “At risk · 12 to 24 months”");
+    await act(async () => undo());
+    expect(says()).toContain("This campaign sends to the Segment “At risk”");
+    await act(async () => redo());
+    expect(says()).toContain("This Playbook sends to the Segment “At risk · 12 to 24 months”");
+  });
+
+  it("Clear all's toast Undo gives back the Playbook's Segment and Create, and Redo takes it away again", async () => {
+    open({ starter: "playbook_we_miss_you" }, []);
+    await click(button("Clear all")!);
+    expect(notice()).toBeNull();
+    const toastUndo = await until(() => [...document.querySelectorAll<HTMLButtonElement>("[data-sonner-toast] button")].find((b) => b.textContent === "Undo"));
+    await click(toastUndo);
+    expect(document.querySelector<HTMLInputElement>("#c-name")!.value).toBe("We miss you");
+    expect(says()).toContain("“At risk · 12 to 24 months”");
+    expect(createButton()).not.toBeNull();
+    await act(async () => redo());
+    expect(notice()).toBeNull();
+  });
+
+  it("a create's error is not shown under another wanted Segment's notice", async () => {
+    db.rows = [{ id: "seg-old", name: "At risk", params: { stage: "at-risk:lapsed" } }];
+    open({ stage: "at-risk" });
+    await click(await until(createButton));
+    await until(() => notice()?.querySelector("[role='alert']"));
+    await click(await until(() => choice("A Starter")));
+    await click(choice("We miss you")!);
+    expect(says()).toContain("“At risk · 12 to 24 months”");
+    expect(notice()!.querySelector("[role='alert']")).toBeNull();
+    expect(notice()!.textContent).not.toContain("already exists");
+  });
+});
+
+describe("which wanted Segment survives (the split, slice 06)", () => {
+  it.each([
+    [{ stage: "at-risk" }, "This campaign sends to the Segment “At risk”"],
+    [{ after: `${WE_MISS_YOU.id}:not-clicked` }, "This follow-up campaign sends to the Segment “We miss you · didn't click”"],
+  ])("the address's (%j) survives Clear all", async (query, words) => {
+    open(query, [], { parent: WE_MISS_YOU });
+    await click(await until(() => choice("A Starter")));
+    await click(choice("Product launch")!);
+    await click(button("Clear all")!);
+    expect(notice()!.textContent).toContain(words);
+  });
+
+  it.each([[{ stage: "at-risk" }], [{ after: `${WE_MISS_YOU.id}:not-clicked` }]])("the address's (%j) goes with a Starter of another Audience (the sign-in invitation)", async (query) => {
+    open(query, [], { parent: WE_MISS_YOU });
+    expect(notice()).not.toBeNull();
+    await click(await until(() => choice("A Starter")));
+    await click(choice("New website: sign in for points")!);
+    expect(audience()).toBe("Imported from Shopify, not signed in yet");
+    expect(notice()).toBeNull();
+    // That the wanted Segment itself is ended is `wantedAfterStarter`'s test; Undo brings the address's back with the Audience.
+    await act(async () => press("z", { ctrl: true }, document.body));
+    expect(notice()).not.toBeNull();
   });
 });

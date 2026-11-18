@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { filtersKey } from "@/lib/crm/filters-key";
 import { parseSegmentFilters, SEGMENT_NAME_MAX } from "@/lib/crm/segment-rules";
 import { EMPTY_CAMPAIGN_DRAFT } from "../rules";
-import { newCampaignFromAddress } from "../starters";
+import { newCampaignFromAddress, starterById, wantedAfterStarter } from "../starters";
 import { afterParam, followUpWanted, LOST_STAGE_NOTE, stageWanted, wantedToCreate, type MatchableSegment } from "../wanted-segment";
 
 /**
@@ -169,5 +169,26 @@ describe("which Audience wins", () => {
       [filtersKey("stage=loyal")!]: "seg-loyal",
       [filtersKey("stage=at-risk")!]: "seg-risk",
     });
+  });
+});
+
+describe("the wanted Segment once a Starter is chosen (the split, review)", () => {
+  const starter = (id: string) => starterById(id)!;
+  const stage = open({ stage: "at-risk" }, []).wanted!;
+  const followUp = open({ after: `${A}:not-clicked` }, [], PARENT).wanted!;
+  const playbook = open({ starter: "playbook_we_miss_you" }, []).wanted!;
+
+  it("keeps the address's (?stage=, ?after=) for a Starter with no Audience, and ends a Playbook's", () => {
+    expect(wantedAfterStarter(starter("short_note"), stage)).toBe(stage);
+    expect(wantedAfterStarter(starter("product_launch"), followUp)).toBe(followUp);
+    expect(wantedAfterStarter(starter("short_note"), playbook)).toBeNull();
+  });
+
+  it("ends any for a Starter with another Audience (the sign-in invitation)", () => {
+    for (const w of [stage, followUp, playbook]) expect(wantedAfterStarter(starter("sign_in_invitation"), w)).toBeNull();
+  });
+
+  it("brings a Playbook's own, in place of any", () => {
+    for (const w of [stage, followUp, null]) expect(wantedAfterStarter(starter("playbook_welcome_back"), w)).toMatchObject({ name: "At risk · Lapsed", address: { starter: "playbook_welcome_back" } });
   });
 });

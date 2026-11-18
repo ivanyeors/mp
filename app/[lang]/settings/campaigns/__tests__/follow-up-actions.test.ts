@@ -22,11 +22,16 @@ const h = vi.hoisted(() => ({
   updated: [] as [string, CampaignDraft][],
   segments: [] as CustomerSegment[],
   permission: [] as string[],
+  /** The caller's permissions: an Owner unless a test says otherwise. */
+  holds: ["campaigns", "customers", "customers-edit"] as string[],
+  reads: 0,
 }));
 vi.mock("@/lib/auth/admin", () => ({
+  // As the real one: refuses (throws) without the permission.
   assertAdmin: vi.fn(async (permission: string) => {
     h.permission.push(permission);
-    return { permissions: new Set(["campaigns"]), email: "owner@mpillow.com", memberId: "m1", userId: "u1" };
+    if (!h.holds.includes(permission)) throw new Error("Forbidden");
+    return { permissions: new Set(h.holds), email: "owner@mpillow.com", memberId: "m1", userId: "u1" };
   }),
 }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: vi.fn() }));
@@ -50,7 +55,10 @@ vi.mock("@/lib/email-campaigns/store", async (importOriginal) => ({
 }));
 vi.mock("@/lib/crm/segments", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/crm/segments")>()),
-  listSegments: vi.fn(async () => h.segments),
+  listSegments: vi.fn(async () => {
+    h.reads++;
+    return h.segments;
+  }),
   getSegment: vi.fn(async (id: string) => {
     const s = h.segments.find((x) => x.id === id);
     return s ? { id: s.id, name: s.name, filters: s.params, filtersVersion: 2, archivedAt: null } : null;
@@ -97,7 +105,14 @@ beforeEach(() => {
   h.created = [];
   h.updated = [];
   h.permission = [];
-  h.segments = [segment(FOLLOW_UP, "We miss you · didn't click", { campaign: `${A}:not-clicked` }), segment("seg-tan", "Mrs Tan", { search: "tan@example.com" })];
+  h.holds = ["campaigns", "customers", "customers-edit"];
+  h.reads = 0;
+  h.segments = [
+    segment(FOLLOW_UP, "We miss you · didn't click", { campaign: `${A}:not-clicked` }),
+    segment("seg-tan", "Mrs Tan", { search: "tan@example.com" }),
+    segment("seg-risk", "Lapsing customers", { stage: "at-risk" }),
+    segment("seg-near", "At risk · 12 to 24 months", { stage: "at-risk", last_order: "within:24" }),
+  ];
 });
 
 describe("a campaign started from ?after=<A>:not-clicked", () => {
@@ -124,17 +139,55 @@ describe("a campaign started from ?after=<A>:not-clicked", () => {
 });
 
 describe("findWantedSegmentAction", () => {
-  it("answers the live Segment with exactly the wanted filters, by id and name only, behind campaigns", async () => {
-    expect(await findWantedSegmentAction({ name: "We miss you · didn't click", filters: `campaign=${A}:not-clicked` })).toEqual({
-      ok: true,
-      segment: { id: FOLLOW_UP, name: "We miss you · didn't click" },
-    });
-    expect(h.permission).toEqual(["campaigns"]);
-    expect(await findWantedSegmentAction({ name: "x", filters: `campaign=${A}:clicked` })).toEqual({ ok: true, segment: null });
+  type Input = Parameters<typeof findWantedSegmentAction>[0];
+  const ask = (input: unknown) => findWantedSegmentAction(input as Input);
+
+  it("finds the Segment for each address New campaign takes, by id and name only, behind campaigns", async () => {
+    expect(await ask({ after: `${A}:not-clicked` })).toEqual({ ok: true, segment: { id: FOLLOW_UP, name: "We miss you · didn't click" } });
+    expect(await ask({ stage: "at-risk" })).toEqual({ ok: true, segment: { id: "seg-risk", name: "Lapsing customers" } });
+    expect(await ask({ starter: "playbook_we_miss_you" })).toEqual({ ok: true, segment: { id: "seg-near", name: "At risk · 12 to 24 months" } });
+    expect(await ask({ after: `${A}:clicked` })).toEqual({ ok: true, segment: null });
+    expect(new Set(h.permission)).toEqual(new Set(["campaigns"]));
   });
 
-  it("refuses filters the Customers list does not know", async () => {
-    expect(await findWantedSegmentAction({ name: "x", filters: "nope=1" })).toMatchObject({ ok: false });
-    expect(await findWantedSegmentAction({ name: "x", filters: 42 as unknown as string })).toMatchObject({ ok: false });
+  // A caller's filters never reach the comparison: Staff with campaigns but not customers cannot ask whether a Segment searches for someone.
+  it.each([[["campaigns"]], [["campaigns", "customers"]], [["campaigns", "customers", "customers-edit"]]])("is no oracle for a Segment's filters (%j)", async (holds) => {
+    h.holds = holds;
+    for (const probe of [
+      { name: "", filters: "search=tan@example.com" },
+      { filters: "search=tan@example.com" },
+      { stage: "at-risk", filters: "search=tan@example.com" },
+      { after: `${A}:sent`, filters: "search=tan@example.com" },
+      { stage: "search=tan@example.com" },
+      { after: "search=tan@example.com" },
+      { starter: "search=tan@example.com" },
+    ]) {
+      const answer = await ask(probe);
+      expect(answer, JSON.stringify(probe)).toMatchObject({ ok: false });
+      expect(JSON.stringify(answer)).not.toMatch(/seg-tan|Mrs Tan/);
+    }
+  });
+
+  it("refuses what the page refuses: an unapproved Playbook, a Starter without a Segment, Lost, a sub-status, not-sent, an unknown or archived campaign", async () => {
+    h.campaigns.set(B, { ...parent, id: B, archivedAt: "2026-11-02T00:00:00Z" });
+    for (const input of [
+      { starter: "playbook_how_its_made" },
+      { starter: "short_note" },
+      { stage: "lost" },
+      { stage: "at-risk:lapsed" },
+      { after: `${A}:not-sent` },
+      { after: "8d1b2f3c-4e5a-4b6c-9d7e-0f1a2b3c4d5e:sent" },
+      { after: `${B}:sent` },
+      null,
+      "stage=at-risk",
+    ]) {
+      expect(await ask(input), JSON.stringify(input)).toMatchObject({ ok: false });
+    }
+  });
+
+  it("refuses without campaigns before reading anything", async () => {
+    h.holds = ["customers"];
+    await expect(ask({ stage: "at-risk" })).rejects.toThrow("Forbidden");
+    expect(h.reads).toBe(0);
   });
 });
