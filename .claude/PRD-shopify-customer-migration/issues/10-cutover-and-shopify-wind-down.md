@@ -79,8 +79,9 @@ None of this changes what visitors see.
    have shown Vercel's "deployment not found" page. Adding them moved no traffic: both addresses
    still answered from Shopify afterwards, because the A and CNAME records to Shopify answer
    until they are deleted.
-5. **Supabase → Authentication → URL configuration:** add `https://www.mpillow.com/**` to the
-   redirect URLs, so sign-in links can finish on www from the first minute.
+5. **Supabase → Authentication → URL configuration: done 18 Nov 2026 (owner).**
+   `https://www.mpillow.com/**` is in the redirect URLs, so sign-in links can finish on www from
+   the first minute. The Site URL stays custom.mpillow.com until the day.
 6. **Shopify notices live** (step 1 above), naming the date.
 
 ### On the day, in this order
