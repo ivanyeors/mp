@@ -1,7 +1,7 @@
 # 03 — The Funnel page: stage strip, Segments, Email flow, Results
 
 **Type:** AFK
-**Status:** not started
+**Status:** **built** (2026-11-18), reviewed by the `reviewer` subagent; not yet on production
 **Blocked by:** 02
 **Labels:** `enhancement`, `area:email`
 

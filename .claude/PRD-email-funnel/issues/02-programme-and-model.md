@@ -1,7 +1,7 @@
 # 02 — The programme and the model: stages, steps, flow and results, pure
 
 **Type:** AFK
-**Status:** not started
+**Status:** **built** (2026-11-18), reviewed by the `reviewer` subagent; not yet on production
 **Blocked by:** 01
 **Labels:** `enhancement`, `area:email`
 

@@ -1,7 +1,7 @@
 # 06 — Create from the funnel: add an email to a stage, add a follow-up
 
 **Type:** AFK
-**Status:** not started
+**Status:** **built** (2026-11-18), reviewed by the `reviewer` subagent; not yet on production
 **Blocked by:** 04
 **Labels:** `enhancement`, `area:email`
 

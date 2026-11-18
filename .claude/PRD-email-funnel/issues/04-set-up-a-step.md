@@ -1,7 +1,7 @@
 # 04 — Set up a step: New campaign from a Playbook, with its Segment
 
 **Type:** AFK
-**Status:** not started
+**Status:** **built** (2026-11-18), reviewed by the `reviewer` subagent; not yet on production
 **Blocked by:** 02
 **Labels:** `enhancement`, `area:email`
 

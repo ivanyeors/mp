@@ -11,10 +11,10 @@ A breakdown of the PRD (`../email-funnel-prd.md`). Each slice is a thin, demoabl
 | # | Title | Type | Status | Blocked by |
 |---|-------|------|--------|------------|
 | [01](01-glossary-and-adr.md) | Glossary terms and ADR 0054 | AFK | **built** (2026-11-18) | none |
-| [02](02-programme-and-model.md) | The programme and the model: stages, steps, flow and results, pure | AFK | not started | 01 |
-| [03](03-funnel-page.md) | The Funnel page: stage strip, Segments, Email flow, Results | AFK | not started | 02 |
-| [04](04-set-up-a-step.md) | Set up a step: New campaign from a Playbook, with its Segment | AFK | not started | 02 |
-| [06](06-create-from-the-funnel.md) | Create from the funnel: add an email to a stage, add a follow-up | AFK | not started | 04 |
+| [02](02-programme-and-model.md) | The programme and the model: stages, steps, flow and results, pure | AFK | **built** (2026-11-18) | 01 |
+| [03](03-funnel-page.md) | The Funnel page: stage strip, Segments, Email flow, Results | AFK | **built** (2026-11-18) | 02 |
+| [04](04-set-up-a-step.md) | Set up a step: New campaign from a Playbook, with its Segment | AFK | **built** (2026-11-18) | 02 |
+| [06](06-create-from-the-funnel.md) | Create from the funnel: add an email to a stage, add a follow-up | AFK | **built** (2026-11-18) | 04 |
 | [05](05-signoff.md) | Sign-off: the owner approves the Lead Playbook's words and walks the page | HITL | not started | 03, 04, 06 |
 
 ```mermaid
