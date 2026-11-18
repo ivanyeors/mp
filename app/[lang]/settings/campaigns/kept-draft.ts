@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { CampaignWords } from "@/lib/email-campaigns/clear-all";
 import { CampaignContentPreviewSchema } from "@/lib/email-campaigns/content";
 import { CAMPAIGN_AUDIENCES, CAMPAIGN_BUTTON_TARGETS, type CampaignAudience } from "@/lib/email-campaigns/rules";
+import type { WantedSegment } from "@/lib/email-campaigns/wanted-segment";
 
 /** The email: its words and blocks, and the greeting switch. */
 export type EditorEmail = CampaignWords & { greeting: boolean };
@@ -16,13 +17,17 @@ export type EditorEmail = CampaignWords & { greeting: boolean };
  * What the editor's history holds: the email and who it goes to, the
  * Segments it leaves out included (PRD-campaign-audiences slice 06), and
  * whether it includes the Unengaged (slice 12), so one Undo takes back any
- * change to either.
+ * change to either. With them, the Segment New campaign's address wants and
+ * the address's note (PRD-email-funnel slices 04 and 06), so Undo and Redo
+ * always show the ones the draft is for; never kept in the browser.
  */
 export type EditorDraft = EditorEmail & {
   audience: CampaignAudience;
   segmentId: string;
   excludeSegmentIds: string[];
   includeUnengaged: boolean;
+  wanted?: WantedSegment | null;
+  audienceNote?: string | null;
 };
 
 /** One draft's unsaved state: the email, and who it goes to. */
@@ -59,7 +64,8 @@ export function keptDraft(raw: unknown): KeptDraft | null {
 }
 
 /** Pure — the editor's draft as the browser keeps it. */
-export function keptOf({ audience, segmentId, excludeSegmentIds, includeUnengaged, ...email }: EditorDraft): KeptDraft {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- the wanted Segment and the note are the editor's, never kept
+export function keptOf({ audience, segmentId, excludeSegmentIds, includeUnengaged, wanted, audienceNote, ...email }: EditorDraft): KeptDraft {
   return { email, audience, segmentId, excludeSegmentIds, includeUnengaged };
 }
 

@@ -16,7 +16,16 @@ import { customerFiltersSchema, stageFilterParam, type CampaignFilterState } fro
 import { LIFECYCLE_STAGE_LABEL, LIFECYCLE_STAGES, type LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import { SEGMENT_NAME_MAX, type CustomerSegment } from "@/lib/crm/segment-rules";
 
+/**
+ * Where a wanted Segment comes from, as New campaign's address says it: the
+ * server derives the Segment again from this, never from filters a caller
+ * sends (`findWantedSegmentAction`).
+ */
+export type WantedAddress = { starter: string } | { stage: string } | { after: string };
+
 export interface WantedSegment {
+  /** The address it was wanted at. */
+  address: WantedAddress;
   /** The name it is created with; among Segments with its filters, the one with this name is chosen. */
   name: string;
   /** Its filters, as the Customers list's query (`stage=at-risk`). */
@@ -98,7 +107,7 @@ export function stageWanted(param: string | string[] | undefined): { wanted: Wan
   const stage = LIFECYCLE_STAGES.find((s: LifecycleStage) => stageFilterParam(s) === raw);
   if (!stage) return null;
   if (stage === "lost") return { note: LOST_STAGE_NOTE };
-  return { wanted: { name: LIFECYCLE_STAGE_LABEL[stage], filters: `stage=${raw}`, who: "This campaign" } };
+  return { wanted: { address: { stage: raw! }, name: LIFECYCLE_STAGE_LABEL[stage], filters: `stage=${raw}`, who: "This campaign" } };
 }
 
 /** What a follow-up's people did with the first campaign: `not-sent` is not a follow-up. */
@@ -146,6 +155,7 @@ export function followUpWanted(
   let name = fit(parent.name, tail);
   for (let n = 2; taken.has(name.toLowerCase()); n++) name = fit(parent.name, `${tail} (${n})`);
   return {
+    address: { after: `${after.id}:${after.state}` },
     name,
     filters,
     who: "This follow-up campaign",

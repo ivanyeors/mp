@@ -93,7 +93,7 @@ import {
     type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
 import { UNENGAGED_WHO } from "@/lib/crm/engagement";
-import { emailSaysNothing, STARTERS, startedFrom, starterAudience, starterWants, type Starter } from "@/lib/email-campaigns/starters";
+import { emailSaysNothing, STARTERS, startedFrom, starterAudience, wantedAfterStarter, type Starter } from "@/lib/email-campaigns/starters";
 import { wantedKey, wantedToCreate, type FoundSegments, type WantedSegment } from "@/lib/email-campaigns/wanted-segment";
 import { segmentHref, type CustomerSegment } from "@/lib/crm/segment-rules";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
@@ -310,13 +310,12 @@ export function CampaignEditor({
     // What the server found, with any found or made here since.
     const [madeFound, setMadeFound] = useState<Record<string, string>>({});
     const found = useMemo(() => ({ ...givenFound, ...madeFound }), [givenFound, madeFound]);
-    // The wanted Segment and the address's note; each goes once Staff choose who to send to by hand (below).
-    const [wanted, setWanted] = useState<WantedSegment | null>(initialWanted);
-    const [audienceNote, setAudienceNote] = useState<string | null>(initialNote);
-
     // ── The draft ──────────────────────────────────────────────────────────
-    // The draft is the history's: the email's words, its blocks and the greeting, and who it goes to.
+    // The draft is the history's: the email's words, its blocks and the greeting, and who it goes to; with them, the
+    // wanted Segment and the address's note, so Undo and Redo always show the ones the draft is for (PRD-email-funnel).
     const history = useEditorHistory<EditorDraft>(() => ({
+        wanted: initialWanted,
+        audienceNote: initialNote,
         ...campaignWordsOf(initial),
         greeting: initial.greeting,
         audience: initial.audience,
@@ -326,6 +325,8 @@ export function CampaignEditor({
     }));
     const draft = history.value;
     const { name, subject, preheader, body, content, greeting, audience, segmentId, excludeSegmentIds, includeUnengaged } = draft;
+    const wanted = draft.wanted ?? null;
+    const audienceNote = draft.audienceNote ?? null;
     const { choice: buttonChoice, label: buttonLabel, url: buttonUrl } = draft.button;
     const edit = (patch: Partial<EditorDraft>, burst?: string) => history.set((e) => ({ ...e, ...patch }), { burst });
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
@@ -339,20 +340,11 @@ export function CampaignEditor({
         history.set((e) => (e.content ? { ...e, content: withChineseBlocks(e.content, blocks) } : e), { burst });
     const editChinese = (edit: (c: CampaignContent) => CampaignContent, burst?: string) => history.set((e) => (e.content ? { ...e, content: edit(e.content) } : e), { burst });
 
-    /** Who to send to, chosen by hand: the wanted Segment and the address's note no longer apply. */
-    const byHand = () => {
-        setWanted(null);
-        setAudienceNote(null);
-    };
-    const setAudience = (v: CampaignAudience) => {
-        byHand();
-        edit({ audience: v });
-    };
+    // Who to send to, chosen by hand: the wanted Segment and the address's note no longer apply.
+    const byHand = { wanted: null, audienceNote: null };
+    const setAudience = (v: CampaignAudience) => edit({ audience: v, ...byHand });
     // The Segment it is sent to is never one it leaves out (slice 06).
-    const setSegmentId = (v: string) => {
-        byHand();
-        edit({ segmentId: v, excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
-    };
+    const setSegmentId = (v: string) => edit({ segmentId: v, excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v), ...byHand });
     const leaveOut = (v: string) => edit({ excludeSegmentIds: [...excludeSegmentIds, v].slice(0, MAX_EXCLUDED_SEGMENTS) });
     const keepIn = (v: string) => edit({ excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
     const segmentName = (id: string) => segments.find((s) => s.id === id)?.name ?? "(archived Segment)";
@@ -407,7 +399,7 @@ export function CampaignEditor({
     const inChinese = Boolean(content) && emailLanguage === CHINESE;
 
     // The step Clear all (or Convert to blocks) made, and the words it took, until Undo puts them back or Save makes them gone.
-    const undoRef = useRef<{ words: CampaignWords; step: number | null } | null>(null);
+    const undoRef = useRef<{ words: CampaignWords; wanted?: WantedSegment | null; step: number | null } | null>(null);
     const latest = useRef(history);
     useEffect(() => {
         latest.current = history;
@@ -886,17 +878,13 @@ export function CampaignEditor({
     // *Blank* puts the Start panel away until the next Clear all; words or a block in the email end it anyway.
     const [startPutAway, setStartPutAway] = useState(false);
     const offerStart = editable && !startPutAway && emailSaysNothing(words);
-    /**
-     * A Starter written for one audience sends the email to it, in the same step as its blocks: say so, as it changes.
-     * A Playbook's Segment becomes the wanted one, so it can be named and created if missing (PRD-email-funnel slice 04);
-     * a Starter with another Audience ends the wanted Segment, and one with none ends a Playbook's (the email is no longer
-     * that Playbook) but keeps the address's, whose Audience the campaign keeps.
-     */
+    /** The wanted Segment once the email is started from `s` (`wantedAfterStarter`), in the same step; an Audience of its own ends the address's note. */
+    const wantedAfter = (s: Starter, e: EditorDraft): Pick<EditorDraft, "wanted" | "audienceNote"> => ({
+        wanted: wantedAfterStarter(s, e.wanted ?? null),
+        ...(s.audience ? { audienceNote: null } : {}),
+    });
+    /** A Starter written for one audience sends the email to it, in the same step as its blocks: say so, as it changes. */
     const sayAudience = (s: Starter) => {
-        if (s.audience) {
-            setWanted(starterWants(s));
-            setAudienceNote(null);
-        } else if (wanted?.playbook) setWanted(null);
         const goesTo = starterAudience(s, found);
         const now = latest.current.value;
         if (!goesTo.audience || (goesTo.audience === now.audience && (goesTo.segmentId === undefined || goesTo.segmentId === now.segmentId))) return;
@@ -913,7 +901,7 @@ export function CampaignEditor({
             preview: <StarterThumbnail id={s.id} shape="landscape" className="max-h-36" />,
             apply: (next) => {
                 sayAudience(s);
-                history.set((e) => ({ ...e, content: { ...(e.content ?? EMPTY_CAMPAIGN_CONTENT), blocks: next }, ...starterAudience(s, found) }));
+                history.set((e) => ({ ...e, content: { ...(e.content ?? EMPTY_CAMPAIGN_CONTENT), blocks: next }, ...starterAudience(s, found), ...wantedAfter(s, e) }));
             },
         }),
     );
@@ -923,7 +911,7 @@ export function CampaignEditor({
             ...starterItems[i],
             apply: (next) => {
                 sayAudience(s);
-                history.set((e) => startedFrom(e, s, next, found));
+                history.set((e) => ({ ...startedFrom(e, s, next, found), ...wantedAfter(s, e) }));
             },
         }),
     );
@@ -935,7 +923,9 @@ export function CampaignEditor({
     const segmentMissing = !locked && wanted && audience === "segment" && !segmentId && !found[wantedKey(wanted)] ? wanted : null;
     const creatingSegment = useRef(false);
     const [segmentBusy, setSegmentBusy] = useState(false);
-    const [segmentError, setSegmentError] = useState<string | null>(null);
+    // A create's error, about the wanted Segment it was for: under another one's notice it is not shown.
+    const [segmentFailure, setSegmentFailure] = useState<{ for: WantedSegment; error: string } | null>(null);
+    const segmentError = segmentMissing && segmentFailure?.for === segmentMissing ? segmentFailure.error : null;
     /** `row` is the wanted Segment `w`: offered, found and chosen. */
     const chooseWanted = (w: WantedSegment, row: SegmentOption) => {
         setMadeSegments((made) => [...made, row]);
@@ -953,7 +943,8 @@ export function CampaignEditor({
         if (!w || creatingSegment.current) return;
         creatingSegment.current = true;
         setSegmentBusy(true);
-        setSegmentError(null);
+        setSegmentFailure(null);
+        const setSegmentError = (error: string) => setSegmentFailure({ for: w, error });
         try {
             const res = await fetch("/api/settings/customers/segments", {
                 method: "POST",
@@ -971,7 +962,7 @@ export function CampaignEditor({
                 setSegmentError(json?.error ?? "Could not create the Segment. Try again.");
                 return;
             }
-            const again = await findWantedSegmentAction({ name: w.name, filters: w.filters });
+            const again = await findWantedSegmentAction(w.address);
             if (!again.ok) {
                 setSegmentError(`${json?.error ?? "That name is taken."} The Segments could not be read again: reload the page to try again.`);
             } else if (again.segment) {
@@ -1010,19 +1001,19 @@ export function CampaignEditor({
                     if (!u) return;
                     const h = latest.current;
                     if (u.step === h.step) h.undo();
-                    else h.set((e) => ({ ...e, ...u.words }));
+                    else h.set((e) => ({ ...e, ...u.words, ...(u.wanted !== undefined ? { wanted: u.wanted } : {}) }));
                 },
             },
         });
     const clearAll = () => {
         if (clearBlocker) return;
         const { words: cleared, snapshot } = clearCampaignWords(words);
-        undoRef.current = { words: snapshot, step: null };
-        history.set((e) => ({ ...e, ...cleared }));
+        undoRef.current = { words: snapshot, wanted, step: null };
+        // The email is no longer the Playbook it was started from: its wanted Segment goes in the same step.
+        history.set((e) => ({ ...e, ...cleared, wanted: e.wanted?.playbook ? null : e.wanted }));
         setSelected(null);
-        // Back to the start: the Start panel is offered again. The email is no longer the Playbook it was started from.
+        // Back to the start: the Start panel is offered again.
         setStartPutAway(false);
-        if (wanted?.playbook) setWanted(null);
         undoToast("Cleared the email.");
     };
     /**
