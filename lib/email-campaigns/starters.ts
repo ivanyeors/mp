@@ -148,8 +148,9 @@ const go = (id: () => string, label: string, target: Of<"buttons">["buttons"][nu
  * wait for points to be live, as every campaign that mentions them does.
  *
  * Offered once the owner approves their words: only those in
- * `APPROVED_PLAYBOOKS` are (`PLAYBOOK_STARTERS`). All four were approved on
- * 2026-11-01.
+ * `APPROVED_PLAYBOOKS` are (`PLAYBOOK_STARTERS`). The first four were
+ * approved on 2026-11-01; *How your pillow is made* (PRD-email-funnel) waits
+ * for the owner.
  */
 export const PLAYBOOK_DRAFTS: readonly Starter[] = [
   {
@@ -235,6 +236,39 @@ export const PLAYBOOK_DRAFTS: readonly Starter[] = [
       text(id, ["Layers can be replaced without replacing the whole pillow, and the stuffing is covered by a 10-year warranty."]),
       go(id, "Book a visit", "book_fitting"),
       text(id, ["Questions first? Reply to this email, or reach our support team on WhatsApp or through the Support page on our website."]),
+    ],
+  },
+  {
+    // PRD-email-funnel: the Lead step of the Email funnel. A draft until the
+    // owner approves its words (slice 05); not in APPROVED_PLAYBOOKS.
+    id: "playbook_how_its_made",
+    label: "How your pillow is made",
+    description: "For Leads: how a custom pillow is made for them, and the two ways to start: customise online, or book a fitting",
+    words: {
+      name: "How your pillow is made",
+      subject: "How an Mpillow is made to fit you",
+      preheader: "Measured to you, its height and width tailored to you. Start on our website, or at a fitting.",
+    },
+    audience: { audience: "segment", segment: "Lead", filters: "stage=lead" },
+    blocks: (id = newBlockId) => [
+      heading(id, "Made to fit you"),
+      text(id, ["If one-size pillows have never felt right, an Mpillow starts the other way round: from you."]),
+      heading(id, "How it's made", 2),
+      text(
+        id,
+        ["We measure things like your shoulder width and how you sleep, and tailor the pillow's height and width to you."],
+        [
+          "The height is adjustable, so you can fine-tune it.",
+          "One pillow supports both back and side sleeping.",
+          "The covers and components are washable, and layers can be replaced without replacing the whole pillow.",
+        ],
+      ),
+      heading(id, "Two ways to start", 2),
+      text(id, ["Customise your pillow on our website."]),
+      go(id, "Customise your Mpillow", "customise_mpillow"),
+      // A fitting is Singapore-only (**Ships to**): the words say so, since a Lead's country is often unknown.
+      text(id, ["If you're in Singapore, you can book an appointment for a fitting instead."]),
+      go(id, "Book a fitting", "book_fitting"),
     ],
   },
 ];
