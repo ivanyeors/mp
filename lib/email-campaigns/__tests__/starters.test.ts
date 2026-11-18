@@ -204,7 +204,7 @@ describe("the sign-in invitation", () => {
 });
 
 describe("starting an email from a Starter", () => {
-  const SEGMENTS = [{ id: "5e000000-0000-4000-8000-000000000001", name: "New" }];
+  const SEGMENTS = [{ id: "5e000000-0000-4000-8000-000000000001", name: "New", filtersKey: "stage=new" }];
   const empty = { ...EMPTY_CAMPAIGN_WORDS, greeting: false, audience: "subscribed" as const, segmentId: "" };
 
   it("puts its blocks in, and keeps the name, audience and greeting of a layout", () => {
@@ -233,7 +233,7 @@ describe("starting an email from a Starter", () => {
     expect(startedFrom(kept, LAYOUT_STARTERS[0], [], SEGMENTS).content?.fallbacks).toEqual({ first_name: "friend" });
   });
 
-  it("sends a Playbook to its stage's Segment, found by name, or leaves the Segment to choose", () => {
+  it("sends a Playbook to its stage's Segment, found by its filters, or leaves the Segment to choose", () => {
     const playbook: Starter = { ...LAYOUT_STARTERS[3], id: "second_purchase", audience: { audience: "segment", segment: "New", filters: "stage=new" } };
     expect(starterAudience(playbook, SEGMENTS)).toEqual({ audience: "segment", segmentId: SEGMENTS[0].id });
     expect(starterAudience(playbook, [])).toEqual({ audience: "segment", segmentId: "" });

@@ -23,14 +23,12 @@
  */
 
 import {
-  CUSTOMER_FILTER_KEYS,
-  customerFilterParams,
   customerFiltersSchema,
   stageFilterParam,
   type CampaignFilterState,
-  type CustomerFilters,
   type StageFilter,
 } from "@/lib/crm/customer-filters";
+import { filtersKey, parseFilters } from "@/lib/crm/filters-key";
 import { LIFECYCLE_DETAIL_STAGE, LIFECYCLE_STAGE_LABEL, LIFECYCLE_STAGE_RULE, type LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import type { LifecyclePartKey, LifecycleSummary } from "@/lib/crm/lifecycle-summary";
 import type { CustomerSegment } from "@/lib/crm/segment-rules";
@@ -55,6 +53,8 @@ import {
 
 /** `rate(part, whole)`: null when `whole` is 0. With the Results tab's `formatRate` and `formatSgd`. */
 export { formatRate, formatSgd, rate } from "@/lib/email-campaigns/results";
+/** *Same filters as the Playbook* (`customerFiltersSchema` → `customerFilterParams`), shared with New campaign. */
+export { filtersKey } from "@/lib/crm/filters-key";
 
 // ─── Facts: what the loader reads ────────────────────────────────────────────
 
@@ -268,33 +268,6 @@ export interface FunnelView {
 }
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
-
-const FILTER_KEYS = new Set<string>(CUSTOMER_FILTER_KEYS);
-
-/** Pure — stored or query filters, each parsed by the list's schema; null when any key or value does not parse. */
-function parseFilters(params: Readonly<Record<string, string | undefined>> | URLSearchParams): Partial<CustomerFilters> | null {
-  const entries = params instanceof URLSearchParams ? [...params.entries()] : Object.entries(params);
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of entries) {
-    if (value === undefined) continue;
-    if (!FILTER_KEYS.has(key)) return null;
-    const parsed = customerFiltersSchema.shape[key as keyof typeof customerFiltersSchema.shape].safeParse(value);
-    if (!parsed.success || parsed.data === undefined) return null;
-    out[key] = parsed.data;
-  }
-  return out as Partial<CustomerFilters>;
-}
-
-/**
- * Pure — filters as one canonical string (`customerFiltersSchema` →
- * `customerFilterParams`): two sets that choose the same Customers give the
- * same key, whatever their order. Null when any filter does not parse. What
- * *same filters as the Playbook* means here and on New campaign (slice 04).
- */
-export function filtersKey(params: Readonly<Record<string, string | undefined>> | URLSearchParams | string): string | null {
-  const f = parseFilters(typeof params === "string" ? new URLSearchParams(params) : params);
-  return f ? customerFilterParams(f).toString() : null;
-}
 
 /** Whether a Stage filter's values name `stage` or one of its sub-statuses. */
 const namesStage = (values: readonly StageFilter[], stage: LifecycleStage) =>
