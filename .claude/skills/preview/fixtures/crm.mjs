@@ -100,6 +100,231 @@ const YEAR_END = "00000000-0000-4000-8000-00000000e009";
 const SECOND_NOTE = "00000000-0000-4000-8000-00000000e00a";
 const NO_MBOLSTER_SEGMENT = "00000000-0000-4000-8000-00000000c020";
 const FOLLOW_UP_SEGMENT = "00000000-0000-4000-8000-00000000c021";
+// The Playbooks' real words and blocks (lib/email-campaigns/starters.ts, `starterDraft`), so the
+// sample campaigns named after them look like the emails they are. Copied as JSON: a fixture runs
+// in plain Node and cannot import the TypeScript; block ids are fixed so every run draws the same.
+const PLAYBOOK_EMAILS = {
+  "playbook_we_miss_you": {
+    "subject": "It's been a while since we last saw you",
+    "preheader": "What's new at Mpillow, and your points, still waiting for you.",
+    "content": {
+      "v": 1,
+      "blocks": [
+        {
+          "id": "we-miss-you-1",
+          "type": "heading",
+          "level": 1,
+          "text": "It's been a while"
+        },
+        {
+          "id": "we-miss-you-2",
+          "type": "text",
+          "paragraphs": [
+            {
+              "kind": "p",
+              "runs": [
+                {
+                  "text": "A lot has changed since your last order. Here's what's new in the shop."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "we-miss-you-3",
+          "type": "buttons",
+          "buttons": [
+            {
+              "label": "See what's new",
+              "target": "shop",
+              "style": "primary"
+            }
+          ]
+        },
+        {
+          "id": "we-miss-you-4",
+          "type": "heading",
+          "level": 2,
+          "text": "Your points are still here"
+        },
+        {
+          "id": "we-miss-you-5",
+          "type": "text",
+          "paragraphs": [
+            {
+              "kind": "p",
+              "runs": [
+                {
+                  "text": "Points never expire, so whatever you've earned is still in your account for your next order."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "we-miss-you-6",
+          "type": "buttons",
+          "buttons": [
+            {
+              "label": "Sign in to see your points",
+              "target": "sign_in",
+              "style": "primary"
+            }
+          ]
+        }
+      ],
+      "fallbacks": {}
+    }
+  },
+  "playbook_welcome_back": {
+    "subject": "Your pillow's fit can be retuned",
+    "preheader": "Book a re-adjustment visit, and see what's changed since you were last with us.",
+    "content": {
+      "v": 1,
+      "blocks": [
+        {
+          "id": "welcome-back-1",
+          "type": "heading",
+          "level": 1,
+          "text": "Welcome back"
+        },
+        {
+          "id": "welcome-back-2",
+          "type": "text",
+          "paragraphs": [
+            {
+              "kind": "p",
+              "runs": [
+                {
+                  "text": "It's been a while since you were last with us. Your pillow was fitted to you, and a re-adjustment visit retunes that fit to how you sleep now."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "welcome-back-3",
+          "type": "text",
+          "paragraphs": [
+            {
+              "kind": "p",
+              "runs": [
+                {
+                  "text": "Layers can be replaced without replacing the whole pillow, and the stuffing is covered by a 10-year warranty."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "welcome-back-4",
+          "type": "buttons",
+          "buttons": [
+            {
+              "label": "Book a visit",
+              "target": "book_fitting",
+              "style": "primary"
+            }
+          ]
+        },
+        {
+          "id": "welcome-back-5",
+          "type": "text",
+          "paragraphs": [
+            {
+              "kind": "p",
+              "runs": [
+                {
+                  "text": "Questions first? Reply to this email, or reach our support team on WhatsApp or through the Support page on our website."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "fallbacks": {}
+    }
+  },
+  "playbook_thank_you": {
+    "subject": "Thank you for coming back to Mpillow",
+    "preheader": "A first look at what's new, and where your points stand.",
+    "content": {
+      "v": 1,
+      "blocks": [
+        {
+          "id": "thank-you-1",
+          "type": "heading",
+          "level": 1,
+          "text": "Thank you"
+        },
+        {
+          "id": "thank-you-2",
+          "type": "text",
+          "paragraphs": [
+            {
+              "kind": "p",
+              "runs": [
+                {
+                  "text": "You've come back to us more than once, and that means a lot to a small Singapore team. Here's a first look at what's new."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thank-you-3",
+          "type": "buttons",
+          "buttons": [
+            {
+              "label": "See what's new",
+              "target": "shop",
+              "style": "primary"
+            }
+          ]
+        },
+        {
+          "id": "thank-you-4",
+          "type": "heading",
+          "level": 2,
+          "text": "Your points"
+        },
+        {
+          "id": "thank-you-5",
+          "type": "text",
+          "paragraphs": [
+            {
+              "kind": "p",
+              "runs": [
+                {
+                  "text": "Your points are in your account, ready for your next order, and they never expire. Your account also shows the milestones you've reached."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thank-you-6",
+          "type": "buttons",
+          "buttons": [
+            {
+              "label": "See your points",
+              "target": "sign_in",
+              "style": "primary"
+            }
+          ]
+        }
+      ],
+      "fallbacks": {}
+    }
+  }
+};
+/** A sample campaign's words and blocks from its Playbook. */
+const fromPlaybook = (id) => ({
+  subject: PLAYBOOK_EMAILS[id].subject,
+  preheader: PLAYBOOK_EMAILS[id].preheader ?? "",
+  body: "",
+  content: PLAYBOOK_EMAILS[id].content,
+});
 const OFF = { keep_sending: false, keep_sending_daily_cap: 20, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null, holdout_at: null };
 
 /** A seeded generator, so every run draws the same sample results. */
@@ -599,12 +824,14 @@ export default function crm({ now }) {
           ...OFF,
         },
         // PRD-email-funnel slice 03: the funnel's sample campaigns (see the constants above).
-        funnelCampaign(WE_MISS_YOU, "We miss you", "It has been a while", {
+        funnelCampaign(WE_MISS_YOU, "We miss you", "", {
+          ...fromPlaybook("playbook_we_miss_you"),
           segment_id: "00000000-0000-4000-8000-00000000c012",
           locked_at: ago(40),
           keep_sending: true,
         }),
-        funnelCampaign(WELCOME_BACK, "Welcome back", "Your pillow, two years on", {
+        funnelCampaign(WELCOME_BACK, "Welcome back", "", {
+          ...fromPlaybook("playbook_welcome_back"),
           segment_id: "00000000-0000-4000-8000-00000000c013",
           locked_at: ago(30),
           keep_sending: true,
@@ -612,7 +839,8 @@ export default function crm({ now }) {
           keep_sending_paused_at: ago(2),
           keep_sending_paused_reason: "spam reports passed 0.1% in its last wave",
         }),
-        funnelCampaign(THANK_YOU, "Thank you", "Thank you for coming back", {
+        funnelCampaign(THANK_YOU, "Thank you", "", {
+          ...fromPlaybook("playbook_thank_you"),
           segment_id: "00000000-0000-4000-8000-00000000c011",
           locked_at: ago(20),
         }),
