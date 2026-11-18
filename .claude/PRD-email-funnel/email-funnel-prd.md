@@ -11,6 +11,11 @@ funnel stage, and email breakdown of the results."
 results by stage, the **Holdout**, **Unengaged**; ADR 0040), `PRD-customer-crm` (**Aftercare
 messages**; ADR 0028), ADR 0050 (draft reminders).
 **ADR:** [0054](../../docs/adr/0054-email-funnel-reads-what-is-set-up.md).
+**Owner direction (2026-11-18, later the same day):** "Don't think of the content, think from an
+email marketing person that will use this UI to create any content they want. This person should
+be able to see the visuals of the funnels and also the visuals of how the automation emails will
+look like." The page is a marketer's workspace: the funnel is a picture, every email is shown as
+it looks, and any email can be added from it (Solution 1, 3 and 5; decision 9; slice 06).
 
 ## Problem statement
 
@@ -120,32 +125,44 @@ service email (ADR 0028 f; `PRD-customer-crm` README, second and sixth hazards).
 ## Solution
 
 One page, **Admin Panel → Email campaigns → Funnel** (`/settings/campaigns/funnel`, the
-`campaigns` permission), read-only apart from its links.
+`campaigns` permission). A marketer's workspace: it shows the funnel and the emails as they look,
+and every email in it is made in the campaign editor, opened from here.
 
-1. **The stage strip.** *Lead > New > Loyal > At risk > Lost*, each with its Customers now, how
-   many of them are subscribed, and its sub-statuses. Choosing a stage shows its three parts.
-   The stage is in the URL (`?stage=at-risk`), so a view can be shared.
+1. **The funnel, as a picture.** *Lead > New > Loyal > At risk > Lost* as connected tapering
+   bands, sized by Customers, each with its Customers now, how many are subscribed, and how many
+   emails are in it. Choosing a stage shows its three parts. The stage is in the URL
+   (`?stage=at-risk`), so a view can be shared.
 2. **Segments.** Every live **Segment** whose filters name the stage, with its filters as
    chips, its live count, the emails that send to it and the campaigns that leave it out, and
    links to the list on Customers and to *Email this Segment*. A Playbook's Segment that does
    not exist yet is listed as *Not created*.
-3. **Email flow.** The stage's steps in order: who enters, then each email with what it waits
-   for, its kind (*Service*, *Automatic*, *Keeps sending*, *One-off*), its state (*On*, *Off in
-   settings*, *Not set up*, *Draft*, *Started*, *Keeps sending, 20 a day*, *Paused: why*), and
-   what ends it. A campaign whose Segment is *got X* / *clicked X* / *got X, didn't click* hangs
-   under X. The **Rest period** is drawn between marketing emails. Each step links to where it
-   is changed: the campaign, Customers → Settings, Email templates.
+3. **Email flow, with the emails in it.** The stage's steps as cards joined by connectors: who
+   enters, then each email as a card carrying **a thumbnail of the email as the real renderer
+   draws it**, its name and subject, what it waits for, its kind (*Service*, *Automatic*, *Keeps
+   sending*, *One-off*), its state (*On*, *Off in settings*, *Draft*, *Started*, *Keeps sending,
+   20 a day*, *Paused: why*) and its key numbers, then what ends it. A campaign whose Segment is
+   *got X* / *clicked X* / *got X, didn't click* branches under X. The **Rest period** is drawn
+   between marketing emails. A card opens the email large, as it will be sent, on a desktop or a
+   phone, in light or dark, with its results and its links: the campaign, Customers → Settings,
+   Email templates.
 4. **Results.** One row per email that reached people in this stage: sent, clicked,
    unsubscribed, marked as spam, bought within 30 days and what they spent, with the same words
    and rules as the campaign Results tab. Campaigns are counted by the stage each person had
    when sent (`stage_at_send`), so a one-off campaign to everyone subscribed has a row in every
    stage it reached. Automatic emails show what they record: sent; for the Review request, link
-   opened and reviews linked; for the Check-up reminder, followed by a booking; for draft
-   reminders, Drafts finished afterwards. *Lost* shows which emails people unsubscribed from.
-5. **Set up a step.** A Playbook step that is *Not set up* opens New campaign started from that
-   Playbook (`/settings/campaigns/new?starter=<id>`), with its Segment created if it is missing.
-   From there it is an ordinary campaign: a person checks it, sends the first Wave and turns on
-   *Keep sending*.
+   opened; for the Check-up reminder, followed by a booking; for draft reminders, Drafts
+   finished afterwards. *Lost* shows which emails people unsubscribed from.
+5. **Create from the funnel.** Whatever the marketer wants to send, started where it belongs:
+   - **Add an email** at the end of a stage's flow opens New campaign for that stage
+     (`/settings/campaigns/new?stage=<stage>`): the stage's Segment chosen, or created if there
+     is none, and the Start panel as ever: blank, Write with AI, any Starter, a past campaign.
+   - **Add a follow-up** on a campaign opens New campaign for the people who *got it*, *clicked
+     it* or *got it, didn't click* (`/settings/campaigns/new?after=<campaign id>:<did>`), its
+     Segment chosen or created.
+   - **A Playbook not started** is a dashed *Suggested* card with its thumbnail; *Start from
+     this* opens New campaign started from it (`?starter=<id>`), its Segment created if missing.
+   - From there it is an ordinary campaign: a person checks it, sends the first Wave and turns
+     on *Keep sending*.
 
 ## Decisions
 
@@ -171,6 +188,12 @@ One page, **Admin Panel → Email campaigns → Funnel** (`/settings/campaigns/f
    *Words waiting for the owner*, and it cannot be started.
 8. **"Email flow" is the picture, not a builder.** Kept sending is still never called an
    automation, a flow or a drip (`CONTEXT.md`): one campaign is one email.
+9. **The page is for making any email, not for a fixed programme** (owner, 2026-11-18). The
+   designed steps are the Automatic emails, which exist, and Playbooks, which are suggestions.
+   Everything else in a flow is what Staff added. An email is always written in the campaign
+   editor; the funnel opens it with the right Segment. Thumbnails and previews are the real
+   renderer's output with sample details, never a mock-up, so they cannot drift from what is
+   sent.
 
 ## Hazards
 

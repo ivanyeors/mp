@@ -14,16 +14,19 @@ A breakdown of the PRD (`../email-funnel-prd.md`). Each slice is a thin, demoabl
 | [02](02-programme-and-model.md) | The programme and the model: stages, steps, flow and results, pure | AFK | not started | 01 |
 | [03](03-funnel-page.md) | The Funnel page: stage strip, Segments, Email flow, Results | AFK | not started | 02 |
 | [04](04-set-up-a-step.md) | Set up a step: New campaign from a Playbook, with its Segment | AFK | not started | 02 |
-| [05](05-signoff.md) | Sign-off: the owner approves the Lead Playbook's words and walks the page | HITL | not started | 03, 04 |
+| [06](06-create-from-the-funnel.md) | Create from the funnel: add an email to a stage, add a follow-up | AFK | not started | 04 |
+| [05](05-signoff.md) | Sign-off: the owner approves the Lead Playbook's words and walks the page | HITL | not started | 03, 04, 06 |
 
 ```mermaid
 graph TD
   s01[01 Glossary and ADR] --> s02[02 Programme and model]
   s02 --> s03[03 Funnel page]
   s02 --> s04[04 Set up a step]
+  s04 --> s06[06 Create from the funnel]
   s03 --> s05[05 Sign-off · HITL]
   s04 --> s05
+  s06 --> s05
 ```
 
-03 and 04 share no files and run at the same time. Their only contract is the address
-`/settings/campaigns/new?starter=<starter id>`.
+03, 04 and 06 share no files. Their contract is three addresses on New campaign:
+`?starter=<starter id>` (04), `?stage=<stage>` and `?after=<campaign id>:<sent|clicked|not-clicked>` (06).

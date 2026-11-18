@@ -5,6 +5,14 @@
 **Blocked by:** 02
 **Labels:** `enhancement`, `area:email`
 
+> **Owner direction, 2026-11-18 (overrides the wording below where they differ):** the page is a
+> marketer's workspace. The stage strip is a funnel graphic (tapering bands sized by Customers).
+> The Email flow is a canvas of cards, each carrying a thumbnail of the email from the real
+> renderer, opening a full preview (desktop / phone, light / dark). Each stage ends with *Add an
+> email* (`/settings/campaigns/new?stage=<stage>`), each campaign has *Add a follow-up*
+> (`/settings/campaigns/new?after=<id>:<sent|clicked|not-clicked>`), and a Playbook not started
+> is a dashed *Suggested* card. See the PRD's Solution 1, 3 and 5 and decision 9.
+
 ## Goal
 
 **Admin Panel → Email campaigns → Funnel** shows the five stages; choosing one shows the

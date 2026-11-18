@@ -697,7 +697,7 @@ One email in a stage of the **Email funnel**: an **Automatic email**, or an **Em
 _Avoid_: storing a campaign's step or stage; "node", "action" (a builder's words: nothing is built on the page)
 
 **Email flow**:
-The picture, for one **Lifecycle stage**, of its **Funnel steps** in order: who enters, what each email waits for, what state it is in (*On*, *Not set up*, *Keeps sending*, *Paused*), and what ends it. A follow-up hangs under the campaign its Segment reads (*got it*, *clicked it*, *got it, didn't click*), and the **Rest period** is drawn between two marketing emails. Drawn when the page is read, never stored or edited there.
+The picture, for one **Lifecycle stage**, of its **Funnel steps** in order: who enters, what each email waits for, what state it is in (*On*, *Not set up*, *Keeps sending*, *Paused*), and what ends it. A follow-up hangs under the campaign its Segment reads (*got it*, *clicked it*, *got it, didn't click*), and the **Rest period** is drawn between two marketing emails. Each email is a card with a thumbnail from the real renderer, and opens as it will be sent. Emails are added from it (*Add an email* for the stage, *Add a follow-up* to a campaign), each an ordinary **Email campaign** written in the campaign editor. Drawn when the page is read, never stored.
 _Avoid_: reading it as a flow builder or a branching automation (a step with two emails is two campaigns); "flow", "automation" or "drip" for **Kept sending** itself, as before; "journey" (the Customer page's tab, and Analytics)
 
 **Automatic email**:
