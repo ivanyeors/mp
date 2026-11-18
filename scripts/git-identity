@@ -58,6 +58,28 @@ git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 git config user.name "$AUTHOR_NAME" || exit 0
 git config user.email "$AUTHOR_EMAIL" || exit 0
 
+# Author and committer are two fields, read by two different things. Vercel and
+# .githooks/pre-push read the AUTHOR, pinned above. GitHub's "Verified" badge
+# reads the COMMITTER: it has to be the address the signing key is registered
+# to. A Claude cloud session signs every commit with its own key
+# (~/.gitconfig: commit.gpgsign, user.email noreply@anthropic.com) and its stop
+# hook refuses to end a turn on a commit whose committer is anyone else. With
+# only user.* set, that session's commits were authored AND committed as us,
+# signed by a key that is not ours: Unverified on GitHub, and a session that
+# could not stop.
+#
+# So where the surrounding config signs as its own identity, commit as that
+# identity and keep authoring as ours: the preview builds, the push passes and
+# the commit is Verified. On a machine that does not sign, or signs as us,
+# nothing below runs and both fields stay the pinned author, as before.
+signer_email="$(git config --global --get user.email 2>/dev/null || true)"
+signer_name="$(git config --global --get user.name 2>/dev/null || true)"
+if [ "$(git config --global --type=bool --get commit.gpgsign 2>/dev/null || true)" = "true" ] &&
+  [ -n "$signer_email" ] && [ "$signer_email" != "$AUTHOR_EMAIL" ]; then
+  git config committer.name "${signer_name:-$signer_email}" || true
+  git config committer.email "$signer_email" || true
+fi
+
 # .githooks/pre-push is the backstop for anything that commits without this
 # script having run — another tool, another machine, a clone made before this
 # landed. Only claim core.hooksPath if nothing else has: a contributor who has

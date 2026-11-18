@@ -121,7 +121,11 @@ Commits are authored as `ivanyeors <ivanyeoart@gmail.com>`, the only identity
 Vercel builds; any other author gets no preview and no error. A login address
 such as `sg@mpillow.com` is never a git identity. The SessionStart hook runs
 `scripts/git-identity` to set this, and `.githooks/pre-push` refuses a wrong
-author (its comments explain the history). If it refuses, re-author:
+author (its comments explain the history). In a cloud session the same script
+leaves the committer as the session's own signing identity
+(`noreply@anthropic.com`), so the commit is Verified on GitHub: author is ours,
+committer is the signer, and that is correct. If the push is refused,
+re-author:
 
 ```bash
 ./scripts/git-identity
