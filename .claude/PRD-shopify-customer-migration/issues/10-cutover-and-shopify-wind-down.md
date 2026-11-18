@@ -73,11 +73,12 @@ None of this changes what visitors see.
    page kept its language redirect and feeds answered 410. To repeat it:
    `NODE_USE_ENV_PROXY=1 node scripts/check-shopify-redirects.mjs https://custom.mpillow.com`
    (the variable is only needed behind a proxy).
-4. **Add the two domains to the project.** Vercel → mp-inv → Settings → Domains: add
-   `www.mpillow.com` and `mpillow.com`, with no redirect between them (`proxy.ts` does that).
-   On 18 Nov 2026 neither was on the project, so deleting the Shopify records alone would have
-   shown Vercel's "deployment not found" page. Adding them moves no traffic: the A and CNAME
-   records to Shopify keep answering until they are deleted.
+4. **Add the two domains to the project: done 18 Nov 2026.** `www.mpillow.com` and
+   `mpillow.com` are on mp-inv (Vercel → Settings → Domains), both verified, with no redirect
+   between them (`proxy.ts` does that). Before this, deleting the Shopify records alone would
+   have shown Vercel's "deployment not found" page. Adding them moved no traffic: both addresses
+   still answered from Shopify afterwards, because the A and CNAME records to Shopify answer
+   until they are deleted.
 5. **Supabase → Authentication → URL configuration:** add `https://www.mpillow.com/**` to the
    redirect URLs, so sign-in links can finish on www from the first minute.
 6. **Shopify notices live** (step 1 above), naming the date.
