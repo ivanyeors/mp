@@ -453,6 +453,87 @@ describe("a follow-up", () => {
     for (const s of view.stages) expect(s.flow.filter((x) => x.kind === "campaign"), s.stage).toEqual([]);
   });
 
+  describe("a cycle of follow-ups", () => {
+    const campaignKeys = (view: ReturnType<typeof buildFunnel>, s: LifecycleStage) =>
+      flowOf(view, s).filter((x) => x.kind === "campaign").map((x) => x.key);
+    // A (started first) to Segment 1, which names At risk and reads B; B to Segment 2, which reads A.
+    const twoCycle = (order: "ab" | "ba", bothNameStage = false) => {
+      const segments = [
+        seg(1, "At risk · got B", { stage: "at-risk", campaign: `${id(12)}:sent` }),
+        seg(2, "Got A", bothNameStage ? { stage: "at-risk", campaign: `${id(11)}:sent` } : { campaign: `${id(11)}:sent` }),
+      ];
+      const a = camp(11, "A", { segment: 1, lockedAt: "2026-11-01T00:00:00Z" });
+      const b = camp(12, "B", { segment: 2, lockedAt: "2026-11-05T00:00:00Z" });
+      return buildFunnel(facts({ segments, campaigns: order === "ab" ? [a, b] : [b, a] }));
+    };
+
+    it.each(["ab", "ba"] as const)("of two has one root, the first started, and lists each once (input %s)", (order) => {
+      for (const both of [false, true]) {
+        const view = twoCycle(order, both);
+        expect(campaignKeys(view, "at_risk").sort()).toEqual([`campaign:${id(11)}`, `campaign:${id(12)}`]);
+        expect(stepOf(view, "at_risk", `campaign:${id(11)}`).after).toBeNull();
+        expect(stepOf(view, "at_risk", `campaign:${id(12)}`).after).toEqual({ campaignId: id(11), did: "sent" });
+      }
+    });
+
+    it("counts a draft as newest when choosing the root", () => {
+      const view = buildFunnel(
+        facts({
+          segments: [seg(1, "At risk · got B", { stage: "at-risk", campaign: `${id(12)}:sent` }), seg(2, "Got A", { campaign: `${id(11)}:sent` })],
+          campaigns: [camp(11, "A", { segment: 1, lockedAt: null }), camp(12, "B", { segment: 2, lockedAt: "2026-11-05T00:00:00Z" })],
+        }),
+      );
+      expect(stepOf(view, "at_risk", `campaign:${id(12)}`).after).toBeNull();
+      expect(stepOf(view, "at_risk", `campaign:${id(11)}`).after).toEqual({ campaignId: id(12), did: "sent" });
+    });
+
+    it("of three has exactly one root and lists each once", () => {
+      const view = buildFunnel(
+        facts({
+          segments: [
+            seg(1, "At risk · got C", { stage: "at-risk", campaign: `${id(13)}:sent` }),
+            seg(2, "Got A", { campaign: `${id(11)}:clicked` }),
+            seg(3, "Got B", { campaign: `${id(12)}:not-clicked` }),
+          ],
+          campaigns: [
+            camp(13, "C", { segment: 3, lockedAt: "2026-11-03T00:00:00Z" }),
+            camp(11, "A", { segment: 1, lockedAt: "2026-11-02T00:00:00Z" }),
+            camp(12, "B", { segment: 2, lockedAt: "2026-11-04T00:00:00Z" }),
+          ],
+        }),
+      );
+      const keys = campaignKeys(view, "at_risk");
+      expect(keys.sort()).toEqual([id(11), id(12), id(13)].map((x) => `campaign:${x}`));
+      const roots = flowOf(view, "at_risk").filter((x) => x.kind === "campaign" && x.after === null);
+      expect(roots.map((x) => x.key)).toEqual([`campaign:${id(11)}`]);
+    });
+  });
+
+  it("of a campaign to everyone subscribed, with no stage of its own, is in no stage's flow", () => {
+    const view = buildFunnel(
+      facts({
+        segments: [seg(2, "Got the news", { campaign: `${id(11)}:sent` })],
+        campaigns: [camp(11, "News", { audience: "subscribed" }), camp(12, "Follow", { segment: 2 })],
+      }),
+    );
+    for (const s of view.stages) expect(s.flow.some((x) => x.key === `campaign:${id(12)}`), s.stage).toBe(false);
+  });
+
+  it("whose campaign is archived or missing is an ordinary campaign in its own stage, and in no flow when it names none", () => {
+    const view = buildFunnel(
+      facts({
+        segments: [
+          seg(1, "At risk · got the old one", { stage: "at-risk", campaign: `${id(99)}:sent` }),
+          seg(2, "Got the old one", { campaign: `${id(99)}:clicked` }),
+        ],
+        // Campaign 99 is not live: archived or deleted, it is not among the facts.
+        campaigns: [camp(11, "Own stage", { segment: 1 }), camp(12, "No stage", { segment: 2 })],
+      }),
+    );
+    expect(stepOf(view, "at_risk", `campaign:${id(11)}`)).toMatchObject({ kind: "campaign", after: null });
+    for (const s of view.stages) expect(s.flow.some((x) => x.key === `campaign:${id(12)}`), s.stage).toBe(false);
+  });
+
   it("hangs under nothing when the campaign it reads is not of the stage", () => {
     const view = buildFunnel(
       facts({
@@ -512,6 +593,34 @@ describe("results numbers", () => {
     expect(stageOf(view, "new").results.totals).toMatchObject({ automaticSent: 30, automaticAcrossStages: 0 });
     // Service emails show no numbers.
     expect(stageOf(view, "new").results.rows.some((r) => r.kind === "automatic" && r.stepId === "new.order_emails")).toBe(false);
+  });
+
+  it("carries an Automatic email's other counts, and none when not counted", () => {
+    const view = buildFunnel(
+      facts({
+        automatic: {
+          "new.review_request": { sent: 30, outcome: 6, also: [{ label: "Reviews linked", count: 2 }] },
+          "lead.draft_reminders": null,
+        },
+      }),
+    );
+    const review = stageOf(view, "new").results.rows.find((r) => r.kind === "automatic" && r.stepId === "new.review_request");
+    expect(review).toMatchObject({ also: [{ label: "Reviews linked", count: 2 }] });
+    const lead = stageOf(view, "lead").results.rows.find((r) => r.kind === "automatic" && r.stepId === "lead.draft_reminders");
+    expect(lead).toMatchObject({ counted: false, also: [] });
+  });
+});
+
+describe("a part not read", () => {
+  it("leaves the stage counts null, not 0, when the summary was not read", () => {
+    const view = buildFunnel(facts({ summary: null }));
+    expect(view.stages.map((s) => s.header.customers)).toEqual([null, null, null, null, null]);
+    expect(stageOf(buildFunnel(facts()), "lead").header.customers).toBe(400);
+  });
+
+  it("names the parts not read, and none by default", () => {
+    expect(buildFunnel(facts()).notRead).toEqual([]);
+    expect(buildFunnel(facts({ notRead: ["segments", "results"] })).notRead).toEqual(["segments", "results"]);
   });
 });
 

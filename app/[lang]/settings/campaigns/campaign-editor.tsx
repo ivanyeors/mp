@@ -263,6 +263,7 @@ export function CampaignEditor({
     ai = AI_OFF,
     keptToday = 0,
     results = null,
+    initialTab,
     found: givenFound = NOTHING_FOUND,
     wanted: initialWanted = null,
     audienceNote: initialNote = null,
@@ -286,6 +287,8 @@ export function CampaignEditor({
     keptToday?: number;
     /** A started campaign's results by stage (slice 11); null when not read. */
     results?: CampaignResults | null;
+    /** Open on Results (`?tab=results`, the Email funnel's links); only once it has started. */
+    initialTab?: "results";
     /** The server's match of each wanted Segment (lib/email-campaigns/wanted-segment.ts): every offered Playbook's, and the address's. */
     found?: FoundSegments;
     /** The Segment New campaign's address wants (`?starter=`, `?after=`, `?stage=`; PRD-email-funnel slices 04 and 06). */
@@ -447,7 +450,7 @@ export function CampaignEditor({
     }, [campaign, input, locale, router]);
 
     // ── Write: tabs, selection, panes ──────────────────────────────────────
-    const [tab, setTab] = useState<"write" | "send" | "results">("write");
+    const [tab, setTab] = useState<"write" | "send" | "results">(initialTab === "results" && locked ? "results" : "write");
     const [selected, setSelected] = useState<string | null>(null);
     const [pane, setPane] = useState<"write" | "preview">("write");
     const [addOpen, setAddOpen] = useState(false);

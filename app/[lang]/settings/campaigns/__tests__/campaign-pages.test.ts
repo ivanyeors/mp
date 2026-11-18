@@ -76,7 +76,7 @@ const campaign = (id: string, name: string): Campaign => ({
 type Props = Record<string, unknown> & { segments: unknown[]; found: Record<string, string>; canCreateSegments: boolean };
 const newPage = async (query: Record<string, string>) =>
   ((await NewCampaignPage({ params: Promise.resolve({ lang: "en-US" }), searchParams: Promise.resolve(query) })) as { props: Props }).props;
-const savedPage = async () => ((await CampaignPage({ params: Promise.resolve({ lang: "en-US", id: SAVED }) })) as { props: Props }).props;
+const savedPage = async () => ((await CampaignPage({ params: Promise.resolve({ lang: "en-US", id: SAVED }), searchParams: Promise.resolve({}) })) as { props: Props }).props;
 
 beforeEach(() => {
   h.permissions = ["campaigns", "customers", "customers-edit"];

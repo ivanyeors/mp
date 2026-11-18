@@ -76,11 +76,22 @@ export interface FunnelCampaignFact {
 export interface AutomaticCount {
   sent: number;
   outcome: number;
+  /** Other counts it records, shown beside the outcome (*Reviews linked*, each reminder's sends). */
+  also?: readonly AutomaticAlso[];
 }
 
+/** One more count an Automatic email records, in words. */
+export interface AutomaticAlso {
+  label: string;
+  count: number;
+}
+
+/** A part of the page whose read failed: the page says so instead of showing it empty. */
+export type FunnelPart = "summary" | "segments" | "campaigns" | "results" | "switches";
+
 export interface FunnelFacts {
-  /** Every Customer by stage now (`lifecycleSummary`). */
-  summary: LifecycleSummary;
+  /** Every Customer by stage now (`lifecycleSummary`); null when not read. */
+  summary: LifecycleSummary | null;
   /** Per stage, how many of its Customers are subscribed to marketing email; missing or null when not read. */
   subscribed: Readonly<Partial<Record<LifecycleStage, number | null>>>;
   /** Live Segments (not archived). */
@@ -97,6 +108,8 @@ export interface FunnelFacts {
    * (`reviewRequestBlock` / `checkupBlock` is null), and their timings.
    */
   switches: Readonly<Record<FunnelSwitch, boolean>> & { checkupMonths: number; reviewRequestDays?: number };
+  /** Parts whose read failed (their facts are then empty); missing for none. */
+  notRead?: readonly FunnelPart[];
 }
 
 // ─── The view ────────────────────────────────────────────────────────────────
@@ -216,6 +229,8 @@ export type FunnelResultRow =
       counted: boolean;
       sent: number | null;
       outcome: number | null;
+      /** Its other counts; empty when not counted. */
+      also: AutomaticAlso[];
       /** Listed under more than one stage (the Check-up reminder): its numbers are not split by stage. */
       acrossStages: boolean;
     };
@@ -238,7 +253,8 @@ export interface FunnelStageView {
   header: {
     label: string;
     rule: string;
-    customers: number;
+    /** Null when the counts were not read. */
+    customers: number | null;
     /** Of them, subscribed to marketing email; null when not read. */
     subscribed: number | null;
     /** Its sub-statuses, in bar order (`LIFECYCLE_PARTS`). */
@@ -265,6 +281,8 @@ export interface FunnelView {
   restPeriod: { days: number; maxPer30Days: number; text: string };
   /** *Bought within 30 days*. */
   resultWindowDays: number;
+  /** Parts whose read failed: the page says each could not be read. */
+  notRead: FunnelPart[];
 }
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
@@ -338,7 +356,8 @@ const PROGRESS: Record<StepState["state"], number> = {
 /** Oldest started first; drafts after, oldest made first. */
 const byStart = (a: FunnelCampaignFact, b: FunnelCampaignFact) =>
   (a.campaign.lockedAt ?? "￿").localeCompare(b.campaign.lockedAt ?? "￿") ||
-  a.campaign.createdAt.localeCompare(b.campaign.createdAt);
+  a.campaign.createdAt.localeCompare(b.campaign.createdAt) ||
+  a.campaign.id.localeCompare(b.campaign.id);
 
 const flowCampaign = (c: FunnelCampaignFact): FlowCampaign => ({
   id: c.campaign.id,
@@ -367,12 +386,32 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
   // The live campaign `c` follows up: its Segment reads what that one did
   // (*got it*, *clicked it*, *got it, didn't click*). *Didn't get it* is the
   // people it never reached: an ordinary campaign, not a follow-up.
-  const followOf = (c: FunnelCampaignFact): { parent: FunnelCampaignFact; did: CampaignFilterState } | null => {
+  const readsOf = (c: FunnelCampaignFact): { parent: FunnelCampaignFact; did: CampaignFilterState } | null => {
     const read = segmentOf(c)?.campaign;
     if (!read || !FOLLOW_UP_STATES.has(read.state) || read.id === c.campaign.id) return null;
     const parent = byId.get(read.id);
     return parent ? { parent, did: read.state } : null;
   };
+
+  // A cycle of follow-ups (A reads B, B reads A) has no first email: the one
+  // of the cycle that started first (a draft counted as newest, ties by when
+  // made, then id) follows up nothing and is its root, in the stages its
+  // cycle's Segments name. Walked with a visited set, so it always ends.
+  const cycleRoots = new Map<string, ReadonlySet<LifecycleStage>>();
+  for (const c of campaigns) {
+    const path: FunnelCampaignFact[] = [];
+    const seen = new Set<string>();
+    let cur: FunnelCampaignFact | undefined = c;
+    while (cur && !seen.has(cur.campaign.id)) {
+      seen.add(cur.campaign.id);
+      path.push(cur);
+      cur = readsOf(cur)?.parent;
+    }
+    if (cur?.campaign.id !== c.campaign.id) continue;
+    const root = [...path].sort(byStart)[0];
+    cycleRoots.set(root.campaign.id, new Set(path.flatMap((m) => [...(segmentOf(m)?.stages ?? [])])));
+  }
+  const followOf = (c: FunnelCampaignFact) => (cycleRoots.has(c.campaign.id) ? null : readsOf(c));
 
   // The stages a campaign sits in: its Segment's own, or, for a follow-up
   // whose Segment names none, the stages of the campaign it follows up. A
@@ -381,7 +420,7 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
   const stagesOf = (c: FunnelCampaignFact, seen: ReadonlySet<string> = new Set()): ReadonlySet<LifecycleStage> => {
     const memo = stagesMemo.get(c.campaign.id);
     if (memo) return memo;
-    const own = segmentOf(c)?.stages ?? new Set<LifecycleStage>();
+    const own = segmentOf(c)?.stages.size ? segmentOf(c)!.stages : (cycleRoots.get(c.campaign.id) ?? new Set<LifecycleStage>());
     let out: ReadonlySet<LifecycleStage> = own;
     if (!own.size) {
       const f = followOf(c);
@@ -487,8 +526,10 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
       if (s.kind !== "automatic" || s.outcome === null) return [];
       const count = facts.automatic[s.id];
       const base = { kind: "automatic" as const, stepId: s.id, name: s.name, href: s.href, outcomeLabel: s.outcome, acrossStages: s.stages.length > 1 };
-      if (count == null) return [{ ...base, counted: false, sent: null, outcome: null }];
-      return count.sent > 0 ? [{ ...base, counted: true, sent: count.sent, outcome: count.outcome }] : [];
+      if (count == null) return [{ ...base, counted: false, sent: null, outcome: null, also: [] }];
+      return count.sent > 0
+        ? [{ ...base, counted: true, sent: count.sent, outcome: count.outcome, also: (count.also ?? []).map((a) => ({ ...a })) }]
+        : [];
     });
     const stageRows = (c: FunnelCampaignFact) => rowsOf(c).filter((r) => r.stage === stage);
     const campaignRows = [...campaigns]
@@ -510,14 +551,14 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
       });
     const counted = automaticRows.filter((r) => r.kind === "automatic" && r.counted);
 
-    const summary = facts.summary.stages.find((s) => s.stage === stage);
+    const summary = facts.summary?.stages.find((s) => s.stage === stage);
     return {
       stage,
       param: stageFilterParam(stage),
       header: {
         label: LIFECYCLE_STAGE_LABEL[stage],
         rule: LIFECYCLE_STAGE_RULE[stage],
-        customers: summary?.customers ?? 0,
+        customers: facts.summary ? (summary?.customers ?? 0) : null,
         subscribed: facts.subscribed[stage] ?? null,
         parts: (summary?.parts ?? []).map((p) => ({ key: p.key, label: p.label, customers: p.customers })),
       },
@@ -547,6 +588,7 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
     stages,
     restPeriod: { days: REST_DAYS, maxPer30Days: REST_MAX_PER_30_DAYS, text: REST_PERIOD_TEXT },
     resultWindowDays: RESULT_WINDOW_DAYS,
+    notRead: [...(facts.notRead ?? [])],
   };
 }
 
