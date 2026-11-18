@@ -1,7 +1,7 @@
 # graphify: how the knowledge graph is built and kept current
 
 `CLAUDE.md` says how to *use* the graph. This is how it works, for whoever
-maintains it or debugs a failing freshness check.
+maintains it.
 
 ## What is in it
 
@@ -44,9 +44,8 @@ directly with `./scripts/graphify explain` or `path`.
 
 The wrapper's `update` does four things:
 
-1. Clears `graphify-out/cache/`. An incremental run has skipped new and moved
-   files while reporting a stable digest; CI rebuilds without a cache and
-   would fail.
+1. Clears `graphify-out/cache/`. An incremental run has been seen to skip new
+   and moved files.
 2. Strips the data layer, so graphify starts from exactly what it built last
    time.
 3. Runs graphify (pinned in `scripts/graphify`, with the `[sql]` extra that
@@ -56,26 +55,7 @@ The wrapper's `update` does four things:
 
 A full run takes ~50s. Never run a bare `graphify update` or
 `uvx ... graphify update`: it skips steps 1, 2 and 4, so the data layer goes
-stale and CI fails.
-
-## The freshness check
-
-`.github/workflows/graphify-freshness.yml` runs the same `./scripts/graphify
-update .` when started by hand (Actions -> graphify freshness -> Run workflow).
-It fails if the rebuilt graph's digest differs from the committed one. The
-graph is refreshed on demand, not with every change. To check locally:
-
-```bash
-./scripts/graphify-digest.py graphify-out/graph.json   # before
-./scripts/graphify update .
-./scripts/graphify-digest.py graphify-out/graph.json   # must be unchanged
-```
-
-The digest covers node ids and edges only. Community assignment is reseeded by
-whatever graph the rebuild started from and is not reproducible, so it is left
-out deliberately. A mismatch always means the source really changed. The
-pinned extractor version exists for the same reason: an unpinned graphify can
-build a graph CI disagrees with.
+stale.
 
 ## Community names
 
@@ -90,4 +70,6 @@ refactor that adds or removes whole subsystems:
 
 `GRAPH_REPORT.md` records the commit it was built from. If that is not
 `git rev-parse HEAD`, treat node locations as hints and confirm against the
-file.
+file. Nothing checks the graph against the code automatically: it is refreshed
+when the owner asks. The extractor version is pinned in `scripts/graphify` so
+every refresh builds the same graph from the same source.
