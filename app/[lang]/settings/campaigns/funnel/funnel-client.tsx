@@ -339,8 +339,8 @@ function EmailFlow({ ctx }: { ctx: Ctx }) {
                 <CardDescription>Who enters, each email in order, and what moves them on. Open an email to preview it.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ol className="flex flex-col items-stretch md:flex-row md:flex-wrap md:items-start md:gap-y-6" aria-label={`${stage.header.label} email flow`}>
-                    <Node>
+                <ol className="flex flex-col items-stretch md:flex-row md:flex-wrap md:items-start md:gap-y-8" aria-label={`${stage.header.label} email flow`}>
+                    <Unit incoming={false} narrow>
                         <EndCard icon={LogIn} label="Enters">
                             <p>{stage.entry.enters}</p>
                             <p className="mt-1 text-xs text-muted-foreground tabular-nums">
@@ -348,30 +348,25 @@ function EmailFlow({ ctx }: { ctx: Ctx }) {
                                 {stage.header.subscribed === null ? "subscribed not counted" : `${n(stage.header.subscribed)} subscribed`}
                             </p>
                         </EndCard>
-                    </Node>
+                    </Unit>
 
                     {stage.entry.nothingSent ? (
-                        <>
-                            <Connector />
-                            <Node>
-                                <EndCard icon={CircleSlash} label="Sent" muted>
-                                    {stage.entry.nothingSent}
-                                </EndCard>
-                            </Node>
-                        </>
+                        <Unit>
+                            <EndCard icon={CircleSlash} label="Sent" muted>
+                                {stage.entry.nothingSent}
+                            </EndCard>
+                        </Unit>
                     ) : null}
 
                     {tree.map(({ step, followUps }, i) => (
                         <StepNodes key={step.key} step={step} followUps={followUps} rest={restBefore(i)} ctx={ctx} />
                     ))}
 
-                    <Connector />
-                    <Node>
+                    <Unit>
                         <AddEmailCard stage={stage} to={ctx.to} main={!hasCampaign} />
-                    </Node>
+                    </Unit>
 
-                    <Connector />
-                    <Node>
+                    <Unit>
                         <EndCard icon={DoorOpen} label="Leaves">
                             <ul className="space-y-1">
                                 {STAGE_EXITS[stage.stage].map((e) => (
@@ -386,22 +381,43 @@ function EmailFlow({ ctx }: { ctx: Ctx }) {
                                 ) : null}
                             </ul>
                         </EndCard>
-                    </Node>
+                    </Unit>
                 </ol>
             </CardContent>
         </Card>
     );
 }
 
-/** One place on the flow: a column on a desktop, a row on a phone. */
-function Node({ children, wide }: { children: ReactNode; wide?: boolean }) {
-    return <li className={cn("list-none md:shrink-0", wide ? "md:w-auto" : "md:w-56")}>{children}</li>;
+/**
+ * One place on the flow with the connector that leads into it: they wrap
+ * together, so a row always starts with *wait → card* and no arrow ends a row.
+ * A column on a desktop (its follow-ups hang under it), stacked on a phone.
+ */
+function Unit({
+    children,
+    chips,
+    rest,
+    incoming = true,
+    narrow,
+}: {
+    children: ReactNode;
+    chips?: string[];
+    rest?: boolean;
+    incoming?: boolean;
+    narrow?: boolean;
+}) {
+    return (
+        <li className="flex list-none flex-col items-stretch md:flex-row md:items-start">
+            {incoming ? <Connector chips={chips} rest={rest} /> : null}
+            <div className={cn("min-w-0 md:shrink-0", narrow ? "md:w-44" : "md:w-52")}>{children}</div>
+        </li>
+    );
 }
 
 /** The join between two places, with the wait or condition before the next one, and the Rest period where it applies. */
 function Connector({ chips = [], rest }: { chips?: string[]; rest?: boolean }) {
     return (
-        <li aria-hidden={chips.length === 0 && !rest ? true : undefined} className="flex list-none flex-col items-center justify-center gap-1 py-1.5 md:w-24 md:shrink-0 md:justify-start md:px-1 md:py-0 md:pt-20">
+        <div aria-hidden={chips.length === 0 && !rest ? true : undefined} className="flex flex-col items-center justify-center gap-1 py-1.5 md:w-[5.5rem] md:shrink-0 md:justify-start md:px-1 md:py-0 md:pt-16">
             {rest ? (
                 <span className="inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full border border-dashed bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
                     <Hourglass className="size-3 shrink-0" aria-hidden />
@@ -415,7 +431,7 @@ function Connector({ chips = [], rest }: { chips?: string[]; rest?: boolean }) {
             ))}
             <ArrowDown className="size-4 text-muted-foreground/70 md:hidden" aria-hidden />
             <ArrowRight className="hidden size-4 text-muted-foreground/70 md:block" aria-hidden />
-        </li>
+        </div>
     );
 }
 
@@ -444,9 +460,7 @@ function StepNodes({ step, followUps, rest, ctx }: { step: FlowStep; followUps: 
                     const sent = row?.also.find((a) => a.label === `After ${daysWords(days[i])}`)?.count;
                     const last = i === step.templates.length - 1;
                     return (
-                        <SequenceItem key={t}>
-                            <Connector chips={[`${daysWords(days[i])} after the last save`]} rest={i === 0 && rest} />
-                            <Node>
+                        <Unit key={t} chips={[`${daysWords(days[i])} after the last save`]} rest={i === 0 && rest}>
                                 <AutomaticCard
                                     step={step}
                                     template={t}
@@ -460,17 +474,14 @@ function StepNodes({ step, followUps, rest, ctx }: { step: FlowStep; followUps: 
                                     }
                                     ctx={ctx}
                                 />
-                            </Node>
-                        </SequenceItem>
+                        </Unit>
                     );
                 })}
             </>
         );
     }
     return (
-        <>
-            <Connector chips={[step.when]} rest={rest} />
-            <Node>
+        <Unit chips={[step.when]} rest={rest}>
                 <div className="space-y-3">
                     {step.kind === "automatic" ? (
                         step.templates.length > 1 ? (
@@ -501,14 +512,8 @@ function StepNodes({ step, followUps, rest, ctx }: { step: FlowStep; followUps: 
                         </div>
                     ))}
                 </div>
-            </Node>
-        </>
+        </Unit>
     );
-}
-
-/** A connector and a card, kept together (React needs one parent per mapped item). */
-function SequenceItem({ children }: { children: ReactNode }) {
-    return <>{children}</>;
 }
 
 function automaticNumbers(stage: FunnelStageView, step: FlowStep): string | null {
@@ -580,8 +585,8 @@ function EmailCard({
                             </Badge>
                         ) : null}
                         {segment ? (
-                            <Badge variant="outline" className="max-w-full truncate font-normal">
-                                {segment}
+                            <Badge variant="outline" className="max-w-full justify-start font-normal" title={segment}>
+                                <span className="truncate">{segment}</span>
                             </Badge>
                         ) : null}
                     </div>
@@ -874,6 +879,16 @@ function EmailPreviewDialog({
                                 {target.state ? <StateBadge state={target.state} /> : null}
                             </DialogTitle>
                             <DialogDescription>{target.kind}</DialogDescription>
+                            {/* Above the email, so they show without scrolling past it. */}
+                            {target.actions.length ? (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                    {target.actions.map((a) => (
+                                        <Button key={a.label} asChild variant={a.primary ? "default" : "outline"} size="sm">
+                                            <Link href={a.href}>{a.label}</Link>
+                                        </Button>
+                                    ))}
+                                </div>
+                            ) : null}
                         </DialogHeader>
                         {light === null ? (
                             <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">This email could not be drawn.</p>
@@ -900,15 +915,6 @@ function EmailPreviewDialog({
                             ))}
                         </dl>
                         {target.numbers ? <div className="rounded-md bg-muted/50 p-3 text-sm tabular-nums">{target.numbers}</div> : null}
-                        {target.actions.length ? (
-                            <div className="flex flex-wrap gap-2">
-                                {target.actions.map((a) => (
-                                    <Button key={a.label} asChild variant={a.primary ? "default" : "outline"} size="sm">
-                                        <Link href={a.href}>{a.label}</Link>
-                                    </Button>
-                                ))}
-                            </div>
-                        ) : null}
                     </>
                 ) : null}
             </DialogContent>
