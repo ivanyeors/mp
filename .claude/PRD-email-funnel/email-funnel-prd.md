@@ -173,7 +173,9 @@ and every email in it is made in the campaign editor, opened from here.
    the rest. No new sender, no branching engine, no third cron, no schema change.
 3. **The page is derived, never stored.** A campaign belongs to the stages its Segment's
    `stage` filter names; a Playbook step is *set up* when a live campaign's Segment has the
-   Playbook's filters. Nothing records "this campaign is step 3".
+   Playbook's filters and the campaign still carries the Playbook's name or subject (so an email
+   Staff add to the stage's own Segment is never taken for the Playbook). Nothing records "this
+   campaign is step 3".
 4. **Order within a stage comes from Segments and the Rest period.** A follow-up is a campaign
    whose Segment reads the first (*got it*, *clicked it* or *got it, didn't click*), which the
    Customers filters already offer. One whose Segment names no stage sits under the campaign it

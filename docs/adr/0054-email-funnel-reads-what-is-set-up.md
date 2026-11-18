@@ -34,8 +34,10 @@ emailed, and a third cron.
   them. No branching inside a campaign, no scheduler, no new cron.
 - **(4) Where a campaign sits is derived.** It belongs to the stages its Segment's `stage` filter
   names. A **Playbook**'s step is set up when a live campaign's Segment has the Playbook's
-  filters. A follow-up whose Segment names no stage sits under the campaign it reads. No column
-  records a campaign's step or stage.
+  filters and the campaign still carries the Playbook's name or subject; any other campaign to
+  that Segment is Staff's own email of the stage, and the Playbook stays a suggestion. A follow-up
+  whose Segment names no stage sits under the campaign it reads. No column records a campaign's
+  step or stage.
 - **(5) Results are by the stage the person had when sent.** A campaign's row in a stage counts
   the people at that stage when it reached them, from `email_campaign_stage_results`, with the
   campaign Results tab's rules: rates over people sent, no opens, a **Holdout** for what the

@@ -693,7 +693,7 @@ The page that lays every email the platform sends by itself along the **Lifecycl
 _Avoid_: "marketing funnel" for the **Visitor** journey (that is Analytics, per **Visit**); a second list of stages for email; reading a stage's count as who will be emailed (consent, suppression, the **Rest period** and the sunset rule narrow it at each send)
 
 **Funnel step**:
-One email in a stage of the **Email funnel**: an **Automatic email**, or an **Email campaign** sent to a **Segment** of that stage (a **Playbook** started, or one Staff wrote). The designed steps are a list in code (`lib/email-funnel/programme.ts`). A campaign's stage is read from its Segment's `stage` filter, and a Playbook's step is *set up* when a live campaign's Segment has the Playbook's filters; neither is stored. Each is *Service* or *Marketing*, by the consent it reads.
+One email in a stage of the **Email funnel**: an **Automatic email**, or an **Email campaign** sent to a **Segment** of that stage (a **Playbook** started, or one Staff wrote). The designed steps are a list in code (`lib/email-funnel/programme.ts`). A campaign's stage is read from its Segment's `stage` filter, and a Playbook's step is *set up* when a live campaign's Segment has the Playbook's filters and the campaign still carries the Playbook's name or subject; neither is stored. Each is *Service* or *Marketing*, by the consent it reads.
 _Avoid_: storing a campaign's step or stage; "node", "action" (a builder's words: nothing is built on the page)
 
 **Email flow**:
