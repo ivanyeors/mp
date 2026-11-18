@@ -356,7 +356,8 @@ const PROGRESS: Record<StepState["state"], number> = {
 /** Oldest started first; drafts after, oldest made first. */
 const byStart = (a: FunnelCampaignFact, b: FunnelCampaignFact) =>
   (a.campaign.lockedAt ?? "￿").localeCompare(b.campaign.lockedAt ?? "￿") ||
-  a.campaign.createdAt.localeCompare(b.campaign.createdAt);
+  a.campaign.createdAt.localeCompare(b.campaign.createdAt) ||
+  a.campaign.id.localeCompare(b.campaign.id);
 
 const flowCampaign = (c: FunnelCampaignFact): FlowCampaign => ({
   id: c.campaign.id,
@@ -385,12 +386,32 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
   // The live campaign `c` follows up: its Segment reads what that one did
   // (*got it*, *clicked it*, *got it, didn't click*). *Didn't get it* is the
   // people it never reached: an ordinary campaign, not a follow-up.
-  const followOf = (c: FunnelCampaignFact): { parent: FunnelCampaignFact; did: CampaignFilterState } | null => {
+  const readsOf = (c: FunnelCampaignFact): { parent: FunnelCampaignFact; did: CampaignFilterState } | null => {
     const read = segmentOf(c)?.campaign;
     if (!read || !FOLLOW_UP_STATES.has(read.state) || read.id === c.campaign.id) return null;
     const parent = byId.get(read.id);
     return parent ? { parent, did: read.state } : null;
   };
+
+  // A cycle of follow-ups (A reads B, B reads A) has no first email: the one
+  // of the cycle that started first (a draft counted as newest, ties by when
+  // made, then id) follows up nothing and is its root, in the stages its
+  // cycle's Segments name. Walked with a visited set, so it always ends.
+  const cycleRoots = new Map<string, ReadonlySet<LifecycleStage>>();
+  for (const c of campaigns) {
+    const path: FunnelCampaignFact[] = [];
+    const seen = new Set<string>();
+    let cur: FunnelCampaignFact | undefined = c;
+    while (cur && !seen.has(cur.campaign.id)) {
+      seen.add(cur.campaign.id);
+      path.push(cur);
+      cur = readsOf(cur)?.parent;
+    }
+    if (cur?.campaign.id !== c.campaign.id) continue;
+    const root = [...path].sort(byStart)[0];
+    cycleRoots.set(root.campaign.id, new Set(path.flatMap((m) => [...(segmentOf(m)?.stages ?? [])])));
+  }
+  const followOf = (c: FunnelCampaignFact) => (cycleRoots.has(c.campaign.id) ? null : readsOf(c));
 
   // The stages a campaign sits in: its Segment's own, or, for a follow-up
   // whose Segment names none, the stages of the campaign it follows up. A
@@ -399,7 +420,7 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
   const stagesOf = (c: FunnelCampaignFact, seen: ReadonlySet<string> = new Set()): ReadonlySet<LifecycleStage> => {
     const memo = stagesMemo.get(c.campaign.id);
     if (memo) return memo;
-    const own = segmentOf(c)?.stages ?? new Set<LifecycleStage>();
+    const own = segmentOf(c)?.stages.size ? segmentOf(c)!.stages : (cycleRoots.get(c.campaign.id) ?? new Set<LifecycleStage>());
     let out: ReadonlySet<LifecycleStage> = own;
     if (!own.size) {
       const f = followOf(c);

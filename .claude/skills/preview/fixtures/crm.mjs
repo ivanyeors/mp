@@ -635,6 +635,15 @@ export default function crm({ now }) {
       customer_review_requests: automatic.asked,
       readjustment_bookings: automatic.bookings,
       customer_whatsapp: automatic.whatsapp,
+      // The Email funnel draws each Automatic email with its saved words: one edited subject.
+      email_template_copy: [
+        {
+          template_id: "results.draft_reminder",
+          copy: { subject_1w: "Still deciding on your {product}?" },
+          updated_by_profile_id: null,
+          updated_at: ago(9),
+        },
+      ],
       site_settings: [
         { key: "review_requests_enabled", value: "true" },
         { key: "google_review_url", value: "https://g.page/r/sample-review" },

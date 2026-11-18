@@ -12,6 +12,7 @@ import {
 import type { LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import { formatRate, formatSgd, resultRates, type FunnelStageView, type FunnelView } from "@/lib/email-funnel/model";
 import type { ResultNumbers } from "@/lib/email-campaigns/results";
+import { FUNNEL_PROGRAMME } from "@/lib/email-funnel/programme";
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
@@ -94,22 +95,109 @@ export const stillCounting = (stage: FunnelStageView) =>
 export function flowTree(flow: FunnelStageView["flow"]): { step: FunnelStageView["flow"][number]; followUps: FunnelStageView["flow"] }[] {
     type Step = FunnelStageView["flow"][number];
     const parentOf = (s: Step) => (s.after ? flow.find((p) => p.key !== s.key && p.campaigns.some((c) => c.id === s.after!.campaignId)) : undefined);
-    // A follow-up of a follow-up hangs under the first campaign, in order: one level of indent.
+    // A follow-up of a follow-up hangs under the first campaign of its chain: one level of indent.
+    // Walked with a visited set: a chain that loops (the model breaks loops; this never trusts it)
+    // leaves the step on its own, so every step appears exactly once.
     const rootOf = (s: Step): Step | undefined => {
         const seen = new Set<string>([s.key]);
-        let p = parentOf(s);
-        while (p && parentOf(p) && !seen.has(parentOf(p)!.key)) {
+        let root: Step | undefined;
+        for (let p = parentOf(s); p; p = parentOf(p)) {
+            if (seen.has(p.key)) return undefined;
             seen.add(p.key);
-            p = parentOf(p);
+            root = p;
         }
-        return p;
+        return root;
     };
     const children = new Map<string, FunnelStageView["flow"]>();
     const top: FunnelStageView["flow"] = [];
     for (const step of flow) {
-        const parent = rootOf(step);
-        if (parent && parent.key !== step.key) children.set(parent.key, [...(children.get(parent.key) ?? []), step]);
+        const root = rootOf(step);
+        if (root) children.set(root.key, [...(children.get(root.key) ?? []), step]);
         else top.push(step);
     }
     return top.map((step) => ({ step, followUps: children.get(step.key) ?? [] }));
+}
+
+// ─── Creating from the funnel (owner, 2026-11-18) ────────────────────────────
+
+/** *Add an email* to a stage: New campaign for the stage's Segment (slice 06). Without the locale. */
+export const addEmailHref = (stageParam: string) => `/settings/campaigns/new?stage=${stageParam}`;
+
+/** The follow-ups a campaign offers, in this order. *Didn't get it* is not one. */
+export const FOLLOW_UP_CHOICES = [
+    { did: "sent", label: "Got it" },
+    { did: "clicked", label: "Clicked it" },
+    { did: "not-clicked", label: "Didn't click" },
+] as const satisfies readonly { did: CampaignFilterState; label: string }[];
+
+export type FollowUpDid = (typeof FOLLOW_UP_CHOICES)[number]["did"];
+
+/** *Add a follow-up*: New campaign to the people who did `did` with campaign `id` (slice 06). Without the locale. */
+export const followUpHref = (id: string, did: FollowUpDid) => `/settings/campaigns/new?after=${id}:${did}`;
+
+/** Short words for a follow-up's connector. */
+export const FOLLOW_UP_SHORT: Record<CampaignFilterState, string> = {
+    sent: "got it",
+    clicked: "clicked it",
+    "not-clicked": "didn't click",
+    "not-sent": "didn't get it",
+};
+
+/** What a stage's band counts: each Automatic step and each live campaign as an email; of the campaigns, those that keep sending. */
+export function stageEmailCounts(stage: Pick<FunnelStageView, "flow">): { emails: number; keepSending: number } {
+    let emails = 0;
+    let keepSending = 0;
+    for (const step of stage.flow) {
+        if (step.kind === "automatic") emails += 1;
+        for (const c of step.campaigns) {
+            emails += 1;
+            if (c.state.state === "keeps_sending") keepSending += 1;
+        }
+    }
+    return { emails, keepSending };
+}
+
+/**
+ * Each band's size, 0 to 1, by Customers: the square root, so a stage of
+ * hundreds beside one of thousands still reads, and never under `min`, so a
+ * small stage stays readable and clickable. A stage not counted is `min`.
+ */
+export function bandSizes(customers: readonly (number | null)[], min = 0.4): number[] {
+    const max = Math.max(1, ...customers.map((c) => c ?? 0));
+    return customers.map((c) => Math.max(min, Math.sqrt((c ?? 0) / max)));
+}
+
+/** The keys a card asks `renderFunnelEmails` for. */
+export const campaignKey = (id: string) => `campaign:${id}`;
+export const starterKey = (id: string) => `starter:${id}`;
+export const templateKey = (id: string) => `template:${id}`;
+
+/** How many of a group's templates (order, return and quote emails) show as thumbnails; the rest are counted. */
+export const GROUP_THUMBNAILS = 4;
+
+/**
+ * An Automatic step that is a timed sequence (the draft reminders): its days,
+ * one per template, from the programme (the code that sends them); null for
+ * one email, or a group sent on events.
+ */
+export function sequenceDays(step: Pick<FunnelStageView["flow"][number], "key" | "kind" | "templates">): readonly number[] | null {
+    if (step.kind !== "automatic") return null;
+    const p = FUNNEL_PROGRAMME.find((x) => x.id === step.key);
+    const days = p?.kind === "automatic" ? p.afterDays : undefined;
+    return days && days.length === step.templates.length && days.length > 1 ? days : null;
+}
+
+const isSequence = (step: Pick<FunnelStageView["flow"][number], "key" | "kind" | "templates">) => sequenceDays(step) !== null;
+
+/** Every render a stage's flow shows: its campaigns, its Suggested Playbooks' Starters, its Automatic emails' templates. */
+export function renderKeysOf(stage: Pick<FunnelStageView, "flow">): string[] {
+    return [
+        ...new Set(
+            stage.flow.flatMap((step) => {
+                if (step.kind === "automatic") return (isSequence(step) ? step.templates : step.templates.slice(0, GROUP_THUMBNAILS)).map(templateKey);
+                if (step.campaigns.length) return step.campaigns.map((c) => campaignKey(c.id));
+                return step.starterId ? [starterKey(step.starterId)] : [];
+            }),
+        ),
+    ];
 }

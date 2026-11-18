@@ -52,6 +52,7 @@ export default async function EmailFunnelPage({
                 initialStage={stageFromParam(view, query.stage)}
                 locale={locale}
                 canSeeCustomers={hasPermission(ctx, "customers")}
+                canEditTemplates={hasPermission(ctx, "email-templates")}
                 openable={openable}
             />
         </div>

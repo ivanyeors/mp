@@ -2,7 +2,23 @@ import { describe, expect, it, vi } from "vitest";
 import { NO_RESULTS } from "@/lib/email-campaigns/results";
 import * as results from "@/lib/email-campaigns/results";
 import type { FunnelStageView } from "@/lib/email-funnel/model";
-import { flowTree, resultCells, segmentChips, stageFromParam } from "../funnel-format";
+import { bandSizes, flowTree, resultCells, segmentChips, stageFromParam } from "../funnel-format";
+
+describe("flowTree with a loop", () => {
+  const step = (key: string, campaignId: string, after: string) =>
+    ({ key, campaigns: [{ id: campaignId }], after: { campaignId: after, did: "sent" } }) as unknown as FunnelStageView["flow"][number];
+  it("keeps every step exactly once, never recursing forever", () => {
+    const tree = flowTree([step("a", "c1", "c2"), step("b", "c2", "c1"), step("c", "c3", "c2")]);
+    const keys = tree.flatMap((t) => [t.step.key, ...t.followUps.map((f) => f.key)]);
+    expect(keys.sort()).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("bandSizes", () => {
+  it("sizes by Customers, never under the minimum", () => {
+    expect(bandSizes([100, 25, 0, null], 0.4)).toEqual([1, 0.5, 0.4, 0.4]);
+  });
+});
 
 /** The Email funnel page's cells and words (PRD-email-funnel slice 03). */
 

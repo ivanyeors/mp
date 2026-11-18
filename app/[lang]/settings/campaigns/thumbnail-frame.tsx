@@ -38,9 +38,26 @@ function loadPreviews(): Promise<Previews | null> {
     return asked;
 }
 
-export function ThumbnailFrame({ id, shape = "portrait", className }: { id: string; shape?: keyof typeof RATIO; className?: string }) {
-    const [html, setHtml] = useState<string | null>(null);
+export function ThumbnailFrame({
+    id,
+    shape = "portrait",
+    className,
+    html: given,
+}: {
+    id: string;
+    shape?: keyof typeof RATIO;
+    className?: string;
+    /**
+     * The email's HTML, when the caller rendered it (the Email funnel's cards):
+     * then no Starter is asked for. A string draws it; null, a render that
+     * failed, is a plain card with no thumbnail. Left out, `id` is a Starter's.
+     */
+    html?: string | null;
+}) {
+    const [loaded, setHtml] = useState<string | null>(null);
+    const own = given !== undefined;
     useEffect(() => {
+        if (own) return;
         let live = true;
         void loadPreviews().then((previews) => {
             if (live) setHtml(previews?.[id] ?? null);
@@ -48,7 +65,8 @@ export function ThumbnailFrame({ id, shape = "portrait", className }: { id: stri
         return () => {
             live = false;
         };
-    }, [id]);
+    }, [id, own]);
+    const html = own ? given : loaded;
 
     const box = useRef<HTMLDivElement>(null);
     const [width, setWidth] = useState(0);
@@ -72,14 +90,15 @@ export function ThumbnailFrame({ id, shape = "portrait", className }: { id: stri
                     title=""
                     srcDoc={html}
                     sandbox=""
-                    loading="lazy"
+                    // A caller's own few renders draw at once; the Starters wait until scrolled to.
+                    loading={own ? "eager" : "lazy"}
                     tabIndex={-1}
                     className="pointer-events-none absolute left-0 top-0 origin-top-left border-0 bg-white"
                     // The email in light, as its card is, as the preview's Light toggle asks for it.
                     style={{ width: FRAME_WIDTH, height: FRAME_WIDTH * RATIO[shape], transform: `scale(${scale})`, colorScheme: "light" }}
                 />
             ) : (
-                <div className="absolute inset-0 animate-pulse bg-muted" />
+                <div className={cn("absolute inset-0 bg-muted", !(own && given === null) && "animate-pulse")} />
             )}
         </div>
     );
