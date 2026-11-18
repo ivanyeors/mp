@@ -71,14 +71,16 @@ assert.match(
 );
 assert.match(route, /authorized_amount: takeCard \? priced\.total : null/);
 assert.match(route, /if \(takeCard\) \{/, "Checkout creation must be gated on takeCard");
-// Every money/messaging site reads takeCard, not input.deferred. Exactly four
+// Every money/messaging site reads takeCard, not input.deferred. Exactly five
 // legitimate reads remain: the trust-boundary guard, takeCard's own definition,
-// the source stamp, and the customer link (an assisted submit is made on a
-// Staff device, so the session user is not the buyer). A fifth means a money or
-// email site was missed.
+// the source stamp, the customer link and the visitor stitch (#421, 293ad82e):
+// an assisted submit is made on a Staff device, so neither the session user nor
+// this browser is the buyer's. A sixth means a money or email site was missed.
+assert.match(route, /customer_id: input\.deferred \? null : customerId/, "the customer link skips a Staff device");
+assert.match(route, /if \(!input\.deferred\) \{\s*await stitchShopperVisitor\(/, "the visitor stitch skips a Staff device");
 assert.equal(
   (route.match(/input\.deferred/g) ?? []).length,
-  4,
+  5,
   "a money/messaging site still reads input.deferred instead of takeCard",
 );
 

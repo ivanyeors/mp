@@ -95,8 +95,12 @@ assert.match(renderer, /view=\{authored \? "authored" : "settled"\}/, "two views
 assert.match(renderer, /const morph = prepareMorph\(fromD, d\);/, "the settle transition goes through prepareMorph (prepared once per transition, guardrail 4)");
 assert.match(renderer, /setSettleGhost\(fromD\)/, "a degenerate settle pair crossfades");
 assert.match(renderer, /rect=\{labelRects\.get\(p\.key\) \?\? \(p\.section === dived \? p : p\.settled\)\}/, "labels sit on the drawn body — the conformed outline's centroid — settled outside the dive, authored inside it");
-assert.match(renderer, /const d = \(p\.section === dived \? authoredPaths : settledPaths\)\.get\(p\.key\);\s*if \(d\) out\.set\(p\.key, labelRectOf\(d\)\);/, "the label rect comes from the same conformed path the piece is drawn with");
-assert.doesNotMatch(renderer, /settlePillow\(/, "the renderer never recomputes settle — it reads the fit (moves go through the lib, slice 06)");
+// #402 (a438c3dd): an ear pad's label then moves beside its well, still inside this rect.
+assert.match(renderer, /const d = \(p\.section === dived \? authoredPaths : settledPaths\)\.get\(p\.key\);\s*if \(!d\) continue;\s*const rect = labelRectOf\(d\);/, "the label rect comes from the same conformed path the piece is drawn with");
+// #417 (e5ce74e7, PRD-xray-pillow-ux issue 14 "one writer"): the top view's drag settles its candidate recipe once to
+// plan a move that the lib's placeAlongAt writes; nothing drawn recomputes the settle.
+assert.equal((renderer.match(/settlePillow\(/g) ?? []).length, 1, "the renderer never recomputes settle — it reads the fit (moves go through the lib, slice 06)");
+assert.match(renderer, /const here = alongExtent\(settlePillow\(base, fitCtx\), ref\);[\s\S]{0,600}placeAlongAt\(base, ref,/, "its one settle only plans a top-view move, written by the lib's placeAlongAt");
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
 assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/, "colors via CSS variables");
 assert.match(renderer, /layoutPlacements\(placements,/, "deterministic layout engine renders the mix");

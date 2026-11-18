@@ -59,7 +59,7 @@ describe("landing slide-in safe-area compliance", () => {
 
   it("full-slidein-layout doc mandates sticky chrome exports", () => {
     const doc = readFileSync(
-      join(process.cwd(), ".cursor/marketing-page/full-slidein-layout.md"),
+      join(process.cwd(), "docs/marketing-page/full-slidein-layout.md"),
       "utf8"
     )
     expect(doc).toContain("sheetStickyTopClassName")

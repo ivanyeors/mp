@@ -84,3 +84,9 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      # The `*.check.ts` invariant scripts. Before this step nothing ran them,
+      # and eleven had drifted from the code unnoticed. The few that need a
+      # live database are skipped here (see LIVE in scripts/checks.mjs).
+      - name: Checks
+        run: pnpm checks

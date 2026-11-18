@@ -31,9 +31,10 @@ token-free:
    `graphify-out/DATA_LAYER.md`, the same edges as a per-table and per-page
    index.
 
-`scripts/graph-hint` is a PreToolUse hook on Bash and Grep. When a search names
-a table or a page URL, it adds that entry from `DATA_LAYER.md` to the tool
-call, once per name per session. Otherwise it prints nothing.
+Nothing feeds the graph to agents automatically: the grep hook that did
+(`scripts/graph-hint`) was removed with on-demand refreshes (#428), since a
+graph that lags the code would have answered searches with stale edges. Ask it
+directly with `./scripts/graphify explain` or `path`.
 
 ## Refreshing
 

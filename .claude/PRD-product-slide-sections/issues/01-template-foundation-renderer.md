@@ -15,7 +15,7 @@ Land the composable product slide-in architecture that all four learn-more sheet
 - **`ProductSlideSectionRenderer`:** Maps `type` → template component; merges resolved content with config media props; handles unknown type safely in dev.
 - **`product_slide_section` wrapper:** Standard inner padding/rhythm (`px-4 md:px-6`, `py-6 md:py-8`, optional `border-t`).
 - **First template:** `split_hero` (product-sections area) — refactor from existing `LeftContentRightImgSection` usage; no product copy inside.
-- **Agent playbook:** `.cursor/marketing-page/product-slide-sections.md` — template catalog, schemas, composition rules, approved recipes, content-preservation rule.
+- **Agent playbook:** `docs/marketing-page/product-slide-sections.md` — template catalog, schemas, composition rules, approved recipes, content-preservation rule.
 - **Tests:** Resolver and/or renderer dispatch for at least one known type.
 
 No slide-in wired end-to-end in this slice — proof via unit tests + optional Storybook-style isolated render if useful.
