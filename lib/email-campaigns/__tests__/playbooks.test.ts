@@ -3,6 +3,7 @@ import { parseCustomerFilters } from "@/lib/crm/customer-filters";
 import { MPILLOW_FACTS } from "@/lib/ai/mpillow-facts";
 import { contentWords } from "../content";
 import { CampaignDraftSchema, mentionsPoints, variablesInEmail } from "../rules";
+import { campaignFitChecks } from "../fit-checks";
 import { APPROVED_PLAYBOOKS, PLAYBOOK_DRAFTS, PLAYBOOK_STARTERS, STARTERS, starterDraft } from "../starters";
 
 /**
@@ -108,6 +109,22 @@ describe("the Playbooks", () => {
     expect(PLAYBOOK_STARTERS.some((p) => p.id === "playbook_how_its_made")).toBe(false);
     expect(STARTERS.some((p) => p.id === "playbook_how_its_made")).toBe(false);
     expect(APPROVED_PLAYBOOKS.has("playbook_how_its_made")).toBe(false);
+  });
+
+  it("How your pillow is made offers a visit only where it says Singapore, by the send's own fit check", () => {
+    // A Lead whose country is unknown, as most are: the in-store fit check's case.
+    const lead = [{ customerId: "c1", firstName: "Ann", lastName: "Tan", pointsBalance: 0, pillow: null, locale: "en-US", shipCountry: null, bought: [], lastPurchaseAt: null }];
+    const fitFacts = { origin: "https://custom.mpillow.com", productClasses: {}, now: new Date("2026-11-18T00:00:00Z") };
+    const d = { ...starterDraft(PLAYBOOK_DRAFTS.find((p) => p.id === "playbook_how_its_made")!), segmentId: SEGMENT };
+    const inStore = (e: typeof d) => campaignFitChecks(e, lead, fitFacts).some((c) => c.key === "fit_in_store");
+    // The subject and the preview line, on their own: no visit offered to everyone.
+    expect(inStore({ ...d, content: null, body: "" })).toBe(false);
+    // Each block the check reads as an in-store offer says it is for Singapore.
+    for (const b of d.content!.blocks) {
+      if (!inStore({ ...d, content: { ...d.content!, blocks: [b] } })) continue;
+      const said = contentWords({ ...d.content!, blocks: [b] }).join(" ");
+      expect(said, b.id).toMatch(/in Singapore/);
+    }
   });
 
   it("How your pillow is made says a fitting is for Singapore, and names the brand right", () => {

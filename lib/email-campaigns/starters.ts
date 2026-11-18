@@ -247,7 +247,7 @@ export const PLAYBOOK_DRAFTS: readonly Starter[] = [
     words: {
       name: "How your pillow is made",
       subject: "How an Mpillow is made to fit you",
-      preheader: "Measured to you, its height and width tailored to you. Start on our website, or at a fitting.",
+      preheader: "Measured to you, its height and width tailored to you. Start by customising yours on our website.",
     },
     audience: { audience: "segment", segment: "Lead", filters: "stage=lead" },
     blocks: (id = newBlockId) => [
@@ -268,7 +268,7 @@ export const PLAYBOOK_DRAFTS: readonly Starter[] = [
       go(id, "Customise your Mpillow", "customise_mpillow"),
       // A fitting is Singapore-only (**Ships to**): the words say so, since a Lead's country is often unknown.
       text(id, ["If you're in Singapore, you can book an appointment for a fitting instead."]),
-      go(id, "Book a fitting", "book_fitting"),
+      go(id, "Book a fitting in Singapore", "book_fitting"),
     ],
   },
 ];

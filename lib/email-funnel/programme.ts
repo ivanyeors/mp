@@ -60,7 +60,13 @@ interface StepBase {
 
 export interface AutomaticStep extends StepBase {
   kind: "automatic";
-  /** Its emails' ids in lib/email/registry.ts (the `customer_emails` template, or the registry id it renders). */
+  /**
+   * Its emails' ids in lib/email/registry.ts. These are registry ids, not
+   * ledger keys: most match `customer_emails.template`, but the Check-up's
+   * rows are keyed per milestone (`aftercare.checkup_12m`…, matched by
+   * `CHECKUP_TEMPLATE_LIKE` in lib/aftercare/checkup.ts and counted by
+   * `countCheckupSends`), never `aftercare.checkup`.
+   */
   templates: readonly string[];
   /** The switch that turns it off, or null for one that is always on. */
   switch: FunnelSwitch | null;
@@ -184,7 +190,9 @@ export function funnelProgramme(settings: ProgrammeSettings = {}): ProgrammeStep
       name: `Finish your pillow (${DRAFT_REMINDERS.length} reminders)`,
       purpose: "marketing",
       consent: CONSENT.marketing,
-      who: "A guest with a Draft and no order",
+      // The sender reads no orders (planDraftReminders): it skips only when a
+      // held, paid or submitted Result was started at or after this Draft.
+      who: "Someone subscribed with an unfinished Draft, who has not finished a Result since. Listed under Lead, where they usually are: a past buyer who starts a new Draft gets them too",
       when: `${listWords(reminderDays.map(daysWords))} after they last saved it`,
       stops: "They hold it, pay or start another; or they unsubscribe",
       href: FUNNEL_PATHS.draftReminders,
@@ -271,8 +279,9 @@ export function funnelProgramme(settings: ProgrammeSettings = {}): ProgrammeStep
     {
       kind: "automatic",
       id: "aftercare.checkup_reminder",
-      // The stages a Customer can be in a year after delivery.
-      stages: ["loyal", "at_risk"],
+      // The stages a Customer can be in `checkupMonths` after delivery: New too
+      // while that is before the At-risk threshold (a one-purchase Premium owner).
+      stages: checkupMonths < AT_RISK_AFTER_MONTHS ? ["new", "loyal", "at_risk"] : ["loyal", "at_risk"],
       name: "Check-up reminder",
       purpose: "marketing",
       consent: "Marketing consent, and aftercare email not turned off",
@@ -330,7 +339,8 @@ export const STAGE_ENTRIES: Record<LifecycleStage, StageEntry> = {
   },
   lost: {
     enters: "They unsubscribed from marketing email",
-    nothingSent: "Nothing is sent: they unsubscribed from marketing email.",
+    nothingSent:
+      "No marketing email is sent: they unsubscribed. Service emails about an order (order, return and review request emails) still are.",
     sunsetRule: false,
   },
 };

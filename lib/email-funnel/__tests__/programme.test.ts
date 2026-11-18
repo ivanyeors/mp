@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CHECKUP_EMAIL_ID } from "@/lib/aftercare/checkup";
 import { parseCustomerFilters } from "@/lib/crm/customer-filters";
-import { LIFECYCLE_STAGES } from "@/lib/crm/lifecycle-stage";
+import { AT_RISK_AFTER_MONTHS, LIFECYCLE_STAGES } from "@/lib/crm/lifecycle-stage";
 import { DRAFT_REMINDERS } from "@/lib/draft-reminders";
 import { EMAIL_REGISTRY } from "@/lib/email/registry";
 import { PLAYBOOK_DRAFTS, PLAYBOOK_STARTERS } from "@/lib/email-campaigns/starters";
@@ -64,11 +64,33 @@ describe("the programme", () => {
   it("gives every stage an entry, and Lost no steps", () => {
     for (const stage of LIFECYCLE_STAGES) expect(STAGE_ENTRIES[stage].enters.length, stage).toBeGreaterThan(0);
     expect(stepsOfStage(FUNNEL_PROGRAMME, "lost")).toEqual([]);
-    expect(STAGE_ENTRIES.lost.nothingSent).toMatch(/Nothing is sent/);
     for (const stage of ["lead", "new", "loyal", "at_risk"] as const) {
       expect(stepsOfStage(FUNNEL_PROGRAMME, stage).length, stage).toBeGreaterThan(0);
       expect(STAGE_ENTRIES[stage].nothingSent, stage).toBeNull();
     }
+  });
+
+  it("says Lost is sent no marketing email, never that it is sent nothing: service emails still go", () => {
+    const words = STAGE_ENTRIES.lost.nothingSent ?? "";
+    expect(words).toMatch(/No marketing email is sent/);
+    expect(words).toMatch(/Service emails about an order/);
+    expect(words).not.toMatch(/^Nothing is sent/);
+  });
+
+  it("describes the draft reminders as the sender decides: no order check, under Lead where they usually fall", () => {
+    const s = step("lead.draft_reminders");
+    expect(s.stages).toEqual(["lead"]);
+    expect(s.who).not.toMatch(/no order/i);
+    expect(s.who).toMatch(/subscribed with an unfinished Draft, who has not finished a Result since/);
+    expect(s.who).toMatch(/past buyer who starts a new Draft gets them too/);
+  });
+
+  it("lists the Check-up under New too when it comes before the At-risk threshold, and not otherwise", () => {
+    const stagesAt = (months: number) => funnelProgramme({ checkupMonths: months }).find((s) => s.id === "aftercare.checkup_reminder")!.stages;
+    expect(stagesAt(AT_RISK_AFTER_MONTHS - 1)).toEqual(["new", "loyal", "at_risk"]);
+    expect(stagesAt(6)).toEqual(["new", "loyal", "at_risk"]);
+    expect(stagesAt(AT_RISK_AFTER_MONTHS)).toEqual(["loyal", "at_risk"]);
+    expect(stagesAt(24)).toEqual(["loyal", "at_risk"]);
   });
 
   it("shows the sunset rule on Lead and At risk only", () => {
