@@ -689,7 +689,7 @@ One run of an **Email campaign** to the next *n* eligible **Customers**, buyers 
 _Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)
 
 **Email funnel**:
-The page that lays every email the platform sends by itself along the **Lifecycle stages** (**Admin Panel** → Email campaigns → Funnel, `/settings/campaigns/funnel`; PRD-email-funnel, ADR 0054; owner, 2026-11-18). For each stage: the **Segments** that cut it, its **Email flow**, and what each email did for the people who were at that stage when it reached them. It reads what is set up and stores nothing; it sends nothing. Its stages are the **Lifecycle stage**'s five, so it starts at *Lead*: a **Visitor** who has given no email is not on it.
+The page that lays every email the platform sends by itself along the **Lifecycle stages** (**Admin Panel** → Email campaigns → Funnel, `/settings/campaigns/funnel`; PRD-email-funnel, ADR 0054; owner, 2026-11-18). For each stage: the **Segments** that cut it, its **Email flow**, and what each email did for the people who were at that stage when it reached them. It reads what is set up and stores nothing; it sends nothing. Its stages are the **Lifecycle stage**'s five, so it starts at *Lead*: a **Visitor** who has given no email is not on it. *Lost* is sent no marketing email; service emails about an order still go.
 _Avoid_: "marketing funnel" for the **Visitor** journey (that is Analytics, per **Visit**); a second list of stages for email; reading a stage's count as who will be emailed (consent, suppression, the **Rest period** and the sunset rule narrow it at each send)
 
 **Funnel step**:

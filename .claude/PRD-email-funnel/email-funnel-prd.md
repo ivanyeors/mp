@@ -93,7 +93,7 @@ person has sent the first **Wave** and turned on *Keep sending* (ADR 0040, decis
 
 | Stage | Who | Step | Kind | When | Stops when |
 |---|---|---|---|---|---|
-| **Lead** | has a Draft, no order | Finish your pillow (3 reminders) | Automatic · marketing consent | 1 day, 1 week, 1 month after the last save | they hold, pay or start another; unsubscribed |
+| **Lead** | has an unfinished Draft (usually a Lead; a past buyer who starts a new one gets them too) | Finish your pillow (3 reminders) | Automatic · marketing consent | 1 day, 1 week, 1 month after the last save | they hold, pay for or submit a Result since; unsubscribed |
 | | has a priced build | Build ready, payment due, hold expired | Automatic · service | on the event; payment due after 3 days, every 3 days, at most 3 | paid, declined or expired |
 | | every subscribed Lead | *How your pillow is made* | Playbook (new, **words need the owner**) | as they become a Lead | they buy or attend a booking (*New* / *Loyal*) |
 | **New** | every buyer | Order, delivery and return emails | Automatic · service | on the event | |
@@ -104,7 +104,7 @@ person has sent the first **Wave** and turned on *Keep sending* (ADR 0040, decis
 | **At risk** | 12 to 24 months | *We miss you* | Playbook (approved) | as they pass 12 months | a purchase or an attended booking (*Loyal*) |
 | | Premium owners | Check-up reminder | Automatic · marketing consent | as above | as above |
 | | Lapsed, over 24 months | *Welcome back* | Playbook (approved), reaches the **Unengaged** | as they pass 24 months | as above |
-| **Lost** | unsubscribed | nothing | | | |
+| **Lost** | unsubscribed | no marketing email; service emails about an order still go | | | |
 
 Everyone before *Lead* (a **Visitor** who has not given an email) has no address, so no email:
 the page starts at *Lead*, and says so. The sunset rule (**Unengaged**) is shown on *Lead* and
@@ -158,8 +158,10 @@ One page, **Admin Panel → Email campaigns → Funnel** (`/settings/campaigns/f
    `stage` filter names; a Playbook step is *set up* when a live campaign's Segment has the
    Playbook's filters. Nothing records "this campaign is step 3".
 4. **Order within a stage comes from Segments and the Rest period.** A follow-up is a campaign
-   whose Segment reads the first (`campaign=<id>:sent`), which the Customers filters already
-   offer. The page draws that; it does not edit it.
+   whose Segment reads the first (*got it*, *clicked it* or *got it, didn't click*), which the
+   Customers filters already offer. One whose Segment names no stage sits under the campaign it
+   reads, in that campaign's stages. *Didn't get it* is not a follow-up. The page draws that; it
+   does not edit it.
 5. **Results use the campaign Results tab's rules**: rates over people sent, a dash when nobody
    was, no opens, *Bought within 30 days* never called conversions, the still-counting note.
 6. **Numbers are since each email started.** `email_campaign_stage_results` has no dates. A
@@ -181,7 +183,8 @@ service email, Resend's plan, no third cron, no PII in Telegram, no Shopify depe
   that email's row. That is the point: it is what the email did for Leads.
 - **Reads capped at 1,000 rows.** PostgREST returns at most 1,000 rows per request. Every count
   on the page is a `head: true` count or pages to the end.
-- **The page must never name a Customer.** Counts only, as the Aftercare card.
+- **The page must never name a Customer.** Counts only, as the Aftercare card. A Segment's
+  *search* filter is shown as a chip without its words: the page needs `campaigns`, not `customers`.
 
 ## Out of scope
 

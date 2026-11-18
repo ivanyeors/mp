@@ -34,7 +34,8 @@ emailed, and a third cron.
   them. No branching inside a campaign, no scheduler, no new cron.
 - **(4) Where a campaign sits is derived.** It belongs to the stages its Segment's `stage` filter
   names. A **Playbook**'s step is set up when a live campaign's Segment has the Playbook's
-  filters. No column records a campaign's step or stage.
+  filters. A follow-up whose Segment names no stage sits under the campaign it reads. No column
+  records a campaign's step or stage.
 - **(5) Results are by the stage the person had when sent.** A campaign's row in a stage counts
   the people at that stage when it reached them, from `email_campaign_stage_results`, with the
   campaign Results tab's rules: rates over people sent, no opens, a **Holdout** for what the
@@ -59,7 +60,11 @@ emailed, and a third cron.
 ## Consequences
 
 - The page can only be as right as the Segments are. A campaign sent to a Segment with no `stage`
-  filter appears under no stage's flow, only in the results of the stages it reached.
+  filter, and that reads no other campaign, appears under no stage's flow, only in the results of
+  the stages it reached.
+- An **Automatic email** is listed under the stage its trigger usually falls in. A draft reminder
+  goes to anyone subscribed with an unfinished Draft, a past buyer included, and is listed under
+  *Lead*; its numbers are not split by stage.
 - Changing a threshold of the Lifecycle stage re-sorts the page with everything else.
 - A new automatic email must be added to `lib/email-funnel/programme.ts` to appear; a test holds
   the programme's timings equal to the code that sends them.
