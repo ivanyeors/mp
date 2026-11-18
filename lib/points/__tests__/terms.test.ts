@@ -75,7 +75,7 @@ describe("pointsTermsSections", () => {
   });
 });
 
-describe("the Welcome bonus and the flowers in the terms", () => {
+describe("the Welcome bonus in the terms", () => {
   const ladder = [
     { until: "2026-12-01T00:00:00+08:00", points: 1000, allocation: 500 },
     { until: "2026-12-31T23:59:00+08:00", points: 600, allocation: 500 },
@@ -95,8 +95,8 @@ describe("the Welcome bonus and the flowers in the terms", () => {
     expect(text()).not.toContain("Welcome points");
   });
 
-  it("states the flower rule", () => {
-    expect(text()).toContain("adds 1 to 5 points to your account, once for each flower each day");
+  it("keeps the flowers a secret: an Easter egg is never mentioned (owner, 2026-11-17)", () => {
+    expect(text().toLowerCase()).not.toContain("flower");
   });
 });
 

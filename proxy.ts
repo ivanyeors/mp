@@ -6,6 +6,7 @@ import { recordCampaignClick, stripClickToken } from "@/lib/email-campaigns/clic
 import { FONT_STACK } from "@/lib/font-stack";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { exploreEntryPath } from "@/lib/routing/explore-entry";
 import { shopifyRedirect, shopifyRedirectUrl } from "@/lib/shopify-redirects";
 import { getSiteOrigin } from "@/lib/site-url";
 import { refreshSupabaseSession } from "@/lib/supabase/middleware";
@@ -122,6 +123,28 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (legacy?.status === 410) return new NextResponse("Gone", { status: 410 });
   if (legacy) {
     return redirectFor(shopifyRedirectUrl(legacy.to, origin, request.nextUrl.searchParams), legacy.status);
+  }
+
+  // Until the launch, someone arriving at the home page of mpillow.com or
+  // www.mpillow.com is shown Explore; a click on the site itself is not
+  // (lib/routing/explore-entry.ts). Before the host redirect, so the bare domain
+  // gets there in one hop. Never cached: it ends at the launch.
+  const cookieLang = request.cookies.get(LOCALE_COOKIE_NAME)?.value ?? "";
+  const explorePath = exploreEntryPath({
+    host,
+    pathname,
+    method: request.method,
+    secFetchSite: request.headers.get("sec-fetch-site"),
+    referer: request.headers.get("referer"),
+    locale: isSupportedLocale(cookieLang) ? cookieLang : pickLocaleFromAcceptLanguage(request.headers.get("accept-language")),
+    nowMs: Date.now(),
+  });
+  if (explorePath) {
+    // www stays www (it is never sent away); the bare domain goes to the canonical host.
+    const exploreOrigin = ours && host !== "www.mpillow.com" ? canonical.origin : request.nextUrl.origin;
+    const res = NextResponse.redirect(new URL(explorePath + request.nextUrl.search, exploreOrigin), 307);
+    res.headers.set("Cache-Control", "no-store");
+    return res;
   }
 
   // Another name of this site: the same address on the canonical host. A write

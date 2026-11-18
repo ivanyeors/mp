@@ -19,7 +19,7 @@ import {
   isResultCustomisedOrder,
 } from "@/lib/results/post-delivery-refund";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { orderEarnLine, pointsUsedRow, readOrderPoints } from "@/lib/points/order";
+import { orderEarnLine, readOrderPoints, splitOrderDiscount } from "@/lib/points/order";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
   evaluateEligibility,
@@ -107,8 +107,7 @@ export default async function AccountOrderDetailPage({
     getSiteSettings(["rma_return_window_days"]),
     readOrderPoints(admin, order).catch(() => null),
   ]);
-  const pointsUsed = pointsUsedRow(Number(order.points_spent ?? 0));
-  const couponDiscount = Math.round((order.discount_amount - (pointsUsed?.dollars ?? 0)) * 100) / 100;
+  const { discount: couponDiscount, pointsUsed } = splitOrderDiscount(order.discount_amount, order.points_spent);
   const returnWindowDays =
     Number(settings.rma_return_window_days) || DEFAULT_RETURN_WINDOW_DAYS;
   const now = new Date();

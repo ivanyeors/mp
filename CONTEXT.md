@@ -593,14 +593,14 @@ _Avoid_: letting pending points be spent, or counting them in the balance
 _Avoid_: "welcome-back voucher" (deleted by ADR 0030); "sign-up bonus" (only Migrated customers get it); a calendar end date (each customer's window is their own)
 
 **Welcome bonus**:
-Points a **Customer** who is not a **Migrated customer** receives once (`kind = 'welcome_bonus'`) for claiming on the **Explore page**. Its size is the open step of a ladder the owner sets (`points_welcome_steps`): each step ends at a published time and has a limited number to give, and a step that runs out hands over to the next early. The count shown is the ledger's, never a made-up one. A **Migrated customer** gets the **Claim bonus** instead, never both; a partner gets neither (ADR 0030, decision 18).
+Points a **Customer** who is not a **Migrated customer** receives once (`kind = 'welcome_bonus'`) for claiming on the **Explore page**. Its size is the open step of a ladder the owner sets (`points_welcome_steps`): each step ends at a published time and has a limited number to give, and a step that runs out hands over to the next early. The ladder costs at most S$1,000, S$250 a step (ADR 0030, decision 21). The count shown is the ledger's, never a made-up one. A **Migrated customer** gets the **Claim bonus** instead, never both; a partner gets neither (ADR 0030, decision 18).
 _Avoid_: sign-up bonus, launch voucher
 
 **Flower points**:
-1 to 5 points (`kind = 'explore_flower'`) for a flower picked on the **Explore page** by a signed-in **Customer**, once per flower per Singapore day. The database chooses the days flowers grow, how many, and the points (ADR 0030, decision 20).
+1 to 3 points (`kind = 'explore_flower'`) for a flower picked on the **Explore page** by a signed-in **Customer**; a picked flower grows back for them at a random time 24 to 36 hours later (`regrows_at`), and at most 500 points (S$5) per **Customer** ever: an Easter egg, after which their flowers never give points again. Never advertised: the terms and the sign-in popup say nothing of it; only the surprise after a pick does. The database chooses the days flowers grow, how many, and the points (ADR 0030, decisions 20 and 22).
 
 **Explore page**:
-`/explore`: one screen that does not scroll, with the countdown to the launch (23:59 on 31 December 2026, Singapore time) and the claim of the **Welcome bonus** in a popup, over a scene whose sky follows the visitor's own day and night. Pressing Claim there is consent to marketing email, recorded as `explore_claim`.
+`/explore`: one screen that does not scroll, with the countdown to the launch (23:59 on 31 December 2026, Singapore time) and the claim of the **Welcome bonus** in a popup, over a scene whose sky follows the visitor's own day and night. Pressing Claim there is consent to marketing email, recorded as `explore_claim`. Until the launch, an arrival at the home page of mpillow.com or www.mpillow.com is sent here; once it has come, the page says the site is live and leads to the home page (ADR 0030, decision 23).
 
 **Past-purchase points**:
 Points a **Migrated customer** is given once (`kind = 'past_purchases'`) for what they spent on the old shop: the earn rate × their Shopify-era spend (`migrated_customers.shopify_amount_spent`), rounded down (ADR 0030, 2026-11-08). **Staff** give them in one run from Settings → Discounts → Points, after a preview of how many customers and points; a later run reaches only customers imported since. Not earned on an **Order**, so they never move a **Milestone bonus**; partners get none.

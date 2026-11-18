@@ -8,9 +8,15 @@
 // Two Customers hold points: the signed-in preview user ("Jamie", reviews.mjs,
 // for /account) and Mei, a uuid so the Staff endpoint takes her:
 // /settings/customers/00000000-0000-4000-8000-0000000000c7.
+//
+// Mei's paid shop Order MP2003 used a code and points together (S$10 + 1,000
+// points off a S$120 Slope Mattress, S$10.88 shipping, S$110.88 paid), for the
+// confirmation page's separate Discount and Points used lines:
+// /shop/checkout/confirmation?order_number=MP2003&session_id=cs_preview_points
 
 export const POINTS_CUSTOMER = "00000000-0000-4000-8000-0000000000c7";
 const JAMIE = "cust-preview-owner";
+const POINTS_ORDER = "0f0f0f0f-0000-4000-8000-000000002003";
 
 export default function points({ now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -43,6 +49,7 @@ export default function points({ now }) {
     entry("pts-m-3", POINTS_CUSTOMER, "adjust", 300, 12, { note: "Goodwill: late delivery" }),
     entry("pts-m-4", POINTS_CUSTOMER, "spend", -1000, 9, { order_id: "pts-order-m2" }),
     entry("pts-m-5", POINTS_CUSTOMER, "spend_release", 1000, 8, { order_id: "pts-order-m2" }),
+    entry("pts-m-6", POINTS_CUSTOMER, "spend", -1000, 1, { order_id: POINTS_ORDER }),
   ];
 
   const candidates = [
@@ -67,6 +74,57 @@ export default function points({ now }) {
         { key: "points_milestones", value: "1000:100,2500:300,5000:800,10000:2000" },
       ],
       points_ledger: ledger,
+      orders: [
+        {
+          id: POINTS_ORDER,
+          order_number: "MP2003",
+          customer_id: POINTS_CUSTOMER,
+          email: "mei.tan@example.test",
+          phone: null,
+          status: "confirmed",
+          currency: "SGD",
+          subtotal: 120,
+          shipping_amount: 10.88,
+          tax_amount: 0,
+          // The code's S$10 and the points' S$10, together (ADR 0030).
+          discount_amount: 20,
+          coupon_id: null,
+          coupon_code: "SAMPLE10",
+          points_spent: 1000,
+          points_discount: 10,
+          total: 110.88,
+          amount_captured: 110.88,
+          amount_refunded: 0,
+          shipping_address: { recipient: "Mei Tan", line1: "12 Example Road", city: "Singapore", postal_code: "000000", country: "SG" },
+          billing_address: null,
+          notes: null,
+          payment_method: "stripe",
+          payment_reference: "pi_preview_points",
+          stripe_session_id: "cs_preview_points",
+          paid_at: ago(1),
+          needs_attention: false,
+          locale: "en-US",
+          created_at: ago(1),
+          updated_at: ago(1),
+        },
+      ],
+      order_items: [
+        {
+          id: "0f0f0f0f-1000-4000-8000-000000002031",
+          order_id: POINTS_ORDER,
+          kind: "goods",
+          sku: "SLOPE-MATTRESS",
+          product_title: "Slope Mattress",
+          variant_title: null,
+          quantity: 1,
+          returned_quantity: 0,
+          unit_price: 120,
+          total_price: 120,
+          unit_cost: 40,
+          total_cost: 40,
+          created_at: ago(1),
+        },
+      ],
       customers: [
         {
           id: POINTS_CUSTOMER,

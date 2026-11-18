@@ -102,8 +102,9 @@ export function MarketingFooter() {
               </ul>
             </div>
 
-            {/* The sign-up is the Customer sign-in (PRD-campaign-audiences slice 03). */}
-            <div className="w-full md:max-w-sm">
+            {/* The sign-up is the Customer sign-in (PRD-campaign-audiences slice 03).
+                Empty for someone signed in, so the box collapses. */}
+            <div className="w-full empty:hidden md:max-w-sm">
               <FooterSignUp locale={locale} returnTo={pathname} />
             </div>
           </div>

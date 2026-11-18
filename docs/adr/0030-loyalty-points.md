@@ -327,3 +327,51 @@ Points counts both. The accountant should know before the page is advertised (sl
 17 November 2026. Points must be switched on before the page is advertised (owner, 2026-11-16);
 with points off the page offers sign-in only and promises nothing. The ladder has no editor yet:
 changing it is a change to the setting's row.
+
+## Amendment (2026-11-17, later the same day): the budget, flowers as an Easter egg, and the way in
+
+The owner set what the Explore page may give away, and how people reach it (owner, 2026-11-17).
+
+**Decision 21. The Welcome bonus costs at most S$1,000**, divided equally between the ladder's
+four steps: S$250 (25,000 points) each. The dates and the points stay; each step gives as many
+bonuses as S$250 buys at its size, rounded down: 1,000 points × 25 until the end of November,
+800 × 31 until 14 December, 600 × 41 until the opening, 500 × 50 through January. That is 99,400
+points (S$994) if every one is claimed, and never more, because the allocation is what the grant
+counts (decision 18 (y), (aa)). Applied as `points_welcome_steps` by
+`20261117144229_explore_points_budget.sql`; nothing had been claimed under the old allocations.
+
+**Decision 22. Flowers are an Easter egg**, worth at most S$5 (500 points) to each Customer who
+finds them, ever, on any day the cliff blooms, before the launch or after. A pick gives 1 to 3 points
+(was 1 to 5), and the flower is then gone for that Customer until a random time 24 to 36 hours
+later, when it grows back (owner, 2026-11-17: "flowers clicked will only reappear at random after
+24hrs"; `regrows_at`, `20261117153541_explore_flower_regrow.sql`). Before, it came back at the next
+Singapore midnight, minutes later for a pick at 23:50. The pick
+that reaches 500 gives what is left of it, and after that the Customer's flowers never give points
+again (`pick_explore_flower` answers `spent`; `explore_flowers` says no points). The cap is on top
+of decision 21's S$1,000 and is each Customer's own. A lock per Customer makes two picks at once
+count one after the other, so it holds.
+
+On the page, a picked flower goes and its petals drift down to the grass, lie there a moment and
+fade; then a popup shows the points it held. Signed out, the popup is a plain sign-in ("Sign in or
+create your account", no flower, no hint), and the sign-in comes back to `/explore?flower=N`, where
+the page picks that same flower for them. The database still chooses the days, the flowers and the
+points.
+
+Nothing hints at the flowers before one is picked (owner, 2026-11-17: "it's supposed to be Easter
+eggs"): not the signed-out popup, not a message after a pick that gave nothing (only "A flower for
+you"), and not the points terms, which drop the flowers section decision 20 added. The surprise
+popup after a pick, and the customer's own points history, are the only places it shows.
+
+**Decision 23. The way in.** Until the launch, someone who arrives at the home page of mpillow.com
+or www.mpillow.com is sent to `/explore` (307, not cached; `lib/routing/explore-entry.ts`). Only
+an arrival is: a typed address, a bookmark or a link from another site. A click on the site itself
+(`Sec-Fetch-Site: same-origin`, or a Referer from the same host) reaches the home page, so Explore's
+logo still leads home. custom.mpillow.com, previews and localhost keep their home page. From 23:59
+on 31 December the redirect stops, and Explore says the site is live with an "Enter Mpillow" button
+to the home page. From then it offers no claim (owner, 2026-11-17): a visitor gets "Sign up or sign
+in", a plain sign-in that goes on to the home page, and someone signed in gets only "Enter Mpillow".
+Both hosts are still the Shopify store until their DNS moves (slice 10 of the
+customer migration), so the redirect takes effect only from then.
+
+**What it costs now.** At most S$994 in Welcome bonuses, plus at most S$5 per Customer who finds
+the flowers. Settings → Discounts → Points counts both, as before.

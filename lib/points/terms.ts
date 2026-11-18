@@ -84,7 +84,8 @@ export function pointsTermsSections(s: PointsSettings, welcome: readonly Pick<We
           },
         ]
       : []),
-    // ADR 0030, amendment of 2026-11-17: the Welcome bonus and the Explore page's flowers.
+    // ADR 0030, amendment of 2026-11-17: the Welcome bonus. The Explore page's
+    // flowers are an Easter egg and are not mentioned (owner, 2026-11-17; decision 22).
     ...(welcome.length
       ? [
           {
@@ -98,12 +99,6 @@ export function pointsTermsSections(s: PointsSettings, welcome: readonly Pick<We
           },
         ]
       : []),
-    {
-      heading: "Flowers on the Explore page",
-      paragraphs: [
-        "On some days flowers grow on our Explore page. Picking one while you are signed in adds 1 to 5 points to your account, once for each flower each day.",
-      ],
-    },
     {
       heading: "Points don't expire",
       paragraphs: ["Your points stay in your account for as long as you have it, however long it is between orders."],

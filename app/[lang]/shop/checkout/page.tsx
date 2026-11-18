@@ -59,6 +59,7 @@ import {
 } from "@/lib/checkout-code/shared";
 import { useCheckoutCode } from "@/lib/checkout-code/use-checkout-code";
 import { POINTS_PER_DOLLAR, formatPoints, pointsToDollars } from "@/lib/points/value";
+import { pointsUsedRow } from "@/lib/points/order-lines";
 import { stripeJs } from "@/lib/stripe/browser";
 import {
   COMPUTER_MEDIA_QUERY,
@@ -491,6 +492,11 @@ export default function CheckoutPage() {
         : (selectedMethod.price ?? 0)
       : 0;
   const total = Math.max(0, subtotal + shippingCost - checkoutDiscount - pointsDiscount);
+  // What the code and the points take off, already inside `total`. Said under
+  // the total, so a total above the subtotal (shipping costing more than the
+  // points take off) cannot read as nothing taken off.
+  const savings = Math.round((checkoutDiscount + pointsDiscount) * 100) / 100;
+  const pointsLine = pointsUsedRow(pointsToUse);
 
   // ---------------------------------------------------------------------------
   // Validation
@@ -893,11 +899,11 @@ export default function CheckoutPage() {
               </span>
             </div>
           )}
-          {pointsToUse > 0 && (
+          {pointsLine && (
             <div className="flex justify-between text-green-600 dark:text-green-400">
-              <span>Points ({pointsToUse.toLocaleString("en-SG")})</span>
+              <span>{pointsLine.label}</span>
               <span>
-                -<PriceDisplay price={pointsDiscount} currency={currency} className="inline text-sm" />
+                -<PriceDisplay price={pointsLine.dollars} currency={currency} className="inline text-sm" />
               </span>
             </div>
           )}
@@ -906,6 +912,14 @@ export default function CheckoutPage() {
             <span>Total</span>
             <PriceDisplay price={total} currency={currency} />
           </div>
+          {/* Not a <p>: public pages force paragraphs to 16px, and this is small print. */}
+          {savings > 0 && (
+            <div className="text-right text-xs text-green-600 dark:text-green-400">
+              Includes{" "}
+              <PriceDisplay price={savings} currency={currency} className="inline text-xs" /> off
+              {pointsDiscount > 0 ? (checkoutDiscount > 0 ? " with your code and points" : " with points") : " with your code"}
+            </div>
+          )}
           {isConverted && (
             <p className="text-xs text-muted-foreground mt-2">
               You will be charged <span className="font-medium">{formatPrice(total, "SGD")}</span> SGD

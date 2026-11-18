@@ -20,7 +20,7 @@ begin
   foreach f in array array[
     'public.welcome_bonus_steps()', 'public.welcome_bonus_standing(timestamptz)',
     'public.grant_welcome_bonus(uuid)', 'public.explore_bloom(date)', 'public.explore_flowers(uuid)',
-    'public.pick_explore_flower(uuid, integer)'
+    'public.pick_explore_flower(uuid, integer)', 'public.explore_flower_cap()', 'public.explore_flower_points(uuid)'
   ] loop
     assert not has_function_privilege('anon', f, 'execute'), f || ': no anon';
     assert not has_function_privilege('authenticated', f, 'execute'), f || ': no authenticated';
@@ -143,7 +143,7 @@ begin
   assert not r.picked and r.reason = 'partner', 'a partner picks nothing';
   if n > 0 then
     select * into r from pick_explore_flower(a, 0);
-    assert r.picked and r.points between 1 and 5 and r.reason = 'picked', 'a flower gives 1 to 5 points';
+    assert r.picked and r.points between 1 and 3 and r.reason = 'picked', 'a flower gives 1 to 3 points';
     assert (select points from points_ledger where customer_id = a and kind = 'explore_flower') = r.points, 'and the ledger holds them';
     select * into r from pick_explore_flower(a, 0);
     assert not r.picked and r.reason = 'already', 'a flower is picked once a day';

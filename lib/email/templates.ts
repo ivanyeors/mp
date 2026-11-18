@@ -9,7 +9,7 @@ import {
 } from "./components";
 import { defaultEmailCopy, defineEmailCopy, fillCopy, type EmailCopy, type EmailCopySpec } from "./copy";
 import { money, negativeMoney } from "./format";
-import { pointsUsedRow } from "@/lib/points/order-lines";
+import { splitOrderDiscount } from "@/lib/points/order-lines";
 import { formatDollars, formatPointsCount, pointsToDollars } from "@/lib/points/value";
 import type {
   EmailTemplateName,
@@ -71,8 +71,7 @@ function totalsRows(
     rows.push({ label: "Shipping", value: money(data.shippingAmount, data.currency) });
   // Points used are their own line, apart from the coupon; their dollars
   // are inside discountAmount.
-  const used = pointsUsedRow(data.pointsSpent ?? 0);
-  const discount = Math.round((data.discountAmount - (used?.dollars ?? 0)) * 100) / 100;
+  const { discount, pointsUsed: used } = splitOrderDiscount(data.discountAmount, data.pointsSpent);
   if (discount > 0)
     rows.push({
       label: "Discount",
