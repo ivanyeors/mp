@@ -16,6 +16,7 @@ const DEFAULT_SECTIONS: LandingSection[] = [
   { id: "default-credibility", section_type: "credibility", slug: "credibility", position: 9, visible: true, content: {}, created_at: "", updated_at: "" },
   { id: "default-review", section_type: "video_embed", slug: "review", position: 10, visible: true, content: {}, created_at: "", updated_at: "" },
   { id: "default-founder", section_type: "founder_note", slug: "founder", position: 11, visible: true, content: {}, created_at: "", updated_at: "" },
+  { id: "default-explore", section_type: "explore", slug: "explore", position: 12, visible: true, content: {}, created_at: "", updated_at: "" },
 ];
 
 /** Size of the seed layout, for tests asserting the empty-table fallback. */

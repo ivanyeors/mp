@@ -29,6 +29,7 @@ export const SECTION_TYPE_LABELS: Record<string, string> = {
   credibility: "Credibility",
   video_embed: "Video embed",
   founder_note: "Founder note",
+  explore: "Explore",
   custom_text_image: "Custom: text and image",
   custom_full_width_image: "Custom: full-width image",
   custom_video: "Custom: video",

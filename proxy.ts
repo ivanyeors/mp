@@ -6,7 +6,12 @@ import { recordCampaignClick, stripClickToken } from "@/lib/email-campaigns/clic
 import { FONT_STACK } from "@/lib/font-stack";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
-import { exploreEntryPath } from "@/lib/routing/explore-entry";
+import {
+  EXPLORE_SEEN_COOKIE,
+  exploreEntryPath,
+  exploreSeenCookieDomain,
+  showsExplore,
+} from "@/lib/routing/explore-entry";
 import { shopifyRedirect, shopifyRedirectUrl } from "@/lib/shopify-redirects";
 import { getSiteOrigin } from "@/lib/site-url";
 import { refreshSupabaseSession } from "@/lib/supabase/middleware";
@@ -138,6 +143,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     referer: request.headers.get("referer"),
     locale: isSupportedLocale(cookieLang) ? cookieLang : pickLocaleFromAcceptLanguage(request.headers.get("accept-language")),
     nowMs: Date.now(),
+    seen: request.cookies.get(EXPLORE_SEEN_COOKIE)?.value === "1",
   });
   if (explorePath) {
     // www stays www (it is never sent away); the bare domain goes to the canonical host.
@@ -222,6 +228,26 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
     const res = NextResponse.next();
     clearLegacySettingsSession(request, res);
+    // Explore shown: arrivals go to the home page for the rest of this browser
+    // session (lib/routing/explore-entry.ts). No maxAge, so a session cookie.
+    if (
+      !request.cookies.get(EXPLORE_SEEN_COOKIE) &&
+      showsExplore({
+        pathname,
+        method: request.method,
+        prefetch:
+          request.headers.has("next-router-prefetch") ||
+          /prefetch/i.test(request.headers.get("sec-purpose") ?? request.headers.get("purpose") ?? ""),
+      })
+    ) {
+      res.cookies.set(EXPLORE_SEEN_COOKIE, "1", {
+        path: "/",
+        domain: exploreSeenCookieDomain(host),
+        sameSite: "lax",
+        secure: request.nextUrl.protocol === "https:",
+        httpOnly: true,
+      });
+    }
     const existing = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
     if (existing !== pathLocale) {
       res.cookies.set(LOCALE_COOKIE_NAME, pathLocale, {

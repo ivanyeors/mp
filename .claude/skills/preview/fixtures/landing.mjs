@@ -21,6 +21,7 @@ const SEED = [
   ["credibility", "credibility"],
   ["video_embed", "review"],
   ["founder_note", "founder"],
+  ["explore", "explore"],
 ];
 
 const VIDEOS = [

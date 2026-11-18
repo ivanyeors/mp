@@ -24,6 +24,7 @@ export const BUILT_IN_SECTION_TYPES = [
   "credibility",
   "video_embed",
   "founder_note",
+  "explore",
 ] as const;
 
 /** Addable and removable from the builder. */
@@ -57,6 +58,7 @@ export const SINGLETON_SECTION_TYPES = [
   "why_choose_highlights",
   "credibility",
   "founder_note",
+  "explore",
   // One per page: its form fields carry fixed ids.
   "delivery_estimator",
 ] as const;

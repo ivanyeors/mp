@@ -9,7 +9,8 @@ export type BuiltInSectionType =
   | "product_card"
   | "credibility"
   | "video_embed"
-  | "founder_note";
+  | "founder_note"
+  | "explore";
 
 export type CustomSectionType =
   | "custom_text_image"
@@ -108,6 +109,15 @@ export interface FounderNoteContent {
 }
 
 // Custom section content types
+/** The Explore section: a still of the Explore scene, leading to /explore. Empty fields use the default copy. */
+export interface ExploreContent {
+  image?: string;
+  alt?: string;
+  title?: string;
+  body?: string;
+  buttonLabel?: string;
+}
+
 export interface CustomTextImageContent {
   image?: string;
   alt?: string;

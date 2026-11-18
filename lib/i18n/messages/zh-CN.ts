@@ -105,6 +105,12 @@ export const zhCN: Messages = {
       name: "Darren Yeo",
       role: "创办人",
     },
+    explore: {
+      title: "走进 Explore",
+      body: "海边一座安静的小岛，天空随你所在地的时间变化。来四处看看吧。",
+      cta: "打开 Explore",
+      alt: "黄昏时分，海边开满花的草地小岛，天上挂着一弯新月",
+    },
     stories: {
       title: "听听新加坡顾客怎么说",
       subtitle: "阅读顾客在 Google 上的真实评价，了解定制枕头带来的睡眠与颈部舒适。",
