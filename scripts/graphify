@@ -2,10 +2,9 @@
 # Portable graphify launcher.
 #
 # Resolution order — the pinned uvx version comes FIRST, deliberately. The graph
-# is committed and CI checks it for staleness, so a contributor running a
-# different graphify version than CI would produce a different graph and fail
-# the check with a confusing diff. Pinning here keeps every machine and CI on
-# the same extractor. An unpinned `graphify` already on PATH is used only when
+# is committed, so a contributor running a different graphify version would
+# produce a different graph and a confusing diff. Pinning here keeps every
+# machine on the same extractor. An unpinned `graphify` already on PATH is used only when
 # uv is unavailable.
 #
 # The [sql] extra is not optional: without it the 103 files in
@@ -40,11 +39,10 @@ fi
 # `update` also maintains the data layer (code -> table edges, one node per
 # page), which graphify's AST pass cannot see. It is stripped first so graphify
 # rebuilds from exactly what it produced last time, then added back from the
-# current source. Both steps are deterministic; CI runs this same path.
+# current source. Both steps are deterministic.
 #
 # The extraction cache is cleared first: it has been seen to skip new and moved
-# files while the digest still looked stable, which CI (no cache) then fails.
-# A full rebuild costs ~50s and never disagrees with CI.
+# files. A full rebuild costs ~50s.
 dataflow="$(dirname "$0")/graphify-dataflow.py"
 root=.
 for arg in "${@:2}"; do

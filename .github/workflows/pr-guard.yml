@@ -1,57 +1,37 @@
 name: pr guard
 
-# Runs on a BRANCH PUSH, on purpose, and that is the whole point of it.
+# Says loudly when a pull request can't be merged, and points out when another
+# open pull request is already changing the same files.
 #
-# ci.yml triggers on `pull_request`, and GitHub
-# builds those runs against a merge commit of the branch and its base. When a
-# pull request conflicts with `main`, that merge commit cannot be created, so
-# it does not fail — it never starts. The pull request sits with no
-# checks at all, which on the Checks tab is indistinguishable from checks that
-# are still running. #190 sat like that for forty minutes while `main` moved
-# underneath it, and nothing on the page said so.
+# ci.yml triggers on `pull_request`, and GitHub builds those runs against a
+# merge commit of the branch and its base. When a pull request conflicts with
+# `main`, that merge commit cannot be created, so ci.yml does not fail — it
+# never starts. The pull request sits with no checks at all, which on the
+# Checks tab is indistinguishable from checks still running. #190 sat like that
+# for forty minutes while `main` moved underneath it.
 #
-# A `push` run does not need a merge commit, so this one always runs. Two jobs
-# in one: say loudly when a pull request cannot be merged, and point out when
-# another open pull request is already changing the same files. The second
-# matters here because several agent sessions work this repository at once —
-# #190 and #191 were open together and both rewrote the same email module.
+# `pull_request_target` runs against the base branch, so it needs no merge
+# commit and always runs: when a pull request is opened or reopened, and on
+# every push to its branch (`synchronize`). It is safe only because nothing
+# below checks out or executes branch code; it reads the API and nothing else.
 #
-# Three triggers, because no single one covers the failure.
+# This used to run on every branch push as well. That doubled every push to a
+# pull request's branch (push and synchronize both fired) and ran on branches
+# with no pull request, where it could only say "nothing to guard": 38 of the
+# 61 runs in two days in November 2026. The base moving under an open pull
+# request fires nothing here; pr-sweep.yml finds those.
 #
-#   push                  immediate word on your own pushes.
-#   pull_request_target   a pull request opened AFTER its branch was pushed —
-#                         the usual order — gets no push event, so a push-only
-#                         guard would never see a pull request born conflicting.
-#                         This event runs against the base branch and so needs
-#                         no merge commit either. It is safe here only because
-#                         nothing below checks out or executes branch code; it
-#                         reads the API and nothing else.
-#   schedule              nothing fires on a pull request when its BASE moves,
-#                         which is how #190 became conflicted. The sweep finds
-#                         those and fails, which mails whoever owns the repo.
-#
-# Deliberately cheap: no checkout, no install, no build. It exists to make a
-# silent pull request impossible, not to re-run the test suite.
+# Deliberately cheap: no checkout, no install, no build.
 
 on:
-  push:
-    branches-ignore: [main]
   pull_request_target:
     types: [opened, reopened, synchronize]
-  schedule:
-    # Twice a day. Each scheduled run bills a whole Actions minute (GitHub rounds
-    # every job up), so the old every-three-hours sweep cost ~240 minutes a month
-    # on its own; twice a day still catches a base-moved conflict within a working
-    # day for a fraction of that.
-    - cron: "0 */12 * * *"
 
 concurrency:
-  # Keyed by pull request, not by ref alone: under pull_request_target
-  # `github.ref` is the BASE branch, so every pull request's run would share
-  # one group and a run for one would cancel the run for another — leaving
-  # that one unguarded. The event name keeps a push and the
-  # pull_request_target it fires alongside from cancelling each other too.
-  group: pr-guard-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # Keyed by pull request: under pull_request_target `github.ref` is the BASE
+  # branch, so a ref-keyed group would let one pull request's run cancel
+  # another's.
+  group: pr-guard-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -60,7 +40,6 @@ permissions:
 
 jobs:
   guard:
-    if: github.event_name != 'schedule'
     # A pinned image, not ubuntu-latest: these jobs need only bash and gh, and
     # the label's move to Ubuntu 26 put a notice on every run.
     runs-on: ubuntu-26.04
@@ -74,28 +53,10 @@ jobs:
       - name: Resolve the pull request and the head it describes
         id: pr
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "pull_request_target" ]; then
-            number='${{ github.event.pull_request.number }}'
-            head='${{ github.event.pull_request.head.sha }}'
-          else
-            number="$(gh pr list --head "$GITHUB_REF_NAME" --state open --limit 100 \
-              --json number --jq '.[0].number // empty')"
-            head="$GITHUB_SHA"
-          fi
-
-          if [ -z "$number" ]; then
-            echo "No open pull request for $GITHUB_REF_NAME yet."
-            echo "Opening one fires pull_request_target, which guards it then."
-            echo "number=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "Guarding pull request #$number at $head"
-          echo "number=$number" >> "$GITHUB_OUTPUT"
-          echo "head=$head" >> "$GITHUB_OUTPUT"
+          echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Fail if the pull request cannot be merged
-        if: steps.pr.outputs.number != ''
         run: |
           pr='${{ steps.pr.outputs.number }}'
           want='${{ steps.pr.outputs.head }}'
@@ -157,13 +118,12 @@ jobs:
           exit 1
 
       - name: Warn about files another open pull request is also changing
-        if: steps.pr.outputs.number != ''
         run: |
           pr='${{ steps.pr.outputs.number }}'
 
-          # graphify-out/ is regenerated by every change that touches code, so
-          # every pair of open pull requests overlaps there. Including it would
-          # make this warning fire always and mean nothing.
+          # graphify-out/ is generated, and a refresh rewrites all of it, so a
+          # pull request that refreshes it overlaps every other one there.
+          # Counting it would make this warning mean nothing.
           # `gh pr view --json files` silently caps at 100 and does not
           # paginate; a large refactor would under-report its own overlap.
           mine="$(gh api --paginate "repos/$GH_REPO/pulls/$pr/files" --jq '.[].path' \
@@ -219,47 +179,3 @@ jobs:
           ---------------------------------------------------------------
           MSG
           fi
-
-  sweep:
-    # Nothing fires on a pull request when its base moves, so the only way to
-    # notice is to go and look. A failing scheduled run mails the repository
-    # owner, which is why this fails rather than logging politely.
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-26.04
-    timeout-minutes: 10
-
-    env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-
-    steps:
-      - name: Report open pull requests that can no longer be merged
-        run: |
-          conflicting=""
-
-          for pr in $(gh pr list --state open --limit 100 --json number --jq '.[].number'); do
-            state="$(gh pr view "$pr" --json mergeable --jq .mergeable)"
-            echo "#$pr: $state"
-            [ "$state" = "CONFLICTING" ] && conflicting="$conflicting $pr"
-          done
-
-          if [ -z "$conflicting" ]; then
-            echo "Every open pull request can still be merged."
-            exit 0
-          fi
-
-          echo "::error title=Open pull requests that can no longer be merged::$(printf ' #%s' $conflicting | sed 's/^ //') — merge each one's base into it and push."
-
-          cat <<MSG
-
-          ---------------------------------------------------------------
-          Open pull requests that can no longer be merged:$conflicting
-
-          Their branches have not changed — main moved underneath them. While
-          this stands, ci.yml cannot run on them at
-          all, so whatever checks they last showed describe older code.
-
-          Each one needs its base merged in and pushed.
-          ---------------------------------------------------------------
-          MSG
-          exit 1

@@ -1,0 +1,63 @@
+name: pr sweep
+
+# Nothing fires on a pull request when its BASE moves, which is how #190
+# became conflicted. So go and look, twice a day. A conflicting pull request
+# can't run ci.yml at all, so whatever checks it last showed describe older
+# code. A failing scheduled run mails the repository owner, which is why this
+# fails rather than logging politely.
+#
+# Its own workflow (it used to be a job in pr-guard.yml) so the guard's runs no
+# longer carry a skipped "sweep" check, and this one carries no skipped guard.
+#
+# Each scheduled run bills a whole Actions minute (GitHub rounds every job
+# up); twice a day catches a base-moved conflict within a working day.
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+
+    steps:
+      - name: Report open pull requests that can no longer be merged
+        run: |
+          conflicting=""
+
+          for pr in $(gh pr list --state open --limit 100 --json number --jq '.[].number'); do
+            state="$(gh pr view "$pr" --json mergeable --jq .mergeable)"
+            echo "#$pr: $state"
+            [ "$state" = "CONFLICTING" ] && conflicting="$conflicting $pr"
+          done
+
+          if [ -z "$conflicting" ]; then
+            echo "Every open pull request can still be merged."
+            exit 0
+          fi
+
+          echo "::error title=Open pull requests that can no longer be merged::$(printf ' #%s' $conflicting | sed 's/^ //') — merge each one's base into it and push."
+
+          cat <<MSG
+
+          ---------------------------------------------------------------
+          Open pull requests that can no longer be merged:$conflicting
+
+          Their branches have not changed — main moved underneath them. While
+          this stands, ci.yml cannot run on them at
+          all, so whatever checks they last showed describe older code.
+
+          Each one needs its base merged in and pushed.
+          ---------------------------------------------------------------
+          MSG
+          exit 1

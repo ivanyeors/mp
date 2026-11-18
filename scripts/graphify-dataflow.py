@@ -25,8 +25,7 @@ reachable from the tables without the component internals.
 
 Everything added here is tagged `_origin: "dataflow"` and stripped before it
 is re-added, so the pass is idempotent and deterministic: running it twice, or
-after graphify has preserved last run's edges, produces the same graph. CI's
-freshness check depends on that.
+after graphify has preserved last run's edges, produces the same graph.
 
 It also writes graphify-out/DATA_LAYER.md, a per-table and per-page index of
 the same edges for reading or grepping without the graph tools.
