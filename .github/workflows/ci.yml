@@ -39,9 +39,42 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      # Full history for gitleaks, but without old file contents: those are
+      # mostly past copies of graphify-out/graph.json (30 MB each), and a full
+      # clone took a minute of every run. Git fetches the contents gitleaks
+      # needs, for this pull request's own commits, when it reads them.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          filter: blob:none
+
+      # A pull request that changes only Markdown nothing tests (PRDs, ADRs,
+      # notes) skips install, lint, typecheck, tests and checks: about ten
+      # minutes saved, and the job still reports, so a required check passes.
+      # A Markdown file counts as code when any test or check names it, since
+      # some read CONTEXT.md, ADRs and docs/marketing-page/ directly.
+      - name: Scope
+        id: scope
+        run: |
+          # Anything unexpected (no diff, a failed git command) runs everything.
+          if ! files="$(git diff --name-only HEAD^1 HEAD)" || [ -z "$files" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          code=false
+          while IFS= read -r f; do
+            case "$f" in
+              *.md)
+                if git grep -q -F "$(basename "$f")" -- '*.test.ts' '*.test.tsx' '*.check.ts'; then
+                  echo "$f is read by a test or check"
+                  code=true
+                fi
+                ;;
+              *) code=true ;;
+            esac
+          done <<< "$files"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          [ "$code" = true ] || echo "::notice title=Docs only::Only Markdown that no test reads changed; skipping install, lint, typecheck, tests and checks."
 
       # Fails the PR when any of its commits adds a credential.
       - name: Secret scan
@@ -57,17 +90,21 @@ jobs:
       # version here can never drift from the one the lockfile was written with.
       # It must be enabled before setup-node, which resolves `pnpm` for its cache.
       - name: Enable corepack
+        if: steps.scope.outputs.code == 'true'
         run: corepack enable
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.scope.outputs.code == 'true'
         with:
           node-version: 22
           cache: pnpm
 
       - name: Install dependencies
+        if: steps.scope.outputs.code == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        if: steps.scope.outputs.code == 'true'
         run: pnpm lint
 
       # `pnpm typecheck` runs `next typegen` first: next-env.d.ts and
@@ -78,15 +115,18 @@ jobs:
       # ~2 GB heap on this runner, which ends in "JavaScript heap out of
       # memory".
       - name: Typecheck
+        if: steps.scope.outputs.code == 'true'
         run: pnpm typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Test
+        if: steps.scope.outputs.code == 'true'
         run: pnpm test
 
       # The `*.check.ts` invariant scripts. Before this step nothing ran them,
       # and eleven had drifted from the code unnoticed. The few that need a
       # live database are skipped here (see LIVE in scripts/checks.mjs).
       - name: Checks
+        if: steps.scope.outputs.code == 'true'
         run: pnpm checks
