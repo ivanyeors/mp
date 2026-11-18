@@ -32,6 +32,7 @@ import {
   type Starter,
 } from "../starters";
 import { SAMPLE_RECIPIENT, variableValues } from "../variables";
+import type { FoundSegments } from "../wanted-segment";
 
 /**
  * Starters (PRD-campaign-email-editor slice 08, decision 8): ready-made
@@ -204,7 +205,9 @@ describe("the sign-in invitation", () => {
 });
 
 describe("starting an email from a Starter", () => {
-  const SEGMENTS = [{ id: "5e000000-0000-4000-8000-000000000001", name: "New", filtersKey: "stage=new" }];
+  // What the server found: the Segment with filters stage=new (lib/email-campaigns/wanted-segment.ts).
+  const NEW_ID = "5e000000-0000-4000-8000-000000000001";
+  const SEGMENTS: FoundSegments = { "stage=new": NEW_ID };
   const empty = { ...EMPTY_CAMPAIGN_WORDS, greeting: false, audience: "subscribed" as const, segmentId: "" };
 
   it("puts its blocks in, and keeps the name, audience and greeting of a layout", () => {
@@ -215,7 +218,7 @@ describe("starting an email from a Starter", () => {
 
   it("fills the invitation's words and sends it to the imported customers", () => {
     const blocks = INVITATION_STARTER.blocks();
-    const next = startedFrom({ ...empty, name: "Premium, lapsed", audience: "segment", segmentId: SEGMENTS[0].id }, INVITATION_STARTER, blocks, SEGMENTS);
+    const next = startedFrom({ ...empty, name: "Premium, lapsed", audience: "segment", segmentId: NEW_ID }, INVITATION_STARTER, blocks, SEGMENTS);
     expect(next).toMatchObject({
       name: FIRST_CAMPAIGN_DRAFT.name,
       subject: FIRST_CAMPAIGN_DRAFT.subject,
@@ -235,12 +238,12 @@ describe("starting an email from a Starter", () => {
 
   it("sends a Playbook to its stage's Segment, found by its filters, or leaves the Segment to choose", () => {
     const playbook: Starter = { ...LAYOUT_STARTERS[3], id: "second_purchase", audience: { audience: "segment", segment: "New", filters: "stage=new" } };
-    expect(starterAudience(playbook, SEGMENTS)).toEqual({ audience: "segment", segmentId: SEGMENTS[0].id });
-    expect(starterAudience(playbook, [])).toEqual({ audience: "segment", segmentId: "" });
+    expect(starterAudience(playbook, SEGMENTS)).toEqual({ audience: "segment", segmentId: NEW_ID });
+    expect(starterAudience(playbook, {})).toEqual({ audience: "segment", segmentId: "" });
     expect(starterAudience(LAYOUT_STARTERS[0], SEGMENTS)).toEqual({});
     // A win-back reaches the Unengaged too (PRD-campaign-audiences slice 12).
     const winBack: Starter = { ...playbook, audience: { audience: "segment", segment: "New", filters: "stage=new", includeUnengaged: true } };
-    expect(starterAudience(winBack, SEGMENTS)).toEqual({ audience: "segment", segmentId: SEGMENTS[0].id, includeUnengaged: true });
+    expect(starterAudience(winBack, SEGMENTS)).toEqual({ audience: "segment", segmentId: NEW_ID, includeUnengaged: true });
   });
 
   it("is offered while the email says nothing, whatever it is named", () => {

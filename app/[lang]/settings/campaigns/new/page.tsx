@@ -1,9 +1,11 @@
 import { requireAdminPage } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { listSegments } from "@/lib/crm/segments";
-import { newCampaignDraft } from "@/lib/email-campaigns/rules";
-import { startedFromParam } from "@/lib/email-campaigns/starters";
+import { newCampaignFromAddress } from "@/lib/email-campaigns/starters";
+import { getCampaign } from "@/lib/email-campaigns/store";
+import { afterParam, matchable } from "@/lib/email-campaigns/wanted-segment";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { campaignAiWriting } from "../ai-writing";
 import { CampaignEditor } from "../campaign-editor";
 import { campaignPointsLive } from "../points-live";
@@ -18,10 +20,12 @@ export const runtime = "nodejs";
  * them) or a past campaign (slice 08). From *Email this Segment* on
  * Customers (`?segment=<id>`), it is sent to that Segment and named after it
  * (PRD-crm-retention-loop slice 02), the Start panel offered all the same.
- * From the Email funnel's *Not set up* step (`?starter=<id>`,
- * PRD-email-funnel slice 04), it is started from that Starter as the Start
- * panel starts it, and a Playbook whose Segment is missing offers to create
- * it. Opening it saves and sends nothing.
+ * From the Email funnel: `?starter=<id>` starts it from that Starter
+ * (PRD-email-funnel slice 04); `?stage=<stage>` sends it to the stage's
+ * Segment and `?after=<campaign id>:<did>` to a follow-up's (slice 06), each
+ * found by its filters on the server or offered to be created
+ * (`newCampaignFromAddress` says which wins). Opening it saves, creates and
+ * sends nothing.
  */
 export default async function NewEmailCampaignPage({
     params,
@@ -34,19 +38,28 @@ export default async function NewEmailCampaignPage({
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
     const ctx = await requireAdminPage("campaigns", locale);
 
-    const [segments, points, ai] = await Promise.all([listSegments().catch(() => []), campaignPointsLive(), campaignAiWriting()]);
-    const options = segmentOptions(segments, ctx, locale);
-    const starter = Array.isArray(query.starter) ? query.starter[0] : query.starter;
+    const after = afterParam(query.after);
+    const [segments, parent, points, ai] = await Promise.all([
+        listSegments().catch(() => null),
+        // The follow-up's campaign; an unknown id, or one that cannot be read, opens the ordinary empty campaign.
+        after ? getCampaign(supabaseAdmin(), after.id).catch(() => null) : Promise.resolve(null),
+        campaignPointsLive(),
+        campaignAiWriting(),
+    ]);
+    const { draft, wanted, note, found } = newCampaignFromAddress(query, matchable(segments ?? []), parent);
     return (
         <CampaignEditor
             campaign={null}
-            draft={startedFromParam(newCampaignDraft(query.segment, segments), starter, options)}
+            draft={draft}
             stats={null}
-            segments={options}
+            segments={segmentOptions(segments ?? [], ctx, locale)}
             staffEmail={ctx.email}
             pointsLive={points}
             ai={ai}
-            starterId={starter}
+            found={found}
+            wanted={wanted}
+            audienceNote={note}
+            segmentsUnread={!segments}
             // The Segments' own create needs it (POST /api/settings/customers/segments).
             canCreateSegments={hasPermission(ctx, "customers-edit")}
         />

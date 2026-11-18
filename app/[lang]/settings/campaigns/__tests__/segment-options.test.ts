@@ -13,8 +13,8 @@ const as = (...keys: Permission[]) => ({ permissions: new Set<Permission>(keys) 
 describe("segmentOptions", () => {
   it("links each Segment to the Customers list with its filters", () => {
     expect(segmentOptions(SEGMENTS, as("campaigns", "customers"), "en-US")).toEqual([
-      { id: "s1", name: "Premium, lapsed", customersHref: "/en-US/settings/customers?bought=premium&last_order=over%3A12", filtersKey: "bought=premium&last_order=over%3A12" },
-      { id: "s2", name: "Everyone", customersHref: "/en-US/settings/customers", filtersKey: "" },
+      { id: "s1", name: "Premium, lapsed", customersHref: "/en-US/settings/customers?bought=premium&last_order=over%3A12" },
+      { id: "s2", name: "Everyone", customersHref: "/en-US/settings/customers" },
     ]);
   });
 
@@ -22,9 +22,14 @@ describe("segmentOptions", () => {
     expect(segmentOptions(SEGMENTS, as("campaigns"), "en-US").map((o) => o.customersHref)).toEqual([null, null]);
   });
 
-  // PRD-email-funnel slice 04: a Playbook finds its Segment by these; one that needs review is never found.
-  it("gives each Segment its filters key, none for a Segment that needs review", () => {
-    const keys = segmentOptions([{ ...SEGMENTS[0], needsReview: true }, { id: "s3", name: "At risk", params: { last_order: "within:24", stage: "at-risk" } }], as("campaigns"), "en-US");
-    expect(keys.map((o) => o.filtersKey)).toEqual([null, "stage=at-risk&last_order=within%3A24"]);
+  // PRD-email-funnel review: a Segment's filters can name a Customer, and `campaigns` does not need `customers`.
+  // A wanted Segment is matched on the server (`FoundSegments`); the options carry no filters, for any role.
+  it.each([[["campaigns"]], [["campaigns", "customers"]]] as Permission[][][])("carries no Segment's filters beyond the Customers link (%j)", (keys) => {
+    const segments = [{ id: "s3", name: "One VIP", params: { search: "tan@example.com", stage: "at-risk" } }];
+    for (const o of segmentOptions(segments, as(...keys), "en-US")) {
+      expect(Object.keys(o).sort()).toEqual(["customersHref", "id", "name"]);
+      expect(JSON.stringify({ ...o, customersHref: null })).not.toMatch(/tan|at-risk|stage/);
+    }
+    expect(JSON.stringify(segmentOptions(segments, as("campaigns"), "en-US"))).not.toMatch(/tan@|tan%40|at-risk/);
   });
 });

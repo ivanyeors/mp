@@ -93,8 +93,8 @@ import {
     type CampaignDraftInput,
 } from "@/lib/email-campaigns/rules";
 import { UNENGAGED_WHO } from "@/lib/crm/engagement";
-import { emailSaysNothing, playbookSegment, playbookSegmentToCreate, STARTERS, startedFrom, starterAudience, starterById, type Starter } from "@/lib/email-campaigns/starters";
-import { filtersKey } from "@/lib/crm/filters-key";
+import { emailSaysNothing, STARTERS, startedFrom, starterAudience, starterWants, type Starter } from "@/lib/email-campaigns/starters";
+import { wantedKey, wantedToCreate, type FoundSegments, type WantedSegment } from "@/lib/email-campaigns/wanted-segment";
 import { segmentHref, type CustomerSegment } from "@/lib/crm/segment-rules";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
@@ -110,6 +110,7 @@ import {
     archiveCampaignAction,
     checkCampaignReadiness,
     duplicateCampaign,
+    findWantedSegmentAction,
     planCampaignWave,
     previewCampaign,
     saveCampaign,
@@ -139,11 +140,11 @@ import { KeepSendingCard } from "./keep-sending-card";
 import { CampaignResultsPanel } from "./results-panel";
 import { keepSendingBlocker } from "@/lib/email-campaigns/keep-sending";
 
-/**
- * A Segment to send to; `customersHref` opens its list, for Staff holding
- * `customers`; `filtersKey` is how a Playbook finds it (`playbookSegment`).
- */
-export type SegmentOption = { id: string; name: string; customersHref?: string | null; filtersKey?: string | null };
+/** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. Never its filters. */
+export type SegmentOption = { id: string; name: string; customersHref?: string | null };
+
+/** No wanted Segment found: one object, so the editor's memo holds. */
+const NOTHING_FOUND: FoundSegments = {};
 
 /** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. Convert to blocks shares it. */
 const CLEAR_ALL_TOAST = "campaign-clear-all";
@@ -262,7 +263,10 @@ export function CampaignEditor({
     ai = AI_OFF,
     keptToday = 0,
     results = null,
-    starterId,
+    found: givenFound = NOTHING_FOUND,
+    wanted: initialWanted = null,
+    audienceNote: initialNote = null,
+    segmentsUnread = false,
     canCreateSegments = false,
 }: {
     /** Null for a new one. */
@@ -282,9 +286,15 @@ export function CampaignEditor({
     keptToday?: number;
     /** A started campaign's results by stage (slice 11); null when not read. */
     results?: CampaignResults | null;
-    /** New campaign's `?starter=` (PRD-email-funnel slice 04): the Starter `initial` was started from. */
-    starterId?: string;
-    /** May create Segments (`customers-edit`, the Segments' own create): *Create the Segment* for a Playbook's missing one. */
+    /** The server's match of each wanted Segment (lib/email-campaigns/wanted-segment.ts): every offered Playbook's, and the address's. */
+    found?: FoundSegments;
+    /** The Segment New campaign's address wants (`?starter=`, `?after=`, `?stage=`; PRD-email-funnel slices 04 and 06). */
+    wanted?: WantedSegment | null;
+    /** A word beside the Audience from the address (`?stage=lost`). */
+    audienceNote?: string | null;
+    /** The page could not read the Segments: whether a wanted one exists is not known. */
+    segmentsUnread?: boolean;
+    /** May create Segments (`customers-edit`, the Segments' own create): *Create the Segment* for a wanted one that is missing. */
     canCreateSegments?: boolean;
 }) {
     const router = useRouter();
@@ -293,7 +303,13 @@ export function CampaignEditor({
     const locked = Boolean(campaign?.lockedAt);
     // The Segments, with any made here by *Create the Segment*.
     const [madeSegments, setMadeSegments] = useState<SegmentOption[]>([]);
-    const segments = useMemo(() => [...givenSegments, ...madeSegments], [givenSegments, madeSegments]);
+    const segments = useMemo(() => [...givenSegments, ...madeSegments.filter((m) => !givenSegments.some((g) => g.id === m.id))], [givenSegments, madeSegments]);
+    // What the server found, with any found or made here since.
+    const [madeFound, setMadeFound] = useState<Record<string, string>>({});
+    const found = useMemo(() => ({ ...givenFound, ...madeFound }), [givenFound, madeFound]);
+    // The wanted Segment and the address's note; each goes once Staff choose who to send to by hand (below).
+    const [wanted, setWanted] = useState<WantedSegment | null>(initialWanted);
+    const [audienceNote, setAudienceNote] = useState<string | null>(initialNote);
 
     // ── The draft ──────────────────────────────────────────────────────────
     // The draft is the history's: the email's words, its blocks and the greeting, and who it goes to.
@@ -320,9 +336,20 @@ export function CampaignEditor({
         history.set((e) => (e.content ? { ...e, content: withChineseBlocks(e.content, blocks) } : e), { burst });
     const editChinese = (edit: (c: CampaignContent) => CampaignContent, burst?: string) => history.set((e) => (e.content ? { ...e, content: edit(e.content) } : e), { burst });
 
-    const setAudience = (v: CampaignAudience) => edit({ audience: v });
+    /** Who to send to, chosen by hand: the wanted Segment and the address's note no longer apply. */
+    const byHand = () => {
+        setWanted(null);
+        setAudienceNote(null);
+    };
+    const setAudience = (v: CampaignAudience) => {
+        byHand();
+        edit({ audience: v });
+    };
     // The Segment it is sent to is never one it leaves out (slice 06).
-    const setSegmentId = (v: string) => edit({ segmentId: v, excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
+    const setSegmentId = (v: string) => {
+        byHand();
+        edit({ segmentId: v, excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
+    };
     const leaveOut = (v: string) => edit({ excludeSegmentIds: [...excludeSegmentIds, v].slice(0, MAX_EXCLUDED_SEGMENTS) });
     const keepIn = (v: string) => edit({ excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
     const segmentName = (id: string) => segments.find((s) => s.id === id)?.name ?? "(archived Segment)";
@@ -858,11 +885,16 @@ export function CampaignEditor({
     const offerStart = editable && !startPutAway && emailSaysNothing(words);
     /**
      * A Starter written for one audience sends the email to it, in the same step as its blocks: say so, as it changes.
-     * A Playbook is remembered, so its missing Segment can be named and created (PRD-email-funnel slice 04).
+     * A Playbook's Segment becomes the wanted one, so it can be named and created if missing (PRD-email-funnel slice 04);
+     * a Starter with another Audience ends the wanted Segment, and one with none ends a Playbook's (the email is no longer
+     * that Playbook) but keeps the address's, whose Audience the campaign keeps.
      */
     const sayAudience = (s: Starter) => {
-        if (s.audience?.audience === "segment") setPlaybook(s);
-        const goesTo = starterAudience(s, segments);
+        if (s.audience) {
+            setWanted(starterWants(s));
+            setAudienceNote(null);
+        } else if (wanted?.playbook) setWanted(null);
+        const goesTo = starterAudience(s, found);
         const now = latest.current.value;
         if (!goesTo.audience || (goesTo.audience === now.audience && (goesTo.segmentId === undefined || goesTo.segmentId === now.segmentId))) return;
         toast(`Send to is now “${CAMPAIGN_AUDIENCE_LABEL[goesTo.audience]}”: ${s.label} is written for them.`);
@@ -878,7 +910,7 @@ export function CampaignEditor({
             preview: <StarterThumbnail id={s.id} shape="landscape" className="max-h-36" />,
             apply: (next) => {
                 sayAudience(s);
-                history.set((e) => ({ ...e, content: { ...(e.content ?? EMPTY_CAMPAIGN_CONTENT), blocks: next }, ...starterAudience(s, segments) }));
+                history.set((e) => ({ ...e, content: { ...(e.content ?? EMPTY_CAMPAIGN_CONTENT), blocks: next }, ...starterAudience(s, found) }));
             },
         }),
     );
@@ -888,33 +920,34 @@ export function CampaignEditor({
             ...starterItems[i],
             apply: (next) => {
                 sayAudience(s);
-                history.set((e) => startedFrom(e, s, next, segments));
+                history.set((e) => startedFrom(e, s, next, found));
             },
         }),
     );
     const startersTab: PaletteItemsTab<EmailBlock> = { value: "starters", label: "Starters", items: starterItems };
 
-    // ── A Playbook's Segment (PRD-email-funnel slice 04) ───────────────────
-    // The Playbook the email was last started from (`?starter=`, the Start panel or the palette), and,
-    // while it is sent to no Segment and none has the Playbook's filters, a notice that offers to create it.
-    const [playbook, setPlaybook] = useState<Starter | null>(() => {
-        const s = starterId ? starterById(starterId) : null;
-        return s?.audience?.audience === "segment" ? s : null;
-    });
-    const playbookAudience = playbook?.audience?.audience === "segment" ? playbook.audience : null;
-    const segmentMissing =
-        !locked && playbook && playbookAudience && audience === "segment" && !segmentId && !playbookSegment(playbook, segments) ? playbookAudience : null;
+    // ── A wanted Segment (PRD-email-funnel slices 04 and 06) ──────────────
+    // A Playbook's, a stage's or a follow-up's: while the email is sent to no Segment and the server found none with
+    // its filters, a notice names it and offers to create it.
+    const segmentMissing = !locked && wanted && audience === "segment" && !segmentId && !found[wantedKey(wanted)] ? wanted : null;
     const creatingSegment = useRef(false);
     const [segmentBusy, setSegmentBusy] = useState(false);
     const [segmentError, setSegmentError] = useState<string | null>(null);
+    /** `row` is the wanted Segment `w`: offered, found and chosen. */
+    const chooseWanted = (w: WantedSegment, row: SegmentOption) => {
+        setMadeSegments((made) => [...made, row]);
+        setMadeFound((f) => ({ ...f, [wantedKey(w)]: row.id }));
+        history.set((e) => ({ ...e, audience: "segment", segmentId: row.id, excludeSegmentIds: e.excludeSegmentIds.filter((x) => x !== row.id) }));
+    };
     /**
      * *Create the Segment*: the Segments' own create (its permission, validation, unique name and audit row) with the
-     * Playbook's name and filters, then chosen. A name taken by a Segment with other filters comes back as the create's
-     * error and is shown, never overwritten. One create at a time; once made, the Playbook finds it and the button goes.
+     * wanted name and filters, then chosen. On a taken name the server is asked again whether a live Segment has the
+     * wanted filters (made since the page loaded): if so it is chosen; if not, the name is a Segment's with other
+     * filters, which is reported and never overwritten. One create at a time; once made, the button goes.
      */
-    const createPlaybookSegment = async () => {
-        const body = playbook ? playbookSegmentToCreate(playbook) : null;
-        if (!body || creatingSegment.current) return;
+    const createWantedSegment = async () => {
+        const w = segmentMissing;
+        if (!w || creatingSegment.current) return;
         creatingSegment.current = true;
         setSegmentBusy(true);
         setSegmentError(null);
@@ -922,25 +955,31 @@ export function CampaignEditor({
             const res = await fetch("/api/settings/customers/segments", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
+                body: JSON.stringify(wantedToCreate(w)),
             });
             const json = (await res.json().catch(() => null)) as { row?: CustomerSegment; error?: string } | null;
             const row = res.ok ? json?.row : undefined;
-            if (!row) {
-                // 409: the name is a live Segment's, with other filters (with these, the Playbook would have found it).
-                setSegmentError(
-                    res.status === 409
-                        ? `${json?.error ?? "That name is taken."} It has other filters, so it was left as it is: rename it on Customers, or choose a Segment above.`
-                        : (json?.error ?? "Could not create the Segment. Try again."),
-                );
+            if (row) {
+                chooseWanted(w, { id: row.id, name: row.name, customersHref: segmentHref(to("/settings/customers"), row.params) });
+                toast(`Created the Segment “${row.name}” and chose it.`);
                 return;
             }
-            setMadeSegments((made) => [
-                ...made,
-                { id: row.id, name: row.name, customersHref: segmentHref(to("/settings/customers"), row.params), filtersKey: filtersKey(row.params) },
-            ]);
-            history.set((e) => ({ ...e, audience: "segment", segmentId: row.id, excludeSegmentIds: e.excludeSegmentIds.filter((x) => x !== row.id) }));
-            toast(`Created the Segment “${row.name}” and chose it.`);
+            if (res.status !== 409) {
+                setSegmentError(json?.error ?? "Could not create the Segment. Try again.");
+                return;
+            }
+            const again = await findWantedSegmentAction({ name: w.name, filters: w.filters });
+            if (!again.ok) {
+                setSegmentError(`${json?.error ?? "That name is taken."} The Segments could not be read again: reload the page to try again.`);
+            } else if (again.segment) {
+                const { id, name } = again.segment;
+                chooseWanted(w, segments.find((x) => x.id === id) ?? { id, name });
+                toast(`The Segment “${name}” has these filters already, so it was chosen.`);
+            } else {
+                setSegmentError(
+                    `${json?.error ?? "That name is taken."} It has other filters, so it was left as it is: rename it on Customers, or choose a Segment above.`,
+                );
+            }
         } catch {
             setSegmentError("Could not create the Segment. Check your connection and try again.");
         } finally {
@@ -978,8 +1017,9 @@ export function CampaignEditor({
         undoRef.current = { words: snapshot, step: null };
         history.set((e) => ({ ...e, ...cleared }));
         setSelected(null);
-        // Back to the start: the Start panel is offered again.
+        // Back to the start: the Start panel is offered again. The email is no longer the Playbook it was started from.
         setStartPutAway(false);
+        if (wanted?.playbook) setWanted(null);
         undoToast("Cleared the email.");
     };
     /**
@@ -1122,21 +1162,31 @@ export function CampaignEditor({
                 </div>
                 {segmentMissing ? (
                     <div role="status" aria-labelledby="c-playbook-segment" className="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
-                        <p id="c-playbook-segment">
-                            This Playbook sends to the Segment “{segmentMissing.segment}”, which doesn&apos;t exist yet.
-                        </p>
-                        {canCreateSegments ? (
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Button type="button" size="sm" onClick={() => void createPlaybookSegment()} disabled={segmentBusy} aria-busy={segmentBusy}>
-                                    {segmentBusy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-                                    Create the Segment
-                                </Button>
-                                <span className="text-muted-foreground">Saved with the Playbook&apos;s filters, then chosen here.</span>
-                            </div>
-                        ) : (
-                            <p className="text-muted-foreground">
-                                Ask an Owner, or someone whose role can make changes on Customers, to create it. Then choose it here.
+                        {segmentsUnread ? (
+                            <p id="c-playbook-segment">
+                                {segmentMissing.who} sends to the Segment “{segmentMissing.name}”, but the Segments could not be read, so it isn&apos;t
+                                known whether it exists. Reload the page to try again.
                             </p>
+                        ) : (
+                            <>
+                                <p id="c-playbook-segment">
+                                    {segmentMissing.who} sends to the Segment “{segmentMissing.name}”, which doesn&apos;t exist yet.
+                                </p>
+                                {segmentMissing.note ? <p>{segmentMissing.note}</p> : null}
+                                {canCreateSegments ? (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Button type="button" size="sm" onClick={() => void createWantedSegment()} disabled={segmentBusy} aria-busy={segmentBusy}>
+                                            {segmentBusy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                                            Create the Segment
+                                        </Button>
+                                        <span className="text-muted-foreground">Saved with its filters, then chosen here.</span>
+                                    </div>
+                                ) : (
+                                    <p className="text-muted-foreground">
+                                        Ask an Owner, or someone whose role can make changes on Customers, to create it. Then choose it here.
+                                    </p>
+                                )}
+                            </>
                         )}
                         {segmentError ? (
                             <p role="alert" className="text-destructive">
@@ -1144,6 +1194,11 @@ export function CampaignEditor({
                             </p>
                         ) : null}
                     </div>
+                ) : null}
+                {audienceNote && !locked ? (
+                    <p role="status" className="rounded-lg border bg-muted/40 p-3 text-sm">
+                        {audienceNote}
+                    </p>
                 ) : null}
                 {/* Slice 06 (PRD-campaign-audiences): Segments whose Customers this campaign leaves out, with any audience. */}
                 <Field

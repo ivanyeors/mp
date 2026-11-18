@@ -19,10 +19,21 @@
  * word for word for one stage's Segment, and join them in
  * `PLAYBOOK_STARTERS` once the owner approves each one's words.
  */
-import { filtersKey } from "@/lib/crm/filters-key";
 import type { CampaignWords } from "./clear-all";
 import { CONTENT_VERSION, contentFromLegacy, emptyBlock, newBlockId, type CampaignContent, type EmailBlock, type EmailBlockType } from "./content";
-import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignAudience, type CampaignDraft } from "./rules";
+import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, newCampaignDraft, type CampaignAudience, type CampaignDraft } from "./rules";
+import {
+  afterParam,
+  findWanted,
+  followUpWanted,
+  foundSegments,
+  stageWanted,
+  wantedKey,
+  wantedToCreate,
+  type FoundSegments,
+  type MatchableSegment,
+  type WantedSegment,
+} from "./wanted-segment";
 
 /**
  * Who a Starter is written for: the audience it sets as it lands, in the same
@@ -330,60 +341,41 @@ interface Audienced {
   segmentId: string;
 }
 
-/**
- * A Segment a Playbook can be sent to: `filtersKey` is its filters as
- * `filtersKey` writes them (lib/crm/filters-key.ts), null when it needs
- * review, so it is never matched.
- */
-export interface StarterSegment {
-  id: string;
-  name: string;
-  filtersKey?: string | null;
+/** Pure — the Segment a Playbook is written for, as a wanted Segment; null for a Starter not written for one. */
+export function starterWants(s: Starter): WantedSegment | null {
+  const a = s.audience;
+  return a?.audience === "segment" ? { name: a.segment, filters: a.filters, who: "This Playbook", playbook: true } : null;
 }
 
-/**
- * Pure — the Segment `s` is written for, or null (none has its filters, or
- * `s` is not written for a Segment). Found by its filters, the same
- * comparison as the Email funnel's *set up* (`customerFiltersSchema` →
- * `customerFilterParams`), so a Segment Staff renamed is still found and one
- * with the Playbook's name but other filters is not; among Segments with the
- * same filters, the one with the Playbook's name.
- */
-export function playbookSegment<S extends StarterSegment>(s: Starter, segments: readonly S[]): S | null {
-  const a = s.audience;
-  if (a?.audience !== "segment") return null;
-  const key = filtersKey(a.filters);
-  const same = key ? segments.filter((x) => x.filtersKey === key) : [];
-  return same.find((x) => x.name === a.segment) ?? same[0] ?? null;
+/** Pure — the live Segment `s` is written for, or null (`findWanted`). Server only: it reads Segments' filters. */
+export function playbookSegment<S extends MatchableSegment>(s: Starter, segments: readonly S[]): S | null {
+  const w = starterWants(s);
+  return w ? findWanted(w, segments) : null;
 }
+
+/** Pure — what the server tells the editor about every offered Playbook's Segment (`FoundSegments`). */
+export const playbooksFound = (segments: readonly MatchableSegment[]) => foundSegments(PLAYBOOK_STARTERS.map(starterWants), segments);
 
 /**
  * Pure — who `s` sends the email to, or nothing for a Starter written for
- * anyone. A Playbook's Segment is `playbookSegment`'s, or left to choose, and
- * a win-back includes the Unengaged.
+ * anyone. A Playbook's Segment is the one the server found (`found`), or left
+ * to choose, and a win-back includes the Unengaged.
  */
-export function starterAudience(s: Starter, segments: readonly StarterSegment[]): Partial<Audienced> & { includeUnengaged?: boolean } {
+export function starterAudience(s: Starter, found: FoundSegments): Partial<Audienced> & { includeUnengaged?: boolean } {
   const a = s.audience;
   if (!a) return {};
   if (a.audience !== "segment") return { audience: a.audience };
   return {
     audience: "segment",
-    segmentId: playbookSegment(s, segments)?.id ?? "",
+    segmentId: found[wantedKey({ filters: a.filters })] ?? "",
     ...(a.includeUnengaged ? { includeUnengaged: true } : {}),
   };
 }
 
-/**
- * Pure — what *Create the Segment* sends to the Segments' own create
- * (`POST /api/settings/customers/segments`, its permission, validation,
- * unique name and audit row): the Playbook's name and its filters as the
- * Customers list's parameters. *Include unengaged* is the campaign's, never a
- * filter. Null for a Starter not written for a Segment.
- */
+/** Pure — what *Create the Segment* sends for a Playbook (`wantedToCreate`); *Include unengaged* is the campaign's, never a filter. */
 export function playbookSegmentToCreate(s: Starter): { name: string; filters: Record<string, string> } | null {
-  const a = s.audience;
-  if (a?.audience !== "segment") return null;
-  return { name: a.segment, filters: Object.fromEntries(new URLSearchParams(a.filters)) };
+  const w = starterWants(s);
+  return w ? wantedToCreate(w) : null;
 }
 
 /**
@@ -397,7 +389,7 @@ export function startedFrom<T extends CampaignWords & Audienced & { includeUneng
   draft: T,
   s: Starter,
   blocks: EmailBlock[],
-  segments: readonly StarterSegment[],
+  found: FoundSegments,
 ): T {
   return {
     ...draft,
@@ -405,7 +397,7 @@ export function startedFrom<T extends CampaignWords & Audienced & { includeUneng
     body: "",
     button: { choice: "none", label: "", url: "" },
     content: { v: CONTENT_VERSION, blocks, fallbacks: draft.content?.fallbacks ?? {} },
-    ...starterAudience(s, segments),
+    ...starterAudience(s, found),
   };
 }
 
@@ -422,13 +414,13 @@ export function startedFrom<T extends CampaignWords & Audienced & { includeUneng
 export function startedFromParam(
   base: CampaignDraft,
   starterParam: string | string[] | undefined,
-  segments: readonly StarterSegment[],
+  found: FoundSegments,
   id: () => string = newBlockId,
 ): CampaignDraft {
   const wanted = Array.isArray(starterParam) ? starterParam[0] : starterParam;
   const s = wanted ? starterById(wanted) : null;
   if (!s) return base;
-  const goesTo = starterAudience(s, segments);
+  const goesTo = starterAudience(s, found);
   return {
     ...base,
     ...(s.words ? { name: s.words.name, subject: s.words.subject, preheader: s.words.preheader || null } : {}),
@@ -439,4 +431,41 @@ export function startedFromParam(
     ...(goesTo.segmentId !== undefined ? { segmentId: goesTo.segmentId || null } : {}),
     ...(goesTo.includeUnengaged ? { includeUnengaged: true } : {}),
   };
+}
+
+/**
+ * Pure — New campaign at its address (PRD-email-funnel slices 04 and 06):
+ * the draft, the wanted Segment the editor names when it is missing, a note
+ * beside the Audience, and what the server found (`FoundSegments`: every
+ * offered Playbook's Segment and the wanted one, never a Segment's filters).
+ * Server only: it reads the Segments' filters.
+ *
+ * When several are given, one Audience wins, in this order:
+ * 1. `?starter=` with an Audience of its own (a Playbook, the invitation);
+ * 2. `?after=<campaign id>:<sent|clicked|not-clicked>`, a follow-up to a live campaign (`parent`, read by the page);
+ * 3. `?stage=<stage>` (*Lost* gives the note and no Segment);
+ * 4. `?segment=<id>` (*Email this Segment*).
+ * A Starter without an Audience still brings its words and blocks. Opening it saves, creates and sends nothing.
+ */
+export function newCampaignFromAddress(
+  query: Readonly<Record<string, string | string[] | undefined>>,
+  segments: readonly (MatchableSegment & { needsReview: boolean })[],
+  parent: { id: string; name: string; archivedAt: string | null } | null,
+  id: () => string = newBlockId,
+): { draft: CampaignDraft; wanted: WantedSegment | null; note: string | null; found: FoundSegments } {
+  const fromStage = stageWanted(query.stage);
+  const followUp = followUpWanted(afterParam(query.after), parent, segments);
+  const fromAddress = followUp ?? (fromStage && "wanted" in fromStage ? fromStage.wanted : null);
+  const note = !followUp && fromStage && "note" in fromStage ? fromStage.note : null;
+  const found = { ...playbooksFound(segments), ...foundSegments([fromAddress], segments) };
+
+  let base = newCampaignDraft(query.segment, segments);
+  if (fromAddress) base = { ...EMPTY_CAMPAIGN_DRAFT, audience: "segment", segmentId: found[wantedKey(fromAddress)] ?? null };
+  else if (note) base = EMPTY_CAMPAIGN_DRAFT;
+  const draft = startedFromParam(base, query.starter, found, id);
+
+  const starter = Array.isArray(query.starter) ? query.starter[0] : query.starter;
+  const s = starter ? starterById(starter) : null;
+  if (s?.audience) return { draft, wanted: starterWants(s), note: null, found };
+  return { draft, wanted: fromAddress, note, found };
 }

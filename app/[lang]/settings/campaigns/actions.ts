@@ -4,7 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
-import { getSegment } from "@/lib/crm/segments";
+import { getSegment, listSegments } from "@/lib/crm/segments";
+import { filtersKey } from "@/lib/crm/filters-key";
+import { findWanted, matchable } from "@/lib/email-campaigns/wanted-segment";
 import { readSegmentFilters } from "@/lib/crm/segment-rules";
 import {
   CampaignDraftSchema,
@@ -235,6 +237,26 @@ export async function listPastCampaignsAction(): Promise<{ ok: true; campaigns: 
   await assertAdmin("campaigns");
   try {
     return { ok: true, campaigns: await listPastCampaigns(supabaseAdmin()) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/**
+ * The live Segment with a wanted Segment's filters, read again
+ * (PRD-email-funnel slices 04 and 06): when *Create the Segment* is refused
+ * for a taken name, the editor asks whether the Segment it wants exists after
+ * all (made since the page loaded, or the page's read failed). Answers its id
+ * and name only, never a Segment's filters. Changes nothing.
+ */
+export async function findWantedSegmentAction(input: { name: string; filters: string }): Promise<{ ok: true; segment: { id: string; name: string } | null } | Failure> {
+  await assertAdmin("campaigns");
+  const name = typeof input?.name === "string" ? input.name : "";
+  const filters = typeof input?.filters === "string" && input.filters.length <= 2000 ? input.filters : "";
+  if (!filtersKey(filters)) return { ok: false, error: "Not a filter the Customers list knows." };
+  try {
+    const found = findWanted({ name, filters }, matchable(await listSegments()));
+    return { ok: true, segment: found ? { id: found.id, name: found.name } : null };
   } catch (err) {
     return { ok: false, error: message(err) };
   }

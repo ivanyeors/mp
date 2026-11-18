@@ -13,9 +13,10 @@ import {
   startedFromParam,
   starterById,
   STARTERS,
+  playbooksFound,
   type Starter,
-  type StarterSegment,
 } from "../starters";
+import type { MatchableSegment } from "../wanted-segment";
 
 /**
  * *Set up a step* (PRD-email-funnel slice 04): New campaign at
@@ -39,7 +40,9 @@ const asEditor = (d: CampaignDraft) => ({
   excludeSegmentIds: d.excludeSegmentIds ?? [],
   includeUnengaged: d.includeUnengaged ?? false,
 });
-const segment = (id: string, name: string, filters: string): StarterSegment => ({ id, name, filtersKey: filtersKey(filters) });
+/** What the server tells the editor, from these Segments (`playbooksFound`). */
+const found = (segments: readonly MatchableSegment[]) => playbooksFound(segments);
+const segment = (id: string, name: string, filters: string): MatchableSegment => ({ id, name, filtersKey: filtersKey(filters) });
 const playbook = (id: string): Starter => {
   const s = starterById(id);
   if (!s) throw new Error(`${id} is not offered`);
@@ -56,8 +59,8 @@ const SEGMENTS = [
 describe("?starter=<id>", () => {
   it("gives playbook_second_purchase the same draft as choosing it in the Start panel", () => {
     const s = playbook("playbook_second_purchase");
-    const fromParam = startedFromParam(EMPTY_CAMPAIGN_DRAFT, "playbook_second_purchase", SEGMENTS, counter());
-    const fromPanel = startedFrom(asEditor(EMPTY_CAMPAIGN_DRAFT), s, s.blocks(counter()), SEGMENTS);
+    const fromParam = startedFromParam(EMPTY_CAMPAIGN_DRAFT, "playbook_second_purchase", found(SEGMENTS), counter());
+    const fromPanel = startedFrom(asEditor(EMPTY_CAMPAIGN_DRAFT), s, s.blocks(counter()), found(SEGMENTS));
     expect(asEditor(fromParam)).toEqual(fromPanel);
     expect(fromParam).toMatchObject({ name: "Second purchase: caring for your pillow", audience: "segment", segmentId: "seg-new", includeUnengaged: false });
   });
@@ -67,33 +70,33 @@ describe("?starter=<id>", () => {
     for (const s of STARTERS) {
       for (const segments of [SEGMENTS, []]) {
         for (const base of bases) {
-          const fromParam = startedFromParam(base, s.id, segments, counter());
-          expect(asEditor(fromParam), s.id).toEqual(startedFrom(asEditor(base), s, s.blocks(counter()), segments));
+          const fromParam = startedFromParam(base, s.id, found(segments), counter());
+          expect(asEditor(fromParam), s.id).toEqual(startedFrom(asEditor(base), s, s.blocks(counter()), found(segments)));
         }
       }
     }
   });
 
   it("leaves the empty draft for an unknown id and for a Playbook the owner has not approved", () => {
-    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "no_such_starter", SEGMENTS)).toBe(EMPTY_CAMPAIGN_DRAFT);
-    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, undefined, SEGMENTS)).toBe(EMPTY_CAMPAIGN_DRAFT);
-    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "", SEGMENTS)).toBe(EMPTY_CAMPAIGN_DRAFT);
+    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "no_such_starter", found(SEGMENTS))).toBe(EMPTY_CAMPAIGN_DRAFT);
+    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, undefined, found(SEGMENTS))).toBe(EMPTY_CAMPAIGN_DRAFT);
+    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "", found(SEGMENTS))).toBe(EMPTY_CAMPAIGN_DRAFT);
     // A real draft, written and waiting for the owner: not offered, so not started.
     expect(PLAYBOOK_DRAFTS.some((p) => p.id === "playbook_how_its_made")).toBe(true);
     expect(APPROVED_PLAYBOOKS.has("playbook_how_its_made")).toBe(false);
-    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "playbook_how_its_made", [segment("seg-lead", "Lead", "stage=lead")])).toBe(EMPTY_CAMPAIGN_DRAFT);
+    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "playbook_how_its_made", found([segment("seg-lead", "Lead", "stage=lead")]))).toBe(EMPTY_CAMPAIGN_DRAFT);
   });
 
   it("reads the first of a repeated parameter", () => {
-    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, ["playbook_thank_you", "playbook_we_miss_you"], SEGMENTS, counter()).name).toBe("Thank you: what's new, and your points");
+    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, ["playbook_thank_you", "playbook_we_miss_you"], found(SEGMENTS), counter()).name).toBe("Thank you: what's new, and your points");
   });
 
   it("with ?segment=, keeps that Segment for a Starter with no audience, and sends a Playbook to its own", () => {
     const base = newCampaignDraft("seg-loyal", [{ id: "seg-loyal", name: "Loyal", needsReview: false }]);
-    expect(startedFromParam(base, "short_note", SEGMENTS, counter())).toMatchObject({ name: "Loyal", audience: "segment", segmentId: "seg-loyal" });
-    expect(startedFromParam(base, "playbook_we_miss_you", SEGMENTS, counter())).toMatchObject({ audience: "segment", segmentId: "seg-risk" });
+    expect(startedFromParam(base, "short_note", found(SEGMENTS), counter())).toMatchObject({ name: "Loyal", audience: "segment", segmentId: "seg-loyal" });
+    expect(startedFromParam(base, "playbook_we_miss_you", found(SEGMENTS), counter())).toMatchObject({ audience: "segment", segmentId: "seg-risk" });
     // Its own Segment missing: the Playbook's audience still wins, its Segment left to choose (the editor offers to create it).
-    expect(startedFromParam(base, "playbook_we_miss_you", [], counter())).toMatchObject({ audience: "segment", segmentId: null });
+    expect(startedFromParam(base, "playbook_we_miss_you", found([]), counter())).toMatchObject({ audience: "segment", segmentId: null });
   });
 });
 
@@ -103,13 +106,13 @@ describe("a Playbook's Segment", () => {
   it("is the Segment with its filters under another name", () => {
     const renamed = segment("seg-x", "Lapsing regulars", "last_order=within:24&stage=at-risk");
     expect(playbookSegment(weMissYou(), [segment("seg-loyal", "Loyal", "stage=loyal"), renamed])).toBe(renamed);
-    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "playbook_we_miss_you", [renamed], counter()).segmentId).toBe("seg-x");
+    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "playbook_we_miss_you", found([renamed]), counter()).segmentId).toBe("seg-x");
   });
 
   it("is not a Segment with its name and other filters", () => {
     const sameName = segment("seg-y", "At risk · 12 to 24 months", "stage=at-risk");
     expect(playbookSegment(weMissYou(), [sameName])).toBeNull();
-    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "playbook_we_miss_you", [sameName], counter())).toMatchObject({ audience: "segment", segmentId: null });
+    expect(startedFromParam(EMPTY_CAMPAIGN_DRAFT, "playbook_we_miss_you", found([sameName]), counter())).toMatchObject({ audience: "segment", segmentId: null });
   });
 
   it("among Segments with its filters, is the one with its name", () => {
