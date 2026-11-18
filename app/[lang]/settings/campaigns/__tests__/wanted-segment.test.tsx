@@ -344,6 +344,15 @@ describe("review findings on the shared mechanism", () => {
     expect(createButton()).toBeNull();
   });
 
+  it("forgets the Playbook's Segment when A short note is added from the palette: the email is no longer the Playbook", async () => {
+    open({ starter: "playbook_we_miss_you" }, []);
+    expect(notice()).not.toBeNull();
+    const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent === "Starters")!;
+    await act(async () => void tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 })));
+    await click(await until(() => [...document.querySelectorAll<HTMLButtonElement>("ul[aria-label='Starters'] button")].find((b) => b.textContent?.startsWith("A short note"))));
+    expect(notice()).toBeNull();
+  });
+
   it("forgets the Playbook's Segment after Clear all alone", async () => {
     open({ starter: "playbook_we_miss_you" }, []);
     await click(button("Clear all")!);
