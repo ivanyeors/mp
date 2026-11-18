@@ -221,6 +221,31 @@ describe("summariseFunnelCheckups", () => {
     expect(s).toEqual({ sent: 2, byEmail: 2, followedByBooking: 1 });
   });
 
+  it("counts two bookings after one check-up once", async () => {
+    const { summariseFunnelCheckups } = await import("../server");
+    const s = summariseFunnelCheckups({
+      email: [{ customer_id: "c1", template: "aftercare.checkup_12m", entity_id: "o1", sent_at: "2025-01-01T00:00:00Z" }],
+      whatsapp: [],
+      bookings: [
+        { customer_id: "c1", created_at: "2025-02-01T00:00:00Z", status: "booked" },
+        { customer_id: "c1", created_at: "2025-03-01T00:00:00Z", status: "attended" },
+      ],
+    });
+    expect(s).toEqual({ sent: 1, byEmail: 1, followedByBooking: 1 });
+  });
+
+  it("dates a check-up by its earlier send, WhatsApp before email", async () => {
+    const { summariseFunnelCheckups } = await import("../server");
+    const send = (sent_at: string) => ({ customer_id: "c1", template: "aftercare.checkup_12m", entity_id: "o1", sent_at });
+    // Booked after the WhatsApp went, before the email did: still followed by a booking.
+    const s = summariseFunnelCheckups({
+      email: [send("2025-01-10T00:00:00Z")],
+      whatsapp: [send("2025-01-01T00:00:00Z")],
+      bookings: [{ customer_id: "c1", created_at: "2025-01-05T00:00:00Z", status: "booked" }],
+    });
+    expect(s).toEqual({ sent: 1, byEmail: 1, followedByBooking: 1 });
+  });
+
   it("credits a booking between two check-ups to the earlier one, and one after the later to the later", async () => {
     const { summariseFunnelCheckups } = await import("../server");
     const send = (template: string, sent_at: string) => ({ customer_id: "c1", template, entity_id: "o1", sent_at });

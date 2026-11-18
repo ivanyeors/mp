@@ -464,6 +464,7 @@ function StepNodes({ step, followUps, rest, ctx }: { step: FlowStep; followUps: 
                                 <AutomaticCard
                                     step={step}
                                     template={t}
+                                    ofSequence
                                     title={`${step.name.replace(/\s*\(.*\)$/, "")} · ${daysWords(days[i])}`}
                                     numbers={
                                         row && !row.counted
@@ -598,7 +599,22 @@ function EmailCard({
     );
 }
 
-function AutomaticCard({ step, template, title, numbers, ctx }: { step: FlowStep; template: string; title: string; numbers: ReactNode; ctx: Ctx }) {
+function AutomaticCard({
+    step,
+    template,
+    title,
+    numbers,
+    ofSequence = false,
+    ctx,
+}: {
+    step: FlowStep;
+    template: string;
+    title: string;
+    numbers: ReactNode;
+    /** One email of a timed sequence (a draft reminder): its preview shows its own numbers, not the sequence's. */
+    ofSequence?: boolean;
+    ctx: Ctx;
+}) {
     const key = templateKey(template);
     return (
         <EmailCard
@@ -609,12 +625,12 @@ function AutomaticCard({ step, template, title, numbers, ctx }: { step: FlowStep
             segment={null}
             numbers={numbers}
             ctx={ctx}
-            onOpen={() => ctx.open(automaticTarget(step, key, title, numbers, ctx))}
+            onOpen={() => ctx.open(automaticTarget(step, key, title, numbers, ctx, ofSequence))}
         />
     );
 }
 
-function automaticTarget(step: FlowStep, key: string, title: string, numbers: ReactNode, ctx: Ctx): PreviewTarget {
+function automaticTarget(step: FlowStep, key: string, title: string, numbers: ReactNode, ctx: Ctx, ofSequence = false): PreviewTarget {
     const render = ctx.renders[key];
     const actions: PreviewTarget["actions"] = [];
     const words = render?.templateId ? `${FUNNEL_PATHS.emailTemplates}/${encodeURIComponent(render.templateId)}` : null;
@@ -629,7 +645,8 @@ function automaticTarget(step: FlowStep, key: string, title: string, numbers: Re
         kind: kindOf(step) ?? "Automatic",
         state: step.state,
         rules: rulesOf(step),
-        numbers: row ? <p>{outcomeText(row)}</p> : numbers,
+        // One email of a sequence shows the card's own numbers; the sequence's outcome is its Results row's.
+        numbers: ofSequence ? (numbers ? <p>{numbers}</p> : null) : row ? <p>{outcomeText(row)}</p> : numbers,
         actions,
         redrawsDark: false,
     };

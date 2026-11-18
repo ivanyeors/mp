@@ -163,7 +163,7 @@ function SegmentItem({
     const flagged = s.needsReview || s.unreadable;
     const listHref = `/settings/customers?${new URLSearchParams(Object.fromEntries(Object.entries(s.params).filter(([k]) => k !== "search"))).toString()}`;
     const emailHref = s.id ? `/settings/campaigns/new?segment=${s.id}` : null;
-    const searchHidden = (s as FunnelSegmentView & { searchHidden?: boolean }).searchHidden === true;
+    const searchHidden = s.searchHidden;
     const chips = segmentChips(s.params, names, searchHidden);
     return (
         <li className={cn("rounded-lg border p-3", s.notCreated && "border-dashed bg-muted/30")}>
@@ -241,7 +241,17 @@ function SegmentItem({
                 </p>
             ) : s.id ? (
                 <div className="mt-2.5 flex flex-wrap gap-2">
-                    {nav.canOpen(listHref) ? (
+                    {searchHidden ? (
+                        // The Customers list opens by filters, never by a Segment's id, and the funnel never
+                        // carries a search's words: the list from here would be wider than the Segment.
+                        <p className="w-full text-xs text-muted-foreground" data-segment-search>
+                            It includes a search, so open it from the Segments on{" "}
+                            <Gated nav={nav} href="/settings/customers" className="text-foreground">
+                                Customers
+                            </Gated>
+                            .
+                        </p>
+                    ) : nav.canOpen(listHref) ? (
                         <Button asChild size="sm" variant="outline">
                             <Link href={nav.to(listHref)}>Open in Customers</Link>
                         </Button>

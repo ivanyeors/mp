@@ -228,3 +228,114 @@ describe("the review of slice 03", () => {
     expect(hrefs(plain)).toEqual([]);
   });
 });
+
+describe("the second review of slice 03", () => {
+  const unmount = () => {
+    act(() => root?.unmount());
+    root = null;
+    host.remove();
+  };
+  const withAutomatic: FunnelFacts = {
+    ...facts,
+    automatic: {
+      "lead.draft_reminders": {
+        sent: 100,
+        outcome: 30,
+        also: [
+          { label: "Drafts reminded", count: 60 },
+          { label: "After 1 day", count: 60 },
+          { label: "After 1 week", count: 35 },
+          { label: "After 1 month", count: 5 },
+        ],
+      },
+      "new.review_request": { sent: 20, sentLabel: "Customers asked, by email or WhatsApp", outcome: 8 },
+      "aftercare.checkup_reminder": { sent: 11, sentLabel: "Check-ups sent, by email or WhatsApp", outcome: 4 },
+    },
+  };
+  const press = async (label: string) => {
+    const button = [...host.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === label);
+    expect(button, label).toBeTruthy();
+    await act(async () => {
+      button!.click();
+    });
+  };
+  const dialog = () => document.body.querySelector('[role="dialog"]') as HTMLElement | null;
+
+  it("opens one draft reminder with its own numbers, not the whole sequence's", async () => {
+    await show(buildFunnel(withAutomatic), "lead");
+    await press("Preview Finish your pillow · 1 month");
+    const text = dialog()?.textContent ?? "";
+    expect(text).toContain("Sent 5");
+    for (const other of ["30", "35", "60", "Drafts finished", "Drafts reminded"]) expect(text, other).not.toContain(other);
+    unmount();
+  });
+
+  it("gates the opened preview's actions: campaigns only links to no templates, Customers or settings page", async () => {
+    for (const [stage, label] of [
+      ["new", "Preview Review request"],
+      ["lead", "Preview Finish your pillow · 1 day"],
+      ["at_risk", "Preview Check-up reminder"],
+    ] as const) {
+      await show(buildFunnel(withAutomatic), stage, ["campaigns"]);
+      await press(label);
+      const links = [...(dialog()?.querySelectorAll("a") ?? [])].map((a) => a.getAttribute("href") ?? "");
+      expect(links.filter((h) => /\/settings\/(customers|general|email-templates)/.test(h)), stage).toEqual([]);
+      unmount();
+    }
+    // An Owner gets the settings link.
+    await show(buildFunnel(withAutomatic), "new");
+    await press("Preview Review request");
+    const links = [...(dialog()?.querySelectorAll("a") ?? [])].map((a) => a.getAttribute("href") ?? "");
+    expect(links).toContain("/en-US/settings/customers?view=settings");
+    unmount();
+  });
+
+  it("does not open a Segment with a search in Customers, which would list more than the Segment", async () => {
+    const searched: FunnelFacts = {
+      ...facts,
+      segments: [...facts.segments, { id: id(4), name: "At risk named Tan", params: { stage: "at-risk", search: "tan" }, count: 2, needsReview: false }],
+    };
+    await show(buildFunnel(searched), "at_risk");
+    const item = [...host.querySelectorAll("li")].find((li) => li.querySelector("p")?.textContent === "At risk named Tan")!;
+    expect(item).toBeTruthy();
+    expect(item.textContent).not.toContain("Open in Customers");
+    expect(hrefs(item).some((h) => h?.startsWith("/en-US/settings/customers?"))).toBe(false);
+    expect(hrefs(item)).toContain("/en-US/settings/customers");
+    expect(item.querySelector("[data-segment-search]")).not.toBeNull();
+    // Its words never reach the page.
+    expect(host.innerHTML).not.toMatch(/\btan\b/);
+    expect(hrefs(item)).toContain(`/en-US/settings/campaigns/new?segment=${id(4)}`);
+    unmount();
+  });
+
+  it("keeps the first chunk's renders when the second fails", async () => {
+    const { MAX_RENDER_KEYS } = await import("../funnel-format");
+    actions.renderFunnelEmails.mockClear();
+    const ok = actions.renderFunnelEmails.getMockImplementation()!;
+    actions.renderFunnelEmails.mockImplementationOnce(ok).mockImplementationOnce(async () => {
+      throw new Error("down");
+    });
+    const many = Array.from({ length: 45 }, (_, k) => camp(200 + k, `Note ${k}`, 1));
+    await show(buildFunnel({ ...facts, campaigns: many }), "at_risk");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const [first, second] = actions.renderFunnelEmails.mock.calls.map((c) => c[0] as string[]);
+    expect(first).toHaveLength(MAX_RENDER_KEYS);
+    for (const key of first) {
+      expect(card(key)?.querySelector("[data-frame]")?.getAttribute("data-frame"), key).toContain(key);
+      expect(card(key)?.textContent, key).not.toContain("Preview not available");
+    }
+    for (const key of second) expect(card(key)?.textContent, key).toContain("Preview not available");
+    unmount();
+  });
+
+  it("says in the Results row what an Automatic email's Sent counts", async () => {
+    await show(buildFunnel(withAutomatic), "at_risk");
+    expect(host.textContent).toContain("Check-ups sent, by email or WhatsApp");
+    unmount();
+    await show(buildFunnel(withAutomatic), "new");
+    expect(host.textContent).toContain("Customers asked, by email or WhatsApp");
+    unmount();
+  });
+});
