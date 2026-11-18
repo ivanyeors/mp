@@ -59,12 +59,14 @@ None of this changes what visitors see.
    16 months, and the Pages (indexing) report. The app's own Search Console data cannot stand in:
    every page row in `seo_daily_metrics` is on custom.mpillow.com, and only for 10–19 Jul 2026.
 2. **Snapshot of the old site: done 18 Nov 2026.** `docs/cutover/shopify-snapshot-2026-11-18.json`
-   (`scripts/snapshot-shopify-site.py`) has each old address's status, title, description,
-   canonical and headings. Of the 14 blog posts the map sends to the home page, it holds the full
-   text of the two that were never brought here; the other 12 are in git as
-   `data/blogs/<slug>.mdx` at `a1e0cf92^`, the commit before the October consolidation (#252)
-   retired them. If the agency's data shows any of the 14 still earns clicks or links, bring it
-   over as a real post from that text and point its row at it.
+   (`scripts/snapshot-shopify-site.py`) has each of the 215 old addresses' status, title,
+   description, canonical and headings: 212 answered 200, the sign-in link 302 to Shopify's
+   login, and two were already 404 on Shopify (`/blogs/news/3-min-neck-pain-relief-stretches`,
+   `/pages/space-rental`). Shopify's own sitemaps listed 185 addresses, all in the map. It also
+   holds the full text of the 14 blog posts the map sends to the home page; the 12 retired in
+   October are in git too, as `data/blogs/<slug>.mdx` at `a1e0cf92^` (#252). If the agency's
+   data shows any of the 14 still earns clicks or links, bring it over as a real post from that
+   text and point its row at it.
 3. **Redirect test on custom.mpillow.com: passed 18 Nov 2026,** 218 of 218
    (`docs/cutover/redirect-check-custom-2026-11-18.json`). All 214 old page addresses answered
    the approved status in one hop with ad tags kept, all 46 landing pages answered 200, the home
