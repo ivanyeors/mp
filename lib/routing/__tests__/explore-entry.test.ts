@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, type NextFetchEvent } from "next/server";
-import { exploreEntryPath, fromThisSite, homePathLocale } from "@/lib/routing/explore-entry";
+import {
+  exploreEntryPath,
+  exploreSeenCookieDomain,
+  fromThisSite,
+  homePathLocale,
+  showsExplore,
+} from "@/lib/routing/explore-entry";
 
 /**
  * The way in to Explore until the launch (owner, 2026-11-17): an arrival at
@@ -23,6 +29,7 @@ const base = {
   referer: null,
   locale: "en-US" as const,
   nowMs: BEFORE,
+  seen: false,
 };
 
 describe("exploreEntryPath", () => {
@@ -64,10 +71,41 @@ describe("exploreEntryPath", () => {
     expect(exploreEntryPath({ ...base, method: "HEAD" })).toBe("/en-US/explore");
   });
 
+  it("sends each browser session once: not again after Explore was shown", () => {
+    expect(exploreEntryPath({ ...base, seen: true })).toBeNull();
+    expect(exploreEntryPath({ ...base, pathname: "/en-US", seen: true })).toBeNull();
+  });
+
   it("stops at the launch", () => {
     expect(exploreEntryPath({ ...base, nowMs: LAUNCH - 1000 })).toBe("/en-US/explore");
     expect(exploreEntryPath({ ...base, nowMs: LAUNCH })).toBeNull();
     expect(exploreEntryPath({ ...base, nowMs: LAUNCH + 86_400_000 })).toBeNull();
+  });
+});
+
+describe("showsExplore and exploreSeenCookieDomain", () => {
+  const page = { pathname: "/en-US/explore", method: "GET", prefetch: false };
+
+  it("counts a person opening Explore, in either language", () => {
+    expect(showsExplore(page)).toBe(true);
+    expect(showsExplore({ ...page, pathname: "/zh-CN/explore/" })).toBe(true);
+  });
+
+  it("does not count a prefetch, a HEAD or another page", () => {
+    expect(showsExplore({ ...page, prefetch: true })).toBe(false);
+    expect(showsExplore({ ...page, method: "HEAD" })).toBe(false);
+    for (const pathname of ["/en-US", "/explore", "/en-US/explore/x", "/fr/explore", "/en-US/shop"]) {
+      expect(showsExplore({ ...page, pathname })).toBe(false);
+    }
+  });
+
+  it("shares the cookie across mpillow.com hosts, and keeps it to the host elsewhere", () => {
+    expect(exploreSeenCookieDomain("www.mpillow.com")).toBe("mpillow.com");
+    expect(exploreSeenCookieDomain("mpillow.com")).toBe("mpillow.com");
+    expect(exploreSeenCookieDomain("custom.mpillow.com")).toBe("mpillow.com");
+    expect(exploreSeenCookieDomain("notmpillow.com")).toBeUndefined();
+    expect(exploreSeenCookieDomain("mp-inv-git-x.vercel.app")).toBeUndefined();
+    expect(exploreSeenCookieDomain("localhost")).toBeUndefined();
   });
 });
 
@@ -133,6 +171,36 @@ describe("in the proxy", () => {
     at(BEFORE);
     const res = await hit("https://www.mpillow.com/en-US", "https://www.mpillow.com", { "sec-fetch-site": "same-origin" });
     expect(res.status).toBe(200);
+  });
+
+  it("marks the browser session when Explore is shown, for www and the bare domain", async () => {
+    at(BEFORE);
+    const res = await hit("https://www.mpillow.com/en-US/explore", "https://www.mpillow.com");
+    const cookie = res.headers.getSetCookie().find((c) => c.startsWith("mp_explore_seen=")) ?? "";
+    expect(cookie).toMatch(/^mp_explore_seen=1;/);
+    expect(cookie).toMatch(/Domain=mpillow\.com/i);
+    expect(cookie).toMatch(/HttpOnly/i);
+    expect(cookie).toMatch(/Secure/i);
+    // A session cookie: it ends with the browser session.
+    expect(cookie).not.toMatch(/Max-Age|Expires/i);
+  });
+
+  it("does not mark it for a prefetch, or again once marked", async () => {
+    at(BEFORE);
+    const prefetch = await hit("https://www.mpillow.com/en-US/explore", "https://www.mpillow.com", { "next-router-prefetch": "1" });
+    expect(prefetch.headers.get("set-cookie") ?? "").not.toMatch(/mp_explore_seen/);
+    const again = await hit("https://www.mpillow.com/en-US/explore", "https://www.mpillow.com", { cookie: "mp_explore_seen=1" });
+    expect(again.headers.get("set-cookie") ?? "").not.toMatch(/mp_explore_seen/);
+  });
+
+  it("sends a returning arrival in the same session to the home page", async () => {
+    at(BEFORE);
+    const www = await hit("https://www.mpillow.com/", "https://www.mpillow.com", { cookie: "mp_explore_seen=1" });
+    expect(www.headers.get("location")).toBe("https://www.mpillow.com/en-US");
+    const typed = await hit("https://www.mpillow.com/en-US", "https://www.mpillow.com", { cookie: "mp_explore_seen=1", "sec-fetch-site": "none" });
+    expect(typed.status).toBe(200);
+    const bare = await hit("https://mpillow.com/", "https://www.mpillow.com", { cookie: "mp_explore_seen=1" });
+    expect(bare.headers.get("location")).toBe("https://www.mpillow.com/");
   });
 
   it("serves the home page from the launch", async () => {
