@@ -7,6 +7,7 @@ import { DragDropProvider, DragOverlay, useDraggable, useDroppable } from "@dnd-
 import {
     ChevronDown,
     CircleSlash,
+    CornerDownRight,
     DoorOpen,
     Eye,
     EyeOff,
@@ -23,6 +24,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -54,6 +56,8 @@ import {
     followUpHref,
     GROUP_THUMBNAILS,
     menuMoves,
+    movePlaces,
+    nodeConnectors,
     nodesOf,
     resultCells,
     sequenceDays,
@@ -229,7 +233,16 @@ export function EmailFlow({ ctx, allShown, onShowAll }: { ctx: FlowCtx; allShown
     };
 
     const hasCampaign = layout.items.some((i) => i.kind === "sequence");
-    const flowCtx: Arrange = { ctx, layout, dragging, can, move, nameOf };
+    // *Move to…*: the draft whose places are listed; focus goes back to it once it moved.
+    const [moveTo, setMoveTo] = useState<string | null>(null);
+    const focusCard = (id: string) =>
+        window.setTimeout(() => {
+            const el =
+                document.querySelector<HTMLElement>(`[data-card="campaign:${id}"] button[aria-label^="Preview"]`) ??
+                document.querySelector<HTMLElement>(`[data-unplaced="${id}"] button`);
+            el?.focus();
+        }, 0);
+    const flowCtx: Arrange = { ctx, layout, dragging, can, move, nameOf, openMoveTo: setMoveTo };
 
     return (
         <Card className="min-w-0">
@@ -347,6 +360,17 @@ export function EmailFlow({ ctx, allShown, onShowAll }: { ctx: FlowCtx; allShown
                             </ul>
                         </EndBlock>
                     </div>
+                    <MoveToDialog
+                        id={moveTo}
+                        a={flowCtx}
+                        onClose={(chosen) => {
+                            const id = moveTo;
+                            setMoveTo(null);
+                            if (!id) return;
+                            if (chosen) move(chosen);
+                            focusCard(id);
+                        }}
+                    />
                     <DragOverlay dropAnimation={null}>
                         {(source) => {
                             const node = layout.items.flatMap((i) => (i.kind === "sequence" ? nodesOf(i.root) : [])).find((x) => x.campaign.id === source.id);
@@ -378,6 +402,8 @@ interface Arrange {
     can: (m: PageMove | null) => boolean;
     move: (m: PageMove) => void;
     nameOf: (id: string) => string;
+    /** *Move to…*: every place a drop would take this draft, without dragging. */
+    openMoveTo: (id: string) => void;
 }
 
 function SectionTitle({ id, hint, children }: { id: string; hint: string; children: ReactNode }) {
@@ -720,32 +746,33 @@ function GroupRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
 
 /** An email and everything after it: one follow-up continues the column; several branch, each labelled. */
 function Chain({ node, a }: { node: FlowNode; a: Arrange }) {
-    const kids = node.children;
+    // Exactly the connectors `flowZones` lists, so *Move to…* offers what a drag can drop on.
+    const tos = nodeConnectors(node);
+    const branches = node.children.length > 1;
     return (
         <div className="min-w-0">
             <CampaignRow node={node} a={a} />
-            {kids.length === 1 ? (
-                <>
-                    <Connector from={node} to={kids[0]} a={a} />
-                    <Chain node={kids[0]} a={a} />
-                </>
-            ) : kids.length > 1 ? (
-                <div className="space-y-2">
-                    {kids.map((k) => (
-                        <div key={k.campaign.id} className="ml-3 border-l-2 border-dashed pl-2 sm:ml-5 sm:pl-3">
+            <div className={cn(branches && "space-y-2")}>
+                {tos.map((to) =>
+                    !to ? (
+                        <Connector key="end" from={node} to={null} a={a} end />
+                    ) : branches ? (
+                        <div key={to.campaign.id} className="ml-3 border-l-2 border-dashed pl-2 sm:ml-5 sm:pl-3">
                             <p className="flex items-center gap-1 pt-2 text-xs font-medium text-muted-foreground">
                                 <GitBranch className="size-3.5" aria-hidden />
-                                {k.parent && k.parent.did !== "not-sent" ? IF_WORDS[k.parent.did] : "Then"}
+                                {to.parent && to.parent.did !== "not-sent" ? IF_WORDS[to.parent.did] : "Then"}
                             </p>
-                            <Connector from={node} to={k} a={a} />
-                            <Chain node={k} a={a} />
+                            <Connector from={node} to={to} a={a} />
+                            <Chain node={to} a={a} />
                         </div>
-                    ))}
-                    <Connector from={node} to={null} a={a} end />
-                </div>
-            ) : (
-                <Connector from={node} to={null} a={a} end />
-            )}
+                    ) : (
+                        <div key={to.campaign.id}>
+                            <Connector from={node} to={to} a={a} />
+                            <Chain node={to} a={a} />
+                        </div>
+                    ),
+                )}
+            </div>
         </div>
     );
 }
@@ -958,6 +985,7 @@ function CampaignRow({ node, a }: { node: FlowNode; a: Arrange }) {
                                 <DropdownMenuItem disabled={!a.can(moves.start)} onSelect={() => a.move(moves.start)}>
                                     Start a new sequence
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => a.openMoveTo(c.id)}>Move to…</DropdownMenuItem>
                             </>
                         ) : null}
                     </DropdownMenuContent>
@@ -1058,6 +1086,49 @@ export function SuggestedRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
     );
 }
 
+/**
+ * *Move to…*: every place a drop would take the draft (`movePlaces`, built
+ * from the drop zones themselves), in the zones' words. Choosing one does what
+ * that drop does; drag and drop is never the only way.
+ */
+function MoveToDialog({ id, a, onClose }: { id: string | null; a: Arrange; onClose: (chosen: PageMove | null) => void }) {
+    const places = id ? movePlaces(a.layout, id, a.can, a.nameOf) : [];
+    return (
+        <Dialog open={id !== null} onOpenChange={(o) => !o && onClose(null)}>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg" onCloseAutoFocus={(e) => e.preventDefault()}>
+                <DialogHeader>
+                    <DialogTitle>Move “{id ? a.nameOf(id) : ""}” to…</DialogTitle>
+                    <DialogDescription>
+                        Where it goes in {a.ctx.stage.header.label}&apos;s flow. It points the draft at the Segment that reads the email before it; nothing is sent.
+                    </DialogDescription>
+                </DialogHeader>
+                {places.length ? (
+                    <ul className="space-y-1.5" aria-label="Places it can go">
+                        {places.map((p) => (
+                            <li key={JSON.stringify(p.move)}>
+                                <button
+                                    type="button"
+                                    onClick={() => onClose(p.move)}
+                                    className="flex w-full items-start gap-2 rounded-lg border px-3 py-2.5 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    {p.move.after ? (
+                                        <CornerDownRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                                    ) : (
+                                        <GitBranch className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                                    )}
+                                    <span>{p.words}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-muted-foreground">There is nowhere else it can go in this stage.</p>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 /** *Start a new sequence*: while a draft is dragged, the zone that makes it follow nothing. */
 function StartZone({ a }: { a: Arrange }) {
     const { dragging } = a;
@@ -1103,7 +1174,7 @@ function UnplacedChip({ c, a }: { c: FlowCampaign; a: Arrange }) {
     const { ref, handleRef, isDragSource } = useDraggable({ id: c.id, disabled: c.lock !== null });
     const place: PageMove = { campaignId: c.id, after: null, before: null };
     return (
-        <li ref={ref} className={cn("flex min-w-0 max-w-full items-center gap-1 rounded-lg border bg-card py-1 pl-1 pr-1.5 text-sm", isDragSource && "border-dashed opacity-40")}>
+        <li ref={ref} data-unplaced={c.id} className={cn("flex min-w-0 max-w-full flex-wrap items-center gap-1 rounded-lg border bg-card py-1 pl-1 pr-1.5 text-sm", isDragSource && "border-dashed opacity-40")}>
             <button
                 ref={handleRef}
                 type="button"
@@ -1115,6 +1186,9 @@ function UnplacedChip({ c, a }: { c: FlowCampaign; a: Arrange }) {
             <span className="min-w-0 truncate font-medium">{c.name}</span>
             <Button type="button" variant="ghost" size="sm" className="shrink-0" disabled={!a.can(place)} onClick={() => a.move(place)}>
                 Add to this stage
+            </Button>
+            <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => a.openMoveTo(c.id)}>
+                Move to…
             </Button>
         </li>
     );

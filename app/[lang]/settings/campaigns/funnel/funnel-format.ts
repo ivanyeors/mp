@@ -260,6 +260,40 @@ export function zoneMove(campaignId: string, from: FlowNode | null, to: FlowNode
     return { campaignId, after: { campaignId: from.campaign.id, did: "sent" }, before: null };
 }
 
+/**
+ * Pure — the connectors drawn after `node`, each by the email it leads to:
+ * its one follow-up; each of several, then one after them all; or, at the
+ * end of a sequence, none (null). Every connector is a drop zone.
+ */
+export function nodeConnectors(node: FlowNode): (FlowNode | null)[] {
+    if (node.children.length === 1) return [node.children[0]];
+    return [...node.children, null];
+}
+
+/** Pure — every drop zone of the flow, as `zoneMove` reads it: each connector, then *Start a new sequence*. */
+export function flowZones(layout: FlowLayout): { from: FlowNode | null; to: FlowNode | null }[] {
+    const nodes = layout.items.flatMap((i) => (i.kind === "sequence" ? nodesOf(i.root) : []));
+    return [...nodes.flatMap((from) => nodeConnectors(from).map((to) => ({ from, to }))), { from: null, to: null }];
+}
+
+/**
+ * Pure — the places *Move to…* offers the draft `id`: every drop zone that
+ * would take it (`can`, the plan on the page's ids), once each, in the zones'
+ * own words, so the menu and the drag offer the same places.
+ */
+export function movePlaces(layout: FlowLayout, id: string, can: (m: PageMove) => boolean, nameOf: (id: string) => string): { move: PageMove; words: string }[] {
+    const seen = new Set<string>();
+    const out: { move: PageMove; words: string }[] = [];
+    for (const z of flowZones(layout)) {
+        const move = zoneMove(id, z.from, z.to);
+        const key = JSON.stringify(move);
+        if (seen.has(key) || !can(move)) continue;
+        seen.add(key);
+        out.push({ move, words: zoneWords(move, nameOf) });
+    }
+    return out;
+}
+
 /** What a drop zone says it will do, in words. */
 export function zoneWords(move: PageMove, nameOf: (id: string) => string): string {
     if (!move.after) return "Start a new sequence with it";

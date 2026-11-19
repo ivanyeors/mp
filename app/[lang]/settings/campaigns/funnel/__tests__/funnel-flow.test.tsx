@@ -136,11 +136,57 @@ describe("arranging the flow", () => {
     expect(document.body.textContent).toContain("“C” could not move: refused in these words.");
   });
 
-  it("gives nobody without customers-edit a grip or a move", async () => {
+  it("gives nobody without customers-edit a grip, a move, a condition or Add an email here, but keeps Add a follow-up", async () => {
     await show(buildFunnel(facts), "lead", ["campaigns"]);
     expect(host.querySelector('[aria-label^="Drag"]')).toBeNull();
+    // No condition control: the condition is words.
+    expect(host.querySelector('[aria-label^="Who “"]')).toBeNull();
+    const links = [...host.querySelectorAll("a")];
+    expect(links.some((l) => l.textContent?.includes("Add an email here"))).toBe(false);
+    expect(links.some((l) => l.getAttribute("href")?.includes("before="))).toBe(false);
+    // The plain follow-up, as slice 06 offers it to anyone with campaigns.
+    const followUps = links.filter((l) => l.textContent?.includes("Add a follow-up")).map((l) => l.getAttribute("href"));
+    expect(followUps).toContain(`/en-US/settings/campaigns/new?after=${id(13)}:sent`);
+    expect(followUps.every((h) => /^\/en-US\/settings\/campaigns\/new\?after=[0-9a-f-]{36}:sent$/.test(h ?? ""))).toBe(true);
     await choose(button("Actions for “C”")!, "Preview");
-    expect([...document.querySelectorAll('[role="menuitem"]')].some((m) => m.textContent === "Move earlier")).toBe(false);
+    const items = [...document.querySelectorAll('[role="menuitem"]')].map((m) => m.textContent);
+    for (const move of ["Move earlier", "Move later", "Start a new sequence", "Move to…"]) expect(items, move).not.toContain(move);
+  });
+
+  it("Move to… offers, without dragging, the places a drop would take, and does what that drop does", async () => {
+    // The issue's demo: Add an email twice makes two one-email sequences, A and B; and a draft outside the funnel.
+    const two: FunnelFacts = {
+      ...facts,
+      segments: [...facts.segments, { id: id(5), name: "Premium buyers", params: { bought: "premium" }, count: 3, needsReview: false }],
+      campaigns: [camp(21, "A", 1), camp(22, "B", 1), camp(23, "Outside", 5)],
+    };
+    const view = buildFunnel(two);
+    await show(view);
+    // Nothing else in B's menu can do it.
+    await choose(button("Actions for “B”")!, "Move to…");
+    const offered = () => [...document.querySelectorAll('[role="dialog"] li button')].map((b) => b.textContent);
+    expect(offered()).toContain("After “A”, to those who got it");
+    const lead = view.stages.find((st) => st.stage === "lead")!;
+    const layout = flowLayout(lead, view.unplaced);
+    const a = layout.items.flatMap((i) => (i.kind === "sequence" ? nodesOf(i.root) : [])).find((x) => x.campaign.id === id(21))!;
+    const choice = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] li button')].find((b) => b.textContent === "After “A”, to those who got it")!;
+    await click(choice);
+    await settle(20);
+    expect(arrange.moveFunnelEmail).toHaveBeenCalledWith({ ...zoneMove(id(22), a, null), stage: "lead" });
+    expect(arrange.moveFunnelEmail).toHaveBeenCalledWith({ campaignId: id(22), stage: "lead", after: { campaignId: id(21), did: "sent" }, before: null });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    // Focus goes back to the moved card.
+    expect(document.activeElement?.closest("[data-card]")?.getAttribute("data-card")).toBe(`campaign:${id(22)}`);
+    act(() => root?.unmount());
+    root = null;
+    host.remove();
+
+    // The draft outside the funnel is offered the same places.
+    await show(buildFunnel(two));
+    const chip = host.querySelector(`[data-unplaced="${id(23)}"]`)!;
+    await click([...chip.querySelectorAll("button")].find((b) => b.textContent === "Move to…")!);
+    await settle();
+    expect(offered()).toEqual(["After “A”, to those who got it", "After “B”, to those who got it", "Start a new sequence with it"]);
   });
 });
 
