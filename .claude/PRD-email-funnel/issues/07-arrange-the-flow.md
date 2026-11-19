@@ -1,7 +1,7 @@
 # 07 — Arrange the flow: a sequence you can drag, slot into and build as drafts
 
 **Type:** AFK
-**Status:** not started
+**Status:** **built** (2026-11-19), reviewed by the `reviewer` subagent
 **Blocked by:** 03, 06
 **Labels:** `enhancement`, `area:email`
 
