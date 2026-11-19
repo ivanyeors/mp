@@ -153,6 +153,8 @@ export interface FlowCampaign {
   state: StepState;
   /** When its first Wave was planned; null for a draft. */
   startedAt: string | null;
+  /** Why it stays where it is (started, a Playbook's, its Segment unreadable), or null: a draft that can be dragged (slice 07). */
+  lock: string | null;
 }
 
 /** A follow-up: the campaign of this stage its Segment reads, and what that campaign did with them. */
@@ -292,6 +294,8 @@ export interface FunnelView {
   resultWindowDays: number;
   /** Parts whose read failed: the page says each could not be read. */
   notRead: FunnelPart[];
+  /** Live drafts that sit in no stage yet (`isUnplaced`), oldest made first: each can be placed in a stage's flow. */
+  unplaced: FlowCampaign[];
 }
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
@@ -380,7 +384,7 @@ const byStart = (a: FunnelCampaignFact, b: FunnelCampaignFact) =>
   a.campaign.createdAt.localeCompare(b.campaign.createdAt) ||
   a.campaign.id.localeCompare(b.campaign.id);
 
-const flowCampaign = (c: FunnelCampaignFact): FlowCampaign => ({
+const plainFlowCampaign = (c: FunnelCampaignFact): Omit<FlowCampaign, "lock"> => ({
   id: c.campaign.id,
   name: c.campaign.name,
   href: campaignPath(c.campaign.id),
@@ -388,15 +392,46 @@ const flowCampaign = (c: FunnelCampaignFact): FlowCampaign => ({
   startedAt: c.campaign.lockedAt,
 });
 
-// ─── The build ───────────────────────────────────────────────────────────────
+// ─── Who follows whom: one reading, for the page and for a move ──────────────
 
-/** Pure — the whole page from the facts. */
-export function buildFunnel(facts: FunnelFacts): FunnelView {
-  const programme = funnelProgramme({ checkupMonths: facts.switches.checkupMonths, reviewRequestDays: facts.switches.reviewRequestDays });
+/** A Segment as the reading holds it: what a move needs to know of it, never shown on the page as it is. */
+export interface ReadSegmentView {
+  fact: FunnelSegmentFact;
+  stages: ReadonlySet<LifecycleStage>;
+  /** Canonical filters; null when it needs review or does not parse. */
+  key: string | null;
+  unreadable: boolean;
+  campaign: { id: string; state: CampaignFilterState } | null;
+}
+
+/**
+ * The facts read once (PRD-email-funnel slices 03 and 07): each campaign's
+ * Segment, the campaign it follows up (`followOf`: its Segment reads what that
+ * one did, a cycle broken at its root), the stages it sits in, and the
+ * Playbooks' campaigns. `buildFunnel` draws the page from it and `planMove`
+ * (./move) plans a drag from it, so the two cannot disagree.
+ */
+export interface FunnelReading {
+  /** Live campaigns, oldest started first. */
+  campaigns: readonly FunnelCampaignFact[];
+  byId: ReadonlyMap<string, FunnelCampaignFact>;
+  segments: readonly ReadSegmentView[];
+  segmentOf: (c: FunnelCampaignFact) => ReadSegmentView | null;
+  followOf: (c: FunnelCampaignFact) => { parent: FunnelCampaignFact; did: CampaignFilterState } | null;
+  stagesOf: (c: FunnelCampaignFact) => ReadonlySet<LifecycleStage>;
+  /** Per Playbook step id, the live campaigns of `stage` that are that Playbook. */
+  playbookCampaigns: (stage: LifecycleStage) => Map<string, FunnelCampaignFact[]>;
+  /** Campaign ids that are a Playbook in any stage: their Segment is what makes them the Playbook. */
+  playbookIds: ReadonlySet<string>;
+}
+
+/** Pure — the facts' campaigns and Segments, read once. */
+export function readFunnel(facts: Pick<FunnelFacts, "segments" | "campaigns"> & Partial<Pick<FunnelFacts, "switches">>): FunnelReading {
+  // Which Playbooks a stage has does not depend on the timings.
+  const programme = funnelProgramme({ checkupMonths: facts.switches?.checkupMonths, reviewRequestDays: facts.switches?.reviewRequestDays });
   const segments = facts.segments.map(readSegment);
   const segmentById = new Map(segments.map((s) => [s.fact.id, s]));
   const campaigns = [...facts.campaigns].sort(byStart);
-  const ref = (c: FunnelCampaignFact): CampaignRef => ({ id: c.campaign.id, name: c.campaign.name });
 
   // A campaign's Segment, read; null for an Audience that is not a Segment, or a Segment no longer live.
   const segmentOf = (c: FunnelCampaignFact) =>
@@ -451,6 +486,69 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
     return out;
   };
 
+  // Each Playbook's campaigns in a stage: those whose Segment has its filters and that still carry its name or subject.
+  const playbookCampaigns = (stage: LifecycleStage) => {
+    const steps = stage === "lost" ? [] : stepsOfStage(programme, stage);
+    const inStage = campaigns.filter((c) => stagesOf(c).has(stage));
+    return new Map(
+      steps
+        .filter((s): s is PlaybookStep => s.kind === "playbook")
+        .map((p) => {
+          const key = filtersKey(p.segment.filters);
+          const words = playbookWords(p.starterId);
+          const claims = (c: FunnelCampaignFact) =>
+            APPROVED_PLAYBOOKS.has(p.starterId) &&
+            key !== null &&
+            segmentOf(c)?.key === key &&
+            words !== null &&
+            (same(c.campaign.name, words.name) || same(c.campaign.subject, words.subject));
+          return [p.id, inStage.filter(claims)] as const;
+        }),
+    );
+  };
+  const playbookIds = new Set(FUNNEL_STAGES.flatMap((s) => [...playbookCampaigns(s).values()].flat().map((c) => c.campaign.id)));
+
+  return { campaigns, byId, segments, segmentOf, followOf, stagesOf, playbookCampaigns, playbookIds };
+}
+
+/**
+ * Pure — why a live campaign stays where it is, in words, or null when it can
+ * be moved (PRD-email-funnel slice 07): only a draft moves; a Playbook's draft
+ * keeps the Segment that makes it the Playbook; a Segment that needs review or
+ * is no longer live cannot be read to keep its other filters.
+ */
+export function moveLock(r: FunnelReading, c: FunnelCampaignFact): string | null {
+  if (c.campaign.lockedAt) return "Started: it keeps who it goes to. Duplicate it to send a copy somewhere else.";
+  if (r.playbookIds.has(c.campaign.id)) return "A Playbook's draft starts its own sequence: its Segment is what makes it the Playbook. Add emails after it.";
+  if (c.campaign.audience === "segment" && c.campaign.segmentId) {
+    const seg = r.segmentOf(c);
+    if (!seg) return "Its Segment is archived or could not be read. Choose who it goes to in the campaign first.";
+    if (seg.key === null) return `Its Segment “${seg.fact.name}” needs review, so it cannot be moved until that is fixed.`;
+  }
+  return null;
+}
+
+/**
+ * Pure — a live draft that sits in no stage: no Segment (another Audience),
+ * or a Segment that names no stage and reads no campaign.
+ */
+export function isUnplaced(r: FunnelReading, c: FunnelCampaignFact): boolean {
+  if (c.campaign.lockedAt) return false;
+  if (c.campaign.audience !== "segment" || !c.campaign.segmentId) return true;
+  const seg = r.segmentOf(c);
+  return seg !== null && seg.key !== null && seg.stages.size === 0 && seg.campaign === null;
+}
+
+// ─── The build ───────────────────────────────────────────────────────────────
+
+/** Pure — the whole page from the facts. */
+export function buildFunnel(facts: FunnelFacts): FunnelView {
+  const programme = funnelProgramme({ checkupMonths: facts.switches.checkupMonths, reviewRequestDays: facts.switches.reviewRequestDays });
+  const reading = readFunnel(facts);
+  const { campaigns, segments, segmentOf, followOf, stagesOf } = reading;
+  const ref = (c: FunnelCampaignFact): CampaignRef => ({ id: c.campaign.id, name: c.campaign.name });
+  const flowCampaign = (c: FunnelCampaignFact): FlowCampaign => ({ ...plainFlowCampaign(c), lock: moveLock(reading, c) });
+
   // Each live campaign's rows, by id.
   const rowsByCampaign = new Map<string, Record<string, unknown>[]>();
   for (const row of facts.stageResults) {
@@ -464,20 +562,7 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
     const playbooks = steps.filter((s): s is PlaybookStep => s.kind === "playbook");
     const inStage = campaigns.filter((c) => stagesOf(c).has(stage));
 
-    // Each Playbook's campaigns: those whose Segment has its filters and that still carry its name or subject.
-    const playbookCampaigns = new Map(
-      playbooks.map((p) => {
-        const key = filtersKey(p.segment.filters);
-        const words = playbookWords(p.starterId);
-        const claims = (c: FunnelCampaignFact) =>
-          APPROVED_PLAYBOOKS.has(p.starterId) &&
-          key !== null &&
-          segmentOf(c)?.key === key &&
-          words !== null &&
-          (same(c.campaign.name, words.name) || same(c.campaign.subject, words.subject));
-        return [p.id, inStage.filter(claims)] as const;
-      }),
-    );
+    const playbookCampaigns = reading.playbookCampaigns(stage);
     const claimed = new Set([...playbookCampaigns.values()].flat().map((c) => c.campaign.id));
     const stageCampaignIds = new Set(inStage.map((c) => c.campaign.id));
 
@@ -485,7 +570,7 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
       stage === "lost"
         ? []
         : [
-            ...steps.map((s) => programmeFlowStep(s, facts.switches, playbookCampaigns.get(s.id) ?? [])),
+            ...steps.map((s) => programmeFlowStep(s, facts.switches, (playbookCampaigns.get(s.id) ?? []).map(flowCampaign))),
             ...inStage
               .filter((c) => !claimed.has(c.campaign.id))
               .map((c): FlowStep => {
@@ -626,11 +711,12 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
     restPeriod: { days: REST_DAYS, maxPer30Days: REST_MAX_PER_30_DAYS, text: REST_PERIOD_TEXT },
     resultWindowDays: RESULT_WINDOW_DAYS,
     notRead: [...(facts.notRead ?? [])],
+    unplaced: campaigns.filter((c) => isUnplaced(reading, c)).map(flowCampaign),
   };
 }
 
 /** A programme step as a flow step, its state from the switches or its campaigns. */
-function programmeFlowStep(s: ProgrammeStep, switches: FunnelFacts["switches"], matched: readonly FunnelCampaignFact[]): FlowStep {
+function programmeFlowStep(s: ProgrammeStep, switches: FunnelFacts["switches"], matched: readonly FlowCampaign[]): FlowStep {
   const base = {
     key: s.id,
     name: s.name,
@@ -654,7 +740,7 @@ function programmeFlowStep(s: ProgrammeStep, switches: FunnelFacts["switches"], 
       campaigns: [],
     };
   }
-  const campaigns = matched.map(flowCampaign);
+  const campaigns = [...matched];
   const approved = APPROVED_PLAYBOOKS.has(s.starterId);
   const state: StepState = !approved
     ? { state: "words_waiting", label: "Words waiting for the owner" }
