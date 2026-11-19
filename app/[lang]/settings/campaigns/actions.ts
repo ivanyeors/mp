@@ -5,15 +5,14 @@ import { z } from "zod";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
-import { getSegment, listSegments } from "@/lib/crm/segments";
+import { listSegments } from "@/lib/crm/segments";
+import { audienceRefusal } from "@/lib/email-campaigns/audience-refusal";
 import { afterParam, findWanted, matchable, type WantedAddress } from "@/lib/email-campaigns/wanted-segment";
-import { readSegmentFilters } from "@/lib/crm/segment-rules";
 import {
   CampaignDraftSchema,
   CampaignPreviewSchema,
   EMPTY_CAMPAIGN_DRAFT,
   MAX_TEST_RECIPIENTS,
-  selfDefeatingAudience,
   type Campaign,
   type CampaignDraft,
   type CampaignDraftInput,
@@ -141,20 +140,6 @@ async function pointsBalanceRefusal(admin: SupabaseClient, draft: CampaignDraft,
     return { ok: false, error: message(err) };
   }
   return { ok: false, error: `${POINTS_NOT_LIVE}, so Points balance can't go in the email. Take it out to save.` };
-}
-
-/**
- * PRD-campaign-audiences slice 05: the words refusing a Segment chosen by this
- * campaign's own history (*got it*, *clicked it*), which would never send; null
- * when the Audience can send. A Segment that is gone or needs review is left
- * to the wave's own refusal.
- */
-async function audienceRefusal(campaignId: string, segmentId: string | null): Promise<string | null> {
-  if (!segmentId) return null;
-  const segment = await getSegment(segmentId);
-  if (!segment) return null;
-  const { filters } = readSegmentFilters(segment.filters, segment.filtersVersion);
-  return selfDefeatingAudience(campaignId, { name: segment.name, filters });
 }
 
 /** Saves a new campaign (no id) or a draft's changes. A campaign that has started sending only takes a new name. */

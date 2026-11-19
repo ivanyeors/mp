@@ -2,15 +2,22 @@ import { describe, expect, it, vi } from "vitest";
 import { NO_RESULTS } from "@/lib/email-campaigns/results";
 import * as results from "@/lib/email-campaigns/results";
 import type { FunnelStageView } from "@/lib/email-funnel/model";
-import { bandSizes, flowTree, resultCells, segmentChips, stageFromParam } from "../funnel-format";
+import { bandSizes, flowLayout, menuMoves, nodesOf, resultCells, segmentChips, stageFromParam, zoneMove, zoneWords, type FlowNode } from "../funnel-format";
 
-describe("flowTree with a loop", () => {
-  const step = (key: string, campaignId: string, after: string) =>
-    ({ key, campaigns: [{ id: campaignId }], after: { campaignId: after, did: "sent" } }) as unknown as FunnelStageView["flow"][number];
-  it("keeps every step exactly once, never recursing forever", () => {
-    const tree = flowTree([step("a", "c1", "c2"), step("b", "c2", "c1"), step("c", "c3", "c2")]);
-    const keys = tree.flatMap((t) => [t.step.key, ...t.followUps.map((f) => f.key)]);
-    expect(keys.sort()).toEqual(["a", "b", "c"]);
+const step = (key: string, campaignId: string, after: string | null, lock: string | null = null) =>
+  ({
+    key,
+    kind: "campaign",
+    campaigns: [{ id: campaignId, name: campaignId.toUpperCase(), lock }],
+    after: after ? { campaignId: after, did: "sent" } : null,
+  }) as unknown as FunnelStageView["flow"][number];
+const ids = (layout: ReturnType<typeof flowLayout>) =>
+  layout.items.flatMap((i) => (i.kind === "sequence" ? nodesOf(i.root).map((n) => n.campaign.id) : []));
+
+describe("flowLayout with a loop", () => {
+  it("keeps every email exactly once, never recursing forever", () => {
+    const layout = flowLayout({ flow: [step("a", "c1", "c2"), step("b", "c2", "c1"), step("c", "c3", "c2")] });
+    expect(ids(layout).sort()).toEqual(["c1", "c2", "c3"]);
   });
 });
 
@@ -75,18 +82,39 @@ describe("segmentChips", () => {
   });
 });
 
-describe("flowTree", () => {
-  const step = (key: string, campaignId: string | null, after: string | null) =>
-    ({
-      key,
-      campaigns: campaignId ? [{ id: campaignId }] : [],
-      after: after ? { campaignId: after, did: "sent" } : null,
-    }) as unknown as FunnelStageView["flow"][number];
-  it("hangs a follow-up, and a follow-up of it, under the first campaign", () => {
-    const tree = flowTree([step("a", "c1", null), step("b", "c2", "c1"), step("c", "c3", "c2"), step("d", "c4", "gone")]);
-    expect(tree.map((t) => [t.step.key, t.followUps.map((f) => f.key)])).toEqual([
-      ["a", ["b", "c"]],
-      ["d", []],
+describe("flowLayout", () => {
+  it("runs a chain down one column, numbered, and starts a sequence for an email whose parent is gone", () => {
+    const layout = flowLayout({ flow: [step("a", "c1", null), step("b", "c2", "c1"), step("c", "c3", "c2"), step("d", "c4", "gone")] });
+    const seqs = layout.items.map((i) => (i.kind === "sequence" ? nodesOf(i.root).map((n) => [n.campaign.id, n.number]) : []));
+    expect(seqs).toEqual([
+      [
+        ["c1", 1],
+        ["c2", 2],
+        ["c3", 3],
+      ],
+      [["c4", 1]],
     ]);
+  });
+
+  it("lays an optimistic move over the view", () => {
+    const layout = flowLayout({ flow: [step("a", "c1", null), step("b", "c2", "c1"), step("c", "c3", "c2")] }, [], new Map([["c3", { id: "c1", did: "sent" as const }], ["c2", { id: "c3", did: "sent" as const }]]));
+    expect(ids(layout)).toEqual(["c1", "c3", "c2"]);
+  });
+
+  it("gives Move earlier and Move later the same input as the drop zones they match", () => {
+    const layout = flowLayout({ flow: [step("a", "c1", null), step("b", "c2", "c1"), step("c", "c3", "c2")] });
+    const [n1, n2, n3] = nodesOf((layout.items[0] as { root: FlowNode }).root);
+    // C earlier: the zone between A and B.
+    expect(menuMoves(layout, "c3").earlier).toEqual(zoneMove("c3", n1, n2));
+    // A later: the zone between B and C.
+    expect(menuMoves(layout, "c1").later).toEqual(zoneMove("c1", n2, n3));
+    // B earlier: in front of the sequence's first.
+    expect(menuMoves(layout, "c2").earlier).toEqual({ campaignId: "c2", after: null, before: "c1" });
+    expect(menuMoves(layout, "c3").later).toBeNull();
+    expect(zoneWords(zoneMove("c3", n1, n2), (id) => id.toUpperCase())).toBe("After “C1”, to those who got it, then “C2”");
+    // In front of a started email the drop goes beside it.
+    const locked = flowLayout({ flow: [step("a", "c1", null), step("b", "c2", "c1", "Started.")] });
+    const [m1, m2] = nodesOf((locked.items[0] as { root: FlowNode }).root);
+    expect(zoneMove("x", m1, m2)).toEqual({ campaignId: "x", after: { campaignId: "c1", did: "sent" }, before: null });
   });
 });
