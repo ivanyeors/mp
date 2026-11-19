@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { NO_RESULTS } from "@/lib/email-campaigns/results";
 import * as results from "@/lib/email-campaigns/results";
 import type { FunnelStageView } from "@/lib/email-funnel/model";
-import { bandSizes, flowLayout, menuMoves, nodesOf, resultCells, segmentChips, stageFromParam, zoneMove, zoneWords, type FlowNode } from "../funnel-format";
+import { bandSizes, flowLayout, flowZones, menuMoves, movePlaces, nodesOf, resultCells, segmentChips, stageFromParam, zoneMove, zoneWords, type FlowNode } from "../funnel-format";
 
 const step = (key: string, campaignId: string, after: string | null, lock: string | null = null) =>
   ({
@@ -99,6 +99,23 @@ describe("flowLayout", () => {
   it("lays an optimistic move over the view", () => {
     const layout = flowLayout({ flow: [step("a", "c1", null), step("b", "c2", "c1"), step("c", "c3", "c2")] }, [], new Map([["c3", { id: "c1", did: "sent" as const }], ["c2", { id: "c3", did: "sent" as const }]]));
     expect(ids(layout)).toEqual(["c1", "c3", "c2"]);
+  });
+
+  it("lists every drop zone once: each connector, a branch's end, and Start a new sequence; Move to… offers the ones that would change something", () => {
+    const branched = { ...step("c", "c3", "c1"), after: { campaignId: "c1", did: "clicked" as const } };
+    const layout = flowLayout({ flow: [step("a", "c1", null), step("b", "c2", "c1"), branched, step("d", "c4", null)] });
+    const zones = flowZones(layout).map((z) => `${z.from?.campaign.id ?? "start"}→${z.to?.campaign.id ?? "end"}`);
+    expect(zones).toEqual(["c1→c2", "c1→c3", "c1→end", "c2→end", "c3→end", "c4→end", "start→end"]);
+    const places = movePlaces(layout, "c4", () => true, (id) => id.toUpperCase()).map((p) => p.words);
+    expect(places).toEqual([
+      "After “C1”, to those who got it, then “C2”",
+      "After “C1”, to those who clicked it, then “C3”",
+      "After “C1”, to those who got it",
+      "After “C2”, to those who got it",
+      "After “C3”, to those who got it",
+      "After “C4”, to those who got it",
+      "Start a new sequence with it",
+    ]);
   });
 
   it("gives Move earlier and Move later the same input as the drop zones they match", () => {

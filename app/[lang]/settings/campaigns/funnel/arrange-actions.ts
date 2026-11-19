@@ -13,6 +13,7 @@ import { CampaignDraftSchema } from "@/lib/email-campaigns/rules";
 import { PLAYBOOK_STARTERS, starterDraft, starterWants } from "@/lib/email-campaigns/starters";
 import { createCampaign, listCampaigns, pointDraftAt } from "@/lib/email-campaigns/store";
 import { findWanted, matchable, type MatchableSegment } from "@/lib/email-campaigns/wanted-segment";
+import { playbookCampaignsOf, readFunnel } from "@/lib/email-funnel/model";
 import { MOVE_DIDS, planMove, type FunnelMove } from "@/lib/email-funnel/move";
 import { actingProfile, getWorkingAs } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -149,7 +150,9 @@ export async function moveFunnelEmail(input: FunnelMove): Promise<MoveAnswer> {
  * Starter (`starterDraft`), pointed at the Playbook's Segment (found by its
  * filters, or created), saved as a draft. Plans no Wave. Only an approved
  * Playbook (`PLAYBOOK_STARTERS`): one whose words wait for the owner is not
- * offered (decision 7).
+ * offered (decision 7). Refused when a live campaign already is that Playbook
+ * (`playbookCampaignsOf`, the funnel's own rule), so a second click makes no
+ * second draft.
  */
 export async function addPlaybookDraft(starterId: string): Promise<{ ok: true; id: string } | Failure> {
   const ctx = await assertAdmin("campaigns");
@@ -158,7 +161,15 @@ export async function addPlaybookDraft(starterId: string): Promise<{ ok: true; i
   if (!starter || !wanted) return { ok: false, error: "That Playbook is not offered: its words wait for the owner." };
   const actor = { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId };
   try {
-    const live = matchable(await listSegments());
+    const [segments, campaigns] = await Promise.all([listSegments(), listCampaigns(supabaseAdmin())]);
+    // Once is enough: a live campaign that already is this Playbook, by the funnel's own rule, is refused.
+    const reading = readFunnel({
+      segments: segments.map((s) => ({ id: s.id, name: s.name, count: s.count, needsReview: s.needsReview, params: s.params })),
+      campaigns: campaigns.map(({ campaign, stats }) => ({ campaign, stats })),
+    });
+    const already = playbookCampaignsOf(reading, starter.id)[0];
+    if (already) return { ok: false, error: `“${already.campaign.name}” is already this Playbook in the flow. Open it to change it.` };
+    const live = matchable(segments);
     let segmentId = findWanted(wanted, live)?.id ?? null;
     if (!segmentId) {
       if (!hasPermission(ctx, "customers-edit")) {

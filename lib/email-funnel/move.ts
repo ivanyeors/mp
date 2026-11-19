@@ -25,7 +25,7 @@ import { stageFilterParam, type CampaignFilterState } from "@/lib/crm/customer-f
 import { filtersKey } from "@/lib/crm/filters-key";
 import { LIFECYCLE_STAGE_LABEL, type LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import { SEGMENT_NAME_MAX } from "@/lib/crm/segment-rules";
-import { isUnplaced, moveLock, readFunnel, type FunnelCampaignFact, type FunnelFacts } from "./model";
+import { isUnplaced, moveLock, readFunnel, stageFollowOf, stagesNamedBy, type FunnelCampaignFact, type FunnelFacts } from "./model";
 
 /** What a follow-up's people did with the email before: *Didn't get it* is not a follow-up. */
 export type MoveDid = Exclude<CampaignFilterState, "not-sent">;
@@ -110,7 +110,7 @@ export function planArrangement(nodes: readonly ArrangeNode[], move: Pick<Funnel
   const conditionOnly = !c && d.inStage && target !== null && d.parent?.id === target.id;
 
   // The gap D leaves: its draft follow-ups follow what D followed; its started ones, and all under them, stay under D.
-  const children = nodes.filter((n) => n.parent?.id === d.id && n.id !== d.id);
+  const children = nodes.filter((n) => n.inStage && n.parent?.id === d.id && n.id !== d.id);
   const repointed = d.inStage && !conditionOnly ? children.filter((n) => !n.lock) : [];
   const staysUnder = new Set<string>();
   const stack = children.filter((n) => !repointed.includes(n)).map((n) => n.id);
@@ -167,7 +167,8 @@ const named = (prefix: string, quoted: string, suffix = "") =>
 /** Pure — the arrangement as the model reads the facts, for `stage`. */
 export function arrangeNodes(reading: ReturnType<typeof readFunnel>, stage: LifecycleStage): ArrangeNode[] {
   return reading.campaigns.map((c) => {
-    const f = reading.followOf(c);
+    // The page's own reading of the stage (`stageFollowOf`): a parent counts only in this stage's flow.
+    const f = stageFollowOf(reading, c, stage);
     return {
       id: c.campaign.id,
       name: c.campaign.name,
@@ -191,7 +192,6 @@ export function planMove(facts: Pick<FunnelFacts, "segments" | "campaigns">, mov
   const planned = planArrangement(arrangeNodes(reading, move.stage), move);
   if (!planned.ok) return planned;
 
-  const label = LIFECYCLE_STAGE_LABEL[move.stage];
   const nameOf = (id: string) => reading.byId.get(id)?.campaign.name ?? "";
   const taken = (key: string | null) => new Set(reading.segments.filter((s) => s.key !== key).map((s) => s.fact.name.toLowerCase()));
   const made = new Set<string>();
@@ -204,6 +204,9 @@ export function planMove(facts: Pick<FunnelFacts, "segments" | "campaigns">, mov
     if (ch.campaign) filters.campaign = `${ch.campaign.id.toLowerCase()}:${ch.campaign.did}`;
     else if (filters.stage === undefined) filters.stage = stageFilterParam(move.stage);
 
+    // Named after the stage its filters name (a follow-up's whose filters name none: this stage's).
+    const named0 = stagesNamedBy(filters.stage);
+    const label = LIFECYCLE_STAGE_LABEL[named0.length && !named0.includes(move.stage) ? named0[0] : move.stage];
     const onlyStage = Object.keys(filters).length === 1 && filters.stage !== undefined;
     // *Lead · got “Welcome”*; a start with only the stage is the stage's own Segment, *Lead*.
     const make = (suffix = "") =>
@@ -244,7 +247,7 @@ export function slotBefore(
   const reading = readFunnel(facts);
   const c = reading.byId.get(raw.toLowerCase());
   const p = reading.byId.get(after.id);
-  if (!c || !p || moveLock(reading, c) !== null || reading.followOf(c)?.parent.campaign.id !== p.campaign.id) return null;
-  const stage = [...reading.stagesOf(c)].find((s) => s !== "lost" && reading.stagesOf(p).has(s));
+  if (!c || !p || moveLock(reading, c) !== null) return null;
+  const stage = [...reading.stagesOf(c)].find((s) => s !== "lost" && stageFollowOf(reading, c, s)?.parent.campaign.id === p.campaign.id);
   return stage ? { before: { id: c.campaign.id, name: c.campaign.name }, after: { campaignId: p.campaign.id, did: after.state }, stage } : null;
 }

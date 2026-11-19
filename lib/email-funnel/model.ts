@@ -45,6 +45,7 @@ import type { CampaignStats } from "@/lib/email-campaigns/store";
 import {
   campaignPath,
   FUNNEL_PATHS,
+  FUNNEL_PROGRAMME as FUNNEL_PROGRAMME_STEPS,
   FUNNEL_STAGES,
   funnelProgramme,
   newFromStarterPath,
@@ -515,6 +516,38 @@ export function readFunnel(facts: Pick<FunnelFacts, "segments" | "campaigns"> & 
 }
 
 /**
+ * Pure — the email `c` follows in `stage`'s flow, as the page draws it and a
+ * move plans it (slice 07): only for a campaign in `stage` that is not a
+ * Playbook (a Playbook's campaign starts its own sequence), and only when the
+ * campaign it reads is in `stage` too. Otherwise null: it starts a sequence
+ * there, or is not in that flow at all.
+ */
+export function stageFollowOf(
+  r: FunnelReading,
+  c: FunnelCampaignFact,
+  stage: LifecycleStage,
+): { parent: FunnelCampaignFact; did: CampaignFilterState } | null {
+  if (!r.stagesOf(c).has(stage) || r.playbookIds.has(c.campaign.id)) return null;
+  const f = r.followOf(c);
+  return f && r.stagesOf(f.parent).has(stage) ? f : null;
+}
+
+/** Pure — the main stages a `stage` filter's value names (`at-risk:lapsed` names At risk); none when it does not parse. */
+export function stagesNamedBy(param: string | undefined): LifecycleStage[] {
+  if (param === undefined) return [];
+  const parsed = customerFiltersSchema.shape.stage.safeParse(param);
+  const values = parsed.success && parsed.data ? parsed.data : [];
+  return FUNNEL_STAGES.filter((s) => namesStage(values, s));
+}
+
+/** Pure — the live campaigns that are the Playbook `starterId` (its Segment's filters, its name or subject), in any stage. */
+export function playbookCampaignsOf(r: FunnelReading, starterId: string): FunnelCampaignFact[] {
+  const step = FUNNEL_PROGRAMME_STEPS.find((p) => p.kind === "playbook" && p.starterId === starterId);
+  if (!step) return [];
+  return [...new Set(step.stages.flatMap((st) => r.playbookCampaigns(st).get(step.id) ?? []))];
+}
+
+/**
  * Pure — why a live campaign stays where it is, in words, or null when it can
  * be moved (PRD-email-funnel slice 07): only a draft moves; a Playbook's draft
  * keeps the Segment that makes it the Playbook; a Segment that needs review or
@@ -548,7 +581,7 @@ export function isUnplaced(r: FunnelReading, c: FunnelCampaignFact): boolean {
 export function buildFunnel(facts: FunnelFacts): FunnelView {
   const programme = funnelProgramme({ checkupMonths: facts.switches.checkupMonths, reviewRequestDays: facts.switches.reviewRequestDays });
   const reading = readFunnel(facts);
-  const { campaigns, segments, segmentOf, followOf, stagesOf } = reading;
+  const { campaigns, segments, segmentOf, stagesOf } = reading;
   const ref = (c: FunnelCampaignFact): CampaignRef => ({ id: c.campaign.id, name: c.campaign.name });
   const flowCampaign = (c: FunnelCampaignFact): FlowCampaign => ({ ...plainFlowCampaign(c), lock: moveLock(reading, c) });
 
@@ -567,7 +600,6 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
 
     const playbookCampaigns = reading.playbookCampaigns(stage);
     const claimed = new Set([...playbookCampaigns.values()].flat().map((c) => c.campaign.id));
-    const stageCampaignIds = new Set(inStage.map((c) => c.campaign.id));
 
     const flow: FlowStep[] =
       stage === "lost"
@@ -579,8 +611,8 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
               .map((c): FlowStep => {
                 const seg = segmentOf(c)!;
                 const keeps = c.campaign.keepSending?.on === true;
-                const f = followOf(c);
-                const after = f && stageCampaignIds.has(f.parent.campaign.id) ? { campaignId: f.parent.campaign.id, did: f.did } : null;
+                const f = stageFollowOf(reading, c, stage);
+                const after = f ? { campaignId: f.parent.campaign.id, did: f.did } : null;
                 const fc = flowCampaign(c);
                 return {
                   key: `campaign:${c.campaign.id}`,
