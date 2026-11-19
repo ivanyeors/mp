@@ -56,6 +56,12 @@ export interface ArrangeNode {
   inStage: boolean;
   /** A draft in no stage yet (`isUnplaced`). */
   unplaced: boolean;
+  /**
+   * The campaign its Segment reads (got, clicked or didn't click it), in any stage; null for none. Left out,
+   * `parent` stands for it. It never draws or re-points anything: it only refuses a move that would make
+   * two emails wait for each other through emails outside the stage's flow.
+   */
+  reads?: string | null;
 }
 
 /** One campaign's new *Campaign* filter: the email it follows and the condition, or null to start a sequence. */
@@ -70,6 +76,10 @@ export type Arrangement = { ok: true; changes: ArrangeChange[] } | Refusal;
 const refuse = (error: string): Refusal => ({ ok: false, error });
 const quote = (n: { name: string }) => `“${n.name}”`;
 const isDid = (v: unknown): v is MoveDid => MOVE_DIDS.includes(v as MoveDid);
+
+/** The words refusing a move that would make two emails wait for each other: `x` would follow `y`, which already comes after `x`. */
+const waitsWords = (x: { name: string }, y: { name: string }) =>
+  `${quote(x)} cannot follow ${quote(y)}: ${quote(y)} already comes after ${quote(x)}, through emails outside this stage's flow, so each would wait for the other and neither would ever send. Change who ${quote(y)} goes to first.`;
 
 /**
  * Pure — the changes `move` makes to `nodes`, in an order where no step leaves
@@ -112,16 +122,26 @@ export function planArrangement(nodes: readonly ArrangeNode[], move: Pick<Funnel
   // The gap D leaves: its draft follow-ups follow what D followed; its started ones, and all under them, stay under D.
   const children = nodes.filter((n) => n.inStage && n.parent?.id === d.id && n.id !== d.id);
   const repointed = d.inStage && !conditionOnly ? children.filter((n) => !n.lock) : [];
-  const staysUnder = new Set<string>();
-  const stack = children.filter((n) => !repointed.includes(n)).map((n) => n.id);
-  while (stack.length) {
-    const id = stack.pop()!;
-    if (staysUnder.has(id)) continue;
-    staysUnder.add(id);
-    for (const n of nodes) if (n.parent?.id === id) stack.push(n.id);
-  }
+  const repointedIds = new Set(repointed.map((n) => n.id));
+  // Everything under D that stays under it: as drawn (`parent`), and as the Segments read whatever the stage (`reads`).
+  const readOf = (n: ArrangeNode) => (n.reads !== undefined ? n.reads : (n.parent?.id ?? null));
+  const under = (first: (n: ArrangeNode) => boolean, next: (n: ArrangeNode) => string | null) => {
+    const out = new Set<string>();
+    const stack = nodes.filter((n) => n.id !== d.id && first(n) && !repointedIds.has(n.id)).map((n) => n.id);
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (out.has(id) || id === d.id) continue;
+      out.add(id);
+      for (const n of nodes) if (next(n) === id) stack.push(n.id);
+    }
+    return out;
+  };
+  const staysUnder = under((n) => n.inStage && n.parent?.id === d.id, (n) => n.parent?.id ?? null);
   if (p && staysUnder.has(p.id)) {
     return refuse(`${quote(d)} cannot follow ${quote(p)}: ${quote(p)} comes after it and has started, so it stays under ${quote(d)}.`);
+  }
+  if (p && under((n) => readOf(n) === d.id, readOf).has(p.id)) {
+    return refuse(waitsWords(d, p));
   }
 
   const changes: ArrangeChange[] = [
@@ -134,13 +154,18 @@ export function planArrangement(nodes: readonly ArrangeNode[], move: Pick<Funnel
     ...(c ? [{ campaignId: c.id, campaign: { id: d.id, did: "sent" as const } }] : []),
   ];
 
-  // Each step is checked: following the parents from any changed email must never come back to it.
-  const parent = new Map(nodes.map((n) => [n.id, n.parent?.id ?? null]));
+  // Each step is checked, on what every Segment reads whatever the stage: no changed email may come back to itself.
+  const reads = new Map(nodes.map((n) => [n.id, readOf(n)]));
+  const byId2 = new Map(nodes.map((n) => [n.id, n]));
   for (const ch of changes) {
-    parent.set(ch.campaignId, ch.campaign?.id ?? null);
+    reads.set(ch.campaignId, ch.campaign?.id ?? null);
     const seen = new Set<string>();
-    for (let at: string | null = ch.campaignId; at; at = parent.get(at) ?? null) {
-      if (seen.has(at)) return refuse(`That would make ${quote(d)} follow itself.`);
+    for (let at = reads.get(ch.campaignId) ?? null; at && !seen.has(at); at = reads.get(at) ?? null) {
+      if (at === ch.campaignId) {
+        const x = byId2.get(ch.campaignId)!;
+        const y = byId2.get(ch.campaign!.id);
+        return refuse(y ? waitsWords(x, y) : `That would make ${quote(d)} follow itself.`);
+      }
       seen.add(at);
     }
   }
@@ -164,6 +189,13 @@ const DID_VERB: Record<MoveDid, string> = { sent: "got", clicked: "clicked", "no
 const named = (prefix: string, quoted: string, suffix = "") =>
   `${prefix}“${quoted.slice(0, Math.max(1, SEGMENT_NAME_MAX - prefix.length - suffix.length - 2)).trimEnd()}”${suffix}`;
 
+/** Pure — the live campaign `c`'s Segment reads (got, clicked or didn't click it), whatever the stage; null for none. */
+function readsOf(reading: ReturnType<typeof readFunnel>, c: FunnelCampaignFact): string | null {
+  const read = reading.segmentOf(c)?.campaign;
+  if (!read || !isDid(read.state) || read.id === c.campaign.id) return null;
+  return reading.byId.has(read.id) ? read.id : null;
+}
+
 /** Pure — the arrangement as the model reads the facts, for `stage`. */
 export function arrangeNodes(reading: ReturnType<typeof readFunnel>, stage: LifecycleStage): ArrangeNode[] {
   return reading.campaigns.map((c) => {
@@ -176,6 +208,7 @@ export function arrangeNodes(reading: ReturnType<typeof readFunnel>, stage: Life
       lock: moveLock(reading, c),
       inStage: reading.stagesOf(c).has(stage),
       unplaced: isUnplaced(reading, c),
+      reads: readsOf(reading, c),
     };
   });
 }

@@ -274,6 +274,55 @@ describe("planMove reads a stage as the page draws it (review of slice 07)", () 
   });
 });
 
+describe("planMove never writes emails that wait for each other (confirming review of slice 07)", () => {
+  it("1: refuses A after B when B's Segment still reads A, though A has left the stage", () => {
+    // B was dragged after A; then A's Audience became everyone subscribed: A is outside the funnel, B starts a sequence in Lead.
+    const f = facts(
+      [seg(1, "Lead", { stage: "lead" }), seg(2, "Lead · got “A”", { stage: "lead", campaign: `${id(10)}:sent` })],
+      [camp(10, "A", null), camp(11, "B", 2)],
+    );
+    const lead = buildAfter(f, []).stages.find((s) => s.stage === "lead")!.flow;
+    expect(lead.find((s) => s.key === `campaign:${id(11)}`)!.after).toBeNull();
+    const p = planMove(f, move(10, [11, "sent"]));
+    expect(p).toEqual({
+      ok: false,
+      error:
+        "“A” cannot follow “B”: “B” already comes after “A”, through emails outside this stage's flow, so each would wait for the other and neither would ever send. Change who “B” goes to first.",
+    });
+  });
+
+  it("2: refuses D after E when E reads C, an At risk email that reads D", () => {
+    const f = facts(
+      [
+        seg(1, "Lead", { stage: "lead" }),
+        seg(2, "At risk · got D", { stage: "at-risk", campaign: `${id(10)}:sent` }),
+        seg(3, "Lead · got C", { stage: "lead", campaign: `${id(11)}:sent` }),
+      ],
+      [camp(10, "D", 1), camp(11, "C", 2), camp(12, "E", 3)],
+    );
+    const p = planMove(f, move(10, [12, "sent"]));
+    expect(p.ok).toBe(false);
+    expect(!p.ok && p.error).toMatch(/^“D” cannot follow “E”: “E” already comes after “D”, through emails outside this stage's flow/);
+    // Moving E elsewhere in Lead is still fine.
+    expect(planMove(f, move(12, [10, "clicked"])).ok).toBe(true);
+  });
+
+  it("refuses a chain that leaves the stage and comes back to a started email under the moved one", () => {
+    const f = facts(
+      [
+        seg(1, "Lead", { stage: "lead" }),
+        seg(2, "At risk · got D", { stage: "at-risk", campaign: `${id(10)}:sent` }),
+        seg(3, "Lead · got C", { stage: "lead", campaign: `${id(11)}:sent` }),
+      ],
+      [camp(10, "D", 1), camp(11, "C", 2, true), camp(12, "S", 3, true), camp(13, "P", 1)],
+    );
+    // In Lead, S (started) starts its own sequence; through C it reads D.
+    const p = planMove(f, move(10, [12, "sent"]));
+    expect(p.ok).toBe(false);
+    expect(planMove(f, move(10, [13, "sent"])).ok).toBe(true);
+  });
+});
+
 describe("what the page is told about moving", () => {
   it("names why each campaign stays, and lists the drafts in no stage without their filters", () => {
     const f = facts(
