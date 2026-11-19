@@ -222,6 +222,58 @@ describe("planMove", () => {
   });
 });
 
+describe("planMove reads a stage as the page draws it (review of slice 07)", () => {
+  it("A: leaves alone a draft of another stage that reads the moved draft", () => {
+    const f = facts(
+      [seg(1, "Lead", { stage: "lead" }), seg(2, "At risk · got D", { stage: "at-risk", campaign: `${id(10)}:sent` })],
+      [camp(10, "D", 1), camp(11, "P", 1), camp(12, "N", 2)],
+    );
+    const changes = ok(planMove(f, move(10, [11, "sent"])));
+    expect(changes.map((c) => [c.campaignId, c.campaign])).toEqual([[id(10), { id: id(11), did: "sent" }]]);
+  });
+
+  it("B: a draft whose parent is in another stage starts its sequence here, and its follow-up starts the stage when it moves", () => {
+    const f = facts(
+      [
+        seg(1, "Lead", { stage: "lead" }),
+        seg(2, "At risk", { stage: "at-risk" }),
+        seg(3, "Lead · got Q", { stage: "lead", campaign: `${id(20)}:sent` }),
+        seg(4, "got D", { campaign: `${id(10)}:sent` }),
+      ],
+      [camp(20, "Q", 2), camp(10, "D", 3), camp(11, "P", 1), camp(12, "N", 4)],
+    );
+    // The page draws D as a sequence's first in Lead, N under it.
+    const lead = buildAfter(f, []).stages.find((s) => s.stage === "lead")!.flow;
+    expect(lead.find((s) => s.key === `campaign:${id(10)}`)!.after).toBeNull();
+    expect(lead.find((s) => s.key === `campaign:${id(12)}`)!.after).toEqual({ campaignId: id(10), did: "sent" });
+
+    const changes = ok(planMove(f, move(10, [11, "sent"])));
+    expect(changes.map((c) => [c.campaignId, c.campaign])).toEqual([
+      [id(12), null],
+      [id(10), { id: id(11), did: "sent" }],
+    ]);
+    expect(byCampaign(changes)[id(12)].filters).toEqual({ stage: "lead" });
+    expect(byCampaign(changes)[id(10)].filters).toEqual({ stage: "lead", campaign: `${id(11)}:sent` });
+  });
+
+  it("B: Move earlier on the follow-up of such a draft puts it in front of the sequence's first, as the page offers", () => {
+    const f = facts(
+      [
+        seg(1, "Lead", { stage: "lead" }),
+        seg(2, "At risk", { stage: "at-risk" }),
+        seg(3, "Lead · got Q", { stage: "lead", campaign: `${id(20)}:sent` }),
+        seg(4, "got D", { campaign: `${id(10)}:sent` }),
+      ],
+      [camp(20, "Q", 2), camp(10, "D", 3), camp(12, "N", 4)],
+    );
+    const changes = ok(planMove(f, move(12, null, 10)));
+    expect(changes.map((c) => [c.campaignId, c.campaign])).toEqual([
+      [id(12), null],
+      [id(10), { id: id(12), did: "sent" }],
+    ]);
+  });
+});
+
 describe("what the page is told about moving", () => {
   it("names why each campaign stays, and lists the drafts in no stage without their filters", () => {
     const f = facts(
