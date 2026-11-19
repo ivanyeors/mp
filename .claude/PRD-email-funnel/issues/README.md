@@ -15,6 +15,7 @@ A breakdown of the PRD (`../email-funnel-prd.md`). Each slice is a thin, demoabl
 | [03](03-funnel-page.md) | The Funnel page: stage strip, Segments, Email flow, Results | AFK | **built** (2026-11-18) | 02 |
 | [04](04-set-up-a-step.md) | Set up a step: New campaign from a Playbook, with its Segment | AFK | **built** (2026-11-18) | 02 |
 | [06](06-create-from-the-funnel.md) | Create from the funnel: add an email to a stage, add a follow-up | AFK | **built** (2026-11-18) | 04 |
+| [07](07-arrange-the-flow.md) | Arrange the flow: drag to reorder drafts, slot one in, add a Playbook as a draft | AFK | in progress | 03, 06 |
 | [05](05-signoff.md) | Sign-off: the owner approves the Lead Playbook's words and walks the page | HITL | not started | 03, 04, 06 |
 
 ```mermaid
@@ -26,6 +27,8 @@ graph TD
   s03 --> s05[05 Sign-off · HITL]
   s04 --> s05
   s06 --> s05
+  s03 --> s07[07 Arrange the flow]
+  s06 --> s07
 ```
 
 03, 04 and 06 share no files. Their contract is three addresses on New campaign:

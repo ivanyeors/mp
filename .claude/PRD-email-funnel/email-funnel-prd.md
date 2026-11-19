@@ -180,8 +180,8 @@ and every email in it is made in the campaign editor, opened from here.
 4. **Order within a stage comes from Segments and the Rest period.** A follow-up is a campaign
    whose Segment reads the first (*got it*, *clicked it* or *got it, didn't click*), which the
    Customers filters already offer. One whose Segment names no stage sits under the campaign it
-   reads, in that campaign's stages. *Didn't get it* is not a follow-up. The page draws that; it
-   does not edit it.
+   reads, in that campaign's stages. *Didn't get it* is not a follow-up. The page draws that, and
+   (decision 10) re-points a draft's Segment when it is dragged.
 5. **Results use the campaign Results tab's rules**: rates over people sent, a dash when nobody
    was, no opens, *Bought within 30 days* never called conversions, the still-counting note.
 6. **Numbers are since each email started.** `email_campaign_stage_results` has no dates. A
@@ -197,6 +197,13 @@ and every email in it is made in the campaign editor, opened from here.
    editor; the funnel opens it with the right Segment. Thumbnails and previews are the real
    renderer's output with sample details, never a mock-up, so they cannot drift from what is
    sent.
+10. **The flow is arranged by dragging, and arranging stores no position** (owner, 2026-11-19).
+   B is sent after A when B's Segment reads A, so moving a draft changes only the *Campaign*
+   filter of its Segment: the campaign is pointed at the Segment with those filters, found or
+   created. Only a draft moves; a started campaign keeps its Audience, and a Playbook's draft
+   keeps the Segment that makes it the Playbook. A new email can be slotted between two, and an
+   approved Playbook can be added as a draft in one click. None of it plans a Wave: the owner
+   asked that nothing be sent, drafts only.
 
 ## Hazards
 

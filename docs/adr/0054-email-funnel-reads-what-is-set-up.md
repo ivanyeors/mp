@@ -46,6 +46,11 @@ emailed, and a third cron.
   reads. It changes no rule: ADR 0039, ADR 0028 (f) and (h), and ADR 0050 stand.
 - **(7) A Playbook's words are the owner's to approve** before it is offered
   (`APPROVED_PLAYBOOKS`). The funnel shows an unapproved one as waiting, and it cannot be started.
+- **(8) Arranging the flow writes Segments, never a position** (owner, 2026-11-19). Dragging a
+  draft after another email points it at the Segment that reads that email
+  (`campaign=<id>:sent`), found by its filters or created; its other filters stay. Only a draft
+  moves: a started campaign keeps its Audience, and a Playbook's draft keeps its Segment. (2)
+  still holds: the page keeps no order of its own, and it sends nothing.
 
 ## Considered and rejected
 
@@ -54,6 +59,8 @@ emailed, and a third cron.
 - **A `funnel_step` column on `email_campaigns`.** Rejected: it would have to be kept true by
   hand, and a campaign Staff wrote for a stage would be missing from the page. The Segment already
   says who the campaign is for.
+- **A stored position for drag and drop.** Rejected: a number beside the Segment could say
+  *second* while the Segment sent it first. The Segment is the order, so the drag edits it.
 - **Stages before Lead (Visitor, Engaged) on the page.** Rejected: nothing can be emailed without
   an address, and those are counted per **Visit**, not per person (ADR 0007).
 - **A period picker.** Deferred: the results view has no dates. Numbers are since each email
