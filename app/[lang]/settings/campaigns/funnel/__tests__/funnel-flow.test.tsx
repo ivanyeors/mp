@@ -144,6 +144,42 @@ describe("arranging the flow", () => {
   });
 });
 
+describe("Add as a draft", () => {
+  it("stays disabled after it saved until the page's next read arrives, so a second click makes no second draft", async () => {
+    arrange.addPlaybookDraft.mockResolvedValue({ ok: true, id: id(99) });
+    await show(buildFunnel(facts), "at_risk");
+    const addButton = () => [...host.querySelector('[data-card="starter:playbook_welcome_back"]')!.querySelectorAll("button")].find((b) => /Add as a draft|Adding/.test(b.textContent ?? ""))!;
+    expect(addButton()).toBeTruthy();
+    await click(addButton());
+    await settle(20);
+    expect(arrange.addPlaybookDraft).toHaveBeenCalledTimes(1);
+    expect(router.refresh).toHaveBeenCalled();
+    expect(addButton().disabled).toBe(true);
+    await click(addButton());
+    expect(arrange.addPlaybookDraft).toHaveBeenCalledTimes(1);
+    // The page read again: the row is whatever the new view says (here still a suggestion), and usable.
+    await act(async () => {
+      root!.render(
+        <>
+          <FunnelClient view={buildFunnel(facts)} initialStage="at_risk" locale="en-US" permissions={OWNER} />
+          <Toaster />
+        </>,
+      );
+    });
+    expect(addButton().disabled).toBe(false);
+  });
+
+  it("is usable again when the action refuses", async () => {
+    arrange.addPlaybookDraft.mockResolvedValue({ ok: false, error: "Already this Playbook." });
+    await show(buildFunnel(facts), "at_risk");
+    const addButton = () => [...host.querySelector('[data-card="starter:playbook_welcome_back"]')!.querySelectorAll("button")].find((b) => /Add as a draft|Adding/.test(b.textContent ?? ""))!;
+    await click(addButton());
+    await settle(20);
+    expect(addButton().disabled).toBe(false);
+    expect(document.body.textContent).toContain("Already this Playbook.");
+  });
+});
+
 describe("previews", () => {
   it("each chevron hides and shows its own preview and flips aria-expanded; Hide previews hides them all, remembered", async () => {
     await show(buildFunnel(facts));

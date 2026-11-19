@@ -973,7 +973,10 @@ function CampaignRow({ node, a }: { node: FlowNode; a: Arrange }) {
 /** A Playbook not started: a dashed *Suggested* row with *Add as a draft*, or, while its words wait for the owner, a muted one with no action. */
 export function SuggestedRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
     const router = useRouter();
+    // Disabled while the action runs and, once it saved, until the page's next read arrives (the row is then the draft).
     const [adding, setAdding] = useState(false);
+    const [addedOn, setAddedOn] = useState<FunnelView | null>(null);
+    const busy = adding || addedOn === ctx.view;
     const waiting = step.state.state === "words_waiting";
     const key = step.starterId ? starterKey(step.starterId) : `step:${step.key}`;
     const start = !waiting && step.setUpHref && ctx.canOpen(step.setUpHref) ? ctx.to(step.setUpHref) : null;
@@ -996,6 +999,7 @@ export function SuggestedRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
         try {
             const res = await addPlaybookDraft(step.starterId);
             if (res.ok) {
+                setAddedOn(ctx.view);
                 toast(`“${step.name}” is in the flow as a draft. Nothing was sent.`);
                 router.refresh();
             } else toast.error(res.error);
@@ -1038,9 +1042,9 @@ export function SuggestedRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
                 <p className="text-xs text-muted-foreground">Words waiting for the owner: it can be started once they are approved.</p>
             ) : start ? (
                 <>
-                    <Button type="button" size="sm" onClick={addDraft} disabled={adding}>
+                    <Button type="button" size="sm" onClick={addDraft} disabled={busy}>
                         <Plus className="mr-1 size-3.5" aria-hidden />
-                        {adding ? "Adding…" : "Add as a draft"}
+                        {busy ? "Adding…" : "Add as a draft"}
                     </Button>
                     <Button asChild size="sm" variant="outline">
                         <Link href={start}>

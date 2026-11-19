@@ -62,9 +62,12 @@ vi.mock("@/lib/email-campaigns/store", () => ({
     h.pointed.push([cid, sid]);
     return true;
   }),
-  createCampaign: vi.fn(async (_admin: unknown, draft: unknown) => {
+  createCampaign: vi.fn(async (_admin: unknown, draft: Record<string, unknown>) => {
     h.newCampaigns.push(draft);
-    return id(900);
+    // Saved, it is live: the next read lists it.
+    const saved = { ...draft, id: id(900 + h.newCampaigns.length - 1), lockedAt: null, archivedAt: null, createdAt: "2026-11-19T00:00:00Z" };
+    h.campaigns.push({ campaign: saved as unknown as Campaign, stats: { handed: 0, firstSentAt: null, lastSentAt: null } });
+    return saved.id;
   }),
 }));
 
@@ -182,6 +185,15 @@ describe("addPlaybookDraft", () => {
     expect(res.ok).toBe(true);
     expect(h.created).toEqual([{ name: "At risk · 12 to 24 months", params: { stage: "at-risk", last_order: "within:24" } }]);
     expect(h.newCampaigns[0]).toMatchObject({ audience: "segment", segmentId: id(500) });
+  });
+
+  it("refuses a second draft of the same Playbook, and creates nothing", async () => {
+    h.segments.push({ id: id(20), name: "At risk · Lapsed", params: { stage: "at-risk:lapsed" }, needsReview: false });
+    expect((await addPlaybookDraft("playbook_welcome_back")).ok).toBe(true);
+    const again = await addPlaybookDraft("playbook_welcome_back");
+    expect(again).toEqual({ ok: false, error: "“Welcome back” is already this Playbook in the flow. Open it to change it." });
+    expect(h.newCampaigns).toHaveLength(1);
+    expect(h.created).toEqual([]);
   });
 
   it("refuses a Playbook whose words wait for the owner, and an unknown one", async () => {
