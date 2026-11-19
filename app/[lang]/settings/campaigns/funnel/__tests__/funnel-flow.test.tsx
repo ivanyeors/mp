@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { choose, click, settle } from "@/components/block-editor/__tests__/dom";
+import { choose, click, settle, until } from "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -148,8 +148,16 @@ describe("arranging the flow", () => {
     const followUps = links.filter((l) => l.textContent?.includes("Add a follow-up")).map((l) => l.getAttribute("href"));
     expect(followUps).toContain(`/en-US/settings/campaigns/new?after=${id(13)}:sent`);
     expect(followUps.every((h) => /^\/en-US\/settings\/campaigns\/new\?after=[0-9a-f-]{36}:sent$/.test(h ?? ""))).toBe(true);
-    await choose(button("Actions for “C”")!, "Preview");
-    const items = [...document.querySelectorAll('[role="menuitem"]')].map((m) => m.textContent);
+    // The menu opened and left open, so its items are read while they are there.
+    await settle();
+    await act(async () => {
+      button("Actions for “C”")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    const items = (await until(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')].map((m) => m.textContent?.trim());
+      return found.length ? found : null;
+    }))!;
+    expect(items).toContain("Preview");
     for (const move of ["Move earlier", "Move later", "Start a new sequence", "Move to…"]) expect(items, move).not.toContain(move);
   });
 
