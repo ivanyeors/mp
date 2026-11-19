@@ -99,6 +99,23 @@ describe("POST /api/mp-config/responses keeps the sleep answers", () => {
     });
   });
 
+  it("keeps who the pillow is for on the configurator's save", async () => {
+    h.maybeSingle.mockResolvedValue({ data: null, error: null });
+    expect((await post({ name: "Robin", pillowFor: "other" })).status).toBe(200);
+    expect(writtenData()).toMatchObject({ name: "Robin", pillowFor: "other" });
+  });
+
+  it("keeps who the pillow is for through a Staff save that does not send it", async () => {
+    h.maybeSingle.mockResolvedValue({ data: { status: "held", data: { name: "Robin", pillowFor: "other" } }, error: null });
+    expect((await post({ name: "Robin Lee" })).status).toBe(200);
+    expect(writtenData()).toMatchObject({ name: "Robin Lee", pillowFor: "other" });
+  });
+
+  it("refuses an answer that is neither", async () => {
+    h.maybeSingle.mockResolvedValue({ data: null, error: null });
+    expect((await post({ name: "Robin", pillowFor: "everyone" })).status).toBe(400);
+  });
+
   it("still clears an answer the configurator sends empty", async () => {
     h.maybeSingle.mockResolvedValue({
       data: { status: null, data: { sleepPositionType: ["side"], usesBolster: "yes" } },

@@ -59,7 +59,7 @@ export function PillowXray({
                 fit={fit}
             />
             {placements.length > 0 && (
-                // Read-only: no placements handed over, so no cut edits. Open on a phone too: the cuts are what it is for.
+                // Read-only: no placements handed over, so no cut edits.
                 <XrayCrossSectionStrip
                     fit={fit}
                     itemSubtypes={itemSubtypes}
@@ -67,7 +67,6 @@ export function PillowXray({
                     itemDims={itemDims}
                     colorOverrides={colorOverrides}
                     softBody={softBody}
-                    defaultOpen
                 />
             )}
         </div>

@@ -219,6 +219,9 @@ const MeasurementSchema = z.object({
   sleepPainAreas: z.array(z.string().max(64)).max(12).optional(),
   sleepPositionType: z.array(z.string().max(64)).max(12).optional(),
   usesBolster: YesNoEmptySchema.optional(),
+  // Asked only of someone signed in who already has a pillow
+  // (lib/customer-pillow/pillow-for.ts); everyone else sends none.
+  pillowFor: z.enum(["self", "other"]).optional(),
 });
 
 const MeasuredBySchema = z.discriminatedUnion("type", [

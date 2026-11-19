@@ -32,6 +32,7 @@ const snapshot = (over: Record<string, unknown> = {}) => ({
 describe("snapshotPillowBuild", () => {
   it("reads a Result pillow line's template and cells", () => {
     expect(snapshotPillowBuild(snapshot())).toEqual({
+      resultId: "res-1",
       templateId: 57,
       templateName: "Type-12",
       placements: [

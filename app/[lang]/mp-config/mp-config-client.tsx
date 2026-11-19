@@ -72,6 +72,8 @@ import {
   X,
   Check,
   Info,
+  Gift,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -84,7 +86,9 @@ import {
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
 import { PairedStepperBar } from "@/components/configurator/paired-stepper";
-import { ReviewCard } from "@/components/configurator/review-card";
+import { ReviewCard, ReviewNote } from "@/components/configurator/review-card";
+import { bolsterPromises, pillowPromises, pointsPromise } from "@/lib/configurator/review-promises";
+import { DEFAULT_READJUSTMENT_POLICY, type ReadjustmentPolicy } from "@/lib/pricing/service-prices";
 import {
   bolsterSleepPosition,
   clearPairedHandoff,
@@ -145,6 +149,7 @@ import {
   variantFromPathname,
   type MpConfigVariant,
 } from "@/lib/mp-config/flow-variant";
+import { PILLOW_FOR_OPTIONS, nameForPillowFor, type PillowFor } from "@/lib/customer-pillow/pillow-for";
 
 const FLOW_UI_LABEL: Record<RuleFlow, string> = {
   "basic-mpillow": "Basic Mpillow",
@@ -348,6 +353,8 @@ interface MeasurementData {
   sleepPainAreas: string[];
   sleepPositionType: string[];
   usesBolster: "yes" | "no" | "";
+  /** Who the pillow is for; only someone who already has one is asked. */
+  pillowFor?: PillowFor;
 }
 
 type SuggestedBomLine = {
@@ -480,7 +487,19 @@ export function MpConfigClient({
   pickMeasurer = null,
   askEmailFirst = false,
   resumeDraft = null,
+  pillowOwner = null,
+  readjustmentPolicy = DEFAULT_READJUSTMENT_POLICY,
+  pointsPerDollar = null,
 }: {
+  /** The free Re-adjustment visits and their window, for the review's promises. */
+  readjustmentPolicy?: ReadjustmentPolicy;
+  /** Points earned per S$1 while this shopper would earn them; null when they would not. */
+  pointsPerDollar?: number | null;
+  /**
+   * The signed-in Customer who already has a pillow: the first question asks
+   * whether this one is for them or for someone else. Null for everyone else.
+   */
+  pillowOwner?: { name: string } | null;
   info: MpConfigInfo;
   /**
    * A guest, on no Staff login: the first question asks their email beside
@@ -592,7 +611,10 @@ export function MpConfigClient({
     resumeFinish || staffEdit
       ? "preview"
       : resumeDraft
-        ? resumeStepFor(variant, resumeDraft.answers)
+        ? // A pillow owner who started signed out has not said who it is for.
+          pillowOwner && !resumeDraft.answers.pillowFor
+          ? "name"
+          : resumeStepFor(variant, resumeDraft.answers)
         : "welcome",
   );
   const [restoringHoldCancel, setRestoringHoldCancel] = useState(false);
@@ -1040,15 +1062,36 @@ export function MpConfigClient({
     setMeasurementData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Someone who already has a pillow says who this one is for; a reopened
+  // Result was answered already, or never asked.
+  const askPillowFor = Boolean(pillowOwner) && !resumeFinish && !staffEdit;
+  const forSomeoneElse = measurementData.pillowFor === "other";
+  const choosePillowFor = (answer: PillowFor) =>
+    setMeasurementData((prev) => ({
+      ...prev,
+      pillowFor: answer,
+      name: nameForPillowFor(answer, prev.name, pillowOwner?.name ?? ""),
+    }));
+
   const nameFields = useMemo((): FieldCheck[] => [
+    ...(askPillowFor
+      ? [
+          {
+            key: "pillowFor",
+            touched: Boolean(measurementData.pillowFor),
+            valid: Boolean(measurementData.pillowFor),
+            message: "Choose who this pillow is for",
+          },
+        ]
+      : []),
     {
       key: "name",
       touched: isNonEmptyString(measurementData.name),
       valid: isNonEmptyString(measurementData.name),
-      message: "Enter your name",
+      message: forSomeoneElse ? "Enter their name" : "Enter your name",
     },
     ...(emailFirst ? [firstQuestionEmailCheck(holdEmail)] : []),
-  ], [measurementData.name, emailFirst, holdEmail]);
+  ], [askPillowFor, measurementData.pillowFor, forSomeoneElse, measurementData.name, emailFirst, holdEmail]);
 
   const ageFields = useMemo((): FieldCheck[] => [
     {
@@ -3220,6 +3263,17 @@ export function MpConfigClient({
     const shippingMethod = selectedShippingOption?.method;
     const collect = shippingMethod?.collect_location ?? null;
     const editDetails = { label: "Edit", onClick: () => setPairedPhase("details") };
+    // What comes with each part, between the cards (lib/configurator/review-promises).
+    const promiseTerms = servicePrices
+      ? { readjustmentFee: servicePrices.readjustment.msrp, policy: readjustmentPolicy }
+      : null;
+    // Points are earned on products and services after any discount, before shipping and GST.
+    const earns = pointsPromise(
+      pillowTotal == null || (pairedBolster && pairedBolster.ballpark == null)
+        ? null
+        : pillowTotal - codeDiscount + (pairedBolster?.ballpark ?? 0),
+      pointsPerDollar,
+    );
     const pairedReview = (
       <div className="space-y-3">
         <ReviewCard
@@ -3232,7 +3286,15 @@ export function MpConfigClient({
           amount={pillowTotal != null ? money(pillowTotal) : null}
           actions={[{ label: "Edit", onClick: () => setPairedPhase("customize") }]}
         />
+        {promiseTerms ? (
+          <ReviewNote
+            icon={<ShieldCheck />}
+            title="Comes with your Mpillow"
+            lines={pillowPromises(tier, promiseTerms)}
+          />
+        ) : null}
         {pairedBolster ? (
+          <>
           <ReviewCard
             title={pairedBolster.label}
             detail="Ships with your Mpillow. You can still drop it later, when you accept the finished builds."
@@ -3247,6 +3309,14 @@ export function MpConfigClient({
               { label: "Remove", onClick: handleRemoveMbolster },
             ]}
           />
+          {promiseTerms ? (
+            <ReviewNote
+              icon={<ShieldCheck />}
+              title="Comes with your Mbolster"
+              lines={bolsterPromises(promiseTerms)}
+            />
+          ) : null}
+          </>
         ) : (
           <ReviewCard
             title="Mbolster"
@@ -3287,6 +3357,38 @@ export function MpConfigClient({
           detail={measurementData.name || null}
           lines={[holdEmail, holdPhone, ...(holdNotes.trim() ? [`Notes: ${holdNotes.trim()}`] : [])]}
           actions={[editDetails]}
+        />
+        {earns ? (
+          <ReviewNote
+            icon={<Gift />}
+            // "About": points are earned on the order as it is finally accepted.
+            title={`You'll earn about ${earns.points}, worth ${earns.worth}`}
+            lines={[
+              "Added to your account 30 days after delivery, to spend in our shop.",
+              // The account at a Staff device is not the buyer's; and only a
+              // signed-in Customer is known not to be a partner (ADR 0030 e).
+              shippingSignedIn && !(assisted || staffAssist)
+                ? "You'll see them on your Profile."
+                : `Sign in with ${holdEmail} to see and use them. Partner accounts don't earn points.`,
+            ]}
+          />
+        ) : null}
+        <ReviewNote
+          icon={<ShieldCheck />}
+          title="Our promise"
+          lines={[
+            `You are not charged until you accept the final ${pairedBolster ? "builds" : "build"}.`,
+            "Made to your measurements, so it can't be refunded. If the fit isn't right, we adjust it.",
+          ]}
+          footer={
+            <Link
+              href={to("/shipping-refund-policies")}
+              target="_blank"
+              className="underline underline-offset-4"
+            >
+              Returns &amp; Warranty
+            </Link>
+          }
         />
       </div>
     );
@@ -4211,7 +4313,7 @@ export function MpConfigClient({
 
               <div className="space-y-4">
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     1
                   </div>
                   <div>
@@ -4223,7 +4325,7 @@ export function MpConfigClient({
                 </div>
 
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     2
                   </div>
                   <div>
@@ -4246,7 +4348,7 @@ export function MpConfigClient({
                 </div>
 
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     3
                   </div>
                   <div>
@@ -4258,7 +4360,7 @@ export function MpConfigClient({
                 </div>
 
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     4
                   </div>
                   <div>
@@ -4303,22 +4405,43 @@ export function MpConfigClient({
             <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <User className="h-12 w-12 mx-auto text-primary" />
-                <h2 className="text-3xl font-bold">Tell us about yourself</h2>
-                <p className="text-muted-foreground">Let&apos;s personalize your experience</p>
+                <h2 className="text-3xl font-bold">
+                  {forSomeoneElse ? "Tell us about them" : "Tell us about yourself"}
+                </h2>
+                <p className="text-muted-foreground">
+                  {forSomeoneElse
+                    ? "Answer each question as the person this pillow is for"
+                    : "Let's personalize your experience"}
+                </p>
               </div>
 
               <div className="space-y-4">
+                {askPillowFor ? (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">
+                      You already have an Mpillow. Who is this one for?
+                    </div>
+                    <SingleSelectOptionRows
+                      options={PILLOW_FOR_OPTIONS}
+                      value={measurementData.pillowFor ?? ""}
+                      onChange={(v) => choosePillowFor(v as PillowFor)}
+                      invalid={!!fieldErrors.pillowFor}
+                      error={fieldErrors.pillowFor}
+                    />
+                  </div>
+                ) : null}
                 <div className="space-y-2">
                   <label htmlFor="mp-name" className="text-sm font-medium">
-                    What&apos;s your name?
+                    {forSomeoneElse ? "What's their name?" : "What's your name?"}
                   </label>
                   <Input
                     id="mp-name"
-                    placeholder="Enter your name"
+                    placeholder={forSomeoneElse ? "Enter their name" : "Enter your name"}
                     value={measurementData.name}
                     onChange={(e) => updateMeasurement("name", e.target.value)}
                     className="text-lg h-12"
-                    autoFocus
+                    // With the question above it, the keyboard would cover the choice.
+                    autoFocus={!askPillowFor}
                     aria-invalid={!!fieldErrors.name}
                   />
                   {fieldErrors.name ? (
@@ -4408,9 +4531,13 @@ export function MpConfigClient({
               <div className="text-center space-y-2">
                 <Cake className="h-12 w-12 mx-auto text-primary" />
                 <h2 className="text-3xl font-bold">
-                  {measurementData.name ? `Nice to meet you, ${measurementData.name}` : "A little about you"}
+                  {forSomeoneElse
+                    ? measurementData.name ? `A little about ${measurementData.name}` : "A little about them"
+                    : measurementData.name ? `Nice to meet you, ${measurementData.name}` : "A little about you"}
                 </h2>
-                <p className="text-muted-foreground">How old are you?</p>
+                <p className="text-muted-foreground">
+                  {forSomeoneElse ? "How old are they?" : "How old are you?"}
+                </p>
               </div>
 
               <div className="space-y-4">

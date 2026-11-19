@@ -14,15 +14,12 @@
  *
  * Wide (three fit at a readable size): one row. Narrower: stacked, at the full
  * layout while there is room for it. Phones: stacked under one "Cross-sections"
- * disclosure, closed by default, as the single cut is; a read-only host whose
- * cuts are the point (the Customer's pillow) opens it with `defaultOpen`.
+ * disclosure, open by default as the single cut's is; the person can collapse it.
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
 
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useElementWidth } from "@/hooks/use-element-width";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
@@ -32,7 +29,7 @@ import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import type { PillowFit } from "@/lib/spatial-fillings/fit";
 import type { SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { cn } from "@/lib/utils";
-import { XrayCrossSection, type CutReadoutValue } from "./xray-cross-section";
+import { CrossSectionDisclosure, XrayCrossSection, type CutReadoutValue } from "./xray-cross-section";
 
 /** Three cuts in a row from here (px of the strip): each at ~280 px, where the compact layout's type stays readable. */
 const ROW_MIN_PX = 840;
@@ -60,7 +57,6 @@ export function XrayCrossSectionStrip({
   items,
   colorOverrides = [],
   softBody,
-  defaultOpen = false,
   className,
 }: {
   fit: PillowFit;
@@ -77,8 +73,6 @@ export function XrayCrossSectionStrip({
   items?: FillingItem[];
   colorOverrides?: ColorOverrideRow[];
   softBody?: SoftBodySettings;
-  /** Phones: start with the "Cross-sections" disclosure open. */
-  defaultOpen?: boolean;
   className?: string;
 }) {
   const isMobile = useIsMobile();
@@ -191,13 +185,9 @@ export function XrayCrossSectionStrip({
 
   if (isMobile) {
     return (
-      <Collapsible className={className} defaultOpen={defaultOpen} data-xray-cross-section-disclosure>
-        <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-background/90 px-3 py-2 text-sm font-medium [&[data-state=open]>svg]:rotate-180">
-          Cross-sections
-          <ChevronDown className="size-4 transition-transform" />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-2">{body}</CollapsibleContent>
-      </Collapsible>
+      <CrossSectionDisclosure label="Cross-sections" className={className}>
+        {body}
+      </CrossSectionDisclosure>
     );
   }
   return <div className={className}>{body}</div>;

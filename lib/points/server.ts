@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { POINTS_LEDGER_KINDS, type PointsLedgerKind } from "./kinds";
-import { POINTS_SETTING_KEYS, pointsSettingsFromRows, pointsSettingsToRows, type PointsSettings } from "./settings";
+import { POINTS_SETTING_KEYS, pointsLive, pointsSettingsFromRows, pointsSettingsToRows, type PointsSettings } from "./settings";
 
 export { POINTS_KIND_LABEL, POINTS_LEDGER_KINDS, type PointsLedgerKind } from "./kinds";
 
@@ -275,3 +275,20 @@ export async function grantPastPurchasePoints(
 }
 
 export { POINTS_SETTING_KEYS };
+
+/**
+ * The earn rate a page may promise this shopper before they pay, or null when
+ * the order would earn nothing: points off or not launched, a rate of 0, or a
+ * partner (rule e). `customerId` is null for a guest. Null on a failed read:
+ * a promise is only made when it is known to hold.
+ */
+export async function readEarnRateToPromise(admin: SupabaseClient, customerId: string | null): Promise<number | null> {
+  try {
+    const s = await readPointsSettings(admin);
+    if (!pointsLive(s) || s.earnPerDollar <= 0) return null;
+    if (customerId && (await isPartnerCustomer(admin, customerId))) return null;
+    return s.earnPerDollar;
+  } catch {
+    return null;
+  }
+}

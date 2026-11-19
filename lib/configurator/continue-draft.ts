@@ -13,6 +13,7 @@
  * configurator read the stored answers through it.
  */
 
+import { pillowForOf, type PillowFor } from "@/lib/customer-pillow/pillow-for";
 import { withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { stepOrderFor, type MpConfigStep, type MpConfigVariant } from "@/lib/mp-config/flow-variant";
@@ -36,6 +37,8 @@ export type DraftAnswers = {
   sleepPainAreas: string[];
   sleepPositionType: string[];
   usesBolster: "yes" | "no" | "";
+  /** Who the pillow is for; only someone who already has one is asked. */
+  pillowFor?: PillowFor;
 };
 
 const TEXT_KEYS = [
@@ -79,6 +82,8 @@ export function draftAnswersFrom(stored: unknown): Partial<DraftAnswers> {
     const v = data[key];
     if (Array.isArray(v) && v.every((x) => typeof x === "string")) out[key] = [...v];
   }
+  const pillowFor = pillowForOf(data);
+  if (pillowFor) out.pillowFor = pillowFor;
   return out;
 }
 

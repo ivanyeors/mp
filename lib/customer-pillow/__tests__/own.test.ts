@@ -36,6 +36,9 @@ const cell = (templateId: number, slot: number, itemId: number) => ({
   offset_y_mm: null,
 });
 
+/** A uuid-shaped Result id, as Accept writes. */
+const resultId = (id: string) => `00000000-0000-4000-8000-00000000${id}`;
+
 /** A counted Order here with one Custom Mpillow line, its build frozen on it. */
 function buyHere(id: string, paidAt: string, over: Record<string, unknown> = {}) {
   db.orders.push({ id: `o-${id}`, order_number: `MP-${id}`, customer_id: CUSTOMER });
@@ -54,7 +57,7 @@ function buyHere(id: string, paidAt: string, over: Record<string, unknown> = {})
     quantity: 1,
     returned_quantity: 0,
     customization_snapshot: {
-      result_id: `res-${id}`,
+      result_id: resultId(id),
       product_type: "pillow",
       assigned_size: "M",
       assigned_tier: "premium",
@@ -88,10 +91,37 @@ beforeEach(() => {
     order_items: [],
     orders: [],
     migrated_customers: [],
+    mp_config_responses: [],
   };
 });
 
 describe("a pillow bought here", () => {
+  it("is not theirs when they said it was for someone else: the one before it stays on record", async () => {
+    buyHere("1001", "2026-10-20T04:00:00.000Z");
+    buyHere("1002", "2026-11-10T04:00:00.000Z");
+    db.mp_config_responses.push(
+      { id: resultId("1001"), data: { name: "Jamie", pillowFor: "self" } },
+      { id: resultId("1002"), data: { name: "Robin", pillowFor: "other" } },
+    );
+    const own = await loadOwnPillow(admin(), CUSTOMER, []);
+    expect(own?.orderNumber).toBe("MP-1001");
+  });
+
+  it("a snapshot whose Result id is not a uuid is still theirs, and the read still works", async () => {
+    buyHere("1001", "2026-10-20T04:00:00.000Z", {
+      customization_snapshot: { result_id: "not-a-uuid", product_type: "pillow", filling_placements: [] },
+    });
+    const read = await loadCustomerPillow(admin(), CUSTOMER, []);
+    expect(read.ok && read.pillow.ownership).toBe("bought_here");
+  });
+
+  it("bought only for someone else says nothing about a pillow of their own", async () => {
+    buyHere("1002", "2026-11-10T04:00:00.000Z");
+    db.mp_config_responses.push({ id: resultId("1002"), data: { pillowFor: "other" } });
+    const read = await loadCustomerPillow(admin(), CUSTOMER, []);
+    expect(read.ok && read.pillow).toMatchObject({ source: "none", ownership: null, onProfile: false });
+  });
+
   it("is drawn as its line froze it, by the name it had, for the order it was built for", async () => {
     buyHere("1001", "2026-10-20T04:00:00.000Z");
     const own = await loadOwnPillow(admin(), CUSTOMER, []);
