@@ -109,6 +109,10 @@ follow-up links. Replace it with **one column read top to bottom**, the same on 
 - **A card** is one row: grip, step number, thumbnail (the real render, as now), name and subject,
   state, Segment, its numbers once started, and one **⋯** menu (Open, Preview, Add a follow-up,
   Move earlier, Move later, Start a new sequence). The whole card still opens the preview.
+- **A chevron on each card shows or hides its preview** (owner, 2026-11-19). Hidden, the card is
+  one compact line; shown, the email's real render opens with it. *Show previews / Hide previews*
+  at the top of the flow sets them all; shown by default, the choice kept per browser. A card
+  being dragged is always the compact line.
 - **Between two cards**: the condition and the wait (*7 days or more after · to those who got it*).
   For a draft the condition is a control (*got it / clicked it / didn't click*) that re-points it
   through `moveFunnelEmail`. A **+** sits on every connector: *Add an email here* (item 3) where
