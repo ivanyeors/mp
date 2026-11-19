@@ -72,6 +72,8 @@ import {
   X,
   Check,
   Info,
+  Gift,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -84,7 +86,9 @@ import {
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
 import { PairedStepperBar } from "@/components/configurator/paired-stepper";
-import { ReviewCard } from "@/components/configurator/review-card";
+import { ReviewCard, ReviewNote } from "@/components/configurator/review-card";
+import { bolsterPromises, pillowPromises, pointsPromise } from "@/lib/configurator/review-promises";
+import { DEFAULT_READJUSTMENT_POLICY, type ReadjustmentPolicy } from "@/lib/pricing/service-prices";
 import {
   bolsterSleepPosition,
   clearPairedHandoff,
@@ -484,7 +488,13 @@ export function MpConfigClient({
   askEmailFirst = false,
   resumeDraft = null,
   pillowOwner = null,
+  readjustmentPolicy = DEFAULT_READJUSTMENT_POLICY,
+  pointsPerDollar = null,
 }: {
+  /** The free Re-adjustment visits and their window, for the review's promises. */
+  readjustmentPolicy?: ReadjustmentPolicy;
+  /** Points earned per S$1 while this shopper would earn them; null when they would not. */
+  pointsPerDollar?: number | null;
   /**
    * The signed-in Customer who already has a pillow: the first question asks
    * whether this one is for them or for someone else. Null for everyone else.
@@ -3250,6 +3260,17 @@ export function MpConfigClient({
     const shippingMethod = selectedShippingOption?.method;
     const collect = shippingMethod?.collect_location ?? null;
     const editDetails = { label: "Edit", onClick: () => setPairedPhase("details") };
+    // What comes with each part, between the cards (lib/configurator/review-promises).
+    const promiseTerms = servicePrices
+      ? { readjustmentFee: servicePrices.readjustment.msrp, policy: readjustmentPolicy }
+      : null;
+    // Points are earned on products and services after any discount, before shipping and GST.
+    const earns = pointsPromise(
+      pillowTotal == null || (pairedBolster && pairedBolster.ballpark == null)
+        ? null
+        : pillowTotal - codeDiscount + (pairedBolster?.ballpark ?? 0),
+      pointsPerDollar,
+    );
     const pairedReview = (
       <div className="space-y-3">
         <ReviewCard
@@ -3262,7 +3283,15 @@ export function MpConfigClient({
           amount={pillowTotal != null ? money(pillowTotal) : null}
           actions={[{ label: "Edit", onClick: () => setPairedPhase("customize") }]}
         />
+        {promiseTerms ? (
+          <ReviewNote
+            icon={<ShieldCheck />}
+            title="Comes with your Mpillow"
+            lines={pillowPromises(tier, promiseTerms)}
+          />
+        ) : null}
         {pairedBolster ? (
+          <>
           <ReviewCard
             title={pairedBolster.label}
             detail="Ships with your Mpillow. You can still drop it later, when you accept the finished builds."
@@ -3277,6 +3306,14 @@ export function MpConfigClient({
               { label: "Remove", onClick: handleRemoveMbolster },
             ]}
           />
+          {promiseTerms ? (
+            <ReviewNote
+              icon={<ShieldCheck />}
+              title="Comes with your Mbolster"
+              lines={bolsterPromises(promiseTerms)}
+            />
+          ) : null}
+          </>
         ) : (
           <ReviewCard
             title="Mbolster"
@@ -3317,6 +3354,33 @@ export function MpConfigClient({
           detail={measurementData.name || null}
           lines={[holdEmail, holdPhone, ...(holdNotes.trim() ? [`Notes: ${holdNotes.trim()}`] : [])]}
           actions={[editDetails]}
+        />
+        {earns ? (
+          <ReviewNote
+            icon={<Gift />}
+            title={`You'll earn ${earns.points}, worth ${earns.worth}`}
+            lines={[
+              "Added to your account 30 days after delivery, to spend in our shop.",
+              shippingSignedIn ? "You'll see them on your Profile." : `Sign in with ${holdEmail} to see and use them.`,
+            ]}
+          />
+        ) : null}
+        <ReviewNote
+          icon={<ShieldCheck />}
+          title="Our promise"
+          lines={[
+            `You are not charged until you accept the final ${pairedBolster ? "builds" : "build"}.`,
+            "Made to your measurements, so it can't be refunded. If the fit isn't right, we adjust it.",
+          ]}
+          footer={
+            <Link
+              href={to("/shipping-refund-policies")}
+              target="_blank"
+              className="underline underline-offset-4"
+            >
+              Returns &amp; Warranty
+            </Link>
+          }
         />
       </div>
     );

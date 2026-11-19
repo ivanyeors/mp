@@ -4,6 +4,7 @@ import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { getAuthUser } from "@/lib/auth/user";
 import { listOwnFittings } from "@/lib/fitting-import/records";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import type { Customer } from "@/lib/types/ecommerce";
 
 import { loadCustomerPillow, type PillowFittingAnswers } from "./load";
 import type { CustomerPillowView, OwnPillowView } from "./view";
@@ -64,19 +65,27 @@ export async function loadOwnPillow(
 }
 
 /**
- * The signed-in Customer, when something says they already have a pillow
+ * The signed-in Customer (`loadSignedInCustomer`), when something says they already have a pillow
  * (`pillowOwnership`, the Profile's rule): the configurator then asks whether
  * this one is for them or for someone else. Null for a guest, for a Customer
  * with no pillow, and when the read fails, which only leaves the question out.
  */
-export async function loadSignedInPillowOwner(): Promise<{ name: string } | null> {
+export async function loadSignedInPillowOwner(customer: Customer | null): Promise<{ name: string } | null> {
+  if (!customer) return null;
   try {
-    const user = await getAuthUser();
-    if (!user?.email) return null;
-    const customer = await linkCustomerToAuthUser(user);
     const read = await loadCustomerPillow(supabaseAdmin(), customer.id, await listOwnFittings(customer.id));
     if (!read.ok || read.pillow.ownership === null) return null;
     return { name: [customer.first_name, customer.last_name].filter(Boolean).join(" ") };
+  } catch {
+    return null;
+  }
+}
+
+/** The Customer this session is signed in as, or null for a guest or a failed link. */
+export async function loadSignedInCustomer(): Promise<Customer | null> {
+  try {
+    const user = await getAuthUser();
+    return user?.email ? await linkCustomerToAuthUser(user) : null;
   } catch {
     return null;
   }

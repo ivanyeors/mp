@@ -50,3 +50,39 @@ export function ReviewCard({
     </section>
   );
 }
+
+/**
+ * What comes with the part of the order above it: a warranty, a re-adjustment,
+ * the points it earns. Sits between the review's cards, quieter than they are,
+ * since it is nothing to check or change.
+ */
+export function ReviewNote({
+  icon,
+  title,
+  lines,
+  footer,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  lines: string[];
+  footer?: React.ReactNode;
+}) {
+  return (
+    <aside className="flex gap-2.5 rounded-lg bg-muted/50 p-3" data-typography-scope="app">
+      <span className="mt-0.5 shrink-0 text-muted-foreground [&>svg]:size-4" aria-hidden>
+        {icon}
+      </span>
+      <div className="min-w-0 space-y-1">
+        <h3 className="text-sm font-medium">{title}</h3>
+        <ul className="space-y-0.5 text-sm text-muted-foreground">
+          {lines.map((line, i) => (
+            <li key={i} className="break-words">
+              {line}
+            </li>
+          ))}
+        </ul>
+        {footer ? <div className="text-sm">{footer}</div> : null}
+      </div>
+    </aside>
+  );
+}

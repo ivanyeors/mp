@@ -8,12 +8,18 @@ import { getAdminContext } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { getStaffByAssistCode } from "@/lib/assist-link";
-import { loadSignedInPillowOwner } from "@/lib/customer-pillow/own";
+import { loadSignedInCustomer, loadSignedInPillowOwner } from "@/lib/customer-pillow/own";
+import { readEarnRateToPromise } from "@/lib/points/server";
 import { loadResumeFinish } from "@/lib/results/resume-finish";
 import { loadResumeDraft } from "@/lib/results/resume-draft";
 import { loadStaffEditResult } from "@/lib/results/staff-edit";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
-import { loadServicePrices, type ServicePrices } from "@/lib/pricing/service-prices";
+import {
+  DEFAULT_READJUSTMENT_POLICY,
+  loadReadjustmentPolicy,
+  loadServicePrices,
+  type ServicePrices,
+} from "@/lib/pricing/service-prices";
 import { actingProfile, memberProfiles } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { MpConfigClient } from "./mp-config-client";
@@ -115,8 +121,14 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
   // A signed-in Customer who already has a pillow is asked who this one is for.
   // Not on a Staff device or an Assist link, where the account at the device is
   // not the buyer, and not on a reopened Result.
-  const pillowOwner =
-    !staffCtx && !assistStaff && !staffEdit && !resumeFinish ? await loadSignedInPillowOwner() : null;
+  // The account at a Staff device is not the buyer.
+  const customer = staffCtx ? null : await loadSignedInCustomer();
+  const pillowOwner = !assistStaff && !staffEdit && !resumeFinish ? await loadSignedInPillowOwner(customer) : null;
+  // The review's promises: the free Re-adjustment and the points this order earns.
+  const [readjustmentPolicy, pointsPerDollar] = await Promise.all([
+    loadReadjustmentPolicy(supabaseAdmin()).catch(() => DEFAULT_READJUSTMENT_POLICY),
+    readEarnRateToPromise(supabaseAdmin(), customer?.id ?? null),
+  ]);
 
   const info = {
     h1: intro.h1,
@@ -186,6 +198,8 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         askEmailFirst={!staffCtx}
         resumeDraft={resumeDraft}
         pillowOwner={pillowOwner}
+        readjustmentPolicy={readjustmentPolicy}
+        pointsPerDollar={pointsPerDollar}
         servicePrices={servicePrices}
         measuredByStaff={measuredByStaff}
         pickMeasurer={pickMeasurer}
