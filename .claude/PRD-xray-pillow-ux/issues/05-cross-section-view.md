@@ -27,7 +27,7 @@ The question a side sleeper asks — are the sides higher than the middle? — i
 - **Mounts:**
   - Configurator stage, under the pillow: Staff (full controls) and guest (Across only, no controls) whenever the x-ray is visible.
   - Configure card page and **Result** assign: beside the pack list, under the x-ray card.
-  - Phone: between the x-ray and the dive dock, collapsed by default with a "Cross-section" disclosure.
+  - Phone: between the x-ray and the dive dock, under a "Cross-section" disclosure that is open by default (owner, 2026-11-19).
 - **Data flow:** the host computes `fitPillow` once (the same memo the x-ray uses) and passes it; the cross-section never recomputes.
 
 ## Acceptance criteria

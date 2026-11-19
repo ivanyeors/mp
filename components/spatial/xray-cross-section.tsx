@@ -799,6 +799,23 @@ type SlabHold = {
   pxPerView: number;
 };
 
+/**
+ * The phone disclosure every cut sits under (the single cut, the end-on cut and
+ * the strip's three). Open by default: the cut is shown unless the person
+ * collapses it (owner, 2026-11-19). Not remembered — each mount starts open.
+ */
+export function CrossSectionDisclosure({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  return (
+    <Collapsible className={className} defaultOpen data-xray-cross-section-disclosure>
+      <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-background/90 px-3 py-2 text-sm font-medium [&[data-state=open]>svg]:rotate-180">
+        {label}
+        <ChevronDown className="size-4 transition-transform" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-2">{children}</CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 export function XrayCrossSection({
   fit,
   cut,
@@ -840,7 +857,7 @@ export function XrayCrossSection({
   softBody?: SoftBodySettings;
   /** Admin pages theme the shell for light/dark; the configurator's dark stage keeps the defaults. */
   themed?: boolean;
-  /** Phones collapse it under a "Cross-section" disclosure, closed by default. */
+  /** Phones put it under a "Cross-section" disclosure, open by default; the person can collapse it. */
   collapsible?: boolean;
   /**
    * The Section tabs. Off for a cut pinned to one Section beside its two
@@ -1500,13 +1517,9 @@ export function XrayCrossSection({
   );
   if (collapsible && isMobile) {
     return (
-      <Collapsible className={className} data-xray-cross-section-disclosure>
-        <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-background/90 px-3 py-2 text-sm font-medium [&[data-state=open]>svg]:rotate-180">
-          Cross-section
-          <ChevronDown className="size-4 transition-transform" />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-2">{body}</CollapsibleContent>
-      </Collapsible>
+      <CrossSectionDisclosure label="Cross-section" className={className}>
+        {body}
+      </CrossSectionDisclosure>
     );
   }
   return <div className={className}>{body}</div>;
@@ -1650,13 +1663,9 @@ export function BolsterCrossSection({
   );
   if (collapsible && isMobile) {
     return (
-      <Collapsible className={className} data-xray-cross-section-disclosure>
-        <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-background/90 px-3 py-2 text-sm font-medium [&[data-state=open]>svg]:rotate-180">
-          Cross-section
-          <ChevronDown className="size-4 transition-transform" />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-2">{body}</CollapsibleContent>
-      </Collapsible>
+      <CrossSectionDisclosure label="Cross-section" className={className}>
+        {body}
+      </CrossSectionDisclosure>
     );
   }
   return <div className={className}>{body}</div>;

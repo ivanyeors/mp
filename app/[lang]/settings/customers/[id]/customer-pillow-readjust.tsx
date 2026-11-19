@@ -401,7 +401,6 @@ export function ReadjustDialog({
                         items={editable ? items : undefined}
                         colorOverrides={pillow.colorOverrides}
                         softBody={softBody}
-                        defaultOpen
                     />
                 </div>
 
