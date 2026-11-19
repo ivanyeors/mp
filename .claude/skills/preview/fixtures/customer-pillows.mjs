@@ -171,6 +171,10 @@ export default function customerPillows({ scenario, now }) {
     updated_at: ago(5),
   });
   return {
+    // A Customer sign-in that is not Staff and has a pillow bought here, for the
+    // configurator's "who is this one for?" question:
+    // `preview shoot --as ben.ong@example.com /mp-config`.
+    users: [{ id: "00000000-0000-4000-8000-000000000005", email: "ben.ong@example.com", user_metadata: { full_name: "Ben Ong" } }],
     tables: {
       bom_templates: [template(TYPE_12, "Type-12", "L"), template(TYPE_8A, "Type-8a", "S")],
       bom_template_keys: [

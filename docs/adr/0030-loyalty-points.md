@@ -366,7 +366,11 @@ popup after a pick, and the customer's own points history, are the only places i
 or www.mpillow.com is sent to `/explore` (307, not cached; `lib/routing/explore-entry.ts`). Only
 an arrival is: a typed address, a bookmark or a link from another site. A click on the site itself
 (`Sec-Fetch-Site: same-origin`, or a Referer from the same host) reaches the home page, so Explore's
-logo still leads home. custom.mpillow.com, previews and localhost keep their home page. From 23:59
+logo still leads home. It happens once per browser session (owner, 2026-11-18): opening Explore
+sets `mp_explore_seen`, a session cookie on the parent domain, and while the browser keeps it an
+arrival goes to the home page. A cookie rather than the account, because the visitor Explore is
+for is usually signed out, and the proxy reads it without a query; a prefetch does not set it.
+custom.mpillow.com, previews and localhost keep their home page. From 23:59
 on 31 December the redirect stops, and Explore says the site is live with an "Enter Mpillow" button
 to the home page. From then it offers no claim (owner, 2026-11-17): a visitor gets "Sign up or sign
 in", a plain sign-in that goes on to the home page, and someone signed in gets only "Enter Mpillow".

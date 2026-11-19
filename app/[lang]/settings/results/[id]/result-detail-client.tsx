@@ -1,5 +1,6 @@
 "use client";
 
+import { pillowForOf } from "@/lib/customer-pillow/pillow-for";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -2035,6 +2036,11 @@ export default function ResultDetailPage({
             <div className="col-span-2 sm:col-span-1">
             <Field label="Name">
               <Input value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} />
+              {pillowForOf(row.data) === "other" ? (
+                <p className="text-xs text-muted-foreground">
+                  For someone else: this is their name and these are their answers, not the buyer&apos;s.
+                </p>
+              ) : null}
             </Field>
             </div>
             <Field label="Gender">

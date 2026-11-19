@@ -115,6 +115,12 @@ export const enUS: Messages = {
       name: "Darren Yeo",
       role: "Founder",
     },
+    explore: {
+      title: "Step into Explore",
+      body: "A quiet island by the sea, under a sky that follows the time where you are. Take a look around.",
+      cta: "Open Explore",
+      alt: "A grassy island with flowers by the sea at dusk, under a crescent moon",
+    },
     stories: {
       title: "Hear from Singapore customers",
       subtitle: "Read real Google reviews from our customers about custom-fit sleep and neck comfort.",

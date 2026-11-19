@@ -14,6 +14,7 @@ import {
   type PillowPurchaseLine,
 } from "./bought";
 import { fittingTypeCode, matchFittingTemplate, pillowSizeKey, type MatchableTemplate } from "./match";
+import { ownBoughtPillows, pillowForOf } from "./pillow-for";
 import type { CustomerPillowView } from "./view";
 
 /**
@@ -89,6 +90,8 @@ async function linkedByName(admin: SupabaseClient, link: LinkRow): Promise<strin
   return null;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * The pillows bought here that they still have, latest first, and the order
  * numbers they were bought on. Counted Orders only, as `customer_purchase_lines`
@@ -123,7 +126,19 @@ async function loadBoughtPillows(
       o.order_number ? [[String(o.id), String(o.order_number)] as const] : [],
     ),
   );
-  return { ok: true, bought: boughtPillows(lines, (itemsRes.data ?? []) as PillowOrderItem[]), orderNumbers };
+  const all = boughtPillows(lines, (itemsRes.data ?? []) as PillowOrderItem[]);
+  // A pillow they said was for someone else is that person's, not theirs.
+  // uuid-shaped ids only: one malformed snapshot must not fail the whole read.
+  const resultIds = [...new Set(all.flatMap((b) => (b.resultId && UUID.test(b.resultId) ? [b.resultId] : [])))];
+  if (!resultIds.length) return { ok: true, bought: all, orderNumbers };
+  const resultsRes = await admin.from("mp_config_responses").select("id, data").in("id", resultIds);
+  if (resultsRes.error) return { ok: false, error: resultsRes.error.message };
+  const forOthers = new Set(
+    ((resultsRes.data ?? []) as { id: string; data: unknown }[])
+      .filter((r) => pillowForOf(r.data) === "other")
+      .map((r) => String(r.id)),
+  );
+  return { ok: true, bought: ownBoughtPillows(all, forOthers), orderNumbers };
 }
 
 export async function loadCustomerPillow(

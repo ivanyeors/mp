@@ -83,6 +83,14 @@ export type Messages = {
       name: string;
       role: string;
     };
+    /** The Explore section: a still of the Explore scene that leads there. */
+    explore: {
+      title: string;
+      body: string;
+      cta: string;
+      /** Alt text for the default still of the scene. */
+      alt: string;
+    };
     stories: {
       title: string;
       subtitle: string;

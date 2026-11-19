@@ -262,7 +262,7 @@ Pure, deterministic, runs between layout and fit: authored rects in, settled rec
 ### Performance and mobile
 
 - One memo: `useMemo(() => fitPillow(settle(layout(...))), [placements, pillowSize, itemDims])`, and the geometry chain reads it. Settle is O(pieces) per **Section** × **Layer** and joins the same memo. The cross-section and the gauges take the same object as a prop. No second polygon scan, no new dependency.
-- Phone: the cell rings and the compression marks are on the canvas already; the gauge, message and move pad join the dock groups; the cross-section sits between the x-ray and the dock, collapsed by default.
+- Phone: the cell rings and the compression marks are on the canvas already; the gauge, message and move pad join the dock groups; the cross-section sits between the x-ray and the dock, under a disclosure open by default (owner, 2026-11-19).
 
 ## Testing Decisions
 

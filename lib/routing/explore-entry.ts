@@ -4,6 +4,12 @@
  * shown /explore instead, so the countdown and the welcome points are the
  * first thing they see.
  *
+ * - **Once per browser session** (owner, 2026-11-18). Opening Explore sets a
+ *   session cookie, `EXPLORE_SEEN_COOKIE`; while the browser keeps it, an
+ *   arrival goes to the home page. It has no expiry, so it goes when the
+ *   browser session ends, and it names the parent domain, so seeing Explore on
+ *   www also counts for mpillow.com. A cookie, not the account: a signed-out
+ *   visitor is the one Explore is for, and the proxy reads it with no query.
  * - **Arrivals only.** A typed address, a bookmark or a link from another site
  *   goes to Explore. A click on this same site does not (`Sec-Fetch-Site:
  *   same-origin`, or a Referer from this host), so the Explore logo and "Explore
@@ -21,6 +27,9 @@ import { isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { EXPLORE_PATH } from "@/lib/routing/explore-route";
 
 export const EXPLORE_ENTRY_HOSTS: ReadonlySet<string> = new Set(["mpillow.com", "www.mpillow.com"]);
+
+/** Set when Explore is shown; while the browser session keeps it, arrivals go home. */
+export const EXPLORE_SEEN_COOKIE = "mp_explore_seen";
 
 const LAUNCH_MS = Date.parse(EXPLORE_LAUNCH_AT);
 
@@ -58,7 +67,10 @@ export function exploreEntryPath(input: {
   referer: string | null;
   locale: Locale;
   nowMs: number;
+  /** This browser session has already been shown Explore. */
+  seen: boolean;
 }): string | null {
+  if (input.seen) return null;
   if (!EXPLORE_ENTRY_HOSTS.has(input.host)) return null;
   if (input.method !== "GET" && input.method !== "HEAD") return null;
   if (!(input.nowMs < LAUNCH_MS)) return null;
@@ -66,4 +78,23 @@ export function exploreEntryPath(input: {
   if (home === null) return null;
   if (fromThisSite(input)) return null;
   return `/${home === "none" ? input.locale : home}${EXPLORE_PATH}`;
+}
+
+/**
+ * Pure — whether this request shows the Explore page to a person, so the
+ * session counts as having seen it: a GET of `/{locale}/explore`, not a
+ * prefetch (Next's link prefetch, or the browser's own speculative load).
+ */
+export function showsExplore(input: { pathname: string; method: string; prefetch: boolean }): boolean {
+  if (input.method !== "GET" || input.prefetch) return false;
+  const parts = input.pathname.split("/").filter(Boolean);
+  return parts.length === 2 && isSupportedLocale(parts[0]!) && `/${parts[1]}` === EXPLORE_PATH;
+}
+
+/**
+ * The cookie's domain: the parent domain on our own hosts, so www and the bare
+ * domain share it; none (this host only) on a preview or localhost.
+ */
+export function exploreSeenCookieDomain(host: string): string | undefined {
+  return host === "mpillow.com" || host.endsWith(".mpillow.com") ? "mpillow.com" : undefined;
 }
