@@ -8,6 +8,7 @@ import { getAdminContext } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { getStaffByAssistCode } from "@/lib/assist-link";
+import { loadSignedInPillowOwner } from "@/lib/customer-pillow/own";
 import { loadResumeFinish } from "@/lib/results/resume-finish";
 import { loadResumeDraft } from "@/lib/results/resume-draft";
 import { loadStaffEditResult } from "@/lib/results/staff-edit";
@@ -111,6 +112,11 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
       ? await memberProfiles(staffCtx.memberId)
       : [];
   const pickMeasurer = measurerProfiles.length > 1 ? measurerProfiles : null;
+  // A signed-in Customer who already has a pillow is asked who this one is for.
+  // Not on a Staff device or an Assist link, where the account at the device is
+  // not the buyer, and not on a reopened Result.
+  const pillowOwner =
+    !staffCtx && !assistStaff && !staffEdit && !resumeFinish ? await loadSignedInPillowOwner() : null;
 
   const info = {
     h1: intro.h1,
@@ -179,6 +185,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         // link opened on one included, asks the shopper's email at the end.
         askEmailFirst={!staffCtx}
         resumeDraft={resumeDraft}
+        pillowOwner={pillowOwner}
         servicePrices={servicePrices}
         measuredByStaff={measuredByStaff}
         pickMeasurer={pickMeasurer}

@@ -28,6 +28,8 @@ export type BoughtPillow = {
   orderItemId: string;
   paidAt: string;
   size: PillowSizeKey | null;
+  /** The Result the line was built from; null for a line from no Result. */
+  resultId: string | null;
   /** The Filling Template the build was made from at Accept; null for a custom mix. */
   templateId: number | null;
   templateName: string | null;
@@ -72,11 +74,12 @@ export function placementRows(value: unknown): PillowPlacementRow[] {
 /** The pillow build an order line froze at Accept (`ResultOrderBuildSnapshot`), or null when it holds none. */
 export function snapshotPillowBuild(
   snapshot: unknown,
-): { templateId: number | null; templateName: string | null; placements: PillowPlacementRow[] } | null {
+): { resultId: string; templateId: number | null; templateName: string | null; placements: PillowPlacementRow[] } | null {
   if (!snapshot || typeof snapshot !== "object") return null;
   const s = snapshot as Record<string, unknown>;
   if (s.product_type !== "pillow" || typeof s.result_id !== "string") return null;
   return {
+    resultId: s.result_id,
     templateId: num(s.filling_template_id),
     templateName: typeof s.filling_template_name === "string" && s.filling_template_name.trim() ? s.filling_template_name : null,
     placements: placementRows(s.filling_placements),
@@ -103,6 +106,7 @@ export function boughtPillows(lines: readonly PillowPurchaseLine[], items: reado
           orderItemId: String(line.order_item_id),
           paidAt: line.paid_at,
           size: pillowSizeKey(line.size),
+          resultId: build?.resultId ?? null,
           templateId: build?.templateId ?? null,
           templateName: build?.templateName ?? null,
           placements: build?.placements ?? [],

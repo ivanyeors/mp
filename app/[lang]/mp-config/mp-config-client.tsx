@@ -145,6 +145,7 @@ import {
   variantFromPathname,
   type MpConfigVariant,
 } from "@/lib/mp-config/flow-variant";
+import { PILLOW_FOR_OPTIONS, nameForPillowFor, type PillowFor } from "@/lib/customer-pillow/pillow-for";
 
 const FLOW_UI_LABEL: Record<RuleFlow, string> = {
   "basic-mpillow": "Basic Mpillow",
@@ -348,6 +349,8 @@ interface MeasurementData {
   sleepPainAreas: string[];
   sleepPositionType: string[];
   usesBolster: "yes" | "no" | "";
+  /** Who the pillow is for; only someone who already has one is asked. */
+  pillowFor?: PillowFor;
 }
 
 type SuggestedBomLine = {
@@ -480,7 +483,13 @@ export function MpConfigClient({
   pickMeasurer = null,
   askEmailFirst = false,
   resumeDraft = null,
+  pillowOwner = null,
 }: {
+  /**
+   * The signed-in Customer who already has a pillow: the first question asks
+   * whether this one is for them or for someone else. Null for everyone else.
+   */
+  pillowOwner?: { name: string } | null;
   info: MpConfigInfo;
   /**
    * A guest, on no Staff login: the first question asks their email beside
@@ -1040,15 +1049,36 @@ export function MpConfigClient({
     setMeasurementData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Someone who already has a pillow says who this one is for; a reopened
+  // Result was answered already, or never asked.
+  const askPillowFor = Boolean(pillowOwner) && !resumeFinish && !staffEdit;
+  const forSomeoneElse = measurementData.pillowFor === "other";
+  const choosePillowFor = (answer: PillowFor) =>
+    setMeasurementData((prev) => ({
+      ...prev,
+      pillowFor: answer,
+      name: nameForPillowFor(answer, prev.name, pillowOwner?.name ?? ""),
+    }));
+
   const nameFields = useMemo((): FieldCheck[] => [
+    ...(askPillowFor
+      ? [
+          {
+            key: "pillowFor",
+            touched: Boolean(measurementData.pillowFor),
+            valid: Boolean(measurementData.pillowFor),
+            message: "Choose who this pillow is for",
+          },
+        ]
+      : []),
     {
       key: "name",
       touched: isNonEmptyString(measurementData.name),
       valid: isNonEmptyString(measurementData.name),
-      message: "Enter your name",
+      message: forSomeoneElse ? "Enter their name" : "Enter your name",
     },
     ...(emailFirst ? [firstQuestionEmailCheck(holdEmail)] : []),
-  ], [measurementData.name, emailFirst, holdEmail]);
+  ], [askPillowFor, measurementData.pillowFor, forSomeoneElse, measurementData.name, emailFirst, holdEmail]);
 
   const ageFields = useMemo((): FieldCheck[] => [
     {
@@ -4303,22 +4333,43 @@ export function MpConfigClient({
             <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <User className="h-12 w-12 mx-auto text-primary" />
-                <h2 className="text-3xl font-bold">Tell us about yourself</h2>
-                <p className="text-muted-foreground">Let&apos;s personalize your experience</p>
+                <h2 className="text-3xl font-bold">
+                  {forSomeoneElse ? "Tell us about them" : "Tell us about yourself"}
+                </h2>
+                <p className="text-muted-foreground">
+                  {forSomeoneElse
+                    ? "Answer each question as the person this pillow is for"
+                    : "Let's personalize your experience"}
+                </p>
               </div>
 
               <div className="space-y-4">
+                {askPillowFor ? (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">
+                      You already have an Mpillow. Who is this one for?
+                    </div>
+                    <SingleSelectOptionRows
+                      options={PILLOW_FOR_OPTIONS}
+                      value={measurementData.pillowFor ?? ""}
+                      onChange={(v) => choosePillowFor(v as PillowFor)}
+                      invalid={!!fieldErrors.pillowFor}
+                      error={fieldErrors.pillowFor}
+                    />
+                  </div>
+                ) : null}
                 <div className="space-y-2">
                   <label htmlFor="mp-name" className="text-sm font-medium">
-                    What&apos;s your name?
+                    {forSomeoneElse ? "What's their name?" : "What's your name?"}
                   </label>
                   <Input
                     id="mp-name"
-                    placeholder="Enter your name"
+                    placeholder={forSomeoneElse ? "Enter their name" : "Enter your name"}
                     value={measurementData.name}
                     onChange={(e) => updateMeasurement("name", e.target.value)}
                     className="text-lg h-12"
-                    autoFocus
+                    // With the question above it, the keyboard would cover the choice.
+                    autoFocus={!askPillowFor}
                     aria-invalid={!!fieldErrors.name}
                   />
                   {fieldErrors.name ? (
@@ -4408,9 +4459,13 @@ export function MpConfigClient({
               <div className="text-center space-y-2">
                 <Cake className="h-12 w-12 mx-auto text-primary" />
                 <h2 className="text-3xl font-bold">
-                  {measurementData.name ? `Nice to meet you, ${measurementData.name}` : "A little about you"}
+                  {forSomeoneElse
+                    ? measurementData.name ? `A little about ${measurementData.name}` : "A little about them"
+                    : measurementData.name ? `Nice to meet you, ${measurementData.name}` : "A little about you"}
                 </h2>
-                <p className="text-muted-foreground">How old are you?</p>
+                <p className="text-muted-foreground">
+                  {forSomeoneElse ? "How old are they?" : "How old are you?"}
+                </p>
               </div>
 
               <div className="space-y-4">
