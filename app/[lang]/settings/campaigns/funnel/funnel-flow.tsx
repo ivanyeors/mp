@@ -470,6 +470,7 @@ function Row({
     children,
     rowRef,
     placeholder,
+    wide = false,
 }: {
     cardKey: string;
     title: string;
@@ -485,6 +486,8 @@ function Row({
     children?: ReactNode;
     rowRef?: (el: Element | null) => void;
     placeholder?: boolean;
+    /** A preview of several emails (the order emails): a row of small ones under the details, at every width. */
+    wide?: boolean;
 }) {
     const shown = ctx.shown(cardKey);
     return (
@@ -499,29 +502,38 @@ function Row({
                 placeholder && "border-dashed opacity-40 shadow-none",
             )}
         >
-            <div className="flex items-start gap-1.5 p-1.5 sm:gap-2 sm:p-2">
-                <div className="flex shrink-0 items-center gap-1 pt-0.5">{lead}</div>
-                <button
-                    type="button"
-                    onClick={onOpen}
-                    aria-label={`Preview ${title}`}
-                    className="min-w-0 flex-1 rounded-md px-1 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    <span className="block break-words text-sm font-medium leading-snug">{title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>
-                </button>
-                <div className="flex shrink-0 items-center">
-                    <Chevron cardKey={cardKey} title={title} ctx={ctx} />
-                    {menu}
+            {/* Desktop: the details on the left, the email's top on the right; a phone: the email under the details. */}
+            <div className={cn("flex flex-col", !wide && "md:flex-row")}>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-1.5 p-1.5 sm:gap-2 sm:p-2">
+                        <div className="flex shrink-0 items-center gap-1 pt-0.5">{lead}</div>
+                        <button
+                            type="button"
+                            onClick={onOpen}
+                            aria-label={`Preview ${title}`}
+                            className="min-w-0 flex-1 rounded-md px-1 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            <span className="block break-words text-sm font-medium leading-snug">{title}</span>
+                            <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>
+                        </button>
+                        <div className="flex shrink-0 items-center">
+                            <Chevron cardKey={cardKey} title={title} ctx={ctx} />
+                            {menu}
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1 px-2 pb-2 sm:pl-[5.25rem]">
+                        {badges}
+                        {meta ? <span className="w-full text-xs text-muted-foreground tabular-nums sm:w-auto sm:pl-1">{meta}</span> : null}
+                    </div>
+                    {children ? <div className="flex flex-wrap gap-2 px-2 pb-2 sm:pl-[5.25rem]">{children}</div> : null}
                 </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-1 px-2 pb-2 sm:pl-[5.25rem]">
-                {badges}
-                {meta ? <span className="w-full text-xs text-muted-foreground tabular-nums sm:w-auto sm:pl-1">{meta}</span> : null}
-            </div>
-            {children ? <div className="flex flex-wrap gap-2 border-t px-2 py-2 sm:pl-[5.25rem]">{children}</div> : null}
-            <div id={regionId(cardKey)} hidden={!shown} className="border-t bg-muted/30 p-2 sm:pl-[5.25rem]">
-                {shown ? preview : null}
+                <div
+                    id={regionId(cardKey)}
+                    hidden={!shown}
+                    className={cn("border-t bg-muted/30 p-1.5", !wide && "md:w-52 md:shrink-0 md:rounded-r-xl md:border-l md:border-t-0")}
+                >
+                    {shown ? preview : null}
+                </div>
             </div>
         </div>
     );
@@ -530,8 +542,9 @@ function Row({
 /** The shown preview: the real render, large enough to read its top; a click opens it full size. */
 function PreviewPane({ render, onOpen }: { render: FunnelRender | null | undefined; onOpen: () => void }) {
     if (render === null) return <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">Preview not available</p>;
+    // The email's top in a landscape crop: about 155px tall beside the details, at most 180px under them on a phone.
     return (
-        <button type="button" tabIndex={-1} aria-hidden onClick={onOpen} className="block w-full max-w-sm cursor-zoom-in rounded-md">
+        <button type="button" tabIndex={-1} aria-hidden onClick={onOpen} className="block max-h-[180px] w-full cursor-zoom-in overflow-hidden rounded-md">
             <Thumb render={render} className="w-full" />
         </button>
     );
@@ -679,8 +692,9 @@ function GroupRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
             onOpen={() => ctx.open(automaticTarget(step, first, ctx.renders[first]?.subject ?? step.name, null, ctx))}
             ctx={ctx}
             tone="automatic"
+            wide
             preview={
-                <div className="grid max-w-xl grid-cols-2 gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                     {shownTemplates.map((t) => {
                         const key = templateKey(t);
                         const render = ctx.renders[key];
@@ -690,7 +704,7 @@ function GroupRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
                                 type="button"
                                 onClick={() => ctx.open(automaticTarget(step, key, render?.subject ?? step.name, null, ctx))}
                                 aria-label={`Preview ${render?.subject ?? t}`}
-                                className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="w-36 shrink-0 cursor-zoom-in rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-40"
                             >
                                 <Thumb render={render} />
                             </button>
