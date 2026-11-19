@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+// jsdom gaps dnd-kit reads (ResizeObserver).
+import "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +24,13 @@ const actions = vi.hoisted(() => ({
   })),
 }));
 vi.mock("../actions", () => actions);
+const arrange = vi.hoisted(() => ({
+  moveFunnelEmail: vi.fn<(input: unknown) => Promise<{ ok: true; moved: string[] } | { ok: false; error: string; moved: string[] }>>(async () => ({ ok: true, moved: [] })),
+  addPlaybookDraft: vi.fn(async () => ({ ok: true as const, id: "x" })),
+}));
+vi.mock("../arrange-actions", () => arrange);
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => "/en-US/settings/campaigns/funnel" }));
 vi.mock("../../thumbnail-frame", () => ({
   // The frame as the page draws it, without a browser's layout: its HTML on an attribute.
   ThumbnailFrame: ({ html }: { html?: string | null }) => <div data-frame={html ?? "none"} />,
@@ -85,16 +94,14 @@ describe("creating from the funnel", () => {
     expect(add?.getAttribute("href")).toBe("/en-US/settings/campaigns/new?stage=at-risk");
   });
 
-  it("offers each campaign's three follow-ups at exactly /settings/campaigns/new?after=<id>:<did>", async () => {
+  it("offers a follow-up after each campaign at exactly /settings/campaigns/new?after=<id>:sent", async () => {
     await show(buildFunnel(facts), "at_risk");
-    for (const n of [11, 12]) {
-      const group = card(`campaign:${id(n)}`)?.querySelector('[aria-label="Add a follow-up"]') ?? null;
-      expect(hrefs(group)).toEqual([
-        `/en-US/settings/campaigns/new?after=${id(n)}:sent`,
-        `/en-US/settings/campaigns/new?after=${id(n)}:clicked`,
-        `/en-US/settings/campaigns/new?after=${id(n)}:not-clicked`,
-      ]);
-    }
+    const links = [...host.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    // Between We miss you and its started follow-up, and at the end of the sequence.
+    expect(links).toContain(`/en-US/settings/campaigns/new?after=${id(11)}:sent`);
+    expect(links).toContain(`/en-US/settings/campaigns/new?after=${id(12)}:sent`);
+    // A started follow-up cannot be slotted in front of: no ?before= on this page.
+    expect(links.some((h) => h?.includes("before="))).toBe(false);
   });
 
   it("starts a Suggested Playbook from itself, and gives one whose words wait no start at all", async () => {
@@ -104,6 +111,7 @@ describe("creating from the funnel", () => {
     const suggested = card("starter:playbook_welcome_back");
     expect(suggested?.textContent).toContain("Suggested");
     expect(hrefs(suggested)).toEqual(["/en-US/settings/campaigns/new?starter=playbook_welcome_back"]);
+    expect(suggested?.textContent).toContain("Add as a draft");
     act(() => root?.unmount());
     root = null;
     host.remove();

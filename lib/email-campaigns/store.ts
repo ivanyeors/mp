@@ -252,6 +252,24 @@ export async function updateCampaign(admin: SupabaseClient, id: string, draft: C
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Points a draft at a Segment (the Email funnel's arranging, PRD-email-funnel
+ * slice 07): its Audience becomes that Segment and nothing else changes. Only
+ * while it is a draft: false when it has started (`locked_at` set) or is
+ * archived, so a move never changes a started campaign's Audience.
+ */
+export async function pointDraftAt(admin: SupabaseClient, id: string, segmentId: string): Promise<boolean> {
+  const { data, error } = await admin
+    .from("email_campaigns")
+    .update({ audience: "segment", segment_id: segmentId })
+    .eq("id", id)
+    .is("locked_at", null)
+    .is("archived_at", null)
+    .select("id");
+  if (error) throw new Error(error.message);
+  return (data ?? []).length === 1;
+}
+
 export async function archiveCampaign(admin: SupabaseClient, id: string): Promise<void> {
   const { error } = await admin
     .from("email_campaigns")

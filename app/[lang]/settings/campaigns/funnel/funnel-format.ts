@@ -10,9 +10,10 @@ import {
     type CampaignFilterState,
 } from "@/lib/crm/customer-filters";
 import type { LifecycleStage } from "@/lib/crm/lifecycle-stage";
-import { formatRate, formatSgd, resultRates, type FunnelStageView, type FunnelView } from "@/lib/email-funnel/model";
+import { formatRate, formatSgd, resultRates, type FlowCampaign, type FunnelStageView, type FunnelView } from "@/lib/email-funnel/model";
 import type { ResultNumbers } from "@/lib/email-campaigns/results";
 import { FUNNEL_PROGRAMME } from "@/lib/email-funnel/programme";
+import type { ArrangeNode, FunnelMove, MoveDid } from "@/lib/email-funnel/move";
 import { permissionForHref } from "@/lib/auth/permissions";
 
 const n = (v: number) => v.toLocaleString("en-SG");
@@ -92,31 +93,212 @@ export function campaignNamesOf(view: Pick<FunnelView, "stages">): Map<string, s
 export const stillCounting = (stage: FunnelStageView) =>
     stage.results.rows.reduce((sum, r) => sum + (r.kind === "campaign" ? r.numbers.counting : 0), 0);
 
-/** The stage's steps with their follow-ups: each follow-up placed under the step that holds the campaign it reads. */
-export function flowTree(flow: FunnelStageView["flow"]): { step: FunnelStageView["flow"][number]; followUps: FunnelStageView["flow"] }[] {
-    type Step = FunnelStageView["flow"][number];
-    const parentOf = (s: Step) => (s.after ? flow.find((p) => p.key !== s.key && p.campaigns.some((c) => c.id === s.after!.campaignId)) : undefined);
-    // A follow-up of a follow-up hangs under the first campaign of its chain: one level of indent.
-    // Walked with a visited set: a chain that loops (the model breaks loops; this never trusts it)
-    // leaves the step on its own, so every step appears exactly once.
-    const rootOf = (s: Step): Step | undefined => {
-        const seen = new Set<string>([s.key]);
-        let root: Step | undefined;
-        for (let p = parentOf(s); p; p = parentOf(p)) {
-            if (seen.has(p.key)) return undefined;
-            seen.add(p.key);
-            root = p;
-        }
-        return root;
-    };
-    const children = new Map<string, FunnelStageView["flow"]>();
-    const top: FunnelStageView["flow"] = [];
-    for (const step of flow) {
-        const root = rootOf(step);
-        if (root) children.set(root.key, [...(children.get(root.key) ?? []), step]);
-        else top.push(step);
+// ─── The Email flow's layout (slice 07) ──────────────────────────────────────
+
+type Step = FunnelStageView["flow"][number];
+
+/** One email of a sequence, with the emails that follow it. */
+export interface FlowNode {
+    step: Step;
+    campaign: FlowCampaign;
+    /** The email it follows, as drawn (an optimistic move included); null for a sequence's first. */
+    parent: { id: string; did: CampaignFilterState } | null;
+    /** Step number in its sequence: 1 for the first. */
+    number: number;
+    children: FlowNode[];
+}
+
+export type FlowItem = { kind: "sequence"; root: FlowNode } | { kind: "suggested"; step: Step };
+
+export interface FlowLayout {
+    /** The stage's Automatic emails, in programme order. */
+    automatic: Step[];
+    /** Sequences and Suggested Playbooks, in the flow's order. */
+    items: FlowItem[];
+    /** Every email as `planArrangement` reads it, for drops and the menu's moves. */
+    nodes: ArrangeNode[];
+    /** Drafts in no stage, still not placed. */
+    unplaced: FlowCampaign[];
+}
+
+const DID_ORDER: Record<CampaignFilterState, number> = { sent: 0, clicked: 1, "not-clicked": 2, "not-sent": 3 };
+
+/** A draft placed from outside the funnel, drawn as an email of the stage until the page reads it again. */
+const placedStep = (c: FlowCampaign): Step => ({
+    key: `campaign:${c.id}`,
+    kind: "campaign",
+    name: c.name,
+    purpose: "marketing",
+    consent: "Marketing consent: only to people subscribed",
+    who: "",
+    when: "Once, when a person sends a Wave",
+    stops: "",
+    state: c.state,
+    href: c.href,
+    setUpHref: null,
+    templates: [],
+    starterId: null,
+    campaigns: [c],
+    after: null,
+});
+
+/**
+ * Pure — the stage's flow as one column: Automatic emails, then sequences,
+ * each email under the one it follows (`after`), with `moved` (an optimistic
+ * move: campaign id → the email it now follows, or null) laid over the view.
+ * Every email appears exactly once, even when follow-ups loop (the model
+ * breaks loops; this never trusts it).
+ */
+export function flowLayout(
+    stage: Pick<FunnelStageView, "flow">,
+    unplaced: readonly FlowCampaign[] = [],
+    moved: ReadonlyMap<string, { id: string; did: CampaignFilterState } | null> = new Map(),
+): FlowLayout {
+    const automatic = stage.flow.filter((s) => s.kind === "automatic");
+    type Entry = { step: Step; campaign: FlowCampaign; parent: FlowNode["parent"]; order: number };
+    const entries: Entry[] = [];
+    for (const step of stage.flow) {
+        if (step.kind === "automatic") continue;
+        for (const c of step.campaigns) entries.push({ step, campaign: c, parent: step.kind === "campaign" && step.after ? { id: step.after.campaignId, did: step.after.did } : null, order: entries.length });
     }
-    return top.map((step) => ({ step, followUps: children.get(step.key) ?? [] }));
+    const placed = unplaced.filter((c) => moved.has(c.id));
+    for (const c of placed) entries.push({ step: placedStep(c), campaign: c, parent: null, order: entries.length });
+    for (const e of entries) if (moved.has(e.campaign.id)) e.parent = moved.get(e.campaign.id) ?? null;
+
+    const byId = new Map(entries.map((e) => [e.campaign.id, e]));
+    const childrenOf = new Map<string, Entry[]>();
+    const isRoot = (e: Entry) => !e.parent || !byId.has(e.parent.id) || e.parent.id === e.campaign.id;
+    for (const e of entries) {
+        if (isRoot(e)) continue;
+        childrenOf.set(e.parent!.id, [...(childrenOf.get(e.parent!.id) ?? []), e]);
+    }
+    const seen = new Set<string>();
+    const grow = (e: Entry, number: number, asRoot: boolean): FlowNode => {
+        seen.add(e.campaign.id);
+        const kids = (childrenOf.get(e.campaign.id) ?? [])
+            .filter((k) => !seen.has(k.campaign.id))
+            .sort((a, b) => DID_ORDER[a.parent!.did] - DID_ORDER[b.parent!.did] || a.order - b.order);
+        const node: FlowNode = { step: e.step, campaign: e.campaign, parent: asRoot ? null : e.parent, number, children: [] };
+        for (const k of kids) if (!seen.has(k.campaign.id)) node.children.push(grow(k, number + 1, false));
+        return node;
+    };
+
+    const items: FlowItem[] = [];
+    for (const step of stage.flow) {
+        if (step.kind === "automatic") continue;
+        if (step.kind === "playbook" && !step.campaigns.length) {
+            items.push({ kind: "suggested", step });
+            continue;
+        }
+        for (const c of step.campaigns) {
+            const e = byId.get(c.id)!;
+            if (isRoot(e) && !seen.has(c.id)) items.push({ kind: "sequence", root: grow(e, 1, true) });
+        }
+    }
+    for (const c of placed) {
+        const e = byId.get(c.id)!;
+        if (isRoot(e) && !seen.has(c.id)) items.push({ kind: "sequence", root: grow(e, 1, true) });
+    }
+    // A loop leaves its emails unreached: each starts a sequence of its own, so none is lost.
+    for (const e of entries) if (!seen.has(e.campaign.id)) items.push({ kind: "sequence", root: grow(e, 1, true) });
+
+    const rest = unplaced.filter((c) => !moved.has(c.id));
+    const nodes: ArrangeNode[] = [
+        ...entries.map((e) => ({ id: e.campaign.id, name: e.campaign.name, parent: e.parent, lock: e.campaign.lock, inStage: true, unplaced: false })),
+        ...rest.map((c) => ({ id: c.id, name: c.name, parent: null, lock: c.lock, inStage: false, unplaced: true })),
+    ];
+    return { automatic, items, nodes, unplaced: rest };
+}
+
+/** Every node of a sequence, depth first. */
+export const nodesOf = (n: FlowNode): FlowNode[] => [n, ...n.children.flatMap(nodesOf)];
+
+const isFollowUp = (d: CampaignFilterState): d is MoveDid => d !== "not-sent";
+
+/** A move as the page sends it, before the stage is added. */
+export type PageMove = Omit<FunnelMove, "stage">;
+
+/**
+ * Pure — the moves a card's menu offers, each the input the matching drop
+ * sends (`planArrangement` says whether it can be done): *Move earlier* puts
+ * it in front of the email it follows; *Move later* behind its first
+ * follow-up; *Start a new sequence* makes it follow nothing.
+ */
+export function menuMoves(layout: FlowLayout, id: string): { earlier: PageMove | null; later: PageMove | null; start: PageMove } {
+    const all = new Map(layout.items.flatMap((i) => (i.kind === "sequence" ? nodesOf(i.root) : [])).map((n) => [n.campaign.id, n]));
+    const node = all.get(id);
+    const start: PageMove = { campaignId: id, after: null, before: null };
+    if (!node) return { earlier: null, later: null, start };
+    const parent = node.parent ? all.get(node.parent.id) : undefined;
+    const grand = parent?.parent;
+    const earlier: PageMove | null = !parent
+        ? null
+        : grand && isFollowUp(grand.did)
+          ? { campaignId: id, after: { campaignId: grand.id, did: grand.did }, before: parent.campaign.id }
+          : { campaignId: id, after: null, before: parent.campaign.id };
+    const next = node.children[0];
+    const beyond = next?.children[0];
+    const later: PageMove | null = !next
+        ? null
+        : beyond && !beyond.campaign.lock && beyond.parent && isFollowUp(beyond.parent.did)
+          ? { campaignId: id, after: { campaignId: next.campaign.id, did: beyond.parent.did }, before: beyond.campaign.id }
+          : { campaignId: id, after: { campaignId: next.campaign.id, did: "sent" }, before: null };
+    return { earlier, later, start };
+}
+
+/**
+ * Pure — a drop zone's move: between `from` and its follow-up `to`, the
+ * dragged draft takes `to`'s place when `to` can move, else it follows `from`
+ * beside it; after the last email of a sequence it follows that one; with no
+ * `from` it starts a new sequence.
+ */
+export function zoneMove(campaignId: string, from: FlowNode | null, to: FlowNode | null): PageMove {
+    if (!from) return { campaignId, after: null, before: null };
+    if (to && !to.campaign.lock && to.parent && isFollowUp(to.parent.did)) {
+        return { campaignId, after: { campaignId: from.campaign.id, did: to.parent.did }, before: to.campaign.id };
+    }
+    return { campaignId, after: { campaignId: from.campaign.id, did: "sent" }, before: null };
+}
+
+/**
+ * Pure — the connectors drawn after `node`, each by the email it leads to:
+ * its one follow-up; each of several, then one after them all; or, at the
+ * end of a sequence, none (null). Every connector is a drop zone.
+ */
+export function nodeConnectors(node: FlowNode): (FlowNode | null)[] {
+    if (node.children.length === 1) return [node.children[0]];
+    return [...node.children, null];
+}
+
+/** Pure — every drop zone of the flow, as `zoneMove` reads it: each connector, then *Start a new sequence*. */
+export function flowZones(layout: FlowLayout): { from: FlowNode | null; to: FlowNode | null }[] {
+    const nodes = layout.items.flatMap((i) => (i.kind === "sequence" ? nodesOf(i.root) : []));
+    return [...nodes.flatMap((from) => nodeConnectors(from).map((to) => ({ from, to }))), { from: null, to: null }];
+}
+
+/**
+ * Pure — the places *Move to…* offers the draft `id`: every drop zone that
+ * would take it (`can`, the plan on the page's ids), once each, in the zones'
+ * own words, so the menu and the drag offer the same places.
+ */
+export function movePlaces(layout: FlowLayout, id: string, can: (m: PageMove) => boolean, nameOf: (id: string) => string): { move: PageMove; words: string }[] {
+    const seen = new Set<string>();
+    const out: { move: PageMove; words: string }[] = [];
+    for (const z of flowZones(layout)) {
+        const move = zoneMove(id, z.from, z.to);
+        const key = JSON.stringify(move);
+        if (seen.has(key) || !can(move)) continue;
+        seen.add(key);
+        out.push({ move, words: zoneWords(move, nameOf) });
+    }
+    return out;
+}
+
+/** What a drop zone says it will do, in words. */
+export function zoneWords(move: PageMove, nameOf: (id: string) => string): string {
+    if (!move.after) return "Start a new sequence with it";
+    const head = `After “${nameOf(move.after.campaignId)}”, to those who ${FOLLOW_UP_SHORT[move.after.did]}`;
+    return move.before ? `${head}, then “${nameOf(move.before)}”` : head;
 }
 
 // ─── Links and renders ───────────────────────────────────────────────────────
@@ -207,15 +389,23 @@ export function sequenceDays(step: Pick<FunnelStageView["flow"][number], "key" |
 
 const isSequence = (step: Pick<FunnelStageView["flow"][number], "key" | "kind" | "templates">) => sequenceDays(step) !== null;
 
-/** Every render a stage's flow shows: its campaigns, its Suggested Playbooks' Starters, its Automatic emails' templates. */
+/**
+ * Every card of a stage's flow with the renders it shows: its campaigns, its
+ * Suggested Playbooks' Starters, its Automatic emails' templates (a group of
+ * them is one card). The page asks only for the cards whose preview shows.
+ */
+export function cardRenderKeys(stage: Pick<FunnelStageView, "flow">): { card: string; keys: string[] }[] {
+    return stage.flow.flatMap((step) => {
+        if (step.kind === "automatic") {
+            if (isSequence(step) || step.templates.length === 1) return step.templates.map((t) => ({ card: templateKey(t), keys: [templateKey(t)] }));
+            return [{ card: step.key, keys: step.templates.slice(0, GROUP_THUMBNAILS).map(templateKey) }];
+        }
+        if (step.campaigns.length) return step.campaigns.map((c) => ({ card: campaignKey(c.id), keys: [campaignKey(c.id)] }));
+        return step.starterId ? [{ card: starterKey(step.starterId), keys: [starterKey(step.starterId)] }] : [];
+    });
+}
+
+/** Every render a stage's flow shows (every card's preview open). */
 export function renderKeysOf(stage: Pick<FunnelStageView, "flow">): string[] {
-    return [
-        ...new Set(
-            stage.flow.flatMap((step) => {
-                if (step.kind === "automatic") return (isSequence(step) ? step.templates : step.templates.slice(0, GROUP_THUMBNAILS)).map(templateKey);
-                if (step.campaigns.length) return step.campaigns.map((c) => campaignKey(c.id));
-                return step.starterId ? [starterKey(step.starterId)] : [];
-            }),
-        ),
-    ];
+    return [...new Set(cardRenderKeys(stage).flatMap((c) => c.keys))];
 }

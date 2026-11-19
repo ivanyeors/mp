@@ -100,6 +100,34 @@ const YEAR_END = "00000000-0000-4000-8000-00000000e009";
 const SECOND_NOTE = "00000000-0000-4000-8000-00000000e00a";
 const NO_MBOLSTER_SEGMENT = "00000000-0000-4000-8000-00000000c020";
 const FOLLOW_UP_SEGMENT = "00000000-0000-4000-8000-00000000c021";
+// PRD-email-funnel slice 07: sequences to arrange. Lead: *Meet Mpillow* (started) → *How a fitting
+// works* (a started follow-up) → *Still deciding?* (a draft); and three drafts in a chain, *Welcome to
+// Mpillow* → *Basic or Premium?* → *Book a fitting*. At risk: three drafts in a chain, *Winter check-in*
+// → *a reminder* → *last note*, and a draft after the started *We miss you: a second note*. The
+// drafts *December cooling launch* (Premium buyers) and *Pillow check-up* (everyone subscribed) sit in
+// no stage: the flow offers to place them.
+const LEAD_SEGMENT = "00000000-0000-4000-8000-00000000c022";
+const AT_RISK_SEGMENT = "00000000-0000-4000-8000-00000000c027";
+const MEET = "00000000-0000-4000-8000-00000000e010";
+const FITTING = "00000000-0000-4000-8000-00000000e011";
+const STILL = "00000000-0000-4000-8000-00000000e012";
+const WELCOME = "00000000-0000-4000-8000-00000000e013";
+const BASIC_OR_PREMIUM = "00000000-0000-4000-8000-00000000e014";
+const BOOK = "00000000-0000-4000-8000-00000000e015";
+const WINTER = "00000000-0000-4000-8000-00000000e016";
+const WINTER_REMINDER = "00000000-0000-4000-8000-00000000e017";
+const WINTER_LAST = "00000000-0000-4000-8000-00000000e018";
+const ONE_MORE = "00000000-0000-4000-8000-00000000e019";
+/** A follow-up's Segment, as the Email flow creates one: the people who did `did` with `campaign`. */
+const followUpSegment = (n, name, campaign, did, ago) => ({
+  id: `00000000-0000-4000-8000-00000000c0${n}`,
+  name,
+  filters: { campaign: `${campaign}:${did}` },
+  filters_version: 2,
+  created_at: ago(3),
+  updated_at: ago(3),
+  archived_at: null,
+});
 // The Playbooks' real words and blocks (lib/email-campaigns/starters.ts, `starterDraft`), so the
 // sample campaigns named after them look like the emails they are. Copied as JSON: a fixture runs
 // in plain Node and cannot import the TypeScript; block ids are fixed so every run draws the same.
@@ -705,6 +733,16 @@ export default function crm({ now }) {
           updated_at: ago(16),
           archived_at: null,
         },
+        // PRD-email-funnel slice 07: the stages' own Segments, and the sequences' follow-ups.
+        { id: LEAD_SEGMENT, name: "Lead", filters: { stage: "lead" }, filters_version: 2, created_at: ago(9), updated_at: ago(9), archived_at: null },
+        { id: AT_RISK_SEGMENT, name: "At risk", filters: { stage: "at-risk" }, filters_version: 2, created_at: ago(9), updated_at: ago(9), archived_at: null },
+        followUpSegment(23, "Lead · clicked “Meet Mpillow”", MEET, "clicked", ago),
+        followUpSegment(24, "Lead · didn't click “How a fitting works”", FITTING, "not-clicked", ago),
+        followUpSegment(25, "Lead · got “Welcome to Mpillow”", WELCOME, "sent", ago),
+        followUpSegment(26, "Lead · clicked “Mpillow Basic or Premium?”", BASIC_OR_PREMIUM, "clicked", ago),
+        followUpSegment(28, "At risk · didn't click “Winter check-in”", WINTER, "not-clicked", ago),
+        followUpSegment(29, "At risk · got “Winter check-in: a reminder”", WINTER_REMINDER, "sent", ago),
+        followUpSegment(42, "At risk · clicked “We miss you: a second note”", SECOND_NOTE, "clicked", ago),
       ],
       email_campaigns: [
         {
@@ -857,6 +895,27 @@ export default function crm({ now }) {
           segment_id: FOLLOW_UP_SEGMENT,
           locked_at: ago(15),
         }),
+        // PRD-email-funnel slice 07: the sequences to arrange (see the constants above).
+        funnelCampaign(MEET, "Meet Mpillow", "A pillow made to fit you", { segment_id: LEAD_SEGMENT, locked_at: ago(35), created_at: ago(40) }),
+        funnelCampaign(FITTING, "How a fitting works", "Twenty minutes, and a pillow made for you", {
+          segment_id: "00000000-0000-4000-8000-00000000c023",
+          locked_at: ago(28),
+          created_at: ago(30),
+        }),
+        funnelCampaign(STILL, "Still deciding?", "Questions before you start?", { segment_id: "00000000-0000-4000-8000-00000000c024", created_at: ago(6) }),
+        funnelCampaign(WELCOME, "Welcome to Mpillow", "Welcome: here's how it works", { segment_id: LEAD_SEGMENT, created_at: ago(5) }),
+        funnelCampaign(BASIC_OR_PREMIUM, "Mpillow Basic or Premium?", "Which Mpillow is right for you", {
+          segment_id: "00000000-0000-4000-8000-00000000c025",
+          created_at: ago(4),
+        }),
+        funnelCampaign(BOOK, "Book a fitting", "Come in for a fitting in Singapore", { segment_id: "00000000-0000-4000-8000-00000000c026", created_at: ago(3) }),
+        funnelCampaign(WINTER, "Winter check-in", "How is your pillow this winter?", { segment_id: AT_RISK_SEGMENT, created_at: ago(5) }),
+        funnelCampaign(WINTER_REMINDER, "Winter check-in: a reminder", "A quick check on your pillow", {
+          segment_id: "00000000-0000-4000-8000-00000000c028",
+          created_at: ago(4),
+        }),
+        funnelCampaign(WINTER_LAST, "Winter check-in: last note", "One last note from Mpillow", { segment_id: "00000000-0000-4000-8000-00000000c029", created_at: ago(3) }),
+        funnelCampaign(ONE_MORE, "We miss you: one more", "Your re-adjustment is on us", { segment_id: "00000000-0000-4000-8000-00000000c042", created_at: ago(2) }),
       ],
       // PRD-email-funnel slice 03: the Automatic emails' own records.
       customer_emails: automatic.emails,

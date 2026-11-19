@@ -95,6 +95,8 @@ import {
 import { UNENGAGED_WHO } from "@/lib/crm/engagement";
 import { emailSaysNothing, STARTERS, startedFrom, starterAudience, wantedAfterStarter, type Starter } from "@/lib/email-campaigns/starters";
 import { wantedKey, wantedToCreate, type FoundSegments, type WantedSegment } from "@/lib/email-campaigns/wanted-segment";
+import type { SlotBefore } from "@/lib/email-funnel/move";
+import { moveFunnelEmail } from "./funnel/arrange-actions";
 import { segmentHref, type CustomerSegment } from "@/lib/crm/segment-rules";
 import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-campaigns/variables";
 import type { CampaignStats } from "@/lib/email-campaigns/store";
@@ -142,6 +144,15 @@ import { keepSendingBlocker } from "@/lib/email-campaigns/keep-sending";
 
 /** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. Never its filters. */
 export type SegmentOption = { id: string; name: string; customersHref?: string | null };
+
+/** `?before=`: the draft `slot.before` follows the email just saved; a refusal is said, and the email stays saved. */
+async function slotInFront(id: string, slot: SlotBefore): Promise<void> {
+    const res = await moveFunnelEmail({ campaignId: id, stage: slot.stage, after: slot.after, before: slot.before.id }).catch(
+        (err: unknown) => ({ ok: false as const, error: err instanceof Error ? err.message : "It could not be moved.", moved: [] }),
+    );
+    if (res.ok) toast(`“${slot.before.name}” now follows this email.`);
+    else toast.error(`Saved. “${slot.before.name}” did not move after it: ${res.error}`, { duration: 12_000 });
+}
 
 /** No wanted Segment found: one object, so the editor's memo holds. */
 const NOTHING_FOUND: FoundSegments = {};
@@ -269,6 +280,7 @@ export function CampaignEditor({
     audienceNote: initialNote = null,
     segmentsUnread = false,
     canCreateSegments = false,
+    slotBefore = null,
 }: {
     /** Null for a new one. */
     campaign: Campaign | null;
@@ -299,6 +311,8 @@ export function CampaignEditor({
     segmentsUnread?: boolean;
     /** May create Segments (`customers-edit`, the Segments' own create): *Create the Segment* for a wanted one that is missing. */
     canCreateSegments?: boolean;
+    /** `?before=` (PRD-email-funnel slice 07): on the first save, this draft is moved to follow the new email. */
+    slotBefore?: SlotBefore | null;
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
@@ -432,14 +446,17 @@ export function CampaignEditor({
             undoRef.current = null;
             toast.dismiss(CLEAR_ALL_TOAST);
             if (!campaign) {
+                const first = createdId.current === null;
                 createdId.current = res.id;
+                // Slotted in: the draft it goes in front of now follows it. Refused, the email is still saved, and says so.
+                if (first && slotBefore) await slotInFront(res.id, slotBefore);
                 router.replace(withLocale(`/settings/campaigns/${res.id}`, locale));
             } else router.refresh();
             return res.id;
         } finally {
             setSaving(false);
         }
-    }, [campaign, input, locale, router]);
+    }, [campaign, input, locale, router, slotBefore]);
 
     // ── Write: tabs, selection, panes ──────────────────────────────────────
     const [tab, setTab] = useState<"write" | "send" | "results">(initialTab === "results" && locked ? "results" : "write");

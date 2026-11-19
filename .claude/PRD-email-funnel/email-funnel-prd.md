@@ -1,7 +1,7 @@
 # PRD — Email funnel: every email we send by itself, laid along the Lifecycle stages
 
-**Status:** slices 01–04 and 06 built 2026-11-18 on `claude/email-marketing-funnel-automation-7b7wkg`
-(no migration; not yet on production). Slice 05 is the owner's: the Lead Playbook's words, and the walk.
+**Status:** slices 01–04 and 06 built 2026-11-18 and merged (#439); slice 07 (arrange the flow)
+built 2026-11-19. No migration. Slice 05 is the owner's: the Lead Playbook's words, and the walk.
 **Owner request (2026-11-18):** "Research, design, implement our email marketing automation based
 on our customer segments, designed from a marketing funnel point of view. As a user, I want to be
 able to look into the different funnel stages, and in each funnel stage I can see the customer
