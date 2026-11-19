@@ -30,6 +30,7 @@ vi.mock("@/lib/crm/segments", () => ({
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 vi.mock("@/lib/email-campaigns/store", () => ({
   getCampaign: vi.fn(async (_admin: unknown, id: string) => h.campaigns.get(id) ?? null),
+  listCampaigns: vi.fn(async () => [...h.campaigns.values()].map((campaign) => ({ campaign, stats: { handed: 0, firstSentAt: null, lastSentAt: null } }))),
   getCampaignStats: vi.fn(async () => null),
   readWaveStats: vi.fn(async () => ({ own: [] })),
   readCampaignResults: vi.fn(async () => null),
@@ -149,3 +150,23 @@ describe("a failed Segments read", () => {
   });
 });
 
+
+describe("New campaign at ?after=&before= (slice 07)", () => {
+  const C = "9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b";
+  beforeEach(() => {
+    h.segments = [...(h.segments as CustomerSegment[]), segment("seg-lead", "Lead", { stage: "lead" }), segment("seg-c", "got P", { campaign: `${PARENT}:sent` })];
+    h.campaigns.set(PARENT, { ...campaign(PARENT, "We miss you"), audience: "segment", segmentId: "seg-lead", lockedAt: "2026-11-01T00:00:00Z" });
+    h.campaigns.set(C, { ...campaign(C, "C"), audience: "segment", segmentId: "seg-c" });
+  });
+
+  it("hands the editor the draft to slot in front of, with the stage, and nothing of any Segment's filters", async () => {
+    const p = await newPage({ after: `${PARENT}:sent`, before: C });
+    expect(p.slotBefore).toEqual({ before: { id: C, name: "C" }, after: { campaignId: PARENT, did: "sent" }, stage: "lead" });
+  });
+
+  it("ignores before without a valid after, or naming a started campaign", async () => {
+    expect((await newPage({ before: C })).slotBefore).toBeNull();
+    h.campaigns.set(C, { ...campaign(C, "C"), audience: "segment", segmentId: "seg-c", lockedAt: "2026-11-02T00:00:00Z" });
+    expect((await newPage({ after: `${PARENT}:sent`, before: C })).slotBefore).toBeNull();
+  });
+});

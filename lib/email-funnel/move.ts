@@ -124,7 +124,8 @@ export function planArrangement(nodes: readonly ArrangeNode[], move: Pick<Funnel
       const nd = n.parent && isDid(n.parent.did) ? n.parent.did : "sent";
       return [{ campaignId: n.id, campaign: d.parent && isDid(d.parent.did) ? { id: d.parent.id, did: nd } : null }];
     }),
-    { campaignId: d.id, campaign: target },
+    // Slotted in front of C while already following P that way (a new email from *Add an email here*): only C changes.
+    ...(c && d.inStage && same(d.parent, target) ? [] : [{ campaignId: d.id, campaign: target }]),
     ...(c ? [{ campaignId: c.id, campaign: { id: d.id, did: "sent" as const } }] : []),
   ];
 
@@ -213,4 +214,32 @@ export function planMove(facts: Pick<FunnelFacts, "segments" | "campaigns">, mov
     return { ...ch, name: c.campaign.name, filters, segmentName: name };
   });
   return { ok: true, changes };
+}
+
+/** What New campaign slots a new email in front of (`?after=<P>:<did>&before=<C>`): C, P and the stage. */
+export interface SlotBefore {
+  before: { id: string; name: string };
+  after: { campaignId: string; did: MoveDid };
+  stage: LifecycleStage;
+}
+
+/**
+ * Pure — `?before=<C>` with `?after=<P>:<did>`, when it can be done: C is a
+ * draft that can move, it follows P now, and both sit in a stage's flow (the
+ * first such stage). Null otherwise, and the address is then ignored: the new
+ * email is an ordinary follow-up of P.
+ */
+export function slotBefore(
+  facts: Pick<FunnelFacts, "segments" | "campaigns">,
+  after: { id: string; state: MoveDid } | null,
+  before: string | string[] | undefined,
+): SlotBefore | null {
+  const raw = Array.isArray(before) ? before[0] : before;
+  if (!after || typeof raw !== "string") return null;
+  const reading = readFunnel(facts);
+  const c = reading.byId.get(raw.toLowerCase());
+  const p = reading.byId.get(after.id);
+  if (!c || !p || moveLock(reading, c) !== null || reading.followOf(c)?.parent.campaign.id !== p.campaign.id) return null;
+  const stage = [...reading.stagesOf(c)].find((s) => s !== "lost" && reading.stagesOf(p).has(s));
+  return stage ? { before: { id: c.campaign.id, name: c.campaign.name }, after: { campaignId: p.campaign.id, did: after.state }, stage } : null;
 }
