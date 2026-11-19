@@ -37,7 +37,10 @@ export interface FunnelMove {
   stage: LifecycleStage;
   /** The email it follows, and what its people did with it; null: it starts a sequence. */
   after: { campaignId: string; did: MoveDid } | null;
-  /** Dropped between `after` and this draft follow-up of it: this one then follows the moved one (*got it*). */
+  /**
+   * Dropped in front of this draft: between `after` and this follow-up of it, or, with no `after`, in front
+   * of the first email of a sequence. This one then follows the moved one (*got it*).
+   */
   before: string | null;
 }
 
@@ -89,10 +92,12 @@ export function planArrangement(nodes: readonly ArrangeNode[], move: Pick<Funnel
   if (move.before) {
     if (!c || !c.inStage) return refuse("The email to slot in front of is archived or not in this stage's flow.");
     if (c.id === d.id) return { ok: true, changes: [] };
-    if (!p || c.parent?.id !== p.id || !isDid(c.parent.did)) return refuse(`${quote(c)} does not follow ${p ? quote(p) : "it"} any more. The page will read the flow again.`);
+    if (p ? c.parent?.id !== p.id || !isDid(c.parent.did) : c.parent !== null) {
+      return refuse(`${quote(c)} does not ${p ? `follow ${quote(p)}` : "start its sequence"} any more. The page will read the flow again.`);
+    }
     if (c.lock) return refuse(`${quote(c)} stays where it is. ${c.lock}`);
-    // D takes C's place: it follows P with C's condition.
-    did = c.parent.did;
+    // D takes C's place: it follows P with C's condition, or starts the sequence C started.
+    did = p && c.parent && isDid(c.parent.did) ? c.parent.did : null;
   }
 
   const target = p && did ? { id: p.id, did } : null;

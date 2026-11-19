@@ -148,6 +148,8 @@ export type StepState =
 export interface FlowCampaign {
   id: string;
   name: string;
+  /** Its subject line, as saved (variables unfilled); empty when it has none yet. */
+  subject: string;
   /** Its own page. */
   href: string;
   state: StepState;
@@ -387,6 +389,7 @@ const byStart = (a: FunnelCampaignFact, b: FunnelCampaignFact) =>
 const plainFlowCampaign = (c: FunnelCampaignFact): Omit<FlowCampaign, "lock"> => ({
   id: c.campaign.id,
   name: c.campaign.name,
+  subject: c.campaign.subject,
   href: campaignPath(c.campaign.id),
   state: campaignState(c.campaign),
   startedAt: c.campaign.lockedAt,

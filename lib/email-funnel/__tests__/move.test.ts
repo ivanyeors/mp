@@ -172,6 +172,18 @@ describe("planMove", () => {
     expect(ok(planMove(chain(), move(11, [10, "sent"])))).toEqual([]);
   });
 
+  it("puts a draft in front of the first email of a sequence: it starts the sequence and the first follows it", () => {
+    const changes = ok(planMove(chain(), move(12, null, 10)));
+    expect(changes.map((c) => [c.campaignId, c.campaign])).toEqual([
+      [id(12), null],
+      [id(10), { id: id(12), did: "sent" }],
+    ]);
+    expect(byCampaign(changes)[id(12)].filters).toEqual({ stage: "lead" });
+    expect(byCampaign(changes)[id(10)].filters).toEqual({ stage: "lead", campaign: `${id(12)}:sent` });
+    // In front of an email that follows another, an after is needed.
+    expect(planMove(chain(), move(12, null, 11)).ok).toBe(false);
+  });
+
   it("refuses a Segment that needs review, a target not in this stage, and following itself", () => {
     const f = facts(
       [seg(1, "Lead", { stage: "lead" }), seg(2, "Old", { stage: "lead" }, true), seg(3, "At risk", { stage: "at-risk" })],
