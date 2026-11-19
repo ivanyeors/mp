@@ -66,9 +66,10 @@ filter); slot between P and draft C; drop after P whose follow-up is started (be
 a started campaign refused; a Playbook's draft refused; D onto its own started follow-up refused;
 the `stage` filter and any other filter survive a move; `did` kept for re-pointed follow-ups.
 
-### 2. The write — `moveFunnelEmail` in `funnel/actions.ts`
+### 2. The write — `moveFunnelEmail` in `funnel/arrange-actions.ts`
 
-Guarded by `campaigns`. Input is ids, a stage and a condition only (never filters: the action must
+Its own file: `funnel/actions.ts` renders emails, so it reaches the sender's code. Guarded by
+`campaigns`. Input is ids, a stage and a condition only (never filters: the action must
 not answer questions about Segments, see slice 06's finding). It loads fresh facts, plans, then for
 each change finds or creates the Segment and updates the campaign (`audience: "segment"`,
 `segment_id`), refusing through `audienceRefusal`, with an `email_campaign.update` audit row per
@@ -130,8 +131,12 @@ follow-up links. Replace it with **one column read top to bottom**, the same on 
   into a zone or placed with *Add to this stage*. The model exposes them; no thumbnails needed.
 - **Add an email** stays at the end, as *Start a new sequence*'s companion; Suggested Playbooks
   stay dashed cards among the sequences.
-- A person without `campaigns` edit rights (or, where a Segment must be made, without the
-  Segments' permission) sees the flow with no grips and no **+**.
+- A person with `campaigns` but without the Segments' permission sees the flow with no grips, no
+  move items, no condition control and no *Add an email here*: the browser cannot know which
+  moves would need a new Segment without learning Segment filters. The plain *Add a follow-up*
+  **+** stays, as slice 06 offers it; New campaign handles a Segment that has to be made.
+- **Move to…** in each movable card's menu and on each draft outside the funnel lists every place
+  a drop would accept, in the drop zones' own words, so no move needs a drag.
 
 ## Done when
 
