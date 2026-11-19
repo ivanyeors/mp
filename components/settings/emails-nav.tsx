@@ -2,23 +2,28 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 /**
- * The two halves of the email tool, side by side at the top of each: Email
- * campaigns (PRD-email-marketing) and Email templates (PRD-email-templates).
- * A half the role cannot open is not offered.
+ * The parts of the email tool, side by side at the top of each: Email
+ * campaigns (PRD-email-marketing), the Email funnel (PRD-email-funnel) and
+ * Email templates (PRD-email-templates). A part the role cannot open is not
+ * offered.
  */
 export function EmailsNav({
     current,
     campaignsHref,
+    funnelHref,
     templatesHref,
 }: {
-    current: "campaigns" | "templates";
+    current: "campaigns" | "funnel" | "templates";
     /** Null when the role does not hold `campaigns`. */
     campaignsHref: string | null;
+    /** Null when the role does not hold `campaigns`. */
+    funnelHref: string | null;
     /** Null when the role does not hold `email-templates`. */
     templatesHref: string | null;
 }) {
     const tabs = [
         { key: "campaigns", label: "Campaigns", href: campaignsHref },
+        { key: "funnel", label: "Funnel", href: funnelHref },
         { key: "templates", label: "Templates", href: templatesHref },
     ].filter((t): t is { key: string; label: string; href: string } => Boolean(t.href));
     if (tabs.length < 2) return null;

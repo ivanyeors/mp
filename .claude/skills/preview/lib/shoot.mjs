@@ -239,7 +239,22 @@ for (const [vname, vopts] of viewports) {
       if (overlay) problems.push(`Next.js error overlay: ${overlay}`);
       await hideOverlays(page);
       if (shot.element) await page.locator(shot.element).first().screenshot({ path: file });
-      else await page.screenshot({ path: file, fullPage: opt.fullPage });
+      else {
+        // An email drawn in a sandboxed `srcdoc` frame (the Email funnel's cards, the
+        // Start panel's thumbnails) runs in its own process, and a full-page shot leaves
+        // it blank below the fold. Only on a page with such a frame is the window made as
+        // tall as the page for the shot (up to 16,000 px); every other page, video and
+        // embed frames included, is shot as before, so its vh-sized parts are unchanged.
+        const vp = page.viewportSize();
+        const framed = opt.fullPage && vp && (await page.locator("main iframe[srcdoc]").count()) > 0;
+        if (framed) {
+          const height = await page.evaluate(() => document.documentElement.scrollHeight);
+          await page.setViewportSize({ width: vp.width, height: Math.min(height, 16_000) });
+          await page.waitForTimeout(800);
+          await page.screenshot({ path: file });
+          await page.setViewportSize(vp);
+        } else await page.screenshot({ path: file, fullPage: opt.fullPage });
+      }
     } catch (err) {
       problems.push(`could not take the shot: ${String(err.message ?? err).split("\n")[0]}`);
     }

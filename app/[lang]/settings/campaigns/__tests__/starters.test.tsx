@@ -75,6 +75,8 @@ vi.mock("next/navigation", () => ({
 const { CampaignEditor } = await import("../campaign-editor");
 const { CONTENT_PLACEHOLDERS } = await import("@/lib/email-campaigns/content");
 const { CAMPAIGN_PLACEHOLDERS, newCampaignDraft } = await import("@/lib/email-campaigns/rules");
+const { playbooksFound } = await import("@/lib/email-campaigns/starters");
+const { matchable } = await import("@/lib/email-campaigns/wanted-segment");
 
 const CONTENT: CampaignContent = {
   v: 1,
@@ -108,14 +110,25 @@ const SAVED: Campaign = {
 };
 
 let root: Root | null = null;
-function mount(campaign: Campaign | null, draft: CampaignDraft, ai?: AiWritingAvailability, segments: { id: string; name: string }[] = []) {
+/** `segments` with their filters, as the server reads them: the editor gets their names and what the server found. */
+function mount(campaign: Campaign | null, draft: CampaignDraft, ai?: AiWritingAvailability, segments: { id: string; name: string; params: Record<string, string> }[] = []) {
+  const live = matchable(segments.map((s) => ({ ...s, needsReview: false })));
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
   act(() =>
     root!.render(
       <>
-        <CampaignEditor campaign={campaign} draft={draft} stats={null} segments={segments} staffEmail="owner@mpillow.com" pointsLive ai={ai} />
+        <CampaignEditor
+          campaign={campaign}
+          draft={draft}
+          stats={null}
+          segments={segments.map(({ id, name }) => ({ id, name }))}
+          found={playbooksFound(live)}
+          staffEmail="owner@mpillow.com"
+          pointsLive
+          ai={ai}
+        />
         <Toaster />
       </>,
     ),
@@ -202,10 +215,10 @@ describe("thumbnails", () => {
 });
 
 describe("a Playbook", () => {
-  it("starts Welcome back with its words, its stage's Segment found by name, and the Unengaged included", async () => {
+  it("starts Welcome back with its words, its stage's Segment found by its filters, and the Unengaged included", async () => {
     mount(null, newCampaignDraft(undefined, []), undefined, [
-      { id: "seg-loyal", name: "Loyal" },
-      { id: "seg-lapsed", name: "At risk · Lapsed" },
+      { id: "seg-loyal", name: "Loyal", params: { stage: "loyal" } },
+      { id: "seg-lapsed", name: "At risk · Lapsed", params: { stage: "at-risk:lapsed" } },
     ]);
     await until(startPanel);
     await click(choice("A Starter")!);

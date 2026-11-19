@@ -1,10 +1,12 @@
 "use server";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
-import { getSegment } from "@/lib/crm/segments";
+import { getSegment, listSegments } from "@/lib/crm/segments";
+import { afterParam, findWanted, matchable, type WantedAddress } from "@/lib/email-campaigns/wanted-segment";
 import { readSegmentFilters } from "@/lib/crm/segment-rules";
 import {
   CampaignDraftSchema,
@@ -49,7 +51,7 @@ import {
 } from "@/lib/email-campaigns/store";
 import { keepSendingBlocker, parseDailyCap, KEEP_SENDING_MAX_CAP, type KeepSending } from "@/lib/email-campaigns/keep-sending";
 import { holdoutBlocker } from "@/lib/email-campaigns/results";
-import { BLANK_PREVIEW, STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
+import { BLANK_PREVIEW, newCampaignFromAddress, STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
 import { imageAssetsIn } from "@/lib/email-campaigns/content";
 import { NO_DETAILS, POINTS_NOT_LIVE, SAMPLE_RECIPIENT, type PreviewAs } from "@/lib/email-campaigns/variables";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -235,6 +237,42 @@ export async function listPastCampaignsAction(): Promise<{ ok: true; campaigns: 
   await assertAdmin("campaigns");
   try {
     return { ok: true, campaigns: await listPastCampaigns(supabaseAdmin()) };
+  } catch (err) {
+    return { ok: false, error: message(err) };
+  }
+}
+
+/** What `findWantedSegmentAction` takes: one of New campaign's addresses, never filters. */
+const WantedAddressSchema = z.union([
+  z.object({ starter: z.string().max(100) }).strict(),
+  z.object({ stage: z.string().max(40) }).strict(),
+  z.object({ after: z.string().max(100) }).strict(),
+]);
+const NOT_WANTED = { ok: false as const, error: "That is not a Segment New campaign can want." };
+
+/**
+ * The live Segment a wanted Segment is, read again (PRD-email-funnel slices
+ * 04 and 06): when *Create the Segment* is refused for a taken name, the
+ * editor asks whether the Segment it wants exists after all (made since the
+ * page loaded). It sends the address the Segment was wanted at (`?starter=`,
+ * `?stage=` or `?after=`), and the server derives the wanted Segment as the
+ * page does (an offered Starter, a main stage, a live campaign), so no
+ * caller's filters are ever compared: Staff with `campaigns` but not
+ * `customers` cannot ask whether a Segment searches for someone. Answers the
+ * Segment's id and name only. Changes nothing.
+ */
+export async function findWantedSegmentAction(input: WantedAddress): Promise<{ ok: true; segment: { id: string; name: string } | null } | Failure> {
+  await assertAdmin("campaigns");
+  const address = WantedAddressSchema.safeParse(input);
+  if (!address.success) return NOT_WANTED;
+  try {
+    const after = "after" in address.data ? afterParam(address.data.after) : null;
+    const parent = after ? await getCampaign(supabaseAdmin(), after.id) : null;
+    const segments = matchable(await listSegments());
+    const { wanted } = newCampaignFromAddress(address.data, segments, parent);
+    if (!wanted) return NOT_WANTED;
+    const found = findWanted(wanted, segments);
+    return { ok: true, segment: found ? { id: found.id, name: found.name } : null };
   } catch (err) {
     return { ok: false, error: message(err) };
   }

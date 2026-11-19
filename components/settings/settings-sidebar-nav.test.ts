@@ -18,9 +18,14 @@ describe("the CRM group", () => {
     ]);
   });
 
-  it("nests Email templates under Email campaigns", () => {
+  it("nests Funnel, then Email templates, under Email campaigns", () => {
     const campaigns = group("CRM").items.find((i) => i.href === "/settings/campaigns")!;
-    expect(campaigns.items?.map((s) => s.href)).toEqual(["/settings/email-templates"]);
+    expect(campaigns.items?.map((s) => s.href)).toEqual(["/settings/campaigns/funnel", "/settings/email-templates"]);
+    expect(campaigns.items?.[0].label).toBe("Funnel");
+    expect(permissionForHref("/settings/campaigns/funnel")).toBe("campaigns");
+    expect(
+      buildSettingsBreadcrumbs("/settings/campaigns/funnel", NAV_GROUPS, "Funnel").map((c) => c.label),
+    ).toEqual(["Admin Panel", "Email campaigns", "Funnel"]);
     expect(
       buildSettingsBreadcrumbs("/settings/email-templates/order.refund", NAV_GROUPS, "Refund").map((c) => c.label),
     ).toEqual(["Admin Panel", "Email campaigns", "Email templates", "Refund"]);
@@ -44,9 +49,9 @@ describe("visibleItems", () => {
 
   it("shows a parent with the children the role holds", () => {
     expect(shown(["campaigns", "email-templates"])).toEqual([
-      ["/settings/campaigns", ["/settings/email-templates"]],
+      ["/settings/campaigns", ["/settings/campaigns/funnel", "/settings/email-templates"]],
     ]);
-    expect(shown(["campaigns"])).toEqual([["/settings/campaigns", []]]);
+    expect(shown(["campaigns"])).toEqual([["/settings/campaigns", ["/settings/campaigns/funnel"]]]);
   });
 
   it("lifts a child up when the role cannot open its parent", () => {

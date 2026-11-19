@@ -21,13 +21,25 @@
  */
 import type { CampaignWords } from "./clear-all";
 import { CONTENT_VERSION, contentFromLegacy, emptyBlock, newBlockId, type CampaignContent, type EmailBlock, type EmailBlockType } from "./content";
-import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignAudience, type CampaignDraft } from "./rules";
+import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, newCampaignDraft, type CampaignAudience, type CampaignDraft } from "./rules";
+import {
+  afterParam,
+  findWanted,
+  followUpWanted,
+  foundSegments,
+  stageWanted,
+  wantedKey,
+  wantedToCreate,
+  type FoundSegments,
+  type MatchableSegment,
+  type WantedSegment,
+} from "./wanted-segment";
 
 /**
  * Who a Starter is written for: the audience it sets as it lands, in the same
  * step as its blocks. A Playbook names its stage's Segment, found among the
- * Segments by name; the Segment is left to choose when none has that name.
- * `filters` is the Customers list query that Segment saves (so Staff can make
+ * Segments by its filters (`playbookSegment`); the Segment is left to choose
+ * when none has them. `filters` is the Customers list query that Segment saves (so Staff can make
  * it once), and a win-back sets `includeUnengaged` (PRD-campaign-audiences
  * slice 12).
  */
@@ -148,8 +160,9 @@ const go = (id: () => string, label: string, target: Of<"buttons">["buttons"][nu
  * wait for points to be live, as every campaign that mentions them does.
  *
  * Offered once the owner approves their words: only those in
- * `APPROVED_PLAYBOOKS` are (`PLAYBOOK_STARTERS`). All four were approved on
- * 2026-11-01.
+ * `APPROVED_PLAYBOOKS` are (`PLAYBOOK_STARTERS`). The first four were
+ * approved on 2026-11-01; *How your pillow is made* (PRD-email-funnel) waits
+ * for the owner.
  */
 export const PLAYBOOK_DRAFTS: readonly Starter[] = [
   {
@@ -237,6 +250,39 @@ export const PLAYBOOK_DRAFTS: readonly Starter[] = [
       text(id, ["Questions first? Reply to this email, or reach our support team on WhatsApp or through the Support page on our website."]),
     ],
   },
+  {
+    // PRD-email-funnel: the Lead step of the Email funnel. A draft until the
+    // owner approves its words (slice 05); not in APPROVED_PLAYBOOKS.
+    id: "playbook_how_its_made",
+    label: "How your pillow is made",
+    description: "For Leads: how a custom pillow is made for them, and the two ways to start: customise online, or book a fitting",
+    words: {
+      name: "How your pillow is made",
+      subject: "How an Mpillow is made to fit you",
+      preheader: "Measured to you, its height and width tailored to you. Start by customising yours on our website.",
+    },
+    audience: { audience: "segment", segment: "Lead", filters: "stage=lead" },
+    blocks: (id = newBlockId) => [
+      heading(id, "Made to fit you"),
+      text(id, ["If one-size pillows have never felt right, an Mpillow starts the other way round: from you."]),
+      heading(id, "How it's made", 2),
+      text(
+        id,
+        ["We measure things like your shoulder width and how you sleep, and tailor the pillow's height and width to you."],
+        [
+          "The height is adjustable, so you can fine-tune it.",
+          "One pillow supports both back and side sleeping.",
+          "The covers and components are washable, and layers can be replaced without replacing the whole pillow.",
+        ],
+      ),
+      heading(id, "Two ways to start", 2),
+      text(id, ["Customise your pillow on our website."]),
+      go(id, "Customise your Mpillow", "customise_mpillow"),
+      // A fitting is Singapore-only (**Ships to**): the words say so, since a Lead's country is often unknown.
+      text(id, ["If you're in Singapore, you can book an appointment for a fitting instead."]),
+      go(id, "Book a fitting in Singapore", "book_fitting"),
+    ],
+  },
 ];
 
 /**
@@ -295,23 +341,50 @@ interface Audienced {
   segmentId: string;
 }
 
+/** Pure — the Segment a Playbook is written for, as a wanted Segment; null for a Starter not written for one. */
+export function starterWants(s: Starter): WantedSegment | null {
+  const a = s.audience;
+  return a?.audience === "segment" ? { address: { starter: s.id }, name: a.segment, filters: a.filters, who: "This Playbook", playbook: true } : null;
+}
+
+/**
+ * Pure — the wanted Segment once an email wanting `current` is started from
+ * `s`: a Starter with an Audience of its own brings its Segment, or none (the
+ * sign-in invitation); one with none ends a Playbook's (the email is no longer
+ * that Playbook) but keeps the address's, whose Audience the campaign keeps.
+ */
+export const wantedAfterStarter = (s: Starter, current: WantedSegment | null): WantedSegment | null =>
+  s.audience ? starterWants(s) : current?.playbook ? null : current;
+
+/** Pure — the live Segment `s` is written for, or null (`findWanted`). Server only: it reads Segments' filters. */
+export function playbookSegment<S extends MatchableSegment>(s: Starter, segments: readonly S[]): S | null {
+  const w = starterWants(s);
+  return w ? findWanted(w, segments) : null;
+}
+
+/** Pure — what the server tells the editor about every offered Playbook's Segment (`FoundSegments`). */
+export const playbooksFound = (segments: readonly MatchableSegment[]) => foundSegments(PLAYBOOK_STARTERS.map(starterWants), segments);
+
 /**
  * Pure — who `s` sends the email to, or nothing for a Starter written for
- * anyone. A Playbook's Segment is the one of `segments` with its name, and a
- * win-back includes the Unengaged.
+ * anyone. A Playbook's Segment is the one the server found (`found`), or left
+ * to choose, and a win-back includes the Unengaged.
  */
-export function starterAudience(
-  s: Starter,
-  segments: readonly { id: string; name: string }[],
-): Partial<Audienced> & { includeUnengaged?: boolean } {
+export function starterAudience(s: Starter, found: FoundSegments): Partial<Audienced> & { includeUnengaged?: boolean } {
   const a = s.audience;
   if (!a) return {};
   if (a.audience !== "segment") return { audience: a.audience };
   return {
     audience: "segment",
-    segmentId: segments.find((x) => x.name === a.segment)?.id ?? "",
+    segmentId: found[wantedKey({ filters: a.filters })] ?? "",
     ...(a.includeUnengaged ? { includeUnengaged: true } : {}),
   };
+}
+
+/** Pure — what *Create the Segment* sends for a Playbook (`wantedToCreate`); *Include unengaged* is the campaign's, never a filter. */
+export function playbookSegmentToCreate(s: Starter): { name: string; filters: Record<string, string> } | null {
+  const w = starterWants(s);
+  return w ? wantedToCreate(w) : null;
 }
 
 /**
@@ -325,7 +398,7 @@ export function startedFrom<T extends CampaignWords & Audienced & { includeUneng
   draft: T,
   s: Starter,
   blocks: EmailBlock[],
-  segments: readonly { id: string; name: string }[],
+  found: FoundSegments,
 ): T {
   return {
     ...draft,
@@ -333,6 +406,75 @@ export function startedFrom<T extends CampaignWords & Audienced & { includeUneng
     body: "",
     button: { choice: "none", label: "", url: "" },
     content: { v: CONTENT_VERSION, blocks, fallbacks: draft.content?.fallbacks ?? {} },
-    ...starterAudience(s, segments),
+    ...starterAudience(s, found),
   };
+}
+
+/**
+ * Pure — New campaign at `?starter=<id>` (PRD-email-funnel slice 04: the
+ * Email funnel's *Not set up* step links here): `base` (the empty campaign,
+ * or `?segment=`'s) started from that Starter as the Start panel starts it
+ * (`startedFrom`), with its words, blocks, audience and *Include unengaged*.
+ * Only a Starter that is offered (`starterById`): an unknown id, or a
+ * Playbook the owner has not approved, leaves `base` as it is. A Starter with
+ * no audience of its own keeps `base`'s. Nothing is saved: it is the
+ * editor's draft until Save.
+ */
+export function startedFromParam(
+  base: CampaignDraft,
+  starterParam: string | string[] | undefined,
+  found: FoundSegments,
+  id: () => string = newBlockId,
+): CampaignDraft {
+  const wanted = Array.isArray(starterParam) ? starterParam[0] : starterParam;
+  const s = wanted ? starterById(wanted) : null;
+  if (!s) return base;
+  const goesTo = starterAudience(s, found);
+  return {
+    ...base,
+    ...(s.words ? { name: s.words.name, subject: s.words.subject, preheader: s.words.preheader || null } : {}),
+    body: "",
+    button: null,
+    content: { v: CONTENT_VERSION, blocks: s.blocks(id), fallbacks: base.content?.fallbacks ?? {} },
+    ...(goesTo.audience ? { audience: goesTo.audience } : {}),
+    ...(goesTo.segmentId !== undefined ? { segmentId: goesTo.segmentId || null } : {}),
+    ...(goesTo.includeUnengaged ? { includeUnengaged: true } : {}),
+  };
+}
+
+/**
+ * Pure — New campaign at its address (PRD-email-funnel slices 04 and 06):
+ * the draft, the wanted Segment the editor names when it is missing, a note
+ * beside the Audience, and what the server found (`FoundSegments`: every
+ * offered Playbook's Segment and the wanted one, never a Segment's filters).
+ * Server only: it reads the Segments' filters.
+ *
+ * When several are given, one Audience wins, in this order:
+ * 1. `?starter=` with an Audience of its own (a Playbook, the invitation);
+ * 2. `?after=<campaign id>:<sent|clicked|not-clicked>`, a follow-up to a live campaign (`parent`, read by the page);
+ * 3. `?stage=<stage>` (*Lost* gives the note and no Segment);
+ * 4. `?segment=<id>` (*Email this Segment*).
+ * A Starter without an Audience still brings its words and blocks. Opening it saves, creates and sends nothing.
+ */
+export function newCampaignFromAddress(
+  query: Readonly<Record<string, string | string[] | undefined>>,
+  segments: readonly (MatchableSegment & { needsReview: boolean })[],
+  parent: { id: string; name: string; archivedAt: string | null } | null,
+  id: () => string = newBlockId,
+): { draft: CampaignDraft; wanted: WantedSegment | null; note: string | null; found: FoundSegments } {
+  const fromStage = stageWanted(query.stage);
+  const followUp = followUpWanted(afterParam(query.after), parent, segments);
+  const fromAddress = followUp ?? (fromStage && "wanted" in fromStage ? fromStage.wanted : null);
+  const note = !followUp && fromStage && "note" in fromStage ? fromStage.note : null;
+  const found = { ...playbooksFound(segments), ...foundSegments([fromAddress], segments) };
+
+  let base = newCampaignDraft(query.segment, segments);
+  if (fromAddress) base = { ...EMPTY_CAMPAIGN_DRAFT, audience: "segment", segmentId: found[wantedKey(fromAddress)] ?? null };
+  else if (note) base = EMPTY_CAMPAIGN_DRAFT;
+  const draft = startedFromParam(base, query.starter, found, id);
+
+  const starter = Array.isArray(query.starter) ? query.starter[0] : query.starter;
+  const s = starter ? starterById(starter) : null;
+  if (s?.audience) return { draft, wanted: starterWants(s), note: null, found };
+  return { draft, wanted: fromAddress, note, found };
 }

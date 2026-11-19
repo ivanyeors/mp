@@ -21,4 +21,15 @@ describe("segmentOptions", () => {
   it("links nothing for a role without customers", () => {
     expect(segmentOptions(SEGMENTS, as("campaigns"), "en-US").map((o) => o.customersHref)).toEqual([null, null]);
   });
+
+  // PRD-email-funnel review: a Segment's filters can name a Customer, and `campaigns` does not need `customers`.
+  // A wanted Segment is matched on the server (`FoundSegments`); the options carry no filters, for any role.
+  it.each([[["campaigns"]], [["campaigns", "customers"]]] as Permission[][][])("carries no Segment's filters beyond the Customers link (%j)", (keys) => {
+    const segments = [{ id: "s3", name: "One VIP", params: { search: "tan@example.com", stage: "at-risk" } }];
+    for (const o of segmentOptions(segments, as(...keys), "en-US")) {
+      expect(Object.keys(o).sort()).toEqual(["customersHref", "id", "name"]);
+      expect(JSON.stringify({ ...o, customersHref: null })).not.toMatch(/tan|at-risk|stage/);
+    }
+    expect(JSON.stringify(segmentOptions(segments, as("campaigns"), "en-US"))).not.toMatch(/tan@|tan%40|at-risk/);
+  });
 });

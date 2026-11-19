@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, HandCoins, TrendingUp, Store, ClipboardList,
   Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
-  ShoppingCart, UserCircle, Mail, MailCheck, Tag, Truck, KeyRound, Loader2, RotateCcw,
+  ShoppingCart, UserCircle, Mail, MailCheck, Funnel, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
   GitBranch, ClipboardCheck, Percent, Box, BookOpen, X,
 } from "lucide-react";
@@ -116,6 +116,8 @@ export const NAV_GROUPS: NavGroup[] = [
         tooltip: "Write and send marketing email",
         Icon: Mail,
         items: [
+          // PRD-email-funnel: every email sent by itself, by Lifecycle stage.
+          { href: "/settings/campaigns/funnel", label: "Funnel", tooltip: "Every email we send by itself, by lifecycle stage", Icon: Funnel },
           { href: "/settings/email-templates", label: "Email templates", tooltip: "Wording of every customer and partner email", Icon: MailCheck },
         ],
       },

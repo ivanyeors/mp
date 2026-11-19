@@ -59,3 +59,4 @@ one is amended to point at it.
 | [0051](0051-every-customisation-email-is-a-customer.md) | Every email given in a customisation is a Customer, and Staff link or create one from a Result |
 | [0052](0052-partner-application-carries-the-listing.md) | A Partner application carries the public listing, approval publishes it, and a pending applicant can withdraw |
 | [0053](0053-shop-checkout-pays-on-our-page.md) | Shop checkout pays on our page, with Apple Pay and Google Pay beside the card form and beside the checkout button, from the same Checkout Session |
+| [0054](0054-email-funnel-reads-what-is-set-up.md) | The Email funnel is a reading of what is set up, on the Lifecycle stages, and sends nothing: a step is an automatic email or a campaign kept sending |

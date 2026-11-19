@@ -618,7 +618,7 @@ _Avoid_: "tier", "level" or "status" (nothing changes after a milestone but the 
 Retired (owner, 2026-10-31; ADR 0030 amendment). Points never expire: a balance is kept however long it is between orders, no reminder is sent about it, and no date is shown beside it.
 _Avoid_: an expiry date, a "use them before" reminder, or any copy that implies points lapse
 
-## Email marketing (PRD-email-marketing, PRD-campaign-email-editor, ADR 0036)
+## Email marketing (PRD-email-marketing, PRD-campaign-email-editor, PRD-email-funnel, ADR 0036, ADR 0054)
 
 **Email campaign**:
 A marketing email **Staff** write in **Admin Panel** → Email campaigns (`email_campaigns`): a subject, an inbox preview line and a list of **Email blocks** (`content`), written in English, with an optional **Chinese version**, sent to one **Audience** in **Waves**. A campaign written before the block editor keeps its plain-text `body` and at most one button, and its words, order and links are shown and sent as they always were (ADR 0036). Its sends are rows of the campaign ledger, `customer_campaign_sends`, under `campaign:<id>`, so no **Customer** gets the same campaign twice. Once its first Wave starts, its email and Audience are fixed; a changed email is a duplicate.
@@ -691,6 +691,22 @@ _Avoid_: "template" for the layout or design (that is fixed); calling an **Email
 **Wave**:
 One run of an **Email campaign** to the next *n* eligible **Customers**, buyers first, started by **Staff** and sent from the open page a batch at a time. The next Wave is held while the last one, of any campaign email, had over 2% bounces or 0.1% spam reports, until Staff resume it.
 _Avoid_: "batch" for the whole run (a batch is one request inside a Wave); scheduling (there is none yet)
+
+**Email funnel**:
+The page that lays every email the platform sends by itself along the **Lifecycle stages** (**Admin Panel** → Email campaigns → Funnel, `/settings/campaigns/funnel`; PRD-email-funnel, ADR 0054; owner, 2026-11-18). For each stage: the **Segments** that cut it, its **Email flow**, and what each email did for the people who were at that stage when it reached them. It reads what is set up and stores nothing; it sends nothing. Its stages are the **Lifecycle stage**'s five, so it starts at *Lead*: a **Visitor** who has given no email is not on it. *Lost* is sent no marketing email; service emails about an order still go.
+_Avoid_: "marketing funnel" for the **Visitor** journey (that is Analytics, per **Visit**); a second list of stages for email; reading a stage's count as who will be emailed (consent, suppression, the **Rest period** and the sunset rule narrow it at each send)
+
+**Funnel step**:
+One email in a stage of the **Email funnel**: an **Automatic email**, or an **Email campaign** sent to a **Segment** of that stage (a **Playbook** started, or one Staff wrote). The designed steps are a list in code (`lib/email-funnel/programme.ts`). A campaign's stage is read from its Segment's `stage` filter, and a Playbook's step is *set up* when a live campaign's Segment has the Playbook's filters and the campaign still carries the Playbook's name or subject; neither is stored. Each is *Service* or *Marketing*, by the consent it reads.
+_Avoid_: storing a campaign's step or stage; "node", "action" (a builder's words: nothing is built on the page)
+
+**Email flow**:
+The picture, for one **Lifecycle stage**, of its **Funnel steps** in order: who enters, what each email waits for, what state it is in (*On*, *Not set up*, *Keeps sending*, *Paused*), and what ends it. A follow-up hangs under the campaign its Segment reads (*got it*, *clicked it*, *got it, didn't click*), and the **Rest period** is drawn between two marketing emails. Each email is a card with a thumbnail from the real renderer, and opens as it will be sent. Emails are added from it (*Add an email* for the stage, *Add a follow-up* to a campaign), each an ordinary **Email campaign** written in the campaign editor. A draft is put in order by dragging it: that points it at the **Segment** that reads the email before it (found or created), and changes nothing else; a started campaign and a **Playbook**'s draft stay where they are (ADR 0054 (8)). Drawn when the page is read; no position is stored.
+_Avoid_: reading it as a flow builder or a branching automation (a step with two emails is two campaigns); "flow", "automation" or "drip" for **Kept sending** itself, as before; "journey" (the Customer page's tab, and Analytics)
+
+**Automatic email**:
+An email the platform sends by itself, with words fixed in an **Email template**: the three draft reminders (ADR 0050), the **Review request** and the **Check-up reminder** (**Aftercare messages**), and the order, return and quote emails. On the **Email funnel** each is a **Funnel step** of the stage its trigger falls in, marked *Service* (sent whatever the **Marketing consent**) or *Marketing* (draft reminders and the Check-up reminder read it). It shows only the outcome it already records: a review link opened, a booking after a check-up, a Draft finished after a reminder.
+_Avoid_: calling a **Kept sending** campaign one (Staff wrote it, and started it); "transactional" for all of them (draft reminders and the Check-up reminder read consent); "system email" in UI copy
 
 ## Customer messages (PRD-social-inbox)
 

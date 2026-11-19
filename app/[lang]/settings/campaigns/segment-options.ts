@@ -7,7 +7,10 @@ import type { SegmentOption } from "./campaign-editor";
 /**
  * The Segments a campaign can be sent to, each with a link to its Customers
  * list for Staff holding `customers` (PRD-crm-retention-loop slice 02). The
- * link is the Segment chip's own: the list with its filters.
+ * link is the Segment chip's own: the list with its filters. Nothing else of
+ * a Segment's filters reaches the editor: they can name a Customer, and
+ * `campaigns` does not need `customers`. A wanted Segment is matched on the
+ * server (lib/email-campaigns/wanted-segment.ts, `FoundSegments`).
  */
 export function segmentOptions(
     segments: readonly Pick<CustomerSegment, "id" | "name" | "params">[],
