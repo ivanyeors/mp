@@ -611,7 +611,10 @@ export function MpConfigClient({
     resumeFinish || staffEdit
       ? "preview"
       : resumeDraft
-        ? resumeStepFor(variant, resumeDraft.answers)
+        ? // A pillow owner who started signed out has not said who it is for.
+          pillowOwner && !resumeDraft.answers.pillowFor
+          ? "name"
+          : resumeStepFor(variant, resumeDraft.answers)
         : "welcome",
   );
   const [restoringHoldCancel, setRestoringHoldCancel] = useState(false);
@@ -3358,10 +3361,15 @@ export function MpConfigClient({
         {earns ? (
           <ReviewNote
             icon={<Gift />}
-            title={`You'll earn ${earns.points}, worth ${earns.worth}`}
+            // "About": points are earned on the order as it is finally accepted.
+            title={`You'll earn about ${earns.points}, worth ${earns.worth}`}
             lines={[
               "Added to your account 30 days after delivery, to spend in our shop.",
-              shippingSignedIn ? "You'll see them on your Profile." : `Sign in with ${holdEmail} to see and use them.`,
+              // The account at a Staff device is not the buyer's; and only a
+              // signed-in Customer is known not to be a partner (ADR 0030 e).
+              shippingSignedIn && !(assisted || staffAssist)
+                ? "You'll see them on your Profile."
+                : `Sign in with ${holdEmail} to see and use them. Partner accounts don't earn points.`,
             ]}
           />
         ) : null}
