@@ -4241,7 +4241,7 @@ export function MpConfigClient({
 
               <div className="space-y-4">
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     1
                   </div>
                   <div>
@@ -4253,7 +4253,7 @@ export function MpConfigClient({
                 </div>
 
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     2
                   </div>
                   <div>
@@ -4276,7 +4276,7 @@ export function MpConfigClient({
                 </div>
 
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     3
                   </div>
                   <div>
@@ -4288,7 +4288,7 @@ export function MpConfigClient({
                 </div>
 
                 <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
                     4
                   </div>
                   <div>
