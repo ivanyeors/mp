@@ -58,7 +58,6 @@ export function useMobileDockActions(actions: readonly DockAction[]): boolean {
   const key = renderKey(actions);
   const stable = useMemo(
     () => actions.map((a, i) => ({ ...a, onClick: () => latest.current[i]?.onClick() })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [key],
   );
 

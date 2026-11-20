@@ -14,12 +14,6 @@ import {
   type FunnelStageView,
 } from "../model";
 
-/**
- * The Email funnel's view (PRD-email-funnel slice 02): Segments, flow and
- * results per stage, derived from plain facts. Each case is built to fail the
- * plausible wrong version, named beside it.
- */
-
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
 const seg = (n: number, name: string, params: Record<string, string>, extra: Partial<FunnelSegmentFact> = {}): FunnelSegmentFact => ({
@@ -42,7 +36,6 @@ type CampaignOpts = {
   subject?: string;
 };
 
-/** The Playbooks' own subjects (lib/email-campaigns/starters.ts): a campaign keeping one still sets its Playbook up. */
 const SUBJECT = {
   second: "Getting the most from {your_pillow}",
   thanks: "Thank you for coming back to Mpillow",
@@ -107,10 +100,7 @@ const stageOf = (view: ReturnType<typeof buildFunnel>, s: LifecycleStage): Funne
 const flowOf = (view: ReturnType<typeof buildFunnel>, s: LifecycleStage) => stageOf(view, s).flow;
 const stepOf = (view: ReturnType<typeof buildFunnel>, s: LifecycleStage, key: string) => flowOf(view, s).find((x) => x.key === key)!;
 
-// ─── The demo: five Segments, six campaigns ──────────────────────────────────
-
 const DEMO_SEGMENTS = [
-  // The We miss you Playbook's filters, in the other key order.
   seg(1, "At risk · 12 to 24 months", { last_order: "within:24", stage: "at-risk" }),
   seg(2, "At risk · Lapsed", { stage: "at-risk:lapsed" }),
   seg(3, "Lead", { stage: "lead" }),
@@ -173,7 +163,6 @@ describe("buildFunnel: the demo", () => {
     expect(missYou.keepsSending).toBe(true);
     expect(missYou.numbers).toMatchObject({ people: 40, clicked: 4, bought: 2, boughtTotal: 240 });
     expect(atRisk.results.totals.campaigns.people).toBe(100);
-    // The Check-up's 12 are not split by stage: beside the total, never in it, here or in Loyal.
     expect(atRisk.results.totals.automaticSent).toBe(0);
     expect(atRisk.results.totals.automaticAcrossStages).toBe(12);
     expect(stageOf(view, "loyal").results.totals).toMatchObject({ automaticSent: 0, automaticAcrossStages: 12 });
@@ -193,8 +182,6 @@ describe("buildFunnel: the demo", () => {
   });
 });
 
-// ─── Segments by stage ───────────────────────────────────────────────────────
-
 describe("Segments by stage", () => {
   const view = buildFunnel(facts({ segments: [seg(1, "Lapsed", { stage: "at-risk:lapsed" }), seg(2, "New or Loyal", { stage: "new,loyal" })] }));
   const names = (s: LifecycleStage) => stageOf(view, s).segments.filter((x) => !x.notCreated).map((x) => x.name);
@@ -213,7 +200,6 @@ describe("Segments by stage", () => {
   it("lists a Playbook's missing Segment as Not created, with the Playbook's name for it", () => {
     const missing = stageOf(view, "at_risk").segments.filter((x) => x.notCreated);
     expect(missing.map((x) => [x.name, x.starterId, x.id])).toEqual([["At risk · 12 to 24 months", "playbook_we_miss_you", null]]);
-    // The Lapsed Segment exists, so Welcome back's is not Not created.
     expect(missing.some((x) => x.starterId === "playbook_welcome_back")).toBe(false);
   });
 
@@ -230,7 +216,6 @@ describe("Segments by stage", () => {
       ["One person", { stage: "loyal" }, true],
       ["Loyal", { stage: "loyal" }, false],
     ]);
-    // The search still counts in matching: that campaign's Segment is not the Thank you Playbook's.
     expect(stepOf(v, "loyal", "loyal.thank_you").state.state).toBe("not_set_up");
   });
 
@@ -254,8 +239,6 @@ describe("Segments by stage", () => {
   });
 });
 
-// ─── Set up: same filters, any key order ─────────────────────────────────────
-
 describe("a Playbook is set up by its Segment's filters", () => {
   const withSegment = (params: Record<string, string>) =>
     buildFunnel(facts({ segments: [seg(1, "Renamed by Staff", params)], campaigns: [camp(11, "Second purchase", { segment: 1, subject: SUBJECT.second })] }));
@@ -271,7 +254,6 @@ describe("a Playbook is set up by its Segment's filters", () => {
     const step = stepOf(view, "new", "new.second_purchase");
     expect(step.state.state).toBe("not_set_up");
     expect(step.campaigns).toEqual([]);
-    // The campaign is still in the flow, as one Staff wrote.
     expect(flowOf(view, "new").some((s) => s.key === `campaign:${id(11)}`)).toBe(true);
   });
 
@@ -322,8 +304,6 @@ describe("a Playbook is set up only by a campaign that still carries its name or
     expect(stepOf(v, "loyal", `campaign:${id(11)}`).kind).toBe("campaign");
   });
 });
-
-// ─── The states ──────────────────────────────────────────────────────────────
 
 describe("each step's state", () => {
   const segments = [
@@ -413,8 +393,6 @@ describe("each step's state", () => {
   });
 });
 
-// ─── Everyone subscribed ─────────────────────────────────────────────────────
-
 describe("a campaign to everyone subscribed", () => {
   const view = buildFunnel(
     facts({
@@ -435,8 +413,6 @@ describe("a campaign to everyone subscribed", () => {
     expect(r.numbers.people).toBe(100);
   });
 });
-
-// ─── Follow-ups ──────────────────────────────────────────────────────────────
 
 describe("a follow-up", () => {
   it("hangs under the campaign of the stage its Segment reads", () => {
@@ -475,7 +451,6 @@ describe("a follow-up", () => {
       facts({
         segments: [
           seg(1, "We miss you", { stage: "at-risk", last_order: "within:24" }),
-          // What Customers → Campaign filter → Save as Segment makes: no stage.
           seg(2, "Got We miss you, didn't click", { campaign: `${id(11)}:not-clicked` }),
           seg(3, "Clicked the second nudge", { campaign: `${id(12)}:clicked` }),
         ],
@@ -487,7 +462,6 @@ describe("a follow-up", () => {
       }),
     );
     expect(stepOf(view, "at_risk", `campaign:${id(12)}`).after).toEqual({ campaignId: id(11), did: "not-clicked" });
-    // A follow-up of a follow-up resolves the same way.
     expect(stepOf(view, "at_risk", `campaign:${id(13)}`).after).toEqual({ campaignId: id(12), did: "clicked" });
     for (const s of ["lead", "new", "loyal", "lost"] as const) {
       expect(flowOf(view, s).some((x) => x.key === `campaign:${id(12)}` || x.key === `campaign:${id(13)}`), s).toBe(false);
@@ -507,7 +481,6 @@ describe("a follow-up", () => {
   describe("a cycle of follow-ups", () => {
     const campaignKeys = (view: ReturnType<typeof buildFunnel>, s: LifecycleStage) =>
       flowOf(view, s).filter((x) => x.kind === "campaign").map((x) => x.key);
-    // A (started first) to Segment 1, which names At risk and reads B; B to Segment 2, which reads A.
     const twoCycle = (order: "ab" | "ba", bothNameStage = false) => {
       const segments = [
         seg(1, "At risk · got B", { stage: "at-risk", campaign: `${id(12)}:sent` }),
@@ -577,7 +550,6 @@ describe("a follow-up", () => {
           seg(1, "At risk · got the old one", { stage: "at-risk", campaign: `${id(99)}:sent` }),
           seg(2, "Got the old one", { campaign: `${id(99)}:clicked` }),
         ],
-        // Campaign 99 is not live: archived or deleted, it is not among the facts.
         campaigns: [camp(11, "Own stage", { segment: 1 }), camp(12, "No stage", { segment: 2 })],
       }),
     );
@@ -595,8 +567,6 @@ describe("a follow-up", () => {
     expect(stepOf(view, "at_risk", `campaign:${id(12)}`).after).toBeNull();
   });
 });
-
-// ─── Numbers ─────────────────────────────────────────────────────────────────
 
 describe("results numbers", () => {
   it("adds only the sent cohort: held out and sent since the holdout are not people sent", () => {
@@ -637,12 +607,10 @@ describe("results numbers", () => {
     expect(lead).toMatchObject({ counted: false, sent: null, outcome: null, outcomeLabel: "Drafts finished afterwards" });
     const review = stageOf(view, "new").results.rows.find((r) => r.kind === "automatic" && r.stepId === "new.review_request");
     expect(review).toMatchObject({ counted: true, sent: 30, outcome: 6 });
-    // Absent from the facts altogether reads the same as a failed read.
     const checkup = stageOf(view, "loyal").results.rows.find((r) => r.kind === "automatic" && r.stepId === "aftercare.checkup_reminder");
     expect(checkup).toMatchObject({ counted: false, sent: null, acrossStages: true });
     expect(stageOf(view, "lead").results.totals).toMatchObject({ automaticSent: 0, automaticNotCounted: 1 });
     expect(stageOf(view, "new").results.totals).toMatchObject({ automaticSent: 30, automaticAcrossStages: 0 });
-    // Service emails show no numbers.
     expect(stageOf(view, "new").results.rows.some((r) => r.kind === "automatic" && r.stepId === "new.order_emails")).toBe(false);
   });
 
@@ -674,8 +642,6 @@ describe("a part not read", () => {
     expect(buildFunnel(facts({ notRead: ["segments", "results"] })).notRead).toEqual(["segments", "results"]);
   });
 });
-
-// ─── Lost ────────────────────────────────────────────────────────────────────
 
 describe("Lost", () => {
   const view = buildFunnel(

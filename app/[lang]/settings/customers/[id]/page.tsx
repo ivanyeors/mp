@@ -23,31 +23,6 @@ import {
 
 export const runtime = "nodejs";
 
-/**
- * Customer detail. The `GET /api/shop/customers/[id]` request the client used
- * to make on mount is read here instead, with the Customer's notes and what the
- * Shopify import holds for them (migration slice 12; shown on the Journey).
- * The **Lifecycle stage** (PRD-crm-retention-loop slice 03) is read from the
- * overview, and a failed read only leaves it out. So are the Customer's
- * **Fitting records** (ADR 0042), whose card says when they could not be read,
- * and their pillow (ADR 0042 j): a Staff link, else the latest fitting's
- * configuration type matched to its Filling Template, drawn in the x-ray.
- * The Contact details card (CRM slice 11) reads the customer row itself;
- * what is matched by phone (WhatsApp, the other numbers seen) is read here
- * once the row's number is known. Addresses keep their own fetch
- * (`/api/shop/customers/[id]/addresses`), and the Journey reads the Customer
- * timeline and the Follow-ups from their routes, each guarded by its own
- * permissions. `?tab=` names the section to open (PRD-customer-page-journey
- * slice 01).
- *
- * A missing row is handed to the client as the same `{ error }` body the route
- * returns with its 404, so the screen behaves exactly as it does today.
- *
- * Seeing this page needs `customers`; its edit controls render only for
- * `customers-edit` (CRM slice 10). The write routes refuse without it anyway.
- * Create order (a Staff order, ADR 0048) renders only for `orders`, which its
- * routes require.
- */
 export default async function CustomerDetailPage({
     params,
     searchParams,
@@ -67,17 +42,12 @@ export default async function CustomerDetailPage({
         getMigratedCustomer(id),
         getAdminCustomerLifecycle(id).catch(() => null),
         listCustomerFittings(id).catch(() => null),
-        // PRD-crm-retention-loop slice 11: why a Lost Customer unsubscribed, beside the stage.
         readCustomerUnsubscribeReason(supabaseAdmin(), id).catch(() => null),
-        // Slice 05: the next step, a summary that never fails the page.
         readNextStepFacts(supabaseAdmin(), id)
             .then((facts) => (facts ? nextStep(facts, new Date()) : null))
             .catch(() => null),
     ]);
 
-    // Both need what the reads above returned; neither waits for the other.
-    // The third: how they found us (their first Visit's Entry source), read
-    // from journey analytics; their own answer only with `results`.
     const [pillow, contact, entry] = customer.ok
         ? await Promise.all([
               readPillow(id, fittings),
@@ -113,7 +83,6 @@ export default async function CustomerDetailPage({
     );
 }
 
-/** The pillow, read after the fittings it is matched from. A failed read says so on the card. */
 async function readPillow(
     customerId: string,
     fittings: Awaited<ReturnType<typeof listCustomerFittings>> | null,
@@ -126,11 +95,6 @@ async function readPillow(
     }
 }
 
-/**
- * WhatsApp and the other numbers seen (CRM slice 11). Numbers from bookings
- * and from Results are each read only with that source's own permission
- * (ADR 0028 (b)). A failed read says so on the card and never fails the page.
- */
 async function readContact(row: Customer, ctx: AdminContext): Promise<ContactFactsResult> {
     try {
         const facts = await readContactFacts(supabaseAdmin(), row, {

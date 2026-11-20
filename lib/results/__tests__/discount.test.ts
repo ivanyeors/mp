@@ -6,11 +6,6 @@ import {
   resultCouponPricing,
 } from "@/lib/results/discount";
 
-/**
- * A Result keeps a discount code's terms from the hold (ADR 0033), and every
- * repricing takes them off the goods priced then. These are the rules every
- * repricing site shares.
- */
 describe("resultCouponPricing", () => {
   const pct = { discount_type: "percentage", discount_value: 10, max_discount: null };
 

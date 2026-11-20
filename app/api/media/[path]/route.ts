@@ -18,7 +18,6 @@ export async function DELETE(
     if (!path) {
         return NextResponse.json({ error: "No file path provided" }, { status: 400 });
     }
-    // An email rendition is never deleted: a sent email points at it for good.
     if (path.startsWith(`${EMAIL_RENDITION_FOLDER}/`)) {
         return NextResponse.json({ error: "An email copy stays for the emails that show it." }, { status: 400 });
     }
@@ -30,8 +29,6 @@ export async function DELETE(
     const { data: publicUrlData } = admin.storage.from("media").getPublicUrl(path);
     const fileUrl = publicUrlData.publicUrl;
 
-    // A file the Asset registry knows goes through its guarded delete, which
-    // also counts the uses by Asset id (an email campaign's) and refuses those.
     const { data: asset } = await admin.from("media_assets").select("id").eq("hosted_url", fileUrl).maybeSingle();
     if (asset) {
         try {
@@ -48,7 +45,6 @@ export async function DELETE(
         }
     }
 
-    // Check usage before deleting (unless force=true)
     if (!force) {
         const usages = await listImageUsages(fileUrl);
         if (usages.length > 0) {

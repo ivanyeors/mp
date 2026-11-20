@@ -51,7 +51,6 @@ describe("nudgeKeyFor", () => {
     expect(nudgeKeyFor({ key: "ArrowUp", altKey: true })).toEqual({ xMm: 0, yMm: -NUDGE_STEP_MM });
     expect(nudgeKeyFor({ key: "ArrowDown", altKey: true })).toEqual({ xMm: 0, yMm: NUDGE_STEP_MM });
     expect(nudgeKeyFor({ key: "ArrowLeft" })).toBeNull();
-    // Alt + Shift: the last millimetre.
     expect(nudgeKeyFor({ key: "ArrowLeft", altKey: true, shiftKey: true })).toEqual({ xMm: -FINE_STEP_MM, yMm: 0 });
     expect(nudgeKeyFor({ key: "ArrowDown", altKey: true, shiftKey: true })).toEqual({ xMm: 0, yMm: FINE_STEP_MM });
     expect(nudgeKeyFor({ key: "[", altKey: true })).toBeNull();

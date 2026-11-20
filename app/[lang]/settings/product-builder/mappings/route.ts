@@ -21,10 +21,6 @@ export async function GET() {
   }
 }
 
-/**
- * One overlay applied to one or more Items — a whole family of sizes saves in a
- * single request. De-duplicated: an upsert touching the same row twice fails.
- */
 const ItemIdsSchema = z
   .array(z.number().int().positive())
   .min(1)
@@ -37,7 +33,6 @@ const UpsertSchema = z.union([
     assetId: z.string().uuid(),
     fit: OverlayFitSchema.nullish(),
   }),
-  // A color fills the whole silhouette; there is nothing to place.
   z.object({ itemIds: ItemIdsSchema, color: OverlayColorSchema }),
 ])
 

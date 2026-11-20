@@ -63,9 +63,7 @@ describe("Customisation shipping (ADR 0032)", () => {
     expect(html).toContain("Standard Shipping");
     expect(html).toContain("SGD 37.50");
     expect(html).toContain("3–5 business days");
-    // Which courier the price is for, as checkout says it.
     expect(html).toContain("via J&amp;T Express");
-    // Easyship needs a state in the US; the field is offered there.
     expect(html).toContain("State / Province");
   });
 

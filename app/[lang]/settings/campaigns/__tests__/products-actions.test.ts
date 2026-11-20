@@ -1,16 +1,7 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeWorld } from "@/lib/email-campaigns/__tests__/fake-db";
-
-/**
- * Products through the page's actions (PRD-campaign-email-editor slice 07):
- * the picker lists only the shop's Listed products, through the shop's own
- * query, each as the email will show it; a campaign's cards say which of its
- * products are no longer in the shop; the preview prices each from the shop.
- * All behind `campaigns`, and none writes anything.
- */
 
 const COVER = "3b7e1f2a-9c4d-4a6b-8e1f-5d2c3b4a6e7f";
 const NECK = "7c2a4e6b-1d3f-4b8a-9e2c-6f4d5a3b2c1e";
@@ -42,7 +33,6 @@ vi.mock("@/lib/supabase/server", async () => {
   const { fakeCampaignsClient } = await import("@/lib/email-campaigns/__tests__/fake-db");
   return { supabaseAdmin: () => fakeCampaignsClient(h.world) };
 });
-// The shop's own query, as the shop page calls it.
 vi.mock("@/lib/ecommerce/products", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/ecommerce/products")>();
   return {

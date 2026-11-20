@@ -14,12 +14,6 @@ const SUGGESTIONS = [
   "My pillow needs adjusting",
 ] as const;
 
-/**
- * The start of a chat: a composer on the brand gradient. It sits in /support's
- * "Get in touch", and in the chat window when the visitor starts a new chat
- * from there. `actions` go at the end of its header row (the window's
- * minimise and close).
- */
 export function Launcher({
   me,
   verified,
@@ -91,7 +85,6 @@ export function Launcher({
           autoFocus={autoFocus || focusKey > 0}
           onSend={(text) => onSend(text, company)}
         />
-        {/* Honeypot: hidden from people, filled by bots. */}
         <input
           type="text"
           name="company"

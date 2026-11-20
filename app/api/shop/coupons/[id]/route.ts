@@ -48,7 +48,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const update: Record<string, unknown> = { ...parsed.data };
   if (typeof update.code === "string") {
     update.code = (update.code as string).toUpperCase();
-    // One field at checkout takes both kinds of code (ADR 0033).
     if (await isReferralCodeTaken(update.code as string)) {
       return NextResponse.json({ error: "This code is a partner's referral code. Choose another." }, { status: 409 });
     }

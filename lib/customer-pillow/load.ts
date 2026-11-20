@@ -17,41 +17,22 @@ import { fittingTypeCode, matchFittingTemplate, pillowSizeKey, type MatchableTem
 import { ownBoughtPillows, pillowForOf } from "./pillow-for";
 import type { CustomerPillowView } from "./view";
 
-/**
- * The Customer's pillow for the Customer page (ADR 0042 j) and their Profile
- * (k), server-only. `customer_pillows`, the Filling Templates, the purchase
- * lines and the x-ray's overrides are the service role's, so the page reads
- * them here after checking `customers`, and the Profile by the Customer its
- * session is linked to.
- *
- * A Staff link wins. Without one, it is the latest pillow bought here, drawn
- * from the build its order line froze at Accept. Without that, the latest
- * Fitting record's that names a configuration type, matched to a template on
- * this read (`match.ts`). A link's or a fitting's template is drawn as it is
- * now, except a link a Re-adjustment wrote (ADR 0042 l): that is drawn from
- * the mix Staff left in the pillow, and names the template it came from.
- */
-
 type LinkRow = {
   pillow_size: string;
   filling_template_id: number | string | null;
-  /** A Re-adjustment's mix; null for a plain link. */
   filling_placements: unknown;
   linked_by_user_id: string | null;
   linked_by_profile_id: string | null;
   linked_at: string;
 };
 
-/** What the pillow reads of a Fitting record: the Customer page's records and the Profile's own both have it. */
 export type PillowFittingAnswers = Pick<FittingAnswersView, "id" | "fittedAt" | "recommendedSize" | "configurationType" | "profileSide">;
 type Fitting = PillowFittingAnswers;
 
-/** The fitting the pillow is read from: the newest that names a type, else the newest. Fittings come newest first. */
 export function pillowFitting<F extends Fitting>(fittings: readonly F[]): F | null {
   return fittings.find((f) => fittingTypeCode(f.configurationType) !== null) ?? fittings[0] ?? null;
 }
 
-/** Every active pillow Filling Template with the sizes it serves, by name. */
 async function loadPillowTemplates(
   admin: SupabaseClient,
 ): Promise<{ ok: true; templates: MatchableTemplate[] } | { ok: false; error: string }> {
@@ -70,14 +51,12 @@ async function loadPillowTemplates(
     ok: true,
     templates: rows.map((r) => {
       const id = Number(r.id);
-      // Membership is the authority; `key` is only its primary, for a row written before it.
       const members = keys.byId.get(id) ?? (r.key ? [r.key] : []);
       return { id, name: r.name, keys: PILLOW_TEMPLATE_KEYS.filter((k) => members.includes(k)) };
     }),
   };
 }
 
-/** Who linked it: the Staff profile they worked as, else the login's email. */
 async function linkedByName(admin: SupabaseClient, link: LinkRow): Promise<string | null> {
   if (link.linked_by_profile_id) {
     const { data } = await admin.from("mp_staff").select("name").eq("id", link.linked_by_profile_id).maybeSingle();
@@ -92,11 +71,6 @@ async function linkedByName(admin: SupabaseClient, link: LinkRow): Promise<strin
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * The pillows bought here that they still have, latest first, and the order
- * numbers they were bought on. Counted Orders only, as `customer_purchase_lines`
- * counts them; units returned are not theirs.
- */
 async function loadBoughtPillows(
   admin: SupabaseClient,
   customerId: string,
@@ -127,8 +101,6 @@ async function loadBoughtPillows(
     ),
   );
   const all = boughtPillows(lines, (itemsRes.data ?? []) as PillowOrderItem[]);
-  // A pillow they said was for someone else is that person's, not theirs.
-  // uuid-shaped ids only: one malformed snapshot must not fail the whole read.
   const resultIds = [...new Set(all.flatMap((b) => (b.resultId && UUID.test(b.resultId) ? [b.resultId] : [])))];
   if (!resultIds.length) return { ok: true, bought: all, orderNumbers };
   const resultsRes = await admin.from("mp_config_responses").select("id, data").in("id", resultIds);
@@ -167,7 +139,6 @@ export async function loadCustomerPillow(
 
   const fitting = pillowFitting(fittings);
   const match = fitting ? matchFittingTemplate(fitting, tpl.templates) : null;
-  // The latest pillow bought here whose build is on its line; an older line without one is still a purchase.
   const built = bought.bought.find((b) => b.placements.length > 0) ?? null;
   const ownership = pillowOwnership({
     boughtHere: bought.bought.length > 0,
@@ -185,18 +156,15 @@ export async function loadCustomerPillow(
     size = pillowSizeKey(link.pillow_size);
     const linkedId = link.filling_template_id === null ? null : Number(link.filling_template_id);
     template = linkedId === null ? null : (tpl.templates.find((t) => t.id === linkedId) ?? null);
-    // A template made inactive since it was linked is still the one Staff chose: draw it by name.
     if (linkedId !== null && !template) {
       const { data } = await admin.from("bom_templates").select("id, name, key").eq("id", linkedId).maybeSingle();
       if (data) template = { id: Number(data.id), name: String(data.name), keys: data.key ? [String(data.key)] : [] };
     }
-    // A Re-adjustment's pillow is what Staff left in it; the template only says where it came from.
     if (readjusted) placements = placementRows(link.filling_placements);
   } else if (built) {
     source = "order";
     size = built.size;
     placements = built.placements;
-    // Named as it was built; the sizes it serves are the template's now, when it still exists.
     const now = built.templateId === null ? undefined : tpl.templates.find((t) => t.id === built.templateId);
     if (built.templateId !== null) {
       template = { id: built.templateId, name: built.templateName ?? now?.name ?? `Template #${built.templateId}`, keys: now?.keys ?? [] };

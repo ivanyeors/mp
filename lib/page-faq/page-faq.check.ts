@@ -7,7 +7,6 @@ import { stripMarkdownForSchema } from "@/lib/faq";
 import { PAGE_FAQ_DEFAULTS } from "./defaults";
 import { isValidSurfaceKey, parseSurfaceKey, productSurfaceKey } from "./surface-key";
 
-// surface_key accept
 assert.equal(isValidSurfaceKey("home"), true);
 assert.equal(isValidSurfaceKey("mp-config"), true);
 assert.equal(isValidSurfaceKey("mbolster-config"), true);
@@ -16,7 +15,6 @@ assert.equal(
   true
 );
 
-// surface_key reject
 assert.equal(isValidSurfaceKey("shop"), false);
 assert.equal(isValidSurfaceKey("product:not-a-uuid"), false);
 assert.equal(isValidSurfaceKey("product:"), false);
@@ -29,7 +27,6 @@ assert.deepEqual(parseSurfaceKey("product:84c85b30-c6ee-40fc-9cbe-1a5e66dc6c99")
 });
 assert.equal(parseSurfaceKey("nope"), null);
 
-// seed bilingual + no duplicate slugs per set
 assert.ok(PAGE_FAQ_DEFAULTS.length >= 6, "expected fixed + main PDP defaults");
 
 const fixedKeys = new Set(

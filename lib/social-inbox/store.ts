@@ -2,8 +2,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import type { SocialPlatform } from "@/lib/social-inbox/platforms";
 import type { InboundAttachment } from "@/lib/social-inbox/types";
 
-/** `social_conversations` / `social_messages` row shapes and the reads shared by ingest and Telegram. */
-
 export type SocialConversationRow = {
   id: string;
   platform: SocialPlatform;
@@ -59,7 +57,6 @@ export async function getConversation(id: string): Promise<SocialConversationRow
   return (data as SocialConversationRow | null) ?? null;
 }
 
-/** The conversation for (platform, external id), created on first sight. */
 export async function ensureConversation(platform: SocialPlatform, externalId: string): Promise<SocialConversationRow> {
   const admin = supabaseAdmin();
   const { error: upsertError } = await admin
@@ -98,7 +95,6 @@ export async function getMessageByExternalId(
   return (data as SocialMessageRow | null) ?? null;
 }
 
-/** The row a bot message in the group was posted for — how a staff reply finds its conversation. */
 export async function getMessageByCard(chatId: number, messageId: number): Promise<SocialMessageRow | null> {
   const { data, error } = await supabaseAdmin()
     .from("social_messages")
@@ -110,11 +106,6 @@ export async function getMessageByCard(chatId: number, messageId: number): Promi
   return ((data ?? [])[0] as SocialMessageRow | undefined) ?? null;
 }
 
-/**
- * Inserts a message unless (platform, external id) — or, for a staff reply,
- * (chat, Telegram source message) — is already stored. Null means duplicate:
- * a webhook or Telegram update delivered twice.
- */
 export async function insertMessage(
   row: Omit<
     SocialMessageRow,
@@ -132,7 +123,6 @@ export async function insertMessage(
   return ((data ?? [])[0] as SocialMessageRow | undefined) ?? null;
 }
 
-/** A guarded update: only applies while the row is still in `fromStatus` (when given). */
 export async function updateMessage(
   id: string,
   patch: Partial<Omit<SocialMessageRow, "id" | "conversation_id" | "platform" | "direction" | "created_at" | "updated_at">>,

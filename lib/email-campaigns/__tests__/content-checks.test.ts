@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -12,13 +11,6 @@ import type { ContentCheck, EmailFacts, EmailVersion, LinkAnswer } from "../cont
 import type { LinkRequest } from "../link-check";
 import type { Campaign } from "../rules";
 import { emptyWorld, fakeCampaignsClient, type FakeWorld } from "./fake-db";
-
-/**
- * The email's own checks before a wave (PRD-campaign-email-editor slice 11):
- * each one, passing and failing, against fixture content, then through the
- * checks a wave runs, with a fake for the links. A check that holds the wave
- * names the block it is in; advice says *Recommended:* and never holds one.
- */
 
 const h = vi.hoisted(() => ({ failed: new Map<string, string>() }));
 vi.mock("@/lib/media-assets/email-renditions", () => ({
@@ -53,13 +45,11 @@ function renditionUrl(id: string) {
 const ANSWERED: LinkAnswer = { ok: true, reason: "answered 200" };
 const run = (text: string, more: Record<string, unknown> = {}) => ({ text, ...more });
 
-/** Enough words that images off still say something: over 300 characters. */
 const WORDS =
   "Our FibreCool covers are back in every size. They are woven to stay cool against your skin on warm nights, " +
   "they wash at forty degrees and dry in an afternoon, and they fit every Mpillow we make. Pick the size of your " +
   "pillow, and we will send it within two working days. Questions about the fit? Reply to this email.";
 
-/** A well-made email: a title, a photo, words with a link to the site and one to the press, a product, a button. */
 const GOOD: CampaignContent = {
   v: 1,
   blocks: [
@@ -103,7 +93,6 @@ const facts = (over: Partial<EmailFacts> = {}): EmailFacts => ({
   answers: { [PRESS]: ANSWERED, [renditionUrl(PHOTO)]: ANSWERED, [renditionUrl(COVER_PHOTO)]: ANSWERED },
   ...over,
 });
-/** GOOD with block `id` changed. */
 const withBlock = (id: string, block: Partial<EmailBlock>): CampaignContent => ({
   ...GOOD,
   blocks: GOOD.blocks.map((b) => (b.id === id ? ({ ...b, ...block } as EmailBlock) : b)),
@@ -131,7 +120,6 @@ describe("a well-made email", () => {
 });
 
 describe("every block is written (slice 08)", () => {
-  /** A short note, written but for its heading. */
   const NOTE: CampaignContent = {
     v: 1,
     blocks: [
@@ -219,7 +207,6 @@ describe("every link is a full https:// address that answers", () => {
     expect(addressesToAsk(own, { origin: ORIGIN, images: facts().images })).toEqual([PRESS, renditionUrl(PHOTO), renditionUrl(COVER_PHOTO)]);
     const unlinked = withBlock("cta", { buttons: [{ label: "Read it", target: "url", url: "", style: "primary" }] } as Partial<EmailBlock>);
     expect(texts(row("links", { content: unlinked }))).toEqual(["Block 5, Buttons: the button has no link yet"]);
-    // A target's page is the site's on any origin, a local one too: the site check is what holds the origin to https.
     const local = withBlock("intro", { paragraphs: [{ kind: "p", runs: [run(WORDS)] }] } as Partial<EmailBlock>);
     expect(emailLinks(local, "http://localhost:3000").map((l) => l.url)).toEqual(["http://localhost:3000/en-US/shop"]);
     expect(row("links", { content: local }, { origin: "http://localhost:3000" })).toMatchObject({ ok: true, detail: "the link answers" });
@@ -393,7 +380,7 @@ describe("under Gmail's clip, as sent", () => {
   });
 
   it("counts bytes, not characters, and fails an email that could not be rendered, saying why, unless a check above says so", () => {
-    expect(row("size", { rendered: { html: "睡".repeat(34_000) } })?.ok).toBe(false); // 3 bytes each
+    expect(row("size", { rendered: { html: "睡".repeat(34_000) } })?.ok).toBe(false);
     const unrendered = { error: "an image in the email has no copy an inbox can show" };
     expect(row("size", { rendered: unrendered })).toMatchObject({
       ok: false,
@@ -410,7 +397,6 @@ describe("advice, which says Recommended: and never holds a wave", () => {
       advisory: true,
       detail: "Recommended: a shorter subject: phones cut it off after about 60 characters, and it has 64",
     });
-    // 69 characters as written, 57 as Mei Ling Tan reads it.
     expect(row("subject_length", { subject: "{first_name} {last_name}, our FibreCool covers are back this December" })).toBeUndefined();
     expect(row("subject_length", { subject: "{first_name}, sleep cooler" })).toBeUndefined();
   });
@@ -498,7 +484,6 @@ describe("before a wave", () => {
       replyTo: "Mpillow Support <support@mpillow.com>",
       origin: ORIGIN,
       unsubscribeSecret: SECRET,
-      // The site answers one-click unsubscribe for links signed here.
       fetchImpl: vi.fn(async (input: string | URL | Request) => {
         const url = new URL(String(input));
         if (url.pathname !== "/api/email/unsubscribe") return new Response("not found", { status: 404 });
@@ -511,7 +496,6 @@ describe("before a wave", () => {
       linkRequest,
     };
   };
-  /** A fake web: each address answers what `status` says now. */
   const web = (status: Record<string, number>) => {
     const asked: string[] = [];
     const request: LinkRequest = async (url, { method }) => {
@@ -521,7 +505,6 @@ describe("before a wave", () => {
     return { request, asked, status };
   };
 
-  /** A short note, written but for its heading. */
   const NOTE: CampaignContent = {
     v: 1,
     blocks: [
@@ -606,7 +589,6 @@ describe("before a wave", () => {
     const shown = await readCampaignRenderData(s.admin, c.content);
     const sent = renderCampaignAsSent(c, { origin: ORIGIN, unsubscribeSecret: SECRET, ...shown }).html;
     const preview = renderCampaignPreview(c, { origin: ORIGIN, firstName: "Mei Ling", ...shown }).html;
-    // As sent: the recipient's signed unsubscribe link, and no placeholder drawn for the empty heading.
     expect(sent).toContain(`u=${PROBE_CUSTOMER_ID}&amp;t=`);
     expect(sent).not.toContain("dashed");
     expect(preview).toContain("dashed");
@@ -615,7 +597,6 @@ describe("before a wave", () => {
     const size = (await campaignEmailChecks(s, c)).find((r) => r.key === "size")!;
     expect(size).toMatchObject({ ok: true, detail: `${kb(sent)} as sent, under Gmail's 102 KB clip` });
 
-    // Twelve long text blocks: over the clip once rendered.
     const long: CampaignContent = {
       v: 1,
       blocks: Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, type: "text" as const, paragraphs: [{ kind: "p" as const, runs: [{ text: "Sleep cooler tonight. ".repeat(400) }] }] })),
@@ -649,7 +630,6 @@ describe("before a wave", () => {
       ok: false,
       issues: [{ blockId: "photo", text: "Block 2, Image: the image has no copy an inbox can show: The image couldn't be read." }],
     });
-    // It can't be measured either, and the images check already says why.
     expect(readiness.checks.find((c) => c.key === "size")).toBeUndefined();
     expect(readiness.ready).toBe(false);
   });

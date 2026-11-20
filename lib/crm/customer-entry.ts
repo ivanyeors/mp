@@ -1,18 +1,9 @@
-/**
- * How a Customer found us, for their page: the Entry source of their first
- * Visit (machine-captured), the Visit behind their first Order, and beside
- * them, never merged, the **Discovery source** they gave on a Result.
- *
- * Server-only. A Discovery source comes off a Result, so it is read only for
- * a viewer who may see Results (ADR 0028 (b)).
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadCustomerEntry, type CustomerEntry } from "@/lib/analytics/journey/first-touch";
 import { getDiscoverySourceCatalog, resolveDiscoverySourceLabel } from "@/lib/discovery-source";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
 export type CustomerEntryView = CustomerEntry & {
-  /** Their own answer to "how did you hear about us", from their earliest Result that has one. */
   told: string | null;
 };
 
@@ -42,7 +33,6 @@ export async function readCustomerEntry(
   try {
     const [entry, told] = await Promise.all([
       loadCustomerEntry(db, { customerId: customer.id, email: customer.email }),
-      // What they said is a bonus: failing to read it must not hide what we recorded.
       may.results ? readDiscoverySource(db, customer.id).catch(() => null) : Promise.resolve(null),
     ]);
     return { ok: true, view: { ...entry, told } };

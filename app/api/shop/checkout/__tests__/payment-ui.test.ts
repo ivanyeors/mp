@@ -1,15 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Where a shop-cart shopper pays (ADR 0053): on our page, so Apple Pay and
- * Google Pay show beside the card form, or on Stripe's hosted page.
- *
- * Real handler and real session construction; faked tables and Stripe client.
- * Tests run with no secret key, which is test mode, so only a `pk_test_` key
- * may open an on-page Session.
- */
-
 const PRODUCT = "22222222-2222-4222-8222-222222222222";
 const VARIANT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3";
 const SHIPPING = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
@@ -139,7 +130,6 @@ describe("shop checkout: where the shopper pays", () => {
     expect(params.return_url).toMatch(/\/shop\/checkout\/confirmation\?order_number=.+&session_id=\{CHECKOUT_SESSION_ID\}$/);
     expect(params).not.toHaveProperty("success_url");
     expect(params).not.toHaveProperty("cancel_url");
-    // The webhook finds the Order by this, in either mode.
     expect(params.metadata).toMatchObject({ order_id: expect.any(String) });
   });
 
@@ -168,7 +158,6 @@ describe("shop checkout: where the shopper pays", () => {
     h.sessionsCreate.mockImplementation(async () => ({ id: "cs_test_1", url: null, client_secret: null }));
     const res = await pay("elements");
     expect(res.status).toBe(500);
-    // abandonPendingOrder: the Order is gone, so nothing is left pending.
     expect(h.db.orders).toHaveLength(0);
   });
 });

@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * A Result topped up past its hold was paid on two intents (ADR 0016). Its
- * `payment_reference` names the hold; only the ledger's charge rows name the
- * Balance payment. A refund on that second intent must still find the Order,
- * or the money leaves Stripe and never reaches the ledger.
- */
-
 const ORDER = "0b0b0b0b-0000-4000-8000-000000000002";
 
 const h = vi.hoisted(() => ({

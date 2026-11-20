@@ -29,13 +29,10 @@ describe("settleResult", () => {
       { amount: 35, stripeObjectId: "pi_topup" },
     ]);
     expect(s.amountCaptured).toBe(435);
-    // The hold is still what the Order names when it captured.
     expect(s.paymentReference).toBe("pi_hold");
   });
 
   it("ledgers only the Balance payment when there was no hold", () => {
-    // The regression this file exists for: a zero-amount row for a hold that
-    // never existed would raise the refund ceiling above what Stripe ever took.
     expect(
       settleResult({
         holdCaptureAmount: 0,

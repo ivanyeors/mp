@@ -1,7 +1,3 @@
-/**
- * Slice 12 — Retire hardcoded fillings for online purchase path.
- * Maps to .claude/PRD-template-linked-customisation/issues/12-retire-hardcoded-fillings.md
- */
 import { describe, it, expect } from "vitest";
 import { assembleBuild } from "@/lib/build-assembly";
 import {
@@ -50,7 +46,7 @@ describe("slice 12 — no hardcoded fillings on purchase path", () => {
   it("AC2: captured build filling lines come from Filling Template, not FILLING_SPECS", () => {
     const composed = [
       { item_id: 1, quantity: 1, category: "cover" },
-      { item_id: 2, quantity: 1, category: "filling" }, // live BOM filling — ignored
+      { item_id: 2, quantity: 1, category: "filling" },
       { item_id: 3, quantity: 1, category: "protector" },
     ];
     const template = [{ item_id: 99, quantity: 2, category: "filling" }];
@@ -79,7 +75,6 @@ describe("slice 12 — no hardcoded fillings on purchase path", () => {
       proposed_size proposed_tier proposed_length proposed_filling_template_id
     `;
     expect(src).toContain("proposed_filling_template_id");
-    // Runtime: assign/capture paths use assigned_* + filling_template_id, never proposed_*.
     expect(true).toBe(true);
   });
 });

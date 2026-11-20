@@ -1,6 +1,5 @@
 import { OAuth2Client } from "google-auth-library";
 
-/** Shared OAuth2 client for Calendar + People (admin@mpillow.com refresh token). */
 export function getGoogleOAuthClient(): OAuth2Client {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();

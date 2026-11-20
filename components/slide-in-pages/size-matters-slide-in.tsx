@@ -70,7 +70,6 @@ export function SizeMattersSlideIn({ className }: Props) {
         hideClose
         className="w-full max-w-none sm:max-w-none p-0 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
       >
-        {/* Mobile: edge-to-edge; md+: framed shell */}
         <div className="flex h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-background md:rounded-2xl md:border md:shadow-sm">
           <div className={sheetStickyTopClassName}>
             <SheetHeader className="relative px-3 py-3 md:px-8 md:py-6 md:pr-12">
@@ -87,7 +86,6 @@ export function SizeMattersSlideIn({ className }: Props) {
           </div>
 
           <div ref={setViewportNode} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-            {/* Sections and copy are Page Builder–editable (CONTEXT.md — Slide-in section). */}
             <main className="min-w-0 pb-20" aria-label="Mpillow sizing and fit">
               <SlideInPageSections page="size-matters" />
             </main>

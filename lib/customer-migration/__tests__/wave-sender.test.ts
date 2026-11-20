@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -17,29 +16,16 @@ import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { unsubscribeToken, verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
 import { emptyWorld, fakeCampaignClient, type CampaignWorld } from "./fake-campaign-db";
 
-/**
- * The wave sender (migration slice 08). Against an in-memory ledger that
- * keeps the unique (Customer, template) key: a dry run sends nothing; the
- * sender refuses Gmail, a From off the campaign subdomain, and a site without
- * the unsubscribe route, before claiming anyone; the same `apply` twice sends
- * nothing the second time; two runs at once never send one person the same
- * template twice; each email carries its own Claim link, the footer link and
- * RFC 8058 headers; a failure is kept and retried only on request; five in a
- * row stop the wave; no run sends past Resend's plan, and the rest of a wave
- * goes out on a later day. assert-08-campaign-sends.sql proves the ledger
- * itself in Postgres, concurrency included.
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 const SECRET = "wave-test-secret";
 
 const id = (n: number) => `0c000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const ANN = id(1); // buyer, imported 10 Oct
-const BEA = id(2); // never bought, imported 15 Oct
-const CAL = id(3); // buyer, imported 12 Oct
-const DAN = id(4); // buyer, not subscribed
-const EVE = id(5); // buyer, unsubscribed
-const FAY = id(6); // buyer, already Claimed
+const ANN = id(1);
+const BEA = id(2);
+const CAL = id(3);
+const DAN = id(4);
+const EVE = id(5);
+const FAY = id(6);
 
 function seed(world: CampaignWorld) {
   const subscribed = { marketing_email: "subscribed" };
@@ -59,7 +45,6 @@ function seed(world: CampaignWorld) {
     { customer_id: EVE, shopify_orders_count: 3, imported_at: "2026-10-12T02:00:00Z" },
     { customer_id: FAY, shopify_orders_count: 3, imported_at: "2026-10-12T02:00:00Z", claimed_at: "2026-10-16T02:00:00Z" },
   );
-  // Points are on and launched, with the seeded Claim bonus: 1,000 points within 3 months.
   Object.assign(world.settings, {
     migration_service_notice_enabled: "false",
     points_enabled: "true",
@@ -69,7 +54,6 @@ function seed(world: CampaignWorld) {
   });
 }
 
-/** The site: its one-click route verifies links with `siteSecret`. */
 function site({ live = true, siteSecret = SECRET, configured = true } = {}) {
   return vi.fn(async (input: string | URL | Request) => {
     const url = new URL(String(input));
@@ -144,7 +128,6 @@ describe("a dry run", () => {
     const report = await runCampaignWave(announce({ apply: false }), s);
     expect(report.ran).toBe(false);
     expect(report.preflight.ready).toBe(true);
-    // Buyers first, the most recent import first; never bought last.
     expect(report.audience!.selection.map((c) => c.customerId)).toEqual([CAL, ANN, BEA]);
     expect(report.audience!.excluded).toEqual({ not_subscribed: 1, unsubscribed: 1, claimed: 1 });
     expect(claims(s)).toEqual([]);
@@ -196,7 +179,6 @@ describe("it refuses before sending anything", () => {
     await refused({ campaignFrom: "Mpillow <sg@gmail.com>" }, "from");
     await refused({ campaignDomain: "mpillow.com", campaignFrom: "hello@mpillow.com" }, "from");
     await refused({ campaignDomain: undefined }, "from");
-    // The subdomain the order mailbox sends from is not the campaign's.
     await refused({ orderFrom: "orders@hello.mpillow.com" }, "from");
   });
 
@@ -243,7 +225,6 @@ describe("it refuses before sending anything", () => {
   });
 
   it("while the latest wave holds a pause condition, unless resumed", async () => {
-    // A pilot of 40: one bounce is 2.5%.
     for (let i = 0; i < 40; i++) {
       world.sends.push({
         id: `p${i}`,
@@ -298,11 +279,9 @@ describe("--apply", () => {
       "List-Unsubscribe": `<${ORIGIN}/api/email/unsubscribe?u=${BEA}&t=${token}>, <mailto:support@mpillow.com?subject=unsubscribe>`,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     });
-    // The footer link is the confirm page, in the Customer's language.
     expect(bea.html).toContain(`${ORIGIN}/zh-CN/unsubscribe?u=${BEA}&amp;t=${token}`);
     expect(bea.text).toContain(`Unsubscribe: ${ORIGIN}/zh-CN/unsubscribe?u=${BEA}&t=${token}`);
 
-    // One Claim link per email, stored as a hash only, with the campaign's UTMs.
     expect(world.claimLinks).toHaveLength(3);
     const link = /https:\/\/custom\.mpillow\.com\/zh-CN\/account\/welcome\?c=([A-Za-z0-9_-]{43})&utm_source=new_website&utm_medium=email&utm_campaign=migration_announcement/.exec(bea.text);
     expect(link).not.toBeNull();
@@ -310,9 +289,7 @@ describe("--apply", () => {
     expect(stored).toEqual({ customer_id: BEA, token_hash: await hashClaimToken(link![1]), template: "migration_announcement" });
     expect(JSON.stringify(world.claimLinks)).not.toContain(link![1]);
 
-    // The Claim bonus and its window, from Discounts → Points; no word of the old platform.
     expect(bea.text).toContain("Sign in within 3 months of this email and we'll add 1,000 points, S$10 off your next shop order.");
-    // The terms, in the Customer's language.
     expect(bea.text).toContain(`How points work: ${ORIGIN}/zh-CN/points`);
     expect(`${bea.subject}\n${bea.text}\n${bea.html}`).not.toMatch(/shopify|moved|voucher/i);
     expect(bea.subject).toBe("Your Mpillow account is ready");
@@ -322,7 +299,6 @@ describe("--apply", () => {
     const first = setup();
     await runCampaignWave(announce({ limit: 2 }), first);
     expect(first.sent).toHaveLength(2);
-    // Bea is still eligible, but wave w1 holds its 2: the next ones are w2.
     const again = setup();
     const report = await runCampaignWave(announce({ limit: 2 }), again);
     expect(report.ran).toBe(true);
@@ -383,12 +359,10 @@ describe("--apply", () => {
     });
     expect(formatWaveReport(report).join("\n")).toMatch(/failed .* an\*\*\*@example.com: Resend send failed/);
 
-    // The same command again: the wave is full, and the failure is not retried.
     const again = setup();
     await runCampaignWave(announce(), again);
     expect(again.sent).toEqual([]);
 
-    // --retry-failed sends only the failure.
     const retry = setup();
     const r = await runCampaignWave(announce({ retryFailed: true }), retry);
     expect(retry.sent.map((e) => e.to)).toEqual(["ann@example.com"]);
@@ -445,7 +419,6 @@ describe("--apply", () => {
     expect(`${notice.text}\n${notice.html}`).not.toMatch(/voucher|discount|SGD|S\$|points?\b|% off|offer|promo|free shipping|shopify|moved/i);
     expect(notice.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(notice.text).toContain(`${ORIGIN}/en-US/appointments?type=readjustment`);
-    // An offer check does not apply to it.
     expect(report.preflight.checks.map((c) => c.key)).not.toContain("bonus");
   });
 });
@@ -457,7 +430,6 @@ describe("the send limit (Resend's free plan: 100 a day, 3,000 a month)", () => 
       world.migrated.push({ customer_id: id(30 + i), shopify_orders_count: 1, imported_at: "2026-10-01T00:00:00Z" });
     }
   };
-  /** A send of another wave or template, `daysAgo` old. */
   const earlier = (n: number, status: string, daysAgo: number) => {
     for (let i = 0; i < n; i++) {
       world.sends.push({
@@ -489,7 +461,7 @@ describe("the send limit (Resend's free plan: 100 a day, 3,000 a month)", () => 
   });
 
   it("sends no more than the day allows, holds the rest back, and the same command carries on the next day", async () => {
-    moreBuyers(5); // 8 eligible
+    moreBuyers(5);
     const limits = { sendLimits: { daily: 3, monthly: 3000 } };
 
     const dry = await runCampaignWave(announce({ apply: false }), setup(limits));
@@ -504,7 +476,6 @@ describe("the send limit (Resend's free plan: 100 a day, 3,000 a month)", () => 
     expect(day1.sent).toHaveLength(3);
     expect(world.sends).toHaveLength(3);
 
-    // The same day: the limit is used up, so it refuses before claiming anyone.
     const again = setup(limits);
     const refused = await runCampaignWave(announce(), again);
     expect(refused.ran).toBe(false);
@@ -515,7 +486,6 @@ describe("the send limit (Resend's free plan: 100 a day, 3,000 a month)", () => 
     expect(claims(again)).toEqual([]);
     expect(again.sent).toEqual([]);
 
-    // A day later, the same command carries the wave on.
     for (const row of world.sends) row.sent_at = new Date(Date.now() - 25 * 3600_000).toISOString();
     const day2 = setup(limits);
     const second = await runCampaignWave(announce(), day2);
@@ -531,7 +501,7 @@ describe("the send limit (Resend's free plan: 100 a day, 3,000 a month)", () => 
     earlier(1, "complained", 10);
     earlier(1, "pending", 10);
     earlier(20, "failed", 10);
-    earlier(50, "sent", 40); // outside the month
+    earlier(50, "sent", 40);
     const report = await runCampaignWave(announce({ apply: false }), setup({ sendLimits: { daily: 100, monthly: 16 } }));
     expect(limitCheck(report)).toEqual({
       key: "send_limit",

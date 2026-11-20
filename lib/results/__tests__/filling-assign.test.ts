@@ -1,7 +1,3 @@
-/**
- * Slice 06 — Admin Panel Result assign goes spatial.
- * Maps to .claude/PRD-staff-assist-spatial-fillings/issues/06-assign-spatial.md
- */
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { transitionResult } from "@/lib/result-lifecycle";
@@ -66,7 +62,6 @@ describe("slice 06 — divergence clears filling_template_id", () => {
 describe("slice 06 — Accept/Decline retain the snapshot", () => {
   it("Decline transitions without touching filling fields; hold released, no capture", () => {
     const life = transitionResult(
-      // Diverged custom mix: filling_template_id already null, snapshot rows persist.
       { status: "assigned", filling_template_id: null, payment_intent_id: "pi_1" },
       { action: "decline" },
     );
@@ -86,7 +81,6 @@ describe("slice 06 — Accept/Decline retain the snapshot", () => {
     const accept = readFileSync("app/api/results/[id]/accept/route.ts", "utf8");
     expect(decline).not.toMatch(/result_filling_placements|filling_fingerprint/);
     expect(accept).not.toMatch(/result_filling_placements|filling_fingerprint/);
-    // Capture is Accept-only.
     expect(accept).toContain("captureHold");
     expect(decline).not.toContain("captureHold");
   });

@@ -10,16 +10,6 @@ import { getDefaultFromAddress } from "./transport";
 import type { RenderedEmail, SendOutcome } from "./types";
 import type { RmaResolution } from "@/lib/rma/transitions";
 
-// ============================================================
-// RMA lifecycle emails (ADR 0011)
-// ============================================================
-//
-// Mirrors the order-email module (lib/email/index.ts) but keyed on
-// (rma_request_id, template) writing to the `rma_emails` ledger, since one order
-// can spawn several RMAs each with its own lifecycle emails. Slice 03 sends
-// `rma_requested`; the status transitions send the rest (lib/rma/transition.ts).
-// Their words are editable (`RMA_EMAIL_COPY`); the send path loads them first.
-
 export type RmaEmailTemplateName =
   | "rma_requested"
   | "rma_approved"
@@ -28,20 +18,14 @@ export type RmaEmailTemplateName =
   | "rma_completed"
   | "rma_refunded";
 
-/** Small neutral payload every RMA template renders from. */
 export interface RmaEmailData {
   orderNumber: string;
   customerName: string;
   resolution: RmaResolution;
   status: string;
   items: Array<{ title: string; quantity: number }>;
-  /** Return instructions / rejection reason etc., set by later slices. */
   message?: string | null;
 }
-
-// ------------------------------------------------------------
-// Rendering (pure)
-// ------------------------------------------------------------
 
 function itemsText(data: RmaEmailData): string {
   return data.items.map((i) => `- ${i.title} x${i.quantity}`).join("\n");
@@ -61,14 +45,6 @@ const RESOLUTION_LABEL: Record<RmaResolution, string> = {
   replacement: "a replacement",
 };
 
-// ------------------------------------------------------------
-// The words of each return email (PRD-email-templates)
-// ------------------------------------------------------------
-//
-// Every return email names the customer and the order, so every one takes
-// {customer_name} and {order_number}. The items, Staff's note on an update
-// (`message`) and the link are data, and stay in code.
-
 const RMA_PLACEHOLDERS = {
   customer_name: "The customer's name, as on the order, e.g. Tan Wei Ling",
   order_number: "The order the return is from, e.g. MP-10428",
@@ -80,26 +56,6 @@ const BUTTON = { label: "Button", default: "Track your return", hint: "Opens the
 type StatusCopyKey = "subject" | "heading" | "status" | "intro" | "button";
 type StatusTemplateName = Exclude<RmaEmailTemplateName, "rma_requested">;
 
-/**
- * The words of one of the five post-request updates. They share a body
- * (`statusUpdate`) but each keeps its own spec, and so its own wording.
- *
- * `status` is the short badge word and `heading` the sentence — the same
- * string in both would print a 33-character sentence inside a pill, which in
- * Outlook (no border-radius) renders as a highlighted strip rather than a badge.
- *
- * `subject` and `intro` are written per template rather than derived from
- * `heading`, because deriving them produced two bugs:
- *
- *   * One subject for all five ("Update on your return for order {n}") meant
- *     Gmail collapsed a customer's entire return history into a single thread,
- *     hiding each new update behind a "show trimmed content" fold.
- *   * Lowercasing the title into the sentence gave "your return was approved FOR
- *     YOUR RETURN ON order {n}" — the title already says "your return" — and
- *     read as nonsense for the noun-phrase titles.
- *
- * One `intro` feeds both renderings, so the HTML and text cannot drift.
- */
 function statusUpdateCopy(
   key: StatusTemplateName,
   name: string,
@@ -189,15 +145,12 @@ const rmaValues = (data: RmaEmailData) => ({
   resolution: RESOLUTION_LABEL[data.resolution],
 });
 
-/** Fill every field of `copy` from `values`. */
 function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
   const out = {} as EmailCopy<K>;
   for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
   return out;
 }
 
-// Each template is a pure (RmaEmailData, copy?) -> RenderedEmail. `rma_requested`
-// lists the items; the five updates share one lifecycle-update body.
 function requested(
   data: RmaEmailData,
   copy: CopyOf<"rma_requested"> = defaultEmailCopy(RMA_EMAIL_COPY.rma_requested),
@@ -225,7 +178,6 @@ ${t.closing ? paragraph(t.closing, { muted: true }) : ""}`,
   return { subject: t.subject, html, text };
 }
 
-/** Lifecycle-update body shared by the five post-request templates (see `statusUpdateCopy`). */
 function statusUpdate(key: StatusTemplateName, tone: "neutral" | "success" | "danger" = "neutral") {
   return (data: RmaEmailData, copy: EmailCopy<StatusCopyKey> = defaultEmailCopy(RMA_EMAIL_COPY[key])): RenderedEmail => {
     const t = filled(copy, rmaValues(data));
@@ -247,7 +199,6 @@ ${data.message ? card({ bodyHtml: paragraph(data.message, { bottom: 0 }) }) : ""
   };
 }
 
-/** Each return email's renderer. The copy is optional: without it, the default words. */
 export const RMA_EMAIL_TEMPLATES: {
   [T in RmaEmailTemplateName]: (data: RmaEmailData, copy?: CopyOf<T>) => RenderedEmail;
 } = {
@@ -267,17 +218,12 @@ export function renderRmaEmail(
   return (RMA_EMAIL_TEMPLATES[template] as (data: RmaEmailData, copy?: EmailCopy) => RenderedEmail)(data, copy);
 }
 
-// ------------------------------------------------------------
-// Render + send (no persistence — easy to unit test)
-// ------------------------------------------------------------
-
 export async function sendRmaEmail(
   template: RmaEmailTemplateName,
   to: string,
   data: RmaEmailData,
 ): Promise<SendOutcome> {
   const transport = getEmailTransport();
-  // The words Staff saved on Email templates, or the defaults (never throws).
   const copy = await loadEmailCopy(RMA_EMAIL_COPY[template] as EmailCopySpec);
   const rendered = renderRmaEmail(template, data, copy);
   const result = await transport.send({
@@ -288,16 +234,6 @@ export async function sendRmaEmail(
   return { sent: true, transport: transport.name, id: result.id };
 }
 
-// ------------------------------------------------------------
-// Idempotent dispatch (DB-backed, keyed on rma_request_id + template)
-// ------------------------------------------------------------
-
-/**
- * Send an RMA lifecycle email at most once per (rma_request_id, template). The
- * `rma_emails` table is the idempotency ledger: a unique row is claimed before
- * sending, so duplicate submits / retries never double-send. Failures are logged
- * and recorded but never thrown — email must never break the request flow.
- */
 export async function dispatchRmaEmail(params: {
   rmaRequestId: string;
   template: RmaEmailTemplateName;

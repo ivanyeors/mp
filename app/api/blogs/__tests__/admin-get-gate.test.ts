@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 import { roleHasPermission, type AdminRole } from "@/lib/auth/permissions";
 
-/**
- * The blog GETs return drafts, so they answer only a Staff session holding the
- * same `blogs` permission the writes need. Public blog pages read lib/blogs on
- * the server and never call these.
- */
-
 const h = vi.hoisted(() => ({
   role: null as AdminRole | null,
   listAdminBlogPosts: vi.fn(),

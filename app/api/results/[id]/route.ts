@@ -64,8 +64,6 @@ async function buildPublicSummary(row: {
   let fillingTemplateName: string | null = null;
   let fillingSummary: string[] = [];
 
-  // Revised builds: the Result's spatial snapshot is the filling truth when present
-  // (template id may be null after a diverging edit); template lines are the fallback.
   const { data: snapRows } = await admin
     .from("result_filling_placements")
     .select("item_id")
@@ -124,9 +122,7 @@ async function buildPublicSummary(row: {
 
     let pricing: {
       subtotal: number;
-      /** Service fees inside the subtotal (ADR 0024), one row each. */
       services: Array<{ label: string; amount: number }>;
-      /** The discount code kept at hold, off the goods (ADR 0033). */
       discount?: { code: string; amount: number };
       shipping: number;
       tax: number;
@@ -148,10 +144,6 @@ async function buildPublicSummary(row: {
               } as const)
             : null;
 
-      // This was a fifth hand-rolled copy of the pricing rule, reading
-      // `product_prices` with maybeSingle() — the very call that errors on premium's
-      // two rows. It left the shopper's own status page with no breakdown at all,
-      // and it skipped bolster entirely. Both now go through the shared loader.
       const composed = composedKey ? await loadComposedSellable(admin, composedKey) : null;
       if (composed?.ok) {
         const prefAddonIds = [
@@ -181,8 +173,6 @@ async function buildPublicSummary(row: {
           caseOptions: composed.sellable.caseOptions,
           chosenCover,
           chosenCase,
-          // Add-ons, plus each Ear Comfort Pad placed inside: a placed neck support
-          // is in the pillow's MSRP, like the fillings, but an ear pad adds its own.
           addonLines: [
             ...addonLines.map((l) => ({
               msrp: msrpByItem.get(l.item_id) ?? null,
@@ -218,7 +208,6 @@ async function buildPublicSummary(row: {
               .eq("slug", row.shipping_method)
               .maybeSingle();
             if (shippingRow) {
-              // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
               shippingAmount =
                 shipsWithAnchor(row) || coupon.freeShipping
                   ? 0
@@ -237,8 +226,6 @@ async function buildPublicSummary(row: {
             tax: taxAmount,
             discount: coupon.discount,
           });
-          // A total stored before Service fees existed did not quote one; show
-          // the build the customer is actually paying for (ADR 0024).
           const quoted = quotedServiceLines(
             row.final_amount != null ? Number(row.final_amount) : null,
             repriced,
@@ -284,10 +271,6 @@ async function buildPublicSummary(row: {
   };
 }
 
-/**
- * Public Result status for the customer status page.
- * Auth: access_token query param (guest magic link) or logged-in customer email/id match.
- */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -312,9 +295,6 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Sync payment_intent_id from Checkout session when returning from Stripe, so
-  // the page shows the hold before the webhook lands. Same writer as the webhook;
-  // a refused session writes nothing here and the webhook records it.
   if (sessionId && !row.payment_intent_id) {
     try {
       const stripe = getStripe();
@@ -329,8 +309,6 @@ export async function GET(
   }
 
   const build = await buildPublicSummary(row);
-  // A Paired build (ADR 0026) is decided on one page: the anchor's shows its
-  // Mbolster, and the Mbolster's points back at it. Same access token on both.
   let paired: {
     role: "anchor" | "companion";
     partner: Record<string, unknown> & { build: Awaited<ReturnType<typeof buildPublicSummary>> };
@@ -356,9 +334,7 @@ export async function GET(
       };
     }
   }
-  // Read before the address is stripped: the page needs the answer, not the address.
   const needs_finish = needsCustomerFinish(row);
-  /** Self-collect: the studio's name, never its address line (the customer's own). */
   const collect_at = collectLocationOf(row.shipping_address)?.name ?? null;
   const publicRow = { ...row };
   delete (publicRow as { access_token?: string }).access_token;
@@ -366,7 +342,6 @@ export async function GET(
   delete (publicRow as { shipping_address?: unknown }).shipping_address;
   delete (publicRow as { source?: string | null }).source;
   delete (publicRow as { measured_by_type?: string | null }).measured_by_type;
-  // The page shows the discount from `build.pricing`, never the coupon's terms.
   delete (publicRow as { coupon_terms?: unknown }).coupon_terms;
   const referenceImages = await listConfigUploads(id).catch(() => []); // ponytail: tolerate empty/error
   return NextResponse.json({

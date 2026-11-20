@@ -4,7 +4,6 @@ import { requireAnyAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
-/** Products › "Sync from Inventory": rebuilds storefront products from inventory. */
 export async function POST() {
   const denied = await requireAnyAdmin(["products", "inventory"]);
   if (denied) return denied;

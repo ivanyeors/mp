@@ -17,14 +17,9 @@ export const runtime = "nodejs";
 
 const BodySchema = z.object({
   action: z.enum(["approve", "reject"]),
-  /** Required for approve — records in-person return (US18/US35). */
   in_person_return_acknowledged: z.boolean().optional(),
 });
 
-/**
- * Operator decide on a customer refund request.
- * Approve → existing refundPayment (ledger via Stripe webhook). Reject → no money moved.
- */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -123,7 +118,6 @@ export async function POST(
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
-  // Ledger row is written by the Stripe webhook — single source of truth.
   await addOrderTimelineEvent(
     orderId,
     "refund_initiated",

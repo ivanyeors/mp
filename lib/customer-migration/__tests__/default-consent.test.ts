@@ -6,13 +6,6 @@ import {
   readUnsubscribedList,
 } from "@/lib/customer-migration/default-consent";
 
-/**
- * Subscribing the imported customers (ADR 0039): Shopify's unsubscribed list
- * read in the browser, read again on the server, and the SQL function's
- * answer. supabase/tests/campaign-audiences/assert-consent-by-default.sql
- * asserts the function itself.
- */
-
 const HEADER =
   "Customer ID,First Name,Last Name,Email,Accepts Email Marketing,Default Address Company,Phone,Total Spent,Total Orders,Note,Tags";
 

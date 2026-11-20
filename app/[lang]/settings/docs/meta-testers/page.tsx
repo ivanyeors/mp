@@ -6,11 +6,6 @@ import { withLocale } from "@/lib/i18n/routing";
 
 export const runtime = "nodejs";
 
-/**
- * Documentation → Adding teammates to the Meta app (PRD-social-inbox): giving
- * a teammate a role on mpillow-sg so they can test Facebook and Instagram
- * messages before App Review.
- */
 export default async function MetaTestersGuidePage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

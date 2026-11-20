@@ -22,14 +22,12 @@ type ShipmentInfo = {
     quoted_carrier_cost: number | null;
     carrier_cost: number | null;
     label_state: string | null;
-    /** Cancelled after a refund: nothing to print. */
     label_voided?: boolean;
     has_label: boolean;
     purchase_pending: boolean;
     easyship_shipment_id: string | null;
 };
 
-/** The courier the customer's choice comes to today, from the rates endpoint. */
 type CustomerPick = {
     courierServiceId: string | null;
     by: "checkout" | "method" | "cheapest" | null;
@@ -39,7 +37,6 @@ type CustomerPick = {
 
 const NO_PICK: CustomerPick = { courierServiceId: null, by: null, methodName: null, paidForUnavailable: null };
 
-/** Orders a label can still be made for: paid, not shipped, not unwound. */
 const SHIPPABLE = new Set(["confirmed", "processing"]);
 
 function transit(r: CourierRate): string {
@@ -48,18 +45,11 @@ function transit(r: CourierRate): string {
     return r.min_days === max ? `${max} ${max === 1 ? "day" : "days"}` : `${r.min_days}–${max} days`;
 }
 
-/**
- * The Easyship half of the order's Fulfillment card: what the shopper chose and
- * "Print label", the PDF for the box. The label is made when the order is paid
- * (ADR 0044); when it was not, "Create label" shows today's rates for this
- * order's parcels with the customer's courier preselected.
- */
 export function EasyshipFulfilment({
     order,
     onChanged,
 }: {
     order: Order;
-    /** Refetch the order and timeline after a label is made. */
     onChanged: () => Promise<unknown>;
 }) {
     const [open, setOpen] = useState(false);
@@ -69,7 +59,6 @@ export function EasyshipFulfilment({
     const [selected, setSelected] = useState<string>("");
     const [pick, setPick] = useState<CustomerPick>(NO_PICK);
     const [buying, setBuying] = useState(false);
-    // Server-only shipment data (courier cost, label) comes from its own endpoint.
     const [shipment, setShipment] = useState<ShipmentInfo | null>(null);
     const [connected, setConnected] = useState(false);
 
@@ -81,9 +70,7 @@ export function EasyshipFulfilment({
                 setShipment(json.shipment ?? null);
                 setConnected(json.connected === true);
             }
-        } catch {
-            /* the card still offers manual fulfilment */
-        }
+        } catch {}
     }, [order.id]);
 
     useEffect(() => {
@@ -95,9 +82,7 @@ export function EasyshipFulfilment({
                 setShipment(json.shipment ?? null);
                 setConnected(json.connected === true);
             })
-            .catch(() => {
-                /* the card still offers manual fulfilment */
-            });
+            .catch(() => {});
         return () => {
             cancelled = true;
         };
@@ -121,7 +106,6 @@ export function EasyshipFulfilment({
             }
             const list = json.rates as CourierRate[];
             setRates(list);
-            // The customer's courier: the one they paid for, else what their method picks today.
             const preselected = json.selected_courier_service_id as string | null;
             setPick({
                 courierServiceId: preselected,
@@ -271,7 +255,6 @@ export function EasyshipFulfilment({
                             )}
                             <div className="max-h-80 space-y-2 overflow-y-auto">
                                 {rates?.map((r) => {
-                                    // Paid for at checkout, or what the customer's method picks today.
                                     const badge =
                                         r.courier_service_id !== pick.courierServiceId
                                             ? null

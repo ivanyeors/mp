@@ -9,16 +9,9 @@ import { rejectGoogleReviewMatch } from "@/lib/crm/google-review-links";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Any UUID shape, as the other Customers routes accept. */
 const UUID = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 const RejectSchema = z.object({ customerId: UUID }).strict();
 
-/**
- * POST /api/settings/customers/google-reviews/[reviewId]/rejections — `{
- * customerId }`: *Not them* on a suggestion. That Customer is never suggested
- * for this review again. Needs `customers-edit`. A linked pair is refused
- * with 409: unlink it instead, which records the same.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ reviewId: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

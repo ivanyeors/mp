@@ -5,20 +5,10 @@ import { redraftReviewReply } from "@/lib/reviews/admin-reply";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// One Claude call; the same room the review sync gives a draft.
 export const maxDuration = 60;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * POST /api/settings/customers/google-reviews/[reviewId]/draft — a fresh
- * suggested reply for the Reviews tab (PRD-customer-page-journey slice 03).
- * Needs `customers-edit`. Nothing is posted to Google: the reply is copied by
- * hand. Answers `{ ok, reply, saved }`; `saved` is true when the review was
- * still waiting and the draft now shows on its Telegram card too.
- *
- * The Audit Log names the review, never its text or the draft.
- */
 export async function POST(_req: Request, { params }: { params: Promise<{ reviewId: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

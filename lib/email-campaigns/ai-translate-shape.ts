@@ -1,16 +1,3 @@
-/**
- * ✨ Translate's shapes (PRD-campaign-email-editor slice 17): what the editor
- * asks for, what Claude reads and fills in, and how its answer comes back as
- * the 中文 version's words, checked. Pure, and safe in the browser.
- *
- * Claude reads only words: each block's, in the shape a 中文 block keeps them
- * (chinese-version.ts `englishWords`), by its id. A link is a key (`L1`,
- * `L2`) and never an address; a Variable is its name. The answer gives the
- * same blocks back, by id, in Chinese. Code then puts each key back as the
- * block's link, and refuses a translation that loses or adds a block, a
- * link or a Variable, moves the links out of order, breaks a length, or says
- * what the guardrails don't allow in Chinese, naming the block.
- */
 import { z } from "zod";
 import { placeholdersIn } from "@/lib/email/copy";
 import { issueText } from "./ai-draft-shape";
@@ -36,12 +23,6 @@ import { campaignVariable, fallbackWords, isVariableKey, VARIABLE_MAX, type Vari
 const CAMPAIGN_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BLOCK_ID = /^[A-Za-z0-9_-]{1,40}$/;
 
-/**
- * What the editor sends: the email as it holds it now (Staff's words, never
- * a customer's), which blocks to translate (`only`; null for every block with
- * words, the whole 中文 version), and whether the subject and preview line
- * go too. A campaign that has started sending is refused by the route.
- */
 export const TranslateRequestSchema = z.strictObject({
   campaignId: z.string().regex(CAMPAIGN_ID).nullable(),
   subject: z.string().max(CONTENT_LIMITS.subject),
@@ -52,24 +33,15 @@ export const TranslateRequestSchema = z.strictObject({
 });
 export type TranslateRequest = z.output<typeof TranslateRequestSchema>;
 
-/** A block in Claude's hands: its words, in the 中文 shape, with its id. */
 type SourceBlock = BlockWords & { id: string };
 
-/** A block's words have some words in them: an empty English block has nothing to translate yet. */
 const hasWords = (b: EmailBlock) => contentWords({ v: 1, blocks: [b], fallbacks: {} }).some((w) => w.trim());
 
-/** Pure — the blocks `request` asks to translate, in the email's order: those with words, all or the ones named. */
 export function blocksToTranslate(request: Pick<TranslateRequest, "content" | "only">): EmailBlock[] {
   const only = request.only ? new Set(request.only) : null;
   return request.content.blocks.filter((b) => englishWords(b) && hasWords(b) && (!only || only.has(b.id)));
 }
 
-/**
- * Pure — the Variables whose fallback words go with the translation: used in
- * the email, with English fallback words of their own and no 中文 default to
- * fall back on (*您* is a first name's). Every such one for the whole 中文
- * version; for part of it, those it has none for yet.
- */
 export function fallbacksToTranslate(request: Pick<TranslateRequest, "content" | "only" | "subject" | "preheader">): VariableKey[] {
   const chinese = chineseVersionOf(request.content)?.fallbacks ?? {};
   return variablesUsed(request.content, [request.subject, request.preheader]).filter(
@@ -80,7 +52,6 @@ export function fallbacksToTranslate(request: Pick<TranslateRequest, "content" |
   );
 }
 
-/** Pure — why ✨ Translate can't run for `request`, or null: it has nothing in English to translate. */
 export function translateBlocker(request: Pick<TranslateRequest, "content" | "only" | "lines" | "subject">): string | null {
   if (blocksToTranslate(request).length || (request.lines && request.subject.trim())) return null;
   return TRANSLATE_NEEDS_WORDS;
@@ -88,17 +59,14 @@ export function translateBlocker(request: Pick<TranslateRequest, "content" | "on
 
 export const TRANSLATE_NEEDS_WORDS = CHINESE_EDITOR_TEXT.needsWords;
 
-/** A block's place and name, as a reason names it: *Block 2, Text*. */
 export const blockLabel = (content: CampaignContent, block: EmailBlock) => `Block ${content.blocks.indexOf(block) + 1}, ${EMAIL_BLOCK_LABEL[block.type]}`;
 
-/** English runs as Claude reads them: a link by its key. */
 const sourceParagraphs = (paragraphs: readonly ChineseParagraph[]) =>
   paragraphs.map((p) => {
     const runs = (rs: ChineseRun[]) => rs.map((r) => ("var" in r || r.link === undefined ? r : { ...r, link: linkKey(r.link) }));
     return p.kind === "p" ? { kind: "p", runs: runs(p.runs) } : { kind: "bullets", items: p.items.map(runs) };
   });
 
-/** Pure — what Claude reads: the blocks' words with their ids, the subject and preview line, and the fallbacks, as data. */
 export function translateSource(request: TranslateRequest): unknown {
   const blocks = blocksToTranslate(request).map((b) => {
     const words = englishWords(b) as BlockWords;
@@ -114,11 +82,6 @@ export function translateSource(request: TranslateRequest): unknown {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Claude's answer
-// ---------------------------------------------------------------------------
-
-/** The Variables any of the asked blocks' text runs hold: what a 中文 run may name. */
 function runVariables(blocks: readonly EmailBlock[]): VariableKey[] {
   const keys = blocks.flatMap((b) => {
     const words = englishWords(b);
@@ -129,13 +92,6 @@ function runVariables(blocks: readonly EmailBlock[]): VariableKey[] {
 
 const line = (what: string) => z.string().describe(what);
 
-/**
- * Pure — the schema of Claude's answer to `request`, flat and built per
- * request: one shape per block type asked, then the subject and preview
- * line, and the fallbacks, when they go. Strict objects; the SDK's JSON
- * schema leaves enums to the descriptions, so the parse that follows, not the
- * grammar, holds the ids, the types and the link keys.
- */
 export function translateOutputSchema(request: TranslateRequest) {
   const asked = blocksToTranslate(request);
   const vars = runVariables(asked);
@@ -180,7 +136,6 @@ export function translateOutputSchema(request: TranslateRequest) {
   });
 }
 
-/** A link group: consecutive runs on one link, as the renderer draws one <a>. */
 function linkSequence(paragraphs: readonly ChineseParagraph[]): number[] {
   const out: number[] = [];
   for (const p of paragraphs) {
@@ -196,7 +151,6 @@ function linkSequence(paragraphs: readonly ChineseParagraph[]): number[] {
   return out;
 }
 
-/** The Variables some words name, as runs or written `{name}`. */
 function wordsVariables(words: BlockWords): VariableKey[] {
   const strings: string[] = [];
   const keys: VariableKey[] = [];
@@ -212,7 +166,6 @@ function wordsVariables(words: BlockWords): VariableKey[] {
   return [...new Set([...keys, ...strings.flatMap((s) => placeholdersIn(s).filter(isVariableKey))])];
 }
 
-/** Every word a block's words hold, a Variable as `{name}`, a line each: what the guardrails read. */
 function wordsText(words: BlockWords): string {
   const out: string[] = [];
   const walk = (v: unknown) => {
@@ -232,7 +185,6 @@ type AnswerParagraph = { kind: "p"; runs: AnswerRun[] } | { kind: "bullets"; ite
 
 const squashed = (s: string | undefined) => (s === undefined ? undefined : s.replace(/\s+/g, " ").trim());
 
-/** One answered block as a 中文 block's words, its link keys as places among the English links; or why not. */
 function wordsFromAnswer(english: EmailBlock, raw: Record<string, unknown>, links: number): { ok: true; words: BlockWords } | { ok: false; problem: string } {
   let bad: string | null = null;
   const runs = (rs: AnswerRun[]): ChineseRun[] =>
@@ -292,7 +244,6 @@ function wordsFromAnswer(english: EmailBlock, raw: Record<string, unknown>, link
   return bad ? { ok: false, problem: bad } : { ok: true, words };
 }
 
-/** Pure — what is wrong with one block's 中文 words against its English: its shape, its lengths, its links, its Variables, and the guardrails. */
 export function translatedBlockProblems(english: EmailBlock, words: BlockWords, source: string): string[] {
   const out: string[] = [];
   const saved = ChineseBlockWordsSchema.safeParse({ ...words, from: wordsFingerprint(english) });
@@ -313,19 +264,12 @@ export function translatedBlockProblems(english: EmailBlock, words: BlockWords, 
   return out.slice(0, 3);
 }
 
-/** The words a line names its Variables in. */
 const lineVariables = (text: string) => placeholdersIn(text).filter(isVariableKey);
 
-/** Pure — the English a translation may repeat: every word of the email, Staff's own. */
 export function translateSourceText(request: TranslateRequest): string {
   return [request.subject, request.preheader, ...contentWords(request.content), ...Object.values(request.content.fallbacks)].join("\n");
 }
 
-/**
- * Pure — Claude's answer to `request` as the 中文 version's words, each block
- * with the fingerprint of the English it was made from, or every reason it
- * was refused, each naming its block. Nothing of a refused answer is kept.
- */
 export function translationFromAnswer(request: TranslateRequest, raw: unknown): { ok: true; translation: ChineseTranslation } | { ok: false; problems: string[] } {
   const answer = translateOutputSchema(request).safeParse(raw);
   if (!answer.success) return { ok: false, problems: [`the answer didn't fit (${issueText(answer.error)})`] };

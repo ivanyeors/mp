@@ -19,26 +19,11 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// One Claude call; the same room a review draft gets.
 export const maxDuration = 60;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const Schema = z.object({ channel: z.enum(MESSAGE_CHANNELS), intent: z.enum(MESSAGE_INTENTS) }).strict();
 
-/**
- * POST /api/settings/customers/[id]/suggest-message — `{ channel, intent }`: a
- * drafted email or WhatsApp message for the Journey's composer
- * (PRD-customer-page-journey slice 05). Needs `customers-edit`.
- *
- * Nothing is sent and nothing is saved: the Staff member edits the draft and
- * sends it from their own Gmail or WhatsApp. What Claude is told is read here,
- * never taken from the browser: the customer's first name, the newest timeline
- * entries this viewer may see (one line each), the Next step, and their latest
- * Linked Google review when the message is about it.
- *
- * Answers `{ ok, subject, body }`. The Audit Log names the channel and the
- * intent, never the draft.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
@@ -60,7 +45,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
-  // Context only: a read that fails leaves its part out and the draft still comes.
   const [me, timeline, step, reviews] = await Promise.all([
     actingProfile(ctx.memberId).catch(() => null),
     loadTimeline({ customer: { id: customer.id, email: customer.email }, viewer: ctx, groups: null, after: null, limit: HISTORY_LINES }).catch(

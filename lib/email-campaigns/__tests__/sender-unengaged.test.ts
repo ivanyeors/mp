@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -7,14 +6,6 @@ import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { CAMPAIGN_BLOCKER_TEXT, EMPTY_CAMPAIGN_DRAFT, type Campaign } from "../rules";
 import { planWave, sendCampaignBatch, type CampaignSenderSetup } from "../sender";
 import { emptyWorld, fakeCampaignsClient, type FakeWorld } from "./fake-db";
-
-/**
- * The sunset rule in the sender (PRD-campaign-audiences slice 12): a wave's
- * plan leaves the Unengaged out and says how many, the claim refuses them at
- * the moment of sending, and a win-back that includes them reaches them. Who
- * is Unengaged is the overview's `unengaged`, read once per plan; a plan that
- * cannot read it refuses the wave rather than send to them.
- */
 
 const CAMPAIGN = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5b";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -79,7 +70,6 @@ describe("the Unengaged in a wave (slice 12)", () => {
     expect(r.plan.excluded).toEqual({ unengaged: 1 });
     expect(CAMPAIGN_BLOCKER_TEXT.unengaged).toMatch(/^unengaged \(clicked none of their last 6 campaigns/);
 
-    // Asked to send to them anyway, the claim refuses: skipped, never failed.
     const batch = await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [ANN, DEV] }, setup());
     expect(batch).toMatchObject({ sent: 1, failed: 0, skipped: { unengaged: 1 } });
     expect(sent.map((e) => e.to)).toEqual(["ann@x.test"]);

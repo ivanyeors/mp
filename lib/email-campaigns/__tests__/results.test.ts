@@ -19,8 +19,6 @@ import {
 import { planCampaignWave, type CampaignCandidate } from "../rules";
 import { holdoutBucketOf } from "./fake-db";
 
-/** Results per campaign and the holdout (PRD-campaign-audiences slice 11), the pure parts. */
-
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031162653_campaign_results.sql"), "utf8");
 
 const row = (cohort: string, stage: string, over: Record<string, unknown> = {}) => ({
@@ -44,7 +42,6 @@ describe("the SQL and these constants agree", () => {
     expect(MIGRATION).toContain(`public.campaign_holdout_bucket(p_customer_id) < ${HOLDOUT_PERCENT} then`);
     expect(MIGRATION).toContain(`o.paid_at <= s.sent_at + interval '${RESULT_WINDOW_DAYS} days'`);
     expect(MIGRATION).toContain("(('x' || left(md5(p_customer_id::text), 8))::bit(32)::bigint % 100)::int");
-    // assert-11-campaign-results.sql pins the same three.
     expect(holdoutBucketOf("00000000-0000-4000-8000-000000000001")).toBe(49);
     expect(holdoutBucketOf("11111111-0000-4000-8000-000000000001")).toBe(5);
     expect(holdoutBucketOf("11111111-0000-4000-8000-000000000002")).toBe(38);
@@ -135,7 +132,6 @@ describe("the holdout comparison", () => {
     const none = compareHoldout(numbers({ people: 3, bought: 0 }), NO_RESULTS);
     expect(none).toMatchObject({ difference: null, clear: false });
     expect(holdoutVerdict(none)).toMatch(/nothing to compare yet/);
-    // Nobody bought in either group: no spread, so never clear.
     expect(compareHoldout(numbers({ people: 50 }), numbers({ people: 450 })).clear).toBe(false);
   });
 
@@ -163,14 +159,13 @@ describe("the plan says who the holdout keeps back", () => {
     suppressed: false,
     own: null,
     locale: "en-US",
-    holdoutBucket: n * 4, // 4, 8, 12, 16, 20
+    holdoutBucket: n * 4,
   });
   const people = [1, 2, 3, 4, 5].map(candidate);
 
   it("counts the wave's people in the bucket, only with a holdout", () => {
     expect(planCampaignWave("subscribed", people, { size: 5, holdout: true }).heldOut).toBe(2);
     expect(planCampaignWave("subscribed", people, { size: 5 }).heldOut).toBe(0);
-    // Newest first: a wave of 3 is c5, c4, c3, none in the bucket.
     expect(planCampaignWave("subscribed", people, { size: 3, holdout: true }).heldOut).toBe(0);
   });
 

@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MIN_RATE_BASE, returningHeadline, returningSummary, type CohortRow } from "@/lib/crm/returning-customers";
 
-/**
- * PRD-crm-retention-loop slice 06: the Returning customer rate by
- * first-purchase month. Every rate shows its counts; a cohort still inside its
- * 12 months, or under 20 people, shows counts only, never a low rate.
- */
-
 const NOW = new Date("2026-11-01T04:00:00Z");
 const row = (cohort_month: string, first_buyers: number, came_back: number, via_readjustment: number, via_purchase: number): CohortRow => ({
   cohort_month,
@@ -26,7 +20,6 @@ describe("returningSummary", () => {
   });
 
   it("marks a cohort still open until its last customer has had 12 months, and shows it no rate", () => {
-    // October 2025's last buyer (31 Oct) has until 31 Oct 2026, so the cohort closes on 1 Nov 2026.
     const s = returningSummary([row("2025-10-01", 50, 5, 3, 2), row("2025-11-01", 60, 1, 1, 0)], NOW);
     expect(s.cohorts.map((c) => [c.month, c.open, c.closesOn])).toEqual([
       ["2025-10", false, "2026-11-01"],

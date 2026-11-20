@@ -38,24 +38,6 @@ const CHANNEL: Record<AftercarePreference, string> = {
 
 type Pending = { preference: AftercarePreference; value: boolean };
 
-/**
- * The manual switch (PRD customer-crm slice 13): Aftercare by email and by
- * WhatsApp, each with its last change, for a customer who asks to stop by
- * email reply, on WhatsApp or in person. Every change is recorded with who,
- * how and when, and listed below.
- *
- * Seeing it needs `customers`; the switches work only with `customers-edit`.
- * A view-only role sees the same switches, disabled, and the same history.
- *
- * Its own fetch, like the orders and addresses panels beside it, unless the
- * page hands it `initialView`.
- *
- * It is its own card, not part of slice 11's contact card (CRM 11 build
- * notes): that card only reads facts, and these switches change things, with a
- * dialog, a note and a history of their own. On the Customer page it sits in
- * the Preferences row, beside Marketing consent (PRD-customer-page-journey
- * slice 01).
- */
 export function AftercareCard({
     customerId,
     canEdit,
@@ -106,8 +88,6 @@ export function AftercareCard({
         setPending({ preference, value });
     };
 
-    // Turning WhatsApp on records the customer's consent: Staff say how, when
-    // and to what they agreed. Every other change takes an optional note.
     const noteRequired = pending?.preference === "aftercare_whatsapp" && pending.value;
 
     const confirm = async () => {
@@ -291,7 +271,6 @@ function SwitchRow({
 }) {
     return (
         <div className="space-y-1">
-            {/* The whole label row toggles the switch: a 44px target on a phone. */}
             <div className="flex items-center justify-between gap-3">
                 <Label
                     htmlFor={id}

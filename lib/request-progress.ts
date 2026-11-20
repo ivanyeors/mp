@@ -23,7 +23,6 @@ export function decrementActiveApiRequests(): void {
 
 export function subscribeActiveApiRequests(listener: RequestProgressListener): () => void {
   listeners.add(listener);
-  // Push current state immediately so UI can render deterministically.
   listener(activeApiRequests);
   return () => {
     listeners.delete(listener);

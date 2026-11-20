@@ -34,7 +34,6 @@ describe("role → permission matrix", () => {
     expect(roleHasPermission("manager", "users")).toBe(false);
     expect(roleHasPermission("manager", "api-configs")).toBe(false);
     expect(roleHasPermission("manager", "audit-log")).toBe(false);
-    // but allows day-to-day commerce
     expect(roleHasPermission("manager", "orders")).toBe(true);
     expect(roleHasPermission("manager", "products")).toBe(true);
   });
@@ -66,9 +65,6 @@ describe("role → permission matrix", () => {
     }
   });
 
-  // Cutover guarantee (#39): authorization is decided solely by the role →
-  // permission matrix. There is no fallback role, wildcard, or shared-secret
-  // path that yields access outside the matrix.
   it("grants nothing to a role that is not in the matrix", () => {
     const unknownRole = "intruder" as AdminRole;
     expect(permissionsForRole(unknownRole)).toEqual([]);
@@ -100,7 +96,6 @@ describe("role → permission matrix", () => {
     }
   });
 
-  // CRM slice 10: seeing Customers and changing them are separate keys.
   it("customers-edit is a Customers tab that requires customers", () => {
     expect(permissionEntry("customers-edit")).toMatchObject({ surface: "admin-panel", requires: ["customers"] });
     expect(permissionEntry("customers-edit").href).toBeUndefined();
@@ -118,12 +113,6 @@ describe("role → permission matrix", () => {
   });
 });
 
-/**
- * Slice 02 of the Users & permissions PRD split the coarse keys so each page
- * has its own. The matrix before the split is frozen here, with the split
- * itself, to prove the split moved nobody's access: each role now holds
- * exactly the expansion of what it held.
- */
 describe("one key per page: the split changed no one's access", () => {
   const LEGACY_ROLE_PERMISSIONS: Record<AdminRole, string[] | "all"> = {
     owner: "all",
@@ -138,7 +127,6 @@ describe("one key per page: the split changed no one's access", () => {
 
   const SPLIT: Record<string, Permission[]> = {
     staff: ["users"],
-    // CRM slice 10: changing Customers moved to its own key; every holder kept both.
     customers: ["customers", "customers-edit"],
     results: ["results", "appointments"],
     inventory: ["inventory", "configure", "shopify-link"],
@@ -155,7 +143,6 @@ describe("one key per page: the split changed no one's access", () => {
     const legacy = LEGACY_ROLE_PERMISSIONS[role];
     const now = new Set(permissionsForRole(role));
     if (legacy === "all") {
-      // Owners and admins held every key; they now hold every key in the catalog.
       expect([...now].sort()).toEqual([...ADMIN_PERMISSIONS].sort());
       return;
     }
@@ -194,7 +181,6 @@ describe("permission catalog", () => {
     expect(permissionForHref("/settings/inventory/configure")).toBe("configure");
     expect(permissionForHref("/settings/inventory/configure/premium-m")).toBe("configure");
     expect(permissionForHref("/settings/inventory/other")).toBe("inventory");
-    // Whole segments only, and General stays open.
     expect(permissionForHref("/settings/costingsx")).toBeUndefined();
     expect(permissionForHref("/settings")).toBeUndefined();
   });
@@ -285,11 +271,6 @@ describe("admin_roles seed (slice 03)", () => {
     return m ? [...m[1].matchAll(/'([a-z.-]+)'/g)].map((k) => k[1]) : null;
   };
 
-  /**
-   * Data migrations that gave existing custom roles a new key, each as the rule
-   * it applies to a stored permission list. A test below pins each rule to its
-   * SQL, so the seed plus these is what a database migrated from scratch holds.
-   */
   const CUSTOMERS_EDIT = migration("20261020102000_customers_edit_permission.sql");
   const afterDataMigrations = (keys: string[]) =>
     keys.includes("customers") && !keys.includes("customers-edit") ? [...keys, "customers-edit"] : keys;

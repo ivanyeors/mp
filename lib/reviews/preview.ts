@@ -11,20 +11,6 @@ import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { inboxPreviewCard } from "@/lib/social-inbox/preview";
 import { sendGroupMessage } from "@/lib/telegram/bot-api";
 
-/**
- * A preview of review cards for the measurements Telegram group: sample
- * reviews rendered by the production card code, so the group sees exactly what
- * real reviews will look like. Sent from Users & permissions → Telegram
- * ("Send preview") or scripts/telegram-review-preview.ts.
- *
- * Nothing here touches the database or Google. Every card opens with a PREVIEW
- * line so nobody mistakes it for a real review, and its buttons carry
- * PREVIEW_REVIEW_ID: the Telegram handler answers a tap, or a reply to the
- * card, with the person's access instead of acting. With Claude configured
- * (see draft-reply.ts) the Google replies are real Claude drafts of the
- * samples; without it, sample text is used and the card says so.
- */
-
 export const PREVIEW_INTRO = [
   "🧪 REVIEW & MESSAGE CARDS — PREVIEW",
   "Sample cards showing how new Google Maps and shop reviews, and customer messages from Facebook, Instagram and TikTok, will arrive here. None of them are real, nothing will be posted to Google, and nothing is sent to a customer.",
@@ -37,7 +23,6 @@ export type PreviewCard = { what: string; card: Card };
 type GoogleSample = {
   what: string;
   row: GoogleReviewRow;
-  /** Used when Claude is not called (or fails); null for a card that shows no draft. */
   sampleReply: string | null;
 };
 
@@ -237,10 +222,6 @@ export type PreviewResult = {
   error?: string;
 };
 
-/**
- * Sends the intro, every review preview card, then a sample customer message
- * card (lib/social-inbox/preview.ts); stops at the first failure and says why.
- */
 export async function sendReviewCardPreview(
   opts: { now?: Date; draft?: typeof draftReviewReply | null; send?: typeof sendGroupMessage } = {},
 ): Promise<PreviewResult> {

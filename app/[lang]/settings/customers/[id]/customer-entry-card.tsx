@@ -4,7 +4,6 @@ import type { EntryPoint } from "@/lib/analytics/journey/first-touch";
 import type { CustomerEntryResult } from "@/lib/crm/customer-entry";
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 
-/** "Instagram", with how it came beside it; a plain referral shows the site that linked. */
 function entryName(e: EntryPoint): { name: string; via: string | null } {
     if (e.platform) return { name: e.platform, via: e.channelLabel };
     if (e.channel === "referral" && e.source) return { name: e.source, via: e.channelLabel };
@@ -29,12 +28,6 @@ function EntryRow({ label, entry }: { label: string; entry: EntryPoint }) {
     );
 }
 
-/**
- * How they found us: the Entry source of the first Visit we can tie to this
- * Customer, the Visit their first Order came from when that is a later one,
- * and their own answer (the Discovery source). Recorded and said are shown
- * apart: they are different facts and often differ.
- */
 export function CustomerEntryCard({ entry }: { entry?: CustomerEntryResult }) {
     if (!entry) return null;
     return (

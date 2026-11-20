@@ -3,19 +3,11 @@ import { aiWritingLimited, aiWritingLimitMessage, aiWritingRetryAt } from "@/lib
 import { AI_WRITING_DEFAULTS } from "@/lib/ai/writing-settings";
 import type { RateLimitOptions } from "@/lib/rate-limit";
 
-/**
- * The per-Staff AI writing limits (PRD-campaign-email-editor slices 09 and
- * 16): both allowances are counted on every call, and a refused call says when
- * it can run again, by the shared limiter's fixed windows.
- */
-
-// 4:03 pm in Singapore.
 const NOW = new Date("2026-10-29T08:03:00Z");
 
 describe("aiWritingRetryAt", () => {
   it("is the end of the fixed window now falls in", () => {
     expect(aiWritingRetryAt(10 * 60_000, NOW).toISOString()).toBe("2026-10-29T08:10:00.000Z");
-    // The day window ends at midnight UTC: 8 am in Singapore.
     expect(aiWritingRetryAt(24 * 3_600_000, NOW).toISOString()).toBe("2026-10-30T00:00:00.000Z");
   });
 });
@@ -24,7 +16,6 @@ describe("aiWritingLimitMessage", () => {
   it("names the time in Singapore, and tomorrow when it is", () => {
     expect(aiWritingLimitMessage(new Date("2026-10-29T08:10:00Z"), NOW)).toBe("You've drafted a lot today. Try again after 4:10 pm.");
     expect(aiWritingLimitMessage(new Date("2026-10-30T00:00:00Z"), NOW)).toBe("You've drafted a lot today. Try again after 8:00 am tomorrow.");
-    // Before 8 am in Singapore, the day's limit lets up later the same day.
     expect(aiWritingLimitMessage(new Date("2026-10-30T00:00:00Z"), new Date("2026-10-29T22:30:00Z"))).toBe(
       "You've drafted a lot today. Try again after 8:00 am.",
     );
@@ -56,7 +47,6 @@ describe("aiWritingLimited", () => {
   });
 
   it("takes a lower limit at the very next call", async () => {
-    // The shared limiter refuses once the count passes `max`; a lowered setting is the next call's `max`.
     let count = 12;
     const exceeded = async (o: RateLimitOptions) => ++count > o.max;
     expect(await aiWritingLimited({ limit10min: 50, limitDay: 500 }, "m", { now: NOW, exceeded })).toBeNull();

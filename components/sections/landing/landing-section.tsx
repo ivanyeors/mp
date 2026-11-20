@@ -37,7 +37,6 @@ export interface LandingSectionProps {
     bolsterFromPrice: string;
   };
   landingRatings?: LandingRatings;
-  /** Preview mode: keep the reviews section off the paid Places API. */
   preview?: boolean;
 }
 
@@ -50,9 +49,6 @@ export function LandingSection({
   landingRatings,
   preview = false,
 }: LandingSectionProps) {
-  // The one place content is projected onto a locale. Every branch below — and every
-  // section component — therefore sees copy for `locale` only, with anything missing
-  // removed so each component's existing `?? messages…` fallback fires (slice 03).
   const section: LandingSectionType = {
     ...stored,
     content: resolveContentLocale(stored.content, locale),
@@ -126,7 +122,6 @@ export function LandingSection({
       return <CustomFullWidthImageSection section={section} />;
 
     case "custom_video": {
-      // Re-use the video section logic for custom videos
       return <VideoSection section={section} messages={messages} />;
     }
 

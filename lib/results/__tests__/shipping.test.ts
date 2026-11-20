@@ -60,7 +60,6 @@ describe("resultShippingAmount", () => {
   it("charges the rate quoted at hold, not the method's base rate", () => {
     const live = method({ rate_source: "easyship", base_rate: 0 });
     expect(resultShippingAmount(live, 42.5, 300)).toBe(42.5);
-    // numeric(12,2) can arrive as a string.
     expect(resultShippingAmount(live, "42.50", 300)).toBe(42.5);
   });
 
@@ -103,7 +102,6 @@ describe("quoteResultShipping", () => {
     const input = h.quoteShippingMethods.mock.calls[0][1];
     expect(input.methods).toEqual([live]);
     expect(input.subtotal).toBe(0);
-    // The page's quote builds exactly these lines, so the hold reads its cached rate.
     expect(input.lines).toEqual(estimateLines(["pillow", "bolster"], 150, "SGD"));
     expect(input.destination).toMatchObject({ country: "US", postal_code: "91606" });
   });

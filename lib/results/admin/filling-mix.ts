@@ -5,7 +5,6 @@ import type { BolsterPlacementRow, PillowPlacementRow } from "@/lib/spatial-fill
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { loadDimensionOverrides } from "@/lib/spatial-fillings/dimension-overrides.server";
 
-/** A placed Item, so a saved mix still names a piece the editor's active list no longer carries. */
 export type FillingMixItem = {
   id: number;
   name: string;
@@ -14,14 +13,6 @@ export type FillingMixItem = {
   category: string;
 };
 
-/**
- * What the Result detail page draws the Result's own Filling configuration
- * with: its saved snapshot, the Items it places, and the Product Builder
- * colours and Settings dimensions the x-ray reads. The two override tables are
- * service-role-only under RLS, so the page receives them from the server, as
- * Configure does from its template route — here without needing a template,
- * so a Result whose mix matches none still draws in the right colours.
- */
 export type ResultFillingMixPayload = {
   productType: "pillow" | "bolster";
   placements: PillowPlacementRow[] | BolsterPlacementRow[];
@@ -64,11 +55,6 @@ export async function loadResultFillingMix(
   };
 }
 
-/**
- * The Product Builder colours and Settings dimensions every x-ray draws with.
- * Both tables are service-role-only under RLS, so an Admin Panel page receives
- * them from its server: the Result detail page, and the Customer page's pillow.
- */
 export async function loadXrayOverrides(
   admin: SupabaseClient,
 ): Promise<
@@ -87,7 +73,6 @@ export async function loadXrayOverrides(
   return { ok: true, colorOverrides: (colorsRes.data ?? []) as ColorOverrideRow[], dimensionOverrides: dims.payload };
 }
 
-/** The Items a mix places, active or not, so a piece the editor no longer lists still draws and is named. */
 export async function loadPlacedItems(
   admin: SupabaseClient,
   placements: ReadonlyArray<{ item_id: number | string }>,

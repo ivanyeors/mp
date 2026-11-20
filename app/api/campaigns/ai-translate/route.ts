@@ -10,25 +10,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// A whole email translates in well under a minute; this is the ceiling, not the plan.
 export const maxDuration = 300;
 
-/**
- * ✨ Translate to Chinese (PRD-campaign-email-editor slice 17): Claude writes
- * the campaign's 中文 version, or the blocks of it that changed, from the
- * English the editor holds now. A route, as ✨ Generate's is, so the editor
- * can stop an ask it no longer wants (the request's signal ends Claude's call
- * too).
- *
- * In order: the `campaigns` permission; the request; the AI writing settings,
- * read now; the credentials; the per-Staff limits, which this call counts
- * against as a draft does; the campaign, which must not have started
- * sending; then the call, at the whole drafts effort. It reads no customer.
- * It writes one thing, the audit entry (`email_campaign.ai_translate`, with
- * the model that served it and its tokens, never the words): no campaign, no
- * `content`, no send. What it returns goes into the editor as one change,
- * and only Staff save or send it.
- */
 export async function POST(req: Request) {
   let ctx;
   try {

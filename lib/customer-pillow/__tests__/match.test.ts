@@ -10,13 +10,6 @@ import {
 } from "../match";
 import { matchNotices } from "../notices";
 
-/**
- * ADR 0042 j: a Fitting record's size, configuration type and profile side are
- * read as the Filling Template of that type, in that neck variant, serving that
- * size. The template names follow the catalog's (`Type-12`, `Type-8a (Short
- * Neck)`, `Type-9A`); the ids and memberships are made up.
- */
-
 const CATALOG: MatchableTemplate[] = [
   { id: 57, name: "Type-12", keys: ["L"] },
   { id: 59, name: "Type-12", keys: ["XL"] },

@@ -1,7 +1,3 @@
-/**
- * Slice 10 acceptance criteria — runnable proof that each requirement holds.
- * Maps 1:1 to .claude/PRD-money-flow-traceability/issues/10-discounts-shipping-hardening.md
- */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -68,8 +64,6 @@ describe("Slice 10 acceptance criteria", () => {
   });
 
   it("AC5: shipping API filters inactive methods by default", () => {
-    // The cached service-role read moved to lib so the settings page can render
-    // it on the server; the route still decides who may include inactive rows.
     const readerSource = readFileSync(
       join(repoRoot, "lib/shop/shipping-methods.ts"),
       "utf8"
@@ -100,7 +94,6 @@ describe("Slice 10 acceptance criteria", () => {
   });
 
   it("AC7: orders dashboard exposes revenue and avg_order_value keys", () => {
-    // The route delegates to this module so the RSC orders page can reuse it.
     const dashboardSource = readFileSync(
       join(repoRoot, "lib/ecommerce/admin/orders-dashboard.ts"),
       "utf8"

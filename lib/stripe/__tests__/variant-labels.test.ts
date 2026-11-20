@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadVariantLabels, withPricingBlock } from "@/lib/stripe/variant-labels";
 
-/** Chainable Supabase stub: builder methods return self, await yields data. */
 function table(data: unknown) {
   const chain: Record<string, unknown> = {};
   const self = () => chain;
@@ -14,7 +13,6 @@ function table(data: unknown) {
   return chain;
 }
 
-/** Prod shapes: premium XS ships Fibrecool (360), premium S ships linen (400). */
 const admin = {
   from(t: string) {
     if (t === "pillow_products")
@@ -26,7 +24,7 @@ const admin = {
       return table([
         { product_id: 7, item_id: 43 },
         { product_id: 6, item_id: 32 },
-        { product_id: 6, item_id: 1 }, // the cover — must not be mistaken for a case
+        { product_id: 6, item_id: 1 },
       ]);
     if (t === "items")
       return table([
@@ -42,8 +40,6 @@ const S = { id: "v-s", title: "Size S", price: 400, currency: "SGD", pillow_prod
 
 describe("loadVariantLabels", () => {
   it("says which fabric a size's price is for", async () => {
-    // "Size XS 360" next to "Size S 400" reads as arbitrary until the fabric is
-    // named: XS ships Fibrecool and S ships linen, which IS the difference.
     const labels = await loadVariantLabels(admin, [XS, S]);
     expect(labels.get("v-xs")?.nickname).toBe("Premium XS · Fibrecool case");
     expect(labels.get("v-s")?.nickname).toBe("Premium S · Linen case");
@@ -78,8 +74,6 @@ describe("loadVariantLabels", () => {
     const labels = await loadVariantLabels(unfamilied, [
       { id: "v-xl", title: "Size XL", price: 680, currency: "SGD", pillow_product_id: 10 },
     ]);
-    // An unfamilied case cannot be priced either, so a confident label would claim
-    // more than the pricing side is willing to.
     expect(labels.get("v-xl")?.nickname).toBe("Premium XL");
     expect(labels.get("v-xl")?.metadata.case_fabric).toBeUndefined();
   });
@@ -129,8 +123,6 @@ describe("withPricingBlock", () => {
   });
 
   it("adds nothing for a single-variant accessory", () => {
-    // "Slope Mattress — 120.00" under a sentence about covers and cases is noise,
-    // and the sentence is false for a mattress topper.
     const accessory = [
       { nickname: "Default", metadata: {}, line: "Default — SGD 120.00", sortKey: 5, derived: false },
     ];

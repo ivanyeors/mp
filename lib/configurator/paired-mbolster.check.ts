@@ -1,7 +1,3 @@
-/**
- * Paired build stepper self-check (ADR 0026).
- * Run: npx tsx lib/configurator/paired-mbolster.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
@@ -18,7 +14,6 @@ import {
   type PairedHandoff,
 } from "./paired-mbolster";
 
-// --- Who gets the stepper: a card-holding shopper whose graph routes to Mbolster ---
 const base = { routeTarget: "mbolster" as const, assisted: false, partnerAssisted: false, reopened: false };
 assert.equal(runsPairedStepper(base), true, "Mbolster route on a plain hold → stepper");
 assert.equal(runsPairedStepper({ ...base, routeTarget: "premium-mpillow" }), false, "an upgrade route is the Upsell card's");
@@ -27,18 +22,15 @@ assert.equal(runsPairedStepper({ ...base, assisted: true }), false, "an Assisted
 assert.equal(runsPairedStepper({ ...base, partnerAssisted: true }), false, "partner runs see no upsells");
 assert.equal(runsPairedStepper({ ...base, reopened: true }), false, "a reopened Result is past this decision");
 
-// --- Sleep position carries over in the Mbolster flow's words ---
 assert.equal(bolsterSleepPosition("side"), "side");
 assert.equal(bolsterSleepPosition("stomach"), "stomach");
 assert.equal(bolsterSleepPosition("back"), "other");
 assert.equal(bolsterSleepPosition("mixed"), "other");
 
-// --- Step 2 sends the shopper back to the Mpillow's step 3 ---
 assert.equal(pairedDetailsPath("/mp-config"), "/mp-config?paired=details");
 assert.equal(opensPairedDetails("?paired=details"), true);
 assert.equal(opensPairedDetails("?hold_cancelled=1"), false);
 
-// --- The hand-off survives storage and refuses anything malformed ---
 const bolster: PairedBolster = {
   responseId: "b",
   suggestedLength: "medium",
@@ -74,7 +66,6 @@ assert.equal(parsePairedHandoff({ ...handoff, configPath: "https://evil.test" })
 assert.equal(parsePairedHandoff({ ...handoff, companionId: "" }), null, "needs a companion id");
 assert.equal(parsePairedHandoff({ ...handoff, anchorId: "" }), null, "needs an anchor id");
 
-// --- The Mpillow's Measurement service travels to step 2 as its own row (ADR 0024) ---
 const measured: PairedHandoff = {
   ...handoff,
   pillow: {
@@ -121,7 +112,6 @@ assert.deepEqual(
   "malformed fee rows are dropped",
 );
 
-// --- A new anchor (a cancelled Checkout) mints a new companion, answers kept ---
 assert.equal(reanchorPairedHandoff(answered, "a", () => "x"), answered, "same anchor: untouched");
 const moved = reanchorPairedHandoff(answered, "a2", () => "b2");
 assert.equal(moved.anchorId, "a2");
@@ -130,7 +120,6 @@ assert.equal(moved.choice?.bolster?.responseId, "b2", "the held Mbolster follows
 assert.deepEqual(moved.choice?.bolster?.preferenceLines, bolster.preferenceLines, "and keeps its answers");
 assert.deepEqual(reanchorPairedHandoff({ ...handoff, choice: { bolster: null } }, "a2", () => "b2").choice, { bolster: null });
 
-// --- One request for both; Skip sends the pillow alone. The route is answered either way ---
 const pendingRecord = {
   flow: "premium-mpillow",
   size: "M",
@@ -155,7 +144,6 @@ assert.equal(
   "Skip declines the route, so the hold gate passes",
 );
 
-// --- Wiring: both builds first, then details, then the review that pays ---
 const mp = readFileSync("app/[lang]/mp-config/mp-config-client.tsx", "utf8");
 assert.match(
   mp,
@@ -177,8 +165,6 @@ assert.match(mp, /r\.flowRoute\?\.targetFlow !== "mbolster"/, "a pending Mbolste
 
 const mb = readFileSync("app/[lang]/mbolster-config/mbolster-config-client.tsx", "utf8");
 assert.match(mb, /<PairedStepperBar className="border-t" step=\{2\} \/> : null\}\s*<\/header>/, "step 2 along the top of the Mbolster's customisation page");
-// Sticky the way the configurator header is (#399): its class is the shared
-// `configuratorStickyHeaderClassName`, itself checked to be `sticky top-0`.
 assert.match(
   mb,
   /\{paired \? \(\s*<PairedStepperBar\s+className=\{cn\(\s*configuratorStickyHeaderClassName,/,

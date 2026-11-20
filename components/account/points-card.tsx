@@ -14,13 +14,6 @@ const sgDate = (iso: string) =>
     timeZone: "Asia/Singapore",
   });
 
-/**
- * Profile → Points (PRD-loyalty-points slice 02; ADR 0030): the customer's own
- * balance in points and dollars, what is pending and from when it is usable,
- * and how far they are along the bonus milestones (slice 09). Points never
- * expire, so no date is shown beside the balance. Read server-side for the session's Customer; shown only while
- * points are live.
- */
 export function PointsCard({
   balance,
   pending,
@@ -30,7 +23,6 @@ export function PointsCard({
 }: {
   balance: PointsBalance;
   pending: PendingOrderPoints[];
-  /** The ladder and the points earned from orders; null or an empty ladder shows no bar. */
   milestones?: { ladder: PointsMilestone[]; earned: number } | null;
   termsHref: string;
   shopHref: string;
@@ -78,11 +70,6 @@ export function PointsCard({
   );
 }
 
-/**
- * Profile → Points before the launch: what points will be, with the live
- * earn rate and the bonus milestones as an empty bar, and no balance. Shown
- * until points are live; partners never see it.
- */
 export function PointsComingSoonCard({
   earnPerDollar,
   milestones = [],

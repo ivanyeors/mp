@@ -13,12 +13,6 @@ import type { SlideInSectionView } from "@/lib/slide-in-pages/sections";
 
 import { PreviewSectionFrame, SlideInPageSections, useSlideInHeader } from "./slide-in-content";
 
-/**
- * **Preview mode** for a sub page: the slide-in's header and body laid out as the open
- * sheet lays them out, but as a plain page, so the builder's frame can scroll it and pick
- * sections from it. The body is `SlideInPageSections` — the component the live sheet
- * renders — with drafts in place of published content.
- */
 export function SlideInPagePreview({
   page,
   views,
@@ -30,9 +24,6 @@ export function SlideInPagePreview({
   const header = useSlideInHeader(page, views);
   const to = React.useCallback((href: string) => withLocale(href, locale), [locale]);
 
-  // Some templates close the sheet they sit in (Premium's overseas "Customise" link), and
-  // a sheet's close button needs a sheet around it. Here there is no sheet to close, so a
-  // closed one stands in; it renders nothing of its own.
   return (
     <Sheet>
       <div className="min-h-screen bg-muted/30 md:p-6">

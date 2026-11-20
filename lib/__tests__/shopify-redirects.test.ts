@@ -4,15 +4,6 @@ import { NextRequest, type NextFetchEvent } from "next/server";
 import { blogSlugFate } from "@/lib/blog-redirects";
 import { shopifyRedirect } from "@/lib/shopify-redirects";
 
-/**
- * The old Shopify store's addresses and the move to www.mpillow.com (ADR 0029).
- *
- * The fixture is every row of the audited redirect map the owner approved on
- * 11 and 13 Nov 2026 (MPILLOW_Redirect_Map_AUDITED_2026-11-11.xlsx): the old
- * path and query, the approved action, and the approved final path. `status`
- * null is the home page, which keeps the site's own language redirect.
- */
-
 vi.mock("@/lib/supabase/middleware", () => ({ refreshSupabaseSession: vi.fn(async () => undefined) }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 
@@ -25,7 +16,6 @@ const WWW = "https://www.mpillow.com";
 const CUSTOM = "https://custom.mpillow.com";
 const event = { waitUntil: () => undefined } as unknown as NextFetchEvent;
 
-/** The proxy's answer to `url`, with the site's address set to `site`. */
 async function hit(url: string, site: string, init: { method?: string; headers?: Record<string, string> } = {}) {
   process.env.NEXT_PUBLIC_SITE_URL = site;
   return proxy(new NextRequest(url, { method: init.method ?? "GET", headers: { "accept-language": "en-US", ...init.headers } }), event);

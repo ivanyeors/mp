@@ -1,5 +1,3 @@
-/** mp-basic sizing — placeholder shoulder→size only; tier always basic. */
-
 import {
   inferSizeFromMeasurements,
   type PillowSize,
@@ -8,7 +6,6 @@ import {
 
 export type BasicMpillowInput = {
   shoulderLength: string;
-  /** Accepted for future rules; not used in v1 sizing. */
   name?: string;
   gender?: string;
   ageGroup?: string;

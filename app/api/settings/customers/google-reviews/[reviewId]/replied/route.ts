@@ -12,14 +12,6 @@ export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const Schema = z.object({ reply: z.string().trim().min(1).max(MAX_REPLY_CHARS) }).strict();
 
-/**
- * POST /api/settings/customers/google-reviews/[reviewId]/replied — `{ reply }`:
- * a Staff member pasted this reply on Google themselves
- * (PRD-customer-page-journey slice 03). Needs `customers-edit`. Only for a
- * review read through the Places API; a second mark answers 409.
- *
- * The Audit Log names the review, never the reply.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ reviewId: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

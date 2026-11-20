@@ -1,12 +1,5 @@
 "use client";
 
-/**
- * Product Visualize tab on Products (formerly the Product Builder page, slice 10):
- * map cover/case Items to an overlay — a Media Asset (+ optional fit) or a solid
- * color — so the configurator silhouette shows the real product. Sizes of the
- * same item map together. The data routes still live under /settings/product-builder/.
- */
-
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -52,8 +45,6 @@ export function ProductVisualize() {
   );
 
   const [items, setItems] = useState<OverlayItem[]>([]);
-  // Only the first load shows the spinner: a refresh after a save keeps the
-  // workbench mounted, so the selected family/size stays selected.
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -177,11 +168,6 @@ export function ProductVisualize() {
   );
 }
 
-/**
- * Slice 11: filling subtype → fluid shape + color. Shape is designer/code-owned
- * (read-only thumbnail, ADR 0009 guardrail 5); color overrides the code default
- * via the x-ray CSS-variable pipeline — renders pick it up on next load.
- */
 function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) => string }) {
   const [subtypes, setSubtypes] = useState<string[]>([]);
   const [overrides, setOverrides] = useState<ColorOverrideRow[]>([]);
@@ -274,7 +260,6 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
           <TableBody>
             {rows.map((row) => (
               <FillingVisualRow
-                // remount on saved color so the picker draft resets
                 key={`${row.subtype}-${row.color}`}
                 row={row}
                 onSave={(color) => void save(row.subtype, color)}
@@ -309,7 +294,6 @@ function FillingVisualRow({
   return (
     <TableRow>
       <TableCell>
-        {/* Read-only fluid-shape thumbnail — shape is a designer/code concern */}
         <svg
           viewBox="0 0 100 100"
           className="h-10 w-10"

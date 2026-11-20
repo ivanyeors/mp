@@ -6,11 +6,6 @@ export const runtime = "nodejs";
 
 type Params = { params: Promise<{ id: string }> };
 
-/**
- * GET: the page's poll. `?have=N` is how many messages the page already
- * shows; while that is still the count, the messages are left out. Each poll
- * also tells the chat the customer is on the page.
- */
 export async function GET(req: Request, { params }: Params) {
   const limited = await rateLimited(req, "support-chat-poll", 120, 60_000);
   if (limited) return limited;

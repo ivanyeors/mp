@@ -18,22 +18,6 @@ import { MOVE_DIDS, planMove, type FunnelMove } from "@/lib/email-funnel/move";
 import { actingProfile, getWorkingAs } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/**
- * Arranging the Email flow, and building a Playbook as a draft
- * (PRD-email-funnel slice 07; ADR 0054 (8)). Guarded by `campaigns`.
- *
- * Nothing here sends: no Wave is planned, *Keep sending* is never touched,
- * and this file imports nothing from the sending code (`sender`, `send-flow`,
- * `keep-sending-run`; a test walks its imports). It lives apart from
- * ./actions, whose renders do import the sender.
- *
- * A move's input is ids, a stage and a condition, never filters: the action
- * answers no question about which Segments exist. Each campaign is pointed
- * at the live Segment with its new filters, or one is created through the
- * Segments' own create (`customers-edit`, validation, unique name, audit);
- * a Segment is never edited in place, since other campaigns may send to it.
- */
-
 type Failure = { ok: false; error: string };
 export type MoveAnswer = { ok: true; moved: string[] } | (Failure & { moved: string[] });
 
@@ -49,16 +33,9 @@ const MoveSchema = z
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const NEEDS_SEGMENTS_EDIT = "only someone who can edit Customers (an Owner or Admin) can create one";
 
-/**
- * Moves a draft in a stage's Email flow, with the drafts the move re-points.
- * Planned on facts read now (`planMove`), so a campaign started since the page
- * loaded is refused whatever the page says.
- *
- * ponytail: the changes are applied one by one, with no transaction over
- * PostgREST. Each step leaves a valid arrangement, so a failure part-way says
- * which email did not move and the page reads the flow again. The upgrade is
- * an RPC that applies a plan in one transaction.
- */
+// ponytail: the changes are applied one by one, with no transaction over PostgREST. Each step
+// leaves a valid arrangement, so a failure part-way says which email did not move and the page
+// reads the flow again. The upgrade is an RPC that applies a plan in one transaction.
 export async function moveFunnelEmail(input: FunnelMove): Promise<MoveAnswer> {
   const ctx = await assertAdmin("campaigns");
   const parsed = MoveSchema.safeParse(input);
@@ -87,7 +64,6 @@ export async function moveFunnelEmail(input: FunnelMove): Promise<MoveAnswer> {
   const live: MatchableSegment[] = matchable(segments);
   const wantedOf = (ch: (typeof plan.changes)[number]) => ({ name: ch.segmentName, filters: new URLSearchParams(ch.filters).toString() });
 
-  // Before anything is written: every Segment to create can be created, by this person, with these filters.
   for (const ch of plan.changes) {
     if (findWanted(wantedOf(ch), live)) continue;
     if (!hasPermission(ctx, "customers-edit")) {
@@ -145,15 +121,6 @@ export async function moveFunnelEmail(input: FunnelMove): Promise<MoveAnswer> {
   return { ok: true, moved };
 }
 
-/**
- * *Add as a draft* on a Suggested Playbook: the campaign from the Playbook's
- * Starter (`starterDraft`), pointed at the Playbook's Segment (found by its
- * filters, or created), saved as a draft. Plans no Wave. Only an approved
- * Playbook (`PLAYBOOK_STARTERS`): one whose words wait for the owner is not
- * offered (decision 7). Refused when a live campaign already is that Playbook
- * (`playbookCampaignsOf`, the funnel's own rule), so a second click makes no
- * second draft.
- */
 export async function addPlaybookDraft(starterId: string): Promise<{ ok: true; id: string } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const starter = typeof starterId === "string" ? PLAYBOOK_STARTERS.find((s) => s.id === starterId) : undefined;
@@ -162,7 +129,6 @@ export async function addPlaybookDraft(starterId: string): Promise<{ ok: true; i
   const actor = { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId };
   try {
     const [segments, campaigns] = await Promise.all([listSegments(), listCampaigns(supabaseAdmin())]);
-    // Once is enough: a live campaign that already is this Playbook, by the funnel's own rule, is refused.
     const reading = readFunnel({
       segments: segments.map((s) => ({ id: s.id, name: s.name, count: s.count, needsReview: s.needsReview, params: s.params })),
       campaigns: campaigns.map(({ campaign, stats }) => ({ campaign, stats })),

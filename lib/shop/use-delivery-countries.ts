@@ -8,7 +8,6 @@ export interface DeliveryCountryOption {
   label: string;
 }
 
-// One request per page load, shared by every picker on the page.
 let pending: Promise<string[]> | null = null;
 
 function loadDeliveryCountries(): Promise<string[]> {
@@ -17,18 +16,12 @@ function loadDeliveryCountries(): Promise<string[]> {
     .then((json: { countries?: string[] } | null) => json?.countries ?? [])
     .catch(() => [])
     .then((codes) => {
-      // A failed read is retried by the next picker that mounts.
       if (codes.length === 0) pending = null;
       return codes;
     });
   return pending;
 }
 
-/**
- * The countries the store delivers to, for a country picker. `current` is always
- * included, so a saved address in a country no method covers still shows (and the
- * page says there is no shipping option for it) rather than an empty select.
- */
 export function useDeliveryCountries(current: string): DeliveryCountryOption[] {
   const [codes, setCodes] = useState<string[]>([]);
   useEffect(() => {

@@ -1,12 +1,3 @@
-/**
- * Server-side loader for the dimension overrides an x-ray host needs
- * (slice 12 / slice 02). Both tables are service-role only under RLS, so a
- * route loads them here and ships them beside the colour overrides; the
- * client folds them over the code registry with `registryFromPayload`. The
- * soft cut settings (ADR 0025) ride along, read in the same site settings
- * query as the loft allowance.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -21,7 +12,6 @@ const POUCH_COLUMNS =
   "key, width_mm, length_mm, thickness_mm, min_thickness_mm, min_width_mm, orientation, flat_length_mm, flat_width_mm, updated_at";
 const NECK_COLUMNS = "size, width_mm, length_mm, thickness_mm, min_thickness_mm, updated_at";
 
-/** Throws on a database error, like the callers' other reads. */
 export async function loadDimensionOverrides(admin: SupabaseClient): Promise<DimensionOverridesPayload> {
   const [rows, neckRows, settings] = await Promise.all([
     admin.from("filling_dimension_overrides").select(POUCH_COLUMNS),

@@ -1,5 +1,3 @@
-/** Post-delivery refund policy for Result (customised) Orders — slice 11. */
-
 import { isResultOrderBuildSnapshot } from "@/lib/results/order-build-snapshot";
 
 export type RefundRequestStatus = "requested" | "approved" | "rejected";
@@ -27,7 +25,6 @@ export function isPostDelivery(order: OrderRefundFields): boolean {
   );
 }
 
-/** US17: no customer cancel after Accept (Result orders). */
 export function customerCancelDeniedReason(
   items: OrderItemLike[],
 ): string | null {
@@ -37,7 +34,6 @@ export function customerCancelDeniedReason(
   return "Customers cannot cancel orders from the account area.";
 }
 
-/** US18: refund request only after ship/delivery, Result path only. */
 export function customerRefundRequestDeniedReason(
   order: OrderRefundFields,
   items: OrderItemLike[],
@@ -60,7 +56,6 @@ export function customerRefundRequestDeniedReason(
   return null;
 }
 
-/** Operator approve: pending request + in-person return ack. */
 export function operatorApproveDeniedReason(
   order: OrderRefundFields,
   items: OrderItemLike[],
@@ -94,12 +89,6 @@ export function operatorRejectDeniedReason(
   return null;
 }
 
-/**
- * A Staff refund on a Result Order. Correcting a charge (a wrong amount, a
- * duplicate) takes nothing back, so it is always allowed. A refund because the
- * customer gave the product back keeps US18's rule: after it shipped, and only
- * once it is back in person. Non-Result Orders: always allowed.
- */
 export function staffRefundDeniedReason(
   order: OrderRefundFields,
   items: OrderItemLike[],

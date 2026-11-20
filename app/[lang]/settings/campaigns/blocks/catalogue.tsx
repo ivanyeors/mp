@@ -46,33 +46,16 @@ import { ProductField, ProductsField } from "./products-field";
 import { paragraphsOf, richTextOf } from "./runs";
 import { useCampaignVariables } from "./variables";
 
-/**
- * The campaign's half of the shared block editor (PRD-campaign-email-editor
- * slice 04): its block catalogue, each block's card as it will read in the
- * email, editable in place, with its fields on their placeholders (decision
- * 7), and its presets under it when selected (decision 2). The content model
- * and its checks are slice 03's (lib/email-campaigns/content.ts).
- *
- * A new block type is one entry here and its form; slices 05 to 07 add theirs.
- *
- * In the editor's 中文 (slice 17) the same forms show the 中文 words, with
- * `layoutLocked`: each keeps its word fields and fixes its targets, pictures,
- * parts and options, which are the English's.
- */
-
 type Of<T extends EmailBlock["type"]> = Extract<EmailBlock, { type: T }>;
 
 const SPACER_LABEL: Record<SpacerSize, string> = { s: "Small", m: "Medium", l: "Large" };
 const SPACER_HEIGHT: Record<SpacerSize, string> = { s: "h-3", m: "h-8", l: "h-14" };
 
-/** The words a block's field shows its error in, or nothing. */
 const FieldError = ({ text }: { text?: string | null }) => (text ? <p className="mt-1 text-xs text-destructive">{text}</p> : null);
 
-/** Save's error for a field, or anything under it. */
 const errorAt = (errors: Record<string, string>, path: string) =>
     errors[path] ?? Object.entries(errors).find(([k]) => k.startsWith(`${path}.`))?.[1];
 
-/** A heading's words as they read, in one line, with Variables as chips (`VariableLine`). */
 function HeadingForm({ block: b, onChange, readOnly, errors, idPrefix }: BlockFormProps<Of<"heading">>) {
     const ai = useCampaignAi();
     if (rewriteOffered(ai, b.id) && !readOnly) return <RewriteOffered block={b} idPrefix={idPrefix} />;
@@ -107,12 +90,6 @@ function HeadingOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"hea
     );
 }
 
-/**
- * A text block's words, in paragraphs and bullets with bold, italic and
- * links, and Variables as chips (slice 13): a text block's, and the words
- * beside an image + text's image. `also` is a check of the block's own, shown
- * after the Variables'.
- */
 function TextRuns({
     id,
     label,
@@ -132,7 +109,6 @@ function TextRuns({
     error?: string;
     also?: string | null;
     onSlash?: () => void;
-    /** Which links its words may carry: any https one, or in 中文 only the English block's (slice 17). */
     link?: (url: string) => boolean;
 }) {
     const variables = useCampaignVariables();
@@ -157,14 +133,12 @@ function TextRuns({
     );
 }
 
-/** In 中文 a link is one of the English block's, by its place (slice 17): no other can be added there. */
 function useLinkCheck(id: string): ((url: string) => boolean) | undefined {
     const zh = useChineseEditing();
     return zh ? (url) => zh.links(id).includes(url) : undefined;
 }
 
 function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: BlockFormProps<Of<"text">>) {
-    // An empty text block offers to be written from the subject (slice 09), while AI writing is on.
     const ai = useCampaignAi();
     const link = useLinkCheck(b.id);
     const empty = !paragraphRuns(b.paragraphs).some((r) => "var" in r || r.text.trim());
@@ -198,7 +172,6 @@ function TextForm({ block: b, onChange, readOnly, errors, idPrefix, onSlash }: B
     );
 }
 
-/** A button sent somewhere else: only a link button keeps a link of its own, and only a product button a product. */
 const retarget = (x: BlockButton, target: BlockButtonTarget): BlockButton =>
     target === "url"
         ? { label: x.label, target, url: x.url ?? "", style: x.style }
@@ -208,7 +181,6 @@ const retarget = (x: BlockButton, target: BlockButtonTarget): BlockButton =>
 
 function ButtonsForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Of<"buttons">>) {
     const set = (j: number, x: BlockButton, burst?: string) => onChange({ ...b, buttons: b.buttons.map((y, k) => (k === j ? x : y)) }, burst);
-    // In 中文 (slice 17) the labels change; where each goes is the English's.
     const fixed = readOnly || Boolean(layoutLocked);
     return (
         <div className="space-y-4">
@@ -218,7 +190,6 @@ function ButtonsForm({ block: b, onChange, readOnly, layoutLocked, errors, idPre
                     const which = b.buttons.length > 1 ? (j === 0 ? "First button" : "Second button") : "Button";
                     return (
                         <div key={j} className={cn("space-y-3", b.buttons.length === 1 && "sm:col-span-2")}>
-                            {/* The button as it reads: its label typed on it. */}
                             <div>
                                 <input
                                     id={`${bid}-label`}
@@ -323,7 +294,6 @@ function ButtonsOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"but
 
 const IMAGE_WIDTH_LABEL: Record<ImageWidth, string> = { full: "Full", inset: "Inset" };
 
-/** Where an image goes when tapped: nowhere, a page of the site, or a link of its own. */
 const NO_LINK = "none";
 
 function ImageForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Of<"image">>) {
@@ -389,17 +359,11 @@ function ImageOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"image
     );
 }
 
-/** A button's two looks, as its presets name them. */
 const BUTTON_STYLE_OPTIONS = [
     { value: "primary", label: "Filled" },
     { value: "secondary", label: "Outline" },
 ] as const;
 
-/**
- * One button's fields, its label typed on the button as it reads (a hero's,
- * an image + text's): where it goes, and its link when it is a link. Errors
- * are keyed from the block, `button.label` and `button.url`.
- */
 function OneButtonFields({
     button: x,
     onChange,
@@ -415,10 +379,8 @@ function OneButtonFields({
     readOnly: boolean;
     errors: Record<string, string>;
     idPrefix: string;
-    /** What the label box is called: "Hero button". */
     name: string;
     align: "center" | "left";
-    /** In 中文 (slice 17): its label changes, where it goes doesn't. */
     layoutLocked?: boolean;
 }) {
     const bid = `${idPrefix}-button`;
@@ -476,12 +438,6 @@ function OneButtonFields({
     );
 }
 
-/**
- * A one-line field of a block's words that takes Variables as chips (slice
- * 13): a heading block's, a hero's heading and line, an image + text's
- * heading. Stored as a string, each Variable written `{first_name}`, as the
- * subject is.
- */
 function VariableLine({
     id,
     label,
@@ -524,17 +480,14 @@ function VariableLine({
 }
 
 type Hero = Of<"hero">;
-/** A hero's parts below its image, each of which may be left out. */
 type HeroPart = "heading" | "line" | "button";
 
-/** The hero without one of its parts. */
 function withoutPart(b: Hero, part: HeroPart): Hero {
     const next = { ...b };
     delete next[part];
     return next;
 }
 
-/** A new part, on its placeholder. */
 const NEW_PART = { heading: "", line: "", button: { label: "", target: "shop", style: "primary" } } as const satisfies Required<Pick<Hero, HeroPart>>;
 
 const PART_NAME: Record<HeroPart, string> = { heading: "heading", line: "line", button: "button" };
@@ -542,7 +495,6 @@ const PART_NAME: Record<HeroPart, string> = { heading: "heading", line: "line", 
 function HeroForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Hero>) {
     const headingId = `${idPrefix}-heading`;
     const lineId = `${idPrefix}-line`;
-    // In 中文 (slice 17) the parts are the English's: none is added or removed there.
     const fixed = readOnly || Boolean(layoutLocked);
     const remove = (part: HeroPart) =>
         fixed ? null : (
@@ -555,7 +507,6 @@ function HeroForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix
     return (
         <div className="space-y-4">
             <ImageField image={b.image} onChange={(image, burst) => onChange({ ...b, image }, burst)} readOnly={readOnly} errors={errors} idPrefix={idPrefix} layoutLocked={layoutLocked} />
-            {/* Below the image, never on it: real words and a real button (decision 6). */}
             {b.heading !== undefined ? (
                 <div className="text-center">
                     <VariableLine
@@ -632,15 +583,8 @@ type Split = Of<"split">;
 
 const SIDE_LABEL: Record<SplitSide, string> = { left: "Left", right: "Right" };
 
-/** The words beside an image, in characters, as Save counts them: a Variable counts none. */
 const splitLength = (b: Split) => paragraphRuns(b.paragraphs).reduce((n, r) => n + ("text" in r ? r.text.length : 0), 0);
 
-/**
- * An image + text (slice 06): the image on its side of the card when the card
- * has room, as the email lays it out; stacked, the image first, as a phone
- * shows it whichever side it is on. Its words are a heading, a text block's
- * runs and an optional button; its image always says what it shows.
- */
 function SplitForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Split>) {
     const headingId = `${idPrefix}-heading`;
     const x = b.button;
@@ -752,19 +696,12 @@ type Products = Of<"products">;
 
 const PRODUCT_LAYOUT_LABEL: Record<ProductLayout, string> = { rows: "One per row", side_by_side: "Side by side" };
 
-/**
- * Products (slice 07): up to three of the shop's Listed products, each shown
- * as the email shows it, with the shop's photo, name and price, never typed;
- * then the label every product's button carries.
- */
 function ProductsForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefix }: BlockFormProps<Products>) {
     const labelId = `${idPrefix}-button-label`;
     return (
         <div className="space-y-4">
-            {/* In 中文 (slice 17) the products are the English's; their names are the 中文 shop's, at send. */}
             <ProductsField products={b.products} layout={b.layout} onChange={(products) => onChange({ ...b, products })} readOnly={readOnly || Boolean(layoutLocked)} errors={errors} />
             <div className="text-center">
-                {/* Each product's button, its label typed on it. */}
                 <input
                     id={labelId}
                     aria-label="Each product's button: label"
@@ -823,7 +760,6 @@ function SpacerOptions({ block: b, onChange, readOnly }: BlockFormProps<Of<"spac
     );
 }
 
-/** Every Email block type the campaign editor offers, in the palette's order. */
 export const CAMPAIGN_BLOCKS: BlockCatalogue<EmailBlock> = {
     heading: {
         label: EMAIL_BLOCK_LABEL.heading,

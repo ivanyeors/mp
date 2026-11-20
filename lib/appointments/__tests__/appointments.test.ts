@@ -113,7 +113,6 @@ describe("appointment-type", () => {
 
 describe("appointment-slots", () => {
   it("respects last-start 18:00, bookable days, busy overlap, max three", () => {
-    // Wednesday 2026-07-08 09:00 SGT = 2026-07-08 01:00 UTC
     const now = new Date(sgtLocalToUtcMs(2026, 7, 8, 9, 0));
     const busy: BusyInterval[] = [
       {
@@ -123,22 +122,18 @@ describe("appointment-slots", () => {
     ];
     const slots = offerSlots(busy, DEFAULT_APPOINTMENT_SETTINGS, now);
     expect(slots.length).toBe(3);
-    // First free after busy 10–11 → 11:00
     expect(slots[0]!.startIso).toBe(new Date(sgtLocalToUtcMs(2026, 7, 8, 11, 0)).toISOString());
-    // No Monday (bookable Tue–Sun only) — if we jump far, still ≤3
     for (const s of slots) {
       const start = Date.parse(s.startIso);
       const hour = new Date(start + 8 * 3600_000).getUTCHours();
       expect(hour).toBeGreaterThanOrEqual(10);
       expect(hour).toBeLessThanOrEqual(18);
       expect(start).toBeGreaterThan(now.getTime());
-      // not overlapping busy
       expect(start >= busy[0]!.endMs || start + 3600_000 <= busy[0]!.startMs).toBe(true);
     }
   });
 
   it("suggests the earliest days with three or more free times", () => {
-    // Sat 2026-07-04 09:00 SGT is "now"; Sun 5th booked out, Mon 6th closed.
     const now = new Date(sgtLocalToUtcMs(2026, 7, 4, 9, 0));
     const busy: BusyInterval[] = [
       { startMs: sgtLocalToUtcMs(2026, 7, 4, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 6, 0, 0) },
@@ -153,7 +148,6 @@ describe("appointment-slots", () => {
 
   it("drops a day that has fewer than three free times", () => {
     const now = new Date(sgtLocalToUtcMs(2026, 7, 4, 9, 0));
-    // Tue 7th: leave only 17:00 and 18:00 open (2 starts) → not roomy enough.
     const busy: BusyInterval[] = [
       { startMs: sgtLocalToUtcMs(2026, 7, 4, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 6, 0, 0) },
       { startMs: sgtLocalToUtcMs(2026, 7, 7, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 7, 17, 0) },
@@ -163,7 +157,6 @@ describe("appointment-slots", () => {
   });
 
   it("falls back to any opening when no day can reach three", () => {
-    // 240-minute appointments: a 10:00–19:00 window fits only two starts.
     const now = new Date(sgtLocalToUtcMs(2026, 7, 4, 9, 0));
     const settings = { ...DEFAULT_APPOINTMENT_SETTINGS, durationMinutes: 240 };
     const days = suggestNextDays([], settings, {}, now);
@@ -178,18 +171,16 @@ describe("appointment-slots", () => {
       { startMs: sgtLocalToUtcMs(2026, 7, 4, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 5, 0, 0) },
     ];
     const days = suggestNextDays(busy, settings, {}, now);
-    // Scan is 4th–6th: 4th busy, 6th is a closed Monday → only the 5th.
     expect(days.map((d) => d.date)).toEqual(["2026-07-05"]);
   });
 
   it("skips Monday when only Tue–Sun bookable", () => {
-    // Sunday evening → next slots should not land on Monday
-    const now = new Date(sgtLocalToUtcMs(2026, 7, 12, 19, 0)); // Sun 19:00 SGT
+    const now = new Date(sgtLocalToUtcMs(2026, 7, 12, 19, 0));
     const slots = offerSlots([], DEFAULT_APPOINTMENT_SETTINGS, now);
     expect(slots.length).toBe(3);
     for (const s of slots) {
       const dow = new Date(Date.parse(s.startIso) + 8 * 3600_000).getUTCDay();
-      expect(dow).not.toBe(1); // not Monday
+      expect(dow).not.toBe(1);
     }
   });
 
@@ -257,7 +248,6 @@ describe("appointment-reminder-state", () => {
   });
 
   describe("missedReminder (short-notice bookings)", () => {
-    // Booking made on Mon 19 Oct 2026 (SGT) at the given hour.
     const at = (hour: number, minute = 0) => sgtLocalToUtcMs(2026, 10, 19, hour, minute);
     const tomorrow5pm = sgtLocalToUtcMs(2026, 10, 20, 17);
 
@@ -281,7 +271,6 @@ describe("appointment-reminder-state", () => {
     });
 
     it("crosses month ends in SGT, not UTC", () => {
-      // 31 Oct 23:30 SGT is still 31 Oct 15:30 UTC.
       const lateOct31 = sgtLocalToUtcMs(2026, 10, 31, 23, 30);
       expect(missedReminder(sgtLocalToUtcMs(2026, 11, 1, 10), lateOct31)).toBe("day_before");
     });
@@ -335,9 +324,6 @@ describe("whatsapp inbound parse", () => {
     entry: [{ changes: [{ value: { messages: [{ id: "wamid.1", from: "6591234567", ...msg }] } }] }],
   });
 
-  // A tap on the day-before template's quick reply arrives as a `button`
-  // message carrying the label as its text (and as its payload when the send
-  // sets none). The parser reads both.
   it("template quick-reply taps → confirm / reschedule", () => {
     expect(
       parseInboundActions(inbound({ type: "button", button: { payload: "Confirm", text: "Confirm" } })),
@@ -439,7 +425,6 @@ describe("whatsapp inbound parse", () => {
     expect(parseInboundActions(to("utility-sender"), "utility-sender")).toMatchObject([
       { kind: "confirm" },
     ]);
-    // No sender configured (dev): accept everything.
     expect(parseInboundActions(to("sales-line"))).toMatchObject([{ kind: "confirm" }]);
   });
 });
@@ -450,7 +435,6 @@ describe("appointment-settings parse", () => {
   });
 
   it("defaults the WhatsApp kill switch to on", () => {
-    // An install with no stored key must keep sending — the switch is opt-out.
     expect(parseAppointmentSettings({}).whatsappEnabled).toBe(true);
   });
 
@@ -461,7 +445,6 @@ describe("appointment-settings parse", () => {
     expect(
       parseAppointmentSettings({ appointments_whatsapp_enabled: "0" }).whatsappEnabled,
     ).toBe(false);
-    // Anything unparsable falls back to on rather than silently muting sends.
     expect(
       parseAppointmentSettings({ appointments_whatsapp_enabled: "" }).whatsappEnabled,
     ).toBe(true);
@@ -525,7 +508,6 @@ describe("appointment-settings parse", () => {
       appointments_close_hour: "23",
       appointments_bookable_days: "0,1,2,3,4,5,6",
     });
-    // sorted by start
     expect(parsed.availability[2]).toEqual([
       { start: "09:00", end: "12:00" },
       { start: "14:00", end: "18:00" },
@@ -533,7 +515,6 @@ describe("appointment-settings parse", () => {
     expect(parsed).toMatchObject({ openHour: 9, closeHour: 17, bookableDays: [2] });
     const stored = appointmentSettingsToStored(parsed);
     expect(parseAppointmentSettings(stored).availability).toEqual(parsed.availability);
-    // garbage → legacy trio
     expect(
       parseAppointmentSettings({ appointments_availability: "not json" }).availability,
     ).toEqual(DEFAULT_APPOINTMENT_SETTINGS.availability);
@@ -676,7 +657,6 @@ describe("calendar extract helpers", () => {
       ),
     ).toBeNull();
 
-    // Opt-in: a cancelled *appointment* survives, flagged; a cancelled stray block does not.
     const cancelledAppt = {
       id: "c2",
       status: "cancelled",
@@ -724,21 +704,18 @@ describe("calendar extract helpers", () => {
       { id: "own", name: "Sin Ming Studio", address: "22 Sin Ming Lane, #08-83, Midview City" },
       { id: "clinic", name: "Spine Clinic", address: "1 Clinic Ave" },
     ];
-    // stamped id wins even when the address text points elsewhere
     expect(
       resolveEventLocation(
         { location: "1 Clinic Ave", extendedProperties: { private: { mpLocationId: "own" } } },
         locations,
       )?.id,
     ).toBe("own");
-    // unknown stamp falls through to the address
     expect(
       resolveEventLocation(
         { location: "1 clinic ave", extendedProperties: { private: { mpLocationId: "gone" } } },
         locations,
       )?.id,
     ).toBe("clinic");
-    // whitespace/case-insensitive address match
     expect(
       resolveEventLocation({ location: "  22 sin ming   Lane, #08-83,  Midview City " }, locations)?.id,
     ).toBe("own");
@@ -757,7 +734,6 @@ describe("calendar extract helpers", () => {
       { locations },
     );
     expect(mapped).toMatchObject({ locationId: "clinic", locationName: "Spine Clinic" });
-    // busy blocks never get a Location, even with a matching address
     const busy = mapGCalItemToRangeEvent(
       {
         id: "b2",
@@ -787,9 +763,7 @@ describe("calendar extract helpers", () => {
         DEFAULT_APPOINTMENT_SETTINGS,
       )?.rsvp;
 
-    // Guest's responseStatus is surfaced verbatim
     expect(rsvpOf([{ responseStatus: "accepted" }])).toBe("accepted");
-    // self attendee (the organiser) is skipped — pick the guest
     expect(
       rsvpOf([
         { self: true, responseStatus: "accepted" },
@@ -797,12 +771,10 @@ describe("calendar extract helpers", () => {
       ]),
     ).toBe("declined");
     expect(rsvpOf([{ responseStatus: "tentative" }])).toBe("tentative");
-    // No guest / no status → needsAction ("Invited")
     expect(rsvpOf(undefined)).toBe("needsAction");
     expect(rsvpOf([{ self: true, responseStatus: "accepted" }])).toBe("needsAction");
     expect(rsvpOf([{ responseStatus: "bogus" }])).toBe("needsAction");
 
-    // Busy / OOO ranges carry no RSVP pill
     const ooo = mapGCalItemToRangeEvent(
       {
         id: "r2",
@@ -823,7 +795,6 @@ describe("calendar extract helpers", () => {
     expect(eventStateOf({ status: "confirmed", attendees: [{ responseStatus: "declined" }] })).toBe(
       "declined",
     );
-    // The organiser declining their own event is not the guest declining.
     expect(
       eventStateOf({ status: "confirmed", attendees: [{ self: true, responseStatus: "declined" }] }),
     ).toBe("live");
@@ -849,9 +820,6 @@ describe("calendar extract helpers", () => {
 });
 
 describe("gcal reschedule drift detection", () => {
-  // Guards the cron reconciliation (appointment-reminders): GCal sends +08:00
-  // offsets, the reminder row stores UTC Z. A naive string compare would flag the
-  // SAME instant as a move; parsed-ms compare must not. A real move must drift.
   const drift = (gcal: string, row: string) =>
     Math.abs(Date.parse(gcal) - Date.parse(row)) > 60_000;
 

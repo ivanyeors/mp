@@ -36,7 +36,7 @@ describe("releaseAt — delivered_at + window, NEVER paid_at (ADR 0015 §2)", ()
 
 describe("effectiveCommissionStatus — derive-on-read from delivery", () => {
   const delivered = "2026-01-01T00:00:00.000Z";
-  const release = new Date("2026-01-31T00:00:00.000Z"); // delivered + 30d
+  const release = new Date("2026-01-31T00:00:00.000Z");
 
   it("held → released exactly at delivered_at + window (day boundary INCLUDED)", () => {
     expect(effectiveCommissionStatus({ status: "held", delivered_at: delivered }, release)).toBe(
@@ -72,11 +72,6 @@ describe("effectiveCommissionStatus — derive-on-read from delivery", () => {
     );
   });
 
-  // Lifecycle held → released → paid | void, plus the RMA-resolution mapping.
-  // The pure module expresses resolutions ONLY as terminal status: a refund resolution
-  // is persisted as `void` (stays void above); exchange/replacement KEEP the row, so it
-  // continues to derive held→released normally. The refund→void / exchange-keep WIRING
-  // itself is integration (lib/commissions/ledger.ts voidCommissionsForRma).
   it("an exchange/replacement (kept) row still matures held→released", () => {
     expect(effectiveCommissionStatus({ status: "held", delivered_at: delivered }, release)).toBe(
       "released",
@@ -99,8 +94,8 @@ describe("summarizeCommissionTotals — cents-summed buckets, void excluded", ()
     const totals = summarizeCommissionTotals([
       { status: "released", commission_amount: 40, payout_id: "po7" },
     ]);
-    expect(totals.released).toBe(0); // not payable — already on a payout
-    expect(totals.allTime).toBe(40); // but still earned
+    expect(totals.released).toBe(0);
+    expect(totals.allTime).toBe(40);
   });
 
   it("sums in cents — no float dust", () => {

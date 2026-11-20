@@ -2,25 +2,13 @@ import { PREVIEW_CARD_PREFIX, TEAM_NOTE_PREFIX, formatCardDate } from "@/lib/rev
 import { PLATFORM_APPS, PLATFORM_NAMES, type SocialPlatform } from "@/lib/social-inbox/platforms";
 import type { InboundAttachment } from "@/lib/social-inbox/types";
 
-/**
- * What the bot posts to the measurements group for customer messages. Plain
- * text like the review cards — no parse_mode, nothing to escape.
- *
- * Every message the bot posts about a conversation starts with one of a few
- * fixed prefixes, so the Telegram router can tell, without a database read,
- * that a staff reply to it belongs to the inbox. The row that message was
- * stored on then names the conversation.
- */
-
 export const INBOX_CARD_HEADERS: Record<SocialPlatform, string> = {
   facebook: "💬 FACEBOOK MESSAGE",
   instagram: "💬 INSTAGRAM DM",
   tiktok: "💬 TIKTOK DM",
 };
 
-/** After a reply from Telegram went out to the customer. */
 export const SENT_NOTE_PREFIX = "📤 Sent to ";
-/** Someone answered from the platform's own app instead. */
 export const ECHO_NOTE_PREFIX = "↪️ Answered in ";
 
 const ECHO_SOURCES: Record<SocialPlatform, string> = {
@@ -29,7 +17,6 @@ const ECHO_SOURCES: Record<SocialPlatform, string> = {
   tiktok: "TikTok",
 };
 
-/** Telegram's limits: a message, and a photo caption. */
 export const TELEGRAM_MAX_CHARS = 4096;
 export const TELEGRAM_MAX_CAPTION = 1024;
 
@@ -82,16 +69,9 @@ export type InboxCardInput = {
   text: string | null;
   attachments: InboundAttachment[];
   sentAt: string | null;
-  /** The card is the caption of this attachment's photo. */
   photoIndex?: number | null;
 };
 
-/**
- * The card for one customer message, within `maxChars` (4096 for a text
- * message, 1024 for a photo caption). The message is clipped, never the
- * header or the instructions, so the card always sends and always says how to
- * answer.
- */
 export function renderInboxCard(input: InboxCardInput, maxChars = TELEGRAM_MAX_CHARS): string {
   const head = [`${INBOX_CARD_HEADERS[input.platform]} · ${customerLabel(input.platform, input.customer)}`];
   const when = formatCardDate(input.sentAt);
@@ -109,7 +89,6 @@ export function renderInboxCard(input: InboxCardInput, maxChars = TELEGRAM_MAX_C
   let card = build(text ? `“${text}”` : null, extras);
   if (card.length <= maxChars) return card;
 
-  // Attachment lines go first (long CDN URLs), then the message is clipped.
   const extrasShort = extras.map((l) => l.split(": http")[0]);
   card = build(text ? `“${text}”` : null, extrasShort);
   if (card.length <= maxChars || !text) return card.slice(0, maxChars);
@@ -132,7 +111,6 @@ export function renderEchoNote(platform: SocialPlatform, text: string | null, at
 
 export const UNSENT_NOTE = "🗑 The customer unsent this message.";
 
-/** The platform a preview card stands for, from its second line; null for anything else. */
 export function inboxPreviewPlatform(text: string | undefined): SocialPlatform | null {
   if (!text?.startsWith(PREVIEW_CARD_PREFIX)) return null;
   const second = text.split("\n")[1] ?? "";
@@ -142,7 +120,6 @@ export function inboxPreviewPlatform(text: string | undefined): SocialPlatform |
   return null;
 }
 
-/** Is this a message the bot posts about a conversation (card, sent note, echo note)? No I/O. */
 export function isInboxBotText(text: string | undefined): boolean {
   if (!text) return false;
   if (Object.values(INBOX_CARD_HEADERS).some((h) => text.startsWith(h))) return true;

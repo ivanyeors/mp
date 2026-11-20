@@ -27,14 +27,11 @@ const bodySchema = z.object({
   address: z.string().trim().max(500).optional().nullable(),
   postal_code: z.string().trim().max(20).optional().nullable(),
   branch_name: z.string().trim().max(120).optional().nullable(),
-  /** Website or social page as typed; stored as an http(s) link. */
   website: z.string().trim().max(500).optional().nullable(),
   logo_url: z.string().url().max(2000).optional().nullable(),
-  /** The partner's other clinics; replaces the list when sent (ADR 0037). */
   branches: BranchesSchema.optional(),
 });
 
-/** Notify Staff that a partner edited their public listing, with a 1-click hide. */
 async function notifyStaff(partnerId: string, name: string): Promise<void> {
   const hideUrl = `${getSiteOrigin()}${withLocale("/settings/partners/hide", DEFAULT_LOCALE)}?partner=${encodeURIComponent(partnerId)}`;
   try {
@@ -49,10 +46,6 @@ async function notifyStaff(partnerId: string, name: string): Promise<void> {
   }
 }
 
-/**
- * Update ONLY the caller's own linked partners row (id = ctx.partnerId) and
- * that row's branches (parent_id = ctx.partnerId).
- */
 export async function PATCH(req: Request) {
   const ctx = await getPartnerContext();
   if (!isPartnerActive(ctx)) {
@@ -65,10 +58,6 @@ export async function PATCH(req: Request) {
   }
   const b = parsed.data;
 
-  // logo_url must be a re-encoded logo we stored for THIS partner (savePartnerLogo
-  // writes media/partner-logos/{partnerId}/…), or the one already on their row
-  // (the logo they applied with, or one Staff set). Reject any other URL so
-  // PATCH can't bypass the optimize/size/dimension guards on the upload route (AC3).
   if (b.logo_url && !isStoredLogoUrl(b.logo_url, partnerLogoFolder(ctx.partnerId))) {
     const { data: current } = await supabaseAdmin()
       .from("partners")
@@ -102,14 +91,14 @@ export async function PATCH(req: Request) {
   const { error } = await supabaseAdmin()
     .from("partners")
     .update(update)
-    .eq("id", ctx.partnerId); // guard: never another partner's row
+    .eq("id", ctx.partnerId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   try {
     if (b.branches) await savePartnerBranches(ctx.partnerId, b.branches);
     else await syncBranchNames(ctx.partnerId, b.name);
   } catch (e) {
-    invalidateTag("locations"); // the main row already saved
+    invalidateTag("locations");
     const status = e instanceof BranchSaveError ? e.status : 500;
     return NextResponse.json({ error: (e as Error).message }, { status });
   }
@@ -117,7 +106,6 @@ export async function PATCH(req: Request) {
   invalidateTag("locations");
   await notifyStaff(ctx.partnerId, b.name);
 
-  // The saved clinics with their ids, so the form's next save updates rather than re-adds.
   const { data: branches } = await supabaseAdmin()
     .from("partners")
     .select("id, branch_name, address, postal_code")

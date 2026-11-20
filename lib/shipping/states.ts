@@ -1,28 +1,5 @@
-/**
- * The state or province sent to Easyship, in the countries where it needs one.
- *
- * Easyship refuses an address without a state in AU, CA, CN, ID, MX, MY, TH, US
- * and VN ("destination_address.state can't be blank"), and most quotes are made
- * from a country and postal code alone: the delivery checker, the checkout before
- * the address is finished, Settings' test and coverage check. The postal code
- * says which state it is in, so the state is read from it. Indonesia and Vietnam
- * have no table here: their postal codes do not follow province lines cleanly,
- * and Vietnam's provinces were merged in 2025.
- *
- * A quote whose postal code does not say (partial, mistyped, or ID/VN) sends the
- * state of the country's main city (`quoteCity`), because couriers zone rates by
- * postal code and a quote is better than a refusal. A label never guesses: it
- * carries the shopper's state or the one their postal code is in.
- *
- * Easyship asks for abbreviations in the US, Canada and Australia, and for full
- * names where there are provinces, so a US, Canadian or Australian state the
- * shopper typed as a name is sent as its abbreviation. Client-safe: plain data
- * and pure helpers.
- */
-
 type Range = [lo: number, hi: number, state: string];
 
-/** United States: the first three digits of the ZIP code. */
 const US: Range[] = [
   [5, 5, "NY"], [6, 7, "PR"], [8, 8, "VI"], [9, 9, "PR"],
   [10, 27, "MA"], [28, 29, "RI"], [30, 38, "NH"], [39, 49, "ME"], [50, 54, "VT"], [55, 55, "MA"],
@@ -44,7 +21,6 @@ const US: Range[] = [
   [980, 994, "WA"], [995, 999, "AK"],
 ];
 
-/** Australia: the four-digit postcode. */
 const AU: Range[] = [
   [200, 299, "ACT"], [800, 999, "NT"], [1000, 2599, "NSW"], [2600, 2618, "ACT"],
   [2619, 2899, "NSW"], [2900, 2920, "ACT"], [2921, 2999, "NSW"], [3000, 3999, "VIC"],
@@ -52,7 +28,6 @@ const AU: Range[] = [
   [8000, 8999, "VIC"], [9000, 9999, "QLD"],
 ];
 
-/** Malaysia: the five-digit postcode. */
 const MY: Range[] = [
   [1000, 2999, "Perlis"], [5000, 9999, "Kedah"], [10000, 14999, "Penang"],
   [15000, 18999, "Kelantan"], [20000, 24999, "Terengganu"], [25000, 28999, "Pahang"],
@@ -63,7 +38,6 @@ const MY: Range[] = [
   [88000, 91999, "Sabah"], [93000, 98999, "Sarawak"],
 ];
 
-/** Mexico: the first two digits of the código postal. */
 const MX: Range[] = [
   [1, 16, "Ciudad de México"], [20, 20, "Aguascalientes"], [21, 22, "Baja California"],
   [23, 23, "Baja California Sur"], [24, 24, "Campeche"], [25, 27, "Coahuila"], [28, 28, "Colima"],
@@ -76,7 +50,6 @@ const MX: Range[] = [
   [98, 99, "Zacatecas"],
 ];
 
-/** China: the first two digits of the six-digit postcode. */
 const CN: Range[] = [
   [1, 2, "Inner Mongolia"], [3, 4, "Shanxi"], [5, 7, "Hebei"], [10, 10, "Beijing"],
   [11, 12, "Liaoning"], [13, 13, "Jilin"], [15, 16, "Heilongjiang"], [20, 20, "Shanghai"],
@@ -88,7 +61,6 @@ const CN: Range[] = [
   [81, 81, "Qinghai"], [83, 84, "Xinjiang"], [85, 86, "Tibet"],
 ];
 
-/** Thailand: the first two digits of the five-digit postcode. */
 const TH: Record<string, string> = {
   "10": "Bangkok", "11": "Nonthaburi", "12": "Pathum Thani", "13": "Phra Nakhon Si Ayutthaya",
   "14": "Ang Thong", "15": "Lopburi", "16": "Sing Buri", "17": "Chai Nat", "18": "Saraburi",
@@ -111,7 +83,6 @@ const TH: Record<string, string> = {
   "95": "Yala", "96": "Narathiwat",
 };
 
-/** Canada: the first letter of the postal code. X0A–X0C is Nunavut, the rest of X the Northwest Territories. */
 const CA_LETTER: Record<string, string> = {
   A: "NL", B: "NS", C: "PE", E: "NB", G: "QC", H: "QC", J: "QC",
   K: "ON", L: "ON", M: "ON", N: "ON", P: "ON", R: "MB", S: "SK", T: "AB",
@@ -120,18 +91,14 @@ const CA_LETTER: Record<string, string> = {
 
 const inRanges = (ranges: Range[], n: number) => ranges.find(([lo, hi]) => n >= lo && n <= hi)?.[2];
 
-/** The postal code's digits when it is exactly `length` of them (spaces and dashes ignored). */
 const digits = (postal: string, length: number) => {
   const d = postal.replace(/[\s-]+/g, "");
   return new RegExp(`^\\d{${length}}$`).test(d) ? d : null;
 };
 
 interface StateRule {
-  /** The state a postal code is in; undefined when it does not say. */
   fromPostal?: (postal: string) => string | undefined;
-  /** The main city's state, for a quote whose postal code does not say. */
   mainCity: string;
-  /** Names a shopper may type, lowercased, to the abbreviation Easyship wants. */
   abbreviations?: Record<string, string>;
 }
 
@@ -214,15 +181,8 @@ const RULES: Record<string, StateRule> = {
   VN: { mainCity: "Ho Chi Minh" },
 };
 
-/** The countries this file has a rule for; the tests check it is `STATE_COUNTRIES`. */
 export const STATE_RULE_COUNTRIES = Object.keys(RULES);
 
-/**
- * The state to send to Easyship: the shopper's own (as the abbreviation where
- * Easyship wants one), else the one the postal code is in, else, for a quote,
- * the main city's. Undefined where the country needs none and the shopper gave
- * none, or for a label whose postal code does not say.
- */
 export function destinationState(
   destination: { country: string; postal_code?: string | null; state?: string | null },
   { guess = true }: { guess?: boolean } = {},

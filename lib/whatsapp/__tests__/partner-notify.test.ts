@@ -33,7 +33,6 @@ describe("decidePartnerWa — additive WhatsApp channel gate (#86)", () => {
       ok: false,
       skip: "opted_out",
     });
-    // undefined (column absent / null) is also opted-out, never a send
     expect(decidePartnerWa({ ...base, notifyWhatsapp: undefined }).ok).toBe(false);
   });
 

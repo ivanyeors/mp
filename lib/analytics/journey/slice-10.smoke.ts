@@ -1,7 +1,3 @@
-/**
- * Live DB smoke for slice 10 (Converted sink). Inserts disposable rows, asserts, deletes.
- * Run: npx tsx --env-file=.env.local lib/analytics/journey/slice-10.smoke.ts
- */
 import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
 import { loadPageTransitionsFromDb } from "./aggregates";

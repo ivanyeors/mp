@@ -1,22 +1,5 @@
 import { fakeSupabaseAdmin, type FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * The shared fake admin, plus what CRM slice 12 reads and writes through SQL
- * (20261020134000_customer_google_reviews.sql), in memory:
- *
- *  - `admin_google_reviews_unlinked`, computed from `google_reviews` less the
- *    links on every read;
- *  - `google_review_match_candidates()`: the rows in `db.match_candidates` (as
- *    the SQL's windows and name prefilter would return them), less linked
- *    reviews, with `rejected` and `linked_elsewhere` read from the tables;
- *  - `link_google_review()`, `unlink_google_review()` and
- *    `reject_google_review_match()`, keyed as their tables are: a review has
- *    at most one link, a pair at most one rejection.
- *
- * The SQL itself is checked against Postgres (the slice's Build notes); this
- * checks the code around it.
- */
-
 type Row = Record<string, unknown>;
 
 export function fakeReviewsAdmin(db: FakeDb, opts: { now?: () => string } = {}) {

@@ -14,12 +14,6 @@ import {
   withCampaignUtm,
 } from "@/lib/customer-migration/claim-link";
 
-/**
- * The Claim link (migration slice 06): a 32-byte base64url token whose hash
- * alone is stored, a welcome URL with the campaign's UTMs, and the open that
- * records the click without ever signing anyone in.
- */
-
 describe("the token", () => {
   it("is 32 random bytes, base64url, and fresh every time", () => {
     const a = generateClaimToken();

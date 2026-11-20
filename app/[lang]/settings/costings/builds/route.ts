@@ -7,7 +7,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** PostgREST caps a response at 1,000 rows; placements are read past it. */
 const PAGE = 1000;
 
 type PlacementRow = { template_id: number; item_id: number };
@@ -33,11 +32,6 @@ async function readPlacements(
   }
 }
 
-/**
- * Every active Filling Template, with the sizes it serves and its Derived pack list,
- * so Costings can show what each one costs to build. The pack list is derived from
- * placements, which are service-role only, so the page cannot read them itself.
- */
 export async function GET() {
   const denied = await requireAdmin("costings");
   if (denied) return denied;

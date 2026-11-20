@@ -9,11 +9,6 @@ export const runtime = "nodejs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * DELETE /api/shop/customers/[id]/notes/[noteId] — soft-deletes a note. Allowed
- * to the note's author (by login) or an Owner or Admin. The audit entry names
- * the note, never its text.
- */
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string; noteId: string }> },

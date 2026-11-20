@@ -1,19 +1,6 @@
-/**
- * Every imported customer starts subscribed (owner, 2026-10-31; ADR 0039).
- * Pure: the Import page reads Shopify's unsubscribed list in the browser, and
- * `subscribe_migrated_customers()` (20261031144524) does the rest in one
- * transaction.
- *
- * Shopify's export says only yes or no to email marketing, and its "no" covers
- * both people nobody asked and people who unsubscribed. So the owner exports
- * the second group too (Customers → filter "Email subscription status:
- * Unsubscribed" → Export), and those people stay unsubscribed. Without the
- * list, or the owner's word that it is empty, nothing is subscribed.
- */
 import { parseCsv } from "@/lib/csv";
 import { cleanCell } from "./shopify-csv";
 
-/** More rows than any Shopify store this platform imports. */
 export const MAX_UNSUBSCRIBED_LIST = 50_000;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -24,11 +11,6 @@ export type UnsubscribedListRead =
   | { ok: true; emails: string[]; rows: number; skipped: number }
   | { ok: false; error: string };
 
-/**
- * Shopify's unsubscribed list, from its CSV export: every distinct email,
- * lower-cased. Any CSV with an Email column reads; a row with no usable email
- * is counted, not sent.
- */
 export function readUnsubscribedList(text: string): UnsubscribedListRead {
   const table = parseCsv(text);
   const header = (table[0] ?? []).map((h) => cleanCell(h).toLowerCase());
@@ -49,7 +31,6 @@ export function readUnsubscribedList(text: string): UnsubscribedListRead {
   return { ok: true, emails: [...emails], rows: rows.length, skipped };
 }
 
-/** The server's own reading of the list the browser sends. */
 export function readEmailList(input: unknown): { ok: true; emails: string[] } | { ok: false; error: string } {
   if (!Array.isArray(input) || input.length > MAX_UNSUBSCRIBED_LIST) {
     return { ok: false, error: "Pick Shopify's unsubscribed list again." };
@@ -63,23 +44,14 @@ export function readEmailList(input: unknown): { ok: true; emails: string[] } | 
   return { ok: true, emails: [...emails] };
 }
 
-/** `subscribe_migrated_customers()`'s answer. */
 export type DefaultConsentCounts = {
-  /** Migrated customers. */
   imported: number;
-  /** Of them, subscribed already and not on the list. */
   alreadySubscribed: number;
-  /** Of them, nobody has asked and not on the list: the default subscribes these. */
   toSubscribe: number;
-  /** Of them, unsubscribed here already. They stay so. */
   stayUnsubscribed: number;
-  /** Distinct emails on Shopify's list. */
   listed: number;
-  /** Customers with one of those emails. */
   listedCustomers: number;
-  /** Of those, unsubscribed by the list (not already, and not by their own choice here since). */
   toUnsubscribe: number;
-  /** After a run: what changed. */
   subscribed?: number;
   unsubscribed?: number;
 };

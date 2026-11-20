@@ -22,13 +22,8 @@ export type {
 } from "./types";
 export { renderOrderEmail } from "./templates";
 
-// ------------------------------------------------------------
-// Transport override (primarily for tests / fake transports)
-// ------------------------------------------------------------
-
 let transportOverride: EmailTransport | null = null;
 
-/** Override the active transport (e.g. a fake transport in tests). */
 export function setEmailTransport(transport: EmailTransport | null): void {
   transportOverride = transport;
 }
@@ -37,14 +32,6 @@ export function getEmailTransport(): EmailTransport {
   return transportOverride ?? getDefaultTransport();
 }
 
-// ------------------------------------------------------------
-// Render + send (no persistence — easy to unit test)
-// ------------------------------------------------------------
-
-/**
- * Render a template and hand it to the transport. Throws if the transport
- * throws — callers that need resilience should use {@link dispatchOrderEmail}.
- */
 export async function sendOrderEmail(
   template: EmailTemplateName,
   to: string,
@@ -52,7 +39,6 @@ export async function sendOrderEmail(
   options?: { transport?: EmailTransport; from?: string }
 ): Promise<SendOutcome> {
   const transport = options?.transport ?? getEmailTransport();
-  // The words Staff saved on Email templates, or the defaults (never throws).
   const copy = await loadEmailCopy(ORDER_EMAIL_COPY[template] as EmailCopySpec);
   const rendered = renderOrderEmail(template, data, copy);
   const result = await transport.send({
@@ -62,10 +48,6 @@ export async function sendOrderEmail(
   });
   return { sent: true, transport: transport.name, id: result.id };
 }
-
-// ------------------------------------------------------------
-// Build provider-neutral payload from a DB order row
-// ------------------------------------------------------------
 
 interface OrderRow {
   order_number: string;
@@ -79,7 +61,6 @@ interface OrderRow {
   customer_id?: string | null;
   paid_at?: string | null;
   amount_refunded?: number | null;
-  /** Points spent at checkout; their dollars are inside discount_amount. */
   points_spent?: number | null;
   shipping_address?: {
     recipient?: string;
@@ -89,7 +70,6 @@ interface OrderRow {
     state?: string | null;
     postal_code?: string;
     country?: string;
-    /** Self-collect marker (lib/shipping/self-collect). */
     collect_location?: { id?: string; name?: string } | null;
   } | null;
   tracking_number?: string | null;
@@ -113,7 +93,6 @@ interface OrderRow {
   }> | null;
 }
 
-/** Convert a persisted order (with items) into the neutral email payload. */
 export function buildOrderEmailData(
   order: OrderRow,
   extra?: {
@@ -164,17 +143,6 @@ export function buildOrderEmailData(
   };
 }
 
-// ------------------------------------------------------------
-// Idempotent dispatch (DB-backed, used by lifecycle code)
-// ------------------------------------------------------------
-
-/**
- * Send a transactional order email at most once per (order, template). The
- * `order_emails` table is used as the idempotency ledger: a unique
- * (order_id, template) row is claimed before sending, so concurrent webhook
- * retries never produce duplicate emails. Failures are logged and recorded but
- * never thrown — email must never break the webhook.
- */
 export async function dispatchOrderEmail(params: {
   orderId: string;
   template: EmailTemplateName;
@@ -185,8 +153,6 @@ export async function dispatchOrderEmail(params: {
   const admin = params.admin ?? supabaseAdmin();
   const { orderId, template, to, data } = params;
 
-  // Claim the (order, template) slot. ignoreDuplicates => returns [] if the
-  // email was already sent (or is in flight), in which case we skip.
   const { data: claim, error: claimError } = await admin
     .from("order_emails")
     .upsert(
@@ -223,9 +189,6 @@ export async function dispatchOrderEmail(params: {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[email] Failed to send ${template} for order ${orderId}:`, message);
-    // Mark failed so a future retry can re-send (unique row stays, but the
-    // operator can see the failure; lifecycle code may delete failed rows to
-    // retry if desired).
     await admin
       .from("order_emails")
       .update({ status: "failed", error: message })
@@ -234,19 +197,11 @@ export async function dispatchOrderEmail(params: {
   }
 }
 
-/**
- * Plan the emails to send when an order becomes confirmed. Pure mapping
- * (order -> [{template, to, data}]) so it can be asserted directly in tests.
- */
 export function planOrderConfirmedEmails(
   order: OrderRow,
   pointsEarn: OrderEmailData["pointsEarn"] = null
 ): Array<{ template: EmailTemplateName; to: string; data: OrderEmailData }> {
   const data = buildOrderEmailData(order, { pointsEarn });
-  // A paid re-adjustment is an Order with only a Service fee line (ADR 0024):
-  // nothing ships, so the order confirmation's delivery promises would be wrong.
-  // The booking itself is confirmed by the calendar invite and WhatsApp; the
-  // receipt is all the Order adds.
   const lines = order.items ?? order.order_items ?? [];
   if (lines.length > 0 && lines.every((l) => l.kind === "service")) {
     return [{ template: "payment_receipt", to: order.email, data }];
@@ -257,12 +212,6 @@ export function planOrderConfirmedEmails(
   ];
 }
 
-/**
- * What a just-paid Order will earn, for its confirmation (PRD-loyalty-points
- * slice 03), and whether its Customer has yet to sign in. Null while points
- * are off, for an Order that earns nothing, or when it cannot be read: the
- * email never waits on points.
- */
 async function confirmationPoints(
   admin: SupabaseClient,
   orderId: string,
@@ -274,7 +223,6 @@ async function confirmationPoints(
       readOrderPoints(admin, {
         id: orderId,
         customer_id: order.customer_id,
-        // The row was read before the webhook stamped it paid.
         paid_at: order.paid_at ?? new Date().toISOString(),
         subtotal: Number(order.subtotal),
         discount_amount: Number(order.discount_amount),
@@ -292,7 +240,6 @@ async function confirmationPoints(
   }
 }
 
-/** Send order-confirmation + payment-receipt emails (idempotent). */
 export async function sendOrderConfirmedEmails(
   orderId: string,
   order: OrderRow,
@@ -305,7 +252,6 @@ export async function sendOrderConfirmedEmails(
   }
 }
 
-/** Send the shipping/tracking email (idempotent). */
 export async function sendShippingEmail(
   orderId: string,
   order: OrderRow,
@@ -328,7 +274,6 @@ const TRACKING_TEMPLATE = {
   exception: "tracking_exception",
 } as const satisfies Record<string, EmailTemplateName>;
 
-/** Send the email for a courier status (idempotent; "in transit" is the shipped email). */
 export async function sendTrackingEmail(
   orderId: string,
   status: keyof typeof TRACKING_TEMPLATE,
@@ -345,7 +290,6 @@ export async function sendTrackingEmail(
   });
 }
 
-/** Send the refund email (idempotent). */
 export async function sendRefundEmail(
   orderId: string,
   order: OrderRow,

@@ -6,18 +6,6 @@ import { Toaster, toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * Placeholders, not prefilled words, and Clear all with Undo
- * (PRD-campaign-email-editor slice 01), in the editor as Staff use it: a new
- * campaign, a saved draft and a locked campaign. The actions are fakes; none
- * that writes is ever called by Clear all.
- *
- * A new campaign is written in blocks (slice 03), so Clear all empties its
- * blocks; the saved draft here was written before them and keeps its message
- * box. Clear all is one step of the editor's history (slice 04), so the
- * toast's Undo is the history's.
- */
-
 const actions = vi.hoisted(() => ({
   archiveCampaignAction: vi.fn(),
   checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),
@@ -83,7 +71,6 @@ const text = (id: string) => document.getElementById(id)?.textContent ?? "";
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === label) ?? null;
 const clearAll = () => button("Clear all")!;
-/** A card of the Start panel (slice 08), by the name it starts with. */
 const choice = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("[aria-labelledby='c-start-title'] button")].find((b) => b.firstElementChild?.textContent === label) ?? null;
 const startPanel = () => document.querySelector("[aria-labelledby='c-start-title']");
@@ -91,7 +78,6 @@ const undo = () => document.querySelector<HTMLButtonElement>("[data-sonner-toast
 const toastText = () => document.querySelector("[data-sonner-toast]")?.textContent ?? "";
 
 const value = (id: string) => (document.getElementById(id) ? field(id).value : null);
-/** Each block's fields, as typed, joined with `|`: a text block's words as they read. */
 const blocks = () =>
   [...document.querySelectorAll("[data-block-id]")].map((li) =>
     [...li.querySelectorAll<HTMLElement>("[data-block-body] input, [data-block-body] textarea, [data-block-body] [role='textbox']")]
@@ -99,10 +85,8 @@ const blocks = () =>
       .join("|"),
   );
 
-/** The fields Clear all empties, as typed: the message box and button of a draft written before blocks, or the blocks. */
 const words = () => ({
   name: field("c-name").value,
-  // One-line text inputs with Variables (slice 13): their words as they read.
   subject: wordsOf("c-subject"),
   preheader: wordsOf("c-preheader"),
   body: value("c-body"),
@@ -114,7 +98,6 @@ const words = () => ({
 const NO_WORDS = { name: "", subject: "", preheader: "", body: null, button: null, label: null, url: null, blocks: [] };
 const LEGACY_CLEARED = { name: "", subject: "", preheader: "", body: "", button: "No button", label: null, url: null, blocks: [] };
 
-/** *Add block* → the type, as a keyboard user does it. */
 async function addBlock(label: string) {
   await act(async () => {
     button("Add block")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -133,11 +116,9 @@ function type(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
 const press = async (el: HTMLElement) => {
   await act(async () => el.click());
 };
-/** Past the preview's debounce, and the toast's own rendering. */
 const settle = (ms = 600) => act(() => new Promise((r) => setTimeout(r, ms)));
 const lastPreview = () => actions.previewCampaign.mock.calls.at(-1)?.[0];
 
-/** None of these writes was called: Clear all saves nothing and audits nothing. */
 const expectNothingWritten = () => {
   for (const write of ["saveCampaign", "archiveCampaignAction", "duplicateCampaign", "planCampaignWave", "sendCampaignBatchAction", "sendCampaignTestAction"] as const) {
     expect(actions[write], write).not.toHaveBeenCalled();
@@ -146,16 +127,9 @@ const expectNothingWritten = () => {
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(async () => {
-  // sonner's toasts live in one store for the whole file, and since 2.0.8 a newly mounted
-  // Toaster shows every toast still in it: dismiss them all (a Starter's "Send to is now…"
-  // too), so none turns up in the next test's Toaster.
   act(() => void toast.dismiss());
   act(() => root?.unmount());
   root = null;
-  // sonner takes a dismissed toast out of its Toaster 200 ms later (its TIME_BEFORE_UNMOUNT)
-  // on a timer the unmount does not clear: wait it out, before the next test makes one and
-  // before the file ends, or the last test's timer fires after jsdom has gone and sets state
-  // with no window (an unhandled "window is not defined" that fails the run).
   await settle(250);
   document.body.innerHTML = "";
 });
@@ -167,7 +141,6 @@ describe("a new campaign", () => {
     expect(field("c-name").placeholder).toBe("e.g. December cooling launch");
     expect(placeholderOf("c-subject")).toBe("e.g. Sleep cooler this December");
     expect(placeholderOf("c-preheader")).toBe("e.g. Our FibreCool covers are back, in every size");
-    // No blocks yet: the Start panel offers where to start (slice 08), once it has loaded.
     expect((await until(startPanel)).textContent).toContain("Start the email");
     expect(button("Add block")).not.toBeNull();
     expect(document.body.textContent).not.toContain(FIRST_CAMPAIGN_DRAFT.subject);
@@ -177,7 +150,7 @@ describe("a new campaign", () => {
   it("has Clear all off, saying why, until there is something to clear", async () => {
     mount(null, newCampaignDraft(undefined, []));
     expect(clearAll().getAttribute("aria-disabled")).toBe("true");
-    expect(clearAll().disabled).toBe(false); // still in the tab order, so the reason is reachable
+    expect(clearAll().disabled).toBe(false);
     expect(text(clearAll().getAttribute("aria-describedby")!)).toBe("Nothing to clear: every field is on its placeholder.");
     await retype("c-subject", "Hello");
     expect(clearAll().getAttribute("aria-disabled")).toBeNull();
@@ -186,7 +159,6 @@ describe("a new campaign", () => {
 
   it("fills in the invitation, as real words in blocks and its audience, only when asked", async () => {
     mount(null, newCampaignDraft(SEGMENT.id, [SEGMENT]), [SEGMENT]);
-    // Named after the Segment, and still empty: the Start panel offers the invitation, a Starter (slice 08).
     expect(field("c-name").value).toBe(SEGMENT.name);
     await press(await until(() => choice("A Starter")));
     await press(choice(FIRST_CAMPAIGN_DRAFT.name)!);
@@ -254,12 +226,11 @@ describe("a saved draft", () => {
       blocks: [],
     });
     expect(field("c-button-label").placeholder).toBe(CAMPAIGN_PLACEHOLDERS.buttonLabel);
-    expect(button("Save changes")!.disabled).toBe(true); // saved
+    expect(button("Save changes")!.disabled).toBe(true);
 
     await press(clearAll());
     expect(words()).toEqual(LEGACY_CLEARED);
     expect(text("c-audience")).toBe("Everyone subscribed to marketing email");
-    // Cleared but not saved: the draft is unsaved, and Save validates as today.
     expect(button("Save changes")!.disabled).toBe(false);
     expectNothingWritten();
 
@@ -281,10 +252,8 @@ describe("a saved draft", () => {
     expect(late).not.toBeNull();
     await press(button("Save changes")!);
     expect(actions.saveCampaign).toHaveBeenCalledTimes(1);
-    // What Save sends is what was typed: an empty preview line is empty, not its placeholder.
     expect(actions.saveCampaign.mock.calls[0][1]).toMatchObject({ name: "A new one", subject: "Hello", preheader: "", body: "Hi", button: null });
     await settle(100);
-    // The toast is on its way out, and its Undo, pressed late, puts nothing back.
     expect(document.querySelector("[data-sonner-toast]:not([data-removed='true'])")).toBeNull();
     await press(late);
     expect(words()).toMatchObject({ name: "A new one", subject: "Hello", preheader: "", body: "Hi" });

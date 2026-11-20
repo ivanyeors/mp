@@ -9,15 +9,7 @@ type Props = {
   videoId: string;
   title: string;
   className?: string;
-  /**
-   * IntersectionObserver threshold.
-   * 0.5 means “at least half the block is visible”.
-   */
   threshold?: number;
-  /**
-   * YouTube controls UI.
-   * Defaults to 0 to match existing embeds.
-   */
   controls?: 0 | 1;
 };
 
@@ -33,7 +25,6 @@ function buildYouTubeEmbedSrc(videoId: string, controls: 0 | 1): string {
     disablekb: "1",
     playsinline: "1",
     loop: "1",
-    // YouTube requires playlist=<videoId> for looping a single video.
     playlist: videoId,
   });
 
@@ -50,18 +41,15 @@ export function YouTubeAutoplayOnView({
   const isMobile = useIsMobile();
   const hostRef = React.useRef<HTMLDivElement | null>(null);
   const [isVisible, setIsVisible] = React.useState(false);
-  // Mobile: never autoplay on scroll; iframe mounts only after the user taps the poster.
   const [showIframe, setShowIframe] = React.useState(false);
 
   React.useEffect(() => {
-    // Mobile uses a click-to-play facade instead of the scroll observer.
     if (isMobile) return;
 
     const el = hostRef.current;
     if (!el) return;
 
     if (typeof IntersectionObserver === "undefined") {
-      // Older browsers: render the iframe (best-effort).
       setIsVisible(true);
       return;
     }
@@ -80,7 +68,6 @@ export function YouTubeAutoplayOnView({
 
   const src = React.useMemo(() => buildYouTubeEmbedSrc(videoId, controls), [videoId, controls]);
 
-  // Mobile facade: lightweight poster thumbnail + play button, no iframe until tapped.
   if (isMobile && !showIframe) {
     return (
       <button
@@ -89,7 +76,6 @@ export function YouTubeAutoplayOnView({
         aria-label={`Play ${title}`}
         className={cn("group absolute inset-0 h-full w-full", className)}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
           alt=""

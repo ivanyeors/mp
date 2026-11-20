@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POINTS_DEFAULTS } from "@/lib/points/settings";
 
-/** Discounts → Points (PRD-loyalty-points slice 02): `discounts` to see and to change; validated; audited. */
-
 const h = vi.hoisted(() => ({ permissions: new Set<string>(), save: vi.fn(), audit: vi.fn() }));
 
 vi.mock("@/lib/auth/admin", () => ({

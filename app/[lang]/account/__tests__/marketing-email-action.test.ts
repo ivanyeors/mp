@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AftercareFakeDb } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * The Profile's "Email me news and offers" toggle (migration slice 07): it
- * round-trips, writes one event per change with source `account`, changes only
- * the signed-in Customer, and is the one way back from `unsubscribed`.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as AftercareFakeDb,
   sessionCustomerId: null as string | null,

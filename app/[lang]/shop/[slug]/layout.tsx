@@ -29,8 +29,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang, slug } = await params;
   const product = await getProductBySlug(slug);
 
-  // Same gate as page.tsx: a draft or archived slug 404s, so it must not leak metadata either.
-  // `alternates: null`, or it inherits the shop's canonical and hreflang.
   if (!product || product.status !== "active") {
     return { title: "Product Not Found", alternates: null };
   }
@@ -39,7 +37,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const content = resolveProductContent(product, locale);
   const imageUrl = product.images?.[0]?.url;
 
-  // The shop layout's own title ends the root template, so the brand is added here.
   const name = content.seo_title || content.title || product.slug;
   const title = productPageTitle(name);
 
@@ -51,7 +48,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     image: imageUrl,
     keywords: content.seo_keywords ?? [],
     type: "website",
-    // A pillow or bolster is ordered in its configurator, the one page that should rank for it.
     copyOf: configuratorPath(product.product_type) ?? undefined,
   });
 }
@@ -60,8 +56,6 @@ export default async function ProductLayout({ params, children }: Props) {
   const { lang, slug } = await params;
   const product = await getProductBySlug(slug);
 
-  // Here, not only in page.tsx: the page streams inside loading.tsx, and by then
-  // the status is sent, so a missing product would answer 200 instead of 404.
   if (!product || product.status !== "active") notFound();
 
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

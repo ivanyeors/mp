@@ -11,11 +11,6 @@ export type SalesMetric = "units" | "revenue";
 export type TimelineViewMode = "parts" | "products";
 // ponytail: do not `export type { X }` from "use server" — SWC emits runtime refs (TimelinePoint is not defined)
 
-/**
- * Analytics → Sales: this site's Orders as Stripe took their money. Totals, cost
- * coverage, breakdowns, timeline and cost gaps are all summed from the same
- * sold lines, so every figure on the tab reconciles with every other.
- */
 export async function getSalesReport(input: { from: string; to: string }) {
   await assertAdmin("analytics");
   const report = await loadSalesReport({ from: input.from, to: input.to });
@@ -153,7 +148,7 @@ export async function getMpConfigMetricsBreakdown(input: { from: string; to: str
       if (!v) continue;
       const metricCounts = countsByMetricKey.get(cfg.key);
       if (!metricCounts) continue;
-      if (!metricCounts.has(v)) continue; // ignore unexpected values
+      if (!metricCounts.has(v)) continue;
       metricCounts.set(v, (metricCounts.get(v) ?? 0) + 1);
     }
   }
@@ -180,16 +175,11 @@ export async function getInventoryMovementWaterfall(input: {
   size?: string | null;
 }) {
   await assertAdmin("analytics");
-  // The same Singapore months as the Sales tab: opening stock at the first
-  // instant of the first month, closing stock at the last of the last.
   const range = sgMonthRange(input.from, input.to);
   const start = range.from;
 
   const admin = supabaseAdmin();
 
-  // Every movement up to the end, including those before the start, which make
-  // up the opening balance. Paged: the ledger is past 1,000 rows, and one page
-  // stopped the closing balance at the 1,000th movement.
   const txRows = await selectAll(() =>
     admin
       .from("inventory_transactions")
@@ -240,7 +230,6 @@ export async function getInventoryMovementWaterfall(input: {
       return { key: k, label: k };
     }
 
-    // type
     if (!requestedCategory) return null;
     if (category !== requestedCategory) return null;
     if (requestedSize !== null) {
@@ -262,7 +251,6 @@ export async function getInventoryMovementWaterfall(input: {
     const size = it.size ? String(it.size) : null;
     if (input.group === "category") return true;
     if (input.group === "size") return !!requestedCategory && category === requestedCategory;
-    // type
     if (!requestedCategory || category !== requestedCategory) return false;
     if (requestedSize !== null) {
       const effectiveSize = size ?? "(no size)";
@@ -283,15 +271,12 @@ export async function getInventoryMovementWaterfall(input: {
     const createdAt = new Date(tx.created_at);
     if (Number.isNaN(createdAt.getTime())) continue;
 
-    // Always contributes to end balance (since txs are before the end)
     endBalByItemId.set(itemId, (endBalByItemId.get(itemId) ?? 0) + delta);
-    // Contributes to start balance if strictly before start boundary
     if (createdAt < start) {
       startBalByItemId.set(itemId, (startBalByItemId.get(itemId) ?? 0) + delta);
       continue;
     }
 
-    // Movement within [start, end]
     if (!includeItemInScope(it)) continue;
     const grouping = groupKeyForItem(it);
     if (!grouping) continue;
@@ -299,7 +284,6 @@ export async function getInventoryMovementWaterfall(input: {
     else outByGroup.set(grouping.key, (outByGroup.get(grouping.key) ?? 0) + Math.abs(delta));
   }
 
-  // Aggregate per group: derive start/end quantities from per-item balances
   const groups = new Map<string, { key: string; label: string; startQty: number; endQty: number; stockIn: number; stockOut: number }>();
   for (const [id, it] of itemById.entries()) {
     if (!includeItemInScope(it)) continue;
@@ -320,15 +304,12 @@ export async function getInventoryMovementWaterfall(input: {
     groups.set(grouping.key, cur);
   }
 
-  // Attach in/out
   for (const g of groups.values()) {
     g.stockIn = inByGroup.get(g.key) ?? 0;
     g.stockOut = outByGroup.get(g.key) ?? 0;
   }
 
   const rows: InventoryMovementRow[] = Array.from(groups.values()).map((g): InventoryMovementRow => {
-    // Signed, as Inventory shows them: an oversold Item's negative balance is
-    // part of the total, so the closing total matches the Inventory page.
     const startQty = Math.round(g.startQty);
     const endQty = Math.round(g.endQty);
     const stockIn = Math.max(0, Math.round(g.stockIn));
@@ -350,7 +331,6 @@ export async function getInventoryMovementWaterfall(input: {
 
   const totalStart = Math.round(rows.reduce((sum, r) => sum + r.startQty, 0));
   const totalEnd = Math.round(rows.reduce((sum, r) => sum + r.endQty, 0));
-  // Singapore dates: opening on the 1st, closing on the last day picked.
   const totalLabelStart = `Opening ${sgDate(start)}`;
   const totalLabelEnd = `Closing ${sgDate(new Date(range.toExclusive.getTime() - 1))}`;
   const withTotals: InventoryMovementRow[] = [
@@ -396,7 +376,6 @@ export type JourneyTransitionNode = {
   topDropOffSection: string | null;
   returnHits: number;
   medianReturnGapMs: number | null;
-  /** Distinct pages behind a collapsed group node (`/blog/*`). */
   groupedPaths?: number;
 };
 export type JourneyTransitionEdge = {
@@ -426,7 +405,6 @@ export type JourneyNodeDetail = {
   outbound: { to: string; count: number }[];
 };
 
-/** Members behind an aggregated node — the pages in `/blog/*`, the sources in "Other". */
 export type JourneyGroupDetail = {
   kind: "pages" | "sources";
   total: number;
@@ -444,25 +422,16 @@ export type JourneyConvertedDetail = {
   }[];
 };
 
-/** Page→page transitions from analytics_events only (no live GA). */
 export async function getProspectJourneyTransitions(input: {
   from: string;
   to: string;
-  /** Filter by Visit.entry_source; omit / empty = all. */
   entrySource?: string | null;
-  /** new = first Visit; returning = prior ended Visit on same Visitor. */
   visitorCohort?: "new" | "returning" | null;
-  /** Multi-select countries; ≥2 → color-by-country legend. */
   countries?: string[] | null;
-  /** When true, attach muted Converted sink (default Prospect cohort). */
   includeConverted?: boolean;
-  /** Expand this page path into section child nodes. */
   expandPath?: string | null;
-  /** Show the aggregated Entry source column (default on). */
   entryNodes?: boolean;
-  /** Entry sources kept before the tail rolls into "Other"; 0 = keep all. */
   entryTopN?: number;
-  /** Collapse detail pages (/blog/<slug> → /blog/*); default on. */
   groupPaths?: boolean;
 }): Promise<
   | {
@@ -529,10 +498,6 @@ export async function getProspectJourneyTransitions(input: {
   }
 }
 
-/**
- * Expanded-node dig-in only — does not return graph nodes/edges. Every
- * selected node in one call, so one database read serves them all.
- */
 export async function getProspectJourneyNodeDetails(input: {
   paths: string[];
   from: string;
@@ -541,9 +506,7 @@ export async function getProspectJourneyNodeDetails(input: {
   visitorCohort?: "new" | "returning" | null;
   countries?: string[] | null;
   includeConverted?: boolean;
-  /** Must match the graph, or a group node has no detail to show. */
   groupPaths?: boolean;
-  /** Must match the graph, or "Other" rolls up a different tail. */
   entryTopN?: number;
 }): Promise<
   | {

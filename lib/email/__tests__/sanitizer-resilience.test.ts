@@ -1,22 +1,3 @@
-/**
- * Light ink must never be left without a fill that survives sanitizing.
- *
- * Some mail paths strip CSS. Gmail's COMPOSE sanitizer — the one a message goes
- * through when HTML is handed to the send API as a user-composed body — removes
- * the <style> block, every `class` attribute, every `background` declaration and
- * every <img>, while leaving `color` alone. Corporate gateways do similar things.
- *
- * Dropping a background is usually cosmetic: our cards, panels and pills all pair
- * a light fill with dark ink (and the reverse in dark mode), so they stay legible
- * flat. The primary button was the exception — `#fafafa` on a lost `#171717`
- * became white-on-white, and in dark mode `#171717` on a lost `#e5e5e5` became
- * near-black on the near-black card. Invisible in both schemes.
- *
- * The fix is a `bgcolor` ATTRIBUTE on the button's cell, which CSS sanitizers do
- * not touch. This test reproduces the sanitizer and fails if any light-ink
- * element loses its fill. Before the fix it found 20.
- */
-
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -25,10 +6,8 @@ import { renderEmailShell } from "../base";
 import { button } from "../components";
 import { DARK, LIGHT } from "../theme";
 
-/** Ink light enough to vanish on an unfilled surface. */
 const LIGHT_INK = new Set([LIGHT.primaryFg.toLowerCase(), DARK.primary.toLowerCase()]);
 
-/** What a CSS-stripping sanitizer leaves behind. */
 function sanitize(html: string): string {
   return html
     .replace(/<style[\s\S]*?<\/style>/g, "")
@@ -36,7 +15,6 @@ function sanitize(html: string): string {
     .replace(/\sclass="[^"]*"/g, "");
 }
 
-/** Anchors whose ink is light but whose nearest enclosing <td> has no bgcolor. */
 function unbackedLightInk(html: string): string[] {
   const stripped = sanitize(html);
   const found: string[] = [];
@@ -63,7 +41,6 @@ describe("button()", () => {
   it("carries the fill as an attribute and in both CSS forms", () => {
     expect(html).toContain(`bgcolor="${LIGHT.primary}"`);
     expect(html).toContain(`background:${LIGHT.primary}`);
-    // Some sanitizers keep the longhand and drop the shorthand.
     expect(html).toContain(`background-color:${LIGHT.primary}`);
   });
 
@@ -87,8 +64,6 @@ describe("button()", () => {
 describe("dark mode flips fill and ink together", () => {
   const style = renderEmailShell({ bodyHtml: "" });
 
-  // A rule that recolours the ink without recolouring the cell is exactly how
-  // the invisible-button bug gets reintroduced.
   it.each([
     ["media query", (sel: string) => `      ${sel} {`],
     ["[data-ogsc]", (sel: string) => `    [data-ogsc] ${sel} {`],
@@ -105,8 +80,6 @@ describe("dark mode flips fill and ink together", () => {
   });
 
   it("stretches the fill table with the anchor on small screens", () => {
-    // Without this the auto-width fill table stays snug while the anchor goes
-    // display:block, and the button looks broken on a phone.
     expect(style).toContain(".mp-btn-table { width: 100% !important; }");
     expect(style).toContain(".mp-btn { display: block !important; }");
   });

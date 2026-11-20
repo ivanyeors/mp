@@ -5,28 +5,13 @@ import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import type { Locale } from "@/lib/i18n/locales";
 import type { Customer } from "@/lib/types/ecommerce";
 
-/**
- * Customer identity linking.
- *
- * On first sign-in we link the Supabase auth user to a customer record by
- * matching the verified email (case-insensitive). If no customer exists, one is
- * created. The operation is idempotent: repeat sign-ins resolve to the same
- * customer.
- */
-
 export type CustomerLinkDecision =
   | { type: "already_linked" }
   | { type: "link_existing"; customerId: string }
   | { type: "create" };
 
-// Escapes LIKE wildcards for an exact `ilike` (#33). It lives in a module with
-// no imports, so the Customers list's filters can share it with the client.
 export { escapeLikePattern };
 
-/**
- * Pure decision over the two candidate lookups (by auth id, by email).
- * Extracted so the linking policy is unit-testable without a database.
- */
 export function decideCustomerLink(params: {
   authUserId: string;
   byAuthId: Pick<Customer, "id" | "auth_user_id"> | null;
@@ -37,7 +22,6 @@ export function decideCustomerLink(params: {
   if (byAuthId) return { type: "already_linked" };
 
   if (byEmail) {
-    // Email is unique; only adopt the row if it isn't already owned by someone.
     if (byEmail.auth_user_id == null || byEmail.auth_user_id === authUserId) {
       return { type: "link_existing", customerId: byEmail.id };
     }
@@ -47,22 +31,9 @@ export function decideCustomerLink(params: {
   return { type: "create" };
 }
 
-/**
- * Links (or creates) the customer record for a signed-in Supabase auth user.
- * Runs with the service role so it can write across RLS. Returns the customer.
- *
- * After resolving the customer we backfill any prior guest orders that share
- * the verified email but were never linked to a customer record (see #33), so
- * historical purchases show up in the customer's order history.
- */
 export async function linkCustomerToAuthUser(
   user: User,
   options: {
-    /**
-     * The site language they signed in on (PRD-campaign-audiences slice 03).
-     * Set on a Customer this call creates, so campaigns reach them in it; an
-     * existing Customer's language is left as it is.
-     */
     locale?: Locale;
   } = {},
 ): Promise<Customer> {
@@ -70,9 +41,6 @@ export async function linkCustomerToAuthUser(
   if (!email) {
     throw new Error("Cannot link a customer for an auth user without an email");
   }
-  // Matching by email hands over a guest's or a migrated customer's orders,
-  // addresses and points, so the email must be one the user proved. Supabase
-  // "Confirm email" guarantees this today; this keeps it true if it is ever off.
   if (!user.email_confirmed_at) {
     throw new Error("Cannot link a customer for an auth user whose email is not confirmed");
   }
@@ -100,8 +68,6 @@ export async function linkCustomerToAuthUser(
   let customer: Customer;
 
   if (decision.type === "already_linked") {
-    // The email's row belongs to another login (an owner who changed their
-    // sign-in email, or a Staff edit). It is never handed to this one.
     if (!byAuthId) throw new Error("This email belongs to another account");
     customer = byAuthId as Customer;
   } else if (decision.type === "link_existing") {
@@ -114,7 +80,6 @@ export async function linkCustomerToAuthUser(
     if (error) throw new Error(`Failed to link customer: ${error.message}`);
     customer = data as Customer;
   } else {
-    // create
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
     const fullName = typeof meta.full_name === "string" ? meta.full_name : "";
     const [firstName, ...rest] = fullName.split(" ").filter(Boolean);
@@ -133,11 +98,6 @@ export async function linkCustomerToAuthUser(
     customer = data as Customer;
   }
 
-  // The Claim (ADR 0029 f), for every decision type: someone who signed in
-  // before it shipped, or whose Shopify row merged into an account they already
-  // had, claims on this sign-in. For anyone else it is one indexed no-op
-  // update. Only for a row this user owns, never one `already_linked` returned
-  // because another login holds the email. Never throws.
   if (customer.auth_user_id === user.id) {
     await claimOnSignIn(customer, { admin });
   }
@@ -151,29 +111,14 @@ export async function linkCustomerToAuthUser(
   return customer;
 }
 
-// ─── Account status: the last signed-in visit (migration slice 12) ──────────
-//
-// `account_linked_at` needs no code here: a trigger on `customers` stamps it
-// whenever `auth_user_id` is bound and clears it when the login goes.
-
-/** A visit rewrites `account_last_seen_at` only once it is this old. */
 export const LAST_SEEN_INTERVAL_MS = 60 * 60 * 1000;
 
-/** Whether a signed-in visit at `now` should rewrite `account_last_seen_at`. */
 export function lastSeenIsStale(stored: string | null | undefined, now: Date): boolean {
   if (!stored) return true;
   const at = Date.parse(stored);
   return Number.isNaN(at) || now.getTime() - at >= LAST_SEEN_INTERVAL_MS;
 }
 
-/**
- * Records a signed-in visit: `account_last_seen_at`, at most once an hour per
- * Customer. It runs on every account page (through `linkCustomerToAuthUser`),
- * so it skips the write while the stored value is fresh, and the update itself
- * re-checks the value it read: of two concurrent page loads, the second
- * matches no row. Best-effort, like `recordAdminAction`: a failure is
- * swallowed and never breaks the page. Returns whether it wrote.
- */
 export async function touchCustomerLastSeen(
   customer: Pick<Customer, "id" | "account_last_seen_at">,
   admin: ReturnType<typeof supabaseAdmin> = supabaseAdmin(),
@@ -192,19 +137,10 @@ export async function touchCustomerLastSeen(
     ).select("id");
     return !error && (data?.length ?? 0) > 0;
   } catch {
-    // The visit is a convenience for Staff; the account page must load.
     return false;
   }
 }
 
-// ─── Contact status: how they sign in (CRM slice 11) ────────────────────────
-
-/**
- * The sign-in methods on a login, as `account_providers` stores them: each
- * identity's provider (`email`, `google`), sorted and once each. Null when the
- * user object carries no identities to read, so nothing is written from a
- * session that cannot say.
- */
 export function accountProvidersOf(user: Pick<User, "identities">): string[] | null {
   if (!Array.isArray(user.identities)) return null;
   const providers = user.identities
@@ -213,21 +149,10 @@ export function accountProvidersOf(user: Pick<User, "identities">): string[] | n
   return [...new Set(providers)].sort();
 }
 
-/** A text array as a Postgres literal, for re-checking the stored value in a filter. */
 function pgTextArray(values: readonly string[]): string {
   return `{${values.map((v) => `"${v.replace(/["\\]/g, "\\$&")}"`).join(",")}}`;
 }
 
-/**
- * Records how the Customer signs in, from the signed-in user's own identities
- * (no `auth.users` read, no `supabase.auth.admin` call). Writes only when the
- * methods changed, by the same conditional update as `touchCustomerLastSeen`:
- * the update re-checks the login and the value it read, so of two concurrent
- * page loads the second matches no row. Linking Google from the Profile shows
- * on the Customer page after their next account page load. Only for the row
- * this login owns. Best-effort: a failure is swallowed. Returns whether it
- * wrote.
- */
 export async function touchAccountProviders(
   customer: Pick<Customer, "id" | "auth_user_id" | "account_providers">,
   user: Pick<User, "id" | "identities">,
@@ -248,21 +173,10 @@ export async function touchAccountProviders(
       .select("id");
     return !error && (data?.length ?? 0) > 0;
   } catch {
-    // How they sign in is a convenience for Staff; the account page must load.
     return false;
   }
 }
 
-/**
- * Backfills the order→customer link for prior email-only (guest) orders whose
- * email matches this customer's verified email but that were never associated
- * to a customer record (#33).
- *
- * Idempotent: only orders with a null `customer_id` are touched, so once an
- * order is linked, subsequent sign-ins match nothing and leave it untouched.
- * Orders whose email does not match are never affected. Returns the number of
- * orders newly linked.
- */
 export async function associateGuestOrdersToCustomer(
   customer: Pick<Customer, "id" | "email">,
   admin: ReturnType<typeof supabaseAdmin> = supabaseAdmin(),

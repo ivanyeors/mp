@@ -18,27 +18,17 @@ import type { CampaignStats } from "@/lib/email-campaigns/store";
 import { cn } from "@/lib/utils";
 
 const n = (v: number) => v.toLocaleString("en-SG");
-/** A count and its rate over `of`: "31 (13%)", or "0 (—)" when nobody was sent. */
 const withRate = (count: number, of: number) => `${n(count)} (${formatRate(rate(count, of))})`;
 
-/** One stage's or group's purchases, as a line: "9 (3.8%) · S$2,140". */
 const boughtLine = (r: Pick<ResultNumbers, "bought" | "people" | "boughtTotal">) =>
     `${withRate(r.bought, r.people)}${r.bought ? ` · ${formatSgd(r.boughtTotal)}` : ""}`;
 
-/**
- * A started campaign's results (PRD-campaign-audiences slice 11): who it
- * reached, who clicked, left or marked it as spam, and who bought within 30
- * days, overall and by the Lifecycle stage each person had when sent. Rates
- * are over people sent. With a holdout, the people held out beside those sent
- * in the same weeks.
- */
 export function CampaignResultsPanel({
     stats,
     results,
     className,
 }: {
     stats: CampaignStats | null;
-    /** Null when they could not be read. */
     results: CampaignResults | null;
     className?: string;
 }) {

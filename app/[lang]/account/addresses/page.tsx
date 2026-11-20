@@ -21,7 +21,6 @@ export default async function AccountAddressesPage({
   const user = await getAuthUser();
   if (!user) redirect(withLocale("/account/login", locale));
 
-  // Ensure the auth user is linked to a customer so RLS can resolve addresses.
   await linkCustomerToAuthUser(user);
   const addresses = await getCustomerAddresses();
 

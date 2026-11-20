@@ -18,6 +18,8 @@
       "Read(**/.secrets/**)",
       "Read(**/*-key.json)",
       "Read(~/.ssh/**)",
+      "Edit(**/eslint-suppressions.json)",
+      "Write(**/eslint-suppressions.json)",
       "mcp__supabase__delete_branch",
       "mcp__supabase__reset_branch"
     ]
@@ -62,6 +64,11 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/skills/preview/hooks/session-start\""
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh\"",
+            "timeout": 600
           }
         ]
       }

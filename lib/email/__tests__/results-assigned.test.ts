@@ -1,10 +1,3 @@
-/**
- * One renderer, two voices. The hold voice is load-bearing copy that predates
- * the Balance payment variant, so it is asserted word for word; the balance
- * voice must never mention a hold. The third test is the reason there is one
- * renderer and not two: everything except the ask is byte-identical.
- */
-
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -59,7 +52,6 @@ describe("renderResultAssignedEmail", () => {
       expect(hold.html, `hold is missing ${line}`).toContain(line);
       expect(balance.html, `balance is missing ${line}`).toContain(line);
     }
-    // The only pricing row that differs is the one the hold pays for.
     expect(hold.text.split("\n").filter((l) => l.startsWith("Total: "))).toEqual(
       balance.text.split("\n").filter((l) => l.startsWith("Total: ")),
     );
@@ -77,7 +69,6 @@ describe("renderResultAssignedEmail", () => {
       expect(body).not.toMatch(/hold/i);
       expect(body).not.toMatch(/Total/);
     }
-    // A hold always wins: needsFinish cannot turn a held Result's ask into "choose".
     const held = renderResultAssignedEmail({ ...sampleResultAssigned(), needsFinish: true });
     expect(held.subject).toBe("Your final build is ready");
   });

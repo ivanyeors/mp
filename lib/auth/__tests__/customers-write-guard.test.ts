@@ -4,32 +4,12 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { applyRequires, isPermission } from "@/lib/auth/permissions";
 
-/**
- * Reads on `customers`, writes on `customers-edit` (PRD customer-crm slice 10,
- * and the fifth hazard in its issues README).
- *
- * Every write path on the Customers page must call `requireAdmin`,
- * `requireAdminContext` or `assertAdmin` with `customers-edit`, or with a key
- * that requires it (a tab of it such as `customer-import`). A write path is:
- *
- *  - a POST, PUT, PATCH or DELETE route handler;
- *  - every export of a `"use server"` file, and every inline `"use server"`
- *    function. A server action is a write here by definition: a read belongs
- *    in a GET handler or the page, which stay on `customers`.
- *
- * The guard may sit in a helper in the same file. `requireAnyAdmin` does not
- * count: any-of is weaker than the key. The roots are scanned, not listed, so
- * a write path a later slice adds is checked the day it lands. Outside the
- * roots, a write guarded on `customers` without `customers-edit` fails too.
- */
-
 const ROOTS = ["app/api/shop/customers", "app/api/settings/customers", "app/[lang]/settings/customers"];
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const SINGLE_KEY_GUARDS = new Set(["requireAdmin", "requireAdminContext", "assertAdmin"]);
 const ANY_KEY_GUARDS = new Set(["requireAnyAdmin", "assertAnyAdmin"]);
 
-/** Holding `key` means holding `customers-edit`. */
 const grantsEdit = (key: string) => isPermission(key) && applyRequires([key]).has("customers-edit");
 
 type Guard = { fn: string; keys: string[] };
@@ -38,7 +18,6 @@ type WritePath = {
   kind: "route" | "action";
   line: number;
   guards: Guard[];
-  /** Set when the guard test cannot read this write path's body. */
   unreadable?: string;
 };
 
@@ -61,7 +40,6 @@ function startsWithUseServer(statements: readonly ts.Statement[]): boolean {
   return false;
 }
 
-/** Every write path in one file, with the guards each one reaches. */
 function writePaths(fileName: string, src: string): WritePath[] {
   const sf = ts.createSourceFile(
     fileName,
@@ -74,8 +52,6 @@ function writePaths(fileName: string, src: string): WritePath[] {
   const isRoute = /^route\.tsx?$/.test(basename(fileName));
   const useServerFile = startsWithUseServer(sf.statements);
 
-  // Top-level functions and string constants, so a guard reached through a
-  // helper (`async function requireEdit() { await assertAdmin(PERM) }`) counts.
   const locals = new Map<string, FnBody>();
   const strings = new Map<string, string>();
   for (const s of sf.statements) {
@@ -120,7 +96,6 @@ function writePaths(fileName: string, src: string): WritePath[] {
   const add = (name: string, kind: WritePath["kind"], at: ts.Node, body: FnBody, unreadable?: string) =>
     paths.push({ name, kind, line: lineOf(at), guards: unreadable ? [] : guardsIn(body), unreadable });
 
-  // A route file's write handlers, and a "use server" file's every export.
   const entry = (name: string): WritePath["kind"] | null =>
     isRoute && WRITE_METHODS.has(name) ? "route" : useServerFile ? "action" : null;
 
@@ -154,7 +129,6 @@ function writePaths(fileName: string, src: string): WritePath[] {
     }
   }
 
-  // Inline server actions: a function whose body opens with "use server".
   if (!useServerFile) {
     const visit = (n: ts.Node) => {
       if (
@@ -175,11 +149,9 @@ function writePaths(fileName: string, src: string): WritePath[] {
   return paths;
 }
 
-/** Guarded on `customers-edit`, or on a key that requires it, by a single-key guard. */
 const checksCustomersEdit = (p: WritePath) =>
   !p.unreadable && p.guards.some((g) => SINGLE_KEY_GUARDS.has(g.fn) && g.keys.some(grantsEdit));
 
-/** Guarded on `customers` with nothing that grants editing: a write left on the read key. */
 const leftOnCustomers = (p: WritePath) =>
   p.guards.some((g) => g.keys.includes("customers")) && !checksCustomersEdit(p);
 
@@ -211,20 +183,16 @@ describe("Customers write paths check customers-edit", () => {
         "app/api/shop/customers/[id]/notes/route.ts POST",
         "app/api/shop/customers/[id]/notes/[noteId]/route.ts DELETE",
         "app/api/shop/customers/[id]/marketing-consent/route.ts POST",
-        // CRM 06: creating, completing, reassigning and deleting follow-ups.
         "app/api/shop/customers/[id]/followups/route.ts POST",
         "app/api/shop/customers/[id]/followups/[followupId]/route.ts PATCH",
         "app/api/shop/customers/[id]/followups/[followupId]/route.ts DELETE",
-        // CRM 05: saving a Segment, and updating, renaming or archiving one.
         "app/api/settings/customers/segments/route.ts POST",
         "app/api/settings/customers/segments/[segmentId]/route.ts PATCH",
-        // CRM 12: linking, unlinking and rejecting a Google review match.
         "app/api/settings/customers/google-reviews/[reviewId]/link/route.ts POST",
         "app/api/settings/customers/google-reviews/[reviewId]/link/route.ts DELETE",
         "app/api/settings/customers/google-reviews/[reviewId]/rejections/route.ts POST",
       ]),
     );
-    // GET handlers are reads: they stay on `customers` and are not listed.
     expect(names.some((n) => n.endsWith(" GET"))).toBe(false);
   });
 
@@ -239,7 +207,6 @@ describe("Customers write paths check customers-edit", () => {
 });
 
 describe("no write anywhere is left on customers", () => {
-  // Any route handler or server action in the app that names `customers`.
   const candidates = ["app", "lib", "components"]
     .flatMap(sourceFiles)
     .filter((f) => /["']customers["']/.test(readFileSync(f, "utf8")));
@@ -256,7 +223,6 @@ describe("no write anywhere is left on customers", () => {
   });
 });
 
-/** The checker itself: it must fail each way a write can be left on `customers`. */
 describe("writePaths and checksCustomersEdit", () => {
   const one = (src: string, file = "app/api/shop/customers/x/route.ts") => writePaths(file, src);
   const ok = (src: string, file?: string) => one(src, file).map(checksCustomersEdit);

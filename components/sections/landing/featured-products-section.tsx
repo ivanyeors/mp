@@ -8,10 +8,6 @@ interface FeaturedProductsSectionProps {
   locale: string;
 }
 
-/**
- * Read on the server: the admin `GET /api/shop/products` is staff-only, and this
- * section renders on the public landing page.
- */
 export async function FeaturedProductsSection({ section, locale }: FeaturedProductsSectionProps) {
   const content = section.content as FeaturedProductsContent;
   const products = await getFeaturedProducts(content.limit ?? 4);

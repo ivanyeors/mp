@@ -23,11 +23,6 @@ async function send(url: string, method: "POST" | "PATCH", body: unknown): Promi
   return payload.row as StaffProfile;
 }
 
-/**
- * Staff profiles tab: the people who work under each login, grouped by it.
- * A Result is "measured by" a profile and a Telegram link belongs to one.
- * Profiles are archived, never deleted, so old Results keep their names.
- */
 export function ProfilesTab({
   members,
   roles,
@@ -41,11 +36,8 @@ export function ProfilesTab({
   roles: RoleRow[];
   profiles: StaffProfile[];
   setProfiles: (update: (rows: StaffProfile[]) => StaffProfile[]) => void;
-  /** Profiles with a Telegram link, marked with an icon. */
   linkedProfileIds: ReadonlySet<string>;
-  /** Scroll to and highlight one login's group (from the Members tab). */
   focusMemberId?: string | null;
-  /** A move unbinds the profile's Telegram account: the Telegram tab reloads. */
   onMoved?: () => void;
 }) {
   const [showArchived, setShowArchived] = useState(false);
@@ -166,7 +158,6 @@ export function ProfilesTab({
                               if ((await run(p.id, `/api/staff/${p.id}`, "PATCH", { memberId }, done)) && linked) onMoved?.();
                             }}
                           >
-                            {/* On a phone the select takes what Rename and Archive leave, so all three fit one row. */}
                             <SelectTrigger
                               className="h-8 min-w-0 flex-1 sm:w-36 sm:min-w-[12rem] sm:flex-none"
                               disabled={busyId === p.id}

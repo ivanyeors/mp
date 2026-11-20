@@ -3,23 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { nameKey } from "@/lib/fitting-import/google-form-csv";
 
-/**
- * One person's fittings go to one Customer (ADR 0042 c): a row under another
- * email, or with none on a shared mobile, is that person's when the mobile
- * and the name agree. The preview compares names with `nameKey`;
- * `import_fitting_rows` compares them with `public.fitting_name_key`
- * (20261101100000_customer_fittings.sql). Both must read every name
- * the same, or the preview would forecast a match the import does not make.
- *
- * Each name is decided by the TypeScript into name-cases.json;
- * supabase/tests/fitting-import/assert-name.sql requires the SQL to give the
- * same. Made-up names.
- *
- * Regenerate with
- *   UPDATE_SQL_CASES=1 pnpm vitest run lib/fitting-import/__tests__/name-key-agreement.test.ts
- * and run ./scripts/check-fitting-import-sql.sh.
- */
-
 const CASES_PATH = join(process.cwd(), "supabase/tests/fitting-import/name-cases.json");
 
 const NAMES: (string | null)[] = [

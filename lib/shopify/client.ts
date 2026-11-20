@@ -22,7 +22,6 @@ async function shopifyFetch(path: string, init?: RequestInit) {
       cache: 'no-store',
     })
 
-    // Rate limit handling
     if (res.status === 429) {
       const retryAfterRaw = res.headers.get('retry-after')
       const retryAfterSeconds = retryAfterRaw ? Number.parseFloat(retryAfterRaw) : NaN

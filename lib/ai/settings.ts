@@ -1,9 +1,3 @@
-/**
- * The AI writing settings on the server (PRD-campaign-email-editor slice 16).
- * Server-only: it reads `site_settings` with the service role. Every AI
- * writing call (slices 09, 10, 17) reads them here first, uncached, so a change
- * on General → AI writing applies to the very next call.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
@@ -18,15 +12,8 @@ export const AI_WRITING_READ_FAILED = "Couldn't read the AI writing settings. Tr
 
 export type AiWritingSettingsRead =
   | { ok: true; settings: AiWritingSettings }
-  /** The read failed: AI writing is off for this call, whatever is stored. */
   | { ok: false; error: string; settings: AiWritingSettings };
 
-/**
- * The settings as typed values; a stored value that no longer parses reads as
- * its default. A failed read turns AI writing off for that call
- * (`settings.enabled` false, with the reason), so a read error never turns on
- * what the owner turned off. Takes the client so tests pass a fake.
- */
 export async function readAiWritingSettings(admin?: SupabaseClient): Promise<AiWritingSettingsRead> {
   try {
     const { data, error } = await (admin ?? supabaseAdmin())
@@ -41,7 +28,6 @@ export async function readAiWritingSettings(admin?: SupabaseClient): Promise<AiW
   }
 }
 
-/** Saves the settings, already validated. */
 export async function saveAiWritingSettings(admin: SupabaseClient, s: AiWritingSettings): Promise<void> {
   const updated_at = new Date().toISOString();
   const { error } = await admin

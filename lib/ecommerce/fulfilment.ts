@@ -5,9 +5,7 @@ import { deductStockWhenSold } from "./order-stock";
 export interface MarkShippedInput {
   trackingNumber?: string | null;
   trackingUrl?: string | null;
-  /** Extra order columns written in the same update (courier, label, carrier cost). */
   extra?: Record<string, unknown>;
-  /** Timeline line; defaults to the manual-fulfilment wording. */
   message?: string;
   metadata?: Record<string, unknown>;
 }
@@ -16,12 +14,6 @@ export type FulfilmentResult =
   | { ok: true; row: Record<string, unknown> }
   | { ok: false; status: number; error: string };
 
-/**
- * Mark an order shipped: status, shipped_at, tracking, a timeline event and the
- * shipping email. The one path for both "Mark as Shipped" in Settings → Orders and
- * an Easyship label, so the customer gets the same email either way. The email is
- * idempotent per order, so a webhook that repeats a label event sends nothing new.
- */
 export async function markOrderShipped(
   admin: SupabaseClient,
   orderId: string,
@@ -40,7 +32,6 @@ export async function markOrderShipped(
       ? { ok: false, status: 404, error: "Order not found" }
       : { ok: false, status: 500, error: error!.message };
   }
-  // Shipping an Order nobody confirmed still sends its goods out.
   await deductStockWhenSold(admin, orderId, before?.status, "shipped");
 
   const message =
@@ -61,7 +52,6 @@ export async function markOrderShipped(
     },
   });
 
-  // Non-critical: a failed email must never undo or block fulfilment.
   try {
     await sendShippingEmail(orderId, data, admin);
   } catch (err) {
@@ -71,13 +61,6 @@ export async function markOrderShipped(
   return { ok: true, row: data as Record<string, unknown> };
 }
 
-/**
- * Mark an order shipped from the courier's first scan of its parcel (ADR 0044):
- * the label was made when the order was paid, and the parcel left only now. The
- * order is claimed on `shipped_at`, so the status and checkpoint events Easyship
- * sends for the same scan ship it, and email the customer, once. False when it
- * was already shipped, or is no longer an order that ships.
- */
 export async function markOrderShippedByCourier(
   admin: SupabaseClient,
   orderId: string,
@@ -109,18 +92,12 @@ export async function markOrderShippedByCourier(
     metadata: { source: "easyship", easyship_shipment_id: input.shipmentId, courier_status: input.courierStatus },
   });
   if (!result.ok) {
-    // markOrderShipped fails only when its update did not land: let the retry claim it again.
     await admin.from("orders").update({ shipped_at: null }).eq("id", orderId);
     throw new Error(result.error);
   }
   return true;
 }
 
-/**
- * Mark an order delivered from a courier event. `delivered_at` anchors the RMA
- * return window and commission release, so it is written once and never moved:
- * an order already delivered (or cancelled/refunded) is left alone.
- */
 export async function markOrderDeliveredByCourier(
   admin: SupabaseClient,
   orderId: string,

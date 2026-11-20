@@ -1,7 +1,3 @@
-/**
- * Slice 15 — Dig-in viz + Section expand on-node chrome.
- * Run: npx tsx lib/analytics/journey/slice-15.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -10,7 +6,6 @@ import { binDwellHistogram, buildNodeSidePanel } from "./chrome";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-// --- ranked routes (not uncounted sample list) ---
 const panel = buildNodeSidePanel({
   path: "/",
   events: [
@@ -26,7 +21,6 @@ assert.equal(panel.routes[0]!.count, 2);
 assert.deepEqual(panel.routes[0]!.pathSeq, ["/", "/shop"]);
 assert.equal(panel.routes[1]!.count, 1);
 
-// --- histogram caps + markers inputs ---
 const hist = binDwellHistogram([1_000, 11_000, 700_000]);
 assert.equal(hist.maxAxisMs, 600_000);
 assert.ok(hist.bins.some((b) => b.overflow && b.count === 1));
@@ -55,11 +49,11 @@ const viz = readFileSync(
 );
 assert.match(viz, /binDwellHistogram/);
 assert.match(viz, /Show top 10/);
-assert.match(viz, /strokeDasharray/); // mean dotted
+assert.match(viz, /strokeDasharray/);
 assert.match(viz, /median/);
 assert.match(viz, /TooltipWithBounds/);
 assert.match(viz, /showTooltip/);
-assert.match(viz, /createPortal/); // tips escape SVG foreignObject
+assert.match(viz, /createPortal/);
 
 const actions = readFileSync(
   join(root, "app/[lang]/settings/analytics/actions.ts"),

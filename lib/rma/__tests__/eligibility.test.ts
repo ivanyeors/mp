@@ -37,7 +37,6 @@ describe("evaluateEligibility", () => {
   });
 
   it("rejects past the return window", () => {
-    // delivered 40 days before now, 30-day window
     const r = evaluateEligibility(
       base({ order: { delivered_at: "2026-06-13T00:00:00Z", status: "delivered" } }),
     );
@@ -46,7 +45,6 @@ describe("evaluateEligibility", () => {
   });
 
   it("accepts on the last day of the window", () => {
-    // delivered exactly 30 days before now
     const r = evaluateEligibility(
       base({ order: { delivered_at: "2026-06-23T12:00:00Z", status: "delivered" } }),
     );

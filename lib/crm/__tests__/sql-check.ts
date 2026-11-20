@@ -2,20 +2,11 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { pgTextArray, type CustomerListQuery } from "@/lib/crm/customer-filters";
 
-/**
- * What the CRM's database checks share (lib/crm/purchase-lines.check.ts,
- * lib/crm/lifecycle-stage.check.ts): SQL literals, one psql session whose
- * results come back by name, and `applyCustomerFilters`'s calls as a SQL
- * `where`, the way PostgREST reads them.
- */
-
-/** A SQL literal: standard_conforming_strings is on, so only quotes are doubled. */
 export const sqlLiteral = (v: string | number | boolean | null): string =>
   v === null ? "null" : typeof v === "string" ? `'${v.replace(/'/g, "''")}'` : String(v);
 
 export const sqlJsonLiteral = (v: unknown) => (v === null || v === undefined ? "null" : `${sqlLiteral(JSON.stringify(v))}::jsonb`);
 
-/** Runs `sql` in one psql session on `url`; each `@@name@@<value>` output line is one result. */
 export function runPsql(url: string, sql: string): Map<string, string> {
   const out = execFileSync("psql", [url, "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1"], {
     input: sql,
@@ -36,11 +27,6 @@ export function psqlJson<T>(results: Map<string, string>, name: string): T {
   return JSON.parse(v) as T;
 }
 
-/**
- * `applyCustomerFilters`'s calls as a SQL `where`, the way PostgREST reads
- * them: like/ilike rewrite every `*` to `%`, `ov` is `&&`, `in` is `in`,
- * `is` / `not.is`, and `not.cs` / `not.ov` negate `@>` / `&&`.
- */
 export class SqlFilter implements CustomerListQuery {
   readonly where: string[] = [];
   ilike(column: string, pattern: string) {

@@ -16,39 +16,10 @@ import {
 } from "@/lib/reviews/google-sync";
 import { editGroupCard, sendGroupMessage } from "@/lib/telegram/bot-api";
 
-/**
- * Google reviews through the Places API, until the Business Profile API is
- * approved (ADR 0035). Chained onto the daily results-sla cron, it reads only
- * once its last successful read is a week old, so a failed read is retried the
- * next day; /api/cron/google-places-reviews forces a read for ops.
- *
- * One read returns Google's five most relevant reviews — not the newest, and
- * nothing of our replies — which the review sync stores and cards like any
- * other, as source `places`: staff reply on Google Maps and tap Mark replied.
- * The place's review count rises with every review, so one that the five do
- * not show is still announced, with a link to answer it on Google Maps.
- *
- * Cost: each read is one Place Details Enterprise + Atmosphere call, 1,000 free
- * a month across the project. The landing page reads once a week too
- * (PLACE_REVIEWS_REVALIDATE_SECONDS); this poll counts its own reads per month
- * in google_places_polls and stops at the cap before calling, so a manual run
- * or a changed schedule cannot run up a bill.
- *
- * Places content may only be kept temporarily: rows from Places are deleted
- * 30 days after they are stored, and an open card then loses its buttons.
- * Once the Business Profile API is configured this poll stands down, and the
- * Business Profile sync adopts the Places rows it finds (lib/reviews/google-sync.ts).
- */
-
-/** Google's free Place Details Enterprise + Atmosphere reads a month, for the whole project. */
 export const PLACES_FREE_READS_PER_MONTH = 1000;
-/** The poll's own ceiling a month. Weekly it reads 4–5 times; this only stops a runaway. */
 export const DEFAULT_PLACES_POLL_CAP = 60;
-/** The highest cap GOOGLE_PLACES_POLL_MONTHLY_CAP may set: half the free reads, the rest left to the landing page. */
 const MAX_PLACES_POLL_CAP = PLACES_FREE_READS_PER_MONTH / 2;
-/** How long Places content stays in google_reviews. */
 export const PLACES_RETENTION_DAYS = 30;
-/** A week, less an hour: the daily cron's start time wobbles, and a week-to-the-second gate would slip a day. */
 const POLL_INTERVAL_MS = 7 * 86_400_000 - 3_600_000;
 
 export function placesPollMonthlyCap(): number {
@@ -56,14 +27,12 @@ export function placesPollMonthlyCap(): number {
   return Number.isInteger(raw) && raw > 0 ? Math.min(raw, MAX_PLACES_POLL_CAP) : DEFAULT_PLACES_POLL_CAP;
 }
 
-/** The first day of `now`'s month (UTC), the poll table's key. */
 export function pollMonth(now: Date): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
 const STARS: GbpStarRating[] = ["STAR_RATING_UNSPECIFIED", "ONE", "TWO", "THREE", "FOUR", "FIVE"];
 
-/** A Places review in the Business Profile shape the sync reads. Places has no update time or replies. */
 export function placesToSyncReview(review: PlaceReview): SyncReview {
   const stars = review.rating ? Math.max(1, Math.min(5, Math.round(review.rating))) : 0;
   return {
@@ -81,11 +50,6 @@ type Claim =
   | { ok: true; calls: number }
   | { ok: false; reason: "monthly_cap" | "busy"; calls: number };
 
-/**
- * Counts one read against this month's cap before it is made, guarded on the
- * count it read, so two runs at once cannot both pass the last free slot. A
- * read that fails still counts: Google may bill it.
- */
 async function claimPlacesRead(month: string, cap: number): Promise<Claim> {
   const admin = supabaseAdmin();
   const { error: seedError } = await admin
@@ -107,7 +71,6 @@ async function claimPlacesRead(month: string, cap: number): Promise<Claim> {
   return { ok: true, calls: calls + 1 };
 }
 
-/** When the last read succeeded, any month; null before the first. */
 async function lastSuccessfulRead(): Promise<number | null> {
   const { data } = await supabaseAdmin()
     .from("google_places_polls")
@@ -119,7 +82,6 @@ async function lastSuccessfulRead(): Promise<number | null> {
   return Number.isFinite(at) ? at : null;
 }
 
-/** The review count at the last successful read, any month; null before the first. */
 async function lastRatingCount(): Promise<number | null> {
   const { data } = await supabaseAdmin()
     .from("google_places_polls")
@@ -131,7 +93,6 @@ async function lastRatingCount(): Promise<number | null> {
   return typeof count === "number" ? count : null;
 }
 
-/** Deletes Places rows past the retention window; an open card is closed first. */
 export async function purgeExpiredPlacesReviews(
   now: Date,
   edit: typeof editGroupCard = editGroupCard,
@@ -155,7 +116,6 @@ export async function purgeExpiredPlacesReviews(
 
 export type PlacesPollDeps = Pick<ReviewSyncDeps, "draft" | "send" | "edit" | "matchLink" | "maxCards"> & {
   now?: Date;
-  /** Read even if the last read was less than a week ago (still within the cap). */
   force?: boolean;
   read?: () => Promise<PlaceReviewsRead>;
   notify?: typeof sendGroupMessage;
@@ -176,7 +136,6 @@ export type PlacesPollSummary =
       cap: number;
       purged: number;
       ratingCount: number | null;
-      /** New reviews on Google that the five Places returns did not include. */
       missed: number;
       sync: ReviewSyncSummary;
     }
@@ -185,7 +144,6 @@ export type PlacesPollSummary =
 export async function pollPlacesReviews(deps: PlacesPollDeps = {}): Promise<PlacesPollSummary> {
   const { read: readDep, notify, force, now = new Date(), ...syncDeps } = deps;
   const cap = placesPollMonthlyCap();
-  // Places rows are purged even after the Business Profile API takes over.
   const purged = await purgeExpiredPlacesReviews(now, deps.edit);
   if (getBusinessProfileConfig()) return { ok: true, skipped: "business_profile", cap, purged };
   if (!hasGooglePlaceReviewsConfig()) return { ok: true, skipped: "not_configured", cap, purged };
@@ -213,7 +171,6 @@ export async function pollPlacesReviews(deps: PlacesPollDeps = {}): Promise<Plac
     client: { listReviews: async () => ({ reviews }) },
   });
 
-  // Reviews that are new to us and recent; an old one Google just started showing is not news.
   const freshlySeen = sync.inserted - sync.backlog;
   const missed =
     previousCount !== null && read.ratingCount !== null
@@ -229,7 +186,6 @@ export async function pollPlacesReviews(deps: PlacesPollDeps = {}): Promise<Plac
 }
 
 export type PlacesPollStatus = {
-  /** Polling now: Places is configured and the Business Profile API is not. */
   active: boolean;
   configured: boolean;
   cap: number;
@@ -238,7 +194,6 @@ export type PlacesPollStatus = {
   lastError: string | null;
 };
 
-/** For Users & permissions → Telegram. Reads the poll table only: a billed Places read is never spent on a status check. */
 export async function getPlacesPollStatus(now = new Date()): Promise<PlacesPollStatus> {
   const configured = hasGooglePlaceReviewsConfig();
   const { data } = await supabaseAdmin()

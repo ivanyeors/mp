@@ -1,11 +1,6 @@
 import Image from "next/image";
 import { toWebUrl } from "@/lib/format/web-url";
 
-/**
- * How a partner's card will read on /our-partners: logo (or initial), name,
- * the first lines of the write-up and the website. A static stand-in for the
- * real card, for screens that show a listing before it is live.
- */
 export function ListingPreview({
   name,
   logoUrl,

@@ -8,8 +8,7 @@ import {
   type BusyInterval,
 } from "@/lib/appointments/slots";
 
-const S = DEFAULT_APPOINTMENT_SETTINGS; // open 10, close 18, dur 60, Tue–Sun
-// Wed 2026-07-08 is bookable. now well before open so nothing is "past".
+const S = DEFAULT_APPOINTMENT_SETTINGS;
 const WED = { y: 2026, m: 7, d: 8 };
 const beforeOpen = new Date(sgtLocalToUtcMs(2026, 7, 8, 6, 0));
 
@@ -24,7 +23,7 @@ describe("listDaySlots", () => {
   });
 
   it("excludes a bookable weekday's slots when day is not bookable (Monday)", () => {
-    const MON = { y: 2026, m: 7, d: 6 }; // Monday — not in Tue–Sun
+    const MON = { y: 2026, m: 7, d: 6 };
     expect(listDaySlots([], S, MON, new Date(sgtLocalToUtcMs(2026, 7, 6, 6, 0)))).toEqual([]);
   });
 
@@ -33,9 +32,9 @@ describe("listDaySlots", () => {
       { startMs: sgtLocalToUtcMs(2026, 7, 8, 11, 0), endMs: sgtLocalToUtcMs(2026, 7, 8, 12, 0) },
     ];
     const hours = hoursSgt(listDaySlots(busy, S, WED, beforeOpen));
-    expect(hours).not.toContain(11); // busy 11–12 kills the 11:00 start
-    expect(hours).toContain(10); // 10–11 ends exactly at busy start → allowed
-    expect(hours).toContain(12); // 12–13 starts exactly at busy end → allowed
+    expect(hours).not.toContain(11);
+    expect(hours).toContain(10);
+    expect(hours).toContain(12);
   });
 
   it("excludes admin blocked ranges", () => {
@@ -51,13 +50,13 @@ describe("listDaySlots", () => {
     const hours = hoursSgt(listDaySlots([], settings, WED, beforeOpen));
     expect(hours).not.toContain(14);
     expect(hours).not.toContain(15);
-    expect(hours).toContain(16); // 16–17 starts at block end → allowed
+    expect(hours).toContain(16);
   });
 
   it("excludes past slots relative to now", () => {
-    const now = new Date(sgtLocalToUtcMs(2026, 7, 8, 13, 30)); // mid-day
+    const now = new Date(sgtLocalToUtcMs(2026, 7, 8, 13, 30));
     const hours = hoursSgt(listDaySlots([], S, WED, now));
-    expect(Math.min(...hours)).toBe(14); // 13:00 is past, 13:30<14:00 next start
+    expect(Math.min(...hours)).toBe(14);
     expect(hours).not.toContain(13);
   });
 
@@ -84,7 +83,6 @@ describe("listDaySlots", () => {
       const d = new Date(Date.parse(s.startIso) + 8 * 3600_000);
       return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
     });
-    // 10:00–19:00 window → last 90-min start is 17:30
     expect(startsSgt).toEqual(["10:00", "11:30", "13:00", "14:30", "16:00", "17:30"]);
   });
 
@@ -93,7 +91,6 @@ describe("listDaySlots", () => {
     const busy: BusyInterval[] = [
       { startMs: sgtLocalToUtcMs(2026, 7, 8, 11, 30), endMs: sgtLocalToUtcMs(2026, 7, 8, 12, 0) },
     ];
-    // 11:00–11:30 no longer overlaps 11:30 block → 11:00 stays.
     expect(hoursSgt(listDaySlots(busy, settings, WED, beforeOpen))).toContain(11);
   });
 });

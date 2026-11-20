@@ -4,11 +4,6 @@ import { assertLogoAllowed, savePartnerLogo, LogoRefusedError } from "@/lib/part
 
 export const runtime = "nodejs";
 
-/**
- * Upload a partner logo (multipart: `file`). Optimizes + stores in the public
- * media bucket and returns the public url; the client then saves it via the
- * profile PATCH. Partner-guarded — writes under the caller's own partnerId.
- */
 export async function POST(req: Request) {
   const ctx = await getPartnerContext();
   if (!isPartnerActive(ctx)) {

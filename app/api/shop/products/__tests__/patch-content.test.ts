@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Saving the product editor writes each language's words whole, so a field
- * the save's schema doesn't name is erased. The answer lede (`seo_answer`)
- * was one: every Save took it off the product page. It is kept now.
- */
-
 const h = vi.hoisted(() => ({ update: vi.fn() }));
 
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: vi.fn(async () => null) }));

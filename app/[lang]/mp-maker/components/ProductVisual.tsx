@@ -23,7 +23,6 @@ export function ProductVisual() {
 
   return (
     <div className="relative flex flex-col items-center justify-center gap-6 p-4">
-      {/* Pillow shape with inner shadow */}
       <motion.div
         key={step}
         animate={{ scale: [0.97, 1] }}
@@ -34,7 +33,6 @@ export function ProductVisual() {
           width: "min(75vmin, 500px)",
         }}
       >
-        {/* White fill with inner shadow */}
         <svg
           className="absolute inset-0 pointer-events-none"
           viewBox="0 0 664 374"
@@ -71,7 +69,6 @@ export function ProductVisual() {
           <path d={PILLOW_PATH} fill="white" filter="url(#innerShadow)" />
         </svg>
 
-        {/* Stroke outline */}
         <svg
           className="absolute inset-0 pointer-events-none"
           viewBox="0 0 664 374"
@@ -87,7 +84,6 @@ export function ProductVisual() {
           />
         </svg>
 
-        {/* Pulsing skeleton when loading */}
         {isLoadingRecommendation && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="size-12 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -95,7 +91,6 @@ export function ProductVisual() {
         )}
       </motion.div>
 
-      {/* Badges below pillow shape */}
       <AnimatePresence mode="wait">
         {recommendation && (
           <motion.div
@@ -106,7 +101,6 @@ export function ProductVisual() {
             transition={{ duration: 0.25 }}
             className="flex flex-col items-center gap-3"
           >
-            {/* Size + kind */}
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-sm px-3 py-1">
                 Size {size}
@@ -118,7 +112,6 @@ export function ProductVisual() {
               )}
             </div>
 
-            {/* Filling badges */}
             {fillingLines.length > 0 && (
               <div className="flex flex-wrap justify-center gap-1.5">
                 {fillingLines.map((fl, idx) => (

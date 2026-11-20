@@ -1,12 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * General → Claude API key: `api-configs` to save or remove it; a key is
- * saved only once Anthropic accepts it; the answer and the audit entry never
- * carry the key.
- */
-
 const h = vi.hoisted(() => ({
   permissions: new Set<string>(),
   row: null as { slug: string; api_key: string | null } | null,
@@ -34,7 +28,6 @@ vi.mock("@/lib/ai/claude-key", async (importOriginal) => ({
   askAnthropic: (key: string) => h.check(key),
 }));
 
-/** The `api_configs` calls the key's save, removal and check make. */
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from: (table: string) => {

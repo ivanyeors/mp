@@ -17,22 +17,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   return englishOnlyPageMetadata("explore", (await params).lang);
 }
 
-/** Where the sky is worked out from until the visitor's own clock is known. */
 const SINGAPORE = { lat: 1.35, lon: 103.82 };
 
-/**
- * Explore (owner, 2026-11-17): one screen that does not scroll. A countdown
- * to the launch and "Claim my points" over a scene whose sky follows the
- * visitor's own day and night. The points flow opens in a popup
- * (ADR 0030, amendment of 2026-11-17).
- *
- * Query: `claim=1` (back from signing in: finish the claim), `flower=N` (back
- * from signing up for a flower's points: pick that flower), and two ways to
- * look at the scene at another moment, which change nothing but the picture:
- * `hour` (0 to 24, the visitor's local time) and `rain=1`. Outside
- * production, `bloom` (1 to 5 flowers) grows flowers that give no points, and
- * `launched=1` shows the page as it is once the countdown has ended.
- */
 export default async function ExplorePage({
   params,
   searchParams,

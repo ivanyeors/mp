@@ -5,11 +5,6 @@ import ShopifyAdminPage from "./shopify-client";
 
 export const runtime = "nodejs";
 
-/**
- * The active Items are read with the service-role client here — the same query
- * the page used to run in the browser on mount — so the Shopify Link panel
- * renders on first paint.
- */
 export default async function ShopifyAdminRoute({
   params,
 }: {

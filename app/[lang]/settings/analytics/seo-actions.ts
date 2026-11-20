@@ -35,7 +35,6 @@ import { getSiteOrigin } from "@/lib/site-url";
 
 const RANGE_DAYS = { "28d": 28, "3m": 91, "6m": 182, "12m": 364, "16m": 486 } as const;
 
-/** Search Console totals for the visibility section (slice 02). Reads Supabase only, never Google. */
 export async function getSearchVisibility(input: {
   range: string;
   granularity: string;
@@ -74,8 +73,6 @@ export async function getSearchVisibility(input: {
     totals,
     previousTotals,
     deltas: compareTotals(totals, previousTotals),
-    // Weekly buckets start on the Monday on/before `from`, so the first point is a
-    // whole week rather than a misleading 2-day dip. KPI totals stay on [from, to].
     buckets: bucketize(
       rows.filter((r) => r.date >= bucketStart(from, granularity)),
       { from: bucketStart(from, granularity), to, granularity, today },
@@ -85,7 +82,6 @@ export async function getSearchVisibility(input: {
 
 const PAGE = 1000;
 
-/** PostgREST caps a response at 1000 rows; page through with `.range()`. */
 async function fetchAllPages<T>(
   page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
 ): Promise<T[]> {
@@ -98,7 +94,6 @@ async function fetchAllPages<T>(
   }
 }
 
-/** Visits by channel (AI assistants separate) + per-channel funnel (slice 03). First-party data only. */
 export async function getChannelMix(input: { range: string; granularity: string }) {
   await assertAdmin("analytics");
 
@@ -106,7 +101,6 @@ export async function getChannelMix(input: { range: string; granularity: string 
   const granularity: Granularity = input.granularity === "day" ? "day" : "week";
   const to = singaporeDate(new Date().toISOString());
   const from = addDays(to, -(days - 1));
-  // Singapore midnight of the chart's first day, as an instant.
   const sinceIso = new Date(Date.parse(`${bucketStart(from, granularity)}T00:00:00+08:00`)).toISOString();
   const admin = supabaseAdmin();
 
@@ -140,9 +134,6 @@ export async function getChannelMix(input: { range: string; granularity: string 
     for (const o of data ?? []) orderTotals.set(o.id as string, Number(o.total));
   }
 
-  // First touch: where each paying shopper first came from. Their first Visit
-  // can be older than the range, so it is read on its own, for payers only.
-  // A failed read leaves first touch equal to last touch rather than no card.
   const payers = visits.filter((v) => v.converted_order_id && orderTotals.has(v.converted_order_id));
   const firstTouch = new Map<string, VisitSourceFields>();
   try {
@@ -171,7 +162,6 @@ export async function getChannelMix(input: { range: string; granularity: string 
   };
 }
 
-/** AI crawler activity from the proxy.ts rollup (slice 04). */
 export async function getCrawlerActivity(input: { range: string; granularity: string }) {
   await assertAdmin("analytics");
 
@@ -202,7 +192,6 @@ export async function getCrawlerActivity(input: { range: string; granularity: st
   };
 }
 
-/** Annotations overlapping the selected range (slice 05). Charts start on the Monday before `from`. */
 export async function getSeoAnnotations(input: { range: string; granularity: string }): Promise<Annotation[]> {
   await assertAdmin("analytics");
   const days = RANGE_DAYS[input.range as keyof typeof RANGE_DAYS] ?? RANGE_DAYS["3m"];
@@ -246,7 +235,6 @@ async function rollup(source: string, dimension: string, from: string, to: strin
   return rows.map((r) => ({ ...r, clicks: Number(r.clicks), impressions: Number(r.impressions), position_sum: Number(r.position_sum) }));
 }
 
-/** Target-query watchlist + biggest movers for queries and pages (slice 06). */
 export async function getSearchQueries(input: { range: string }) {
   await assertAdmin("analytics");
   const days = RANGE_DAYS[input.range as keyof typeof RANGE_DAYS] ?? RANGE_DAYS["3m"];
@@ -322,17 +310,12 @@ export async function removeTargetQuery(query: string): Promise<{ ok: true } | {
 const MAX_IMPORT_FILES = 12;
 const MAX_IMPORT_BYTES = 2_000_000;
 
-/**
- * Upload Search Console "Generative AI" and Bing "AI Performance" exports (slice 07).
- * Files are sent as text; re-uploading overlapping dates overwrites, never duplicates.
- */
 export async function importAiReports(files: { name: string; text: string }[]) {
   await assertAdmin("analytics");
   if (!Array.isArray(files) || !files.length) return { ok: false as const, error: "Choose at least one CSV file." };
   if (files.length > MAX_IMPORT_FILES) return { ok: false as const, error: `Upload at most ${MAX_IMPORT_FILES} files at once.` };
 
   const importDate = singaporeDate(new Date().toISOString());
-  // Filters.csv labels the period of the Pages/Countries/Devices totals in the same upload.
   let period: string | undefined;
   for (const f of files) {
     const p = parseReport(f.text ?? "", { importDate });
@@ -382,7 +365,6 @@ async function latestImport(source: string, dimension: string) {
   return data as { date: string; synced_at: string; extra: Record<string, unknown> | null } | null;
 }
 
-/** Imported AI-answer visibility: Google AI Overviews / AI Mode impressions and Bing Copilot citations (slice 07). */
 export async function getAiAnswers(input: { range: string; granularity: string }) {
   await assertAdmin("analytics");
   const days = RANGE_DAYS[input.range as keyof typeof RANGE_DAYS] ?? RANGE_DAYS["3m"];

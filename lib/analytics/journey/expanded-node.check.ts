@@ -1,7 +1,3 @@
-/**
- * Slice 14 — Expanded node dig-in (replace side panel).
- * Run: npx tsx lib/analytics/journey/expanded-node.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -11,7 +7,6 @@ import { exitSectionHref, isSectionChildPath } from "./paths";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-// --- share % + outbound ---
 const panel = buildNodeSidePanel({
   path: "/",
   events: [
@@ -34,7 +29,6 @@ assert.equal(panel.exitSections[0]!.sharePct, 50);
 assert.equal(panel.exitSections[1]!.sharePct, 25);
 assert.deepEqual(panel.outbound.map((o) => o.to), ["/shop", "__drop_off__"]);
 
-// --- anchor href uses Admin lang ---
 assert.equal(
   exitSectionHref("en-US", "/", "pick-your-mpillow"),
   "/en-US#pick-your-mpillow",
@@ -47,7 +41,6 @@ assert.equal(isSectionChildPath("/#hero"), true);
 assert.equal(isSectionChildPath("/"), false);
 assert.equal(isSectionChildPath("__converted__"), false);
 
-// --- UI: Expanded node, no drawer, split detail fetch ---
 const card = readFileSync(
   join(root, "app/[lang]/settings/analytics/ProspectJourneyCard.tsx"),
   "utf8",
@@ -64,8 +57,6 @@ assert.match(card, /TimeOnPageChart/);
 assert.match(card, /RoutesChart/);
 assert.match(card, /onDive/);
 assert.match(card, /selectedPaths/);
-// Dig-in bodies grow to fit — no inner scroll. Scoped to the dig-in components:
-// the filter sidebar outside them is allowed to scroll.
 const digIn = card.slice(
   card.indexOf("function DigInSection("),
   card.indexOf("function JourneyGraph("),
@@ -97,8 +88,6 @@ assert.match(aggregates, /loadNodeDetailFromDb/);
 assert.match(aggregates, /pageDropOffTotal/);
 assert.match(aggregates, /outbound/);
 
-// --- storefront ids match data-section ---
-// Landing sections moved into the shared list component (page-builder slice 06).
 const home = readFileSync(
   join(root, "components/sections/landing/landing-sections-list.tsx"),
   "utf8",

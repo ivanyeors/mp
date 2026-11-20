@@ -1,9 +1,3 @@
-/**
- * Server-side quote for a shop customization: loads Costings and runs the pure
- * `priceCustomizedBuild`. Kept apart from `customization-price.ts`, which must stay
- * client-safe for the preview.
- */
-
 import { loadComposedSellable, type ComposedSellableKey } from "@/lib/results/composed-sellable";
 import { customizationDelta, priceCustomizedBuild } from "@/lib/shop/customization-price";
 import { isBolsterCaseForLength, toComponentRole } from "@/lib/shop/customization-inventory";
@@ -25,18 +19,6 @@ type ItemRow = {
   is_active: boolean | null;
 };
 
-/**
- * The Costings price of a customized build, the signed delta from the shelf price its
- * storefront variant carries, and the build's lines as the database knows them.
- *
- * Both apply handlers and checkout go through here so none of them can grow its own
- * arithmetic again. Everything the browser sent beyond `item_id` and `quantity` is
- * discarded: a line's pricing role comes from `items.category`, its name from
- * `items.name`, and `price_delta` is never read. A cover or case must be one this
- * size actually offers, anything else must already be in the BOM, and fillings must
- * be real fillings — otherwise a line priced as a cheap "cover" is built as whatever
- * the BOM ships.
- */
 export async function quoteCustomization(
   admin: ReturnType<typeof supabaseAdmin>,
   key: ComposedSellableKey,
@@ -66,8 +48,6 @@ export async function quoteCustomization(
   const itemById = new Map<number, ItemRow>(
     ((items ?? []) as ItemRow[]).map((i) => [Number(i.id), i]),
   );
-  // Seeded with null so an item with no `item_prices` row stays unpriced rather than
-  // reading as absent-and-therefore-free.
   const msrpByItem = new Map<number, number | null>(ids.map((id) => [id, null]));
   for (const p of prices ?? []) {
     msrpByItem.set(Number(p.item_id), p.msrp == null ? null : Number(p.msrp));
@@ -80,8 +60,6 @@ export async function quoteCustomization(
   };
   const isOffered = (role: "cover" | "case", item: ItemRow) =>
     offered[role].has(item.id) ||
-    // A bolster has no Costings case list (`loadComposedSellable` leaves it empty):
-    // the configurator offers the active cases cut for this length.
     (role === "case" &&
       key.productType === "bolster" &&
       !!item.is_active &&

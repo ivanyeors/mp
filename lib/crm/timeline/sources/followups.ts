@@ -4,13 +4,6 @@ import { FOLLOW_UPS_GROUP } from "@/lib/crm/timeline/groups";
 import { joinBatches, streamBatch } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter, TimelineRef } from "@/lib/crm/timeline/types";
 
-/**
- * Follow-ups (CRM 06) on the Customer timeline (`customers`, like the
- * Follow-ups route): when each was added (`created_at`) and when it was done
- * (`done_at`), one stream per column. The title is shown in full. A follow-up has no page of its own, so no link; a deleted one
- * leaves no entry.
- */
-
 const refOf = (id: string): TimelineRef => ({ type: "customer_followup", id });
 
 export const followUpsAdapter: TimelineAdapter = {

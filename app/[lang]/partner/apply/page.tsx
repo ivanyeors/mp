@@ -23,7 +23,6 @@ export default async function PartnerApplyPage({
     redirect(withLocale("/account/login?next=/partner/apply", locale));
   }
 
-  // Already applied / a partner in any state → the hub owns their screen.
   const existing = await loadPartnerRow(user);
   if (existing) {
     redirect(withLocale("/partner", locale));

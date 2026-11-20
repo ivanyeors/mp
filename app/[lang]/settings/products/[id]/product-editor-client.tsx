@@ -58,23 +58,18 @@ import {
 import { DescriptionOfferView, Meter, WriteWithClaude, useProductAi } from "./product-ai";
 import { SeoCard } from "./seo-card";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type ContentMap = Record<string, LocalizedProductContent>;
 
-/** The product row `GET /api/shop/products/[id]` returns under `row`. */
 export type LoadedProduct = Product & {
     product_variants?: ProductVariant[];
     product_images?: ProductImage[];
 };
 
-/** Exactly the JSON `GET /api/shop/products/[id]` returns. */
 export type ProductDetailResponse = {
     ok: true;
     row: LoadedProduct;
 };
 
-/** Exactly the JSON `GET /api/shop/categories` returns. */
 export type CategoriesListResponse = {
     ok: true;
     rows: ProductCategory[];
@@ -121,16 +116,12 @@ const EMPTY_CONTENT: LocalizedProductContent = {
     seo_description: "",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Same shape `fetchProduct` builds from a loaded row: one entry per language the editor has a tab for. */
 function contentFromProduct(p: LoadedProduct | null): ContentMap {
     return Object.fromEntries(
         PRODUCT_LOCALES.map((l) => [l.code, { ...EMPTY_CONTENT, ...(p?.content?.[l.code] ?? {}) }]),
     );
 }
 
-/** Off until the page says otherwise: no ✨ shows. */
 const AI_OFF: AiWritingAvailability = { on: false, configured: false };
 
 function slugify(str: string): string {
@@ -146,21 +137,13 @@ function formatPrice(val: number, currency = "SGD"): string {
     return formatCurrency(val, currency);
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function ProductEditorClient({
     initialData,
     ai = AI_OFF,
     stripeMode,
 }: {
     initialData?: ProductEditorInitialData;
-    /** Whether ✨ Write and ✨ Generate SEO are on offer, read by the page. */
     ai?: AiWritingAvailability;
-    /**
-     * Which Stripe account this deploy uses, read on the server from its key. The
-     * browser cannot see that key, and guessing read the other account's column — so
-     * a product synced a moment ago showed "Not synced" after a reload.
-     */
     stripeMode: StripeMode;
 }) {
     const router = useRouter();
@@ -168,13 +151,9 @@ export function ProductEditorClient({
     const id = (Array.isArray(params?.id) ? params.id[0] : params?.id) ?? "new";
     const isNew = id === "new";
 
-    // Server-rendered row, when the RSC page loaded it. Same values
-    // `fetchProduct` would have applied after the first client fetch.
     const initialProduct = initialData?.product.row ?? null;
 
-    // ── Core product state ──
     const [slug, setSlug] = useState(initialProduct?.slug ?? "");
-    // A loaded slug counts as manually set.
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(initialProduct !== null);
     const [status, setStatus] = useState<ProductStatus>(initialProduct?.status ?? "draft");
     const [productType, setProductType] = useState<ProductType>(
@@ -196,7 +175,6 @@ export function ProductEditorClient({
         initialProduct?.is_auto_generated ?? false,
     );
 
-    // ── Localized content ──
     const [content, setContent] = useState<ContentMap>(() =>
         contentFromProduct(initialProduct),
     );
@@ -207,14 +185,12 @@ export function ProductEditorClient({
         isNew ? "New product" : (content["en-US"]?.title?.trim() || null),
     );
 
-    // ── Images ──
     const [images, setImages] = useState<ProductImage[]>(() =>
         (initialProduct?.product_images ?? initialProduct?.images ?? []).sort(
             (a, b) => a.position - b.position,
         ),
     );
 
-    // ── Variants ──
     const [variants, setVariants] = useState<ProductVariant[]>(() =>
         (initialProduct?.product_variants ?? initialProduct?.variants ?? []).sort(
             (a, b) => a.position - b.position,
@@ -226,22 +202,17 @@ export function ProductEditorClient({
     const [variantSaving, setVariantSaving] = useState(false);
     const [variantsOpen, setVariantsOpen] = useState(true);
 
-    // ── Async flags ──
     const [loading, setLoading] = useState(!isNew && !initialData);
     const [saving, setSaving] = useState(false);
     const [syncingStripe, setSyncingStripe] = useState(false);
     const [generatingLink, setGeneratingLink] = useState(false);
 
-    // ── Reference data ──
     const [categories, setCategories] = useState<ProductCategory[]>(
         initialData?.categories.rows ?? [],
     );
 
-    // The RSC page already loaded the product and the categories — skip the
-    // mount fetches once, then behave exactly as before.
     const hydratedFromServer = useRef(Boolean(initialData));
 
-    // ── Fetch categories ──
     useEffect(() => {
         if (initialData) return;
         fetch("/api/shop/categories")
@@ -250,7 +221,6 @@ export function ProductEditorClient({
             .catch(() => {});
     }, [initialData]);
 
-    // Free-form creation is retired — products come from inventory.
     useEffect(() => {
         if (isNew) {
             toast.message("Products come from inventory. Use Sync from Inventory on the Products page.");
@@ -258,7 +228,6 @@ export function ProductEditorClient({
         }
     }, [isNew, router]);
 
-    // ── Fetch product if editing ──
     const fetchProduct = useCallback(async () => {
         if (isNew) return;
         setLoading(true);
@@ -272,7 +241,7 @@ export function ProductEditorClient({
             const p: LoadedProduct = data.row;
 
             setSlug(p.slug ?? "");
-            setSlugManuallyEdited(true); // treat loaded slug as manually set
+            setSlugManuallyEdited(true);
             setStatus(p.status);
             setProductType(p.product_type);
             setCategoryId(p.category_id);
@@ -303,7 +272,6 @@ export function ProductEditorClient({
         fetchProduct();
     }, [fetchProduct]);
 
-    // ── Auto-generate slug from EN title ──
     const enTitle = content["en-US"]?.title ?? "";
     useEffect(() => {
         if (!slugManuallyEdited && isNew) {
@@ -311,7 +279,6 @@ export function ProductEditorClient({
         }
     }, [enTitle, slugManuallyEdited, isNew]);
 
-    // ── Content helpers ──
     const updateContent = (locale: string, field: keyof LocalizedProductContent, value: string) => {
         setContent((prev) => ({
             ...prev,
@@ -319,7 +286,6 @@ export function ProductEditorClient({
         }));
     };
 
-    // ✨ Write's words go in as one change, which the toast's Undo takes back.
     const applyDescription = (
         r: { locale: Locale; description: string | null; body: string | null },
         take: { description: boolean; body: boolean },
@@ -343,7 +309,6 @@ export function ProductEditorClient({
         });
     };
 
-    // ── Tags ──
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter" || e.key === ",") {
             e.preventDefault();
@@ -356,7 +321,6 @@ export function ProductEditorClient({
     };
     const removeTag = (tag: string) => setTags(tags.filter((t) => t !== tag));
 
-    // ── Save product ──
     const handleSave = async () => {
         if (!slug.trim()) { toast.error("Enter a slug."); return; }
         if (!content["en-US"]?.title?.trim()) { toast.error("Enter an English title."); return; }
@@ -408,7 +372,6 @@ export function ProductEditorClient({
         }
     };
 
-    // ── Images ──
     const addImage = async (selection: { assetId: string; url: string; alt?: string | null }) => {
         if (isNew) {
             toast.error("Save the product before adding images.");
@@ -470,14 +433,12 @@ export function ProductEditorClient({
         }
     };
 
-    // Base images set in Inventory: from the item behind a variant, or the pillow/bolster product itself.
     const inventoryImageUrls = new Set(
         variants
             .filter((v) => v.image_url && (v.item_id != null || v.pillow_product_id != null || isAutoGenerated))
             .map((v) => v.image_url),
     );
 
-    // ── Variants ──
     const openAddVariant = () => {
         setEditingVariant(null);
         setVariantForm(EMPTY_VARIANT_FORM);
@@ -593,7 +554,6 @@ export function ProductEditorClient({
         }
     };
 
-    // ── Stripe ──
     const handleSyncToStripe = async () => {
         if (isNew) { toast.error("Save the product first."); return; }
         setSyncingStripe(true);
@@ -606,8 +566,6 @@ export function ProductEditorClient({
             const data = await res.json();
             if (data.ok) {
                 setStripeProductId(data.stripeProductId ?? stripeProductId);
-                // Each variant now has a Price too. Applied in place rather than by
-                // refetching, which would overwrite unsaved edits in the form.
                 const priceIds = new Map<string, string>(
                     ((data.variants ?? []) as { id: string; stripePriceId: string }[]).map(
                         (v) => [v.id, v.stripePriceId],
@@ -659,7 +617,6 @@ export function ProductEditorClient({
         toast.success("Copied to clipboard");
     };
 
-    // ── Price range from variants ──
     const priceRange = variants.length
         ? {
             min: Math.min(...variants.map((v) => v.price)),
@@ -668,12 +625,10 @@ export function ProductEditorClient({
         }
         : null;
 
-    // ── Category label helper ──
     const getCategoryName = (cat: ProductCategory): string => {
         return cat.content?.["en-US"]?.name ?? cat.slug;
     };
 
-    // ── Variant stock and warnings (the desktop table and the phone list) ──
     const renderVariantStock = (v: ProductVariant) =>
         isAutoGenerated ? (
             <span className={
@@ -710,7 +665,6 @@ export function ProductEditorClient({
         </>
     );
 
-    // ── Locale tab content renderer ──
     const renderLocaleTab = (l: ProductLocale) => {
         const locale = l.code;
         const loc = content[locale] ?? EMPTY_CONTENT;
@@ -778,7 +732,6 @@ export function ProductEditorClient({
 
     return (
         <div className={`space-y-6 ${mobileStickyActionBarSpacerClassName}`}>
-            {/* Header */}
             <div className="flex items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold">
@@ -788,7 +741,6 @@ export function ProductEditorClient({
                         <p className="text-sm text-muted-foreground mt-0.5">/{slug}</p>
                     )}
                 </div>
-                {/* Phones save from the bar at the bottom instead: one Save, always in reach. */}
                 <Button onClick={handleSave} disabled={saving} size="sm" className="max-md:hidden">
                     <Save className="mr-2 h-4 w-4" />
                     {saving ? "Saving…" : "Save"}
@@ -807,20 +759,16 @@ export function ProductEditorClient({
                 </div>
             )}
 
-            {/* Two-column layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* ── LEFT COLUMN ── */}
                 <div className="lg:col-span-2 space-y-6">
 
-                    {/* Locale content tabs: one per language the shop is written in */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Content</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Tabs value={contentLocale} onValueChange={(v) => setContentLocale(v as Locale)}>
-                                {/* The strip takes what the button leaves, and turns into a menu when the languages outgrow it. */}
                                 <div className="flex items-center gap-2">
                                     <div className="min-w-0 flex-1">
                                         <TabsList aria-label="Language">
@@ -848,7 +796,6 @@ export function ProductEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Images */}
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                             <CardTitle>Images</CardTitle>
@@ -868,7 +815,6 @@ export function ProductEditorClient({
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                     {images.map((img, idx) => (
                                         <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border bg-muted">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={img.url}
                                                 alt={img.alt_text ?? "product image"}
@@ -928,7 +874,6 @@ export function ProductEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Variants */}
                     <Collapsible open={variantsOpen} onOpenChange={setVariantsOpen}>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
@@ -1087,10 +1032,8 @@ export function ProductEditorClient({
                     </Collapsible>
                 </div>
 
-                {/* ── RIGHT COLUMN ── */}
                 <div className="space-y-4">
 
-                    {/* Status + Save */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Status</CardTitle>
@@ -1119,7 +1062,6 @@ export function ProductEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Pricing (only when variants exist) */}
                     {priceRange && (
                         <Card>
                             <CardHeader>
@@ -1140,7 +1082,6 @@ export function ProductEditorClient({
                         </Card>
                     )}
 
-                    {/* Stripe */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Stripe</CardTitle>
@@ -1208,13 +1149,11 @@ export function ProductEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Organization */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Organization</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Category */}
                             <div className="space-y-1.5">
                                 <Label htmlFor="category-select">Category</Label>
                                 <Select
@@ -1235,7 +1174,6 @@ export function ProductEditorClient({
                                 </Select>
                             </div>
 
-                            {/* Tags */}
                             <div className="space-y-1.5">
                                 <Label htmlFor="tag-input">Tags</Label>
                                 <div className="flex flex-wrap gap-1.5 mb-1.5 max-md:gap-2">
@@ -1263,7 +1201,6 @@ export function ProductEditorClient({
                                 />
                             </div>
 
-                            {/* Product type */}
                             <div className="space-y-1.5">
                                 <Label htmlFor="type-select">Product type</Label>
                                 <Select
@@ -1281,7 +1218,6 @@ export function ProductEditorClient({
                                 </Select>
                             </div>
 
-                            {/* Featured */}
                             <div className="flex items-center gap-2.5">
                                 <input
                                     type="checkbox"
@@ -1297,7 +1233,6 @@ export function ProductEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* SEO: the slug, then one tab per language */}
                     <SeoCard
                         slug={slug}
                         onSlug={(v) => {
@@ -1315,7 +1250,6 @@ export function ProductEditorClient({
                 </div>
             </div>
 
-            {/* ── Variant Dialog ── */}
             <Dialog open={variantDialogOpen} onOpenChange={setVariantDialogOpen}>
                 <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>

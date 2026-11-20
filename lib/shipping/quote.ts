@@ -25,16 +25,10 @@ import type {
   TypeBoxes,
 } from "@/lib/shipping/types";
 
-/** Postal codes compare without spaces or case, so "s 123 456" and "S123456" share a quote. */
 export function normalizePostalCode(postal: string): string {
   return postal.replace(/\s+/g, "").toUpperCase();
 }
 
-/**
- * The cache key for one rate request: everything a courier prices on, nothing it
- * does not. Descriptions and SKUs are left out so a renamed product does not miss
- * the cache; street lines are left out because rates are by postal code.
- */
 export function quoteCacheKey(input: {
   settings: Pick<ShippingSettings, "incoterms" | "insure_shipments">;
   origin: Pick<EasyshipAddress, "country_alpha2" | "postal_code">;
@@ -65,28 +59,16 @@ export function quoteCacheKey(input: {
 
 export interface FetchRatesInput {
   settings: ShippingSettings;
-  /** The ship-from address; undefined reads the default sender from the courier account doc. */
   origin?: EasyshipAddress | null;
   destination: ShippingDestination;
   parcels: Parcel[] | null;
   currency: string;
-  /** Skip the cache read — the Settings test tool and label purchase want today's price. */
   fresh?: boolean;
   config?: EasyshipConfig | null;
   fetchImpl?: typeof fetch;
   now?: Date;
 }
 
-/**
- * Live courier rates for one destination and set of parcels.
- *
- * A fresh Easyship answer is stored in `shipping_rate_quotes` for the settings'
- * TTL; within it, the same cart to the same postal code reads the stored answer
- * instead of calling Easyship again. That is what makes the checkout route charge
- * exactly the rate the checkout page showed without trusting the client: both
- * build the same parcels from the database, hash to the same key, and read the
- * same row.
- */
 export async function fetchCourierRates(
   admin: SupabaseClient,
   input: FetchRatesInput,
@@ -162,7 +144,6 @@ export async function fetchCourierRates(
     rates = normalizeEasyshipRates(raw);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Easyship request failed";
-    // A 4xx about the address or an outage: either way the live methods are hidden.
     console.error("[shipping] Easyship rates failed:", message, err instanceof EasyshipError ? err.details : "");
     return { ok: false, reason: "error", message };
   }
@@ -182,7 +163,6 @@ export async function fetchCourierRates(
     .single();
   if (storeError) console.error("[shipping] Could not store rate quote:", storeError.message);
 
-  // Housekeeping on the miss path only: quotes older than a day are never read again.
   void admin
     .from("shipping_rate_quotes")
     .delete()
@@ -213,10 +193,6 @@ function flatOption(method: ShippingMethod, subtotal: number): ShippingQuoteOpti
   };
 }
 
-/**
- * Price one method from already-fetched rates. Null hides a live method with no
- * courier quote: an outage, no rates, or a currency mismatch. There is no fallback.
- */
 export function priceMethod(
   method: ShippingMethod,
   rates: RatesResult | null,
@@ -256,19 +232,12 @@ export interface QuoteMethodsInput {
   lines: ShippableLine[];
   destination: ShippingDestination;
   subtotal: number;
-  /** Loaded lazily: a cart with only flat methods never reads settings or calls Easyship. */
   loadSettings: () => Promise<ShippingSettings>;
-  /** Each item type's box; defaults to the courier account doc. */
   loadBoxes?: () => Promise<TypeBoxes>;
   config?: EasyshipConfig | null;
   fetchImpl?: typeof fetch;
 }
 
-/**
- * Every method priced for this cart and address, in the methods' order. One
- * Easyship call (or one cache read) serves all the live methods. Methods that
- * cannot ship to the address are left out.
- */
 export async function quoteShippingMethods(
   admin: SupabaseClient,
   input: QuoteMethodsInput,

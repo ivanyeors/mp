@@ -1,15 +1,3 @@
-/**
- * Partner transactional emails (#84). Mirrors lib/email/index.ts + rma.ts: an
- * idempotent DB-backed dispatch keyed on the `partner_emails` ledger, plus one
- * branded template per partner event. Every hook is best-effort — a partner
- * email must NEVER break capture / payment / approval / payout.
- *
- * Idempotency key: (partner_id, template, entity_id). entity_id already encodes
- * the entity (order id, `${partnerId}:tierN`, payout id, `${partnerId}:${ver}`,
- * partner_users id), so referral-earned fires exactly once per attributed order
- * and never on void/decrement (the void path never re-enters commission create).
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notifyPartnerWhatsApp } from "@/lib/whatsapp/partner-notify";
 import { getEmailTransport } from ".";
@@ -25,16 +13,6 @@ import type { RenderedEmail, SendOutcome } from "./types";
 
 const HUB_URL = () => `${getSiteOrigin()}/partner`;
 
-// ------------------------------------------------------------
-// Idempotent dispatch (DB-backed, keyed on partner_emails)
-// ------------------------------------------------------------
-
-/**
- * Send a partner email at most once per (partner_id, template, entity_id). Claims
- * a `partner_emails` row (ignoreDuplicates → [] on conflict ⇒ skip) before sending.
- * NEVER throws — logs on failure and marks the row so an operator can see it.
- * `partnerId` may be null (a rejected application has no partner row).
- */
 export async function dispatchPartnerEmail(
   admin: SupabaseClient,
   params: {
@@ -91,11 +69,6 @@ export async function dispatchPartnerEmail(
   }
 }
 
-/**
- * The partner's contact email: their partner_users login email (approved row
- * preferred), falling back to the verified backup email. Null when unresolvable —
- * callers treat that as "nothing to send".
- */
 export async function partnerRecipientEmail(
   admin: SupabaseClient,
   partnerId: string,
@@ -104,26 +77,13 @@ export async function partnerRecipientEmail(
     .from("partner_users")
     .select("email, backup_email, application_status")
     .eq("partner_id", partnerId)
-    .order("application_status", { ascending: true }) // 'approved' sorts before 'pending'/'rejected'
+    .order("application_status", { ascending: true })
     .limit(1);
   const row = (data ?? [])[0] as { email?: string; backup_email?: string } | undefined;
   return row?.email ?? row?.backup_email ?? null;
 }
 
-// ------------------------------------------------------------
-// Templates (pure — importable by #85 tests / the self-check)
-// ------------------------------------------------------------
-
-/** Re-exported: this was the original home of the SG date formatter. */
 export { formatSgDate };
-
-// ------------------------------------------------------------
-// The words of each partner email (PRD-email-templates)
-// ------------------------------------------------------------
-//
-// Amounts, dates, the tier and the agreement version are data: they fill the
-// placeholders, and the panels and rows that show them stay in code. Each
-// plain-text version is built from the same fields as its HTML.
 
 const SIGNOFF: CopyField = { label: "Sign-off", default: "— The Mpillow team", optional: true };
 const RELEASE_HINT = "Say when it releases: a commission email never states an amount without its timing.";
@@ -216,20 +176,14 @@ export const PARTNER_EMAIL_COPY = {
 
 type CopyOf<T extends keyof typeof PARTNER_EMAIL_COPY> = EmailCopy<keyof (typeof PARTNER_EMAIL_COPY)[T]["fields"] & string>;
 
-/** Fill every field of `copy` from `values`. */
 function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
   const out = {} as EmailCopy<K>;
   for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
   return out;
 }
 
-/** The sign-off, as the last lines of a plain-text body; none when Staff removed it. */
 const signoffText = (signoff: string) => (signoff ? ["", signoff] : []);
 
-/**
- * Referral-earned copy. `money` is pre-formatted; `releaseAtIso` null ⇒ undelivered.
- * Both release lines state timing; the delivered one is DATED (AC).
- */
 export function renderReferralEarnedEmail(
   p: { money: string; releaseAtIso: string | null },
   copy: CopyOf<"referral_earned"> = defaultEmailCopy(PARTNER_EMAIL_COPY.referral_earned),
@@ -291,7 +245,6 @@ ${t.signoff ? paragraph(t.signoff, { muted: true }) : ""}`,
   return { subject: t.subject, text, html };
 }
 
-/** Payout copy. `proofUrl` (a long-lived signed URL) links the proof of payment (AC5). */
 export function renderPayoutEmail(
   p: {
     money: string;
@@ -301,8 +254,6 @@ export function renderPayoutEmail(
   copy: CopyOf<"payout_made"> = defaultEmailCopy(PARTNER_EMAIL_COPY.payout_made),
 ): RenderedEmail {
   const t = filled(copy, { amount: p.money, paid_on: p.paidOn });
-  // `proofUrl` is a signed storage URL; safeUrl() inside button() validates it,
-  // and a rejected URL degrades to plain text rather than a dead button.
   const cta = p.proofUrl
     ? { href: p.proofUrl, label: t.button_proof, variant: "secondary" as const }
     : { href: HUB_URL(), label: t.button_hub };
@@ -352,17 +303,6 @@ ${t.signoff ? paragraph(t.signoff, { muted: true }) : ""}`,
   return { subject: t.subject, text, html };
 }
 
-// ------------------------------------------------------------
-// Senders (gather data → dispatch idempotently, best-effort)
-// ------------------------------------------------------------
-
-/**
- * Referral-earned email — ATTRIBUTED CAPTURE only. Reads the commission rows just
- * created for this order to get the exact earned amount + dated release; sends
- * nothing when no commissionable line resolved (no earning) or the partner has no
- * email. Idempotent on entity_id = orderId, so it never double-sends and never
- * fires on a later void/decrement.
- */
 export async function sendReferralEarnedEmail(
   admin: SupabaseClient,
   input: { partnerId: string; orderId: string; currency: string },
@@ -393,7 +333,6 @@ export async function sendReferralEarnedEmail(
     to,
     ...rendered,
   });
-  // Additive WhatsApp channel (#86) — best-effort, opt-in, silent on failure.
   await notifyPartnerWhatsApp(admin, {
     partnerId: input.partnerId,
     template: "referral_earned",
@@ -402,7 +341,6 @@ export async function sendReferralEarnedEmail(
   });
 }
 
-/** Milestone rung-reached email. Idempotent on entity_id = `${partnerId}:tier${tier}`. */
 export async function sendMilestoneReachedEmail(
   admin: SupabaseClient,
   input: { partnerId: string; tier: number; cashBonus: number; perkLabel: string },
@@ -434,7 +372,6 @@ export async function sendMilestoneReachedEmail(
   });
 }
 
-/** Payout-made email. Idempotent on entity_id = payoutId. `proofUrl` is pre-signed. */
 export async function sendPayoutMadeEmail(
   admin: SupabaseClient,
   input: { partnerId: string; payoutId: string; amount: number; paidOn: string; proofUrl: string | null },
@@ -465,7 +402,6 @@ export async function sendPayoutMadeEmail(
   });
 }
 
-/** Re-accept-terms email. Idempotent on entity_id = `${partnerId}:${agreementVersion}`. */
 export async function sendReacceptEmail(
   admin: SupabaseClient,
   input: { partnerId: string; agreementVersion: string; to: string },

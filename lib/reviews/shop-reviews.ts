@@ -5,26 +5,8 @@ import type { Actor } from "@/lib/reviews/google-actions";
 import { checkReplyText } from "@/lib/reviews/reply-rules";
 import { sendGroupCard } from "@/lib/telegram/bot-api";
 
-/**
- * Website reviews (`product_reviews`) in the measurements Telegram group.
- *
- * A signed-in Customer submits one (app/api/shop/reviews); it arrives
- * `pending`, and its card goes to the group with Approve / Reject for a shop
- * moderator (`telegram.shop-review-moderate`). The card's message id is kept
- * on the review, so a reply to the card finds it.
- *
- * Our public reply: someone allowed `telegram.shop-review-reply` replies to
- * the card with the words to show, on a pending or approved review. It is set
- * at once — there is no draft or Post step, and no Claude draft — and appears
- * under the review on the product page while the review is approved. Replying
- * again replaces it; the card's Remove reply takes it down. A reply starting
- * with `//` is a team note and is left alone, as on Google cards
- * (lib/reviews/telegram-handler.ts).
- */
-
 type ProductContent = Record<string, { title?: string } | undefined> | null;
 
-/** A product's name for Staff: its default-locale title, else its slug. Also the Customer timeline's. */
 export function productTitle(product: { slug?: string | null; content?: ProductContent } | null): string | null {
   if (!product) return null;
   const content = product.content ?? {};
@@ -59,7 +41,6 @@ export async function loadShopReviewForCard(id: string): Promise<ShopReviewForCa
   };
 }
 
-/** The review a card in the group belongs to, or null (not a shop card, or sent before cards were recorded). */
 export async function getShopReviewByCard(chatId: number, messageId: number): Promise<ShopReviewForCard | null> {
   const { data } = await supabaseAdmin()
     .from("product_reviews")
@@ -70,7 +51,6 @@ export async function getShopReviewByCard(chatId: number, messageId: number): Pr
   return data ? loadShopReviewForCard(data.id as string) : null;
 }
 
-/** Best-effort: a submitted review stands whether or not the card goes out. */
 export async function notifyNewShopReview(id: string): Promise<void> {
   try {
     const review = await loadShopReviewForCard(id);
@@ -89,11 +69,6 @@ export async function notifyNewShopReview(id: string): Promise<void> {
 
 type ShopReviewResult = { ok: true; review: ShopReviewForCard } | { ok: false; review: ShopReviewForCard | null; message?: string };
 
-/**
- * pending → approved | rejected, once. A second tap reports the outcome instead.
- * `card` is the message tapped: it is the review's card, recorded so a reply
- * to it works even on a card sent before card ids were kept.
- */
 export async function moderateShopReview(
   id: string,
   decision: "approved" | "rejected",
@@ -113,12 +88,6 @@ export async function moderateShopReview(
   return { ok: true, review };
 }
 
-/**
- * Sets our public reply, replacing any earlier one. Only on a pending or
- * approved review: a rejected one is not on the shop, so there is nothing to
- * answer. The text is checked like a Google reply (trimmed, not empty, at
- * most MAX_REPLY_CHARS).
- */
 export async function setShopReviewReply(id: string, text: string, actor: Actor): Promise<ShopReviewResult> {
   const checked = checkReplyText(text);
   if (!checked.ok) return { ok: false, review: await loadShopReviewForCard(id), message: checked.error };
@@ -135,7 +104,6 @@ export async function setShopReviewReply(id: string, text: string, actor: Actor)
   return { ok: true, review };
 }
 
-/** Takes our reply down, whatever the review's status. Reports when there was none. */
 export async function removeShopReviewReply(id: string): Promise<ShopReviewResult> {
   const { data } = await supabaseAdmin()
     .from("product_reviews")

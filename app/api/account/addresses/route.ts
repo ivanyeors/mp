@@ -6,13 +6,6 @@ import { AddressInputSchema } from "@/lib/shop/customer-addresses";
 
 export const runtime = "nodejs";
 
-/**
- * Customer-facing saved-address endpoint used by the account area and checkout.
- * Unlike the admin route under /api/shop/customers/[id]/addresses, this is
- * scoped to the *signed-in* shopper: it links the auth user to their customer
- * record and only ever touches that customer's rows.
- */
-
 export async function GET() {
   const user = await getAuthUser();
   if (!user) {
@@ -53,7 +46,6 @@ export async function POST(req: Request) {
   const customer = await linkCustomerToAuthUser(user);
   const admin = supabaseAdmin();
 
-  // Keep at most one default per customer (matches idx_customer_addresses_one_default).
   if (parsed.data.is_default) {
     await admin
       .from("customer_addresses")

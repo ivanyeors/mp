@@ -43,7 +43,7 @@ describe("parsePathPolygon", () => {
 
   it("samples cubic segments into intermediate points", () => {
     const pts = parsePathPolygon("M0 0 C10 0 20 0 30 0 L30 10 Z", 4);
-    expect(pts.length).toBe(6); // M + 4 curve samples + L
+    expect(pts.length).toBe(6);
     expect(pts[pts.length - 1]).toEqual([30, 10]);
   });
 });
@@ -62,7 +62,6 @@ describe("pointInPolygon / nearestOnBoundary", () => {
 });
 
 describe("pouchOutline", () => {
-  // width of the flat run at the very top — shrinks as corners round harder
   const flatTopSpan = (pts: Pt[]) => {
     const minY = Math.min(...pts.map(([, y]) => y));
     const xs = pts.filter(([, y]) => y < minY + 1e-6).map(([x]) => x);
@@ -70,11 +69,8 @@ describe("pouchOutline", () => {
   };
 
   it("keeps a modest, constant corner radius — stuffing pressed into the compartment's corners", () => {
-    // 18% of the short side each corner: a 60×60 pouch keeps a 60 − 2 × 10.8 flat top…
     expect(flatTopSpan(pouchOutline({ x: 0, y: 0, w: 60, h: 60 }))).toBeCloseTo(60 - 2 * 0.18 * 60, 1);
-    // …and a 20×80 one (a squeezed tract) keeps 20 − 2 × 3.6, not a capsule point.
     expect(flatTopSpan(pouchOutline({ x: 0, y: 0, w: 20, h: 80 }))).toBeCloseTo(20 - 2 * 0.18 * 20, 1);
-    // A pill is always the full capsule: its top cap peaks at a point.
     expect(flatTopSpan(pouchOutline({ x: 0, y: 0, w: 20, h: 80 }, 5, "pill"))).toBeLessThan(2);
   });
 
@@ -90,7 +86,7 @@ describe("pouchOutline", () => {
 
 describe("conformPouchPath", () => {
   const region = makeRegion(SQUARE, 4);
-  const rect = { x: 60, y: 10, w: 80, h: 80 }; // bleeds past the right wall
+  const rect = { x: 60, y: 10, w: 80, h: 80 };
 
   const maxTurnDeg = (pts: Pt[]) => {
     let worst = 0;
@@ -127,11 +123,8 @@ describe("conformPouchPath", () => {
   });
 
   it("rounds the corners where the pouch meets a wall, not only its own", () => {
-    // Bleeds past the right wall: the two corners the wall makes are fillets too.
     const pts = pathPoints(conformPouchPath(rect, [region]));
     expect(maxTurnDeg(pts)).toBeLessThan(30);
-    // …and where the shell has a (sampled, rounded) notch, the pouch wraps it
-    // with no sharp corner anywhere and never leaves the shell.
     const notchArc: Pt[] = [0, 1, 2, 3, 4, 5, 6].map((k) => {
       const t = (Math.PI / 2) * (k / 6);
       return [70 - 10 * Math.cos(t), 30 + 10 * Math.sin(t)];
@@ -155,7 +148,6 @@ describe("chaikin", () => {
   it("doubles the points and cuts corners inward", () => {
     const out = chaikin(SQUARE);
     expect(out.length).toBe(8);
-    // the original sharp corner (0,0) is gone
     expect(out.some(([x, y]) => x === 0 && y === 0)).toBe(false);
   });
 });
@@ -164,8 +156,8 @@ describe("bolsterShellPolygon", () => {
   it("is a closed convex-ish capsule with sampled end caps", () => {
     const poly = bolsterShellPolygon("medium");
     expect(poly.length).toBeGreaterThan(40);
-    expect(pointInPolygon([332, 187], poly)).toBe(true); // view center
-    expect(pointInPolygon([10, 187], poly)).toBe(false); // outside the caps
+    expect(pointInPolygon([332, 187], poly)).toBe(true);
+    expect(pointInPolygon([10, 187], poly)).toBe(false);
   });
 });
 
@@ -176,15 +168,11 @@ describe("labelRectOf: a label sits on the drawn body", () => {
   });
 
   it("sits on the wide arm of a notched outline, inside the body", () => {
-    // A 100×100 square with its top-right 60×60 cut away (an L): the label
-    // lands on the full-width bottom arm, never across the notch.
     const r = labelRectOf("M0 0 L40 0 L40 60 L100 60 L100 100 L0 100 Z");
     expect(r).toEqual({ x: 0, y: 60, w: 100, h: 40 });
   });
 
   it("stays on the body beside a notch that the centroid's row runs into", () => {
-    // A tall left lobe with a notch on the right of its upper half: the row
-    // through the centroid is the narrow part, the rect keeps to it.
     const r = labelRectOf("M0 0 L60 0 L60 50 L100 50 L100 100 L0 100 Z");
     expect(r.x + r.w).toBeLessThanOrEqual(100);
     expect(r.y).toBeGreaterThanOrEqual(0);
@@ -215,7 +203,7 @@ describe("insetRing / clipToConvex", () => {
       expect(y).toBeGreaterThanOrEqual(20 - 1e-9);
       expect(y).toBeLessThanOrEqual(80 + 1e-9);
     }
-    expect(out.some(([x, y]) => Math.abs(x - 60) < 1e-9 && Math.abs(y - 40) < 1e-9)).toBe(true); // the notch corner survives
+    expect(out.some(([x, y]) => Math.abs(x - 60) < 1e-9 && Math.abs(y - 40) < 1e-9)).toBe(true);
   });
 });
 
@@ -230,13 +218,11 @@ describe("openRing (opening by the pouch radius)", () => {
       expect(y).toBeGreaterThanOrEqual(0);
       expect(y).toBeLessThanOrEqual(60);
     }
-    // the corner cell (0.5, 0.5) is gone — rounded off at radius 10
     expect(out.some(([x, y]) => x < 2 && y < 2)).toBe(false);
   });
 
   it("drops a sliver thinner than the disc and keeps the body", async () => {
     const { openRing } = await import("../opening");
-    // A 100×60 body with a 6-unit-tall tail sticking out to the right.
     const withTail: Pt[] = [[0, 0], [100, 0], [100, 27], [160, 27], [160, 33], [100, 33], [100, 60], [0, 60]];
     const out = openRing(withTail, 10);
     expect(Math.max(...out.map(([x]) => x))).toBeLessThan(102);
@@ -261,7 +247,6 @@ describe("farthestPair: the all-pairs answer from the hull alone", () => {
     }
     return [ai, bi];
   };
-  // A seeded generator: the same rings every run.
   let seed = 7;
   const rand = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
 

@@ -76,7 +76,6 @@ describe("planCustomerRow", () => {
       customer_id: "c-1",
       fill: [],
     });
-    // Nothing to fill from an empty Shopify field.
     const sparse = row({ firstName: "", phone: "", address1: "" });
     expect(planCustomerRow(sparse, lookup({ "ana@example.com": customer() }))).toMatchObject({ fill: ["last_name"] });
   });

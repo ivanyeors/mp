@@ -64,7 +64,6 @@ describe("visibleItems", () => {
   });
 });
 
-// The trail links a crumb only when the role can open it (`canOpen`), as the menu does.
 describe("breadcrumb links", () => {
   it("leaves Email campaigns a label for a role holding Email templates alone", () => {
     const crumbs = buildSettingsBreadcrumbs("/settings/email-templates", NAV_GROUPS);

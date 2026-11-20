@@ -1,5 +1,3 @@
-/** Strip or reject filling lines on composed sellable and warehouse BOM writes (ADR 0003). */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { placementKind } from "@/lib/spatial-fillings/core";
 
@@ -7,10 +5,6 @@ export type BomLineInput = { item_id: number; quantity: number };
 
 export type LineWithCategory = { item_id: number; quantity: number; category: string };
 
-/**
- * placementKind per Item for the x-ray validators — a category lookup that also
- * tells a neck support apart from every other accessory.
- */
 export async function lookupPlacementKinds(
   admin: SupabaseClient,
   itemIds: number[],
@@ -28,7 +22,6 @@ export async function lookupPlacementKinds(
   return { ok: true, byId };
 }
 
-/** Resolve item categories for BOM lines. */
 export async function lookupItemCategories(
   admin: SupabaseClient,
   itemIds: number[],
@@ -44,7 +37,6 @@ export async function lookupItemCategories(
   return { ok: true, byId };
 }
 
-/** Drop filling-category lines before composed sellable / Apply upserts. Pure. */
 export function stripFillingLines<T extends BomLineInput>(
   lines: T[],
   categoryByItemId: ReadonlyMap<number, string>,
@@ -52,7 +44,6 @@ export function stripFillingLines<T extends BomLineInput>(
   return lines.filter((l) => categoryByItemId.get(l.item_id) !== "filling");
 }
 
-/** Reject warehouse template saves that include fillings. Pure. */
 export function rejectFillingLines(
   lines: Array<{ item_id: number; category: string }>,
 ): { ok: true } | { ok: false; error: string } {

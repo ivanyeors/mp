@@ -1,23 +1,3 @@
-/**
- * The Admin Panel preview of a Fitting import, end to end, apart from the
- * server action it calls (ADR 0042).
- *
- * Pure: the page passes in the server action, so vitest drives the same flow
- * with a fake one.
- *
- *  1. The browser parses the file and stops on a header it cannot import,
- *     before any server call. It reads the date order from the file's dates;
- *     when every date fits both orders, Staff choose.
- *  2. It sends only what matching needs, a chunk at a time: each row's
- *     Timestamp, Email, Mobile and Name, in import order (`importOrder`).
- *     Measurements, health answers, notes and photos stay in the browser
- *     until the import itself.
- *  3. The server re-reads each row itself and answers per row with an outcome,
- *     never PII.
- *  4. The browser settles what only the whole file can see (a row twice, a
- *     Customer an earlier row creates, found again by email or by mobile and
- *     name) and counts everything from its own copy.
- */
 import { toCsv } from "@/lib/csv";
 import { chunkRows, sha256Hex } from "@/lib/customer-migration/preview";
 import {
@@ -42,11 +22,9 @@ import { pickCells, readRawRow } from "./rows";
 
 export { sha256Hex };
 
-/** The page refuses a bigger file before reading it. */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const PREVIEW_CHUNK_ROWS = 250;
 
-/** All the preview sends of a row. The name finds one person under another email, or on a shared mobile. */
 export const PREVIEW_FIELDS: readonly FormField[] = ["timestamp", "email", "mobile", "name"];
 
 export const OUTCOME_LABELS: Record<PlanOutcome, string> = {
@@ -83,12 +61,10 @@ export const REPAIR_LABELS: Record<RowRepair, string> = {
   text_shortened: "An answer was too long and was shortened, kept in full",
 };
 
-/** The rows as the preview sends them: indexed, and only PREVIEW_FIELDS. */
 export function previewPayload(rows: readonly IndexedRawRow["raw"][]): IndexedRawRow[] {
   return rows.map((raw, i) => ({ i, raw: pickCells(raw, PREVIEW_FIELDS) }));
 }
 
-/** The server's check of one chunk: only PREVIEW_FIELDS string cells are kept. */
 export function readPreviewChunk(
   input: unknown,
   order: unknown,
@@ -114,15 +90,11 @@ export function readPreviewChunk(
 export type PreviewChunkResponse = { ok: true; results: RowPreview[] } | { ok: false; error: string };
 export type PreviewChunkFn = (rows: IndexedRawRow[], order: DateOrder) => Promise<PreviewChunkResponse>;
 
-// ─── Counting ────────────────────────────────────────────────────────────────
-
 export type PreviewSummary = {
   rowsTotal: number;
   outcomes: Record<PlanOutcome, number>;
   skipReasons: Partial<Record<SkipReason, number>>;
-  /** Rows that would be written with each repair. */
   repairs: Partial<Record<RowRepair, number>>;
-  /** Rows that would be written with at least one Drive file. */
   withPhotos: number;
 };
 
@@ -147,12 +119,8 @@ export function summarisePreview(previews: readonly RowPreview[], normalised: Re
   return { rowsTotal: previews.length, outcomes, skipReasons, repairs, withPhotos };
 }
 
-// ─── Skipped rows ────────────────────────────────────────────────────────────
-
-/** A skipped row as the browser shows it, from its own copy of the file. `row` is its place in the file, 0-based. */
 export type SkippedRow = { row: number; timestamp: string; name: string; email: string; mobile: string; reason: SkipReason };
 
-/** A leading `'` stops a spreadsheet reading a cell as a formula; `cleanCell` strips it again. */
 const spreadsheetSafe = (s: string) => (/^[=+\-@\t\r]/.test(s) ? `'${s}` : s);
 
 export function skippedRowsCsv(rows: readonly SkippedRow[]): string {
@@ -169,11 +137,6 @@ export function skippedRowsCsv(rows: readonly SkippedRow[]): string {
   );
 }
 
-/**
- * The skipped rows, named from the browser's own copy, in file order. `rows`
- * are in import order, as `outcomes` index them; `row` is the row's place in
- * the file, 0-based, and the CSV and page add the header.
- */
 export function skippedRows(
   rows: readonly IndexedRawRow["raw"][],
   outcomes: readonly { i: number; outcome: PlanOutcome; reason?: SkipReason }[],
@@ -187,8 +150,6 @@ export function skippedRows(
     })
     .sort((a, b) => a.row - b.row);
 }
-
-// ─── The run ─────────────────────────────────────────────────────────────────
 
 export type PreviewRun =
   | { kind: "header_error"; header: FormHeaderCheck }
@@ -205,10 +166,6 @@ export type PreviewRun =
       skipped: SkippedRow[];
     };
 
-/**
- * Preview the file. `order` is Staff's choice, used only when the file's own
- * dates do not prove one; with neither, month first, the sample export's.
- */
 export async function runFittingPreview(
   text: string,
   previewChunk: PreviewChunkFn,

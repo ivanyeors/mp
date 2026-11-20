@@ -6,16 +6,8 @@ import {
   type ImportBatchView,
 } from "@/lib/customer-migration/batches";
 
-/** The history list stops here. */
 const HISTORY_LIMIT = 50;
 
-/**
- * Import history for Customers → Import from Shopify, newest first
- * (PRD-shopify-customer-migration, slice 03). Read by the page, which is
- * guarded by `customer-import`; the batches hold counts and who ran them,
- * never a customer's email or name. Null when the read fails, so the page
- * says so rather than showing an empty history.
- */
 export async function loadImportHistory(): Promise<ImportBatchView[] | null> {
   const admin = supabaseAdmin();
   const { data, error } = await admin

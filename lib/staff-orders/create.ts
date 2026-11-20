@@ -1,10 +1,3 @@
-/**
- * Write a Staff order (ADR 0048): a pending Order with the quote's lines, its
- * courier quote, and its Payment link. Nothing is sold yet: no stock moves, no
- * coupon use is counted and no receipt goes out until Stripe charges it and the
- * shop branch of the webhook confirms it, exactly as for a shop Order.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { orderLinesCosts } from "@/lib/ecommerce/order-line-cost";
@@ -30,8 +23,6 @@ export async function createStaffOrder(
   actor: StaffOrderActor,
   now: Date = new Date(),
 ): Promise<CreateOutcome> {
-  // Each goods line's COGS is frozen from the stock its sale takes out, as
-  // checkout freezes it; a Service's from Costings, as a re-adjustment's is.
   const goods = quote.lines.filter((l) => l.kind === "goods");
   let goodsCosts: Array<{ unit_cost: number | null; total_cost: number | null }>;
   try {
@@ -49,7 +40,6 @@ export async function createStaffOrder(
   const { data: order, error: orderError } = await admin
     .from("orders")
     .insert({
-      // The number is made by the database trigger.
       order_number: "",
       customer_id: quote.customer.id,
       email: quote.customer.email.toLowerCase().trim(),
@@ -77,7 +67,6 @@ export async function createStaffOrder(
     return { ok: false, status: 500, error: orderError?.message ?? "Failed to create the order" };
   }
   const orderId = order.id as string;
-  // From here, a failure removes the Order (its lines and link cascade).
   const undo = async (error: string, status = 500): Promise<CreateOutcome> => {
     await admin.from("orders").delete().eq("id", orderId);
     return { ok: false, status, error };
@@ -122,8 +111,6 @@ export async function createStaffOrder(
   const { error: itemsError } = await admin.from("order_items").insert(rows);
   if (itemsError) return undo(itemsError.message);
 
-  // The courier Staff priced and what it cost us, for the label later. Server-only;
-  // a failure here must not lose the order (checkout treats it the same way).
   if (quote.shipmentQuote) {
     const { error } = await admin.from("order_shipments").insert({ order_id: orderId, ...quote.shipmentQuote });
     if (error) console.error(`[staff-order] Could not record the courier quote for ${orderId}:`, error.message);

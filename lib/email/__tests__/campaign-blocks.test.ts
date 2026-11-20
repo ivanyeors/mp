@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -10,12 +9,6 @@ import { HOSTILE, sampleCampaignBlocks, sampleComposedCampaign, WORDS_PROBE } fr
 import { contentFromLegacy, type CampaignContent, type Run } from "@/lib/email-campaigns/content";
 import { renderCampaignFor } from "@/lib/email-campaigns/sender";
 import { FIRST_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/rules";
-
-/**
- * The block renderer (PRD-campaign-email-editor slice 03): the blocks into
- * the shared components inside the shell, every word escaped, nothing typed
- * ever markup, and a plain-text part from the same blocks.
- */
 
 const ORIGIN = "https://custom.mpillow.com";
 const UNSUB = `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=abc`;
@@ -45,7 +38,6 @@ const data = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> =
 const one = (...blocks: CampaignContent["blocks"]): CampaignContent => ({ v: 1, blocks, fallbacks: {} });
 const textBlock = (...runs: Run[]) => one({ id: "t", type: "text", paragraphs: [{ kind: "p", runs }] });
 
-/** What a reader sees inside the card: the words, in order. */
 const words = (html: string) => {
   const card = html.indexOf(">", html.indexOf('class="mp-card mp-pad"')) + 1;
   return stripTags(html.slice(card, html.indexOf("You&#39;re getting this")));
@@ -60,7 +52,6 @@ describe("renderCampaignBlocksEmail", () => {
     expect(r.html).toContain("Our <strong>FibreCool</strong> covers are back, Wei Ling, in every size.");
     expect(r.html).toMatch(/<a class="mp-fg" href="https:\/\/custom\.mpillow\.com\/en-US\/faq"[^>]*>the care guide<\/a>/);
     expect(r.html).toContain("&bull;&nbsp;&nbsp;<em>Machine </em>washable");
-    // Two buttons in one row of two columns that fall to one on a phone, with Outlook's ghost table.
     expect(r.html.match(/max-width:240px/g)).toHaveLength(2);
     expect(r.html).toContain('<!--[if mso]></td><td width="50%" valign="top"><![endif]-->');
     expect(r.html).toContain("mp-btn-cell-secondary");
@@ -135,12 +126,10 @@ describe("renderCampaignBlocksEmail", () => {
       { id: "s", type: "heading", level: 2, text: "Part" },
     );
     expect(words(renderCampaignBlocksEmail(data(c, { greeting: true })).html)).toBe("Title Hi Ann, Body Part");
-    // The greeting is the First name Variable: a customer with none gets its fallback (slice 13).
     expect(words(renderCampaignBlocksEmail(data(one({ id: "d", type: "divider" }), { greeting: true, values: { ...VALUES, first_name: "there" } })).html)).toBe(
       "Hi there,",
     );
     expect(renderCampaignBlocksEmail(data(c)).text).not.toContain("Hi Ann");
-    // After the title, before a part's heading, as a legacy campaign's greeting sits.
     const parts = one(
       { id: "h", type: "heading", level: 1, text: "Title" },
       { id: "s", type: "heading", level: 2, text: "Care" },
@@ -189,7 +178,6 @@ describe("renderCampaignBlocksEmail", () => {
     expect(preview).toContain(">Write a few lines.</p>");
     expect(preview).toContain(">e.g. Shop</span>");
     expect(preview.match(/border:1px dashed/g)).toHaveLength(3);
-    // A button without words has no link to press, even in the preview.
     expect(preview).not.toContain(`${ORIGIN}/en-US/shop`);
     expect(renderCampaignBlocksEmail(data(one(), { placeholders: HINTS })).html).toContain(">Add a block.</p>");
 
@@ -205,7 +193,6 @@ describe("renderCampaignBlocksEmail", () => {
 });
 
 describe("Variables, filled for each recipient (PRD-campaign-email-editor slice 13)", () => {
-  // The owner's demo: First name in the subject and a heading, Points balance in a paragraph.
   const CONTENT: CampaignContent = {
     v: 1,
     blocks: [
@@ -257,7 +244,6 @@ describe("Variables, filled for each recipient (PRD-campaign-email-editor slice 
     expect(r.html).toContain(">Dear there friend,</p>");
     expect(r.html).toContain("You have some<strong> points</strong> waiting.");
     expect(r.text).toContain("You have some points waiting.");
-    // The details left out altogether read the same.
     expect(send({ firstName: null }).html).toBe(r.html);
   });
 
@@ -268,7 +254,6 @@ describe("Variables, filled for each recipient (PRD-campaign-email-editor slice 
     expect(r.html).toContain(">Dear &lt;b&gt;Mei&lt;/b&gt; &amp; Ling &lt;img src=x onerror=alert(1)&gt;&quot;&#39;&amp;&lt;/script&gt;x");
     expect(r.subject).toBe("<b>Mei</b> & Ling, sleep cooler this December");
     expect(r.html).toContain("<title>&lt;b&gt;Mei&lt;/b&gt; &amp; Ling, sleep cooler this December</title>");
-    // The plain text keeps the words as words, on one line, the last name cut at 60 characters.
     expect(`${HOSTILE}${"x".repeat(20)}`).toHaveLength(60);
     expect(r.text).toContain(`Dear <b>Mei</b> & Ling ${HOSTILE}${"x".repeat(20)},\n`);
   });

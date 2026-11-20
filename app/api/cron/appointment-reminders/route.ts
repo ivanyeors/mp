@@ -31,7 +31,6 @@ import {
   type ReminderRow,
 } from "@/lib/appointments/reminders-db";
 
-/** Most rows the cancellation sweep checks one by one against Google per run. */
 const SWEEP_LIMIT = 100;
 
 export const runtime = "nodejs";
@@ -46,11 +45,6 @@ function authorizeCron(req: Request): boolean {
   return secretMatches(`Bearer ${secret}`, req.headers.get("authorization"));
 }
 
-/**
- * The event's reminder row, created `pending` the first time a run sees it. An
- * unusable phone is logged once as `skipped_invalid_phone`; a phone the non-prod
- * allowlist blocks gets no row at all.
- */
 async function prepareRow(
   ev: CalendarGuestEvent,
 ): Promise<{ row: ReminderRow; phone: string } | "skipped"> {
@@ -78,13 +72,6 @@ async function prepareRow(
   return { row, phone };
 }
 
-/**
- * Daily 09:00 SGT: tomorrow day-before + today morning-of for guests who are
- * silent after the day-before or were never reached by one. A guest who
- * declined the invite, or whose event has left the calendar, is told it is
- * cancelled instead — the push (webhooks/google-calendar) normally got there
- * first; this is the net under it. Then renews that push channel.
- */
 export async function GET(req: Request) {
   if (!authorizeCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -93,8 +80,6 @@ export async function GET(req: Request) {
   const stored = await getSiteSettings([...APPOINTMENT_SETTING_KEYS]);
   const settings = parseAppointmentSettings(stored);
 
-  // Admin kill switch (Settings → Appointments). Bail before touching Calendar
-  // or Meta so a disabled run is cheap and leaves no reminder rows behind.
   if (!settings.whatsappEnabled) {
     return NextResponse.json({
       ok: true,
@@ -119,16 +104,13 @@ export async function GET(req: Request) {
     skipped: 0,
     errors: [] as string[],
   };
-  /** Events both passes saw on the calendar, so the sweep can skip them. */
   const seen = new Set<string>();
 
-  // A declined invite leaves the event on the calendar; the guest is not coming.
   const cancelDeclined = async (row: ReminderRow) => {
     const outcome = await cancelAppointment(row, settings, { cause: "declined", now });
     if (outcome.kind === "cancelled") summary.cancelled += 1;
   };
 
-  // --- Tomorrow: day-before ---
   let tomorrow;
   try {
     tomorrow = await listDayEvents(1, settings, now);
@@ -158,13 +140,6 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // Reschedule reconciliation: a move made directly in Google Calendar runs
-      // no app code, so a non-pending row is now stale. Compare by parsed ms (GCal
-      // sends +08:00 offset, the row stores UTC Z — string compare would misfire).
-      // On drift, re-arm to `pending` so the reminder/confirmation flow re-fires
-      // for the NEW time (same flow as a fresh booking). Detection is bounded by
-      // the daily cron: an event reconciles once it becomes "tomorrow"; real-time
-      // move notices would need Google Calendar push channels, which we don't run.
       const movedMs = Date.parse(ev.startsAt);
       const rowMs = Date.parse(row.starts_at);
       const movedInGcal =
@@ -172,23 +147,18 @@ export async function GET(req: Request) {
         Number.isFinite(rowMs) &&
         Math.abs(movedMs - rowMs) > 60_000;
 
-      // `rescheduled` is due a day-before too: the guest moved it over WhatsApp
-      // to a later day, and nothing has reminded them of the new one.
       let from = row.status;
       if (!isDayBeforeEligible(from)) {
-        // Already processed for this time, or over (cancelled, invalid phone).
         if (!movedInGcal || !LIVE_STATUSES.includes(from)) continue;
         const rearmed = await updateReminder(
           ev.id,
           { status: "pending", starts_at: ev.startsAt },
           from,
         );
-        if (!rearmed) continue; // race: another worker re-armed/advanced it
+        if (!rearmed) continue;
         from = "pending";
       }
 
-      // A failed send is recorded on the row, which stays `pending`, so the
-      // guest still gets the morning-of tomorrow.
       const updated = await sendDayBeforeReminder(
         {
           calendarEventId: ev.id,
@@ -201,7 +171,6 @@ export async function GET(req: Request) {
         now,
       );
       if (!updated) {
-        // Race: another worker won — treat as ok
         continue;
       }
 
@@ -221,7 +190,6 @@ export async function GET(req: Request) {
     }
   }
 
-  // --- Today: morning-of for the silent and the never-reached ---
   let today;
   try {
     today = await listDayEvents(0, settings, now);
@@ -239,8 +207,6 @@ export async function GET(req: Request) {
     try {
       let row = await getReminderByEventId(ev.id);
       if (!row) {
-        // Booked straight in Google Calendar after yesterday's run, so no run
-        // has seen it and it never had a day-before. Start its row now.
         const prepared = await prepareRow(ev);
         if (prepared === "skipped") {
           summary.skipped += 1;
@@ -279,9 +245,6 @@ export async function GET(req: Request) {
     }
   }
 
-  // --- Cancellation sweep: live rows whose event the passes did not see ---
-  // Deleted events drop out of the day listings, and anything past tomorrow is
-  // not listed at all, so ask Google about each remaining live row directly.
   try {
     const rows = (await listLiveUpcomingReminders(now, SWEEP_LIMIT)).filter(
       (r) => !seen.has(r.calendar_event_id),
@@ -297,9 +260,6 @@ export async function GET(req: Request) {
         );
       }
     }
-    // Most of the upcoming book gone at once reads like a different calendar
-    // (GOOGLE_CALENDAR_ID changed), not a wave of cancellations. Telling every
-    // one of those guests their visit is off cannot be taken back; stop.
     if (off.length >= 3 && off.length * 2 >= rows.length) {
       summary.errors.push(
         `sweep: ${off.length} of ${rows.length} upcoming events are off the calendar — not cancelling; check GOOGLE_CALENDAR_ID`,
@@ -323,8 +283,6 @@ export async function GET(req: Request) {
     summary.errors.push(`sweep: ${e instanceof Error ? e.message : "failed"}`);
   }
 
-  // Keep the Calendar push channel open, so the next cancellation reaches the
-  // guest when it happens rather than at this run.
   let watch: WatchResult | { status: "error"; detail: string };
   try {
     watch = await ensureCalendarWatch(now);
@@ -333,9 +291,6 @@ export async function GET(req: Request) {
     summary.errors.push(`calendar watch: ${watch.detail}`);
   }
 
-  // Chain: Google Contacts sweep for every upcoming appointment (next 30 days) so
-  // events staff add directly in Google Calendar get a contact too — Hobby stays at
-  // 2 vercel.json crons. Manual ops / backfill: GET /api/cron/contacts-sync?days=N.
   let contacts:
     | Awaited<ReturnType<typeof sweepUpcomingContacts>>
     | { ok: false; error: string };
@@ -345,8 +300,6 @@ export async function GET(req: Request) {
     contacts = { ok: false, error: e instanceof Error ? e.message : "contacts sweep failed" };
   }
 
-  // Nothing keeps the JSON a cron returns; the log at least shows a failure for
-  // the hour Hobby retains it. The row-level record is last_error.
   if (summary.errors.length) {
     console.error("[cron/appointment-reminders]", summary.errors.join(" | "));
   }

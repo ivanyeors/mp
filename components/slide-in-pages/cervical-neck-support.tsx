@@ -13,9 +13,6 @@ import { useI18n } from "@/lib/i18n/use-i18n";
 
 const OPEN_CERVICAL_NECK_SUPPORT_EVENT = "mpillow:open-cervical-neck-support";
 
-// The sheet is code-split (next/dynamic, ssr:false) from the dock, so a CTA
-// click can land before its listener exists. Remember the request and let the
-// sheet honour it on mount instead of dropping it.
 let sheetListeners = 0;
 let pendingOpen = false;
 

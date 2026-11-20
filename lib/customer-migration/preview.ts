@@ -1,20 +1,3 @@
-/**
- * The Admin Panel preview of a Shopify customer import, end to end, apart
- * from the server action it calls (PRD-shopify-customer-migration, slice 02).
- *
- * Pure: the page passes in the server action, so vitest drives the same flow
- * with a fake one.
- *
- *  1. The browser parses the file and stops on a missing required column,
- *     before any server call.
- *  2. It sends the rows in chunks of at most 250 rows and 512 KB, holding only
- *     PREVIEW_FIELDS. A server action body is capped at 1 MB, and an export
- *     passes that at around 3,000 customers.
- *  3. The server re-reads each raw row itself and answers per row with an
- *     outcome and repairs, never PII (`readPreviewChunk`, `planRows`).
- *  4. The browser applies duplicates across the whole file, which no single
- *     chunk can see, and counts everything from its own copy of the rows.
- */
 import { toCsv } from "@/lib/csv";
 import {
   duplicateSkips,
@@ -36,16 +19,10 @@ import {
   type ShopifyRawRow,
 } from "./shopify-csv";
 
-/** The page refuses a bigger file before reading it. */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const PREVIEW_CHUNK_ROWS = 250;
-/** Well under the 1 MB server action limit, with room for its encoding. */
 export const PREVIEW_CHUNK_MAX_BYTES = 512 * 1024;
 
-/**
- * What the preview sends. Tags and Note stay in the browser: the preview never
- * reads them, and a Shopify note may hold a health remark.
- */
 export const PREVIEW_FIELDS: readonly ShopifyField[] = SHOPIFY_FIELDS.filter(
   (f) => f !== "tags" && f !== "note",
 );
@@ -73,7 +50,6 @@ export const REPAIR_LABELS: Record<RowRepair, string> = {
   total_spent_invalid: "Total Spent unreadable, counted as 0",
 };
 
-/** Only `fields`' non-empty string cells: anything else a row carries is dropped. */
 export function pickFields(raw: ShopifyRawRow, fields: readonly ShopifyField[]): ShopifyRawRow {
   const out: ShopifyRawRow = {};
   for (const f of fields) {
@@ -83,7 +59,6 @@ export function pickFields(raw: ShopifyRawRow, fields: readonly ShopifyField[]):
   return out;
 }
 
-/** The rows as the preview sends them: indexed, and only PREVIEW_FIELDS. */
 export function previewPayload(rows: readonly ShopifyRawRow[]): IndexedRawRow[] {
   return rows.map((raw, i) => ({ i, raw: pickFields(raw, PREVIEW_FIELDS) }));
 }
@@ -91,10 +66,6 @@ export function previewPayload(rows: readonly ShopifyRawRow[]): IndexedRawRow[] 
 const encoder = new TextEncoder();
 export const jsonBytes = (value: unknown) => encoder.encode(JSON.stringify(value)).length;
 
-/**
- * The chunk that starts at `start`: at most `maxRows` rows and about
- * `maxBytes` of JSON, and always at least one row.
- */
 export function takeChunk<T>(
   rows: readonly T[],
   start: number,
@@ -111,7 +82,6 @@ export function takeChunk<T>(
   return chunk;
 }
 
-/** Split rows into chunks of at most `maxRows` rows and about `maxBytes` of JSON. */
 export function chunkRows<T>(
   rows: readonly T[],
   limits: { maxRows?: number; maxBytes?: number } = {},
@@ -125,10 +95,6 @@ export function chunkRows<T>(
   return chunks;
 }
 
-/**
- * The server's check of one chunk. Only PREVIEW_FIELDS string cells are kept,
- * so anything else the request carries is dropped on arrival.
- */
 export function readPreviewChunk(
   input: unknown,
 ): { ok: true; rows: IndexedRawRow[] } | { ok: false; error: string } {
@@ -156,14 +122,11 @@ export function readPreviewChunk(
 export type PreviewChunkResponse = { ok: true; results: RowPreview[] } | { ok: false; error: string };
 export type PreviewChunkFn = (rows: IndexedRawRow[]) => Promise<PreviewChunkResponse>;
 
-// ─── Counting ────────────────────────────────────────────────────────────────
-
 export type PreviewSummary = {
   rowsTotal: number;
   outcomes: Record<PlanOutcome, number>;
   skipReasons: Partial<Record<SkipReason, number>>;
   repairs: Partial<Record<RowRepair, number>>;
-  /** These four count the rows that would be created or merged. */
   buyers: number;
   nonBuyers: number;
   consented: number;
@@ -197,15 +160,8 @@ export function summarisePreview(
   return { rowsTotal: previews.length, outcomes, skipReasons, repairs, buyers, nonBuyers, consented, notConsented };
 }
 
-// ─── Skipped rows ────────────────────────────────────────────────────────────
-
-/** A skipped row as the browser shows it, from its own copy of the file. */
 export type SkippedRow = { row: number; email: string; name: string; reason: SkipReason };
 
-/**
- * Shopify's own "CSV for Excel" convention: a leading `'` stops a spreadsheet
- * reading a cell as a formula. `cleanCell` strips it again on the way back in.
- */
 const spreadsheetSafe = (s: string) => (/^[=+\-@\t\r]/.test(s) ? `'${s}` : s);
 
 export function skippedRowsCsv(rows: readonly SkippedRow[]): string {
@@ -214,8 +170,6 @@ export function skippedRowsCsv(rows: readonly SkippedRow[]): string {
     rows.map((r) => [r.row, spreadsheetSafe(r.email), spreadsheetSafe(r.name), SKIP_REASON_LABELS[r.reason]]),
   );
 }
-
-// ─── The run ─────────────────────────────────────────────────────────────────
 
 export type PreviewRun =
   | { kind: "header_error"; header: ShopifyHeaderCheck }
@@ -274,7 +228,6 @@ export async function runShopifyPreview(
   return { kind: "done", header, previews, summary: summarisePreview(previews, normalised), skipped };
 }
 
-/** Hex SHA-256 of the file, computed in the browser. A label for the batch, not a control. */
 export async function sha256Hex(data: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");

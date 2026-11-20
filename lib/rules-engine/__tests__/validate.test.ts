@@ -25,7 +25,7 @@ describe("validateForPublish", () => {
     const g = base();
     const rng = g.nodes.find((n) => n.id === "rng-shoulder");
     if (rng?.type !== "range") throw new Error("expected range");
-    rng.bands[1]!.minCm = 35; // overlaps XS
+    rng.bands[1]!.minCm = 35;
     const errors = validateForPublish("premium-mpillow", g);
     expect(errors.some((e) => e.code === "band-invalid" && e.nodeId === "rng-shoulder")).toBe(
       true,
@@ -36,7 +36,7 @@ describe("validateForPublish", () => {
     const g = base();
     const rng = g.nodes.find((n) => n.id === "rng-shoulder");
     if (rng?.type !== "range") throw new Error("expected range");
-    rng.bands[2]!.minCm = 41; // gap after S (max 40)
+    rng.bands[2]!.minCm = 41;
     const errors = validateForPublish("premium-mpillow", g);
     expect(errors.some((e) => e.code === "band-invalid" && e.nodeId === "rng-shoulder")).toBe(
       true,
@@ -91,9 +91,6 @@ describe("validateForPublish", () => {
   it("rejects unreachable Fallback when stranded behind a disconnected edge", () => {
     const g = base();
     g.nodes.push({ id: "orphan", type: "input", inputKey: "shoulder_length_cm" });
-    // Remove orphan from catalog path — wait, shoulder is on catalog. Use a node
-    // that has inbound only from a never-linked source: point fb inbound from a
-    // brand-new size node that nothing reaches.
     g.nodes.push({ id: "ghost-sz", type: "size-output", size: "M" });
     g.edges.push({ id: "eg", source: "ghost-sz", target: "fb" });
     expect(codes(g)).toContain("unreachable-fallback");

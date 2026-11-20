@@ -1,6 +1,3 @@
-/**
- * Slice 05 — Results bulk export CSV helper.
- */
 import { describe, it, expect } from "vitest";
 import { rowsToCsv } from "@/lib/results/rows-to-csv";
 
@@ -14,11 +11,9 @@ describe("rowsToCsv", () => {
 
   it("keeps field order stable regardless of input key order", () => {
     const csv = rowsToCsv([
-      // keys deliberately out of order
       { customer_email: "a@b.com", id: "r1", name: "Ann" } as never,
     ]);
     const [, row] = csv.split("\r\n");
-    // id first, updated_at empty, then name, then email
     expect(row).toBe("r1,,Ann,a@b.com,,,,,,,,,,");
   });
 

@@ -20,20 +20,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Editor } from "@tiptap/core";
 import type { CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * Variables in the campaign editor (PRD-campaign-email-editor slice 13), as
- * the owner's demo goes: drag *First name* from the palette's Variables tab
- * into the subject and *Points balance* into a paragraph, set the fallback
- * words once under the chips, and preview as *A customer* or *No details*.
- * Every drag has a keyboard way: `{` in the words, or a chip pressed where
- * the cursor is, each said by name. *Points balance* is greyed while points
- * are not live.
- *
- * jsdom has no drag and drop of its own: a chip's `dragstart` fills a
- * DataTransfer, and the drop is handed to ProseMirror's own drop handling at
- * a chosen spot (`dropInto`).
- */
-
 type SaveResult = { ok: true; id: string } | { ok: false; error: string; fieldErrors?: Record<string, string> };
 const actions = vi.hoisted(() => ({
   archiveCampaignAction: vi.fn(),
@@ -79,16 +65,13 @@ const lastPreview = () => actions.previewCampaign.mock.calls.at(-1);
 const radio = (label: string) => [...document.querySelectorAll<HTMLElement>('[role="radio"]')].find((r) => r.textContent === label)!;
 const addBlock = (label: string) => choose(button("Add block")!, label);
 
-/** The palette's Variables tab, opened as a pointer opens it. */
 async function openVariables() {
   const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent === "Variables")!;
   await act(async () => void tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 })));
 }
 const chip = (label: string) => [...document.querySelectorAll<HTMLButtonElement>("ul[aria-label='Variables'] button")].find((b) => b.textContent?.startsWith(label))!;
-/** What the page said last, in its live lines. */
 const said = () => [...document.querySelectorAll('[role="status"]')].map((s) => s.textContent ?? "").filter(Boolean);
 
-/** Drags a chip from the palette and drops it into `editor` at `pos`. */
 function dragChip(label: string, editor: Editor, pos: number) {
   const data = dragData();
   dragStart(chip(label), data);
@@ -119,10 +102,8 @@ describe("the demo", () => {
       "Your pillow",
     ]);
 
-    // First name, dragged to the start of the subject.
     const subject = await richTextById("c-subject");
     const data = dragChip("First name", subject, 1);
-    // Only the input's own chip travels: a plain field (a button's label) takes nothing from it.
     expect(data.types).toEqual(["text/html"]);
     expect(data.getData("text/plain")).toBe("");
     act(() => void subject.commands.focus("end"));
@@ -130,7 +111,6 @@ describe("the demo", () => {
     expect(subject.view.dom.querySelector('[data-variable="first_name"]')?.textContent).toBe("First name");
     expect(wordsOf("c-subject")).toBe("First name, sleep cooler this December");
 
-    // Points balance, dragged into a paragraph.
     await addBlock("Text");
     const text = await richTextIn(cards()[0]);
     typeInto(text, "You have ");
@@ -139,7 +119,6 @@ describe("the demo", () => {
     typeInto(text, " points waiting.");
     expect(cards()[0].querySelector('[data-variable="points_balance"]')?.textContent).toBe("Points balance");
 
-    // Under the chips, a fallback for every Variable the email uses: the first name prefilled, the points to write.
     expect(field("c-fallback-first_name").value).toBe("there");
     expect(field("c-fallback-points_balance").value).toBe("");
     expect(field("c-fallback-points_balance").placeholder).toBe("e.g. some");
@@ -171,7 +150,7 @@ describe("the demo", () => {
     mount();
     const subject = await richTextById("c-subject");
     typeInto(subject, "Hello {last_name}");
-    expect(document.querySelector("ul[aria-label='Variables']")).toBeNull(); // Blocks is open
+    expect(document.querySelector("ul[aria-label='Variables']")).toBeNull();
     await click(button("Save draft")!);
     expect(document.querySelector("ul[aria-label='Variables']")).not.toBeNull();
     expect(field("c-fallback-last_name").getAttribute("aria-invalid")).toBe("true");
@@ -199,9 +178,8 @@ describe("the keyboard's ways", () => {
     expect(wordsOf("c-subject")).toBe("Hello Last name");
     expect(subject.view.dom.querySelector('[data-variable="last_name"]')).not.toBeNull();
     expect(said()).toContain("Last name added.");
-    expect(subject.view.dom.getAttribute("aria-controls")).toBeNull(); // the list is closed
+    expect(subject.view.dom.getAttribute("aria-controls")).toBeNull();
 
-    // What is typed after { narrows the list; Escape closes it and keeps the words.
     typeInto(subject, " {poi");
     await settle();
     expect([...document.querySelectorAll('[role="option"]')].map((o) => o.querySelector("span")?.textContent)).toEqual(["Points balance"]);
@@ -209,7 +187,6 @@ describe("the keyboard's ways", () => {
     await settle();
     expect(document.querySelector('[role="listbox"]')).toBeNull();
     expect(wordsOf("c-subject")).toBe("Hello Last name {poi");
-    // And it closes when the words lose focus.
     typeInto(subject, " {");
     await settle();
     expect(document.querySelector('[role="listbox"]')).not.toBeNull();
@@ -227,13 +204,13 @@ describe("the keyboard's ways", () => {
     await addBlock("Heading");
     const heading = await richTextIn(cards()[0]);
     typeInto(heading, ", sleep cooler");
-    act(() => void heading.commands.setTextSelection(1)); // the cursor at the start
+    act(() => void heading.commands.setTextSelection(1));
     await act(async () => chip("First name").focus());
-    await click(chip("First name")); // Enter on the chip presses it, as a click does
+    await click(chip("First name"));
     expect(wordsOf(heading.view.dom.id)).toBe("First name, sleep cooler");
     expect(said()).toContain("First name added to Heading.");
     await settle(50);
-    expect(document.activeElement).toBe(heading.view.dom); // back in the words, to carry on
+    expect(document.activeElement).toBe(heading.view.dom);
 
     await settle(500);
     expect(lastPreview()![0].content?.blocks).toMatchObject([{ type: "heading", text: "{first_name}, sleep cooler" }]);
@@ -272,7 +249,6 @@ describe("Points balance while points are not live", () => {
     await settle();
     expect(subject.view.dom.querySelector('[data-variable="points_balance"]')).toBeNull();
     expect(wordsOf("c-subject")).toBe("{po");
-    // The others still go in.
     expect(chip("First name").getAttribute("aria-disabled")).toBeNull();
   });
 });

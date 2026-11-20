@@ -1,19 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { User } from "@supabase/supabase-js";
 
-/**
- * Spec tests for the partner IDENTITY resolver (#83). External behaviour only:
- * we drive the two inputs the resolution depends on — the Supabase auth user and
- * the rows that exist in `partner_users`/`partners` — and assert the resolved
- * outcome (which row / what context / null). No call-order or storage-shape
- * assertions; the one side-effect we DO observe is the documented auth-id link,
- * because "primary email links / backup email never links" is a behaviour.
- *
- * The supabase mock is a tiny in-memory table that answers the real query the
- * code builds. Crucially it implements SQL ILIKE (with backslash escaping) so
- * the wildcard-escaping guard is exercised for real, not stubbed away.
- */
-
 const h = vi.hoisted(() => ({
   db: { partner_users: [] as Record<string, unknown>[], partners: [] as Record<string, unknown>[] },
   getAuthUser: vi.fn(),
@@ -22,8 +9,6 @@ const h = vi.hoisted(() => ({
 vi.mock("@/lib/auth/user", () => ({ getAuthUser: () => h.getAuthUser() }));
 
 vi.mock("@/lib/supabase/server", () => {
-  // SQL ILIKE with backslash escaping → regex. Feeding the escaped pattern the
-  // code produces means `_`/`%` only match literally, which is the whole point.
   function likeMatch(pattern: string, value: unknown): boolean {
     if (typeof value !== "string") return false;
     let re = "";
@@ -61,7 +46,6 @@ vi.mock("@/lib/supabase/server", () => {
         return q;
       },
       maybeSingle: () => Promise.resolve({ data: rows()[0] ?? null, error: null }),
-      // `.update(..).eq(..)` is awaited directly — make the builder thenable.
       then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => {
         const affected = rows();
         if (pendingUpdate) for (const r of affected) Object.assign(r, pendingUpdate);
@@ -169,14 +153,11 @@ describe("loadPartnerRow (resolution + precedence)", () => {
   });
 
   it("does NOT let an email with `_` adopt another partner's row (LIKE-wildcard escaping)", async () => {
-    // Only a DIFFERENT partner exists whose email would match `j_hn@x.com` if `_`
-    // were treated as a wildcard. Correct escaping ⇒ no match ⇒ null.
     h.db.partner_users = [
       { id: "row-other", auth_user_id: null, partner_id: "p9", application_status: "approved", agreed_version: null, email: "jxhn@x.com" },
     ];
     expect(await loadPartnerRow(asUser({ id: "auth-1", email: "j_hn@x.com" }))).toBeNull();
 
-    // Sanity: the exact address still resolves.
     h.db.partner_users.push({ id: "row-exact", auth_user_id: null, partner_id: "p1", application_status: "approved", agreed_version: null, email: "j_hn@x.com" });
     const row = await loadPartnerRow(asUser({ id: "auth-1", email: "j_hn@x.com" }));
     expect(row?.id).toBe("row-exact");
@@ -204,7 +185,6 @@ describe("loadPartnerRow (resolution + precedence)", () => {
     ];
     const row = await loadPartnerRow(asUser({ id: "auth-2", email: "second@personal.example" }));
     expect(row?.id).toBe("row-backup");
-    // Backup identity must not steal the primary's auth_user_id link.
     expect(h.db.partner_users[0].auth_user_id).toBeNull();
     expect(row?.auth_user_id).toBeNull();
   });
@@ -282,7 +262,6 @@ describe("getPartnerContext (session cap + pill visibility)", () => {
       partnerName: "Acme Physio",
       agreedVersion: AGREEMENT_VERSION,
     });
-    // And it is recognized as an active partner end-to-end.
     expect(isPartnerActive(result)).toBe(true);
   });
 });

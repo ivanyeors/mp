@@ -3,22 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 export type DebouncedCallback<Args extends unknown[]> = ((...args: Args) => void) & {
-  /** Drop any pending trailing invocation. */
   cancel: () => void;
-  /** Run any pending trailing invocation immediately. */
   flush: () => void;
-  /** True while a trailing invocation is scheduled. */
   isPending: () => boolean;
 };
 
-/**
- * Trailing-edge debounce for a callback.
- *
- * The returned function keeps a stable identity for the lifetime of the
- * component (safe to use as an effect dependency or a memoised prop) while
- * always invoking the latest `callback`. Any pending invocation is cancelled
- * when the component unmounts.
- */
 export function useDebouncedCallback<Args extends unknown[]>(
   callback: (...args: Args) => void,
   delay: number,

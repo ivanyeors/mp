@@ -9,7 +9,6 @@ const assets = [
 
 describe("resolveAddonImageUrls", () => {
   it("gives a size with no image of its own its family's image", () => {
-    // Production shape: only Cervical Neck Support S carries a photo.
     const urls = resolveAddonImageUrls(
       [
         { id: 66, primary_media_asset_id: null, family: "accessories:Cervical Neck Support" },

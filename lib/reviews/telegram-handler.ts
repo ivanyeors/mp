@@ -43,19 +43,6 @@ import {
 } from "@/lib/reviews/shop-reviews";
 import { customerMatchLinkFor } from "@/lib/crm/google-review-match-server";
 
-/**
- * The review half of the Telegram bot: buttons on review cards, replies to a
- * card (on a Google card, a review manager's own wording for the draft; on a
- * shop card, our public reply under the review; a reply starting with `//` is
- * a team note and is left alone), and `/link CODE`.
- *
- * Runs before the inventory bot's TELEGRAM_ALLOWED_CHATS check on purpose:
- * this path has its own, stricter gate — cards live only in the measurements
- * group (MP_CONFIG_TELEGRAM_CHAT_ID), and every change needs a linked Staff
- * profile whose Telegram link and whose login's role both grant it
- * (Users & permissions → Telegram and → Roles).
- */
-
 type TelegramUser = { id: number; username?: string; first_name?: string; last_name?: string };
 
 export type ReviewTelegramUpdate = {
@@ -76,7 +63,6 @@ export type ReviewTelegramUpdate = {
 
 const LINK_COMMAND = /^\/link(?:@\w+)?(?:\s+(.*))?$/i;
 
-/** A card with this header, real or preview (PREVIEW line first, header second). */
 function isCardText(text: string | undefined, header: string): boolean {
   if (!text) return false;
   if (text.startsWith(header)) return true;
@@ -86,7 +72,6 @@ function isCardText(text: string | undefined, header: string): boolean {
 const isGoogleCardText = (text: string | undefined) => isCardText(text, GOOGLE_CARD_HEADER);
 const isShopCardText = (text: string | undefined) => isCardText(text, SHOP_CARD_HEADER);
 
-/** Does this update belong to the review flow? Cheap: no I/O. */
 export function isReviewUpdate(update: ReviewTelegramUpdate): boolean {
   const data = update.callback_query?.data;
   if (data) return data.startsWith(REVIEW_CALLBACK_PREFIX);
@@ -94,7 +79,6 @@ export function isReviewUpdate(update: ReviewTelegramUpdate): boolean {
   const text = message?.text?.trim();
   if (!message || !text) return false;
   if (LINK_COMMAND.test(text)) return true;
-  // A `//` team note is not a command: claimed here, so the inventory bot never answers it.
   const command = text.startsWith("/") && !text.startsWith(TEAM_NOTE_PREFIX);
   const card = message.reply_to_message?.text;
   return message.chat.id === MP_CONFIG_TELEGRAM_CHAT_ID && !command && (isGoogleCardText(card) || isShopCardText(card));
@@ -125,7 +109,6 @@ function deniedMessage(
   }
 }
 
-/** Why a freshly linked account can't act yet (the link itself is bound). */
 function linkedButOff(reason: TelegramDenial): string {
   switch (reason) {
     case "profile_archived":
@@ -170,7 +153,6 @@ const PREVIEW_EFFECT: Record<ReviewCallback["action"], string> = {
   unreply: "remove our reply from under the review on the product page",
 };
 
-/** Which Telegram action a button needs. Our public reply on a shop review is its own, apart from moderating. */
 function actionFor(cb: ReviewCallback): TelegramAction {
   if (cb.source === "google") return "telegram.google-review-reply";
   return cb.action === "unreply" ? "telegram.shop-review-reply" : "telegram.shop-review-moderate";
@@ -178,7 +160,6 @@ function actionFor(cb: ReviewCallback): TelegramAction {
 
 async function showGoogleCard(row: GoogleReviewRow | undefined, messageId: number): Promise<void> {
   if (!row) return;
-  // CRM slice 12: keeps the *Possible customer match* line while a suggestion exists.
   const card = renderGoogleReviewCard(row, { possibleCustomerMatch: await customerMatchLinkFor(row.id) });
   await editGroupCard(messageId, card.text, card.replyMarkup);
 }
@@ -203,8 +184,6 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
     return;
   }
 
-  // A preview card (lib/reviews/preview.ts): the permission check above is the
-  // whole point — tell them they passed, and do nothing.
   if (parsed.id === PREVIEW_REVIEW_ID) {
     await answerCallback(
       cq.id,
@@ -231,7 +210,6 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
 
   if (parsed.source === "shop") {
     const decision = parsed.action === "approve" ? "approved" : "rejected";
-    // The guard above: this card is in the measurements group.
     const result = await moderateShopReview(parsed.id, decision, { chatId: MP_CONFIG_TELEGRAM_CHAT_ID, messageId });
     if (!result.review) {
       await answerCallback(cq.id, "This review no longer exists.", true);
@@ -269,15 +247,9 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
 
   const result = await skipGoogleReview(parsed.id, auth.actor);
   await answerCallback(cq.id, result.ok ? "Skipped — no reply will be posted." : result.message, !result.ok);
-  // A card Telegram will not delete (older than 48h) is marked skipped instead.
   if (!result.ok || !(await deleteGroupMessage(messageId))) await showGoogleCard(result.row, messageId);
 }
 
-/**
- * A reply to a shop card: the words become our public reply under the review,
- * replacing any earlier one. Same gate as a Google card — the replier needs
- * the action, and only someone set up hears why not.
- */
 async function handleShopStaffReply(
   message: NonNullable<ReviewTelegramUpdate["message"]>,
   from: TelegramUser,
@@ -289,7 +261,6 @@ async function handleShopStaffReply(
 
   const auth = await authorize(from, "telegram.shop-review-reply");
   if (!auth.ok) {
-    // People chat under cards; only answer someone who is set up but not allowed.
     if (auth.linked) await replyInGroup(auth.message, message.message_id);
     return;
   }
@@ -315,7 +286,6 @@ async function handleStaffReply(message: NonNullable<ReviewTelegramUpdate["messa
   if (!from || !cardId || !text || text.startsWith(TEAM_NOTE_PREFIX)) return;
   const shop = isShopCardText(message.reply_to_message?.text);
 
-  // A preview card: show what a reply would do, and the replier's access.
   if (message.reply_to_message?.text?.startsWith(PREVIEW_CARD_PREFIX)) {
     const auth = await authorize(from, shop ? "telegram.shop-review-reply" : "telegram.google-review-reply");
     const effect = shop
@@ -340,7 +310,6 @@ async function handleStaffReply(message: NonNullable<ReviewTelegramUpdate["messa
 
   const auth = await authorize(from, "telegram.google-review-reply");
   if (!auth.ok) {
-    // People chat under cards; only answer someone who is set up but not allowed.
     if (auth.linked) await replyInGroup(auth.message, message.message_id);
     return;
   }
@@ -398,7 +367,6 @@ async function handleLink(message: NonNullable<ReviewTelegramUpdate["message"]>)
   await reply(messages[result.reason]);
 }
 
-/** Does the work for an update `isReviewUpdate` accepted. Never throws. */
 export async function handleReviewUpdate(update: ReviewTelegramUpdate): Promise<void> {
   try {
     if (update.callback_query) {

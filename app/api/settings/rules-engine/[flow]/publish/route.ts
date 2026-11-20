@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ flow: string }> };
 
-/** POST publish draft → immutable version N+1 (validation gated). */
 export async function POST(_req: Request, ctx: Ctx) {
   let authorId: string | null = null;
   try {

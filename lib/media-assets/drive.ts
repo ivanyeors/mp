@@ -34,7 +34,6 @@ export type DriveFolderListing = {
   nextPageToken: string | null;
 };
 
-/** Extract a Drive file/folder id from a paste URL or bare id. */
 export function parseDriveFileId(input: string): string | null {
   const s = input.trim();
   if (!s) return null;
@@ -86,9 +85,7 @@ function mapDriveHttpError(status: number, body: string): DriveError {
   try {
     const json = JSON.parse(body) as { error?: { message?: string } };
     if (json.error?.message) message = json.error.message;
-  } catch {
-    /* keep raw */
-  }
+  } catch {}
   if (status === 404) return new DriveError("not_found", message || "Drive file not found");
   if (status === 403 || status === 401) {
     return new DriveError("forbidden", message || "Insufficient Drive access");
@@ -128,7 +125,6 @@ function toMeta(f: {
   };
 }
 
-/** Resolve a paste URL (or bare id) to Drive file metadata. */
 export async function resolveUrl(pasteUrl: string): Promise<DriveFileMeta> {
   const fileId = parseDriveFileId(pasteUrl);
   if (!fileId) throw new DriveError("invalid_url", "Invalid Google Drive URL");
@@ -161,10 +157,6 @@ export async function listSharedDrives(): Promise<DriveSharedDrive[]> {
   return drives;
 }
 
-/**
- * List children of a Shared Drive root or folder.
- * Pass `driveId` alone for Shared Drive root; `folderId` for a subfolder.
- */
 export async function listFolder(opts?: {
   driveId?: string;
   folderId?: string;
@@ -211,7 +203,6 @@ const KIND_MIME_CLAUSE: Record<DriveImportKind, string> = {
   pdf: "mimeType = 'application/pdf'",
 };
 
-/** Drive `q` for importable files whose name contains `text`; all importable kinds when `kind` is omitted. */
 export function buildSearchQuery(text: string, kind?: DriveImportKind): string {
   const escaped = text.trim().replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   const mime = kind
@@ -220,7 +211,6 @@ export function buildSearchQuery(text: string, kind?: DriveImportKind): string {
   return `name contains '${escaped}' and trashed=false and ${mime}`;
 }
 
-/** Search by file name across one Shared Drive (recursive), or all drives when `driveId` is omitted. */
 export async function searchFiles(opts: {
   text: string;
   kind?: DriveImportKind;
@@ -254,7 +244,6 @@ export async function searchFiles(opts: {
   };
 }
 
-/** Download file bytes (binary files only — not Google Docs native formats). */
 export async function downloadFile(fileId: string): Promise<Buffer> {
   const id = fileId.trim();
   if (!id) throw new DriveError("invalid_url", "fileId is required");
@@ -266,10 +255,6 @@ export async function downloadFile(fileId: string): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
-/**
- * Download a Drive thumbnailLink with the workspace OAuth token.
- * Returns null when the link is missing or the fetch fails (preview is optional).
- */
 export async function downloadThumbnail(thumbnailLink: string | null | undefined): Promise<Buffer | null> {
   const url = thumbnailLink?.trim();
   if (!url) return null;

@@ -12,15 +12,6 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-/**
- * "Get our emails" in the site footer (PRD-campaign-audiences slice 03). The
- * sign-up is the Customer sign-in: the email gets the same link and 6-digit
- * code, and confirming either makes the account and records `newsletter`
- * consent on it. Nothing is stored until they confirm. After sending, it
- * opens Sign in at the code step; once confirmed they come back to this page.
- *
- * Someone signed in already has an address we know, so it renders nothing.
- */
 export function FooterSignUp({ locale, returnTo }: { locale: Locale; returnTo: string }) {
   const fieldId = useId();
   const router = useRouter();
@@ -31,7 +22,6 @@ export function FooterSignUp({ locale, returnTo }: { locale: Locale; returnTo: s
 
   useEffect(() => {
     let live = true;
-    // Reads the session this browser holds; no request.
     createSupabaseBrowserClient()
       .auth.getSession()
       .then(({ data }) => {

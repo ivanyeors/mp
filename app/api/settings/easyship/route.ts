@@ -7,11 +7,6 @@ import { readLiveSnapshot, syncEasyship, webhookEndpoint } from "@/lib/easyship/
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-/**
- * The platform row is the source of truth for Easyship account config. Staff
- * (`shipping`) or automation (`Bearer $EASYSHIP_SYNC_TOKEN`) read and write it
- * here; every write pushes to Easyship and stores the resulting report.
- */
 const guard = (req: Request) => requireBearerOrAdmin(req, "EASYSHIP_SYNC_TOKEN", "shipping");
 
 function view(cfg: EasyshipConfig) {
@@ -53,7 +48,6 @@ export async function PUT(req: Request) {
   const parsed = EasyshipSettingsInputSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   try {
-    // A body without box_for_type (older automation) keeps the saved mapping instead of wiping it.
     const keep = body && typeof body === "object" && !("box_for_type" in body);
     const box_for_type = keep ? (await readEasyshipConfig()).settings?.box_for_type ?? {} : parsed.data.box_for_type;
     const saved = await writeEasyshipConfig({ settings: { ...parsed.data, box_for_type } });
@@ -64,7 +58,6 @@ export async function PUT(req: Request) {
   }
 }
 
-/** Re-push the saved settings without changing them. */
 export async function POST(req: Request) {
   const denied = await guard(req);
   if (denied) return denied;

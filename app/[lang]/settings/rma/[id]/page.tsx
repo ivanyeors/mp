@@ -22,11 +22,6 @@ import {
 
 export const runtime = "nodejs";
 
-/**
- * This page predates the shared `Button` (it is a Server Component, and
- * `Button` is client-only), so the lifecycle actions style themselves. They
- * still take the `PageActions` tile shape on mobile.
- */
 const rmaActionBase =
   "inline-flex w-full items-center justify-center rounded-md px-3 text-sm transition-colors " +
   "h-9 max-md:h-auto max-md:min-h-14 max-md:whitespace-normal max-md:py-2 max-md:leading-tight md:w-auto";
@@ -91,7 +86,6 @@ export default async function RmaDetailPage({
   const admin = supabaseAdmin();
   const to = (href: string) => withLocale(href, locale);
 
-  // Service-role reads (not customer RLS).
   const { data: rmaData } = await admin
     .from("rma_requests")
     .select(
@@ -121,15 +115,12 @@ export default async function RmaDetailPage({
   const next = nextStatuses(rma.status as RmaStatus);
   const isRefund = rma.resolution === "refund";
   const hasActions = next.length > 0;
-  // Hand-offs to the Customer and the Order (PRD-crm-retention-loop slice 02),
-  // each only for Staff who can open it.
   const customerHref =
     rma.customers?.id && hasPermission(ctx, "customers") ? to(`/settings/customers/${rma.customers.id}`) : null;
   const orderHref = rma.orders?.id && hasPermission(ctx, "orders") ? to(`/settings/orders/${rma.orders.id}`) : null;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 md:space-y-6">
-      {/* Phones: the shell breadcrumb already leads back to the queue. */}
       <div className="flex items-center gap-3 max-md:hidden">
         <Link
           href={to("/settings/rma")}
@@ -171,7 +162,6 @@ export default async function RmaDetailPage({
         </p>
       </div>
 
-      {/* Returned items */}
       <section className="rounded-lg border">
         <h2 className="border-b px-4 py-2 text-sm font-medium">Returned items</h2>
         {items.length === 0 ? (
@@ -209,7 +199,6 @@ export default async function RmaDetailPage({
         )}
       </section>
 
-      {/* Reason + customer note */}
       <section className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border p-4">
           <h2 className="text-sm font-medium">Reason</h2>
@@ -223,7 +212,6 @@ export default async function RmaDetailPage({
         </div>
       </section>
 
-      {/* Photos */}
       <section className="rounded-lg border p-4">
         <h2 className="text-sm font-medium">Photos</h2>
         {photos.length === 0 ? (
@@ -231,7 +219,6 @@ export default async function RmaDetailPage({
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">
             {photos.map((url) =>
-              // Customer-typed: a link only when it is a web link.
               toWebUrl(url) ? (
                 <a
                   key={url}
@@ -253,12 +240,9 @@ export default async function RmaDetailPage({
         )}
       </section>
 
-      {/* Lifecycle actions (slice 05) — only the transitions the state machine allows. */}
       {hasActions ? (
         <section className="space-y-4 rounded-lg border p-4">
           <h2 className="text-sm font-medium">Actions</h2>
-          {/* The form is the grid/flex item; the button fills it, so a lifecycle
-              action is the same tile size as every other page action. */}
           <PageActions>
             {next.includes("approved") ? (
               <form action={approveRmaForm.bind(null, rma.id)} className="w-full md:w-auto">
@@ -326,7 +310,6 @@ export default async function RmaDetailPage({
         </section>
       ) : null}
 
-      {/* Status timeline — the customer-visible history of every transition. */}
       <section className="rounded-lg border p-4">
         <h2 className="text-sm font-medium">Status timeline</h2>
         {events.length === 0 ? (
@@ -353,7 +336,6 @@ export default async function RmaDetailPage({
         )}
       </section>
 
-      {/* Admin note — the audited proving mutation. */}
       <section className="rounded-lg border p-4">
         <h2 className="text-sm font-medium">Internal note (staff only)</h2>
         <form action={saveAdminNoteForm.bind(null, rma.id)} className="mt-2 space-y-2">

@@ -48,8 +48,6 @@ const ALL_BOLSTER_VARIANTS = ["short", "medium", "long"] as const;
 
 export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [remoteLoading, setRemoteLoading] = useState(false);
-  // The panel is only fully loaded once the remote pass lands; the existing
-  // controls stay in their loading state until then, exactly as before.
   const busy = remoteLoading;
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [filter, setFilter] = useState("");
@@ -80,19 +78,12 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
       next.forEach((r) => {
         const saved = r.override?.sku ?? "";
         const draft = prev[r.shopifyVariantId];
-        // Keep an in-progress edit across a background refresh; adopt the
-        // saved value when there is no edit or the edit already matches.
         out[r.shopifyVariantId] = draft && draft.sku !== saved && draft.sku !== "" ? draft : { sku: saved };
       });
       return out;
     });
   }, []);
 
-  /**
-   * Second pass: everything that needs the Shopify Admin API. One call now
-   * serves both the table and the unmapped-variant picker, where previously two
-   * server actions each fetched the active-product list in turn.
-   */
   const refreshRemote = useCallback(async () => {
     setRemoteLoading(true);
     try {
@@ -113,14 +104,6 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     }
   }, [applyRows]);
 
-  /**
-   * One pass. The DB-only `refresh` is kept for callers that want it, but the
-   * panel itself loads through the remote pass alone: painting the mappings-
-   * only rows first and then filtering them to active SKUs made rows disappear
-   * mid-read and reset an SKU the admin had started typing. The remote pass is
-   * still a single Shopify Admin API call (previously two), and the Inventory
-   * page load no longer waits on it.
-   */
   const reload = useCallback(async () => {
     await refreshRemote();
   }, [refreshRemote]);
@@ -130,7 +113,6 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   }, [reload]);
 
   useEffect(() => {
-    // Keep selection valid when switching mapping types.
     if (linkKind === "pillow") {
       if (!linkPillowSize) setLinkPillowSize("M");
     }
@@ -141,7 +123,6 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
 
   useEffect(() => {
     const load = async () => {
-      // Parts don't use BOM templates.
       if (linkKind === "part") {
         setLinkTemplates([]);
         setLinkTemplateId("");
@@ -176,7 +157,6 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     };
 
     load();
-    // Reset chosen template whenever the selection changes.
     setLinkTemplateId("");
   }, [linkKind, linkPillowKind, linkPillowSize, linkBolsterVariant]);
 
@@ -228,9 +208,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     const selectedId = linkItemId ? Number(linkItemId) : null;
 
     const sorted = [...items]
-      // Hide parts that are already mapped to a Shopify variant (but keep the currently selected item visible).
       .filter((it) => !mappedPartItemIds.has(it.id) || (selectedId !== null && it.id === selectedId))
-      // Hide altered fillings from Shopify mapping UI (they should inherit mapping from their base item).
       .filter((it) => !(it.category === "filling" && it.alteration_of_item_id))
       .sort((a, b) => getInventoryItemDisplayLabel(a).localeCompare(getInventoryItemDisplayLabel(b)));
     return sorted.map((it) => ({ id: it.id, label: getInventoryItemDisplayLabel(it) }));
@@ -398,7 +376,6 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                     aria-label="Search unmapped Shopify variants"
                     autoFocus
                     onKeyDown={(e) => {
-                      // Keep typing/navigation inside the input without the menu stealing arrow keys.
                       if (e.key !== "Escape") e.stopPropagation();
                     }}
                   />

@@ -1,10 +1,3 @@
-/**
- * Slice 02 — Locations projection.
- * Maps to .claude/PRD-locations-booking/issues/02-locations-schema-partner-migration.md
- *
- * Locks the rule /our-partners depends on: own studios never leak into the partner
- * projection, and hidden partners are excluded unless explicitly requested.
- */
 import { describe, it, expect } from "vitest";
 import {
   selectBookableLocations,
@@ -51,7 +44,6 @@ describe("selectPartnerRows", () => {
     expect(selectPartnerRows(ordered).map((r) => r.id)).toEqual(["a", "b", "c"]);
   });
 
-  // ADR 0037: a partner with several clinics is one main row plus branch rows.
   describe("with branch rows", () => {
     const withBranches = [
       row({ id: "p1", name: "Alignwell Chiropractic", type: "partner", visible: true }),

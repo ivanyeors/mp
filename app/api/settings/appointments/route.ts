@@ -46,7 +46,6 @@ const PutSchema = z.object({
     .max(200)
     .optional(),
   showCancelled: z.boolean().optional(),
-  // Seven days of HH:MM windows; content rules checked by validateAvailability.
   availability: z
     .array(
       z.array(z.object({ start: z.string().max(5), end: z.string().max(5) })).max(8),
@@ -111,9 +110,6 @@ export async function PUT(req: Request) {
     ),
   };
 
-  // Windows are the source of truth. An explicit `availability` wins; a patch
-  // to the coarse trio (older callers) is translated into one window per
-  // open day; otherwise keep the stored windows. Hour fields are re-derived.
   let availability: WeeklyAvailability;
   if (input.availability) {
     const problem = validateAvailability(input.availability);

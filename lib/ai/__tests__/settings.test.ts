@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AI_WRITING_DEFAULTS, AI_WRITING_SETTING_KEYS, aiWritingSettingsToRows } from "@/lib/ai/writing-settings";
 
-/**
- * `readAiWritingSettings` is read at every AI writing call (PRD-campaign-email-editor
- * slice 16): a stale value reads as its default, and a failed read turns AI
- * writing off for that call.
- */
-
 const h = vi.hoisted(() => ({ admin: null as unknown }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.admin }));
 

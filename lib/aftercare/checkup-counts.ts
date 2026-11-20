@@ -1,23 +1,12 @@
-/**
- * Check-up reminder counts (CRM slice 08), for the Aftercare card. Counts
- * only: nothing that names a customer leaves this file.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CHECKUP_TEMPLATE_LIKE } from "./checkup";
 
 export type CheckupWindow = { from: string; to: string };
 
-/** A booking that is a booking: not a checkout left open, cancelled or expired. */
 const BOOKED = ["booked", "attended", "no_show", "needs_reschedule"] as const;
 
 type SentRow = { customer_id: string; template: string; entity_id: string; sent_at: string };
 
-/**
- * Check-ups sent in `window`: one per Order and milestone, whatever carried
- * it; the messages by channel; and how many were followed by a Re-adjustment
- * booking, made by that Customer on or after the check-up's first send.
- */
 export function summariseCheckupSends(input: {
   email: readonly SentRow[];
   whatsapp: readonly SentRow[];

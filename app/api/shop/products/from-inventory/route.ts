@@ -10,13 +10,11 @@ const cents = z.number().int().min(0);
 
 const PushSchema = z.object({
   item_ids: z.array(z.number().int().positive()).min(1),
-  /** The prices the operator checked in the push dialog, per size being pushed. */
   prices: z
     .array(z.object({ item_id: z.number().int().positive(), cost_cents: cents, msrp_cents: cents }))
     .min(1),
 });
 
-/** Inventory families that can be sold, with Costings prices and whether each is in Products. */
 export async function GET() {
   const denied = await requireAdmin("products");
   if (denied) return denied;
@@ -30,7 +28,6 @@ export async function GET() {
   }
 }
 
-/** Push one inventory family to Products after its price check. Makes a draft product, or adds new sizes to one. */
 export async function POST(req: Request) {
   const denied = await requireAdmin("products");
   if (denied) return denied;

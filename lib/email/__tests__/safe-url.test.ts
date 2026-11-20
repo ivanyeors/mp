@@ -14,17 +14,13 @@ describe("safeUrl", () => {
   it.each([
     "javascript:alert(1)",
     "JaVaScRiPt:alert(1)",
-    // Whitespace/control obfuscation: clients strip these before resolving, so
-    // a naive prefix check would let it through.
     "java\tscript:alert(1)",
     "java\nscript:alert(1)",
     " javascript:alert(1)",
     "data:text/html,<script>alert(1)</script>",
     "vbscript:msgbox(1)",
     "file:///etc/passwd",
-    // Protocol-relative: inherits the client's protocol, which we won't rely on.
     "//evil.example.com/x",
-    // Relative: email has no page origin, so this can never resolve.
     "/account/orders/1",
     "",
   ])("rejects %j", (url) => {

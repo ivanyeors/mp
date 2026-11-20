@@ -10,7 +10,6 @@ export type AdminOrderDetailResult =
   | { status: 200; body: AdminOrderDetailPayload }
   | { status: 404; body: { error: string } };
 
-/** Assembles the `/api/shop/orders/[id]` GET payload (order + items + timeline + margin). */
 export async function loadAdminOrderDetail(id: string): Promise<AdminOrderDetailResult> {
   const admin = supabaseAdmin();
 
@@ -50,7 +49,6 @@ export type AdminOrderTimelineResult =
   | { status: 200; body: { ok: true; rows: unknown[]; events: unknown[] } }
   | { status: 500; body: { error: string } };
 
-/** Assembles the `/api/shop/orders/[id]/timeline` GET payload. */
 export async function loadAdminOrderTimeline(
   id: string,
 ): Promise<AdminOrderTimelineResult> {
@@ -80,7 +78,6 @@ export type AdminOrderMpConfigLinksResult =
   | { status: 200; body: { ok: true; responses: AdminOrderMpConfigLink[] } }
   | { status: 500; body: { error: string } };
 
-/** Assembles the `/api/shop/orders/[id]/mp-config-link` GET payload. */
 export async function loadAdminOrderMpConfigLinks(
   id: string,
 ): Promise<AdminOrderMpConfigLinksResult> {

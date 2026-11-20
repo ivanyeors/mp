@@ -39,7 +39,6 @@ export const metadata: Metadata = {
   description:
     "Singapore's fully customisable cervical pillows and bolsters — fitted in-store for neck pain relief and ergonomic sleep.",
   applicationName: "Mpillow",
-  // Pages without buildPageMetadata (FAQ, support, …) inherit this share image.
   openGraph: {
     type: "website",
     siteName: "Mpillow",
@@ -74,7 +73,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // App-like PWA: lock pinch-zoom (intentional a11y tradeoff — see slice 13)
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
@@ -93,8 +91,6 @@ export default async function RootLayout({
   const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
   const lang = isSupportedLocale(cookieLocale ?? "") ? cookieLocale : DEFAULT_LOCALE;
   const isProd = process.env.NODE_ENV === "production";
-  // The learn-more slide-ins open from any page (the app dock carries three), so their
-  // published Page Builder edits travel with the layout. Cached; empty on any failure.
   const slideInRows = await getPublishedSlideInRows();
 
   return (
@@ -120,16 +116,9 @@ export default async function RootLayout({
           <JourneyTracker />
           <AnalyticsNoticeBar />
           <TopLoadingBar />
-          {/*
-            One cart and one currency for the whole app. They live here, not in
-            the shop layout, because the cart button sits in HomeHeader — and
-            because a second nested CartProvider would be a second cart state
-            racing the first over the same `mp_cart` localStorage key.
-          */}
           <SlideInContentProvider rows={slideInRows}>
             <CurrencyProvider>
               <CartProvider>
-                {/* The floating TikTok player: up here so a video keeps playing on the page its button opens. */}
                 <TikTokPipProvider>
                   <HomeHeader />
                   <RouteScope>{children}</RouteScope>
@@ -137,16 +126,13 @@ export default async function RootLayout({
                   <BookAppointmentOverlay />
                   <AppDock />
                   <CartShell />
-                  {/* The website chat: up here so a chat started on /support follows the visitor between pages. */}
                   <SupportChatRoot />
                 </TikTokPipProvider>
               </CartProvider>
             </CurrencyProvider>
           </SlideInContentProvider>
-          {/* After the page in reading order: screen readers meet it where it appears. */}
           <DropOffQuestionMount />
           <SonnerProvider />
-          {/* What a sign-up did to their emails, on the page it lands on (PRD-campaign-audiences slice 03). */}
           <SignUpNoticeToast />
         </ThemeProvider>
         {isProd ? <SpeedInsights /> : null}

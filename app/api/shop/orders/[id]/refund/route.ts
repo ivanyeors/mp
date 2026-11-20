@@ -22,13 +22,9 @@ export const runtime = "nodejs";
 
 const RefundSchema = z
   .object({
-    /** One per refund dialog: a double-submit replays at Stripe, a second refund does not. */
     request_id: z.string().uuid(),
-    /** `full`: all still refundable. `items`: the lines below. `amount`: a figure Staff typed. */
     mode: z.enum(["full", "items", "amount"]),
-    /** Major units (e.g. dollars). Required unless `full`; for `items`, the worked-out figure or Staff's edit of it. */
     amount: z.number().positive().optional(),
-    /** What the refund is for. Recorded on the timeline; the amount is what moves. */
     items: z
       .array(
         z.object({
@@ -38,11 +34,9 @@ const RefundSchema = z
       )
       .max(100)
       .default([]),
-    /** The refund includes the Order's shipping. */
     shipping: z.boolean().default(false),
     reason: z.enum(STAFF_REFUND_REASONS),
     note: z.string().trim().max(500).optional(),
-    /** A return of a customised (Result) Order needs it back in person (US18). */
     in_person_return_acknowledged: z.boolean().optional(),
   })
   .superRefine((body, ctx) => {
@@ -68,10 +62,6 @@ type OrderLine = {
   customization_snapshot: unknown;
 };
 
-/**
- * Every intent the Order's money came in on: its charge rows' intents, or the
- * payment reference for an Order with no ledgered charge yet.
- */
 async function paymentIntentsOf(
   admin: SupabaseClient,
   order: { id: string; payment_reference: string },
@@ -96,11 +86,6 @@ function money(amount: number, currency: string): string {
   return `${amount.toFixed(2)} ${currency}`;
 }
 
-/**
- * Staff refund from the order screen: everything left, chosen lines (and the
- * shipping), or a typed amount. Stripe moves the money; the `charge.refunded`
- * webhook writes the ledger row, as for every refund.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;
@@ -181,9 +166,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const amountCents = Math.round(amount * 100);
   const isFullRefund = amountCents >= Math.round(remaining * 100);
 
-  // Most Orders were paid on one intent, and Stripe checks the amount. A Result
-  // topped up past its hold was paid on two (ADR 0016), and each refunds only
-  // what it took, so the refund is split by what Stripe has left on each.
   const intents = await paymentIntentsOf(admin, order);
   let parts: Array<{ paymentIntentId: string; cents?: number }>;
   if (intents.length === 1) {
@@ -235,7 +217,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     quantity: sel.quantity,
   }));
 
-  // A return on a pending refund request answers it, as approving it would.
   if (returned && order.refund_request_status === "requested") {
     await admin
       .from("orders")
@@ -246,8 +227,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .eq("id", orderId);
   }
 
-  // Lines that came back are no Qualifying Sale (ADR 0034), as on an RMA
-  // refund. A charge correction keeps the sale. Best-effort: the money moved.
   if (returned && order.partner_id && refundedLines.length > 0) {
     try {
       await voidCommissionsForItems(admin, refundedLines.map((l) => l.order_item_id));
@@ -268,7 +247,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     input.note ? `. Note: ${input.note}` : "",
   ].join("");
 
-  // Ledger row is written by the Stripe webhook — single source of truth.
   await addOrderTimelineEvent(orderId, "refund_initiated", message, {
     stripe_refund_ids: refundIds,
     stripe_refund_id: refundIds[0],
@@ -314,7 +292,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     stripe_refund_ids: refundIds,
     amount: refundedAmount,
     currency,
-    /** A PayNow refund settles later; the order updates when it does. */
     pending: issued.some((i) => i.refund.status === "pending"),
   });
 }

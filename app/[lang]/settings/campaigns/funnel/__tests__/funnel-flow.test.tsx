@@ -7,15 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import { buildFunnel, type FunnelCampaignFact, type FunnelFacts, type FunnelView } from "@/lib/email-funnel/model";
 
-/**
- * The Email flow arranged (PRD-email-funnel slice 07): a started card has a
- * lock and no grip; the menu's moves send what the matching drop zone sends;
- * a move is drawn at once and rolled back with the refusal's words; nobody
- * without `customers-edit` gets a grip. And the previews (owner, 2026-11-19):
- * each card's chevron shows and hides its own, *Hide previews* hides them all,
- * remembered, and only shown cards' renders are asked for.
- */
-
 const actions = vi.hoisted(() => ({
   renderFunnelEmails: vi.fn(async (keys: string[]) => ({
     ok: true as const,
@@ -51,7 +42,6 @@ const camp = (n: number, name: string, segment: number, started = false): Funnel
   stats: { handed: 0, firstSentAt: null, lastSentAt: null },
 });
 
-// Lead: Started one (started) → A → B → C, all drafts after it.
 const facts: FunnelFacts = {
   summary: null,
   subscribed: {},
@@ -106,7 +96,6 @@ describe("arranging the flow", () => {
     expect(card(10).querySelector('[aria-label^="Drag"]')).toBeNull();
     expect(card(10).querySelector('[aria-label^="Stays in place: Started"]')).not.toBeNull();
     expect(card(13).querySelector('[aria-label="Drag “C” to move it"]')).not.toBeNull();
-    // Numbered in the order people get them.
     expect([10, 11, 12, 13].map((k) => card(k).querySelector('[aria-label^="Step"]')?.textContent)).toEqual(["1", "2", "3", "4"]);
   });
 
@@ -139,16 +128,13 @@ describe("arranging the flow", () => {
   it("gives nobody without customers-edit a grip, a move, a condition or Add an email here, but keeps Add a follow-up", async () => {
     await show(buildFunnel(facts), "lead", ["campaigns"]);
     expect(host.querySelector('[aria-label^="Drag"]')).toBeNull();
-    // No condition control: the condition is words.
     expect(host.querySelector('[aria-label^="Who “"]')).toBeNull();
     const links = [...host.querySelectorAll("a")];
     expect(links.some((l) => l.textContent?.includes("Add an email here"))).toBe(false);
     expect(links.some((l) => l.getAttribute("href")?.includes("before="))).toBe(false);
-    // The plain follow-up, as slice 06 offers it to anyone with campaigns.
     const followUps = links.filter((l) => l.textContent?.includes("Add a follow-up")).map((l) => l.getAttribute("href"));
     expect(followUps).toContain(`/en-US/settings/campaigns/new?after=${id(13)}:sent`);
     expect(followUps.every((h) => /^\/en-US\/settings\/campaigns\/new\?after=[0-9a-f-]{36}:sent$/.test(h ?? ""))).toBe(true);
-    // The menu opened and left open, so its items are read while they are there.
     await settle();
     await act(async () => {
       button("Actions for “C”")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -162,7 +148,6 @@ describe("arranging the flow", () => {
   });
 
   it("Move to… offers, without dragging, the places a drop would take, and does what that drop does", async () => {
-    // The issue's demo: Add an email twice makes two one-email sequences, A and B; and a draft outside the funnel.
     const two: FunnelFacts = {
       ...facts,
       segments: [...facts.segments, { id: id(5), name: "Premium buyers", params: { bought: "premium" }, count: 3, needsReview: false }],
@@ -170,7 +155,6 @@ describe("arranging the flow", () => {
     };
     const view = buildFunnel(two);
     await show(view);
-    // Nothing else in B's menu can do it.
     await choose(button("Actions for “B”")!, "Move to…");
     const offered = () => [...document.querySelectorAll('[role="dialog"] li button')].map((b) => b.textContent);
     expect(offered()).toContain("After “A”, to those who got it");
@@ -183,13 +167,11 @@ describe("arranging the flow", () => {
     expect(arrange.moveFunnelEmail).toHaveBeenCalledWith({ ...zoneMove(id(22), a, null), stage: "lead" });
     expect(arrange.moveFunnelEmail).toHaveBeenCalledWith({ campaignId: id(22), stage: "lead", after: { campaignId: id(21), did: "sent" }, before: null });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
-    // Focus goes back to the moved card.
     expect(document.activeElement?.closest("[data-card]")?.getAttribute("data-card")).toBe(`campaign:${id(22)}`);
     act(() => root?.unmount());
     root = null;
     host.remove();
 
-    // The draft outside the funnel is offered the same places.
     await show(buildFunnel(two));
     const chip = host.querySelector(`[data-unplaced="${id(23)}"]`)!;
     await click([...chip.querySelectorAll("button")].find((b) => b.textContent === "Move to…")!);
@@ -211,7 +193,6 @@ describe("Add as a draft", () => {
     expect(addButton().disabled).toBe(true);
     await click(addButton());
     expect(arrange.addPlaybookDraft).toHaveBeenCalledTimes(1);
-    // The page read again: the row is whatever the new view says (here still a suggestion), and usable.
     await act(async () => {
       root!.render(
         <>

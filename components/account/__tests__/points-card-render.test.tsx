@@ -51,7 +51,6 @@ describe("Profile → Points → Bonus milestones (PRD-loyalty-points slice 09)"
     expect(html).toContain("The lighter part is points on their way: they count once they&#x27;re usable.");
     expect(html).toContain("1,000 points earned from orders: 100 points added, reached.");
     expect(html).toContain("2,500 points earned from orders: 300 points added.");
-    // Milestone 2's stretch: half earned, five-sixths with pending.
     expect(html).toContain("width:50%");
     expect(html).toContain("width:83.3%");
   });

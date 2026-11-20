@@ -1,7 +1,3 @@
-/**
- * Map legacy configurator / customize payloads → catalog-shaped engine inputs
- * so missingRequiredInputs can reject incomplete sets before ballpark/recommend.
- */
 import { deriveSleepPosition } from "@/lib/shop/recommendation/rules";
 import type { MeasurementBasedPreferences } from "@/lib/types/customization";
 import { missingRequiredInputs } from "./catalog";
@@ -41,7 +37,6 @@ function yesNo(raw: string): boolean | undefined {
   return undefined;
 }
 
-/** Premium / Basic wizard state → engine inputs (flow picks which keys are required). */
 export function wizardToEngineInputs(data: WizardMeasurementData): EngineInputs {
   const sleepTypes = data.sleepPositionType;
   return {
@@ -88,7 +83,6 @@ export function measurementPrefsToEngineInputs(
   };
 }
 
-/** mp-basic recommend body (camelCase) → engine inputs. */
 export function basicBodyToEngineInputs(body: {
   shoulderLength: string;
   gender?: string;

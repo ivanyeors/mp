@@ -5,34 +5,16 @@ import * as React from "react";
 import { decideTextTone, requiredRatio, type ContrastRegion, type ToneDecision } from "@/lib/a11y/text-contrast";
 import { cn } from "@/lib/utils";
 
-/** CSS px per sampled pixel: about one glyph stroke at hero sizes. */
 const SAMPLE_PX = 4;
 
-/**
- * Dark theme only: light mode shows the photo as shot, with no wash over it. Each
- * wash is drawn bottom-up with these opacities at the bottom, middle and top. One
- * definition renders the washes and composites them into the dark-theme measurement,
- * so the colour is chosen against the photo as it is actually seen.
- */
 const DARK_WASHES = [
-  // var(--background) in the dark theme is oklch(0.145 0 0), #0a0a0a.
   { css: "var(--background)", rgb: [10, 10, 10], alpha: [0.85, 0.25, 0], phoneOnly: false },
   { css: "#000", rgb: [0, 0, 0], alpha: [0.55, 0.25, 0], phoneOnly: true },
 ] as const;
-/** Tailwind's `max-md`, where the phone-only wash shows. */
 const PHONE_QUERY = "(width < 48rem)";
 
 type HeroContrast = { light: ToneDecision; dark: ToneDecision };
 
-/**
- * The hero photo's frame. Reads the photo under each `[data-hero-copy]` element and
- * sets `data-hero-tone` (light theme) and `data-hero-tone-dark` (dark theme) to the
- * text colour, white or near-black, with the most contrast over it. Re-measures when
- * the layout or the loaded image changes, so every breakpoint and every image an
- * operator uploads is checked as it is actually cropped. `data-hero-aa(-dark)` says
- * whether that colour reaches WCAG AA. Until it has measured, or if the image cannot
- * be read, the copy keeps its theme colours.
- */
 export function HeroContrastFrame({ className, children }: { className?: string; children: React.ReactNode }) {
   const frameRef = React.useRef<HTMLDivElement>(null);
   const [contrast, setContrast] = React.useState<HeroContrast | null>(null);
@@ -56,12 +38,10 @@ export function HeroContrastFrame({ className, children }: { className?: string;
       if (!raf) raf = requestAnimationFrame(measure);
     };
 
-    // A breakpoint change can swap in a larger srcset candidate, which fires `load` again.
     img.addEventListener("load", schedule);
     const observer = new ResizeObserver(schedule);
     observer.observe(frame);
     frame.querySelectorAll("[data-hero-copy]").forEach((el) => observer.observe(el));
-    // Web fonts swapping in reflow the copy over different pixels.
     void document.fonts?.ready.then(schedule);
     schedule();
 
@@ -105,7 +85,6 @@ function aa(decision: ToneDecision): "pass" | "fail" {
   return decision.passes ? "pass" : "fail";
 }
 
-/** Opacity of `alpha` (bottom, middle, top stops) at `fromBottom`, 0 at the bottom edge to 1 at the top. */
 function washAlpha(alpha: readonly [number, number, number], fromBottom: number): number {
   const f = Math.min(1, Math.max(0, fromBottom));
   return f <= 0.5 ? alpha[0] + (alpha[1] - alpha[0]) * (f / 0.5) : alpha[1] + (alpha[2] - alpha[1]) * ((f - 0.5) / 0.5);
@@ -119,7 +98,6 @@ function measureContrast(
 ): HeroContrast | null {
   const box = img.getBoundingClientRect();
   if (!box.width || !box.height) return null;
-  // object-cover, centred: the photo is scaled to fill and cropped evenly on the long axis.
   const scale = Math.max(box.width / img.naturalWidth, box.height / img.naturalHeight);
   const offsetX = (box.width - img.naturalWidth * scale) / 2;
   const offsetY = (box.height - img.naturalHeight * scale) / 2;
@@ -131,7 +109,6 @@ function measureContrast(
   try {
     for (const el of frame.querySelectorAll<HTMLElement>("[data-hero-copy]")) {
       const rect = el.getBoundingClientRect();
-      // Only the part of the copy that sits over the photo.
       const x0 = Math.max(rect.left, box.left) - box.left;
       const x1 = Math.min(rect.right, box.right) - box.left;
       const y0 = Math.max(rect.top, box.top) - box.top;
@@ -142,7 +119,6 @@ function measureContrast(
       const h = Math.max(1, Math.round((y1 - y0) / SAMPLE_PX));
       canvas.width = w;
       canvas.height = h;
-      // Resizing the canvas resets its state, so the smoothing hint is set each time.
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(
         img,
@@ -155,13 +131,10 @@ function measureContrast(
         w,
         h,
       );
-      // Throws for a cross-origin image without CORS; the copy then keeps its theme colours.
       const pixels = ctx.getImageData(0, 0, w, h).data;
       const style = getComputedStyle(el);
       const minRatio = requiredRatio(parseFloat(style.fontSize), Number(style.fontWeight) || 400);
 
-      // The dark theme sees the photo through its washes, composited row by row
-      // on the gamma-encoded bytes, as the browser does.
       const washed = new Uint8ClampedArray(pixels);
       for (let row = 0; row < h; row++) {
         const fromBottom = 1 - (y0 + ((row + 0.5) * (y1 - y0)) / h) / box.height;

@@ -25,12 +25,6 @@ type OverviewRow = {
   marketing_email: string | null;
 };
 
-/**
- * The Customer a Result belongs to, for the Result page's Customer panel (ADR
- * 0051 d), read from the Customer overview so the stage is the one the
- * Customers list shows. Null when it cannot be read: the panel is a
- * convenience, never a reason to fail the page.
- */
 export async function loadResultCustomerSummary(
   admin: SupabaseClient,
   customerId: string,

@@ -2,19 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Points join the daily job: earned points are released (PRD-loyalty-points
- * slice 03) and the milestone bonuses they reach granted (slice 09), and stale
- * checkout reservations given back (slice 04), chained onto results-sla with
- * no third cron, each as of the job's own clock, and a failure reported in the
- * job's answer without stopping what follows. Points never expire (ADR 0030,
- * 2026-10-31), so nothing expires a balance or reminds anyone about one.
- *
- * The real cron handler, runPointsEarn and runPointsMilestones; the Supabase
- * client is a fake with no Results to work on and the points settings in
- * `h.settings`, and every other chained job is a stub.
- */
-
 const h = vi.hoisted(() => ({
   rpc: vi.fn(),
   crmTelegram: vi.fn(),
@@ -68,8 +55,6 @@ describe("the daily job releases earned points and stale reservations, and expir
     const milestones = sla.search(/await runPointsMilestones\(admin, now\)/);
     const sweep = sla.search(/await releaseStalePointReservations\(admin, now\)/);
     expect(earn).toBeGreaterThan(0);
-    // Milestone bonuses right after the release, so a bonus lands on the same
-    // run as the points that reached it.
     expect(milestones).toBeGreaterThan(earn);
     expect(sla.slice(earn, milestones).match(/\bawait\b/g)).toHaveLength(1);
     expect(sweep).toBeGreaterThan(milestones);

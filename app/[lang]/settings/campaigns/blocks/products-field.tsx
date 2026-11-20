@@ -8,20 +8,10 @@ import type { CampaignProductCard } from "@/lib/email-campaigns/products";
 import { cn } from "@/lib/utils";
 import { describeCampaignProducts } from "../actions";
 
-/**
- * The products a campaign names (PRD-campaign-email-editor slice 07), as the
- * email will show them: each one's photo, name and price, read from the shop,
- * never typed. A product no longer Listed says so, by name, as the send
- * checks will. Shared by the products block and a button that goes to a
- * product.
- */
-
-// The picker loads with the first products block or product button, not with the page.
 const ProductPicker = lazy(() => import("./product-picker").then((m) => ({ default: m.ProductPicker })));
 
 type Described = { ok: true; card: CampaignProductCard } | { ok: false; error: string };
 
-/** Each product's card, asked for once while the page is open; a failure is asked again next time. */
 const described = new Map<string, Promise<Described>>();
 
 function describe(ids: readonly string[]): void {
@@ -41,10 +31,8 @@ function describe(ids: readonly string[]): void {
     }
 }
 
-/** A product just chosen from the picker: its card is what the picker showed. */
 const remember = (card: CampaignProductCard) => described.set(card.id, Promise.resolve({ ok: true, card }));
 
-/** The cards of `ids`, as they arrive. */
 function useProductCards(ids: readonly string[]): Record<string, Described | undefined> {
     const key = ids.join(",");
     const [got, setGot] = useState<Record<string, Described>>({});
@@ -64,13 +52,10 @@ function useProductCards(ids: readonly string[]): Record<string, Described | und
     return got;
 }
 
-/** A chosen product's name, once its card has arrived. */
 const titleOf = (state: Described | undefined) => (state?.ok ? state.card.title : null);
 
-/** A product's photo, small, or a box where it has none. */
 export function ProductThumb({ url, className = "h-12 w-12" }: { url: string | null; className?: string }) {
     return url ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className={cn(className, "shrink-0 rounded object-cover")} />
     ) : (
         <span className={cn(className, "flex shrink-0 items-center justify-center rounded bg-muted text-muted-foreground")}>
@@ -79,7 +64,6 @@ export function ProductThumb({ url, className = "h-12 w-12" }: { url: string | n
     );
 }
 
-/** One chosen product as the email will show it, or why it can't be. */
 function ProductCardView({ state, wide }: { state: Described | undefined; wide: boolean }) {
     if (!state) {
         return (
@@ -107,7 +91,6 @@ function ProductCardView({ state, wide }: { state: Described | undefined; wide: 
     );
 }
 
-/** The picker's button: the element itself, so the picker's trigger hands it its handlers. Busy while the picker loads. */
 const pickButton = (label: string, busy = false) => (
     <Button type="button" variant="outline" size="sm" disabled={busy}>
         {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
@@ -115,11 +98,6 @@ const pickButton = (label: string, busy = false) => (
     </Button>
 );
 
-/**
- * A products block's products: their cards side by side or one per row, as
- * the block's layout puts them, each with *Remove*, and *Add a product* up to
- * three. Errors are keyed from the block: `products` and `products.<i>`.
- */
 export function ProductsField({
     products,
     layout,
@@ -179,14 +157,12 @@ export function ProductsField({
     );
 }
 
-/** The product a button goes to: its card, and *Choose a product* or *Change the product*. */
 export function ProductField({
     product,
     onChange,
     readOnly,
     error,
 }: {
-    /** Empty until one is chosen. */
     product: string;
     onChange: (next: string) => void;
     readOnly: boolean;

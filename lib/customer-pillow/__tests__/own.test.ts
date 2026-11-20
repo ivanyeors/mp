@@ -4,14 +4,6 @@ import { fakeSupabaseAdmin, type FakeDb } from "@/lib/supabase/__tests__/fake-ad
 import { loadCustomerPillow } from "../load";
 import { loadOwnPillow } from "../own";
 
-/**
- * ADR 0042 k: the customer sees their pillow on their own Profile once
- * something says they bought it: a pillow bought here (drawn as it was built),
- * a Staff link, or a fitting with a Shopify order. What reaches them is copied
- * to what is theirs. Every name, id and figure here is made up; the template
- * names follow the catalog's.
- */
-
 const CUSTOMER = "aaaaaaaa-0000-4000-8000-000000000001";
 let db: FakeDb;
 const admin = () => fakeSupabaseAdmin(db) as unknown as SupabaseClient;
@@ -36,10 +28,8 @@ const cell = (templateId: number, slot: number, itemId: number) => ({
   offset_y_mm: null,
 });
 
-/** A uuid-shaped Result id, as Accept writes. */
 const resultId = (id: string) => `00000000-0000-4000-8000-00000000${id}`;
 
-/** A counted Order here with one Custom Mpillow line, its build frozen on it. */
 function buyHere(id: string, paidAt: string, over: Record<string, unknown> = {}) {
   db.orders.push({ id: `o-${id}`, order_number: `MP-${id}`, customer_id: CUSTOMER });
   db.customer_purchase_lines.push({
@@ -221,7 +211,6 @@ describe("a Staff link", () => {
 });
 
 describe("a Re-adjustment (ADR 0042 l)", () => {
-  // Sophie swapped the template's 6D M for two 3D S at a visit; the link holds what she left in it.
   const mix = [
     { section: "center", sub_section: "middle", slot: 1, item_id: 67, row_index: null, insert_order: null, offset_x_mm: null, offset_y_mm: null },
     { section: "left", sub_section: "front", slot: 1, item_id: 69, row_index: 0, insert_order: 1, offset_x_mm: null, offset_y_mm: null },

@@ -1,10 +1,3 @@
-/**
- * Members and Roles reads/writes for Users & permissions (ADR 0023).
- *
- * A Member is one `admin_users` row: Invited until its auth user is bound on
- * first sign-in, then Active or Deactivated. Writes go through the pure rules
- * in `role-policy.ts` and are written to the Audit Log with before/after.
- */
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
@@ -34,7 +27,6 @@ export type MemberRow = {
   isActive: boolean;
   createdAt: string;
   lastSignInAt: string | null;
-  /** When the invite email last went out (Invited Members). */
   inviteSentAt: string | null;
 };
 
@@ -75,12 +67,6 @@ function toMember(row: DbMember, lastSignIn: Map<string, string | null>): Member
   };
 }
 
-/**
- * auth user id → last sign-in, for these auth users only. auth.users also
- * holds every customer and partner, so a page of listUsers would drop the
- * oldest Members once there are enough of them. Best-effort: an Auth API
- * failure shows "—", never blocks the page.
- */
 async function lastSignIns(authUserIds: (string | null)[]): Promise<Map<string, string | null>> {
   const ids = [...new Set(authUserIds.filter((id): id is string => !!id))];
   const auth = supabaseAdmin().auth?.admin;
@@ -98,7 +84,6 @@ async function lastSignIns(authUserIds: (string | null)[]): Promise<Map<string, 
   return new Map(entries);
 }
 
-/** Every Member, oldest first. Throws on a read error. */
 export async function listMembers(): Promise<MemberRow[]> {
   const { data, error } = await supabaseAdmin()
     .from("admin_users")
@@ -110,7 +95,6 @@ export async function listMembers(): Promise<MemberRow[]> {
   return rows.map((row) => toMember(row, signIns));
 }
 
-/** Every role, built-in first then by name, with how many Members hold it. Throws on a read error. */
 export async function listRoles(): Promise<RoleRow[]> {
   const admin = supabaseAdmin();
   const [roles, members] = await Promise.all([
@@ -145,10 +129,6 @@ const CHANGED_MEANWHILE = {
 
 export type UpdateMemberResult = { ok: true; member: MemberRow } | Exclude<Decision, { ok: true }>;
 
-/**
- * Change a Member's role and/or active state, enforcing the role policy
- * against the current rows. Audited as `member.update`.
- */
 export async function updateMember(
   actor: AdminContext,
   id: string,
@@ -160,10 +140,8 @@ export async function updateMember(
     .select(MEMBER_COLUMNS)
     .eq("id", id)
     .maybeSingle<DbMember>();
-  // 22P02: the id is not a uuid, so no Member has it.
   if (findError && findError.code !== "22P02") throw new Error(findError.message);
   if (!found) return { ok: false, status: 404, error: "Member not found." };
-  // The state the policy judges, and the write is conditioned on.
   const target = { ...found };
 
   const roles = await listRoles();
@@ -185,8 +163,6 @@ export async function updateMember(
   if (change.roleId !== undefined) patch.role_id = change.roleId;
   if (change.isActive !== undefined) patch.is_active = change.isActive;
 
-  // Only while the row is still what the policy judged: a concurrent change
-  // (another admin promoting them, say) is not silently overwritten.
   const { data: updated, error } = await admin
     .from("admin_users")
     .update(patch)
@@ -198,8 +174,6 @@ export async function updateMember(
   if (error) throw new Error(error.message);
   if (!updated) return CHANGED_MEANWHILE;
 
-  // Two Owners demoting each other at once both see two Owners. Whoever
-  // commits second finds none left and puts their target back.
   const ownerId = roles.find((r) => r.key === "owner")?.id;
   const wasOwner = target.role_id === ownerId && target.is_active;
   const isOwner = updated.role_id === ownerId && updated.is_active;
@@ -225,11 +199,6 @@ export async function updateMember(
   return { ok: true, member: toMember(updated, signIns) };
 }
 
-// ---------------------------------------------------------------------------
-// Invites (slice 05)
-// ---------------------------------------------------------------------------
-
-/** Resend is refused within this long of the last send. */
 export const RESEND_COOLDOWN_MS = 60_000;
 
 const STATUS_LABEL: Record<MemberStatus, string> = { invited: "Invited", active: "Active", deactivated: "Deactivated" };
@@ -241,7 +210,6 @@ function signInUrl(): string {
   return `${getSiteOrigin()}${withLocale("/account/login", DEFAULT_LOCALE)}?next=${encodeURIComponent(next)}`;
 }
 
-/** Send (or re-send) the invite email; true when the transport accepted it. */
 async function sendInviteEmail(actor: AdminContext, email: string, roleName: string): Promise<boolean> {
   try {
     await getEmailTransport().send({
@@ -264,11 +232,6 @@ async function stampSent(id: string): Promise<string> {
 
 export type InviteResult = { ok: true; member: MemberRow; emailSent: boolean } | Refusal;
 
-/**
- * Invite a Member: an Invited row with an assignable role, its first Staff
- * profile, and the invite email. A failed email does not undo the invite —
- * the row stays and the caller offers Resend. Audited as `member.invite`.
- */
 export async function inviteMember(
   actor: AdminContext,
   input: { email: string; roleId: string; profileName?: string | null },
@@ -329,23 +292,19 @@ export async function inviteMember(
   return { ok: true, member: toMember(row, new Map()), emailSent };
 }
 
-/** Load an Invited Member the actor may manage, or the refusal. */
 async function invitedTarget(actor: AdminContext, id: string): Promise<{ row: DbMember; role: PolicyRole } | Refusal> {
   const { data: row, error } = await supabaseAdmin()
     .from("admin_users")
     .select(MEMBER_COLUMNS)
     .eq("id", id)
     .maybeSingle<DbMember>();
-  if (error && error.code !== "22P02") throw new Error(error.message); // 22P02: not a uuid → 404
+  if (error && error.code !== "22P02") throw new Error(error.message);
   if (!row) return { ok: false, status: 404, error: "Member not found." };
   if (memberStatus(row) !== "invited") {
     return { ok: false, status: 409, error: `${row.email} has already signed in; deactivate them instead.` };
   }
   const roles = await listRoles();
   const byId = new Map<string, PolicyRole>(roles.map((r) => [r.id, r]));
-  // Same rules as any change to a Member: not yourself, Owner only by an Owner,
-  // and only a role the actor could have given. The owner count is moot for an
-  // invite, so pass one more than enough.
   const decision = canUpdateMember(actor, { id: row.id, roleId: row.role_id, isActive: row.is_active }, {}, byId, 2);
   if (!decision.ok) return decision;
   return { row, role: byId.get(row.role_id)! };
@@ -353,7 +312,6 @@ async function invitedTarget(actor: AdminContext, id: string): Promise<{ row: Db
 
 export type ResendResult = { ok: true; member: MemberRow; emailSent: boolean } | Refusal;
 
-/** Re-send an invite; refused within a minute of the last send. Audited as `member.invite_resend`. */
 export async function resendInvite(actor: AdminContext, id: string, now = Date.now()): Promise<ResendResult> {
   const target = await invitedTarget(actor, id);
   if ("ok" in target) return target;
@@ -375,16 +333,6 @@ export async function resendInvite(actor: AdminContext, id: string, now = Date.n
   return { ok: true, member: toMember(row, new Map()), emailSent };
 }
 
-/**
- * Revoke an invite: delete the Invited Member and its Staff profiles. A
- * profile already used as a Result's "measured by" (or whose use can't be
- * checked) is archived and moved to the revoker instead, so attribution
- * survives. Audited as `member.invite_revoke`.
- *
- * The invitee may sign in while this runs. Every step is conditioned on the
- * row still being unbound, and profiles are parked under the revoker until the
- * Member row is gone, so a sign-in in between leaves them as they were.
- */
 export async function revokeInvite(actor: AdminContext, id: string): Promise<{ ok: true } | Refusal> {
   const target = await invitedTarget(actor, id);
   if ("ok" in target) return target;
@@ -399,7 +347,6 @@ export async function revokeInvite(actor: AdminContext, id: string): Promise<{ o
   if (pErr) throw new Error(pErr.message);
   const own = (profiles ?? []) as { id: string; name: string; archived_at: string | null }[];
 
-  // 1. Park the profiles under the revoker, archived (frees the FK).
   const parkedAt = new Date().toISOString();
   for (const p of own) {
     const { error } = await admin
@@ -409,7 +356,6 @@ export async function revokeInvite(actor: AdminContext, id: string): Promise<{ o
     if (error) throw new Error(error.message);
   }
 
-  // 2. Delete the Member only while still unbound.
   const { data: deleted, error } = await admin
     .from("admin_users")
     .delete()
@@ -417,7 +363,6 @@ export async function revokeInvite(actor: AdminContext, id: string): Promise<{ o
     .is("auth_user_id", null)
     .select("id");
   if (error || !(deleted ?? []).length) {
-    // Signed in meanwhile (or the delete failed): put the profiles back.
     for (const p of own) {
       await admin.from("mp_staff").update({ admin_user_id: id, archived_at: p.archived_at }).eq("id", p.id);
     }
@@ -425,9 +370,6 @@ export async function revokeInvite(actor: AdminContext, id: string): Promise<{ o
     return signedIn;
   }
 
-  // 3. Drop the parked profiles nothing names; keep any a Result uses, minus
-  //    their Telegram links (those were the invitee's, and a restore would
-  //    otherwise hand them back under the revoker's login).
   const kept: string[] = [];
   for (const p of own) {
     const { count, error: cErr } = await admin

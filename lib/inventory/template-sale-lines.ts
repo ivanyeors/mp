@@ -1,5 +1,3 @@
-/** Signed sale quantities from warehouse + filling template lines. */
-
 export type TemplateLine = { item_id: number; quantity: number };
 
 export function aggregateSignedQuantities(

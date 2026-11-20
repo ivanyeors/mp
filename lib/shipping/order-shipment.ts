@@ -39,19 +39,15 @@ export type OrderForShipping = {
     country?: string;
     phone?: string | null;
   } | null;
-  /** Set by shop checkout. A customisation's Order names its method on its Result instead. */
   shipping_method_id?: string | null;
   shipping_courier: string | null;
   shipped_at: string | null;
 };
 
-/** The customer collects it from the studio (Self-collect): there is nothing to courier. */
 const SELF_COLLECT_ERROR = "This order is collected from the studio, so it needs no courier label";
 
-/** Orders that can still get a label: paid, not yet shipped, not unwound. */
 const SHIPPABLE_STATUSES = new Set(["confirmed", "processing"]);
 
-/** A label purchase in flight holds the shipment id as `pending:<uuid>`. */
 export function isPendingShipmentId(id: string | null | undefined): boolean {
   return typeof id === "string" && id.startsWith("pending:");
 }
@@ -84,11 +80,6 @@ export function orderDestination(order: OrderForShipping): ShippingDestination |
   };
 }
 
-/**
- * The Shipping method the customer chose for an order: shop checkout stores it on
- * the order; an order made from a Result keeps it on the Result, by slug (a Paired
- * build's anchor carries it). Null when neither names one that still exists.
- */
 export async function loadOrderShippingMethod(
   admin: SupabaseClient,
   order: Pick<OrderForShipping, "id" | "shipping_method_id">,
@@ -121,23 +112,11 @@ export async function loadOrderShippingMethod(
 }
 
 export type CourierPreselection = {
-  /** The courier the label dialog opens on; null only when there are no rates. */
   courierServiceId: string | null;
-  /**
-   * Why: `checkout` is the courier the customer paid for at checkout; `method`
-   * is the one their Shipping method's strategy picks from today's rates (an
-   * order made from a Result records no courier); `cheapest` is neither.
-   */
   by: "checkout" | "method" | "cheapest" | null;
-  /** The customer paid for a courier that today's rates for this order no longer offer. */
   paidForMissing: boolean;
 };
 
-/**
- * Which courier to buy an order's label with, so the label follows the
- * customer's choice: the courier they paid for, else the courier their method
- * picks today, else the cheapest. Pure; `rates` are today's rates for the order.
- */
 export function preselectCourier(
   rates: CourierRate[],
   paidFor: string | null | undefined,
@@ -147,8 +126,6 @@ export function preselectCourier(
   if (paidFor && rates.some((r) => r.courier_service_id === paidFor)) {
     return { courierServiceId: paidFor, by: "checkout", paidForMissing: false };
   }
-  // A courier the customer paid for that is gone today is not swapped silently:
-  // the dialog says so and Staff choose. The method's pick is still the best guess.
   if (method && (method.rate_source ?? "flat") === "easyship") {
     const currency = method.currency?.toUpperCase();
     const inCurrency = rates.filter((r) => r.currency === currency);
@@ -167,8 +144,6 @@ export type OrderRatesResult =
   | { ok: true; rates: Extract<RatesResult, { ok: true }> }
   | { ok: false; status: number; error: string };
 
-/** Today's courier rates for an order's parcels — what the label will actually cost. */
-/** An invalid saved doc reads as "no boxes, no sender"; name the real cause instead. */
 async function invalidCourierDoc(): Promise<string | null> {
   const { settingsError } = await readEasyshipConfig();
   return settingsError ? `The saved courier settings are invalid (${settingsError}): fix them in Settings → Shipping → Couriers` : null;
@@ -200,13 +175,6 @@ export async function quoteOrderShipment(
   return { ok: true, rates };
 }
 
-/**
- * Write what Easyship knows about a shipment onto its order. The label and its
- * cost go to `order_shipments`; the courier name and tracking go to the order.
- * A label does not ship the order (ADR 0044): the parcel is still on our shelf,
- * often not yet made. "Shipped", its timeline event and the shipping email come
- * from the courier's first scan, in `markOrderShippedByCourier`.
- */
 export async function applyShipmentToOrder(
   admin: SupabaseClient,
   order: Pick<OrderForShipping, "id">,
@@ -233,8 +201,6 @@ export async function applyShipmentToOrder(
     extra.shipping_max_days = shipment.maxDays ?? shipment.minDays;
   }
 
-  // The customer sees tracking only once the order is shipped (account pages
-  // check the status), so it can be stored as soon as the label has it.
   if (shipment.trackingNumber) extra.tracking_number = shipment.trackingNumber;
   if (shipment.trackingUrl) extra.tracking_url = shipment.trackingUrl;
   if (Object.keys(extra).length > 0) {
@@ -247,13 +213,6 @@ export type BuyLabelResult =
   | { ok: true; shipment: ParsedShipment }
   | { ok: false; status: number; error: string };
 
-/**
- * Create the Easyship shipment for an order and buy its label with the chosen
- * courier: the PDF Staff print for the box. The courier's fee is charged to the
- * Easyship account. One label per order: the order is claimed before Easyship is
- * called, so a double click, two Staff at once, or Staff racing the automatic
- * label cannot buy two.
- */
 export async function buyOrderLabel(
   admin: SupabaseClient,
   order: OrderForShipping,
@@ -275,7 +234,6 @@ export async function buyOrderLabel(
   if (!parcels || parcels.length === 0) {
     return { ok: false, status: 400, error: (await invalidCourierDoc()) ?? "This order cannot be boxed for a label" };
   }
-  // The same default sender the quote used.
   const origin = await readSenderAddress();
   if (!origin) {
     return {
@@ -285,8 +243,6 @@ export async function buyOrderLabel(
     };
   }
 
-  // Claim: make sure the row exists, then take it only while it has no shipment.
-  // The guarded update succeeds for one request; every other one sees 409.
   const { error: rowError } = await admin
     .from("order_shipments")
     .upsert({ order_id: order.id }, { onConflict: "order_id", ignoreDuplicates: true });
@@ -355,7 +311,6 @@ export async function buyOrderLabel(
     },
   });
 
-  // After the "created" event, so the timeline reads in the order things happened.
   await applyShipmentToOrder(admin, order, {
     ...shipment,
     courierServiceId: shipment.courierServiceId ?? courierServiceId,
@@ -364,15 +319,8 @@ export async function buyOrderLabel(
   return { ok: true, shipment };
 }
 
-/** `order_shipments.label_state` once the label is cancelled; the shipment id is cleared with it. */
 export const VOIDED_LABEL_STATE = "voided";
 
-/**
- * Cancel a refunded order's label in Easyship, so the courier fee comes back
- * (ADR 0044: labels are made at payment, so a refunded order can hold one). Only
- * while the courier has not collected the parcel. Never throws: what happened, or
- * what Staff must do in Easyship, goes on the order's timeline.
- */
 export async function cancelOrderLabel(
   admin: SupabaseClient,
   orderId: string,
@@ -382,7 +330,6 @@ export async function cancelOrderLabel(
   const shipmentId = shipment?.easyship_shipment_id;
   if (!shipmentId || isPendingShipmentId(shipmentId)) return { cancelled: false };
   const { data: order } = await admin.from("orders").select("shipped_at").eq("id", orderId).maybeSingle();
-  // With the courier already: there is no label left to void.
   if (order?.shipped_at) return { cancelled: false };
 
   const note = (event_type: string, message: string) =>
@@ -407,8 +354,6 @@ export async function cancelOrderLabel(
     );
     return { cancelled: false };
   }
-  // Forget the void label, so it cannot be printed and an order reinstated later
-  // (a dispute won) can get a new one. The timeline keeps the shipment id.
   await admin
     .from("order_shipments")
     .update({ easyship_shipment_id: null, label_url: null, carrier_cost: null, label_state: VOIDED_LABEL_STATE })

@@ -33,8 +33,8 @@ const uncostedCase = {
 describe("latestChargeAt", () => {
   it("dates an Order by the last Stripe charge, when Stripe held the whole price", () => {
     const at = latestChargeAt([
-      { orderId: "a", at: "2026-05-30T15:00:00Z" }, // Balance payment, 30 May SGT
-      { orderId: "a", at: "2026-06-02T03:00:00Z" }, // hold captured at Accept
+      { orderId: "a", at: "2026-05-30T15:00:00Z" },
+      { orderId: "a", at: "2026-06-02T03:00:00Z" },
       { orderId: "b", at: "2026-05-10T04:00:00Z" },
     ]);
     expect(at.get("a")).toBe("2026-06-02T03:00:00.000Z");
@@ -50,7 +50,7 @@ describe("allocateOrderRevenue", () => {
   it("spreads a discounted order's revenue over its lines by list price", () => {
     const lines = allocateOrderRevenue({
       soldAt: "2026-05-10T04:00:00Z",
-      productRevenue: 450, // 500 listed, 50 off
+      productRevenue: 450,
       lines: [pillowM, neckSupport],
     });
     expect(lines.map((l) => l.revenue)).toEqual([360, 90]);
@@ -91,7 +91,6 @@ describe("buildSalesReport", () => {
     expect(s.costedRevenue).toBe(900);
     expect(s.cogs).toBe(140);
     expect(s.grossMargin).toBe(760);
-    // Margin over costed sales only: 760 / 900, not 1160 / 1300.
     expect(s.marginPct).toBeCloseTo(84.44, 2);
     expect(s.coveragePct).toBeCloseTo(69.23, 2);
     expect(s.orderCount).toBe(3);

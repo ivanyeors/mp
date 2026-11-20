@@ -3,22 +3,6 @@ import type { User } from "@supabase/supabase-js";
 import type { ApplicationFields } from "@/lib/partner-application";
 import { applicantLogoFolder, partnerLogoFolder } from "@/lib/partner-upload/urls";
 
-/**
- * Spec tests for the applicant's side of /partner/apply (owner request,
- * 2026-11-16).
- *
- * - Withdraw: only the signed-in user's own (`auth_user_id === user.id`)
- *   pending, unlinked application is deleted; success redirects to
- *   `/{lang}/partner/apply?withdrawn=1`; anything else deletes nothing.
- * - Submit: a logo URL not in the user's own applicant folder is refused with
- *   `fieldErrors.logoUrl`; the stored questionnaire holds only known keys.
- *
- * Outcomes only: rows in an in-memory database (the shared fake that answers
- * the real query the code builds), what the action returns, and where it
- * redirects. `h.afterRead` plays a concurrent request: it changes the
- * application after the action first reads it.
- */
-
 const ORIGIN = "https://proj.supabase.co";
 const MEDIA = `${ORIGIN}/storage/v1/object/public/media/`;
 const ME = "6b1f0c4e-2d3a-4b5c-8d9e-0f1a2b3c4d5e";
@@ -74,7 +58,6 @@ function asUser(u: { id: string; email: string | null }): User {
   return { email_confirmed_at: "2026-01-01T00:00:00Z", ...u } as unknown as User;
 }
 
-/** What a call came to: a redirect, or a value it returned. */
 async function settle(call: Promise<unknown>): Promise<{ redirect: string } | { returned: unknown }> {
   try {
     return { returned: await call };
@@ -299,7 +282,6 @@ describe("submitApplication: what is stored", () => {
     const q = stored() ?? {};
     for (const key of Object.keys(q)) expect(KNOWN_KEYS.has(key), `unexpected stored key ${key}`).toBe(true);
     expect(q).toMatchObject({ ...validFields(), logoUrl: MY_LOGO });
-    // The extras did not reach the row itself either.
     expect(h.db.partner_users[0]).toMatchObject({ application_status: "pending" });
     expect(h.db.partner_users[0].partner_id ?? null).toBeNull();
   });

@@ -10,14 +10,6 @@ import { cn } from "@/lib/utils";
 
 export type MeasurerProfile = { id: string; name: string };
 
-/**
- * "Who's measuring?" on the configurator's start screen, for a Staff session on
- * a shared login where nobody at this device has chosen under "Working as".
- * A Staff login is always Staff here: the choice is saved as this device's
- * "Working as", so the Draft Result is stamped measured by that profile and
- * charges its Measurement service (ADR 0024), the same as on a personal login.
- * Attribution only — it changes nothing the login can do.
- */
 export function WhoIsMeasuring({
   profiles,
   chosen,

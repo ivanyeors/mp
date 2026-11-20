@@ -14,11 +14,6 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   return englishOnlyPageMetadata("points", (await params).lang);
 }
 
-/**
- * The points terms (PRD-loyalty-points slice 08). Linked from checkout, the
- * Profile's Points card, every points email and the footer. The numbers come
- * from the live settings; if they cannot be read, the seeded defaults stand in.
- */
 export default async function PointsTermsPage({
   params,
 }: {

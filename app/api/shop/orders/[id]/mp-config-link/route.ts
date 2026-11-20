@@ -8,12 +8,7 @@ export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ id: z.string().uuid() });
 
-// GET — return linked mp_config_responses for this order
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  // Staff-only, matching the POST and DELETE below. Reading was weaker than
-  // writing on the same resource: this returns the linked Results' full `data`
-  // blob — measurements, age group, blood pressure, acid reflux, notes — for any
-  // order id. Its only caller is the Admin Panel order detail client.
   const denied = await requireAdmin("orders");
   if (denied) return denied;
 
@@ -31,7 +26,6 @@ const PostBodySchema = z.union([
   z.object({ create: z.literal(true) }),
 ]);
 
-// POST — link existing response or create new one
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;
@@ -46,7 +40,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const admin = supabaseAdmin();
 
-  // Verify order exists
   const { data: order } = await admin
     .from("orders")
     .select("id, shipping_address")
@@ -56,7 +49,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
   if ("response_id" in parsed.data) {
-    // Link existing response to this order
     const { error } = await admin
       .from("mp_config_responses")
       .update({ order_id: order.id })
@@ -68,7 +60,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: true, linked: parsed.data.response_id });
   }
 
-  // Create new empty response linked to this order
   const addr = order.shipping_address as { recipient?: string } | null;
   const newId = crypto.randomUUID();
 
@@ -99,7 +90,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
 const DeleteBodySchema = z.object({ response_id: z.string().uuid() });
 
-// DELETE — unlink a response from this order (does not delete the response)
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;

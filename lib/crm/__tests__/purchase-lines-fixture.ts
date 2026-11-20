@@ -2,36 +2,14 @@ import { monthsBefore } from "@/lib/crm/customer-filters";
 import type { PillowSize, PurchaseClass } from "@/lib/crm/customer-overview";
 import type { PurchaseLine } from "@/lib/crm/purchase-lines";
 
-/**
- * Fixture for CRM slice 04: Customers, Orders and lines covering every branch
- * of `classifyOrderLine`'s precedence and every Order status, plus the Customers
- * the acceptance filter (`bought=premium&last_order=over:12&readjusted=never`)
- * and the search cases need. Synthetic: invented names, example.com emails.
- *
- * Shared by lib/crm/__tests__/purchase-lines.test.ts (the TypeScript side, and
- * that each line means what its `expect` says) and lib/crm/purchase-lines.check.ts
- * (the same rows inserted into a database, in a transaction that is rolled
- * back, and read through `customer_purchase_lines` and the overview).
- *
- * Pillow products are not invented: a database already holds one per Tier and
- * size, so lines name a Tier and the check looks up that Tier's size M id.
- * `missing` is an id no pillow product has.
- *
- * PRD-campaign-audiences slice 04 adds each line's pillow size, and the
- * overview's `pillow_sizes` per Customer (`SIZES`), for *Pillow size*.
- */
-
-/** Size M pillow products of each Tier, and an id none has. */
 export interface PillowIds {
   premium: number;
   basic: number;
   missing: number;
 }
 
-/** The size of the `premium` and `basic` pillow products. */
 export const PILLOW_ID_SIZE = "M";
 
-/** The ids the vitest side uses; the check reads real ones from the database. */
 export const TEST_PILLOW_IDS: PillowIds = { premium: 8, basic: 3, missing: 999_999 };
 
 const id = (n: number) => `c0400000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -41,7 +19,6 @@ export interface FixtureCustomer {
   email: string;
   first_name: string | null;
   last_name: string | null;
-  /** Whether `bought=premium&last_order=over:12&readjusted=never` lists them. */
   premiumLapsedNeverReadjusted: boolean;
 }
 
@@ -85,7 +62,6 @@ export const VARIANTS = {
   basicPillow: { id: id(202), product_id: PRODUCTS.pillow.id, option1: "M", price_key: null, pillow: "basic" },
   pillowNoProduct: { id: id(203), product_id: PRODUCTS.pillow.id, option1: "M", price_key: null, pillow: null },
   bolster: { id: id(204), product_id: PRODUCTS.bolster.id, option1: "Long", price_key: "product:bolster:long", pillow: null },
-  // A bolster variant that also names a pillow product: the bolster wins.
   bolsterWithPillow: { id: id(205), product_id: PRODUCTS.bolster.id, option1: "Short", price_key: null, pillow: "premium" },
   accessory: { id: id(206), product_id: PRODUCTS.accessory.id, option1: null, price_key: null, pillow: null },
   bundle: { id: id(207), product_id: PRODUCTS.bundle.id, option1: null, price_key: null, pillow: null },
@@ -121,7 +97,6 @@ export interface FixtureOrder {
   order_number: string;
   customer_id: string | null;
   status: OrderStatus;
-  /** Months before `now` it was paid; null for never paid. */
   paidMonthsAgo: number | null;
 }
 
@@ -131,7 +106,6 @@ export interface FixtureLine {
   kind: "goods" | "service";
   variant_id: string | null;
   snapshot: (pillow: PillowIds) => unknown;
-  /** What `customer_purchase_lines` says of it on a counted Order; null when it is not listed. */
   expect: PurchaseLine | null;
   why: string;
 }
@@ -172,7 +146,6 @@ const bolster: PurchaseLine = { product_type: "bolster", tier: null, size: null 
 const accessory: PurchaseLine = { product_type: "accessory", tier: null, size: null };
 const sized = (line: PurchaseLine, size: string | null): PurchaseLine => ({ ...line, size });
 
-// --- the acceptance filter's Customers ------------------------------------
 {
   const o = order(CUSTOMERS.lapsed, "delivered", 14);
   line(o, "a shop pillow variant whose pillow product is Premium", premium, { variant: VARIANTS.premiumPillow });
@@ -210,7 +183,6 @@ line(order(CUSTOMERS.booked, "delivered", 13), "a legacy cart customisation: the
   snapshot: (p) => ({ pillow_product_id: p.premium }),
 });
 
-// --- every branch of the precedence ----------------------------------------
 {
   const o = order(CUSTOMERS.mixed, "confirmed", 1);
   line(o, "a bolster variant", bolster, { variant: VARIANTS.bolster });
@@ -250,7 +222,6 @@ line(order(CUSTOMERS.booked, "delivered", 13), "a legacy cart customisation: the
   line(o, "a string snapshot is no snapshot", accessory, { snapshot: () => "pillow" });
 }
 
-// --- every Order status ----------------------------------------------------
 const COUNTED: Record<OrderStatus, boolean> = {
   pending: false,
   confirmed: true,
@@ -270,7 +241,6 @@ for (const status of ORDER_STATUSES) {
 }
 line(order(CUSTOMERS.statuses, "confirmed", null), "an Order never paid is not counted", null, { variant: VARIANTS.accessory });
 
-// --- the search Customers --------------------------------------------------
 line(order(CUSTOMERS.bracket, "delivered", 5), "a case", accessory, { variant: VARIANTS.accessory });
 
 export const ORDERS: readonly FixtureOrder[] = orders;
@@ -279,15 +249,12 @@ export const LINES: readonly FixtureLine[] = lines;
 export const BOOKINGS: readonly FixtureBooking[] = [
   { id: id(9001), customer_id: CUSTOMERS.readjusted.id, status: "attended", startMonthsAgo: 10 },
   { id: id(9002), customer_id: CUSTOMERS.readjusted.id, status: "no_show", startMonthsAgo: 4 },
-  // Booked but not yet attended: still never re-adjusted.
   { id: id(9003), customer_id: CUSTOMERS.booked.id, status: "booked", startMonthsAgo: -1 },
   { id: id(9004), customer_id: CUSTOMERS.mixed.id, status: "cancelled", startMonthsAgo: 0 },
 ];
 
-/** Which Order statuses the overview counts, as the fixture declares them. */
 export const COUNTED_STATUSES = COUNTED;
 
-/** What each search finds among the fixture Customers. */
 export const SEARCHES: { search: string; finds: FixtureCustomer[] }[] = [
   { search: "Tan, Mei", finds: [CUSTOMERS.comma] },
   { search: "(test)", finds: [CUSTOMERS.bracket] },
@@ -296,7 +263,6 @@ export const SEARCHES: { search: string; finds: FixtureCustomer[] }[] = [
   { search: "a_b", finds: [] },
 ];
 
-/** What the overview's `bought` holds for each fixture Customer. */
 export const BOUGHT: Record<keyof typeof CUSTOMERS, PurchaseClass[]> = {
   lapsed: ["premium", "accessory"],
   readjusted: ["premium"],
@@ -311,7 +277,6 @@ export const BOUGHT: Record<keyof typeof CUSTOMERS, PurchaseClass[]> = {
   statuses: ["accessory"],
 };
 
-/** What the overview's `pillow_sizes` holds for each fixture Customer. */
 export const SIZES: Record<keyof typeof CUSTOMERS, PillowSize[]> = {
   lapsed: ["M"],
   readjusted: ["M"],
@@ -326,12 +291,10 @@ export const SIZES: Record<keyof typeof CUSTOMERS, PillowSize[]> = {
   statuses: [],
 };
 
-/** An ISO time `months` before `now` (negative is ahead). */
 export function monthsAgo(now: Date, months: number): string {
   return monthsBefore(now, months).toISOString();
 }
 
-/** A line as `loadReadjustmentContext`'s query returns it, for `classifyOrderLine`. */
 export function lineRow(l: FixtureLine, pillow: PillowIds) {
   const variant = Object.values(VARIANTS).find((v) => v.id === l.variant_id) ?? null;
   const product = variant ? Object.values(PRODUCTS).find((p) => p.id === variant.product_id)! : null;

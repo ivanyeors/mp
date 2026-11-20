@@ -25,16 +25,11 @@ import { toast } from "sonner";
 import { InfoTip } from "@/components/ui/info-tip";
 import type { ClaudeCredentialSource } from "@/lib/ai/claude";
 
-/* ------------------------------------------------------------------ */
-/* Types                                                               */
-/* ------------------------------------------------------------------ */
-
 export interface ApiConfig {
   id: string;
   name: string;
   slug: string;
   base_url: string;
-  /** Always blank: the server never sends a stored key. */
   api_key: string;
   api_key_set?: boolean;
   config: Record<string, unknown>;
@@ -67,11 +62,6 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-/* ------------------------------------------------------------------ */
-/* Component                                                           */
-/* ------------------------------------------------------------------ */
-
-/** The `/api/settings/api-configs` payload the page mounts with. */
 export type GeneralInitialData = ApiConfig[];
 
 export default function GeneralSettingsPage({
@@ -79,13 +69,11 @@ export default function GeneralSettingsPage({
   claudeCredentials = null,
 }: {
   initialData?: GeneralInitialData;
-  /** Where Claude's credentials come from, read on the server. */
   claudeCredentials?: ClaudeCredentialSource | null;
 }) {
   const [configs, setConfigs] = useState<ApiConfig[]>(initialData ?? []);
   const [claudeSource, setClaudeSource] = useState(claudeCredentials);
   const [loading, setLoading] = useState(!initialData);
-  // The server already loaded the configs; every save still refetches them.
   const skipFirstFetch = useRef(initialData != null);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -94,7 +82,6 @@ export default function GeneralSettingsPage({
   const [showKey, setShowKey] = useState(false);
   const [autoSlug, setAutoSlug] = useState(true);
 
-  /* ---- fetch ---- */
   const fetchConfigs = useCallback(async () => {
     try {
       const res = await fetch("/api/settings/api-configs");
@@ -116,7 +103,6 @@ export default function GeneralSettingsPage({
     fetchConfigs();
   }, [fetchConfigs]);
 
-  /* ---- helpers ---- */
   const openNew = () => {
     setEditingId(null);
     setForm(emptyForm);
@@ -150,7 +136,6 @@ export default function GeneralSettingsPage({
     });
   };
 
-  /* ---- save ---- */
   const handleSave = async () => {
     let parsedConfig: Record<string, unknown>;
     try {
@@ -195,7 +180,6 @@ export default function GeneralSettingsPage({
     }
   };
 
-  /* ---- delete ---- */
   const handleDelete = async () => {
     if (!editingId) return;
     if (!confirm("Delete this API configuration?")) return;
@@ -218,15 +202,10 @@ export default function GeneralSettingsPage({
     }
   };
 
-  /* ---- truncate url ---- */
   const truncateUrl = (url: string | null, max = 40) => {
     if (!url) return "—";
     return url.length > max ? url.slice(0, max) + "..." : url;
   };
-
-  /* ---------------------------------------------------------------- */
-  /* Render                                                            */
-  /* ---------------------------------------------------------------- */
 
   if (loading) {
     return (
@@ -238,7 +217,6 @@ export default function GeneralSettingsPage({
 
   return (
     <div className="min-w-0 max-w-full space-y-4 md:space-y-6">
-      {/* Header */}
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
@@ -254,12 +232,10 @@ export default function GeneralSettingsPage({
         </Button>
       </div>
 
-      {/* Table */}
       {configs.length === 0 ? (
         <EmptyState>No API configurations yet.</EmptyState>
       ) : (
         <>
-          {/* Phone: the table hides Status and Actions off-screen; each row opens the editor instead. */}
           <MobileList>
             {configs.map((cfg) => (
               <MobileListRow key={cfg.id} onClick={() => openEdit(cfg)} label={`Edit ${cfg.name}`}>
@@ -321,7 +297,6 @@ export default function GeneralSettingsPage({
         </>
       )}
 
-      {/* The key review replies and AI writing use; saving it adds the Claude row above. */}
       <ClaudeKeySection
         source={claudeSource}
         onChange={(next) => {
@@ -330,13 +305,10 @@ export default function GeneralSettingsPage({
         }}
       />
 
-      {/* Review SLA (relocated from the Results page — slice 06) */}
       <ReviewSlaSection />
 
-      {/* AI writing: the campaign editor's model, effort and limits (PRD-campaign-email-editor slice 16) */}
       <AiWritingSection configured={claudeSource !== null} />
 
-      {/* Edit / Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
@@ -349,7 +321,6 @@ export default function GeneralSettingsPage({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {/* Name */}
             <div className="grid gap-2">
               <Label htmlFor="cfg-name">Name</Label>
               <Input
@@ -360,7 +331,6 @@ export default function GeneralSettingsPage({
               />
             </div>
 
-            {/* Slug */}
             <div className="grid gap-2">
               <Label htmlFor="cfg-slug">Slug</Label>
               <Input
@@ -374,7 +344,6 @@ export default function GeneralSettingsPage({
               />
             </div>
 
-            {/* Base URL */}
             <div className="grid gap-2">
               <Label htmlFor="cfg-url">Base URL</Label>
               <Input
@@ -385,7 +354,6 @@ export default function GeneralSettingsPage({
               />
             </div>
 
-            {/* API Key */}
             <div className="grid gap-2">
               <Label htmlFor="cfg-key">API key</Label>
               <div className="relative">
@@ -412,7 +380,6 @@ export default function GeneralSettingsPage({
               </div>
             </div>
 
-            {/* Config JSON */}
             <div className="grid gap-2">
               <Label htmlFor="cfg-config">Config (JSON)</Label>
               <Textarea
@@ -425,7 +392,6 @@ export default function GeneralSettingsPage({
               />
             </div>
 
-            {/* Active Toggle */}
             <div className="flex items-center gap-3">
               <Switch
                 id="cfg-active"

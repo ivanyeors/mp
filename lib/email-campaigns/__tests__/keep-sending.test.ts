@@ -20,8 +20,6 @@ import {
 } from "../keep-sending";
 import { nextWaveLabel } from "../rules";
 
-/** Kept sending, the pure parts (PRD-campaign-audiences slice 10). */
-
 const SEG = "11111111-0000-4000-8000-000000000001";
 const OUT = "11111111-0000-4000-8000-000000000002";
 const live = (over: Partial<LiveSegment> = {}): LiveSegment => ({
@@ -54,7 +52,6 @@ describe("the stored state", () => {
       segments: { [SEG]: { filters: { delivered: "over:60" }, filtersVersion: 3 } },
       holdoutAt: null,
     });
-    // What a save stores reads back the same.
     expect(keepSendingFromRow({ keep_sending_segments: approvedSegmentsRow(k.segments) }).segments).toEqual(k.segments);
     expect(approvedSegmentsRow({})).toBeNull();
   });
@@ -67,7 +64,6 @@ describe("the stored state", () => {
   it("takes a cap of 1 to 100, whole", () => {
     expect([parseDailyCap(1), parseDailyCap("20"), parseDailyCap(100)]).toEqual([1, 20, 100]);
     for (const bad of [0, 101, 2.5, "", "ten", null, undefined]) expect(parseDailyCap(bad)).toBeNull();
-    // A cap out of range on the row reads as the default rather than break the page.
     expect(keepSendingFromRow({ keep_sending: true, keep_sending_daily_cap: 500 }).dailyCap).toBe(KEEP_SENDING_DEFAULT_CAP);
   });
 
@@ -107,7 +103,6 @@ describe("the Audience a person approved", () => {
       "its Segment “Delivered over 60 days” changed since keep sending was turned on",
     );
     expect(segmentChange([SEG], approved, new Map([[SEG, live({ filtersVersion: 4 })]]))).toMatch(/changed since/);
-    // A Segment it leaves out that nobody approved (or that changed) widens the Audience as surely.
     expect(segmentChange([SEG, OUT], approved, new Map([[SEG, live()], [OUT, live({ name: "Bought last month" })]]))).toBe(
       "its Segment “Bought last month” changed since keep sending was turned on",
     );

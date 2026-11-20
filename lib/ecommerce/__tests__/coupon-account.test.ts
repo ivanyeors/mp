@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * A code limited per customer, or bound to one Customer, is checked per
- * account (ADR 0033, amended 2026-10-25): it needs the signed-in Customer,
- * checking out under their own email. A code with no per-customer limit stays
- * open to guests.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb }));
 vi.mock("@/lib/supabase/server", async () => {
   const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");

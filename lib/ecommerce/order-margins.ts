@@ -1,9 +1,3 @@
-/**
- * Realized margin: product revenue after refund/dispute adjustment minus COGS.
- * Mirrors `order_margins` view logic for unit tests; checkout snapshots costs on
- * order_items, restocked returns reduce COGS via returned_quantity.
- */
-
 import type { LedgerEntry } from "./money-ledger";
 
 export interface OrderMarginTotals {
@@ -76,7 +70,6 @@ function adjustedProductRevenue(
   return round2(productRevenue);
 }
 
-/** Pure margin math — same rules as the `order_margins` view. */
 export function computeOrderMargin(
   totals: OrderMarginTotals,
   items: OrderMarginItemInput[],

@@ -28,28 +28,8 @@ import type { CustomerPillowResult, CustomerPillowView } from "@/lib/customer-pi
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { ReadjustDialog, readjustDraftKey } from "./customer-pillow-readjust";
 
-/** No template chosen: the size is known, the filling is not. */
 const NO_TEMPLATE = "none";
 
-/**
- * The Customer's pillow (ADR 0042 j): the x-ray of the Filling Template they
- * have, at their size. A pillow bought here is drawn as its order line froze
- * it. For a customer from before this platform it is read from their latest
- * Fitting record, the old form's size and configuration type (`S · T12`)
- * matched to the template of that type (`Type-12`); a Staff member holding
- * `customers-edit` can link another size or template, or one for a customer
- * with no fitting. Read-only: it shows a recipe, it does not build one, and
- * nothing here reaches a Result, stock or a price. It says whether the
- * customer's own Profile shows it too (k).
- *
- * Re-adjust, beside Change, opens the X-ray editor on the pillow drawn, to
- * change its fillings at a Re-adjustment visit (l). What Staff leave in it is
- * saved on the link and drawn from then on; it is still not a build.
- *
- * A Re-adjust left unsaved (Back, a reload, a closed app) is kept on this
- * device: the page opens Re-adjust on it again, and while it is closed the card
- * offers Resume or Discard.
- */
 export function CustomerPillowCard({
     customerId,
     pillow: initial,
@@ -61,14 +41,11 @@ export function CustomerPillowCard({
 }) {
     const [pillow, setPillow] = useState<CustomerPillowView | null>(initial ?? null);
     const [open, setOpen] = useState<"link" | "readjust" | null>(null);
-    // Each opening starts from what is shown (or, for Re-adjust, the unsaved draft), not from what was picked and
-    // cancelled last time.
     const [session, setSession] = useState(0);
     const openDialog = (kind: "link" | "readjust") => {
         setSession((n) => n + 1);
         setOpen(kind);
     };
-    // An unsaved Re-adjust kept on this device: the page opens on it once, and the card offers it while it is closed.
     const canReadjust = canEdit && pillow !== null && pillow.source !== "none";
     const draftKey = readjustDraftKey(customerId);
     const draftAt = useDraftSavedAt(canReadjust ? draftKey : null);
@@ -76,11 +53,9 @@ export function CustomerPillowCard({
     useEffect(() => {
         if (!canReadjust || reopened.current || !readDraft(draftKey)) return;
         reopened.current = true;
-        // Storage is the browser's: only now, after the first paint, can the page know there is a draft to open.
         setSession((n) => n + 1);
         setOpen("readjust");
     }, [canReadjust, draftKey]);
-    // The Items Re-adjust may place, read once on its first opening.
     const [catalog, setCatalog] = useState<FillingItem[] | null>(null);
     const saved = (next: CustomerPillowView) => {
         setPillow(next);
@@ -99,7 +74,6 @@ export function CustomerPillowCard({
     return (
         <Card>
             <CardHeader className="pb-3">
-                {/* The buttons share the title's row, so the description below keeps the card's width. */}
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                     <CardTitle className="text-base flex items-center gap-2">
                         <BedDouble className="h-4 w-4" aria-hidden />
@@ -166,7 +140,6 @@ export function CustomerPillowCard({
     );
 }
 
-/** An order's pillow in a few words: `M · Type-12`, or `M · custom mix`. */
 function orderLabel(order: NonNullable<CustomerPillowView["order"]>) {
     return `${order.size ?? "Size not recorded"} · ${order.templateName ?? "custom mix"}`;
 }
@@ -175,7 +148,6 @@ function boughtOn(order: NonNullable<CustomerPillowView["order"]>) {
     return `${formatAdminDateMY(order.paidAt)}${order.orderNumber ? `, order ${order.orderNumber}` : ""}`;
 }
 
-/** Where the pillow drawn comes from, in one line. */
 function Source({ pillow }: { pillow: CustomerPillowView }) {
     if (pillow.source === "linked" && pillow.link) {
         return (
@@ -218,7 +190,6 @@ function Source({ pillow }: { pillow: CustomerPillowView }) {
     return <>No pillow on record: no fitting names one, and none is linked.</>;
 }
 
-/** Whether the customer's own Profile shows it (ADR 0042 k). Nothing to say while there is nothing drawn. */
 function ProfileLine({ pillow }: { pillow: CustomerPillowView }) {
     if (pillow.placements.length === 0) return null;
     const shown = pillow.onProfile;
@@ -239,7 +210,6 @@ function Drawing({ pillow }: { pillow: CustomerPillowView }) {
     const placements = useMemo(() => rowsToPillowPlacements(pillow.placements), [pillow.placements]);
     const notices = pillow.source === "fitting" ? matchNotices(pillow.match) : [];
     const readjusted = pillow.source === "linked" && pillow.link?.readjusted === true;
-    // A re-adjusted pillow is drawn from its own mix: the template it came from may retire freely.
     if (pillow.source === "linked" && !readjusted && pillow.template && !pillow.templates.some((t) => t.id === pillow.template?.id)) {
         notices.push(`${pillow.template.name} is no longer active in Configure.`);
     }
@@ -249,7 +219,6 @@ function Drawing({ pillow }: { pillow: CustomerPillowView }) {
         );
     }
     const pieces = placements.length;
-    // An order's custom mix has no template, and is still drawn.
     const drawn = pillow.template !== null || pieces > 0;
     return (
         <>
@@ -313,7 +282,6 @@ function templateOption(t: MatchableTemplate) {
     );
 }
 
-/** Link a size and template, or go back to the fitting's. */
 function LinkDialog({
     customerId,
     pillow,

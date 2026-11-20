@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Stripe client mock: an existing product is updated (no create/price calls).
 const productsUpdate = vi.fn(async () => ({ id: "prod_x" }));
 const productsCreate = vi.fn(async () => ({ id: "prod_fresh" }));
 vi.mock("../client", () => ({
@@ -10,9 +9,6 @@ vi.mock("../client", () => ({
   }),
 }));
 
-// Supabase mock: one active product with no variants, linked in BOTH accounts.
-// Tests run with no Stripe key, which resolves to test mode — so `prod_x` (the
-// sandbox id) is what this sync should touch, never the live one beside it.
 const product: {
   id: string;
   slug: string;
@@ -63,8 +59,6 @@ describe("syncProductToStripeSafe", () => {
   });
 
   it("creates fresh rather than reusing the other account's id", async () => {
-    // Linked in live only. Under a test key that product does not exist, and
-    // reaching for `prod_live_x` would have Stripe reject it as resource_missing.
     product.stripe_product_id_test = null;
     const out = await syncProductToStripeSafe("p1");
     expect(productsUpdate).not.toHaveBeenCalled();

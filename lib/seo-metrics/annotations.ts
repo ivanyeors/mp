@@ -1,5 +1,3 @@
-/** SEO annotations: validation shared by the server action and its tests (slice 05). */
-
 export const ANNOTATION_CATEGORIES = ["seo", "content", "site", "earned", "tracking", "other"] as const;
 export type AnnotationCategory = (typeof ANNOTATION_CATEGORIES)[number];
 

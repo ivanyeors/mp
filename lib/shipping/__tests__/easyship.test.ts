@@ -77,29 +77,21 @@ describe("request bodies", () => {
   it("always sends a destination city, since Easyship refuses a blank one", () => {
     const cityFor = (destination: { country: string; postal_code: string; city?: string | null }) =>
       ratesRequestBody({ settings, origin, destination, parcels, currency: "SGD" }).destination_address.city;
-    // A quote from a postal code alone (the delivery checker, Settings' test) sends the main city.
     expect(cityFor({ country: "sg", postal_code: "807997" })).toBe("Singapore");
     expect(cityFor({ country: "MY", postal_code: "80000", city: "  " })).toBe("Kuala Lumpur");
-    // The shopper's own city wins.
     expect(cityFor({ country: "MY", postal_code: "80000", city: " Johor Bahru " })).toBe("Johor Bahru");
-    // Every catalog country has one, so a quote to anywhere in the world can be made.
     expect(cityFor({ country: "FR", postal_code: "75001" })).toBe("Paris");
     expect(cityFor({ country: "us", postal_code: "10001" })).toBe("New York");
-    // Outside the catalog: none is invented.
     expect(cityFor({ country: "XX", postal_code: "12345" })).toBeUndefined();
   });
 
   it("sends a state where Easyship needs one, read from the postal code", () => {
     const stateFor = (destination: { country: string; postal_code: string; state?: string | null }) =>
       ratesRequestBody({ settings, origin, destination, parcels, currency: "SGD" }).destination_address.state;
-    // "destination_address.state can't be blank": a US quote from a ZIP alone.
     expect(stateFor({ country: "US", postal_code: "91606" })).toBe("CA");
     expect(stateFor({ country: "CA", postal_code: "V6B 1A1" })).toBe("BC");
-    // The shopper's own state wins, as the abbreviation Easyship asks for.
     expect(stateFor({ country: "US", postal_code: "91606", state: " California " })).toBe("CA");
-    // A ZIP that does not say still quotes, with the main city's state.
     expect(stateFor({ country: "US", postal_code: "9" })).toBe("NY");
-    // Countries that need none get none.
     expect(stateFor({ country: "SG", postal_code: "018956" })).toBeUndefined();
   });
 
@@ -115,7 +107,6 @@ describe("request bodies", () => {
         orderNumber: "MP-1",
       }).destination_address.state;
     expect(labelState({ country: "US", postal_code: "91606" })).toBe("CA");
-    // A quote would send Jakarta's; a label leaves it for Easyship to refuse.
     expect(labelState({ country: "ID", postal_code: "40111" })).toBeUndefined();
   });
 

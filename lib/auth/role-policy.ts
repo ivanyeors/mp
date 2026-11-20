@@ -1,18 +1,3 @@
-/**
- * Write rules for Members and Roles on Users & permissions (ADR 0023).
- *
- * Pure: every function takes what it needs and returns allow, or refuse with
- * a status and a sentence the UI can show as is. Routes enforce these on every
- * write; the UI calls the same functions to disable what would be refused.
- *
- *  - Nobody changes their own role or deactivates themselves.
- *  - Only an Owner grants or removes Owner, and the last active Owner stays.
- *  - Anyone who is not Owner or Admin (`grants_all`) can only assign, create,
- *    edit or delete roles whose pages are a subset of their own, and can only
- *    change a Member whose current role they could assign.
- *  - Built-in roles are never edited or deleted; a role with Members is not
- *    deleted until they are moved.
- */
 import {
   applyRequires,
   isPermission,
@@ -53,7 +38,6 @@ function labels(keys: Iterable<Permission>): string {
   return [...keys].map((k) => permissionEntry(k).label).join(", ");
 }
 
-/** Keys in `role` the actor does not hold (always empty for Owner / Admin). */
 function beyondActor(actor: PolicyActor, keys: ReadonlySet<Permission>, grantsAll: boolean): Permission[] | "all" {
   if (actor.grantsAll) return [];
   if (grantsAll) return "all";
@@ -67,7 +51,6 @@ function subsetRefusal(actor: PolicyActor, role: RoleGrant, verb: string): Decis
   return null;
 }
 
-/** May the actor give this role to a Member (invite or role change)? */
 export function canAssignRole(actor: PolicyActor, role: PolicyRole): Decision {
   if (role.key === OWNER && !actor.isOwner) return refuse(403, "Only an Owner can grant Owner.");
   return subsetRefusal(actor, role, "assign") ?? allow;
@@ -75,10 +58,6 @@ export function canAssignRole(actor: PolicyActor, role: PolicyRole): Decision {
 
 export type MemberChange = { roleId?: string; isActive?: boolean };
 
-/**
- * May the actor apply `change` to `target`? `roles` resolves role ids;
- * `activeOwners` counts every active Owner, the target included.
- */
 export function canUpdateMember(
   actor: PolicyActor,
   target: PolicyMember,
@@ -94,7 +73,6 @@ export function canUpdateMember(
 
   const targetIsOwner = current.key === OWNER;
   if (targetIsOwner && !actor.isOwner) return refuse(403, "Only an Owner can change an Owner.");
-  // You cannot demote or deactivate someone whose access you could not have given.
   const overCurrent = subsetRefusal(actor, current, "change a Member holding");
   if (overCurrent) return overCurrent;
 
@@ -112,11 +90,6 @@ export function canUpdateMember(
   return allow;
 }
 
-/**
- * The permission list a role is saved with: catalog keys only, closed under
- * `requires` (so the server applies dependencies even if the client did not).
- * Unknown keys are reported, not silently dropped.
- */
 export function normalizeRolePermissions(
   keys: readonly string[],
 ): { ok: true; permissions: Permission[] } | { ok: false; status: 400; error: string } {
@@ -126,12 +99,10 @@ export function normalizeRolePermissions(
   return { ok: true, permissions: [...closed].sort() };
 }
 
-/** May the actor create a custom role with these (normalized) permissions? */
 export function canCreateRole(actor: PolicyActor, permissions: readonly Permission[]): Decision {
   return subsetRefusal(actor, { grants_all: false, permissions }, "create") ?? allow;
 }
 
-/** May the actor change `role` to hold `next` (normalized) permissions? */
 export function canEditRole(actor: PolicyActor, role: PolicyRole, next: readonly Permission[]): Decision {
   if (role.is_system) return refuse(403, `${role.name} is built in and always has every page.`);
   return (
@@ -141,13 +112,10 @@ export function canEditRole(actor: PolicyActor, role: PolicyRole, next: readonly
   );
 }
 
-/** May the actor delete `role`, which `memberCount` Members (any state) hold? */
 const SEEDED_ROLE_KEYS: ReadonlySet<string> = new Set(["manager", "fulfilment", "viewer"]);
 
 export function canDeleteRole(actor: PolicyActor, role: PolicyRole, memberCount: number): Decision {
   if (role.is_system) return refuse(403, `${role.name} is built in and can't be deleted.`);
-  // Until slice 11 drops admin_users.role, code from before ADR 0023 (an app
-  // rollback) names these by their old keys; deleting one would break it.
   if (SEEDED_ROLE_KEYS.has(role.key)) {
     return refuse(409, `${role.name} came with the system and can't be deleted yet. Rename it or change its pages instead.`);
   }

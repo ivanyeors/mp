@@ -3,11 +3,6 @@ import { renderToString } from "react-dom/server";
 import { CheckoutCodeField } from "@/components/shop/checkout-code-field";
 import type { CheckoutCodeStatus } from "@/lib/checkout-code/shared";
 
-/**
- * The one code field at checkout (ADR 0033): a referral or a discount code
- * says it is active; a discount says what it takes off. Nothing the check turns
- * down ever reads as a blocker.
- */
 const render = (status: CheckoutCodeStatus) =>
   renderToString(
     <CheckoutCodeField

@@ -16,28 +16,11 @@ import { SAMPLE_RECIPIENT } from "@/lib/email-campaigns/variables";
 import { FUNNEL_PROGRAMME } from "@/lib/email-funnel/programme";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { supabaseAdmin } from "@/lib/supabase/server";
-// The limit lives with the page's pure helpers: a "use server" file exports only actions.
 import { MAX_RENDER_KEYS } from "./funnel-format";
-
-/**
- * The Email funnel's email renders (PRD-email-funnel slice 03, owner
- * 2026-11-18): each card's email as the real renderer draws it, asked for
- * after the page shows and only for the chosen stage. Keyed as the card asks:
- *
- * - `campaign:<id>`: a live campaign's saved email (as `previewCampaign`);
- * - `starter:<id>`: a Playbook's Starter, not started yet (as `previewStarters`);
- * - `template:<registry id>`: an Automatic email's Email template, with its
- *   saved words (as `previewEmailCopy`), only the programme's own.
- *
- * Every render uses the sample recipient: nothing names a real Customer. A key
- * that does not parse, or whose render fails, is left out, and its card shows
- * without a thumbnail. Guarded by `campaigns`.
- */
 
 export type FunnelRender = {
   subject: string;
   html: string;
-  /** Email templates: the template's page, for *Edit words*. */
   templateId?: string;
 };
 
@@ -56,7 +39,6 @@ export async function renderFunnelEmails(
   const admin = supabaseAdmin();
   const recipient = { origin, ...SAMPLE_RECIPIENT, forceDark: dark === true, locale: DEFAULT_LOCALE };
 
-  // The saved words once, for every template asked for; the default words when they cannot be read.
   const needsCopy = wanted.some((k) => k.startsWith("template:"));
   const saved = needsCopy ? await readAllSavedCopy(admin).catch(() => null) : null;
 

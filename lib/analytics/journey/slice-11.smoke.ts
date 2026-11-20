@@ -1,7 +1,3 @@
-/**
- * Live DB smoke for slice 11 — section tags on PDP, configurators, checkout/Result.
- * Run: npx tsx --env-file=.env.local lib/analytics/journey/slice-11.smoke.ts
- */
 import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
 import { loadPageTransitionsFromDb } from "./aggregates";

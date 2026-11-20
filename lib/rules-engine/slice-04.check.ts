@@ -1,7 +1,3 @@
-/**
- * Slice 04 self-check: inches default, catalog-required gating, no silent defaults.
- * Run: npx tsx lib/rules-engine/slice-04.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,11 +16,9 @@ import { premiumSampleInputs } from "./fixtures";
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 
-// --- Units round-trip (canonical cm) ---
 assert.equal(roundCm(inchesToCm(16.5)), roundCm(16.5 * 2.54));
 assert.equal(Math.round(cmToInches(inchesToCm(16.5)) * 100) / 100, 16.5);
 
-// --- Catalog: every flow key is required ---
 for (const flow of ["premium-mpillow", "basic-mpillow", "mbolster"] as const) {
   const keys = [...catalogKeys(flow)];
   assert.ok(keys.length > 0, `${flow} has catalog keys`);
@@ -47,7 +41,6 @@ for (const flow of ["premium-mpillow", "basic-mpillow", "mbolster"] as const) {
   assert.deepEqual(missingRequiredInputs(flow, complete), []);
 }
 
-// Premium catalog includes the four measurements + customize answers
 const premiumKeys = catalogKeys("premium-mpillow");
 for (const k of [
   "shoulder_length_cm",
@@ -65,7 +58,6 @@ assert.ok(catalogKeys("basic-mpillow").has("shoulder_length_cm"));
 assert.ok(!catalogKeys("basic-mpillow").has("neck_to_back_cm"));
 assert.deepEqual([...catalogKeys("mbolster")], ["height_cm"]);
 
-// --- Wizard / API mappers feed missingRequiredInputs ---
 const emptyWizard: WizardMeasurementData = {
   shoulderLength: "",
   neckToBack: "",
@@ -114,7 +106,6 @@ assert.deepEqual(
   [],
 );
 
-// Empty pain areas / sleep position → missing catalog keys
 const noPain = { ...fullWizard, sleepPainAreas: [] };
 assert.ok(
   incompleteEngineInputs("premium-mpillow", wizardToEngineInputs(noPain)).includes(
@@ -128,7 +119,6 @@ assert.ok(
   ),
 );
 
-// measurement prefs mapper (customize API shape)
 const prefs = {
   measurements: {
     shoulder_length_cm: 42,
@@ -166,7 +156,6 @@ assert.ok(
   ).length > 0,
 );
 
-// --- Client wiring: no silent defaults; inches default; required pain; photos optional ---
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 assert.doesNotMatch(mp, /shoulderCm\s*\|\|\s*40/);
 assert.doesNotMatch(mp, /\|\|\s*8\b/);
@@ -179,13 +168,11 @@ assert.match(mp, /togglePainArea/);
 assert.match(mp, /Photos[\s\S]*?\(optional\)/);
 assert.doesNotMatch(mp, /Prefetch basic recommendation/);
 
-// Measurement guides present on each measurement step card
 assert.match(mp, /shoulder-length\.svg/);
 assert.match(mp, /neck-to-back\.svg/);
 assert.match(mp, /head-to-back\.svg/);
 assert.match(mp, /neck-length\.svg/);
 
-// Server gates
 const customize = read("app/api/shop/customize/route.ts");
 assert.match(customize, /incompleteEngineInputs/);
 assert.match(customize, /measurementPrefsToEngineInputs/);
@@ -200,7 +187,6 @@ const bolster = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
 assert.match(bolster, /heightUnit: "in"/);
 assert.match(bolster, /TabsTrigger value="in"/);
 
-// Catalog inputDefs still list none for pain areas
 assert.ok(
   inputCatalog("premium-mpillow")
     .find((d) => d.key === "sleep_pain_areas")

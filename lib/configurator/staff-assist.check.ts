@@ -1,7 +1,3 @@
-/**
- * Slice 04 self-check: staff assist gating + size-change rules.
- * Run: npx tsx lib/configurator/staff-assist.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
@@ -32,7 +28,6 @@ import {
 } from "./staff-assist";
 import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings";
 
-// --- Confirm-gate state machine: apply only via request → confirm ---
 const m: SizeTier = { size: "M", tier: "premium" };
 const l: SizeTier = { size: "L", tier: "premium" };
 
@@ -54,7 +49,6 @@ assert.equal(
   "confirm without pending is a no-op",
 );
 
-// --- Starting template: the engine's pick on its size, else the size default ---
 const suggestion = templateSuggestion({ size: "M", templateId: "42" });
 assert.deepEqual(suggestion, { size: "M", templateId: 42 }, "record → numeric suggestion");
 assert.equal(templateSuggestion({ size: "M", templateId: "tpl-m" }), null, "stub string id is no suggestion");
@@ -64,7 +58,6 @@ assert.equal(startingTemplateId("M", suggestion, 7), 42, "recommended size start
 assert.equal(startingTemplateId("L", suggestion, 7), 7, "another size starts from its default");
 assert.equal(startingTemplateId("M", null, 7), 7, "no suggestion → default");
 
-// --- Tier-only change keeps the mix; a size change starts over ---
 const neckId = 99;
 const tierMix: PillowPlacement[] = [
   { section: "center", subSection: "middle", slot: 1, itemId: 5 },
@@ -84,13 +77,12 @@ assert.deepEqual(
   "premium → basic keeps the mix but drops the premium-only neck support",
 );
 
-// --- Size-change eligibility recheck ---
 const recheck = recheckSelectionsForSize({
-  cover: { itemId: 1, name: "Linen Cover" }, // not offered for the new size
-  caseSel: { itemId: 2, name: "Cooling Case" }, // offered but stock 0
+  cover: { itemId: 1, name: "Linen Cover" },
+  caseSel: { itemId: 2, name: "Cooling Case" },
   addons: [
-    { itemId: 3, name: "Travel Bag" }, // still offered
-    { itemId: 4, name: "M-only Insert" }, // not offered
+    { itemId: 3, name: "Travel Bag" },
+    { itemId: 4, name: "M-only Insert" },
   ],
   offeredCovers: [{ item_id: 9, stock_available: 5 }],
   offeredCases: [{ item_id: 2, stock_available: 0 }],
@@ -118,7 +110,6 @@ assert.deepEqual(
   "empty selections stay empty with no notes",
 );
 
-// --- Per-cell list editor rules: start empty, lowest free slot, per-layer cap ---
 assert.equal(PILLOW_CELLS.length, 9, "nine cells (Section × sub-section)");
 const cell: Cell = { section: "left", subSection: "front" };
 let mix: PillowPlacement[] = [];
@@ -146,7 +137,6 @@ assert.ok(readd.ok, "re-add after remove fits");
 const diverged = readd.placements;
 assert.ok(cellPieces(diverged, cell).some((p) => p.slot === 3 && p.itemId === 2), "re-add reuses lowest free slot");
 
-// --- Layers: side ⇄ stacked, add/remove/reorder, dense renumbering ----------
 let arr: PillowPlacement[] = [];
 for (let i = 0; i < 4; i++) arr = (addPiece(arr, cell, 1) as { placements: PillowPlacement[] }).placements;
 assert.equal(cellArrangement(arr, cell), "side", "untouched cell is one layer, side-by-side");
@@ -158,18 +148,15 @@ assert.deepEqual(
   [0, 1, 2, 3],
   "stacked assigns layer 0..N-1 in slot order (slot 1 = top) while they fit one each",
 );
-// Drag layer 0 (top) to the bottom → layers reindex from the new order.
 arr = moveLayer(arr, cell, 0, 3);
 assert.equal(cellPieces(arr, cell).find((p) => p.slot === 1)?.row, 3, "reorder pushes the old top to the deepest");
 assert.deepEqual(cellStack(arr, cell).map((p) => p.slot), [2, 3, 4, 1], "cellStack reads top→deep after reorder");
 
-// Several pieces share a layer: that is the whole point of layers.
 let shared = (addPiece([], cell, 1) as { placements: PillowPlacement[] }).placements;
 shared = (addPiece(shared, cell, 2, 1) as { placements: PillowPlacement[] }).placements;
 shared = (addPiece(shared, cell, 3, 1) as { placements: PillowPlacement[] }).placements;
 assert.deepEqual(cellLayers(shared, cell).map((l) => l.length), [1, 2], "layer 2 holds two pieces side by side");
 
-// Removing a layer closes the gap; dropping to one layer drops `row` entirely.
 const afterRemove = removeLayer(shared, cell, 0);
 assert.equal(cellLayers(afterRemove, cell).length, 1, "deeper layers move up when one is removed");
 assert.ok(
@@ -178,7 +165,6 @@ assert.ok(
 );
 assert.equal(cellArrangement(afterRemove, cell), "side", "…so it reads side again");
 
-// Beyond one piece per layer, "stacked" chunks evenly rather than failing.
 let full: PillowPlacement[] = [];
 for (let i = 0; i < 10; i++) {
   full = (addPiece(full, cell, 1, Math.floor(i / 5)) as { placements: PillowPlacement[] }).placements;
@@ -196,7 +182,6 @@ assert.ok(!twentySixth.ok && /Max 5 layers/.test(twentySixth.error), "a full cel
 arr = setCellArrangement(arr, cell, "side");
 assert.ok(cellPieces(arr, cell).every((p) => p.row === undefined), "side collapses back to one layer");
 
-// --- Mbolster session mix: single compartment, no cap (ADR 0008) ------------
 let bolsterMix: BolsterPlacement[] = [];
 for (let i = 0; i < 7; i++) bolsterMix = addBolsterPiece(bolsterMix, 1);
 assert.equal(bolsterMix.length, 7, "no piece cap on the bolster");
@@ -205,36 +190,29 @@ bolsterMix = removeBolsterPiece(bolsterMix, 3);
 assert.equal(bolsterMix.length, 6, "remove drops one bolster piece");
 assert.equal(addBolsterPiece(bolsterMix, 2).find((p) => p.itemId === 2)?.slot, 3, "re-add reuses lowest free slot");
 
-// --- sessionFillingTemplateId: kept on exact match, cleared on divergence ---
 const tpl = { id: 7, placements: mix };
 assert.equal(sessionTemplateId(tpl, [...mix].reverse()), 7, "order-insensitive exact match keeps id");
 assert.equal(sessionTemplateId(tpl, diverged), null, "diverging edit clears template id");
 assert.equal(sessionTemplateId(null, mix), null, "no loaded template → null");
 
-// --- saveAffordance ---------------------------------------------------------
-// An untouched mix has nothing to save: saving it new would duplicate the very
-// template it matches.
 assert.deepEqual(
   saveAffordance({ placements: mix, loaded: tpl }),
   { dirty: false, canOverwrite: false, canSaveNew: false },
   "mix matching its template offers no save",
 );
 
-// Edited from a template → both paths open.
 assert.deepEqual(
   saveAffordance({ placements: diverged, loaded: tpl }),
   { dirty: true, canOverwrite: true, canSaveNew: true },
   "edited mix can overwrite its template or fork a new one",
 );
 
-// Built from scratch → nothing to overwrite, only a new template to create.
 assert.deepEqual(
   saveAffordance({ placements: diverged, loaded: null }),
   { dirty: true, canOverwrite: false, canSaveNew: true },
   "scratch-built mix can only be saved as new",
 );
 
-// Empty stage is not a saveable mix — it would publish an empty template.
 assert.deepEqual(
   saveAffordance({ placements: [], loaded: null }),
   { dirty: false, canOverwrite: false, canSaveNew: false },
@@ -246,7 +224,6 @@ assert.deepEqual(
   "clearing the stage does not offer to blank the catalog template",
 );
 
-// --- Wiring: gating, guest-renders-nothing, staff-gated endpoints ---
 const page = readFileSync("app/[lang]/mp-config/page.tsx", "utf8");
 assert.match(page, /getAdminContext/, "server page resolves the Staff check");
 assert.match(
@@ -271,10 +248,6 @@ assert.match(
   "/mp-basic re-exports the gated mp-config page (same chrome rules)",
 );
 
-// --- Assist link vs assist GATE: orthogonal, and must stay two props ---------
-// A customer holding an Assist link has no admin_users row at all, so
-// getAdminContext() is null for them. Feeding the link into `staffAssist` would
-// hand the x-ray editor to every customer holding one.
 assert.match(
   page,
   /assistCode=\{assistStaff\?\.code \?\? null\}/,
@@ -285,8 +258,6 @@ assert.doesNotMatch(
   /staffAssist=\{[^}]*assist(Staff|Code)/,
   "the Assist link never feeds the Staff assist gate",
 );
-// The stamp it produces authorises a no-card submit downstream, so it is a
-// trust boundary: resolved server-side, and written only where the row is born.
 const responsesRoute = readFileSync("app/api/mp-config/responses/route.ts", "utf8");
 assert.match(
   responsesRoute,
@@ -309,9 +280,6 @@ assert.doesNotMatch(client, /fetch\(["'`]\/api\/mp-config\/assist/, "client make
 
 const panel = readFileSync("components/configurator/staff-assist-panel.tsx", "utf8");
 assert.match(panel, /\/api\/mp-config\/assist\?size=/, "panel loads templates/items from the staff-gated endpoint");
-// Staff may now publish an edited mix back to the catalog (override or save
-// new). The rails that decision rests on, asserted here so they cannot quietly
-// regress into "any staff member can rewrite any template from a session":
 assert.match(panel, /SaveFillingTemplate/, "assist offers the save control");
 assert.match(
   panel,
@@ -344,13 +312,9 @@ for (const route of [
   "app/api/mp-config/assist/context/route.ts",
 ]) {
   const src = readFileSync(route, "utf8");
-  // requireAdmin refuses guests with 401 and under-permissioned staff with 403,
-  // so the endpoint can never be reached by a role the page gate excludes.
   assert.match(src, /requireAdmin\("results"\)/, `${route} gates on the assist permission`);
 }
 
-// Writing the catalog is a stronger act than reading it into one session: the
-// GET stays open to any Staff, the save requires the inventory permission.
 const assistRoute = readFileSync("app/api/mp-config/assist/route.ts", "utf8");
 assert.match(
   assistRoute,
@@ -362,20 +326,12 @@ assert.match(
   /placements: z\.array\(PlacementRowSchema\)\.min\(1\)/,
   "an empty mix can never be saved — it would publish or blank an empty template",
 );
-// Size membership, not `key` (ADR 0018): a shared template legitimately serves
-// this size even when its primary names another, so the guard reads the
-// membership it was loaded with — but it must still refuse a size the template
-// does not serve at all.
 assert.match(
   assistRoute,
   /tpl\.kind !== scope\.kind \|\| !served\.includes\(scope\.key\)/,
   "overwrite refuses a template that does not serve this size/length",
 );
 
-// The Save control renders on "mix is dirty" alone — the panel does not know the
-// viewer's role. That is only safe while every role that can ENTER assist mode
-// can also SAVE; otherwise the button renders straight into a 403. Adding a role
-// with `results` but not `inventory` must fail here, not in front of staff.
 for (const role of ADMIN_ROLES) {
   if (!roleHasPermission(role, "results")) continue;
   assert.ok(

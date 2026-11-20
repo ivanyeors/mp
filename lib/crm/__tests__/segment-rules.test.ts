@@ -16,14 +16,6 @@ import {
   segmentParams,
 } from "@/lib/crm/segment-rules";
 
-/**
- * CRM 05: a Segment's filters are the Customers list's own URL parameters,
- * checked by the list's one schema on the way in and on the way out. A filter
- * the schema no longer recognises marks the Segment *Needs review*, and is
- * named; it is never silently dropped.
- */
-
-/** What the list's URL `url` would save as a Segment. */
 const fromUrl = (url: string) => Object.fromEntries(customerFilterParams(parseCustomerFilters(new URLSearchParams(url)).filters));
 
 describe("segmentParams", () => {
@@ -97,11 +89,9 @@ describe("readSegmentFilters (loading)", () => {
   });
 
   it("names a filter the schema no longer recognises, and needs review", () => {
-    // Saved before a key was renamed, or by a newer schema.
     const read = readSegmentFilters({ bought: "premium", region: "east" }, SEGMENT_FILTERS_VERSION);
     expect(read.needsReview).toBe(true);
     expect(read.ignored).toEqual(["region=east"]);
-    // What is still recognised is kept, for the list to show while it is reviewed.
     expect(read.params).toEqual({ bought: "premium" });
   });
 
@@ -123,12 +113,6 @@ describe("readSegmentFilters (loading)", () => {
   });
 });
 
-/**
- * PRD-loyalty-points slice 06 retired the Welcome-back voucher and its filter
- * (`voucher`), so Segments are saved at filters_version 2. One saved at 1 is
- * upgraded each time it is read: the voucher filter is dropped, and the rest
- * of the Segment stands.
- */
 describe("a Segment saved at filters_version 1", () => {
   it("is saved at 2 now", () => {
     expect(SEGMENT_FILTERS_VERSION).toBe(2);
@@ -193,21 +177,17 @@ describe("choosing a Segment", () => {
       followups: "all",
       stage: [],
       bought: ["premium"],
-      // PRD-campaign-audiences slice 04's purchase filters.
       not_bought: [],
       size: [],
       last_order: null,
       delivered: null,
       readjusted: "never",
       min_spend: null,
-      // PRD-campaign-audiences slice 05's reach filters.
       ships_to: null,
       language: null,
       campaign: null,
       emailed: null,
-      // Slice 12's sunset rule.
       engagement: null,
-      // CRM slice 12's review filters.
       google_review: "all",
       shop_review: "all",
       rating: null,
@@ -236,7 +216,6 @@ describe("names and counts", () => {
   });
 });
 
-// PRD-crm-retention-loop slice 03: *Stage: At risk* saved as a Segment is a campaign Audience.
 describe("a Segment by Lifecycle stage", () => {
   it("saves and reads back like any other filter, at the same version", () => {
     expect(SEGMENT_FILTERS_VERSION).toBe(2);

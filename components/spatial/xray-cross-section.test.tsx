@@ -7,9 +7,7 @@ import { DEFAULT_CUT } from "@/lib/spatial-fillings/cross-section";
 import { GENERIC_POUCH } from "@/lib/spatial-fillings/dimensions";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
 
-// Slice 10's 360 px check: on a phone the cut must stay readable.
 const dims = new Map([[1, { key: "k", kind: "pouch" as const, source: "measured" as const, measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, thicknessMm: 80, minThicknessMm: 60 } }]]);
-// Four 80 mm (min 60) Layers across the whole centre Section: cannot close.
 const over = fitPillow(
   (["front", "middle", "back"] as const).flatMap((subSection) =>
     [0, 1, 2, 3].map((row) => ({ section: "center" as const, subSection, slot: row + 1, itemId: 1, row })),
@@ -18,9 +16,7 @@ const over = fitPillow(
 );
 const html = (compact: boolean) => renderToStaticMarkup(<CrossSectionSvg fit={over} cut={DEFAULT_CUT} itemSubtypes={new Map()} compact={compact} />);
 const fontSizes = (markup: string) => [...markup.matchAll(/font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
-/** Every text drawn under each column. */
 const columnText = (markup: string) => [...markup.matchAll(/<g data-column="[a-z]+"[^>]*>(.*?)<\/g>/g)].map((m) => [...m[1].matchAll(/>([^<]+)</g)].map((t) => t[1]).join(" | "));
-/** The drawn outline: its path, its transform's scale, and the polygon it makes in view units. */
 const outlineOf = (markup: string) => {
   const m = markup.match(/<path d="([^"]+)" transform="translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+) ([-\d.]+)\)" fill="[^"]*" data-xray-profile/)!;
   const [tx, ty, sx, sy] = m.slice(2).map(Number);
@@ -35,7 +31,6 @@ const inside = (poly: readonly (readonly [number, number])[], x: number, y: numb
   }
   return hit;
 };
-/** Each cubic's end point. */
 const anchors = (d: string) =>
   d.split(/(?=[CZ])/).flatMap((seg) => {
     const ns = [...seg.matchAll(/-?[\d.]+/g)].map((x) => Number(x[0]));
@@ -66,7 +61,6 @@ describe("CrossSectionSvg layouts", () => {
         const desk = outlineOf(renderToStaticMarkup(<CrossSectionSvg fit={fit} cut={{ section }} itemSubtypes={new Map()} />));
         const phone = renderToStaticMarkup(<CrossSectionSvg fit={fit} cut={{ section }} itemSubtypes={new Map()} compact />);
         const p = outlineOf(phone);
-        // Uniform scale: one view unit per profile unit across as up.
         expect(Math.abs(desk.sy)).toBeCloseTo(desk.sx, 3);
         expect(Math.abs(p.sy)).toBeCloseTo(p.sx, 3);
         const aspect = (poly: readonly (readonly [number, number])[]) => {
@@ -101,7 +95,6 @@ describe("CrossSectionSvg along profiles", () => {
 });
 
 describe("CrossSectionSvg along pieces", () => {
-  // One pouch alone in its Section, slid most of the way into the empty back: it stands in two columns.
   const soft = new Map([[1, { key: "k", kind: "pouch" as const, source: "measured" as const, measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, thicknessMm: 60, minThicknessMm: 15 } }]]);
   const lone = fitPillow([{ section: "right", subSection: "middle", slot: 1, itemId: 1, row: 0, offsetYMm: 100 }], { size: "M", dims: soft });
 
@@ -140,17 +133,14 @@ describe("CrossSectionSvg pouches", () => {
     );
     const bodies = [...m.matchAll(/data-slab-status="[a-z]+"[^>]*><path d="([^"]+)"/g)].map((x) => x[1]);
     expect(bodies).toHaveLength(2);
-    // In the front tip they are pressed into the case: still all curves, and every point inside it.
     const { polygon } = outlineOf(m);
     for (const d of bodies) {
       expect(d).toMatch(/^M[^LHVA]+Z$/);
       for (const [x, y] of anchors(d)) expect(inside(polygon, x, y)).toBe(true);
     }
-    // A pouch clear of the walls is the plain cushion: eight cubics.
     const free = fitPillow([{ section: "center", subSection: "middle", slot: 1, itemId: 1, row: 0 }], { size: "M", dims });
     const [d] = [...renderToStaticMarkup(<CrossSectionSvg fit={free} cut={DEFAULT_CUT} itemSubtypes={new Map()} />).matchAll(/data-slab-status="[a-z]+"[^>]*><path d="([^"]+)"/g)].map((x) => x[1]);
     expect(d.match(/C/g)).toHaveLength(8);
-    // Flat colour as in the top view: no sheen, no shade, no shadow.
     expect(m).not.toContain("data-slab-gloss");
     expect(m).not.toContain("Gradient");
     expect(m).not.toContain("<filter");
@@ -192,7 +182,6 @@ describe("CrossSectionSvg pouches", () => {
     );
     expect(held).toContain('data-slab-mode="landing"');
     expect(held).toContain("data-xray-slab-ghost");
-    // The shared hold (held-pouch.tsx): the badge rides over the ghost.
     expect(held).toContain("data-xray-drag-badge");
     expect(held).toContain("0–110 mm");
     expect(held).toContain('data-xray-drop-column="ok"');

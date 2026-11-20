@@ -17,10 +17,6 @@ import {
   type CommissionOrderItem,
 } from "@/lib/partner-terms";
 
-// Expected values come from the Referral Partner Agreement and the owner's
-// decisions, not from the implementation. Calendar facts were checked against
-// a calendar (e.g. 31 Oct 2026 is a Saturday, 31 May 2026 a Sunday).
-
 const terms = (over: Partial<PartnerTerms> = {}): PartnerTerms => ({
   pool: 50,
   choice: null,
@@ -30,9 +26,8 @@ const terms = (over: Partial<PartnerTerms> = {}): PartnerTerms => ({
   ...over,
 });
 
-/** Independent oracle: the last Monday–Friday of a 1-based month, as YYYY-MM-DD. */
 function lastWeekdayOf(year: number, month: number): string {
-  const d = new Date(Date.UTC(year, month, 0)); // day 0 of next month = last day of this month
+  const d = new Date(Date.UTC(year, month, 0));
   while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
 }
@@ -143,7 +138,6 @@ describe("choiceChangeStartsOn — the day after the next Payout Date (clause 7.
     expect(choiceChangeStartsOn("2026-10-30")).toBe("2026-10-31");
   });
   it("the day after the Payout Date: next month's Payout Date + 1, crossing a month end", () => {
-    // Next Payout Date is Mon 30 Nov 2026 → 1 Dec.
     expect(choiceChangeStartsOn("2026-10-31")).toBe("2026-12-01");
   });
   it("crosses a year end: Thu 31 Dec 2026 + 1 = 2027-01-01", () => {
@@ -380,7 +374,6 @@ describe("customerDiscountInEffect — what the partner leaves, only when Staff 
 });
 
 describe("pickCommission — the columns to write when the partner picks", () => {
-  // today 2026-10-27 → next Payout Date Fri 30 Oct → change starts Sat 31 Oct.
   const today = "2026-10-27";
   const starts = "2026-10-31";
 
@@ -532,8 +525,6 @@ describe("pickCommission — the columns to write when the partner picks", () =>
   });
 
   describe("a waiting change whose day has come is folded in first", () => {
-    // Waiting 20 from 31 Oct; today 2 Nov → 20 is in force. Next Payout Date
-    // Mon 30 Nov → a new change starts 1 Dec.
     const t = terms({ choice: 30, nextChoice: 20, nextChoiceFrom: "2026-10-31" });
     const later = "2026-11-02";
 
@@ -603,7 +594,6 @@ describe("pickCommission — the columns to write when the partner picks", () =>
       const got = pickCommission(terms({ pool: 25, choice: 30 }), 25, today);
       expect(got.commission_choice_next).toBeNull();
       expect(got.commission_choice_next_from).toBeNull();
-      // Whatever is stored, the partner is still paid the pool today.
       expect(
         commissionInEffect(
           terms({

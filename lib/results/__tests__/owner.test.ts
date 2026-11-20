@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * CRM 03: the Customer timeline shows a Result on a Customer exactly when that
- * Customer's own login could open it (PRD risk table, "A test pins the two
- * together"). Both use `isCustomersResult`; this proves `authorizeResultAccess`
- * still answers the same, and that the query pattern finds the same rows.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb, user: null as { id: string } | null }));
 
 vi.mock("@/lib/auth/user", () => ({ getAuthUser: () => Promise.resolve(h.user) }));
@@ -22,7 +15,6 @@ const { isCustomersResult, normaliseResultEmail, resultEmailPattern } = await im
 const MEI = "aaaaaaaa-0000-4000-8000-000000000001";
 const KIM = "aaaaaaaa-0000-4000-8000-000000000002";
 
-/** [what, customers.email, Result customer_id, Result customer_email, theirs?] */
 const CASES: Array<[string, string, string | null, string | null, boolean]> = [
   ["their id", "mei@x.test", MEI, null, true],
   ["their id, someone else's email", "mei@x.test", MEI, "kim@x.test", true],

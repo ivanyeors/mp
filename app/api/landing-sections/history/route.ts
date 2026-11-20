@@ -8,13 +8,8 @@ import { diffSnapshot, type PublishSnapshot, type SnapshotSection } from "@/lib/
 
 export const runtime = "nodejs";
 
-/** Matches the retention bound in the publish function. */
 const LIST_LIMIT = 50;
 
-/**
- * GET /api/landing-sections/history
- * **Publish snapshots**, newest first, each with what restoring it would change.
- */
 export async function GET() {
   try {
     await requireAdminContext("page-builder");
@@ -54,11 +49,6 @@ export async function GET() {
 
 const RestoreSchema = z.object({ snapshotId: z.string().uuid() });
 
-/**
- * POST /api/landing-sections/history
- * Stages a snapshot as the current **Section draft**. It never writes published state —
- * Staff review the restore in Preview mode and ship it through the normal Publish.
- */
 export async function POST(req: Request) {
   let ctx;
   try {

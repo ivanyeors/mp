@@ -30,18 +30,11 @@ type PointsView = {
     history: PointsEntry[];
     partner: boolean;
     enabled: boolean;
-    /** Points earned from orders, and how many of the bonus milestones they reach (slice 09); null if unread. */
     milestones: { earned: number; reached: number; total: number } | null;
 };
 
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toLocaleString("en-SG")}`;
 
-/**
- * Points (PRD-loyalty-points slice 02; ADR 0030): the balance, what is
- * pending and from which Order, and the latest ledger entries. Staff with `customers-edit` adjust it with a written reason, which
- * is audited; a partner holds no points, so the card says so and offers
- * nothing.
- */
 export function PointsCard({ customerId, canEdit }: { customerId: string; canEdit: boolean }) {
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
     const [view, setView] = useState<PointsView | null>(null);
@@ -54,8 +47,6 @@ export function PointsCard({ customerId, canEdit }: { customerId: string; canEdi
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    // One read; its answer is applied by the caller, so the effect below sets
-    // state only when the request returns.
     const read = useCallback(async (): Promise<{ view: PointsView } | { error: string }> => {
         try {
             const res = await fetch(`/api/shop/customers/${customerId}/points`);

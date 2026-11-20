@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * The one public endpoint behind the checkout code field (ADR 0033). It says
- * whose referral a code is, or what a discount takes off, and nothing else: no
- * coupon row, no partner id. Guessing is metered per IP.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb }));
 
 vi.mock("@/lib/supabase/server", async () => {
@@ -101,7 +95,6 @@ describe("POST /api/checkout/code", () => {
 
   it("names the partner for a referral code, never its id", async () => {
     const json = await (await post({ code: " abcd2345 ", context: shop(100) })).json();
-    // A shop order holds no customised premium pillow, so the code takes nothing off.
     expect(json).toEqual({ ok: true, kind: "referral", partner_name: "Spine Clinic", discount_amount: 0 });
     expect(JSON.stringify(json)).not.toContain("partner-1");
   });
@@ -182,7 +175,6 @@ describe("POST /api/checkout/code", () => {
     let last: Response | null = null;
     for (let i = 0; i < 61; i++) last = await post({ code: `GUESS${i}`, context: shop(100) });
     expect(last!.status).toBe(429);
-    // Another caller is unaffected.
     expect((await post({ code: "STAFF10", context: shop(100) }, "198.51.100.2")).status).toBe(200);
   });
 });

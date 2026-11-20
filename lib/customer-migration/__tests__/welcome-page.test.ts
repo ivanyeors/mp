@@ -2,17 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { User } from "@supabase/supabase-js";
 import { loadWelcomePage, type WelcomeDeps } from "@/lib/customer-migration/welcome-page";
 
-/**
- * What the welcome page loads (migration slice 06). The first sign-in through
- * the page shows the Claim bonus on that same page load, because the Claim
- * runs inside `linkCustomerToAuthUser`, which is awaited before the bonus is
- * read. A signed-out visit counts a click; the signed-in return trip does not.
- */
-
 const TOKEN = "A".repeat(43);
 const user = (email: string) => ({ id: `auth-${email}`, email }) as User;
 
-/** A database where the Claim bonus exists only once the Claim has run. */
 function world({ signedInAs = null as string | null } = {}) {
   const events: string[] = [];
   let claimed = false;
@@ -21,7 +13,6 @@ function world({ signedInAs = null as string | null } = {}) {
     linkCustomer: async (u) => {
       events.push("link");
       await new Promise((r) => setTimeout(r, 5));
-      // linkCustomerToAuthUser adopts the row by email, then claims.
       if (u.email === "jane@x.test") claimed = true;
       events.push("claimed");
       return u.email === "jane@x.test"
@@ -48,7 +39,6 @@ describe("loadWelcomePage", () => {
     expect(data.state).toEqual({ kind: "signed_in" });
     expect(data.account).toMatchObject({ firstName: "Jane", email: "jane@x.test", hasAddress: true });
     expect(data.account?.bonus).toEqual({ kind: "granted", points: 1000 });
-    // The bonus is read only after the link (and its Claim) finished.
     expect(events.indexOf("bonus")).toBeGreaterThan(events.indexOf("claimed"));
   });
 

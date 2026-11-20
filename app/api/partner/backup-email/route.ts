@@ -14,17 +14,11 @@ export const runtime = "nodejs";
 
 const bodySchema = z.object({ email: z.string().trim().toLowerCase().email().max(320) });
 
-/**
- * Start backup-email verification: store a hashed 6-digit code + expiry on the
- * caller's partner_users row and email the code to the backup address. Not yet
- * a valid sign-in identity — only verify sets backup_email_verified.
- */
 export async function POST(req: Request) {
   const ctx = await getPartnerContext();
   if (!isPartnerActive(ctx)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // Each request emails a code to the address given.
   const limited = await tooManyRequests([
     { bucket: "partner-backup-email", key: ctx.userId, windowMs: 60 * 60_000, max: 5 },
   ]);
@@ -40,10 +34,6 @@ export async function POST(req: Request) {
 
   const admin = supabaseAdmin();
 
-  // Reject an address that already resolves to a different partner — its primary
-  // email, or a VERIFIED backup — so a verified backup can't shadow another account.
-  // Filter the caller's own row in JS (not `.neq`, which drops NULL auth_user_id
-  // rows — pre-provisioned partners — from the check).
   const pat = escapeLikePattern(email);
   const { data: others } = await admin
     .from("partner_users")
@@ -64,7 +54,7 @@ export async function POST(req: Request) {
       backup_email_pending: email,
       backup_email_otp_hash: hashOtp(code),
       backup_email_otp_expires_at: otpExpiry(),
-      backup_email_otp_attempts: 0, // fresh code → fresh attempt budget
+      backup_email_otp_attempts: 0,
     })
     .eq("auth_user_id", ctx.userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

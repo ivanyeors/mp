@@ -43,14 +43,11 @@ export type FillingItem = {
   name: string;
   subtype: string | null;
   size: string | null;
-  /** Set by the assist route: "accessories" marks a neck support or an ear pad, premium only. */
   category?: string;
-  /** Set by the assist route: a placed Ear Comfort Pad is charged at its MSRP. */
   msrp?: number | null;
 };
 type TemplateRow = { id: number; name: string };
 
-/** A pillow Filling Template's full placements, as the x-ray editor loads them. */
 export async function fetchPillowTemplate(
   templateId: number,
 ): Promise<{ id: number; placements: PillowPlacement[] }> {
@@ -60,17 +57,6 @@ export async function fetchPillowTemplate(
   return { id: templateId, placements: rowsToPillowPlacements(data.placements ?? []) };
 }
 
-/**
- * Staff assist mode panel (slice 04, Staff-only): size×tier control with a
- * confirm gate and a size-scoped Filling Template picker. Per-piece filling
- * edits live on the x-ray itself (slices 07/08); the stage's Derived pack list
- * card removes a filling outright, reading the same lifted mix.
- *
- * An edited mix can be published back to the catalog — overwriting the loaded
- * template or forking a new one — which the Admin Panel then curates. That
- * write needs the inventory permission, so Staff without it still get the full
- * session editor, just no save.
- */
 export function StaffAssistPanel({
   current,
   placements,
@@ -86,30 +72,21 @@ export function StaffAssistPanel({
   className,
 }: {
   current: SizeTier;
-  /** Live session mix, edited on the x-ray — the thing a save publishes. */
   placements: PillowPlacement[];
   onPlacementsChange: (next: PillowPlacement[]) => void;
   loadedTemplate: LoadedTemplate | null;
   onLoadTemplate: (loaded: LoadedTemplate | null) => void;
-  /** The engine's Filling Template for this size, marked in the picker. */
   suggestedTemplateId?: number | null;
-  /** Kept only while the mix exactly matches the loaded template (slice 05 snapshot). */
   sessionFillingTemplateId: number | null;
-  /** Applies a confirmed change; `from` is the size×tier the change leaves. */
   onApplySizeTier: (next: SizeTier, from: SizeTier) => Promise<void>;
-  /** Loaded filling items, surfaced for the x-ray renderer (slice 07). */
   onItemsChange?: (items: FillingItem[]) => void;
-  /** Product Builder color overrides, surfaced for the x-ray CSS vars (slice 11). */
   onColorOverridesChange?: (overrides: ColorOverrideRow[]) => void;
-  /** Settings dimension overrides, surfaced for the true-scale x-ray (slice 02). */
   onDimensionOverridesChange?: (overrides: DimensionOverridesPayload | null) => void;
-  /** Passed to the toolbox rail (the stage spans it across its column). */
   className?: string;
 }) {
   const [gate, setGate] = useState<ConfirmGateState>({ pending: null });
   const [applying, setApplying] = useState(false);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
-  // Bumped after a save so the picker refetches and lists the saved template.
   const [catalogVersion, setCatalogVersion] = useState(0);
 
   useEffect(() => {
@@ -124,7 +101,6 @@ export function StaffAssistPanel({
           dimensionOverrides?: DimensionOverridesPayload;
         }) => {
           if (cancelled) return;
-          // A neck support or an ear pad is for premium pillows only — basic never offers one.
           const offered = (d.items ?? []).filter(
             (i) => current.tier === "premium" || !isInPillowAccessory({ category: i.category, name: i.name }),
           );
@@ -145,7 +121,6 @@ export function StaffAssistPanel({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onItemsChange is a setState setter
   }, [current.size, current.tier, catalogVersion]);
 
   const request = (next: SizeTier) => {
@@ -209,7 +184,6 @@ export function StaffAssistPanel({
   ];
 
   const affordance = saveAffordance({ placements, loaded: loadedTemplate });
-  // Templates are scoped by size alone, so only a size change replaces the mix.
   const sizeChange = gate.pending !== null && gate.pending.size !== current.size;
   const loadedName = loadedTemplate
     ? templates.find((t) => t.id === loadedTemplate.id)?.name ?? "this template"
@@ -230,8 +204,6 @@ export function StaffAssistPanel({
                 : null
             }
             onSaved={(templateId) => {
-              // Re-link the session to what was just written: the claim only
-              // survives while the mix matches, so pass the saved mix itself.
               onLoadTemplate({ id: templateId, placements });
               setCatalogVersion((v) => v + 1);
             }}
@@ -246,7 +218,6 @@ export function StaffAssistPanel({
           : null
       }
     >
-      {/* Confirm gate: without confirm, placements stay untouched */}
       <Dialog open={gate.pending !== null} onOpenChange={(open) => !open && void resolveGate("cancel")}>
         <DialogContent>
           <DialogHeader>

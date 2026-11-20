@@ -80,7 +80,6 @@ type ItemRow = {
   name: string;
   size: string | null;
   subtype: string | null;
-  /** Case fabric family (`items.price_family`); selects a premium Costings row. */
   price_family?: string | null;
   pricing?: PriceRecord | PriceRecord[] | null;
 };
@@ -106,7 +105,6 @@ type ProductComponentGroup = {
   rows: ProductComponentDetail[];
 };
 
-/** One Costings price row: a basic size, a bolster length, or a premium size in one case fabric. */
 type ProductRow = {
   key: string;
   kind: "pillow" | "bolster";
@@ -115,7 +113,6 @@ type ProductRow = {
   productId?: number;
   pillowKind?: PillowKind;
   variant?: BolsterVariant;
-  /** Case fabric family this price row is for — premium pillows only. */
   premiumVariant?: PremiumVariant;
   costCents: number | null;
   msrpCents: number | null;
@@ -123,10 +120,6 @@ type ProductRow = {
   defaultFillingTemplateId: number | null;
 };
 
-/**
- * One product card: a Composed sellable with every price row it carries. Premium
- * holds one row per case fabric, picked on the card, so a size is one card.
- */
 type ProductCard = {
   key: string;
   kind: "pillow" | "bolster";
@@ -135,14 +128,12 @@ type ProductCard = {
   size?: PillowSize;
   pillowKind?: PillowKind;
   variant?: BolsterVariant;
-  /** Configure card slug: `premium-XS`, `basic-M`, `bolster-short`. */
   configureSlug: string;
   components: ProductComponent[];
   defaultFillingTemplateId: number | null;
   priceRows: ProductRow[];
 };
 
-/** An active Filling Template with the sizes it serves and its Derived pack list. */
 type FillingTemplate = {
   id: number;
   kind: "pillow" | "bolster";
@@ -151,12 +142,10 @@ type FillingTemplate = {
   pack: Array<{ itemId: number; count: number }>;
 };
 
-/** A card's build in one price row: its parts, the case it ships, and a cost per Filling Template. */
 type FamilyBuild = {
   row: ProductRow;
   family: PremiumVariant | null;
   components: ProductComponent[];
-  /** Premium only: no active case of this fabric exists at this size, so it cannot be built. */
   missingCase: boolean;
   costs: BuildCosts;
 };
@@ -170,7 +159,6 @@ type ProductSaveRow = {
   key: string;
   kind: "pillow" | "bolster";
   productId?: number;
-  /** Bolster length, or a premium pillow's case fabric family. */
   variant?: BolsterVariant | PremiumVariant;
   msrpCents: number | null;
   compareAtCents?: number | null;
@@ -270,7 +258,6 @@ const PREMIUM_VARIANT_TITLES: Record<PremiumVariant, string> = {
 
 const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
 
-/** Category order inside a build breakdown: what the pillow is, then what it ships in. */
 const BUILD_CATEGORY_ORDER = [
   "cover",
   "case",
@@ -284,12 +271,9 @@ const BUILD_CATEGORY_ORDER = [
   "packaging",
 ];
 
-/** The case categories, as `lib/results/composed-sellable` reads them. */
 const CASE_CATEGORIES = new Set(["case", "pillow_case", "bolster_case"]);
 
 const FILTER_TAG_COLLAPSED_ROW_LIMIT = 3;
-
-/** Money columns: wide enough for "$ 123.45" on a phone, fluid on desktop. */
 
 const toCents = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
@@ -298,7 +282,6 @@ const toCents = (value: unknown): number | null => {
   return Math.round(numeric * 100);
 };
 
-/** Same parse as Analytics on-hand strip (dollar floats from item_prices). */
 const toNumber = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -370,17 +353,11 @@ const formatMarginRange = (values: Array<number | null>): string | null => {
   return min === max ? `${min}%` : `${min}% to ${max}%`;
 };
 
-/**
- * Margin of one build at a row's MSRP. A Neck support inside it is in that price,
- * and its cost in the build; an Ear Comfort Pad inside it is sold at its own MSRP
- * on top, so that counts too.
- */
 const optionMargin = (option: BuildCostOption, msrpCents: number | null): number | null => {
   if (msrpCents === null || option.extraChargeCents === null) return null;
   return marginPct(msrpCents + option.extraChargeCents, option.buildCents);
 };
 
-/** What a price row's builds cost; none when the row cannot be built at all. */
 const buildCostCents = (build: FamilyBuild): number[] => {
   if (build.missingCase) return [];
   return build.costs.options.length > 0
@@ -402,7 +379,6 @@ const BASELINE_FIELD: Record<keyof DraftRow, "cost" | "msrp" | "compareAt"> = {
   compareAt: "compareAt",
 };
 
-/** The query string never changes under this page except through `clearFocus`, which also sets state. */
 const subscribeToNothing = () => () => {};
 const readLocationSearch = () => window.location.search;
 
@@ -414,17 +390,9 @@ export default function CostingsPage() {
   const [items, setItems] = useState<ItemRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [draft, setDraft] = useState<DraftState>({});
-  // `draft` drives the inputs so typing is instant; `committedDraft` trails it by
-  // a short debounce and is what the expensive derived memos key off, so a
-  // keystroke no longer recomputes every product cost.
   const [committedDraft, setCommittedDraft] = useState<DraftState>({});
   const [baseline, setBaseline] = useState<BaselineState>({});
   const [partFilters, setPartFilters] = useState<string[]>([]);
-  /**
-   * Items the Inventory page sent here (`?items=`) to be priced: the parts list
-   * shows just these until Staff ask for everything. Read from the URL after
-   * mount, so the page needs no Suspense boundary for `useSearchParams`.
-   */
   const search = useSyncExternalStore(subscribeToNothing, readLocationSearch, () => "");
   const [showAllParts, setShowAllParts] = useState(false);
   const focusItemIds = useMemo(
@@ -435,7 +403,6 @@ export default function CostingsPage() {
   const [saving, setSaving] = useState(false);
   const [productSheetKey, setProductSheetKey] = useState<string | null>(null);
   const [productSheetOpen, setProductSheetOpen] = useState(false);
-  /** Phones edit one part's prices in a sheet; the spreadsheet grid is `md` and up. */
   const [partSheetItemId, setPartSheetItemId] = useState<number | null>(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [collapsedVisibleFilterCount, setCollapsedVisibleFilterCount] = useState<number | null>(null);
@@ -444,8 +411,6 @@ export default function CostingsPage() {
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [fillingTemplates, setFillingTemplates] = useState<FillingTemplate[]>([]);
   const [fillingTemplatesError, setFillingTemplatesError] = useState<string | null>(null);
-  // The case fabric and Filling Template the open sheet is previewing. A null
-  // template means the card's first build: its default, else its cheapest.
   const [sheetFamily, setSheetFamily] = useState<PremiumVariant>("linen");
   const [sheetTemplateId, setSheetTemplateId] = useState<number | null>(null);
   const [onHandKpis, setOnHandKpis] = useState<OnHandValueKpis | null>(null);
@@ -455,12 +420,8 @@ export default function CostingsPage() {
     ) as Record<ProductGroupKey, boolean>,
   );
 
-  // Live mirrors so callbacks can read the newest values synchronously without
-  // being re-created (and re-rendering memoised rows) on every keystroke.
   const draftRef = useRef<DraftState>({});
   const baselineRef = useRef<BaselineState>({});
-  // True as soon as a keystroke makes a field differ from its baseline, so the
-  // Save button enables immediately instead of waiting for the debounce.
   const [hasPendingEdit, setHasPendingEdit] = useState(false);
 
   const applyDraft = useCallback((updater: (prev: DraftState) => DraftState) => {
@@ -481,7 +442,6 @@ export default function CostingsPage() {
 
   const commitDraftDebounced = useDebouncedCallback(commitDraft, DRAFT_COMMIT_DEBOUNCE_MS);
 
-  /** Land any pending keystrokes into `committedDraft` right now. */
   const flushDraft = useCallback(() => {
     commitDraftDebounced.cancel();
     commitDraft();
@@ -510,8 +470,6 @@ export default function CostingsPage() {
       type RawBolsterConfig = { variant: string; default_filling_template_id: number | null };
       type BalanceRow = { item_id: number; on_hand: string | number | null };
 
-      // Placements are service-role only, so the Derived pack lists come from the
-      // server. Not fatal: prices still load and edit without them.
       const templatesRequest = fetch(settingsPath("/settings/costings/builds"), { cache: "no-store" })
         .then(async (response) => {
           const payload = await response.json().catch(() => null);
@@ -683,7 +641,6 @@ export default function CostingsPage() {
           const left = pillowOrder.get(a.size) ?? Number.MAX_SAFE_INTEGER;
           const right = pillowOrder.get(b.size) ?? Number.MAX_SAFE_INTEGER;
           if (left !== right) return left - right;
-          // Keep basic before premium when sizes match.
           const ak = String(a.kind || "basic");
           const bk = String(b.kind || "basic");
           if (ak !== bk) return ak.localeCompare(bk);
@@ -694,12 +651,6 @@ export default function CostingsPage() {
           const costCents = costForComponents(components);
           const pillowKind: PillowKind = String(product.kind) === "premium" ? "premium" : "basic";
 
-          // Premium is priced PER CASE FABRIC FAMILY and so gets one editable row per
-          // family; basic gets one unkeyed row. #131 collapsed premium to a single
-          // price on the belief the fabric did not change the sell price — it does,
-          // and the two do not share a base (XS 340 vs 360 imply cores of 250 and
-          // 247). Two rows is not a special case here: each is an ordinary row with
-          // its own key, so the draft, dirty check, sheet and save need no branch.
           const priceRows: Array<{ key: string; variant?: PremiumVariant; label: string }> =
             pillowKind === "premium"
               ? PREMIUM_VARIANTS.map((variant) => ({
@@ -786,8 +737,6 @@ export default function CostingsPage() {
     load();
   }, [load]);
 
-  // Realtime bursts (a BOM edit touches several tables at once) are coalesced
-  // into a single trailing reload instead of one `load()` per change event.
   const scheduleReload = useDebouncedCallback(() => {
     load();
   }, REALTIME_RELOAD_DEBOUNCE_MS);
@@ -990,7 +939,6 @@ export default function CostingsPage() {
     window.history.replaceState(window.history.state, "", url);
   }, []);
 
-  // Land on the parts the Inventory page sent, not the product cards above them.
   const focusedOnce = useRef(false);
   useEffect(() => {
     if (loading || focusItemIds.length === 0 || focusedOnce.current) return;
@@ -1040,12 +988,8 @@ export default function CostingsPage() {
     return Array.from(byKey.values());
   }, [products]);
 
-  // Each card's cost in every price row, once per Filling Template serving its size.
-  // Keyed off `committedDraft` like the memos above, so an edited part cost or case
-  // MSRP moves every build that uses it as soon as the debounce lands.
   const cardBuilds = useMemo(() => {
     const msrpCentsOf = (itemId: number) => parseToCents(committedDraft[itemKey(itemId)]?.msrp ?? "");
-    // A Neck support placed in the pillow is in its price; an Ear Comfort Pad adds its own MSRP.
     const neckSupportItemIds = new Set(items.filter((item) => isNeckSupportItem(item)).map((item) => item.id));
     const earPadMsrpByItem = new Map<number, number | null>(
       items.filter((item) => isEarPadItem(item)).map((item) => [item.id, msrpCentsOf(item.id)]),
@@ -1065,8 +1009,6 @@ export default function CostingsPage() {
         let components = card.components;
         let missingCase = false;
         if (row.premiumVariant) {
-          // Each fabric's row was priced with that fabric's case, so its build ships
-          // that case, whichever one the BOM happens to carry.
           const caseItemId = familyCaseItemId({
             bomCase: bomCaseItem
               ? { itemId: bomCaseItem.id, family: bomCaseItem.price_family ?? null, msrpCents: msrpCentsOf(bomCaseItem.id) }
@@ -1087,7 +1029,6 @@ export default function CostingsPage() {
           missingCase,
           costs: buildCostOptions({
             baseComponents: components,
-            // A fabric with no case here cannot be built, so it has no build to cost.
             templates: missingCase ? [] : templates,
             defaultTemplateId: card.defaultFillingTemplateId,
             costByItem: itemCostByIdFromDraft,
@@ -1152,7 +1093,6 @@ export default function CostingsPage() {
         </div>
         <div className="space-y-0.5 text-xs text-muted-foreground">
           <div>{templateCount === 1 ? "1 filling template" : `${templateCount} filling templates`}</div>
-          {/* A phone row is full width, so the template name wraps rather than truncating. */}
           <div className="break-words md:truncate">
             {build?.defaultTemplateName ? `Default is ${build.defaultTemplateName}` : "No default set"}
           </div>
@@ -1206,15 +1146,11 @@ export default function CostingsPage() {
   const activeRowDraft = activeFamily ? draft[activeFamily.row.key] ?? EMPTY_DRAFT_ROW : null;
   const activeMsrpCents = parseToCents(activeRowDraft?.msrp ?? "");
 
-  /** A build's lines grouped by category, in build order, with their costs. */
   const groupBuildLines = useCallback(
     (components: ProductComponent[]): ProductComponentGroup[] => {
       const groups = new Map<string, ProductComponentGroup>();
       components.forEach((component) => {
         if (component.quantity <= 0) return;
-        // Costings loads active Items only, but a BOM can still point at an
-        // inactive one. It is listed rather than dropped, so a cost it leaves
-        // out is visible.
         const item = itemMap.get(component.itemId) ?? {
           id: component.itemId,
           category: "inactive",
@@ -1288,8 +1224,6 @@ export default function CostingsPage() {
           [rowKey]: { ...current, [field]: sanitized },
         };
       });
-      // Cheap dirty check for just the field that changed — the full comparison
-      // still runs against `committedDraft` once the debounce lands.
       const baselineRow = baselineRef.current[rowKey];
       const baselineCents =
         field === "costPrice"
@@ -1326,7 +1260,6 @@ export default function CostingsPage() {
     [applyDraft, flushDraft],
   );
 
-  /** Grid edits land formatted to cents, like a blurred input. */
   const handleGridChange = useCallback(
     (edits: SheetEdit[]) => {
       applyDraft((prev) => {
@@ -1386,13 +1319,9 @@ export default function CostingsPage() {
     });
   }, [items, products, committedDraft, baseline]);
 
-  // `hasPendingEdit` covers the debounce window so the Save button reacts to the
-  // very first keystroke, exactly as it did when `isDirty` read `draft`.
   const isDirty = hasPendingEdit || committedIsDirty;
 
   const save = async () => {
-    // Land any keystroke still inside the debounce window, then build the
-    // payload from the live draft so nothing typed can be lost.
     flushDraft();
     const liveDraft = draftRef.current;
     const rows = items
@@ -1436,9 +1365,6 @@ export default function CostingsPage() {
             return [];
           }
           payload.productId = product.productId;
-          // Carried through so the row lands on `product_prices.variant` — the column
-          // the pricing loader selects on. Without it every premium save collapsed
-          // back to one unkeyed row.
           if (product.premiumVariant) payload.variant = product.premiumVariant;
         }
         if (product.kind === "bolster") {
@@ -1500,9 +1426,6 @@ export default function CostingsPage() {
     }
   };
 
-  // Phones: Refresh moves into the bottom dock. Save stays in
-  // MobileStickyActionBar — it carries the "Unsaved changes" line, which a
-  // dock icon cannot, and the bar only appears when there is something to save.
   useMobileDockActions([
     { id: "refresh", title: "Refresh", icon: RotateCw, onClick: () => void load() },
   ]);
@@ -1541,8 +1464,6 @@ export default function CostingsPage() {
           >
             Refresh
           </Button>
-          {/* Phones get Save from MobileStickyActionBar instead — `md`, the bar's
-              own breakpoint, so the two never render at once on a wide phone. */}
           <Button
             className="hidden md:inline-flex"
             onClick={save}
@@ -1781,8 +1702,6 @@ export default function CostingsPage() {
             ) : (
               filteredGroups.map((group) => (
                 <Section key={group.category} title={group.title} sticky>
-                  {/* A spreadsheet doesn't fit a phone (36px cells, a keyboard hint, a fourth
-                      column cut off), so phones list the parts and edit one in a sheet. */}
                   <div className="hidden md:block">
                     <SheetGrid
                       label={`${group.title} prices`}
@@ -2084,7 +2003,6 @@ export default function CostingsPage() {
         </SheetContent>
       </Sheet>
 
-      {/* Phones: Save stays in reach however far down the parts list you are. */}
       {isDirty ? (
         <MobileStickyActionBar>
           <div className="flex items-center justify-between gap-3">
@@ -2164,7 +2082,6 @@ function Section({
 }: {
   title: string;
   children: ReactNode;
-  /** Pin the title to the top of the viewport on phones while the list scrolls. */
   sticky?: boolean;
 }) {
   return (
@@ -2218,7 +2135,6 @@ function PriceInput({
   );
 }
 
-/** One part of a build breakdown: its lines by category, with a subtotal. */
 function BuildLines({
   title,
   subtotalCents,

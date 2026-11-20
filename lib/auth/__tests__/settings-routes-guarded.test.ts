@@ -2,12 +2,6 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-/**
- * Every API route under /settings must call requireAdmin (or a sibling
- * requireAdminContext) inside each exported handler — the settings layout has
- * no blanket gate, so the route handlers are the trust boundary.
- */
-
 function settingsRouteFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const full = join(dir, name);

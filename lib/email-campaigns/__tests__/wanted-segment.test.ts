@@ -5,13 +5,6 @@ import { EMPTY_CAMPAIGN_DRAFT } from "../rules";
 import { newCampaignFromAddress, starterById, wantedAfterStarter } from "../starters";
 import { afterParam, followUpWanted, LOST_STAGE_NOTE, stageWanted, wantedToCreate, type MatchableSegment } from "../wanted-segment";
 
-/**
- * Create from the funnel (PRD-email-funnel slice 06): New campaign at
- * `?stage=<stage>` and `?after=<campaign id>:<did>` wants a Segment, found by
- * exactly its filters on the server (a Segment that needs review never), or
- * offered to be created; with `?starter=` and `?segment=`, one Audience wins.
- */
-
 const A = "7c0a1e2b-3d4f-4a5b-8c6d-9e0f1a2b3c4d";
 type Parent = { id: string; name: string; archivedAt: string | null };
 const PARENT: Parent = { id: A, name: "We miss you", archivedAt: null };
@@ -42,7 +35,6 @@ describe("?stage=<stage>", () => {
     const { draft, wanted } = open({ stage: "at-risk" }, SEGMENTS);
     expect(draft).toMatchObject({ audience: "segment", segmentId: "seg-risk", name: "" });
     expect(wanted).toMatchObject({ name: "At risk", filters: "stage=at-risk" });
-    // Only those two: the stage's Segment is missing.
     const without = SEGMENTS.filter((s) => s.id !== "seg-risk");
     expect(open({ stage: "at-risk" }, without).draft).toMatchObject({ audience: "segment", segmentId: null });
   });
@@ -90,7 +82,6 @@ describe("?after=<campaign id>:<did>", () => {
       expect(r.draft.segmentId, state).toBeNull();
       expect(r.wanted!.note, state).toContain("after the Rest period");
       expect(wantedToCreate(r.wanted!)).toEqual({ name, filters: { campaign: `${A}:${state}` } });
-      // The server checks the filter's form, not whether the campaign has started.
       expect(parseSegmentFilters(wantedToCreate(r.wanted!).filters)).toEqual({ ok: true, params: { campaign: `${A}:${state}` } });
     }
   });
@@ -124,7 +115,6 @@ describe("?after=<campaign id>:<did>", () => {
     const long = followUpWanted(afterParam(`${A}:not-clicked`), { ...PARENT, name: "y".repeat(90) }, [seg("s3", `${"y".repeat(65)} · didn't click`, "stage=new")])!;
     expect(long.name).toBe(`${"y".repeat(61)} · didn't click (2)`);
     expect(long.name.length).toBeLessThanOrEqual(SEGMENT_NAME_MAX);
-    // Its own filters under its name: found, not renamed.
     expect(followUpWanted(afterParam(`${A}:not-clicked`), PARENT, [seg("s4", "We miss you · didn't click", `campaign=${A}:not-clicked`)])!.name).toBe(
       "We miss you · didn't click",
     );
@@ -132,7 +122,6 @@ describe("?after=<campaign id>:<did>", () => {
 });
 
 describe("which Audience wins", () => {
-  // A Starter with its own Audience; then ?after=; then ?stage=; then ?segment=.
   const SEGMENT = { segment: "seg-loyal" };
   it("a Starter with its own Audience beats ?after=, ?stage= and ?segment=", () => {
     const r = open({ starter: "playbook_welcome_back", after: `${A}:not-clicked`, stage: "loyal", ...SEGMENT }, SEGMENTS, PARENT);

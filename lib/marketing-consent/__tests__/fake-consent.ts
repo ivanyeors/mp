@@ -1,18 +1,6 @@
 import type { AftercareFakeDb, RpcHandler } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * set_marketing_email as 20261117100000_explore_welcome_points.sql defines it, for
- * the in-memory client (`fakeAftercareDb`): the state, its provenance and one
- * event together; nothing when unchanged; only the moves each source may make.
- * supabase/tests/customer-migration/assert-07-marketing-consent.sql and
- * supabase/tests/campaign-audiences/assert-consent-by-default.sql and
- * supabase/tests/campaign-audiences/assert-02-consent-boxes.sql and
- * supabase/tests/campaign-audiences/assert-03-sign-up.sql and
- * supabase/tests/explore-points/assert-explore-points.sql assert the
- * real function against Postgres.
- */
 const SUBSCRIBERS = ["account", "shopify_import", "import_default", "checkout", "customisation", "appointment", "sign_in", "newsletter", "explore_claim"];
-/** Subscribe only someone nobody has asked; skip anyone else quietly. */
 const ONLY_NOBODY_ASKED = ["shopify_import", "import_default", "checkout", "customisation", "appointment", "sign_in", "newsletter", "explore_claim"];
 
 export const setMarketingEmailRpc: RpcHandler = (args, db: AftercareFakeDb) => {
@@ -36,7 +24,6 @@ export const setMarketingEmailRpc: RpcHandler = (args, db: AftercareFakeDb) => {
   if (source === "shopify_unsubscribed" && customer.marketing_email_source === "account") return { data: false, error: null };
 
   const at = new Date().toISOString();
-  // Slice 08: the campaign send behind it, only when it is this Customer's own.
   const sends = ((db as Record<string, unknown>).customer_campaign_sends ?? []) as { id: string; customer_id: string }[];
   const sendId = typeof args.p_campaign_send_id === "string" ? args.p_campaign_send_id : null;
   const campaignSendId = sendId && sends.some((x) => x.id === sendId && x.customer_id === args.p_customer_id) ? sendId : null;

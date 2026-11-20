@@ -1,15 +1,7 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CampaignDraftInput } from "@/lib/email-campaigns/rules";
-
-/**
- * A placeholder is never a value (PRD-campaign-email-editor slice 01): the
- * editor sends an empty field to Save as an empty string, which Save refuses
- * with today's field errors, and stores only what was typed. The preview
- * draws the placeholders, and saves and audits nothing.
- */
 
 const h = vi.hoisted(() => ({ inserts: [] as Record<string, unknown>[] }));
 vi.mock("@/lib/auth/admin", () => ({
@@ -33,7 +25,6 @@ vi.mock("@/lib/supabase/server", () => ({
 const { previewCampaign, saveCampaign } = await import("../actions");
 const { CAMPAIGN_PLACEHOLDERS } = await import("@/lib/email-campaigns/rules");
 
-/** The editor's input for a new campaign with nothing typed, as it sends it. */
 const EMPTY: CampaignDraftInput = {
   name: "",
   subject: "",

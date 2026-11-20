@@ -28,10 +28,8 @@ export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Shape gate, as the Result's filling-mix route; `validatePillowPlacements` does the rest. */
 const ReadjustSchema = z.object({
   size: z.enum(PILLOW_TEMPLATE_KEYS),
-  /** The template the pillow was re-adjusted from: read by Staff, never trusted to describe the mix. */
   fillingTemplateId: z.number().int().positive().nullable(),
   placements: z
     .array(
@@ -54,12 +52,6 @@ async function customerExists(id: string): Promise<boolean> {
   return Boolean(data);
 }
 
-/**
- * GET /api/shop/customers/[id]/pillow/readjust — the Items the Re-adjust
- * editor may place: every active filling, and the neck supports and ear pads,
- * as Result detail offers them. Read when Staff open Re-adjust, so the
- * Customer page does not carry the catalog on every view.
- */
 export async function GET() {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
@@ -82,19 +74,6 @@ export async function GET() {
   });
 }
 
-/**
- * POST /api/shop/customers/[id]/pillow/readjust — a Re-adjustment (ADR 0042 l):
- * the fillings Staff left in the Customer's pillow at a visit. Saved on the
- * Staff link (`customer_pillows`) as the mix itself, with the size and the
- * template it was re-adjusted from, so the Customer page and their Profile
- * draw the pillow as it now is.
- *
- * It writes that row and nothing else. A Re-adjustment is a Service: it moves
- * no stock, sets no price and reaches no Result, order or analytics; the
- * Service fee is charged when it is booked. The mix is checked as a Result's
- * is (cells, Layers, pieces, Items), with no Tier: the pillow on record does
- * not carry one. Every save is in the audit log with the mix before and after.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
@@ -121,8 +100,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const valid = validatePillowPlacements(placements, kinds.byId);
   if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 });
 
-  // Where it came from is kept only while it names a pillow Filling Template,
-  // active or not: an order's template may have been retired since, or deleted.
   let fillingTemplateId: number | null = null;
   if (parsed.data.fillingTemplateId !== null) {
     const { data: tpl, error } = await admin

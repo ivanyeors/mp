@@ -6,10 +6,8 @@ import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { resultCouponOf, type ResultCoupon } from "@/lib/results/discount";
 
-/** Everything the finish page needs to reopen an assigned build (ADR 0017). */
 export type ResumeFinish = {
   id: string;
-  /** Echoed to the finish and accept routes; null when access came from a signed-in match. */
   token: string | null;
   measurements: Record<string, unknown>;
   size: "XS" | "S" | "M" | "L" | "XL";
@@ -18,20 +16,11 @@ export type ResumeFinish = {
   phone: string;
   discoverySource: string;
   discoverySourceOther: string;
-  /** The Staff-composed fillings, shown read-only in the x-ray. */
   placements: PillowPlacementRow[];
-  /** The placed Items — the shop's filling list has no neck support to label or color, nor an ear pad to charge. */
   items: FillingItem[];
-  /** The discount code submitted with the questionnaire (ADR 0033); the page shows it off the price. */
   coupon: ResultCoupon | null;
 };
 
-/**
- * `/mp-config?result=<id>&token=<t>`. Returns null for anything that is not
- * an assigned, unfinished, pillow Assisted customisation the caller may open.
- * The page then renders the ordinary configurator, so a stale or forged link
- * shows nothing about the Result.
- */
 export async function loadResumeFinish(
   id: string | undefined,
   token: string | undefined,

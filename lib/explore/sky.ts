@@ -1,38 +1,18 @@
-/**
- * The Explore page's sky (owner, 2026-11-17): day and night follow the
- * visitor's own clock, with the sun and moon where they would be and the
- * moon in tonight's phase. Pure, so the scene, the plain-CSS fallback and the
- * tests share one answer.
- *
- * The maths is the short form of the usual solar formulas: good to about a
- * degree, which is far finer than a drawn sky needs.
- */
-
 export type Rgb = readonly [number, number, number];
 
-/** Where the sky is being looked at from. */
 export interface Place {
   lat: number;
   lon: number;
 }
 
 export interface SkyBody {
-  /** Degrees above the horizon; below 0 is set. */
   elevation: number;
-  /** Degrees from due south-or-north at its highest: negative rising, positive setting. */
   hourAngle: number;
-  /**
-   * Where it is on its daily turn, in degrees: 180 as it rises out of the
-   * sea, 90 at its highest, 0 (or 360) as it sets, 270 at its lowest under
-   * the horizon. The scene draws the sun and moon on a wheel at this angle.
-   */
   wheel: number;
 }
 
 export interface MoonState extends SkyBody {
-  /** 0 new, 0.25 first quarter, 0.5 full, 0.75 last quarter. */
   phase: number;
-  /** The lit share of the disc, 0 to 1. */
   lit: number;
 }
 
@@ -46,11 +26,8 @@ export interface SkyPalette {
   cloudShade: Rgb;
   seaDeep: Rgb;
   seaShallow: Rgb;
-  /** Multiplies the land: the cliff, the grass and the flowers. */
   tint: Rgb;
-  /** 0 to 1. */
   stars: number;
-  /** 0 to 1: how much of the sun's disc and glow shows (dimmed by rain cloud). */
   sunStrength: number;
 }
 
@@ -58,7 +35,6 @@ export interface SkyState {
   palette: SkyPalette;
   sun: SkyBody;
   moon: MoonState;
-  /** The colour text over the sky should take. */
   ink: "dark" | "light";
   raining: boolean;
 }
@@ -74,7 +50,6 @@ function hex(h: string): Rgb {
 }
 const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-/** "#rrggbb" for a colour. */
 export function toHex(c: Rgb): string {
   const p = (v: number) => Math.round(clamp01(v) * 255).toString(16).padStart(2, "0");
   return `#${p(c[0])}${p(c[1])}${p(c[2])}`;
@@ -88,11 +63,6 @@ function declination(at: Date): number {
   return -23.44 * Math.cos((2 * Math.PI * (dayOfYear(at) + 10)) / 365);
 }
 
-/**
- * Pure — a body's place on its daily turn. The horizon is always at 180 and
- * 0, whatever the season or latitude, so it rises and sets where the scene's
- * sea is; between them the angle follows how high it is.
- */
 function wheelOf(latDeg: number, declDeg: number, elevation: number, hourAngle: number): number {
   const highest = Math.max(1, 90 - Math.abs(latDeg - declDeg));
   const lowest = Math.max(1, 90 - Math.abs(latDeg + declDeg));
@@ -108,10 +78,9 @@ function elevationOf(latDeg: number, declDeg: number, hourAngleDeg: number): num
   return Math.asin(Math.min(1, Math.max(-1, s))) / RAD;
 }
 
-/** Pure — where the sun is. */
 export function sunPosition(at: Date, place: Place): SkyBody {
   const b = (2 * Math.PI * (dayOfYear(at) - 81)) / 364;
-  const equationOfTime = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b); // minutes
+  const equationOfTime = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
   const utcHours = at.getUTCHours() + at.getUTCMinutes() / 60 + at.getUTCSeconds() / 3600;
   const hourAngle = wrap180((utcHours + place.lon / 15 + equationOfTime / 60 - 12) * 15);
   const decl = declination(at);
@@ -119,21 +88,14 @@ export function sunPosition(at: Date, place: Place): SkyBody {
   return { elevation, hourAngle, wheel: wheelOf(place.lat, decl, elevation, hourAngle) };
 }
 
-/** A new moon: 6 January 2000, 18:14 UTC. */
 const NEW_MOON_MS = Date.UTC(2000, 0, 6, 18, 14);
 const SYNODIC_DAYS = 29.530588853;
 
-/** Pure — the moon's phase, 0 (new) to 1 (the next new). */
 export function moonPhase(at: Date): number {
   const cycles = (at.getTime() - NEW_MOON_MS) / (SYNODIC_DAYS * DAY_MS);
   return cycles - Math.floor(cycles);
 }
 
-/**
- * Pure — where the moon is, and how much of it is lit. It trails the sun by
- * its phase (a full moon rises as the sun sets), and rides high when the sun
- * rides low.
- */
 export function moonPosition(at: Date, place: Place): MoonState {
   const phase = moonPhase(at);
   const sun = sunPosition(at, place);
@@ -149,11 +111,6 @@ export function moonPosition(at: Date, place: Place): MoonState {
   };
 }
 
-/**
- * Pure — a place to work the sky out from when nothing better is known: the
- * time zone's own city where we know it, else the longitude its clock implies
- * at a middling latitude. Enough for "is it day or night where they are".
- */
 export function guessPlace(timeZone: string | null | undefined, utcOffsetMinutes: number): Place {
   const tz = timeZone ?? "";
   if (tz === "Asia/Singapore" || tz === "Asia/Kuala_Lumpur") return { lat: 1.35, lon: 103.82 };
@@ -186,7 +143,6 @@ const NIGHT = stop(-18, { top: "#0a0f2c", mid: "#151d4a", horizon: "#2c3470", su
 const DAY_LOW = stop(12, { top: "#3f93e6", mid: "#96ccf6", horizon: "#e4f3fc", sun: "#ffeaa6", glow: "#fff1c4", cloud: "#fff6e2", cloudShade: "#a4a8e2", seaDeep: "#1b78c2", seaShallow: "#79d2e8", tint: "#ffffff" }, 0);
 const DAY_HIGH = stop(40, { top: "#3390ee", mid: "#86c8f8", horizon: "#dff2fd", sun: "#fffdf0", glow: "#fff8dc", cloud: "#fff7e4", cloudShade: "#a9ade4", seaDeep: "#1675c6", seaShallow: "#6fd3ea", tint: "#ffffff" }, 0);
 
-/** Dusk: orange into violet. */
 const EVENING: readonly Stop[] = [
   NIGHT,
   stop(-7, { top: "#161c4e", mid: "#43397a", horizon: "#b8607c", sun: "#ff9a6b", glow: "#c4607e", cloud: "#6f5590", cloudShade: "#3a3168", seaDeep: "#12173f", seaShallow: "#5b447f", tint: "#8d86c0" }, 0.75),
@@ -196,7 +152,6 @@ const EVENING: readonly Stop[] = [
   DAY_HIGH,
 ];
 
-/** Dawn: the same shape, cooler and pinker. */
 const MORNING: readonly Stop[] = [
   NIGHT,
   stop(-7, { top: "#141b4c", mid: "#3a3f80", horizon: "#a8709a", sun: "#ffb59a", glow: "#b47aa0", cloud: "#65609a", cloudShade: "#343a70", seaDeep: "#10173f", seaShallow: "#4f4f8a", tint: "#8a8cc4" }, 0.75),
@@ -223,17 +178,11 @@ function between(stops: readonly Stop[], elevation: number): Omit<SkyPalette, "s
   return out as unknown as Omit<SkyPalette, "sunStrength">;
 }
 
-/** Relative luminance of an sRGB colour, 0 to 1. */
 export function luminance(c: Rgb): number {
   const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
   return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
 }
 
-/**
- * Rain cloud over a palette: every colour drawn towards the cloud deck's own
- * (slate at night, soft grey by day), the sun all but hidden. Never black:
- * the owner asked for a peaceful drizzle, not a storm.
- */
 function overcast(p: SkyPalette, sunElevation: number): SkyPalette {
   const deck = mix(hex("#2d3654"), hex("#b3bdc9"), clamp01((sunElevation + 8) / 18));
   const toward = (c: Rgb, t: number, k = 1): Rgb => {
@@ -256,25 +205,21 @@ function overcast(p: SkyPalette, sunElevation: number): SkyPalette {
   };
 }
 
-/** Pure — the sky's colours for a sun this high, in the morning or the evening, with or without rain cloud. */
 export function skyPalette(sunElevation: number, morning: boolean, raining = false): SkyPalette {
   const clear: SkyPalette = { ...between(morning ? MORNING : EVENING, sunElevation), sunStrength: 1 };
   return raining ? overcast(clear, sunElevation) : clear;
 }
 
-/** Pure — dark text on a bright sky, light text on a dark one. Text sits over the upper sky. */
 export function inkFor(palette: SkyPalette): "dark" | "light" {
   return luminance(mix(palette.top, palette.mid, 0.55)) > 0.3 ? "dark" : "light";
 }
 
-/** Pure — the whole sky at a moment, seen from a place. */
 export function skyAt(at: Date, place: Place, raining = false): SkyState {
   const sun = sunPosition(at, place);
   const palette = skyPalette(sun.elevation, sun.hourAngle < 0, raining);
   return { palette, sun, moon: moonPosition(at, place), ink: inkFor(palette), raining };
 }
 
-/** Pure — the sky as a plain CSS background, for before the scene loads and where it cannot. */
 export function skyCss(palette: SkyPalette): string {
   const { top, mid, horizon, seaShallow, seaDeep } = palette;
   return `linear-gradient(to bottom, ${toHex(top)} 0%, ${toHex(mid)} 42%, ${toHex(horizon)} 62%, ${toHex(seaShallow)} 62%, ${toHex(seaDeep)} 100%)`;

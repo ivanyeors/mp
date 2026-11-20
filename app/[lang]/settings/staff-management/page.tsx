@@ -2,10 +2,6 @@ import { redirect } from "next/navigation";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 
-/**
- * Staff Management moved into Users & permissions: the staff list is the
- * Staff profiles tab and Telegram access is the Telegram tab.
- */
 export default async function StaffManagementRedirect({
   params,
   searchParams,

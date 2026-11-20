@@ -32,8 +32,6 @@ describe("stageGeometry", () => {
       expect(b.maxY - b.minY).toBeCloseTo(dims.lengthMm * stage.k, 0);
       expect(b.minY).toBeCloseTo(stage.offsetY, 0);
       expect(b.maxY).toBeLessThanOrEqual(XRAY_VIEW.height + 0.1);
-      // The notched front edge (max y in mm) is the TOP of the stage: the
-      // silhouette's topmost vertex comes from the outline's front-most one.
       const frontMm = dims.outline.reduce((a, p) => (p[1] > a[1] ? p : a));
       const idx = dims.outline.indexOf(frontMm);
       expect(stage.silhouettePolygon[idx][1]).toBeCloseTo(b.minY, 0);
@@ -50,7 +48,6 @@ describe("stageGeometry", () => {
     const xl = stageGeometry("XL");
     expect(xl.colX[1]).toBeCloseTo(XRAY_VIEW.width / 3, 0);
     expect(xl.colX[2]).toBeCloseTo((2 * XRAY_VIEW.width) / 3, 0);
-    // XS's centre column is narrower than its sides; XL's are thirds.
     expect(xs.colX[2] - xs.colX[1]).toBeLessThan(xs.colX[1]);
   });
 
@@ -149,10 +146,8 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     const [p] = layoutPlacements([cell(1, 1)], { stage, dims: long });
     expect(p.h).toBeCloseTo(150 * stage.k, 0);
     expect(p.h).toBeGreaterThan(frame.h);
-    // Longer than the pillow: as long as its Section, front wall to back wall.
     const huge = new Map([[1, resolved({ widthMm: 100, lengthMm: 400 })]]);
     const [q] = layoutPlacements([cell(1, 1)], { stage, dims: huge });
-    // (a hair in from each wall, as every pouch on a cell's edge is drawn)
     expect(Math.abs(q.y - stage.rowY[0])).toBeLessThanOrEqual(1.5);
     expect(Math.abs(q.y + q.h - stage.rowY[3])).toBeLessThanOrEqual(1.5);
   });
@@ -216,7 +211,7 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
       expect(p.h).toBeGreaterThan(0);
     }
     const deepest = layout.find((p) => p.depth === 4)!;
-    expect(deepest.w).toBeCloseTo(100 * stage.k, 0); // the deepest keeps its true width: its slab stays in the cell
+    expect(deepest.w).toBeCloseTo(100 * stage.k, 0);
   });
 
   it("is order-independent and byte-identical across calls with a context", () => {

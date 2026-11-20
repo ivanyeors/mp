@@ -2,8 +2,6 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import { DEFAULT_LOCALE } from '@/lib/i18n/locales';
 import { blogSlugFate } from '@/lib/blog-redirects';
 
-// ---------- Types ----------
-
 export type BlogLocalizedContent = {
     title: string;
     sub_header?: string;
@@ -23,12 +21,10 @@ export type BlogPostRow = {
     published_at: string | null;
     created_at: string;
     updated_at: string;
-    /** Set only on editorial edits (slice 17); null = unchanged since publishing. */
     content_updated_at?: string | null;
     labels: string[];
 };
 
-/** Flattened blog post for rendering (already resolved to a specific locale). */
 export type BlogPost = {
     id: string;
     slug: string;
@@ -46,13 +42,9 @@ export type BlogPost = {
     seo_keywords: string[];
     seo_answer?: string;
     labels: string[];
-    /** The locale whose text is shown; differs from the requested one when that has no content. */
     content_locale: string;
-    /** Locales with written content, i.e. the ones that are real translations. */
     locales: string[];
 };
-
-// ---------- Supabase fetchers ----------
 
 export function resolveLocale(row: BlogPostRow, locale: string): BlogPost {
     const locales = Object.keys(row.content).filter((l) => row.content[l]?.title?.trim() || row.content[l]?.body?.trim());
@@ -94,7 +86,6 @@ export async function getBlogPostsFromDb(opts?: { locale?: string; status?: stri
         console.error('getBlogPostsFromDb error:', error.message);
         return [];
     }
-    // Merged and retired slugs are not posts any more, whatever their row says.
     return (data as BlogPostRow[]).filter((row) => !blogSlugFate(row.slug)).map((row) => resolveLocale(row, locale));
 }
 
@@ -125,19 +116,11 @@ export async function getAllBlogPostsRaw(): Promise<BlogPostRow[]> {
 }
 
 
-// ---------- Admin (settings) fetchers ----------
-
-/** The columns the admin blogs list renders. */
 export type AdminBlogListRow = Pick<
     BlogPostRow,
     'id' | 'slug' | 'status' | 'content' | 'image_url' | 'author' | 'published_at' | 'created_at'
 >;
 
-/**
- * Rows for the admin blogs list, newest first. Only the columns the list
- * renders (content carries the localized title); capped so it can never grow
- * unbounded. Throws on a Supabase error so callers can map it to a status.
- */
 export async function listAdminBlogPosts(status?: string | null): Promise<AdminBlogListRow[]> {
     const admin = supabaseAdmin();
     let query = admin
@@ -152,7 +135,6 @@ export async function listAdminBlogPosts(status?: string | null): Promise<AdminB
     return (data ?? []) as AdminBlogListRow[];
 }
 
-/** One blog post by id for the admin editor; `error` mirrors the Supabase message. */
 export async function getAdminBlogPostById(
     id: string,
 ): Promise<{ row: BlogPostRow | null; error: string | null }> {

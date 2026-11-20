@@ -9,25 +9,14 @@ import { CHINESE, CHINESE_EDITOR_TEXT } from "@/lib/email-campaigns/chinese-vers
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import type { TranslateScope } from "./run-translate";
 
-/** ✨ Translate as the Language bar offers it: null when AI writing is off, so no ✨ shows. */
 export interface LanguageBarTranslate {
-  /** Why it can't run now (no credentials, nothing in English yet, another ask running), or null. */
   reason: string | null;
-  /** What the button says while the whole email, or what changed, is being translated; null otherwise. */
   working: string | null;
   onStop: () => void;
   start: (scope: TranslateScope) => void;
-  /** Blocks (and the subject) out of date or not translated yet: *Translate what changed* has these to do. */
   changed: number;
 }
 
-/**
- * The email's Language (PRD-campaign-email-editor slice 17): *English · 中文*
- * above the email, ✨ *Translate to Chinese* beside it, and in its menu
- * *Remove the 中文 version*. The first translation makes the whole 中文
- * version; later ones offer *Translate what changed* or *Translate everything
- * again*. In 中文 the words change and the layout doesn't.
- */
 export function LanguageBar({
   language,
   onLanguage,
@@ -40,9 +29,7 @@ export function LanguageBar({
 }: {
   language: Locale;
   onLanguage: (next: Locale) => void;
-  /** The campaign has a 中文 version. */
   hasChinese: boolean;
-  /** The email can change: not sending, not started. */
   editable: boolean;
   translate: LanguageBarTranslate | null;
   onRemove: () => void;
@@ -70,7 +57,6 @@ export function LanguageBar({
         />
         {hasChinese && editable ? (
           <DropdownMenu>
-            {/* A plain button: the motion Button presses on Enter too, which would shut the menu it opens. */}
             <DropdownMenuTrigger asChild>
               <button type="button" className={buttonVariants({ variant: "ghost", size: "icon" })} aria-label="Language: more">
                 <MoreHorizontal className="h-4 w-4" />

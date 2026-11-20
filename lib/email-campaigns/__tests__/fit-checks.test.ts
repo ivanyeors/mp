@@ -15,12 +15,6 @@ import {
 } from "../fit-checks";
 import { CHINESE_SAMPLE_CONTENT } from "@/lib/email/__fixtures__/samples";
 
-/**
- * Fit checks (PRD-campaign-audiences slice 09): pure functions over a list of
- * recipient facts, tested case by case. Each is advice that names a filter or
- * a Segment to leave out, listed only when it has something to say.
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 const NOW = new Date("2026-10-31T04:00:00Z");
 const MBOLSTER = "7c0b0b0b-0000-4000-8000-000000000001";
@@ -45,7 +39,6 @@ const email = (c: CampaignContent | null, over: Partial<FitEmail> = {}): FitEmai
 });
 
 let seq = 0;
-/** One planned recipient in Singapore, reading English, with every detail and nothing bought lately. */
 const person = (over: Partial<RecipientFacts> = {}): RecipientFacts => ({
   customerId: `c${++seq}`,
   firstName: "Ann",
@@ -230,7 +223,6 @@ describe("the fit checks", () => {
           "17 of 60 already own an Mpillow, which Block 2, Buttons offers: filter its Segment to “Didn't buy Premium Mpillow or Basic Mpillow”, or leave out a Segment of “Bought Premium Mpillow or Basic Mpillow”",
         ],
       ]);
-      // A hero's button too.
       const hero: EmailBlock = {
         id: "hero",
         type: "hero",
@@ -256,8 +248,8 @@ describe("the fit checks", () => {
     it(`counts who bought in the last ${RECENT_PURCHASE_DAYS} days, and not a day more`, () => {
       const list = [
         person({ lastPurchaseAt: "2026-10-30T00:00:00Z" }),
-        person({ lastPurchaseAt: "2026-10-17T05:00:00Z" }), // 13 days 23 hours ago
-        person({ lastPurchaseAt: "2026-10-17T04:00:00Z" }), // exactly 14 days ago: not within
+        person({ lastPurchaseAt: "2026-10-17T05:00:00Z" }),
+        person({ lastPurchaseAt: "2026-10-17T04:00:00Z" }),
         person({ lastPurchaseAt: "2026-09-01T00:00:00Z" }),
         person(),
       ];

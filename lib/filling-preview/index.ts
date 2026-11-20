@@ -1,5 +1,3 @@
-/** Compact variant/qty rows for Filling Template UI previews. Pure — no I/O. */
-
 export type FillingItemMeta = {
   name: string;
   subtype: string | null;
@@ -21,7 +19,6 @@ export function fillingVariantLabel(item: FillingItemMeta, fallbackSize?: string
   return sizeLabel ? `${variant} ${sizeLabel}` : variant;
 }
 
-/** Format template lines as compact preview rows for UI. */
 export function formatFillingPreview(
   lines: Array<{ item_id: number; quantity: number }>,
   itemsById: ReadonlyMap<number, FillingItemMeta>,

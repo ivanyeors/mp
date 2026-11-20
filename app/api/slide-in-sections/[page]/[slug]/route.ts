@@ -29,7 +29,6 @@ const PatchSchema = z
   })
   .strict();
 
-/** Key-order-independent JSON, for "is this draft the same as what is live?". */
 function canonical(value: unknown): string {
   return JSON.stringify(value ?? {}, (_key, v) =>
     v && typeof v === "object" && !Array.isArray(v)
@@ -38,15 +37,6 @@ function canonical(value: unknown): string {
   );
 }
 
-/**
- * PATCH /api/slide-in-sections/[page]/[slug]
- * Saves a **Slide-in section**'s content or visibility as a draft. The section is code;
- * its row is created on first edit, published as its code default so nothing changes
- * live until Publish.
- *
- * A draft equal to what is live is stored as no draft, so the pending count only counts
- * real changes — undoing an edit by hand clears it.
- */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ page: string; slug: string }> },
@@ -117,7 +107,6 @@ export async function PATCH(
           page,
           slug,
           section_type: sectionType,
-          // Published as the code default: live is unchanged until Publish.
           position: codeIndex,
           visible: true,
           content: {},
@@ -127,7 +116,6 @@ export async function PATCH(
         .select()
         .single();
       if (error) {
-        // Two Staff saving the same untouched section at once: the other insert won.
         const status = error.code === "23505" ? 409 : 500;
         const message = status === 409 ? "Someone else just saved this section. Reload and try again." : error.message;
         return NextResponse.json({ error: message }, { status });
@@ -135,7 +123,6 @@ export async function PATCH(
       saved = data as SlideInSectionRow;
     }
 
-    // Drafts count as Used (CONTEXT.md), so a pending image is still marked in the DAM.
     if (parsed.content) {
       const refs = mediaReferences(parsed.content as SlideInSectionContent);
       await touchLastUsed({

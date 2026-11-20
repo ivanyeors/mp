@@ -15,8 +15,6 @@ const CreateCouponSchema = z.object({
   min_order_amount: z.number().nonnegative().nullable().optional().default(null),
   max_discount: z.number().nonnegative().nullable().optional().default(null),
   usage_limit: z.number().int().positive().nullable().optional().default(null),
-  // Null = no per-customer limit (open to guests). A number makes the code
-  // need a signed-in customer, counted per account (ADR 0033 amendment).
   per_customer_limit: z.number().int().positive().nullable().optional().default(null),
   starts_at: z.string().datetime({ offset: true }).nullable().optional().default(null),
   expires_at: z.string().datetime({ offset: true }).nullable().optional().default(null),
@@ -46,7 +44,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  // One field at checkout takes both kinds of code (ADR 0033).
   if (await isReferralCodeTaken(parsed.data.code)) {
     return NextResponse.json({ error: "This code is a partner's referral code. Choose another." }, { status: 409 });
   }

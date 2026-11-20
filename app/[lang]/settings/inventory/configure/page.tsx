@@ -5,7 +5,6 @@ import { ConfigureClient, type ConfigureTab } from "./configure-client";
 
 const TABS: readonly ConfigureTab[] = ["products", "visualize", "dimensions", "soft-body"];
 
-/** Product Visualize, Dimensions and Soft body are tabs of this page, so they share its permission (ADR 0023). */
 export default async function ConfigureInventoryPage({
   params,
   searchParams,

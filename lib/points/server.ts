@@ -1,17 +1,9 @@
-/**
- * Points: every read and write (PRD-loyalty-points; ADR 0030;
- * 20261021120000_points_ledger.sql). The ledger, its views and its functions
- * are service-role only: the Admin Panel calls these after checking its
- * permission, and the Profile with the session's own Customer id. Each takes
- * the client, so tests pass a fake.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { POINTS_LEDGER_KINDS, type PointsLedgerKind } from "./kinds";
 import { POINTS_SETTING_KEYS, pointsLive, pointsSettingsFromRows, pointsSettingsToRows, type PointsSettings } from "./settings";
 
 export { POINTS_KIND_LABEL, POINTS_LEDGER_KINDS, type PointsLedgerKind } from "./kinds";
 
-/** What a Customer holds. Points never expire, so there is no date. */
 export interface PointsBalance {
   available: number;
   pending: number;
@@ -34,21 +26,18 @@ export interface PendingOrderPoints {
   orderId: string;
   orderNumber: string;
   points: number;
-  /** When they become usable; null while the order is not yet delivered. */
   releaseAt: string | null;
 }
 
 const int = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : 0);
 const one = <T>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
-/** The settings as typed values. Throws on a failed read. */
 export async function readPointsSettings(admin: SupabaseClient): Promise<PointsSettings> {
   const { data, error } = await admin.from("site_settings").select("key, value").in("key", Object.values(POINTS_SETTING_KEYS));
   if (error) throw new Error(`Could not read the points settings: ${error.message}`);
   return pointsSettingsFromRows((data ?? []) as { key: string; value: string }[]);
 }
 
-/** Saves the settings, already validated. */
 export async function savePointsSettings(admin: SupabaseClient, s: PointsSettings): Promise<void> {
   const rows = pointsSettingsToRows(s);
   const updated_at = new Date().toISOString();
@@ -60,7 +49,6 @@ export async function savePointsSettings(admin: SupabaseClient, s: PointsSetting
   }
 }
 
-/** One Customer's balance. Throws on a failed read. */
 export async function readPointsBalance(admin: SupabaseClient, customerId: string): Promise<PointsBalance> {
   const { data, error } = await admin.rpc("points_balance", { p_customer_id: customerId });
   if (error) throw new Error(`Could not read the points balance: ${error.message}`);
@@ -83,7 +71,6 @@ type EntryRow = {
   staff: { name: string } | { name: string }[] | null;
 };
 
-/** The latest entries of one Customer's ledger, newest first. Throws on a failed read. */
 export async function readPointsHistory(admin: SupabaseClient, customerId: string, limit = 20): Promise<PointsEntry[]> {
   const { data, error } = await admin
     .from("points_ledger")
@@ -104,7 +91,6 @@ export async function readPointsHistory(admin: SupabaseClient, customerId: strin
   }));
 }
 
-/** One Customer's pending points, by Order, soonest first. Throws on a failed read. */
 export async function readPendingOrders(admin: SupabaseClient, customerId: string): Promise<PendingOrderPoints[]> {
   const { data, error } = await admin
     .from("points_order_candidates")
@@ -121,17 +107,10 @@ export async function readPendingOrders(admin: SupabaseClient, customerId: strin
 }
 
 export interface MilestoneStanding {
-  /** Points earned from orders over the customer's lifetime: earned less clawed back. */
   earned: number;
-  /** Milestone bonuses already granted. */
   granted: number;
 }
 
-/**
- * One Customer's place on the milestone ladder (slice 09;
- * `points_milestone_progress`). Zero for a Customer with no entries. Throws on
- * a failed read.
- */
 export async function readMilestoneStanding(admin: SupabaseClient, customerId: string): Promise<MilestoneStanding> {
   const { data, error } = await admin
     .from("points_milestone_progress")
@@ -143,17 +122,12 @@ export async function readMilestoneStanding(admin: SupabaseClient, customerId: s
   return { earned: int(r.earned), granted: int(r.granted) };
 }
 
-/** Rule (r), asked of SQL. Throws on a failed read. */
 export async function isPartnerCustomer(admin: SupabaseClient, customerId: string): Promise<boolean> {
   const { data, error } = await admin.rpc("is_partner_customer", { p_customer_id: customerId });
   if (error) throw new Error(`Could not check whether this customer is a partner: ${error.message}`);
   return data === true;
 }
 
-/**
- * A Staff adjustment (rule n). Returns the new balance, or the refusal in
- * words: a partner, no reason, zero, or below zero.
- */
 export async function adjustPoints(
   admin: SupabaseClient,
   p: { customerId: string; points: number; note: string; profileId: string | null },
@@ -179,17 +153,13 @@ export interface PointsSummary {
   claimBonuses: number;
   milestoneBonuses: number;
   milestoneBonusPoints: number;
-  /** Past-purchase points granted (ADR 0030, 2026-11-08): entries and points. */
   pastPurchaseGrants: number;
   pastPurchasePoints: number;
-  /** Welcome bonuses claimed on the Explore page (ADR 0030, 2026-11-17): entries and points. */
   welcomeBonuses: number;
   welcomeBonusPoints: number;
-  /** Points given for flowers picked on the Explore page. */
   flowerPoints: number;
 }
 
-/** What points cost now (`admin_points_summary`). Throws on a failed read. */
 export async function readPointsSummary(admin: SupabaseClient): Promise<PointsSummary> {
   const { data, error } = await admin.from("admin_points_summary").select("*").maybeSingle();
   if (error) throw new Error(`Could not read what points cost: ${error.message}`);
@@ -213,30 +183,18 @@ export async function readPointsSummary(admin: SupabaseClient): Promise<PointsSu
   };
 }
 
-/**
- * **Past-purchase points** (ADR 0030, amendment of 2026-11-08): what one run
- * would grant now, and what earlier runs granted. Each Migrated customer gets
- * floor(earn rate × their Shopify-era spend), once; partners none.
- */
 export interface PastPurchasePreview {
-  /** Customers a run would grant now, and the points it would grant them. */
   customers: number;
   points: number;
-  /** What those customers spent on the old shop, S$. */
   spend: number;
-  /** The middle and the largest grant, in points. */
   median: number;
   largest: number;
-  /** What earlier runs granted. */
   grantedCustomers: number;
   grantedPoints: number;
-  /** Migrated customers with Shopify-era spend who are partners, so get none. */
   partnersLeftOut: number;
-  /** The rate the points are worked out at: the earn rate now. */
   earnPerDollar: number;
 }
 
-/** `past_purchase_points_preview()`. Throws on a failed read. */
 export async function readPastPurchasePreview(admin: SupabaseClient): Promise<PastPurchasePreview> {
   const { data, error } = await admin.rpc("past_purchase_points_preview");
   if (error) throw new Error(`Could not work out the past-purchase points: ${error.message}`);
@@ -255,11 +213,6 @@ export async function readPastPurchasePreview(admin: SupabaseClient): Promise<Pa
   };
 }
 
-/**
- * Grants the Past-purchase points the preview showed, in one statement. The
- * database refuses, in words, when the customers or points are no longer the
- * ones expected (an import or a rate change since the preview).
- */
 export async function grantPastPurchasePoints(
   admin: SupabaseClient,
   p: { profileId: string | null; customers: number; points: number },
@@ -276,12 +229,6 @@ export async function grantPastPurchasePoints(
 
 export { POINTS_SETTING_KEYS };
 
-/**
- * The earn rate a page may promise this shopper before they pay, or null when
- * the order would earn nothing: points off or not launched, a rate of 0, or a
- * partner (rule e). `customerId` is null for a guest. Null on a failed read:
- * a promise is only made when it is known to hold.
- */
 export async function readEarnRateToPromise(admin: SupabaseClient, customerId: string | null): Promise<number | null> {
   try {
     const s = await readPointsSettings(admin);

@@ -1,7 +1,3 @@
-/**
- * Left→right journey layout.
- * Run: npx tsx lib/analytics/journey/layout.check.ts
- */
 import assert from "node:assert/strict";
 import { layoutJourneyGraph } from "./layout";
 
@@ -31,7 +27,6 @@ assert.ok(checkout.x < drop.x);
 assert.equal(drop.x, conv.x);
 assert.ok(drop.y < conv.y);
 
-// dashed re-entry must not pull drop-off left of pages
 const withReentry = layoutJourneyGraph(
   nodes,
   [...edges, { from: "__drop_off__", to: "/", count: 1, dashed: true }],

@@ -27,7 +27,6 @@ const UpdateSchema = z.object({
   postal_code: z.string().nullable().optional(),
   branch_name: z.string().trim().max(120).nullable().optional(),
   bookable: z.boolean().optional(),
-  /** Replaces the partner's further clinics when sent (ADR 0037). */
   branches: BranchesSchema.optional(),
 });
 
@@ -56,7 +55,6 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
-    // Saving the list also copies the name; a rename alone still reaches the branches.
     if (branches) {
       await savePartnerBranches(id, branches);
     } else if (parsed.name !== undefined) {
@@ -81,7 +79,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: err.issues }, { status: 400 });
     }
     if (err instanceof BranchSaveError) {
-      invalidateTag("locations"); // the main row may already have saved
+      invalidateTag("locations");
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     return NextResponse.json(
@@ -101,9 +99,6 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   const { error } = await admin.from("partners").delete().eq("id", id);
 
   if (error) {
-    // Still referenced: a Result records this Location (or one of the partner's
-    // branches, which go with it), or a Self-collect shipping method is
-    // collected from it.
     if (error.code === "23503") {
       return NextResponse.json(
         {

@@ -15,7 +15,6 @@ type Ctx = { params: Promise<{ flow: string }> };
 
 const BodySchema = z.object({
   inputs: z.record(z.string(), z.unknown()),
-  /** When set, evaluate this graph (draft test). Otherwise latest published. */
   graph: z
     .object({
       nodes: z.array(z.record(z.string(), z.unknown())),
@@ -31,7 +30,6 @@ const BodySchema = z.object({
     .optional(),
 });
 
-/** POST evaluate a graph (or latest published) with inputs — Staff test panel. */
 export async function POST(req: Request, ctx: Ctx) {
   try {
     await requireAdminContext("rules-engine");

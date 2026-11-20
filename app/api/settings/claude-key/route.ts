@@ -9,11 +9,6 @@ import { ClaudeKeySchema, askAnthropic, claudeKeyRefusal, claudeKeySaved, remove
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * General → Claude API key: save a key once Anthropic accepts it, or remove
- * it. Needs `api-configs`, the General page's own key. The key is never sent
- * back, and the audit entry records only whether one was saved.
- */
 export async function PUT(req: Request) {
   let ctx;
   try {

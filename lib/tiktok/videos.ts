@@ -9,13 +9,6 @@ function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
 }
 
-/**
- * Stored videos (already projected onto one locale) → what the band shows.
- *
- * A video missing its post, cover or button link is left out rather than shown
- * broken. The editor refuses to save one, so this only guards rows written
- * some other way.
- */
 export function tiktokVideosFromContent(
   items: unknown,
   locale: Locale,
@@ -37,7 +30,6 @@ export function tiktokVideosFromContent(
       cover,
       alt: text(item.alt),
       hook: text(item.hook),
-      // Paths on this site get the visitor's language, like every other internal link.
       buttonUrl: href.startsWith("/") ? withLocale(href, locale) : href,
       buttonLabel: text(item.buttonLabel) ?? fallbackButtonLabel,
     });

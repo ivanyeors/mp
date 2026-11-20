@@ -8,10 +8,6 @@ vi.mock("@/lib/media/slide-media", () => ({
 const { indexUsages, resolveUsages } = await import("@/lib/media/image-usages");
 const { planReplaceEverywhere } = await import("@/lib/media/replace");
 
-/**
- * Images on the landing page's sub pages (CONTEXT.md — **Slide-in section**) count as
- * Used, drafts included, and Replace everywhere rewrites them — published and draft.
- */
 const asset = { id: "asset-1", hosted_url: "https://irgxjthamhiaolvdfgar.supabase.co/storage/v1/object/public/media/a.webp" };
 
 const rows = {

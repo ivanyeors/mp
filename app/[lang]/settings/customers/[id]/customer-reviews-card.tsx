@@ -29,26 +29,6 @@ const SHOP_STATUS: Record<CustomerReviewsData["shop"][number]["status"], string>
 
 const CHANNEL_LABEL = { email: "email", whatsapp: "WhatsApp" } as const;
 
-/**
- * Reviews on the Customer detail (CRM slice 12): did they review us, where and
- * how many stars, and did we ask them.
- *
- *  - **Their Google review**, once a Staff member has linked it: stars, the
- *    whole review, its date, whether we replied, and who linked it and when.
- *    *Unlink* also stops it being suggested again.
- *  - **Shop reviews**: rating, product, moderation status and date.
- *  - **The Review request**: asked on, and whether the link was clicked (a
- *    hint: mail scanners open links).
- *  - **Possible Google reviews** awaiting a decision: *Link?* *Not them?*
- *
- * A Linked Google review can be answered from here
- * (PRD-customer-page-journey slice 03): a suggested reply to copy, a link that
- * opens the review on Google, and *Mark replied* once it is pasted there. The
- * platform posts nothing from this page.
- *
- * Its own fetch, like the cards beside it. The buttons render only for
- * `customers-edit`; the routes refuse without it.
- */
 export function CustomerReviewsCard({
     customerId,
     canEdit,
@@ -56,7 +36,6 @@ export function CustomerReviewsCard({
 }: {
     customerId: string;
     canEdit: boolean;
-    /** Told how many reviews are on record (Google and shop), for the Reviews tab's badge. */
     onCount?: (count: number) => void;
 }) {
     const [data, setData] = useState<CustomerReviewsData | null>(null);
@@ -138,7 +117,6 @@ export function CustomerReviewsCard({
     );
 }
 
-/** The card's content, pure of fetching, so it renders on the server in tests. */
 export function CustomerReviewsBody({
     data,
     canEdit,
@@ -154,7 +132,6 @@ export function CustomerReviewsBody({
     onUnlink?: (review: LinkedGoogleReview) => void;
     onLink?: (reviewId: string) => void;
     onReject?: (reviewId: string) => void;
-    /** A reply was marked as posted: the card reads again. */
     onAnswered?: () => void;
 }) {
     const { google, shop, request, possible } = data;
@@ -278,24 +255,6 @@ async function postJson(url: string, body?: unknown): Promise<Record<string, unk
     return payload;
 }
 
-/**
- * Answering one Linked Google review (PRD-customer-page-journey slice 03).
- *
- * A reply already on record is shown as it stands. Otherwise nothing is
- * suggested until a Staff member presses *Generate reply suggestion* (owner,
- * 2026-11-15): Claude is never called because the tab was opened. The first
- * press shows the draft the Telegram card already holds, when there is one,
- * so both places start from the same words and a draft a review manager wrote
- * there is not thrown away; with none, and on every *Generate again*, Claude
- * drafts one through the API.
- *
- * Then: the reply in a box Staff can edit, *Copy reply*, a link to the review
- * on Google, and, for a review Google cannot report a reply on, *Mark
- * replied*, which records the text in the box as what was posted. Nothing
- * here posts to Google.
- *
- * Without `customers-edit` only a reply on record shows.
- */
 function ReviewAnswer({
     review,
     canEdit,
@@ -307,7 +266,6 @@ function ReviewAnswer({
 }) {
     const { answer } = review;
     const [text, setText] = useState("");
-    // Where the words in the box came from; null until a suggestion was asked for.
     const [source, setSource] = useState<"telegram" | "claude" | null>(null);
     const [busy, setBusy] = useState<"draft" | "mark" | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -327,7 +285,6 @@ function ReviewAnswer({
 
     const generate = async () => {
         setError(null);
-        // The first press takes the draft that already exists; Claude is called only for a new one.
         if (source === null && answer.draft) {
             setText(answer.draft);
             setSource("telegram");

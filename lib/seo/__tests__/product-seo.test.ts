@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_SEO_TARGETS, countWords, displayWidth, fitOf, productPageTitle } from "../product-seo";
 
-/**
- * A product's search listing, measured the same way in the editor's
- * counters, its search preview and ✨ Generate SEO's checks.
- */
-
 describe("productPageTitle", () => {
   it("adds the brand to a title that doesn't name it, as the product page does", () => {
     expect(productPageTitle("Slope Mattress")).toBe("Slope Mattress | Mpillow Singapore");

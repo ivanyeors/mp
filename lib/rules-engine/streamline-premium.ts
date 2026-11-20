@@ -1,16 +1,3 @@
-/**
- * ADR 0027 migration. The Premium Rule graph chose a Filling Template with one
- * Combine per size × neck length × head-to-back × neck-to-back × sleep position
- * (250 Combines, 1,240 edges for 34 templates). This rebuilds that logic as one
- * size-keyed Template output per neck length × head-to-back × neck stack, with
- * stomach sleepers taking the stack one band lower through a single "Not
- * stomach" OR. Everything else in the graph is kept as it is.
- *
- * Template ids are read back by evaluating the source graph, never copied from
- * its nodes, and the rebuild refuses a source whose sleep position does more
- * than shift the neck stack. Callers must still prove the result with
- * `outcomeDiffs` over `equivalenceInputs` before saving it. Pure; no I/O.
- */
 import { inputCatalog } from "./catalog";
 import { evaluate } from "./evaluate";
 import { layoutRuleGraph } from "./layout";
@@ -31,7 +18,6 @@ const NECK_STACK = "neck_to_back_cm";
 const POSITION = "sleep_position";
 const STOMACH = "stomach";
 
-/** A value inside the band: the midpoint, or 1 cm in from its one open side. */
 function bandValue(b: RangeBand): number {
   if (b.minCm != null && b.maxCm != null) return (b.minCm + b.maxCm) / 2;
   if (b.minCm != null) return b.minCm + 1;
@@ -42,7 +28,6 @@ function bandValue(b: RangeBand): number {
 const byMin = (a: RangeBand, b: RangeBand) =>
   (a.minCm ?? Number.NEGATIVE_INFINITY) - (b.minCm ?? Number.NEGATIVE_INFINITY);
 
-/** Every catalog input answered, so the engine never refuses for a missing one. */
 function baseInputs(): EngineInputs {
   const out: EngineInputs = {};
   for (const d of inputCatalog(FLOW)) {
@@ -70,7 +55,6 @@ function ancestors(graph: RuleGraphJson, ids: Iterable<string>): Set<string> {
 
 export type StreamlineResult = {
   graph: RuleGraphJson;
-  /** Size-keyed Template outputs, one per neck length × head-to-back × neck stack. */
   templateNodes: number;
 };
 
@@ -78,7 +62,6 @@ export function streamlinePremiumGraph(source: RuleGraphJson): StreamlineResult 
   const templates = source.nodes.filter((n) => n.type === "template-output");
   if (templates.length === 0) throw new Error("No Template outputs to streamline");
 
-  // The template logic: Template outputs and every Combine on a path to one.
   const upstream = ancestors(source, templates.map((t) => t.id));
   const dropped = new Set(
     source.nodes
@@ -102,7 +85,6 @@ export function streamlinePremiumGraph(source: RuleGraphJson): StreamlineResult 
   const positions = inputCatalog(FLOW).find((d) => d.key === POSITION)?.values ?? [];
   const others = positions.filter((p) => p !== STOMACH);
 
-  // Read the source back: template per size × each other dimension × stack band × position.
   const base = baseInputs();
   const sizeBands = [...shoulder.bands].sort(byMin);
   type Cell = { band: RangeBand; range: RangeNode }[];
@@ -136,7 +118,6 @@ export function streamlinePremiumGraph(source: RuleGraphJson): StreamlineResult 
     const classId = (s: RangeBand) => `tpl-${cellSlug}-stack-${slug(s)}`;
 
     stackBands.forEach((s, i) => {
-      // One template per size for this neck stack, read with a non-stomach position.
       const slots: TemplateBySizeNode["templates"] = {};
       for (const sizeBand of sizeBands) {
         const r = read(sizeBand, cell, s, others[0]!);
@@ -163,9 +144,8 @@ export function streamlinePremiumGraph(source: RuleGraphJson): StreamlineResult 
       templateNodes++;
     });
 
-    // Each stack band: stomach takes the band below; the lowest has nowhere lower.
     const and = (id: string, target: string, s: RangeBand, extra?: [string, string?]) => {
-      if (!b.nodes.some((n) => n.id === target)) return; // no size has a template here
+      if (!b.nodes.some((n) => n.id === target)) return;
       b.nodes.push({ id, type: "combine" });
       for (const { band, range } of cell) edge(range.id, id, band.id);
       edge(stack.id, id, s.id);
@@ -180,20 +160,11 @@ export function streamlinePremiumGraph(source: RuleGraphJson): StreamlineResult 
     });
   }
 
-  // Lay the canvas out afresh: the old one was 28,000 px tall.
   const pos = layoutRuleGraph(b.nodes.map((n) => n.id), b.edges);
   const nodes = b.nodes.map((n) => ({ ...n, position: pos.get(n.id) ?? n.position }));
   return { graph: { nodes, edges: b.edges }, templateNodes };
 }
 
-// ── Proof ─────────────────────────────────────────────────────────────────────
-
-/**
- * Inputs to prove two Premium graphs agree. Every Range-banded measurement in
- * `graph` takes each band's inside value and both sides of each boundary
- * (`boundaries: false` keeps only the inside values), crossed with every sleep
- * position. The other answers are crossed in full on a sample of those.
- */
 export function equivalenceInputs(graph: RuleGraphJson, opts?: { boundaries?: boolean }): EngineInputs[] {
   const boundaries = opts?.boundaries ?? true;
   const base = baseInputs();
@@ -230,7 +201,6 @@ export function equivalenceInputs(graph: RuleGraphJson, opts?: { boundaries?: bo
   for (let i = 0; i < grid.length; i += stride) {
     let combos: EngineInputs[] = [grid[i]!];
     for (const [key, vs] of answers) {
-      // Answers no Match reads cannot change the outcome: keep them at base.
       if (!graph.nodes.some((n) => n.type === "match" && n.inputKey === key)) continue;
       combos = combos.flatMap((c) => vs.map((v) => ({ ...c, [key]: v })));
     }
@@ -239,7 +209,6 @@ export function equivalenceInputs(graph: RuleGraphJson, opts?: { boundaries?: bo
   return [...grid, ...crossed];
 }
 
-/** What a shopper and Staff get from one evaluation; node ids are not part of it. */
 function outcome(r: EvaluateResult | { error: string }) {
   if ("error" in r) return { error: r.error };
   return {
@@ -251,7 +220,6 @@ function outcome(r: EvaluateResult | { error: string }) {
   };
 }
 
-/** Inputs on which the two graphs answer differently (first `limit`), and how many. */
 export function outcomeDiffs(
   a: RuleGraphJson,
   b: RuleGraphJson,

@@ -7,21 +7,6 @@ import {
   type SegmentParams,
 } from "@/lib/crm/segment-rules";
 
-/**
- * Segments (CONTEXT.md; ADR 0028 (c)): named Customers-list filters in
- * `customer_segments`, shared by every Staff member with `customers` and
- * counted live. Only the service role can read the table, so every read and
- * write goes through here from an Admin Panel route that has already checked
- * the caller: `customers` to see and count them, `customers-edit` to save,
- * update, rename or archive one.
- *
- * Every count and every resolve reads the Customer overview through
- * `applyCustomerFilters`, the one mapping the list itself uses, after the
- * stored filters are parsed again by the list's schema
- * (lib/crm/segment-rules.ts). A Segment that needs review counts and resolves
- * no Customers.
- */
-
 type Embedded<T> = T | T[] | null;
 const one = <T>(v: Embedded<T> | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
@@ -36,7 +21,6 @@ type SegmentRow = {
   creator: Embedded<{ id: string; name: string }>;
 };
 
-/** A Segment as stored, archived ones included: what the routes audit. */
 export interface StoredSegment {
   id: string;
   name: string;
@@ -49,7 +33,6 @@ const SEGMENT_COLUMNS =
   "id, name, filters, filters_version, created_at, updated_at, archived_at, " +
   "creator:mp_staff!created_by_profile_id(id, name)";
 
-/** A live name is taken: the routes answer 409. */
 export class SegmentNameTakenError extends Error {
   constructor(name: string) {
     super(`A Segment named “${name}” already exists.`);
@@ -62,9 +45,7 @@ const isUniqueViolation = (error: { code?: string; message?: string }) =>
 
 type CountQuery = CustomerListQuery & PromiseLike<{ count: number | null; error: { message: string } | null }>;
 
-/** How many Customers `filters` choose now; null when the count failed. */
 export async function countCustomers(filters: CustomerFilters, now = new Date()): Promise<number | null> {
-  // Seen through the methods the mapping uses (as listAdminCustomers does).
   const base = supabaseAdmin()
     .from("admin_customer_overview")
     .select("id", { count: "exact", head: true }) as unknown as CountQuery;
@@ -81,7 +62,6 @@ async function toSegment(row: SegmentRow, now: Date): Promise<CustomerSegment> {
     params: read.params,
     ignored: read.ignored,
     needsReview: read.needsReview,
-    // Never widened: a Segment with an ignored filter is not counted.
     count: read.needsReview ? null : await countCustomers(read.filters, now),
     createdBy: creator ? { id: creator.id, name: creator.name } : null,
     createdAt: row.created_at,
@@ -89,7 +69,6 @@ async function toSegment(row: SegmentRow, now: Date): Promise<CustomerSegment> {
   };
 }
 
-/** The live Segments by name, each with its live count. */
 export async function listSegments({ now = new Date() }: { now?: Date } = {}): Promise<CustomerSegment[]> {
   const { data, error } = await supabaseAdmin()
     .from("customer_segments")
@@ -101,7 +80,6 @@ export async function listSegments({ now = new Date() }: { now?: Date } = {}): P
   return segments.sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 }
 
-/** One Segment as stored, archived or not; null when there is none. */
 export async function getSegment(id: string): Promise<StoredSegment | null> {
   const { data, error } = await supabaseAdmin()
     .from("customer_segments")
@@ -114,11 +92,6 @@ export async function getSegment(id: string): Promise<StoredSegment | null> {
   return { id: row.id, name: row.name, filters: row.filters, filtersVersion: row.filters_version, archivedAt: row.archived_at };
 }
 
-/**
- * Throws `SegmentNameTakenError` when another live Segment has `name`, in any
- * case. The unique index (`customer_segments_live_name`) is the backstop for
- * two saves at once.
- */
 async function assertNameFree(name: string, exceptId?: string): Promise<void> {
   const { data, error } = await supabaseAdmin().from("customer_segments").select("id, name").is("archived_at", null);
   if (error) throw new Error(error.message);
@@ -129,7 +102,6 @@ async function assertNameFree(name: string, exceptId?: string): Promise<void> {
   if (taken) throw new SegmentNameTakenError(name);
 }
 
-/** Saves a Segment. `params` come from `parseSegmentFilters`; the caller has checked `customers-edit`. */
 export async function createSegment(
   name: string,
   params: SegmentParams,
@@ -152,7 +124,6 @@ export async function createSegment(
   return toSegment(data as unknown as SegmentRow, now);
 }
 
-/** Changes a live Segment's name or filters. Null when it is archived or gone. */
 export async function updateSegment(
   id: string,
   change: { name: string } | { params: SegmentParams },
@@ -173,7 +144,6 @@ export async function updateSegment(
   return row ? toSegment(row, now) : null;
 }
 
-/** Archives a live Segment, freeing its name. Returns when, or null when it was archived already or is gone. */
 export async function archiveSegment(id: string): Promise<string | null> {
   const archivedAt = new Date().toISOString();
   const { data, error } = await supabaseAdmin()
@@ -186,11 +156,9 @@ export async function archiveSegment(id: string): Promise<string | null> {
   return data?.length ? archivedAt : null;
 }
 
-/** Why `resolveSegment` refused: there is no such Segment, it is archived, or it needs review. */
 export class SegmentUnavailableError extends Error {
   constructor(
     readonly reason: "not_found" | "archived" | "needs_review",
-    /** For `needs_review`: the stored filters the schema no longer recognises. */
     readonly ignored: string[] = [],
   ) {
     super(
@@ -210,25 +178,6 @@ type IdQuery = CustomerListQuery & {
   limit(n: number): PromiseLike<{ data: { id: string }[] | null; error: { message: string } | null }>;
 };
 
-/**
- * The hand-off to `PRD-email-marketing` (PRD part 5): a Segment's Customers,
- * as pages of `customer_id`s, through `applyCustomerFilters`, the one mapping
- * the list uses. Email marketing narrows this by consent and suppression and
- * never re-implements the filters. Nothing in the CRM calls it except its
- * own test.
- *
- * - **Stable on a long run.** Pages are keyed by id (`id > last`, ordered by
- *   id), never by offset, so a Customer added or changed mid-run cannot shift
- *   a page: each id is yielded once. Every page counts *Last order* from the
- *   same `now`; *Stage* is read with the database's `now()` per page, which
- *   only matters for a run that crosses a stage's cut-off mid-way.
- * - **It stops on an empty page**, not a short one, so a project whose API
- *   returns fewer rows than `pageSize` (PostgREST's `max_rows`) still yields
- *   every Customer.
- * - **Never widened.** A Segment that needs review, an archived one, or none
- *   at all throws `SegmentUnavailableError` before any id is read, so a caller
- *   cannot mistake a refusal for an empty audience.
- */
 export async function* resolveSegment(
   segmentId: string,
   { pageSize = RESOLVE_PAGE_SIZE, now = new Date() }: { pageSize?: number; now?: Date } = {},

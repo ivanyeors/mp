@@ -35,7 +35,6 @@ function parseOption(raw: unknown): DiscoverySourceOption | null {
   };
 }
 
-/** Ensure Other exists, is system+active, and sorted last. Drop duplicate ids. */
 export function normalizeDiscoverySourceCatalog(
   catalog: DiscoverySourceCatalog,
 ): DiscoverySourceCatalog {
@@ -64,7 +63,6 @@ export function normalizeDiscoverySourceCatalog(
     labels: parseLabels(other.labels) ?? seedOther.labels,
   });
 
-  // Rebuild in insertion order excluding other, then append other
   const ordered: DiscoverySourceOption[] = [];
   for (const opt of catalog.options) {
     if (opt.id === OTHER_DISCOVERY_SOURCE_ID) continue;
@@ -80,7 +78,6 @@ export function normalizeDiscoverySourceCatalog(
   return { options: ordered };
 }
 
-/** Parse stored JSON; fall back to seed when missing/invalid. Always normalizes. */
 export function parseDiscoverySourceCatalog(
   raw: string | null | undefined,
 ): DiscoverySourceCatalog {
@@ -115,7 +112,6 @@ export function serializeDiscoverySourceCatalog(
   return JSON.stringify(normalizeDiscoverySourceCatalog(catalog));
 }
 
-/** Active options only; Other always last. */
 export function activeDiscoverySourceOptions(
   catalog: DiscoverySourceCatalog,
 ): DiscoverySourceOption[] {
@@ -130,7 +126,6 @@ export function findDiscoverySourceOption(
   return normalizeDiscoverySourceCatalog(catalog).options.find((o) => o.id === id);
 }
 
-/** Resolve label for Results detail — works for archived ids; falls back to raw id. */
 export function resolveDiscoverySourceLabel(
   catalog: DiscoverySourceCatalog,
   id: string | null | undefined,
@@ -142,7 +137,6 @@ export function resolveDiscoverySourceLabel(
   return opt.labels[locale] ?? opt.labels[DEFAULT_LOCALE] ?? id;
 }
 
-/** Soft-archive (active=false). Refuses to archive system Other. */
 export function archiveDiscoverySourceOption(
   catalog: DiscoverySourceCatalog,
   id: string,
@@ -157,7 +151,6 @@ export function archiveDiscoverySourceOption(
   });
 }
 
-/** Reject PUT payloads that drop or deactivate Other. */
 export function assertCatalogAllowsSave(
   catalog: DiscoverySourceCatalog,
 ): { ok: true; catalog: DiscoverySourceCatalog } | { ok: false; error: string } {

@@ -3,11 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * The daily Aftercare job (CRM slices 07 and 08): chained onto results-sla
- * with no third cron, and one message type failing never stops the others.
- */
-
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 
 const { AFTERCARE_RUNNERS, runAftercareMessages } = await import("@/lib/aftercare/job");

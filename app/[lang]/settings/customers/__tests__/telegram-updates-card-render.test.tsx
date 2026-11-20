@@ -2,11 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { DEFAULT_TELEGRAM_UPDATES, TELEGRAM_UPDATE_TYPES } from "@/lib/crm/telegram-updates";
 
-/**
- * The Telegram updates card (CRM slice 14): read-only without
- * `customers-edit`, and the online Result switch disabled without `results`.
- */
-
 vi.mock("next/navigation", () => ({ usePathname: () => "/en/settings/customers" }));
 
 const { TelegramUpdatesCard } = await import("../telegram-updates-card");
@@ -20,7 +15,6 @@ const render = (canEdit: boolean, canEditOnlineResult: boolean, heldReminderTele
     />,
   );
 
-/** Whether the switch for `type` renders disabled. */
 const disabled = (html: string, type: string) => {
   const tag = html.match(new RegExp(`<button[^>]*id="tg-update-${type}"[^>]*>`))?.[0];
   expect(tag, `switch for ${type}`).toBeDefined();

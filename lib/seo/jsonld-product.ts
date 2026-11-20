@@ -110,7 +110,6 @@ export function buildProductBreadcrumbJsonLd(input: {
   };
 }
 
-/** Product JSON-LD for configurator SEO shells (composed sellable; price range, not per-variant list). */
 export function buildConfiguratorProductJsonLd(input: {
   lang: string;
   path: string;

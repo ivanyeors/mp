@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })
   if (!tpl) return NextResponse.json({ error: 'Template not found' }, { status: 404 })
-  // Filling Templates are sale-path only; warehouse Apply uses role=warehouse templates.
   if (tpl.role === 'filling') {
     return NextResponse.json(
       { error: "Filling templates can't be applied to the active warehouse BOM." },
@@ -55,7 +54,6 @@ export async function POST(req: NextRequest) {
   const safeLines = stripFillingLines(normalized, cats.byId)
 
   if (tpl.kind === 'pillow') {
-    // Apply to the active BOM for the pillow size (key is XS/S/M/L/XL)
     const { data: product, error: pErr } = await admin
       .from('pillow_products')
       .select('id,size')
@@ -66,7 +64,6 @@ export async function POST(req: NextRequest) {
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
     if (!product?.id) return NextResponse.json({ error: `There's no active pillow in size ${tpl.key}.` }, { status: 400 })
 
-    // Replace bom_lines for this product_id
     const { error: delErr } = await admin.from('bom_lines').delete().eq('product_id', product.id)
     if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
 
@@ -83,7 +80,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  // tpl.kind === 'bolster' (key is short/medium/long)
   const { error: delErr } = await admin.from('bolster_bom_lines').delete().eq('variant', tpl.key)
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
 

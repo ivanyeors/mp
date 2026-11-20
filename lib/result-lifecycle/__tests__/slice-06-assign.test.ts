@@ -4,8 +4,6 @@ import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
 import { assembleBuild, findStockShortages } from "@/lib/build-assembly";
 import { priceResult } from "@/lib/result-pricing";
 
-/** Slice 06 acceptance: assign requires template, filters by size, blocks on stock, prices final. */
-
 describe("slice 06 assign path", () => {
   it("rejects assign without Filling Template", () => {
     const result = transitionResult(
@@ -34,7 +32,6 @@ describe("slice 06 assign path", () => {
         (t) => t.id,
       ),
     ).toEqual([1]);
-    // Override size L → only L templates
     expect(
       filterSelectableFillingTemplates(templates, { productType: "pillow", size: "L" }).map(
         (t) => t.id,
@@ -56,7 +53,7 @@ describe("slice 06 assign path", () => {
       assembled.lines,
       new Map([
         [1, 10],
-        [2, 1], // need 3
+        [2, 1],
         [3, 1],
       ]),
       new Map([[2, "Fill"]]),
@@ -66,8 +63,6 @@ describe("slice 06 assign path", () => {
   });
 
   it("final amount is the goods subtotal plus shipping and tax (fillings ignored)", () => {
-    // The goods subtotal comes from priceComposedBuild — the Costings row for the
-    // chosen case family, moved only by components differing from it, plus add-ons.
     const priced = priceResult({ goods: 140, shipping: 5, tax: 3 });
     expect(priced.total).toBe(148);
   });

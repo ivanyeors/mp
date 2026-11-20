@@ -6,7 +6,6 @@ import { isResultOrderBuildSnapshot } from "@/lib/results/order-build-snapshot";
 
 export type InventoryLine = { item_id: number; quantity: number };
 
-/** An inventory line with its Item's category, so a choice can replace a default by role. */
 export type CategorisedLine = InventoryLine & { category: string };
 
 export interface OrderItemForDeduction {
@@ -24,7 +23,6 @@ type CustomizationSnapshot = {
   filling_lines?: InventoryLine[];
 };
 
-/** The Variant columns stock resolution reads. */
 export type StockVariant = {
   pillow_product_id: number | null;
   item_id: number | null;
@@ -51,15 +49,6 @@ export function isBolsterCustomizedItem(
   );
 }
 
-/**
- * The Items a build ships: the chosen lines, then the defaults nobody chose
- * against. It matches how `assembleBuild` builds a Result:
- * - a chosen cover or case replaces the default of that role;
- * - chosen fillings replace the default fillings;
- * - a chosen Item replaces the default line for the same Item, so a changed
- *   quantity is not counted twice.
- * Zero-quantity lines are dropped, because the ledger refuses a 0 row.
- */
 export function mergeBuildLines(chosen: CategorisedLine[], defaults: CategorisedLine[]): InventoryLine[] {
   const chosenItems = new Set(chosen.map((l) => l.item_id));
   const chosenRoles = new Set(chosen.map((l) => preferenceRoleOf(l.category)));
@@ -89,7 +78,6 @@ export function buildSaleDeductionTransactions(
   }));
 }
 
-/** What the customer chose on a shop customisation, by category. */
 function chosenLines(snapshot: CustomizationSnapshot): CategorisedLine[] {
   return [
     ...(snapshot.config_lines ?? []).map((l) => ({
@@ -107,11 +95,6 @@ function chosenLines(snapshot: CustomizationSnapshot): CategorisedLine[] {
 
 type BomRow = { item_id: number; quantity: number; items: { category: string } | { category: string }[] };
 
-/**
- * A Composed sellable's defaults: its recipe and its Default Filling Template's
- * pack. A recipe carries no fillings (ADR 0003), so a stray filling line on one is
- * ignored. With no Default Filling Template set, no fillings are known to deduct.
- */
 async function composedDefaults(
   admin: SupabaseClient,
   bom: { data: BomRow[] | null; error: { message: string } | null },
@@ -159,14 +142,8 @@ async function bolsterDefaults(
   return composedDefaults(admin, bom, templateId != null ? Number(templateId) : null, withFillings);
 }
 
-/** A Composed sellable: a pillow size × tier (`pillow_products` row) or a bolster length. */
 export type ComposedSellableRef = { pillowProductId: number } | { length: "short" | "medium" | "long" };
 
-/**
- * The Items one unit of a Composed sellable takes out of stock: the chosen
- * lines over its recipe and its Default Filling Template's fillings. Checkout
- * validates this and the sale deducts it, so the two cannot disagree.
- */
 export async function composedBuildLines(
   admin: SupabaseClient,
   sellable: ComposedSellableRef,
@@ -180,17 +157,6 @@ export async function composedBuildLines(
   return mergeBuildLines(chosen, defaults);
 }
 
-/**
- * The Items one unit of a Variant order line takes out of stock. `null` means the
- * Variant has no Item behind it and keeps its own `stock_quantity`. An untracked
- * Variant takes nothing. Sale and restock both resolve lines here, so a returned
- * unit puts back what a sold one took.
- *
- * - Customised bolster: the chosen lines over the length's build.
- * - Pillow (size × tier): the chosen lines, if customised, over its build.
- * - Plain bolster (`option1` is a length): the length's build.
- * - Item-linked Variant (accessory, part): that Item.
- */
 export async function stockLinesForOrderItem(
   admin: SupabaseClient,
   variant: StockVariant,
@@ -220,7 +186,6 @@ export async function stockLinesForOrderItem(
   return null;
 }
 
-/** A Result line's ledger rows: the build frozen on the Order at Accept, by role. */
 function resultSaleRows(orderId: string, item: OrderItemForDeduction) {
   const snapshot = item.customization_snapshot;
   if (!isResultOrderBuildSnapshot(snapshot)) return [];
@@ -234,15 +199,6 @@ function resultSaleRows(orderId: string, item: OrderItemForDeduction) {
     }));
 }
 
-/**
- * Deduct inventory for an order's goods lines in one ledger insert: every row
- * lands or none do, so a retry is safe. Service lines take nothing.
- *
- * - A Variant line takes the Items `stockLinesForOrderItem` resolves.
- * - A Result line (no Variant) takes its frozen build.
- * - A Variant with no Item behind it has no ledger row: its `stock_quantity`
- *   is lowered instead, floored at 0.
- */
 export async function deductInventoryForOrder(
   orderId: string,
   items: OrderItemForDeduction[],
@@ -264,8 +220,6 @@ export async function deductInventoryForOrder(
       .eq("id", item.variant_id)
       .maybeSingle();
 
-    // A read that failed is not a variant that needs no deduction: throw, so
-    // the caller hands the claim back and a retry deducts the line.
     if (variantError) throw new Error(`Variant ${item.variant_id} could not be read: ${variantError.message}`);
     if (!variant) continue;
 

@@ -97,7 +97,6 @@ export function AmbassadorsSlideIn({ className }: Props) {
           </div>
 
           <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            {/* Sections and copy are Page Builder–editable (CONTEXT.md — Slide-in section). */}
             <main className="pb-20" aria-label="Mpillow ambassadors">
               <SlideInPageSections page="ambassadors" />
             </main>

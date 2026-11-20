@@ -16,14 +16,6 @@ import { countGoogleReviewsToMatch } from "@/lib/crm/telegram-update-sources";
 import { reviewFacts } from "@/lib/crm/reviews";
 import { fakeReviewsAdmin } from "./google-review-fake";
 
-/**
- * Reviews on every Customer (CRM slice 12): the reads around
- * `google_review_match_candidates()` and the Staff actions, against an
- * in-memory database. Fixtures: Jane Tan asked 9 days before her review and
- * clicked the day before; two Bobs delivered 20 days before a review signed
- * "Bob"; an anonymous review; a review from someone we never asked.
- */
-
 const JANE = "c0000000-0000-4000-8000-000000000001";
 const BOB_LEE = "c0000000-0000-4000-8000-000000000004";
 const BOB_ONG = "c0000000-0000-4000-8000-000000000005";
@@ -50,7 +42,6 @@ beforeEach(() => {
       { id: R_ANON, star_rating: 1, comment: "Bad", reviewer_name: "Jane", reviewer_is_anonymous: true, review_created_at: "2026-11-04T02:00:00.000Z", status: "pending" },
       { id: R_STRANGER, star_rating: 4, comment: null, reviewer_name: "Walk In", review_created_at: "2026-10-01T02:00:00.000Z", status: "backlog" },
     ],
-    // What the SQL returns before its flags: the windows and the shared-token prefilter applied.
     match_candidates: [
       { google_review_id: R_JANE, customer_id: JANE, first_name: "Jane", last_name: "Tan", email: "jane@x.test", asked_at: "2026-10-25T02:00:00.000Z", clicked_at: "2026-11-02T02:00:00.000Z", delivered_at: null },
       { google_review_id: R_BOB, customer_id: BOB_LEE, first_name: "Bob", last_name: "Lee", email: "bob@x.test", asked_at: null, clicked_at: null, delivered_at: "2026-10-13T02:00:00.000Z" },
@@ -90,7 +81,6 @@ describe("Google reviews to match", () => {
       ],
     });
     expect(await countReviewsToMatch(admin)).toBe(1);
-    // The daily Telegram update counts the same list.
     expect(await countGoogleReviewsToMatch(admin)).toBe(1);
   });
 
@@ -100,7 +90,6 @@ describe("Google reviews to match", () => {
     expect(db.customer_google_review_rejections).toEqual([
       expect.objectContaining({ google_review_id: R_JANE, customer_id: JANE, rejected_by_profile_id: JESS }),
     ]);
-    // Linking the rejected pair by hand clears the rejection.
     expect(await linkGoogleReview(admin, { reviewId: R_JANE, customerId: JANE, how: "manual", profileId: null })).toMatchObject({ ok: true });
     expect(db.customer_google_review_rejections).toEqual([]);
     expect(await suggestionsForReview(admin, R_JANE)).toEqual([]);
@@ -115,7 +104,7 @@ describe("Google reviews to match", () => {
       [R_JANE, 1],
       [R_BOB, 0],
     ]);
-    expect(all.rows[0].review.reviewerName).toBeNull(); // anonymous: never named
+    expect(all.rows[0].review.reviewerName).toBeNull();
     expect(all.rows[2].review.reply).toBe("replied");
     const second = await readReviewTab(admin, { scope: "unlinked", page: 2, limit: 3 });
     expect(second.rows.map((r) => r.review.id)).toEqual([R_STRANGER]);
@@ -148,7 +137,6 @@ describe("linking", () => {
     expect(await unlinkGoogleReview(admin, { reviewId: R_JANE, customerId: BOB_LEE, profileId: null })).toBe(false);
     expect(await unlinkGoogleReview(admin, { reviewId: R_JANE, customerId: JANE, profileId: JESS })).toBe(true);
     expect(db.customer_google_reviews).toEqual([]);
-    // Not suggested again.
     expect(await suggestionsForReview(admin, R_JANE)).toEqual([]);
   });
 });
@@ -195,7 +183,6 @@ describe("the Customer's Reviews card", () => {
       },
     ]);
     expect(before.shop).toEqual([{ id: "s1", rating: 4, product: "Premium Mpillow", status: "approved", createdAt: "2026-10-28T02:00:00.000Z" }]);
-    // Asked on is the earlier of the two sends.
     expect(before.request).toEqual({
       askedAt: "2026-10-24T02:00:00.000Z",
       channels: ["email", "whatsapp"],
@@ -264,7 +251,6 @@ describe("the Review column", () => {
     expect(reviewFacts({ ...cols, shop_reviews_count: 2, shop_review_avg_rating: 4 })).toEqual(["★4 shop (2)"]);
     expect(reviewFacts({ ...cols, review_requested_at: "2026-11-02T17:00:00Z" })).toEqual(["Asked 3 Nov"]);
     expect(reviewFacts(cols)).toEqual([]);
-    // Google gave no rating.
     expect(reviewFacts({ ...cols, google_reviewed_at: "2026-11-03T02:00:00Z" })).toEqual(["★– Google"]);
   });
 });

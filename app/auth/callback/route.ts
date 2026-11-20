@@ -11,17 +11,6 @@ import { getRequestOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 
-/**
- * Completes Google and the emailed link (PKCE). Supabase redirects here with a
- * `code`, which is exchanged for a session cookie in this browser. The sign-in
- * link's return address carries the intent (`next`, `as`, `consent`, `lang`;
- * lib/auth/sign-in-intent.ts), and `completeSignIn` does the rest: the Staff
- * check, the Customer, the consent.
- *
- * A link opened in another browser has no PKCE verifier here and fails; the
- * same email's 6-digit code works anywhere, and the scanner-safe link
- * (`/auth/confirm`) does too once the templates use it.
- */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const origin = getRequestOrigin(request);

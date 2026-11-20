@@ -31,13 +31,10 @@ const tooltipStyles = {
   boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
   padding: "10px 12px",
   maxWidth: 260,
-  // Ensure the tooltip anchors to the viewport (not the svg coordinate system)
-  // and stays above card/scroll containers.
   position: "fixed",
   zIndex: 1000,
 } as const;
 
-// Bottom: axis line (12) + ticks and their labels (~20) + the axis title on its own line below them.
 const defaultMargin = { top: 16, right: 20, bottom: 54, left: 180 };
 
 const BAR_HEIGHT = 16;
@@ -151,8 +148,6 @@ function Chart({
       color: colorScale(seg.key) ?? "var(--chart-1)",
     }));
 
-    // Use viewport coordinates so the tooltip appears where the mouse is,
-    // even when the chart is scrolled within the page.
     const clientX = event.clientX;
     const clientY = event.clientY;
 
@@ -209,9 +204,6 @@ function Chart({
                     const rxLeft = sIdx === 0 ? BAR_RADIUS : 0;
                     const rxRight = sIdx === lastIdx ? BAR_RADIUS : 0;
 
-                    // visx Bar only supports a single rx; use clipPath-style rounding by drawing two bars:
-                    // 1) main bar (square)
-                    // 2) overlay with rx for endcaps using small width on the first/last segments
                     const color = colorScale(seg.key) ?? "var(--chart-1)";
 
                     return (
@@ -257,7 +249,6 @@ function Chart({
                   })
                 )}
 
-                {/* Total label */}
                 <text x={innerWidth} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" className={mutedSmallClassName}>
                   {metric.total}
                 </text>
@@ -327,7 +318,6 @@ export function MpConfigMetricsStackedBarVisx({ metrics }: { metrics: MpConfigMe
   const fixedHeight = Math.max(200, estimatedChartHeight(metrics));
   return (
     <div className="w-full overflow-x-auto">
-      {/* Phones draw it at the card's width (the chart has a narrow layout under 420px). */}
       <div className="md:min-w-[420px]" style={{ height: fixedHeight }}>
         <ChartWidth>
           {({ width }) => <Chart width={width} height={fixedHeight} metrics={metrics} />}

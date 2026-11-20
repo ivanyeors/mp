@@ -38,19 +38,6 @@ const BADGE: Record<MarketingEmailState, "default" | "secondary" | "outline"> = 
     unsubscribed: "secondary",
 };
 
-/**
- * Marketing consent (PRD-shopify-customer-migration slice 07): the state, its
- * source and date, and every change from `customer_consent_events`.
- *
- * Staff read it and do not set it: only the customer's own action, an
- * unsubscribe link or a complaint changes it, so the history stays
- * trustworthy. The one exception is a customer who asks Staff to stop: the
- * *Unsubscribe* button records that with source `support`, and needs
- * `customers-edit`. Nothing here subscribes anyone.
- *
- * Its own fetch, like the Aftercare card beside it, unless the page hands it
- * `initialView`.
- */
 export function MarketingConsentCard({
     customerId,
     canEdit,
@@ -67,7 +54,6 @@ export function MarketingConsentCard({
     const [confirming, setConfirming] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-    // Slice 11: why the customer asked, when they said. Optional.
     const [reason, setReason] = useState<UnsubscribeReason | "">("");
     const [reasonText, setReasonText] = useState("");
 

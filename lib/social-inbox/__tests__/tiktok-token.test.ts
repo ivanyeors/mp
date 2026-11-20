@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, type Row } from "@/lib/reviews/__tests__/fake-supabase";
 
-/**
- * TikTok's access token lasts a day and every refresh rotates the refresh
- * token. A fresh token is used as is; an expiring one is refreshed and the new
- * pair stored; a failed refresh never throws away a token that still works.
- */
-
 const h = vi.hoisted(() => ({ db: null as unknown, tables: {} as Record<string, Record<string, unknown>[]> }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.db }));
 
@@ -99,7 +93,6 @@ describe("sending on TikTok", () => {
     ];
     const fetch = vi.fn(async () => new Response(JSON.stringify(replies.shift()), { status: 200 }));
     vi.stubGlobal("fetch", fetch);
-    // The send path reads the real clock: a token that is fresh right now.
     row().access_expires_at = new Date(Date.now() + 6 * 3_600_000).toISOString();
 
     const sent = await sendToCustomer({ platform: "tiktok", external_id: "conv-1" }, "Size M is in stock", null);

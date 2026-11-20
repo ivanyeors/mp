@@ -12,13 +12,8 @@ function textOf(node: ReactNode): string {
     return Children.toArray(node).map(textOf).join("");
 }
 
-/**
- * Post bodies are parsed as plain Markdown, not MDX, so a stray `<` or `{` in
- * staff copy renders as text instead of breaking the page. GFM adds tables.
- */
 export const POST_MDX_OPTIONS = { mdxOptions: { format: "md" as const, remarkPlugins: [remarkGfm] } };
 
-/** `##`/`###` get ids that match the table of contents; site links stay in the reader's locale. */
 export function postComponents(locale: Locale) {
     return {
         h2: ({ children, ...props }: ComponentPropsWithoutRef<"h2">) => (

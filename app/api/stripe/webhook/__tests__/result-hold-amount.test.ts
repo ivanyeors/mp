@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * checkout.session.completed for a Result authorization hold (slice 05).
- *
- * A re-submitted build opens a new Checkout without expiring the old one. If the
- * customer then pays the OLD session, its card must not be attached to a Result
- * now quoting a different amount — capture would fail or under-charge.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   failures: [] as Array<Record<string, unknown>>,
@@ -116,7 +108,6 @@ describe("Stripe webhook — Result authorization hold", () => {
     expect(res.status).toBe(200);
     expect(h.rows.get(ID)?.payment_intent_id).toBeNull();
     expect(h.failures).toHaveLength(1);
-    // Attached to nothing, so nothing else would ever release it.
     expect(h.cancel).toHaveBeenCalledWith("pi_1");
   });
 

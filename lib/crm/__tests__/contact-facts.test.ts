@@ -12,12 +12,6 @@ import {
   type ReminderSendRow,
 } from "@/lib/crm/contact-facts";
 
-/**
- * The parts of Contact status matched by phone (CRM slice 11), resolved on the
- * Customer page with `phonesMatch`: the WhatsApp row and the other numbers
- * seen.
- */
-
 const ON_FILE = "8780 5311";
 
 describe("matchTail", () => {
@@ -27,7 +21,6 @@ describe("matchTail", () => {
     expect(matchTail("5311")).toBe("5311");
     expect(matchTail("call me")).toBeNull();
     expect(matchTail(null)).toBeNull();
-    // The superset a `like '%tail'` read returns, narrowed by phonesMatch.
     for (const stored of ["+6587805311", "6587805311", "87805311"]) {
       expect(stored.endsWith(matchTail(ON_FILE)!)).toBe(true);
       expect(phonesMatch(stored, ON_FILE)).toBe(true);
@@ -39,10 +32,7 @@ describe("the WhatsApp row: messaged us", () => {
   const inbound: InboundRow[] = [
     { phone: "+6587805311", received_at: "2026-10-21T02:00:00Z" },
     { phone: "+6587805311", received_at: "2026-10-23T09:30:00Z" },
-    // Ends in the same eight digits but is another country's number: the
-    // read fetches it, and the match rejects it.
     { phone: "+4487805311", received_at: "2026-10-25T00:00:00Z" },
-    // One digit off.
     { phone: "+6587805312", received_at: "2026-10-26T00:00:00Z" },
   ];
 
@@ -51,16 +41,11 @@ describe("the WhatsApp row: messaged us", () => {
   });
 
   it("does not count a different number that only matches loosely", () => {
-    // phonesMatch's tests: one digit off is another number.
     expect(phonesMatch("+6587805312", ON_FILE)).toBe(false);
-    // phonesMatch alone takes a bare eight digits as a suffix of any country's
-    // number. The number on file is normalised first, so a local 8780 5311 is
-    // Singapore's, and +44 8780 5311 is a different number.
     expect(phonesMatch("+4487805311", ON_FILE)).toBe(true);
     expect(phonesMatch("+4487805311", "+6587805311")).toBe(false);
     expect(latestInboundAt("+4487805311", inbound)).toBe("2026-10-25T00:00:00Z");
     expect(latestInboundAt("+6591234567", inbound)).toBeNull();
-    // A fragment matches nothing.
     expect(latestInboundAt("5311", inbound)).toBeNull();
   });
 
@@ -82,7 +67,6 @@ describe("the WhatsApp row: our last WhatsApp failed", () => {
   });
 
   it("clears once a later send succeeds and clears last_error, on that row or another", () => {
-    // The same row: a success writes last_outbound_at and clears last_error.
     const sameRow: ReminderSendRow = {
       ...failed,
       last_outbound_at: "2026-10-23T01:00:00Z",
@@ -90,7 +74,6 @@ describe("the WhatsApp row: our last WhatsApp failed", () => {
       last_error_at: null,
     };
     expect(latestFailedSendAt(ON_FILE, [sameRow])).toBeNull();
-    // Another appointment's row reached them later.
     const later: ReminderSendRow = {
       phone: "+6587805311",
       last_outbound_at: "2026-10-24T01:00:00Z",
@@ -130,15 +113,11 @@ describe("the WhatsApp row: our last WhatsApp failed", () => {
 describe("otherNumbersSeen", () => {
   it("lists the numbers given on bookings and Results that are not the one on file, once each, latest first", () => {
     const seen = otherNumbersSeen(ON_FILE, [
-      // The number on file, however it was typed: left out.
       { phone: "+65 8780 5311", at: "2026-10-01T00:00:00Z", source: "booking" },
       { phone: "6587805311", at: "2026-10-02T00:00:00Z", source: "result" },
-      // Another number, typed two ways, on both sources.
       { phone: "91234567", at: "2026-09-01T00:00:00Z", source: "result" },
       { phone: "+65 9123 4567", at: "2026-10-05T00:00:00Z", source: "booking" },
-      // An older one.
       { phone: "+447700900123", at: "2026-08-01T00:00:00Z", source: "result" },
-      // Blank, or no digits: nothing to ask about.
       { phone: "  ", at: "2026-10-09T00:00:00Z", source: "result" },
       { phone: null, at: "2026-10-09T00:00:00Z", source: "result" },
       { phone: "n/a", at: "2026-10-09T00:00:00Z", source: "booking" },
@@ -155,8 +134,6 @@ describe("otherNumbersSeen", () => {
     ]);
   });
 });
-
-// ─── readContactFacts, against a recording stand-in ─────────────────────────
 
 type Call = { table: string; ops: [string, ...unknown[]][] };
 

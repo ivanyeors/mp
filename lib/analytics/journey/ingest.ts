@@ -26,18 +26,10 @@ export type IngestBody = {
   visitorId: string;
   visitId: string;
   events: IngestEventInput[];
-  /** GA client_id / user_pseudo_id — set on Visitor only if currently null. */
   gaClientId?: string | null;
-  /** Only applied on Visit INSERT (frozen Entry source). */
   entry?: EntrySourceInput | null;
-  /** ISO country (or Unknown) — set on Visit INSERT only; from server headers. */
   country?: string | null;
-  /**
-   * The in-app browser the request came from (`in-app.ts`), from the server's
-   * own read of the User-Agent. Set on Visit INSERT only.
-   */
   entryApp?: string | null;
-  /** Close a prior Visit (pagehide or rotated after inactivity). */
   closeVisitId?: string | null;
   closeReason?: "pagehide" | "inactivity" | null;
 };
@@ -55,7 +47,6 @@ export function parseIngestBody(raw: unknown):
   if (!isUuid(o.visitId)) return { ok: false, error: "visitId required" };
   if (!Array.isArray(o.events)) return { ok: false, error: "events required" };
   if (o.events.length > 50) return { ok: false, error: "too many events" };
-  // pagehide may send closeVisitId with empty events
   if (o.events.length === 0 && !isUuid(o.closeVisitId)) {
     return { ok: false, error: "events required" };
   }
@@ -131,7 +122,6 @@ async function loadVisitLifecycleEvents(
   }));
 }
 
-/** End an open Visit and persist Drop-off fields. */
 export async function closeJourneyVisit(
   db: SupabaseClient,
   opts: {
@@ -176,7 +166,6 @@ export async function closeJourneyVisit(
   return { ok: true, closed: true };
 }
 
-/** Close open Visits for a Visitor whose last event is older than inactivity. */
 export async function closeStaleVisitsForVisitor(
   db: SupabaseClient,
   visitorId: string,
@@ -197,12 +186,10 @@ export async function closeStaleVisitsForVisitor(
   }
 }
 
-/** PostgREST's schema cache (PGRST204) or Postgres itself (42703) not knowing a column. */
 function isUnknownColumn(error: { code?: string }): boolean {
   return error.code === "PGRST204" || error.code === "42703";
 }
 
-/** Persist Visitor + Visit + events. Idempotent enough for beacons (new event rows). */
 export async function persistJourneyIngest(
   db: SupabaseClient,
   body: IngestBody,
@@ -215,18 +202,12 @@ export async function persistJourneyIngest(
   );
   if (vErr) return { ok: false, error: vErr.message };
 
-  // Referral link stamp — LAST-TOUCH on the Visitor (overwrite with newest).
-  // Lives on the Visitor so it persists across visits for the 30-day window,
-  // NOT on the frozen Visit entry_source. The client forwards it only on a new
-  // visit's first page_view (entry.search), so cross-visit last-touch works;
   // ponytail: same-visit re-click of a different ref link is not re-captured.
-  // Best-effort: a stamp hiccup must not fail the whole analytics beacon.
   const ref = resolveEntrySource(body.entry ?? {}).ref;
   if (ref && isValidReferralCodeFormat(ref)) {
     await stampVisitorRef(db, visitorId, ref);
   }
 
-  // Set-if-null only — never clobber an existing ga_client_id.
   if (body.gaClientId) {
     const { error: gaErr } = await db
       .from("analytics_visitors")
@@ -244,12 +225,10 @@ export async function persistJourneyIngest(
     if (!closed.ok) return closed;
   }
 
-  // Best-effort: end any other stale open Visits for this Visitor (silent ≥30m).
   await closeStaleVisitsForVisitor(db, visitorId);
 
   if (events.length === 0) return { ok: true };
 
-  // Freeze Entry source + country on first INSERT only — race-safe like visitors.
   const resolved = resolveEntrySource(body.entry ?? {});
   const country = normalizeCountryCode(body.country) || UNKNOWN_COUNTRY;
   const base = {
@@ -267,15 +246,11 @@ export async function persistJourneyIngest(
     entry_click_id_kind: resolved.clickIdKind,
     entry_click_id: resolved.clickId,
     entry_app: isEntryApp(body.entryApp) ? body.entryApp : null,
-    // `entry` rides only on a Visit's first page view, so that view's path
-    // is where the Visit landed.
     landing_path: body.entry ? (events[0]?.path ?? null) : null,
   };
   const insertVisit = (row: Record<string, unknown>) =>
     db.from("analytics_visits").upsert(row, { onConflict: "id", ignoreDuplicates: true });
   let { error: visitErr } = await insertVisit({ ...base, ...detail });
-  // The code can deploy before the migration that adds the detail columns
-  // (20261113090000). Losing the detail for those Visits beats losing the Visits.
   if (visitErr && isUnknownColumn(visitErr)) ({ error: visitErr } = await insertVisit(base));
   if (visitErr) return { ok: false, error: visitErr.message };
 

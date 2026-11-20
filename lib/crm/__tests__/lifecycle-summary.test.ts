@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { lifecycleStageOf, lifecycleSummary, type LifecycleCountRow } from "@/lib/crm/lifecycle-summary";
 import { lifecycleBarParts, lifecycleRowSummary } from "@/app/[lang]/settings/customers/lifecycle-card";
 
-/** The Customer lifecycle chart (2026-10-31): every Customer in their Lifecycle stage, by sub-status. */
-
 const row = (stage: string, detail: string | null, undated: boolean, customers: number | string): LifecycleCountRow => ({
   stage,
   detail,

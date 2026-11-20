@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * /api/site-settings answers to `media`, which Blogs, Products, Partners and
- * Page builder all tick. It must only reach the Media page's landing slots:
- * otherwise a "Blog editor" role could rewrite the RMA return address or the
- * Results SLA ops email, which belong to other pages.
- */
-
 const h = vi.hoisted(() => ({
   rows: [] as { key: string; value: string; updated_at: string | null }[],
   writes: [] as string[],

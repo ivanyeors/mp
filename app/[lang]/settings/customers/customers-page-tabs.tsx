@@ -15,13 +15,6 @@ import { ReviewsTab } from "./reviews-tab";
 import { TelegramUpdatesCard, type TelegramUpdatesCardData } from "./telegram-updates-card";
 import { parseCustomersView, type CustomersView } from "./views";
 
-/**
- * The Customers page: the list, a *Follow-ups* tab (CRM slice 06: Mine, All,
- * Overdue), a *Reviews* tab (CRM slice 12: Google reviews to match), and a
- * *Settings* tab for the CRM's settings cards (CRM slice 07's Aftercare,
- * slice 14's Telegram updates). The tab is kept in `?view=` so it can be
- * linked and survives a reload.
- */
 export function CustomersPageTabs({
   initialView,
   canEdit,
@@ -35,32 +28,19 @@ export function CustomersPageTabs({
   children,
 }: {
   initialView: CustomersView;
-  /** `customers-edit`. */
   canEdit: boolean;
-  /** `customers-edit` and `results`. */
   canEditOnlineResult: boolean;
-  /** Read by the page when it opens on the Settings tab; otherwise the card fetches it. */
   telegramUpdates?: TelegramUpdatesCardData;
-  /** Same, for the Aftercare card. */
   aftercare?: AftercareCardData;
-  /** Import from Shopify, when the role holds `customer-import` (migration slice 02). */
   importHref?: string;
-  /** Import fittings from the Google Form, under the same permission (ADR 0042). */
   importFittingsHref?: string;
-  /** The Follow-ups tab's list from `?scope=`. */
   followUpScope?: FollowUpScope;
-  /** The Reviews tab's list from `?scope=`. */
   reviewScope?: ReviewTabScope;
-  /** The Customers list. */
   children: ReactNode;
 }) {
   const [view, setView] = useState<CustomersView>(initialView);
-  // Settings mounts the first time it is opened (its card fetches then), and
-  // stays mounted so a change made there survives a look at the list.
   const [settingsSeen, setSettingsSeen] = useState(initialView === "settings");
-  // Follow-ups likewise: fetched the first time it is opened.
   const [followUpsSeen, setFollowUpsSeen] = useState(initialView === "followups");
-  // Reviews likewise.
   const [reviewsSeen, setReviewsSeen] = useState(initialView === "reviews");
 
   const selectView = (next: string) => {
@@ -72,7 +52,6 @@ export function CustomersPageTabs({
     const url = new URL(window.location.href);
     if (value === "list") url.searchParams.delete("view");
     else url.searchParams.set("view", value);
-    // `?scope=` belongs to the tab that was open.
     if (value !== view) url.searchParams.delete("scope");
     window.history.replaceState(null, "", url);
   };
@@ -119,7 +98,6 @@ export function CustomersPageTabs({
           <TabsTrigger value="reviews">Reviews</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
-        {/* Kept mounted so a search and its page survive a look at Settings. */}
         <TabsContent value="list" forceMount className="pt-4 data-[state=inactive]:hidden">
           {children}
         </TabsContent>

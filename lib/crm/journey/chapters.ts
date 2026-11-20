@@ -1,37 +1,5 @@
 import type { ShownTimelineEntry } from "@/lib/crm/timeline/types";
 
-/**
- * The Journey tab's chapters (PRD-customer-page-journey slice 04; CONTEXT.md
- * **Customer timeline**). The timeline is one flat list, newest first, merged
- * on the server from the tables that record each fact. A **chapter** is a run
- * of its entries that belong together: an order with its delivery and its
- * emails, a review with the request that came before it.
- *
- * Pure and free of server imports: the Admin Panel's browser code builds
- * chapters from the entries the timeline route returned, so nothing is stored
- * and no source changes.
- *
- * The rules, in the order they are tried for each entry, oldest first:
- *
- * 1. An entry about a record already in the latest chapter joins it (the same
- *    Order, the same Follow-up), however long after.
- * 2. An entry within `GAP_DAYS` of the latest chapter's last *main* entry
- *    joins it.
- * 3. Otherwise it starts a chapter.
- *
- * A **minor** entry is a reminder or marketing email: something we sent, not
- * something that happened with the customer. It joins a chapter under rules 1
- * and 2 but never stretches one, and where it would start a chapter it starts
- * a **quiet** one, which gathers the minor entries that follow. A main entry
- * arriving within `GAP_DAYS` of a quiet chapter's end takes the minor entries
- * that close to it into its own chapter, so a review reads with the request
- * that prompted it.
- *
- * A chapter's **tone** is its height on the map. It is set only by the stated
- * facts in `CARE_FACTS` and `GOOD_FACTS`; anything else is steady. Needs care
- * wins when a chapter holds both.
- */
-
 export type JourneyTone = "good" | "steady" | "care";
 
 export const JOURNEY_TONE_LABEL: Record<JourneyTone, string> = {
@@ -40,41 +8,31 @@ export const JOURNEY_TONE_LABEL: Record<JourneyTone, string> = {
   care: "Needs care",
 };
 
-/** What each height is read from, as the map's legend says it. */
 export const JOURNEY_TONE_RULE: Record<JourneyTone, string> = {
   good: "an order paid, a visit, 4★ or 5★",
   steady: "everything else",
   care: "3★ or lower, a return, a refund asked for, a cancelled order, a no-show, something overdue",
 };
 
-/** Days between two main entries before the later one starts a chapter. */
 export const GAP_DAYS = 10;
-/** Days between two reminders before the later one starts its own quiet chapter. */
 export const QUIET_GAP_DAYS = 45;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type JourneyChapter = {
-  /** Stable while its first entry stands: `chapter:<first entry id>`. */
   id: string;
   title: string;
   tone: JourneyTone;
-  /** The fact that set the tone, e.g. *a 1★ review*; null for steady. */
   reason: string | null;
-  /** ISO times of its first and last entry. */
   from: string;
   to: string;
-  /** Newest first, as the timeline lists them. */
   entries: ShownTimelineEntry[];
-  /** The kind groups it holds, for the filters. */
   groups: string[];
-  /** Reminders and marketing only. */
   quiet: boolean;
 };
 
 const MINOR_PREFIXES = ["campaign_email.", "aftercare.", "checkup.", "review_request.", "claim_link."];
 
-/** A reminder or marketing email: joins chapters, never starts or stretches a main one. */
 export function isMinorEntry(entry: Pick<ShownTimelineEntry, "kind">): boolean {
   return entry.kind === "order.email_sent" || MINOR_PREFIXES.some((p) => entry.kind.startsWith(p));
 }
@@ -84,7 +42,6 @@ const isReview = (e: Pick<ShownTimelineEntry, "kind">) =>
 
 type Fact = { test: (e: ShownTimelineEntry) => boolean; reason: (e: ShownTimelineEntry) => string };
 
-/** Needs care. The first that matches names the reason. */
 const CARE_FACTS: readonly Fact[] = [
   { test: (e) => isReview(e) && e.rating != null && e.rating <= 3, reason: (e) => `a ${e.rating}★ review` },
   { test: (e) => e.kind === "return.opened", reason: () => "a return" },
@@ -93,7 +50,6 @@ const CARE_FACTS: readonly Fact[] = [
   { test: (e) => e.kind === "readjustment.no_show", reason: () => "a re-adjustment no-show" },
 ];
 
-/** Going well. */
 const GOOD_FACTS: readonly Fact[] = [
   { test: (e) => isReview(e) && e.rating != null && e.rating >= 4, reason: (e) => `a ${e.rating}★ review` },
   { test: (e) => e.kind === "order.paid", reason: () => "an order paid" },
@@ -109,7 +65,6 @@ function firstFact(facts: readonly Fact[], entries: readonly ShownTimelineEntry[
   return null;
 }
 
-/** The tone of a set of entries, and the fact that set it. */
 export function chapterTone(entries: readonly ShownTimelineEntry[]): { tone: JourneyTone; reason: string | null } {
   const care = firstFact(CARE_FACTS, entries);
   if (care) return { tone: "care", reason: care };
@@ -122,7 +77,6 @@ type Title = { kinds: readonly string[]; title: (e: ShownTimelineEntry, ctx: { f
 
 const stars = (e: ShownTimelineEntry) => (e.rating ? `${e.rating}★ ` : "");
 
-/** A chapter is named for the first of these it holds: the most telling entry. */
 const TITLES: readonly Title[] = [
   { kinds: ["google_review.written"], title: (e) => `${stars(e)}Google review` },
   { kinds: ["review.submitted"], title: (e) => `${stars(e)}shop review` },
@@ -163,7 +117,6 @@ function chapterTitle(entries: readonly ShownTimelineEntry[], quiet: boolean, ct
 type Draft = {
   entries: ShownTimelineEntry[];
   records: Set<string>;
-  /** Time of its last main entry; for a quiet chapter, of its last entry. */
   anchor: number;
   quiet: boolean;
 };
@@ -186,11 +139,6 @@ function join(draft: Draft, entry: ShownTimelineEntry, stretch: boolean) {
   if (stretch) draft.anchor = Math.max(draft.anchor, at(entry));
 }
 
-/**
- * The chapters of `entries`, oldest first. `complete` says the timeline has no
- * older page: only then is the first paid order called the *First order*.
- * Entries with no readable time are left out.
- */
 export function buildChapters(
   entries: readonly ShownTimelineEntry[],
   opts: { complete: boolean; gapDays?: number; quietGapDays?: number },
@@ -217,7 +165,6 @@ export function buildChapters(
         else drafts.push(startDraft([entry], true));
         continue;
       }
-      // A main entry: it takes the reminders close to it and leaves the rest.
       const near = cur.entries.filter((e) => at(entry) - at(e) <= gap);
       if (near.length === cur.entries.length) {
         join(cur, entry, false);
@@ -258,26 +205,16 @@ export function buildChapters(
   });
 }
 
-// ─── Now ─────────────────────────────────────────────────────────────────────
-
-export type OpenFollowUp = { id: string; title: string; /** A Singapore calendar date, YYYY-MM-DD. */ dueOn: string };
+export type OpenFollowUp = { id: string; title: string; dueOn: string };
 
 export type JourneyNow = {
   tone: JourneyTone;
   reason: string | null;
-  /** Open Follow-ups due before today. */
   overdue: OpenFollowUp[];
-  /** Open Follow-ups due today. */
   dueToday: OpenFollowUp[];
-  /** The earliest open Follow-up due after today: the map's dashed next stop. */
   next: OpenFollowUp | null;
 };
 
-/**
- * The Now chapter: what is open today. `today` is the Singapore calendar day,
- * as Follow-ups count it (lib/crm/followup-rules.ts). Overdue is the one fact
- * that makes Now need care.
- */
 export function journeyNow(openFollowUps: readonly OpenFollowUp[], today: string): JourneyNow {
   const byDue = openFollowUps.slice().sort((a, b) => a.dueOn.localeCompare(b.dueOn) || a.id.localeCompare(b.id));
   const overdue = byDue.filter((f) => f.dueOn < today);
@@ -290,15 +227,8 @@ export function journeyNow(openFollowUps: readonly OpenFollowUp[], today: string
   };
 }
 
-// ─── Gaps ────────────────────────────────────────────────────────────────────
-
 const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
 
-/**
- * The quiet time between two moments, in the largest unit that reads well:
- * *3 days*, *5 weeks*, *8 months*, *2 years*. Null under a day, so two
- * chapters a few hours apart show no gap.
- */
 export function gapLabel(fromIso: string, toIso: string): string | null {
   const days = Math.floor((Date.parse(toIso) - Date.parse(fromIso)) / DAY_MS);
   if (!(days >= 1)) return null;
@@ -308,15 +238,8 @@ export function gapLabel(fromIso: string, toIso: string): string | null {
   return plural(Math.round(days / 365.25), "year");
 }
 
-// ─── Filters ─────────────────────────────────────────────────────────────────
-
 export type JourneyFilter = { key: string; label: string; groups: readonly string[] };
 
-/**
- * The Journey's filters: the timeline's eleven kind groups in four, by what
- * Staff look for. A filter shows only when the viewer may see one of its
- * groups, so the timeline's permissions carry over untouched.
- */
 export const JOURNEY_FILTERS: readonly JourneyFilter[] = [
   { key: "orders", label: "Orders", groups: ["orders", "returns", "results"] },
   { key: "care", label: "Fittings and care", groups: ["fittings", "readjustments", "aftercare"] },
@@ -324,12 +247,10 @@ export const JOURNEY_FILTERS: readonly JourneyFilter[] = [
   { key: "account", label: "Marketing and account", groups: ["marketing", "account"] },
 ];
 
-/** The filters with at least one group the viewer may see. */
 export function visibleFilters(viewerGroups: readonly string[]): JourneyFilter[] {
   return JOURNEY_FILTERS.filter((f) => f.groups.some((g) => viewerGroups.includes(g)));
 }
 
-/** A chapter's entries under a filter; all of them for no filter. */
 export function chapterEntries(chapter: JourneyChapter, filter: JourneyFilter | null): ShownTimelineEntry[] {
   return filter ? chapter.entries.filter((e) => filter.groups.includes(e.group)) : chapter.entries;
 }

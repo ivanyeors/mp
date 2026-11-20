@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * The label made when an order is paid (ADR 0044): on the customer's courier
- * only, never twice, and silent for orders that ship nothing. Where Staff must
- * step in, the timeline says why. The order loaders, quote and purchase are fakes;
- * the courier choice is the real `preselectCourier`.
- */
-
 const h = vi.hoisted(() => ({
   order: null as Record<string, unknown> | null,
   shipment: null as Record<string, unknown> | null,

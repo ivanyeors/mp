@@ -52,7 +52,6 @@ export default async function PartnerHubPage({
     );
   }
 
-  // approved — but re-accept first if the agreement version has moved on.
   if (needsReaccept(ctx.agreedVersion)) {
     const agreementMd = await getAgreementMarkdown();
     return <ReacceptForm lang={locale} agreementMd={agreementMd} />;
@@ -104,15 +103,10 @@ export default async function PartnerHubPage({
 
       {ctx.partnerId ? (
         <>
-          {/* Milestone track = the gamified spine the partner sees first (#79). */}
           <MilestoneTrack partnerId={ctx.partnerId} />
-          {/* The pool and the partner's share of it (ADR 0034, clause 7.2). */}
           <CommissionChoiceCard partnerId={ctx.partnerId} />
-          {/* Money totals + referral pipeline + masked per-referral rows (#80). */}
           <MoneyReferralsPanel partnerId={ctx.partnerId} />
-          {/* Commission balance + payout history with proof (#81). */}
           <PayoutSummary partnerId={ctx.partnerId} />
-          {/* Remaining self-purchase allowance — renders null when the feature is off (#82). */}
           <SelfPurchaseAllowanceCard partnerId={ctx.partnerId} />
         </>
       ) : null}
@@ -138,11 +132,6 @@ function PartnerStatusScreen({
   );
 }
 
-/**
- * Under review: the listing they sent as it will look on /our-partners once
- * approved, and a way to withdraw. Both read the applicant's own row by their
- * login, the only row withdrawing may delete.
- */
 async function PendingApplicationScreen({
   lang,
   userId,
@@ -166,7 +155,6 @@ async function PendingApplicationScreen({
       title="Application under review"
       body="Thanks for applying to the Mpillow Partner programme. We're reviewing your application and will email you once a decision is made."
     >
-      {/* App type scale: the marketing scope would size this heading like the page title. */}
       {q.companyName ? (
         <section
           aria-labelledby="listing-preview"

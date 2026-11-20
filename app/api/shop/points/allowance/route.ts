@@ -8,18 +8,6 @@ import { mayUseAccountValue, pointsAllowance } from "@/lib/points/spend";
 
 export const runtime = "nodejs";
 
-/**
- * The checkout's "Use points" preview (PRD-loyalty-points slice 04; ADR 0030
- * (h), (i), (r)). Whose points comes from the session (`getCurrentCustomerId`),
- * never the body, as the coupon preview does since migration slice 05. The
- * body carries only the cart's products less its coupon, and the email typed,
- * to say whether checkout will accept points for it.
- *
- * A guest, a partner, points switched off, or a balance below the minimum all
- * get the same `{ usable: false }`: nothing about a balance or a partner. The
- * checkout route checks everything again; this only decides what the page
- * shows.
- */
 const AllowanceSchema = z.object({
   products_after_coupon: z.number().nonnegative(),
   email: z.string().trim().optional(),
@@ -59,7 +47,6 @@ export async function POST(req: Request) {
       usable: true,
       available: balance.available,
       min: settings.minRedeem,
-      // Null: this order is too small to take points.
       max: pointsAllowance({
         available: balance.available,
         productsAfterCoupon: parsed.data.products_after_coupon,

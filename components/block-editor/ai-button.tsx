@@ -6,16 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-/**
- * The ✨ button (PRD-campaign-email-editor slice 04): idle, working with
- * words for what it is doing (*Reading your brief…*, then *Writing the
- * email…*), or turned off with the reason. It calls nothing itself: slices
- * 09, 10 and 17 hand it what to do. Off, it stays in the tab order with its
- * reason, as Clear all does, so a keyboard user can reach why.
- *
- * Its ref and any other button props reach the button, so it can be a
- * popover's trigger (`<PopoverTrigger asChild>`), as slice 09's is.
- */
 export function AiButton({
   children,
   onClick,
@@ -27,14 +17,10 @@ export function AiButton({
   className,
   ...button
 }: Omit<ComponentProps<"button">, "children" | "onClick"> & {
-  /** What it does: *Generate*, *Rewrite*, *Translate to Chinese*. */
   children: ReactNode;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
-  /** While it works, what it is doing now; null when idle. */
   working?: string | null;
-  /** Why it can't be pressed now; null when it can. */
   disabledReason?: string | null;
-  /** While it works, a Stop beside it. */
   onStop?: () => void;
   variant?: "outline" | "default" | "ghost" | "secondary";
   size?: "sm" | "default";

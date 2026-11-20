@@ -59,8 +59,6 @@ export function CartContent({
   const currency = items[0]?.currency ?? "SGD";
   const handleNavigate = onClose;
 
-  // Live availability for standard items; customized items are validated against
-  // their component BOM at checkout, so they are not capped here.
   const standardVariantIds = items
     .filter((i) => !i.customizationId)
     .map((i) => i.variantId);
@@ -76,7 +74,6 @@ export function CartContent({
         updateQuantity(item.variantId, max, item.customizationId);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stock]);
 
   const hasShortage = items.some((item) => {

@@ -21,8 +21,6 @@ describe("refundableAmount", () => {
   });
 
   it("caps at what was captured, not the order total", () => {
-    // A Result order topped up beyond its hold is paid by two intents; only what a
-    // charge actually brought in can be refunded.
     expect(
       refundableAmount({ total: 500, amount_captured: 420, amount_refunded: 20 })
     ).toBe(400);
@@ -66,7 +64,6 @@ describe("isPaidOrder", () => {
 
 describe("staff refund idempotency", () => {
   it("keys on the dialog's request and the intent, not the amount", () => {
-    // Two separate S$10 mistakes are two refunds; a double-click on one is one.
     expect(staffRefundIdempotencyKey("ord-1", "req-a", "pi_1")).not.toBe(
       staffRefundIdempotencyKey("ord-1", "req-b", "pi_1"),
     );
@@ -84,14 +81,11 @@ describe("stripeRefundReason", () => {
 });
 
 describe("item refund amounts", () => {
-  // Two S$50 cushions and a S$20 case: S$120 of goods, S$24 off (coupon and
-  // points), S$8 shipping. The customer paid S$104 in cash.
   const order = { subtotal: 120, shipping_amount: 8, total: 104 };
   const cushions = { id: "a", quantity: 2, total_price: 100 };
   const caseLine = { id: "b", quantity: 1, total_price: 20 };
 
   it("refunds a line's share of what was paid, after the discount", () => {
-    // 100/120 of the S$96 paid for goods.
     expect(lineRefundAmount(order, cushions, 2)).toBe(80);
     expect(lineRefundAmount(order, cushions, 1)).toBe(40);
     expect(lineRefundAmount(order, caseLine, 1)).toBe(16);
@@ -126,7 +120,6 @@ describe("item refund amounts", () => {
 });
 
 describe("splitRefundAcrossIntents", () => {
-  // A Result held at S$300 and topped up S$120 (ADR 0016).
   const balances = [
     { paymentIntentId: "pi_hold", refundableCents: 30000 },
     { paymentIntentId: "pi_topup", refundableCents: 12000 },

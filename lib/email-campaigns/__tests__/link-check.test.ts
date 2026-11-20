@@ -2,17 +2,9 @@ import { describe, expect, it } from "vitest";
 import { NotPublicAddressError } from "@/lib/net/public-request";
 import { checkLinks, LINK_ANSWER_KEPT_MS, LINK_CHECK_MAX, LINK_CHECK_TIMEOUT_MS, publicLinkRequest, type LinkAnswers, type LinkRequest } from "../link-check";
 
-/**
- * Whether an email's links answer (PRD-campaign-email-editor slice 11),
- * against a fake web: HEAD, then GET when the HEAD is not answered; 2xx or
- * 3xx answers and no redirect is followed; five seconds an address, twenty
- * addresses a check, answers kept ten minutes unless asked fresh.
- */
-
 const A = "https://shop.example.com/a";
 const B = "https://shop.example.com/b";
 
-/** A fake web: each address answers its status to each method, or throws. */
 function web(answers: Record<string, Partial<Record<"HEAD" | "GET", number | Error>>>) {
   const asked: string[] = [];
   const request: LinkRequest = async (url, { method }) => {

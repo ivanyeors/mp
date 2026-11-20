@@ -1,6 +1,3 @@
-/**
- * Run: npx tsx lib/ecommerce/orders-paid-at-range.check.ts
- */
 import assert from "node:assert/strict";
 import {
   applyOrdersPaidAtRange,

@@ -1,7 +1,3 @@
-/**
- * Slice 05 self-check: home page-builder `faq` section → `home` surface.
- * Run: npx tsx --env-file=.env.local components/sections/landing/home-page-faq.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +16,6 @@ function read(rel: string) {
   return readFileSync(join(ROOT, rel), "utf8");
 }
 
-// --- Builder: faq is addable, placement-only (no Q&A in section JSON) ---
 const faqTmpl = CUSTOM_SECTION_TEMPLATES.find((t) => t.type === "faq");
 assert.ok(faqTmpl, "faq in CUSTOM_SECTION_TEMPLATES");
 assert.match(faqTmpl.description, /Settings/);
@@ -30,7 +25,6 @@ assert.match(typesSrc, /\| "faq"/);
 assert.match(typesSrc, /FaqContent/);
 
 const picker = read("app/[lang]/settings/page-builder/page-builder-client.tsx");
-// The type labels moved into the section tree in slice 07 (4ea4fd3); the picker imports them.
 const sectionTree = read("components/settings/page-builder/section-tree.tsx");
 assert.match(sectionTree, /SECTION_TYPE_LABELS[\s\S]*?faq:\s*"Page FAQs"/);
 assert.match(picker, /SECTION_TYPE_LABELS[^;]*from "@\/components\/settings\/page-builder\/section-tree"/);
@@ -51,13 +45,11 @@ assert.match(renderer, /surfaceKey="home"/);
 const faqRender = renderer.match(/case "faq":[\s\S]*?(?=case "|default:)/)?.[0] ?? "";
 assert.doesNotMatch(faqRender, /section\.content/);
 
-// --- Empty set → no public FAQ chrome ---
 assert.equal(PageFaqSectionView({ title: "FAQs", items: [], locale: "en-US" }), null);
 
 async function main() {
   const admin = supabaseAdmin();
 
-  // Create throwaway faq section (add)
   const { data: maxRow } = await admin
     .from("landing_sections")
     .select("position")
@@ -73,7 +65,7 @@ async function main() {
       slug: SLUG,
       position,
       visible: true,
-      content: {}, // Q&A not duplicated here
+      content: {},
     })
     .select()
     .single();
@@ -82,7 +74,6 @@ async function main() {
   const id = created.id as string;
 
   try {
-    // Visible faq section appears in public landing fetch
     const visible = await getLandingSections();
     assert.ok(
       visible.some((s) => s.id === id && s.section_type === "faq"),
@@ -94,7 +85,6 @@ async function main() {
       "section content stays empty (copy in Page FAQ store)"
     );
 
-    // Hide
     const { error: hideErr } = await admin
       .from("landing_sections")
       .update({ visible: false, updated_at: new Date().toISOString() })
@@ -103,7 +93,6 @@ async function main() {
     const afterHide = await getLandingSections();
     assert.ok(!afterHide.some((s) => s.id === id), "hidden faq omitted from public sections");
 
-    // Show again + reorder
     const newPos = Math.max(0, position - 1);
     const { error: showErr } = await admin
       .from("landing_sections")
@@ -118,7 +107,6 @@ async function main() {
     assert.equal(reordered?.visible, true);
     assert.equal(reordered?.position, newPos, "faq section reordered");
 
-    // Homepage path: faq section → PageFaqSection(home) → accordion + FAQPage JSON-LD
     const home = await getPageFaq("home", "en-US");
     assert.ok(home && home.items.length >= 1, "home Page FAQ set non-empty");
 
@@ -130,7 +118,6 @@ async function main() {
     assert.match(html, /"@type":"Question"/);
     assert.match(html, new RegExp(home.items[0]!.question.replace(/[?*+^${}()|[\]\\]/g, "\\$&")));
 
-    // Empty product surface still hides (section may exist but store empty → null)
     const empty = await PageFaqSection({
       surfaceKey: "product:00000000-0000-4000-8000-000000000000",
       locale: "en-US",

@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The health answers the Premium rule graph reads (sleep position, pain areas,
- * bolster use) used to be stripped by this route's schema, so every Draft and
- * in-store Result was stored without them and its detail page refused to load.
- * These pin that they are kept, and that a save which does not send them (the
- * Admin Panel's Save) leaves the stored answers alone.
- */
-
 const h = vi.hoisted(() => ({
   maybeSingle: vi.fn(),
   upsert: vi.fn(),
@@ -47,7 +39,6 @@ const post = (data: Record<string, unknown>) =>
     }),
   );
 
-/** What the route wrote to `mp_config_responses.data`. */
 const writtenData = () => (h.upsert.mock.calls[0]![0] as { data: Record<string, unknown> }).data;
 
 beforeEach(() => {
@@ -87,7 +78,6 @@ describe("POST /api/mp-config/responses keeps the sleep answers", () => {
       },
       error: null,
     });
-    // The Admin Panel's Save sends the measurement fields only.
     const res = await post({ name: "Ada Lovelace", shoulderLength: "41" });
     expect(res.status).toBe(200);
     expect(writtenData()).toMatchObject({

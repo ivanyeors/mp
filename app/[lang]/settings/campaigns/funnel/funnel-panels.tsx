@@ -15,30 +15,16 @@ import { cn } from "@/lib/utils";
 import { LIFECYCLE_PALETTE_CLASS } from "../../customers/lifecycle-card";
 import { countText, resultCells, segmentChips, stillCounting } from "./funnel-format";
 
-/**
- * The Email funnel's panels that read as lists and tables (PRD-email-funnel
- * slice 03): the chosen stage's header, its Segments and its Results, and the
- * state badge every card shares. The funnel picture and the Email flow are
- * ./funnel-client.tsx.
- */
-
 const n = (v: number) => v.toLocaleString("en-SG");
 
-/** A stage's own colour: the Customer lifecycle chart's strongest shade, read from `LIFECYCLE_PALETTE_CLASS`. */
 const STAGE_HUE: Record<FunnelStageView["stage"], string> = { lead: "lead", new: "new", loyal: "loyal", at_risk: "risk", lost: "lost" };
 export const lifecycleStageColour = (stage: FunnelStageView["stage"]) => `var(--lc-${STAGE_HUE[stage]}-3)`;
 
-/**
- * The page's one link rule: a link shows only where the role can open its
- * page (`canOpen`, the sidebar's rule); elsewhere its words show as text.
- * Paths are without the locale; `to` adds it.
- */
 export interface Nav {
     to: (href: string) => string;
     canOpen: (href: string) => boolean;
 }
 
-/** A link through the rule: the role's page, or plain words. */
 export function Gated({ nav, href, className, children }: { nav: Nav; href: string; className?: string; children: ReactNode }) {
     if (nav.canOpen(href)) {
         return (
@@ -50,7 +36,6 @@ export function Gated({ nav, href, className, children }: { nav: Nav; href: stri
     return <span className={className}>{children}</span>;
 }
 
-/** A step's state, as a coloured badge: green sends, amber needs a person, grey waits. */
 export function StateBadge({ state }: { state: StepState }) {
     const tone: Record<StepState["state"], string> = {
         on: "border-transparent bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200",
@@ -69,10 +54,8 @@ export function StateBadge({ state }: { state: StepState }) {
     );
 }
 
-/** The chosen stage: its rule, its sub-statuses, and the list on Customers. */
 export function StageHeader({ stage, nav }: { stage: FunnelStageView; nav: Nav }) {
     const customersHref = `/settings/customers?stage=${stage.param}`;
-    // Sub-statuses only where a stage has more than one.
     const parts = stage.header.parts.length > 1 ? stage.header.parts.filter((p) => p.customers > 0) : [];
     return (
         <div className={cn("flex flex-wrap items-end justify-between gap-3 border-b pb-4", LIFECYCLE_PALETTE_CLASS)}>
@@ -99,8 +82,6 @@ export function StageHeader({ stage, nav }: { stage: FunnelStageView; nav: Nav }
         </div>
     );
 }
-
-// ─── Segments ────────────────────────────────────────────────────────────────
 
 export function Segments({
     stage,
@@ -158,8 +139,6 @@ function SegmentItem({
     names: ReadonlyMap<string, string>;
     nav: Nav;
 }) {
-    // A Segment that needs review, or whose filters do not all read, is not emailed or listed from
-    // here: the list would hold only the filters still read, a wider one than the Segment.
     const flagged = s.needsReview || s.unreadable;
     const listHref = `/settings/customers?${new URLSearchParams(Object.fromEntries(Object.entries(s.params).filter(([k]) => k !== "search"))).toString()}`;
     const emailHref = s.id ? `/settings/campaigns/new?segment=${s.id}` : null;
@@ -242,8 +221,6 @@ function SegmentItem({
             ) : s.id ? (
                 <div className="mt-2.5 flex flex-wrap gap-2">
                     {searchHidden ? (
-                        // The Customers list opens by filters, never by a Segment's id, and the funnel never
-                        // carries a search's words: the list from here would be wider than the Segment.
                         <p className="w-full text-xs text-muted-foreground" data-segment-search>
                             It includes a search, so open it from the Segments on{" "}
                             <Gated nav={nav} href="/settings/customers" className="text-foreground">
@@ -266,8 +243,6 @@ function SegmentItem({
         </li>
     );
 }
-
-// ─── Results ─────────────────────────────────────────────────────────────────
 
 function kindOfRow(r: FunnelResultRow): string {
     if (r.kind === "automatic") return "Automatic";
@@ -318,13 +293,11 @@ export function Results({ stage, view, nav }: { stage: FunnelStageView; view: Fu
                     </EmptyState>
                 ) : (
                     <>
-                        {/* Phone: one card per email. */}
                         <ul className="divide-y rounded-lg border md:hidden">
                             {rows.map((r) => (
                                 <ResultCard key={r.kind === "campaign" ? r.campaignId : r.stepId} row={r} href={href(r)} nav={nav} windowDays={view.resultWindowDays} />
                             ))}
                         </ul>
-                        {/* Desktop: the table. */}
                         <div className="hidden md:block">
                             <Table>
                                 <TableHeader>

@@ -1,45 +1,21 @@
-// ============================================================
-// customer_emails — the per-Customer send ledger
-// ============================================================
-//
-// `order_emails` keys a send by Order (dispatchOrderEmail in ./index). These
-// emails belong to a Customer instead, and are keyed by
-// (customer, template, entity): the Claim bonus email (PRD-loyalty-points
-// slice 05) uses the Customer itself as the entity, the CRM's Aftercare emails
-// use the Customer or an Order.
-//
-// The row is claimed as `pending` before sending, then marked `sent` or
-// `failed`. Unlike order_emails, a failed send is retried: a later claim
-// re-claims a `failed` row while it has attempts left
-// (claim_customer_email, 20261020112000_customer_emails.sql). Nothing here
-// throws: email must never break the request that triggered it.
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEmailTransport } from "./index";
 import { getDefaultFromAddress } from "./transport";
 import type { EmailTransport, RenderedEmail, SendOutcome } from "./types";
 
-/** Matches `attempts < 3` in claim_customer_email. */
 export const CUSTOMER_EMAIL_MAX_ATTEMPTS = 3;
 
 export interface CustomerEmailKey {
   customerId: string;
-  /** The registry id (lib/email/registry.ts), e.g. "account.claim_bonus". */
   template: string;
-  /** What the email is about: the Customer, an Order… */
   entityId: string;
 }
 
 export type CustomerEmailClaim =
   | { claimed: true; id: number; attempts: number }
-  /** Already sent, in flight, out of attempts, or the claim itself failed. */
   | { claimed: false; error?: string };
 
-/**
- * Claims one send. `claimed: true` means this caller owns it and must mark it
- * sent or failed. One SQL statement, so two concurrent callers cannot both win.
- */
 export async function claimCustomerEmail(
   admin: SupabaseClient,
   key: CustomerEmailKey,
@@ -66,10 +42,6 @@ export async function markCustomerEmailSent(admin: SupabaseClient, id: number): 
   if (error) console.error(`[customer-emails] could not mark ${id} sent:`, error.message);
 }
 
-/**
- * Records a failed attempt. Returns whether a later claim may try again: the
- * attempt count was set when this attempt was claimed.
- */
 export async function markCustomerEmailFailed(
   admin: SupabaseClient,
   claim: { id: number; attempts: number },
@@ -83,20 +55,11 @@ export async function markCustomerEmailFailed(
   return { retryable: claim.attempts < CUSTOMER_EMAIL_MAX_ATTEMPTS };
 }
 
-/**
- * Claim → send → mark. Renders only once the send is claimed, so a skipped
- * send costs no render, and work that must happen only for the caller that
- * owns the send can go in `render` (the review request mints its link token
- * there). A `render` that throws is a failed attempt, like a failed send.
- * Returns `skipped` when it was not this caller's to send.
- */
 export async function dispatchCustomerEmail(params: {
   key: CustomerEmailKey;
   to: string;
   render: () => RenderedEmail | Promise<RenderedEmail>;
-  /** Reply-To, e.g. the support inbox for an email whose footer says "reply to this email". */
   replyTo?: string;
-  /** Extra message headers: the one-click unsubscribe pair on an email sent like a campaign. */
   headers?: Record<string, string>;
   admin?: SupabaseClient;
   transport?: EmailTransport;

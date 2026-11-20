@@ -4,7 +4,6 @@ import { getGooglePlaceTestimonials } from "@/lib/google/places-reviews";
 import type { GuideTopic } from "@/lib/seo/guides-content";
 import { selectTopicReviews, type RawReview, type TopicReview } from "@/lib/seo/topic-reviews";
 
-/** Guides render per request; one Shop review read an hour, shared by every topic, is plenty. */
 const getStoreReviews = unstable_cache(
   async (): Promise<RawReview[]> => {
     try {
@@ -31,11 +30,6 @@ const getStoreReviews = unstable_cache(
   { revalidate: 3600 },
 );
 
-/**
- * Deliberately outside unstable_cache: Next runs a fetch inside it as no-store, so each
- * topic's hourly refresh was a billed Places call. Out here it shares the landing page's
- * cached response (PLACE_REVIEWS_REVALIDATE_SECONDS).
- */
 async function getGoogleReviews(): Promise<RawReview[]> {
   try {
     const reviews = await getGooglePlaceTestimonials({ limit: 20 });
@@ -51,7 +45,6 @@ async function getGoogleReviews(): Promise<RawReview[]> {
   }
 }
 
-/** Server loader for slice 12. Never throws: a page without quotes beats a broken page. */
 export async function getTopicReviews(topic: GuideTopic, limit = 4): Promise<TopicReview[]> {
   const [store, google] = await Promise.all([getStoreReviews(), getGoogleReviews()]);
   return selectTopicReviews([...store, ...google], topic, limit);

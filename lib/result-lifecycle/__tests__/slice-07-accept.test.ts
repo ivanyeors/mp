@@ -3,12 +3,7 @@ import { transitionResult } from "@/lib/result-lifecycle";
 import { planCapture } from "@/lib/authorization-hold";
 import { assembleBuild, findStockShortages } from "@/lib/build-assembly";
 
-/** Slice 07: accept/capture/top-up/release rules (no live Stripe). */
-
 describe("slice 07 accept path", () => {
-  // Was: "rejects accept without payment intent (review-only)". ADR 0016 moved
-  // that guard to `capture`, because for a Result with no hold Accept is the step
-  // that creates the Balance payment Checkout and must run before money exists.
   it("accepts without a payment intent — a no-hold Result settles by Balance payment", () => {
     const result = transitionResult(
       { status: "assigned", filling_template_id: 1, payment_intent_id: null },

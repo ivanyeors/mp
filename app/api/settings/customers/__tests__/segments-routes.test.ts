@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * CRM 05: the Segments routes. Seeing and counting Segments needs `customers`;
- * saving, updating, renaming and archiving need `customers-edit`. Filters are
- * checked by the list's schema on the way in, and anything it would drop is
- * refused. Every change is audited with the name and the filters, never
- * Customer data.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -27,9 +19,9 @@ vi.mock("@/lib/supabase/server", async () => {
 const listRoute = await import("../segments/route");
 const itemRoute = await import("../segments/[segmentId]/route");
 
-const CLERK = "00000000-0000-4000-8000-0000000000b2"; // customers-edit, one profile
-const LOOKER = "00000000-0000-4000-8000-0000000000b3"; // customers only: view-only
-const VIEWER = "00000000-0000-4000-8000-0000000000b5"; // no customers key
+const CLERK = "00000000-0000-4000-8000-0000000000b2";
+const LOOKER = "00000000-0000-4000-8000-0000000000b3";
+const VIEWER = "00000000-0000-4000-8000-0000000000b5";
 
 const WANG = "11111111-1111-4111-8111-000000000004";
 
@@ -55,7 +47,6 @@ const signIn = (memberId: string | null) => {
 };
 const segment = (id: string) => h.db.customer_segments.find((s) => s.id === id);
 
-/** Customer data that must never reach the audit log. */
 const MEI_EMAIL = "mei.tan@x.test";
 
 beforeEach(() => {
@@ -229,7 +220,6 @@ describe("changing a Segment", () => {
     const { rows } = (await (await list()).json()) as { rows: Row[] };
     expect(rows.map((r) => r.name)).toEqual(["Old region"]);
     expect((await create({ name: "Premium", filters: { bought: "premium" } })).status).toBe(201);
-    // An archived Segment cannot be changed.
     expect((await patch(S_PREMIUM, { name: "Again" })).status).toBe(404);
     expect((await patch(S_ARCHIVED, { archived: true })).status).toBe(404);
   });

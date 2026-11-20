@@ -1,14 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * A guest gives their email on the configurator's first question (ADR 0049),
- * so every Draft Result Staff can see is one they can reach. The route writes
- * it to `customer_email` on a Draft only, never on a held Result (whose email,
- * and the access token its emails carry, are the hold's), and, once the save
- * has succeeded, makes the email a Customer with the box beside it (ADR 0051).
- * *Save without purchasing* does the same for the contact it saves.
- */
-
 const h = vi.hoisted(() => ({
   maybeSingle: vi.fn(),
   upsert: vi.fn(),
@@ -57,7 +48,6 @@ const post = (body: Record<string, unknown>) =>
     }),
   );
 
-/** The row the route upserted. */
 const written = () => h.upsert.mock.calls[0]![0] as Record<string, unknown>;
 
 beforeEach(() => {

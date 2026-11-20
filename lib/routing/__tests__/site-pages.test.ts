@@ -3,15 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { isSitePage, NOT_FOR_CUSTOMERS, SITE_PAGES } from "../site-pages";
 
-/**
- * The site's pages, as an email's links to our own site are checked
- * (PRD-campaign-email-editor slice 11): the list in code is the app's folders,
- * so a link checked against it is checked against what the site serves.
- */
-
 const APP = path.join(process.cwd(), "app", "[lang]");
 
-/** Every page under app/[lang], as its route: `shop/[slug]/page.tsx` is `/shop/[slug]`. */
 function pagesOnDisk(dir = APP): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = path.join(dir, e.name);

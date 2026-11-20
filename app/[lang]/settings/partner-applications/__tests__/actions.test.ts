@@ -1,20 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applicantLogoFolder, partnerLogoFolder } from "@/lib/partner-upload/urls";
 
-/**
- * Spec tests for Staff approving and rejecting a Partner application (owner
- * request, 2026-11-16). Approval copies the listing the applicant sent at
- * sign-up (their own stored logo, the trimmed write-up, the website) onto the
- * new `partners` row and publishes it unless Staff pass `list: false`. An
- * application withdrawn (deleted) while Staff act on it must not be approved
- * or rejected, and approval must leave no partner row behind.
- *
- * Outcomes only: the rows in an in-memory database (the shared fake that
- * answers the real query the code builds), and what the action throws. The one
- * hook, `h.afterRead`, plays a concurrent request: it changes the application
- * after the action has read it and before it writes.
- */
-
 const ORIGIN = "https://proj.supabase.co";
 const MEDIA = `${ORIGIN}/storage/v1/object/public/media/`;
 const APPLICANT = "6b1f0c4e-2d3a-4b5c-8d9e-0f1a2b3c4d5e";
@@ -38,7 +24,6 @@ vi.mock("@/lib/supabase/server", async () => {
         from: (table: string) => {
           const q = fake.from(table);
           if (table === "partner_users") {
-            // A concurrent request lands right after the action reads the row.
             const read = q.maybeSingle;
             q.maybeSingle = async () => {
               const res = await read();

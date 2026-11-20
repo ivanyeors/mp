@@ -9,11 +9,6 @@ import {
 import { PREVIEW_INTRO, buildReviewCardPreview, sendReviewCardPreview } from "@/lib/reviews/preview";
 import { isReviewUpdate } from "@/lib/reviews/telegram-handler";
 
-/**
- * The Telegram preview: sample reviews through the production card renderer,
- * marked as previews, with buttons that can only check access.
- */
-
 const NOW = new Date("2026-10-02T09:00:00Z");
 const lines = (text: string) => text.split("\n");
 
@@ -36,7 +31,6 @@ describe("buildReviewCardPreview", () => {
       expect(lines(card.text)[0]).toMatch(/^🧪 PREVIEW — .*Sample review, not real\./);
       expect([GOOGLE_CARD_HEADER, SHOP_CARD_HEADER]).toContain(lines(card.text)[1]);
       expect(card.text.length).toBeLessThanOrEqual(4096);
-      // Sample replies follow the rules the real ones are held to.
       expect(card.text).not.toContain("⚠️");
     }
   });
@@ -46,7 +40,6 @@ describe("buildReviewCardPreview", () => {
     const buttons = cards.flatMap((c) => c.card.replyMarkup?.inline_keyboard.flat() ?? []);
     expect(buttons.length).toBeGreaterThan(0);
     for (const b of buttons) {
-      // A link button (Open on Google Maps) calls nothing back.
       if (b.url) continue;
       expect(parseReviewCallback(b.callback_data ?? "")).toMatchObject({ id: PREVIEW_REVIEW_ID });
     }
@@ -130,7 +123,6 @@ describe("sendReviewCardPreview", () => {
     expect(result).toEqual({ ok: true, sent: 10, total: 10, usedClaude: false });
     expect(send.mock.calls[0]).toEqual([PREVIEW_INTRO, undefined]);
     expect(String((send.mock.calls[1] as unknown[])[0])).toMatch(/^🧪 PREVIEW — a new 5★ review/);
-    // Last, a customer message card a reply can be tried on.
     const last = String((send.mock.calls.at(-1) as unknown[])[0]);
     expect(last).toMatch(/^🧪 PREVIEW — a new Instagram message/);
     expect(last.split("\n")[1]).toMatch(/^💬 INSTAGRAM DM · Mei Lin \(@meilin\.sleeps\)/);

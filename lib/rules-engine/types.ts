@@ -1,5 +1,3 @@
-/** Rules Engine — typed Rule graph model (slice 01). Pure data; no I/O. */
-
 export const RULE_FLOWS = ["premium-mpillow", "basic-mpillow", "mbolster"] as const;
 export type RuleFlow = (typeof RULE_FLOWS)[number];
 
@@ -16,15 +14,12 @@ export type InputValueType = "number" | "enum" | "boolean" | "string" | "string[
 export type InputDef = {
   key: string;
   valueType: InputValueType;
-  /** Enum / Match values when valueType is enum or boolean. */
   values?: readonly string[];
 };
 
 export type RangeBand = {
   id: string;
-  /** Inclusive lower bound in canonical cm. Null = -∞. */
   minCm: number | null;
-  /** Exclusive upper bound in canonical cm. Null = +∞. */
   maxCm: number | null;
   label: string;
 };
@@ -32,7 +27,6 @@ export type RangeBand = {
 export type NodeBase = {
   id: string;
   label?: string;
-  /** Canvas authoring position (workbench UI only; ignored by evaluate/validate). */
   position?: { x: number; y: number };
 };
 
@@ -41,21 +35,14 @@ export type RangeNode = NodeBase & { type: "range"; inputKey: string; bands: Ran
 export type MatchNode = NodeBase & { type: "match"; inputKey: string };
 export type CombineNode = NodeBase & {
   type: "combine";
-  /** "all" (default) needs every inbound branch; "any" fires on the first (ADR 0027). */
   mode?: "all" | "any";
 };
 export type SizeOutputNode = NodeBase & { type: "size-output"; size: SizeOrLength };
 export type TemplateOutputNode = NodeBase & {
   type: "template-output";
   templateId: string;
-  /** Size/length this template is scoped to (publish-validated against path). */
   size: SizeOrLength;
 };
-/**
- * One Filling Template per size (length for Mbolster). The size the graph
- * resolved picks the slot, so the branches before it need not split by size
- * (ADR 0027). No slot for that size means it did not fire.
- */
 export type TemplateBySizeNode = NodeBase & {
   type: "template-by-size";
   templates: Partial<Record<SizeOrLength, string>>;
@@ -68,7 +55,6 @@ export type FlowRouteNode = NodeBase & {
   type: "flow-route";
   targetFlow: RuleFlow;
   reason: string;
-  /** Same-flow Fallback sibling required at publish. */
   fallbackSiblingId: string;
 };
 export type FallbackNode = NodeBase & {
@@ -93,7 +79,6 @@ export type RuleEdge = {
   id: string;
   source: string;
   target: string;
-  /** Band id (Range) or match value (Match). */
   handle?: string;
 };
 
@@ -145,5 +130,4 @@ export type RuleGraphRow = {
   published_at: string | null;
 };
 
-/** A published version without its graph; the graph is fetched on demand. */
 export type RuleGraphSummary = Omit<RuleGraphRow, "graph">;

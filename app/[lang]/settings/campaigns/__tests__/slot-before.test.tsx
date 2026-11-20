@@ -9,14 +9,6 @@ import { EMPTY_CAMPAIGN_DRAFT } from "@/lib/email-campaigns/rules";
 import { buildFunnel, type FunnelCampaignFact, type FunnelSegmentFact } from "@/lib/email-funnel/model";
 import { planMove, slotBefore } from "@/lib/email-funnel/move";
 
-/**
- * *Add an email here* (PRD-email-funnel slice 07): New campaign at
- * `?after=<P>:<did>&before=<C>` saves the email as a follow-up of P and, on
- * its first save, moves C to follow it, through the same plan and write as a
- * drag. A refused move still saves the email, and says C did not move.
- * `before` without a valid `after`, or naming a started campaign, is ignored.
- */
-
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const seg = (n: number, name: string, params: Record<string, string>): FunnelSegmentFact => ({ id: id(n), name, params, count: 1, needsReview: false });
 const camp = (n: number, name: string, segment: number | null, started = false): FunnelCampaignFact => ({
@@ -33,7 +25,6 @@ const camp = (n: number, name: string, segment: number | null, started = false):
   stats: { handed: 0, firstSentAt: null, lastSentAt: null },
 });
 
-// Lead: P (started) → C (a draft, to those who clicked P).
 const segments = [seg(1, "Lead", { stage: "lead" }), seg(2, "Lead · clicked “P”", { campaign: `${id(10)}:clicked` })];
 const P_AND_C = { segments, campaigns: [camp(10, "P", 1, true), camp(11, "C", 2)] };
 
@@ -41,12 +32,10 @@ describe("slotBefore and the plan", () => {
   it("puts the saved email between P and C", () => {
     const slot = slotBefore(P_AND_C, { id: id(10), state: "clicked" }, id(11));
     expect(slot).toEqual({ before: { id: id(11), name: "C" }, after: { campaignId: id(10), did: "clicked" }, stage: "lead" });
-    // Saved as P's follow-up (the same Segment as C's), then the move the editor asks for.
     const saved = { segments, campaigns: [...P_AND_C.campaigns, camp(12, "New", 2)] };
     const plan = planMove(saved, { campaignId: id(12), stage: slot!.stage, after: slot!.after, before: slot!.before.id });
     if (!plan.ok) throw new Error(plan.error);
     expect(plan.changes.map((c) => [c.campaignId, c.campaign])).toEqual([[id(11), { id: id(12), did: "sent" }]]);
-    // As the page then reads it: P → New → C.
     const after = buildFunnel({
       summary: null,
       subscribed: {},

@@ -13,26 +13,10 @@ import { cn } from "@/lib/utils";
 import { placeCampaignImage, type PlacedCampaignImage } from "../actions";
 import { Field } from "../field";
 
-/**
- * An image block's picture (PRD-campaign-email-editor slice 05), shared by
- * the image and the hero: chosen from the Media Library with its picker
- * (library, upload, or *Select from Drive*), with its alt text, prefilled
- * from the Media Asset's own and the block's to change, or marked decorative.
- *
- * Choosing an image makes its email rendition first (`placeCampaignImage`),
- * so a block only ever places an image an inbox can show; the card shows that
- * rendition, on the light plate when it has transparency, as the email does.
- *
- * An image beside words (slice 06's image + text) always says what it shows,
- * so it offers no *Decorative*.
- */
-
-// The picker and its Drive dialog load with the first image block, not with the page.
 const ImagePicker = lazy(() => import("@/components/ui/image-picker").then((m) => ({ default: m.ImagePicker })));
 
 type Placed = { ok: true; image: PlacedCampaignImage } | { ok: false; error: string };
 
-/** Each asset's rendition, asked for once while the page is open; a failure is asked again next time. */
 const placed = new Map<string, Promise<Placed>>();
 
 function place(assetId: string): Promise<Placed> {
@@ -47,7 +31,6 @@ function place(assetId: string): Promise<Placed> {
     return p;
 }
 
-/** The rendition of `assetId` for the card, once it arrives. */
 function usePlaced(assetId: string): Placed | null {
     const [got, setGot] = useState<{ assetId: string; result: Placed } | null>(null);
     useEffect(() => {
@@ -76,14 +59,10 @@ export function ImageField({
     image: BlockImage;
     onChange: (next: BlockImage, burst?: string) => void;
     readOnly: boolean;
-    /** The block's errors, keyed from the block: `image.asset`, `image.alt`. */
     errors: Record<string, string>;
     idPrefix: string;
-    /** Shown narrower, as the email's *Inset* width. */
     inset?: boolean;
-    /** Offer *Decorative*; when not, the image always has alt text. Default true. */
     allowDecorative?: boolean;
-    /** In 中文 (slice 17): its alt text changes, the picture and whether it is decorative don't. */
     layoutLocked?: boolean;
 }) {
     const shown = usePlaced(image.asset);
@@ -92,8 +71,6 @@ export function ImageField({
     const altId = `${idPrefix}-alt`;
     const decorativeId = `${idPrefix}-decorative`;
     const decorative = allowDecorative && Boolean(image.decorative);
-    // The block as it is now: Staff keep editing while a first rendition is made,
-    // and the choice lands on what they did meanwhile, not on the block as it was.
     const latest = useRef({ image, onChange });
     useLayoutEffect(() => {
         latest.current = { image, onChange };
@@ -111,12 +88,10 @@ export function ImageField({
         setPlacing(true);
         setPickError(null);
         const res = await place(selection.assetId);
-        // Its block was deleted meanwhile: nothing to place it in.
         if (!live.current) return;
         setPlacing(false);
         if (!res.ok) return setPickError(res.error);
         const { image: now, onChange: change } = latest.current;
-        // Alt text typed meanwhile stays; else the asset's own when it has some; a first image keeps what was typed.
         const alt = now.alt !== altWhenChosen ? now.alt : selection.alt?.trim().slice(0, CONTENT_LIMITS.alt) || (now.asset ? "" : now.alt);
         change({ ...now, asset: selection.assetId, alt });
     };
@@ -137,8 +112,6 @@ export function ImageField({
                         {CONTENT_PLACEHOLDERS.image}
                     </div>
                 ) : shown?.ok ? (
-                    // The rendition, as the email shows it: on its light plate when it has transparency.
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                         src={shown.image.url}
                         alt={decorative ? "" : image.alt}
@@ -166,7 +139,6 @@ export function ImageField({
                     maxLength={CONTENT_LIMITS.alt}
                     disabled={readOnly || decorative}
                     aria-invalid={errors["image.alt"] ? true : undefined}
-                    // Typed alt text is never decorative, even where a stored image says it was.
                     onChange={(e) => onChange({ asset: image.asset, alt: e.target.value }, typingBurst(e, altId))}
                 />
             </Field>

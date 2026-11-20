@@ -10,7 +10,6 @@ export default async function ShowroomPage({
 }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  // The model reaches the browser only through this page, after the guard.
   await requireAdminPage("showroom", locale);
   return <ShowroomViewer unit={MIDVIEW_08_83} />;
 }

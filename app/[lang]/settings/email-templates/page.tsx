@@ -13,11 +13,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-/**
- * Admin Panel → Email templates (PRD-email-templates): every email the
- * platform sends whose words Staff can change, by kind, with what was edited.
- * Guarded by `email-templates`, which Owner and Admin hold.
- */
 export default async function EmailTemplatesPage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

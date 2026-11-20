@@ -35,7 +35,6 @@ const TabLoading = () => (
   </div>
 );
 
-// Loaded on first open, so the cards tab stays light.
 const ProductVisualize = dynamic(
   () => import("./product-visualize").then((m) => m.ProductVisualize),
   {
@@ -50,7 +49,6 @@ const DimensionsSection = dynamic(
     loading: TabLoading,
   },
 );
-// Brings the cross-section renderer with it, so it loads only when opened.
 const SoftBodySection = dynamic(
   () => import("./soft-body-section").then((m) => m.SoftBodySection),
   {
@@ -64,7 +62,6 @@ export type ConfigureTab = "products" | "visualize" | "dimensions" | "soft-body"
 export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-  // Stable, so a tab that fetches on it does not refetch (and drop its draft) when the cards load.
   const settingsPath = useCallback(
     (path: string) => withLocale(path, locale),
     [locale],
@@ -89,7 +86,6 @@ export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
           byProduct.set(Number(p.id), { kind: p.kind, size: p.size as Size });
         }
       }
-      // Same item_id twice for one card keeps the last row's qty (matches the old grid's de-dupe).
       const qtyByCardItem = new Map<string, number>();
       for (const row of bomData ?? []) {
         const product = byProduct.get(Number(row.product_id));
@@ -135,7 +131,6 @@ export function ConfigureClient({ initialTab }: { initialTab: ConfigureTab }) {
               <div className="text-lg font-semibold md:text-2xl">
                 {kind === "basic" ? "Basic Mpillow" : "Premium Mpillow"}
               </div>
-              {/* Phones: one row per size, the whole row a link. */}
               <MobileList>
                 {SIZES.map((size) => (
                   <MobileListRow key={`${kind}-${size}`} href={cardPath(`${kind}-${size}`)}>

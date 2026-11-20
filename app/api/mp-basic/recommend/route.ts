@@ -108,8 +108,6 @@ export async function POST(req: Request) {
       "Basic Mpillow flow — tier locked to basic",
     ];
 
-    // RE slice 07: templates + spatial placements + color overrides so the
-    // completed preview can render the recommended mix in the read-only x-ray.
     const templates = await getBomTemplates(pillowProduct.kind ?? "basic", pillowProduct.size);
     const fillings = await getAvailableFillings();
     const { data: tplPlacements } = await admin

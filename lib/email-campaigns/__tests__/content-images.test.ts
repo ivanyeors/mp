@@ -11,13 +11,6 @@ import {
 } from "../content";
 import { CampaignDraftSchema, EMPTY_CAMPAIGN_DRAFT } from "../rules";
 
-/**
- * The image and hero blocks (PRD-campaign-email-editor slice 05): a Media
- * Asset by id, never a URL; alt text required unless decorative; a link to a
- * page of the site or an https link; a hero's heading, line and button each
- * optional, and written when kept.
- */
-
 const PHOTO = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
 const CUTOUT = "8a2d3c4b-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 const one = (b: unknown) => ({ v: 1, blocks: [b], fallbacks: {} });
@@ -40,7 +33,6 @@ describe("an image block", () => {
     expect(issues(one(image({ image: { asset: PHOTO, alt: "   " } })))).toEqual([
       ["blocks.0.image.alt", "Describe the image for anyone who can't see it, or mark it decorative."],
     ]);
-    // The preview draws it as it is.
     expect(CampaignContentPreviewSchema.safeParse(one(emptyBlock("image", "i"))).success).toBe(true);
   });
 
@@ -114,7 +106,6 @@ describe("a hero", () => {
   it("holds its words to words: no tags, only Variables in braces, the limits", () => {
     expect(issues(one(hero({ heading: "x".repeat(121) })))).toEqual([["blocks.0.heading", "At most 120 characters."]]);
     expect(issues(one(hero({ line: "x".repeat(201) })))).toEqual([["blocks.0.line", "At most 200 characters."]]);
-    // Its heading and line take Variables as a heading block's does (slice 13).
     expect(issues(one(hero({ heading: "{first_name}, sleep cooler", line: "For {first_name} {last_name}" })))).toEqual([]);
     expect(issues(one(hero({ line: "For {frist_name}" })))).toEqual([
       ["blocks.0.line", "{frist_name} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}."],

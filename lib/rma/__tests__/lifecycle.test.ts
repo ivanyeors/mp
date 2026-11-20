@@ -18,7 +18,6 @@ describe("emailTemplateForStatus", () => {
   });
 
   it("every admin-driven transition target from requested/approved has a template", () => {
-    // slice 05 actions: requested→approved|rejected, approved→instructions_sent
     const adminTargets: RmaStatus[] = ["approved", "rejected", "instructions_sent"];
     for (const t of adminTargets) {
       expect(nextStatuses("requested").concat(nextStatuses("approved"))).toContain(t);

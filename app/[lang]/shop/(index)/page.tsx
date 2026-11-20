@@ -46,7 +46,6 @@ export default async function ShopPage({ params, searchParams }: ShopPageProps) 
 
   return (
     <div className="container mx-auto max-w-7xl space-y-8 px-4 py-8">
-      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{m.shop.title}</h1>
@@ -60,10 +59,8 @@ export default async function ShopPage({ params, searchParams }: ShopPageProps) 
         />
       </div>
 
-      {/* Filters */}
       <ShopFilters sort={sort} />
 
-      {/* Product grid / empty state */}
       {products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
           <p className="text-xl font-medium text-muted-foreground">
@@ -84,7 +81,6 @@ export default async function ShopPage({ params, searchParams }: ShopPageProps) 
         </ProductGrid>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 pt-4">
           {page > 1 ? (

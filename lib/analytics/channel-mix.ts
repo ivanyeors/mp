@@ -2,27 +2,14 @@ import { classifyVisit, type Channel, type VisitSourceFields } from "@/lib/analy
 import { bucketStart, type Granularity } from "@/lib/seo-metrics/aggregate";
 import { addDays } from "@/lib/seo-metrics/dates";
 
-/**
- * Visits by channel over time + per-channel funnel (slice 03, PRD-search-visibility).
- * Pure; the server action loads rows.
- */
-
 export type MixVisit = VisitSourceFields & {
   id: string;
   started_at: string;
   converted_order_id: string | null;
 };
 
-/**
- * Whose Visit an Order is counted for. `orders` / `revenue` are last touch:
- * the Visit that paid. `firstOrders` / `firstRevenue` are first touch: the same
- * Orders, counted for the Entry source of that shopper's first Visit instead
- * (`lib/analytics/journey/first-touch.ts`). The two columns sum to the same
- * total; only the split between rows differs.
- */
 type Credit = { orders: number; revenue: number; firstOrders: number; firstRevenue: number };
 
-/** Chart series, fixed order (colour follows the entity, never its rank). */
 export const MIX_SERIES = ["organic_search", "ai_assistant", "direct", "referral", "other"] as const;
 export type MixSeries = (typeof MIX_SERIES)[number];
 
@@ -34,7 +21,6 @@ export const MIX_SERIES_LABELS: Record<MixSeries, string> = {
   other: "Social, paid & email",
 };
 
-/** Five colours is the validated categorical budget; the long tail folds into one series. */
 export function seriesFor(channel: Channel): MixSeries {
   return channel === "social" || channel === "paid" || channel === "email" ? "other" : channel;
 }
@@ -47,7 +33,6 @@ export type FunnelRow = Credit & {
   configuratorVisits: number;
 };
 
-/** One platform arriving one way: Google by ads and Google by search are two rows. */
 export type PlatformRow = Credit & {
   platform: string;
   channel: Channel;
@@ -58,13 +43,11 @@ export type PlatformRow = Credit & {
 export type ChannelMix = {
   buckets: MixBucket[];
   funnel: FunnelRow[];
-  /** Named platforms only, most Visits first. Direct, Email, AI and plain referrals name none. */
   platforms: PlatformRow[];
   aiSources: { source: string; visits: number; orders: number }[];
   totalVisits: number;
 };
 
-/** Calendar date in Singapore (UTC+8, no DST), so a 1am visit is not filed under yesterday. */
 export function singaporeDate(iso: string): string {
   return new Date(Date.parse(iso) + 8 * 3_600_000).toISOString().slice(0, 10);
 }
@@ -73,14 +56,8 @@ const CHANNEL_ORDER: Channel[] = ["organic_search", "ai_assistant", "direct", "r
 
 export function buildChannelMix(input: {
   visits: MixVisit[];
-  /** Visit ids with a page view on mp-config / mbolster-config. */
   configuratorVisitIds: Set<string>;
-  /** Paid order id → total, for visits that converted. */
   orderTotals: Map<string, number>;
-  /**
-   * Visit id → the first Visit of the shopper behind it, for Visits that
-   * converted. A Visit missing here is counted as its own first touch.
-   */
   firstTouch?: Map<string, VisitSourceFields>;
   from: string;
   to: string;
@@ -120,7 +97,6 @@ export function buildChannelMix(input: {
     const bucket = buckets.get(bucketStart(date, input.granularity));
     if (bucket) bucket[seriesFor(channel)] += 1;
 
-    // KPIs and funnel stay on [from, to]; the chart may start on the Monday before.
     if (date < input.from) continue;
     totalVisits += 1;
     const row = funnel.get(channel)!;
@@ -138,8 +114,6 @@ export function buildChannelMix(input: {
         r.orders += 1;
         r.revenue += converted;
       }
-      // The same Order, counted for where its shopper first came from. That
-      // first Visit may predate the range: the Order is in it, which is what counts.
       const first = classifyVisit(input.firstTouch?.get(v.id) ?? v);
       for (const r of [funnel.get(first.channel)!, first.platform ? platformRow(first.platform, first.channel) : null]) {
         if (!r) continue;

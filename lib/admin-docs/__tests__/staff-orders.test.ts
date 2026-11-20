@@ -6,8 +6,6 @@ import { PAY_LINK_LIFETIME_DAYS } from "@/lib/staff-orders/shared";
 import { ADMIN_GUIDES } from "../guides";
 import { staffOrdersGuideSections } from "../staff-orders";
 
-/** Documentation → Selling from the Customer page (ADR 0048). */
-
 describe("Staff orders guide", () => {
   const sections = staffOrdersGuideSections();
   const words = sections

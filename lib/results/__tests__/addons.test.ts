@@ -50,10 +50,8 @@ describe("suggestAddons", () => {
   it("suggests pillow add-ons sized to the recommendation (prefers exact size)", () => {
     const addons = suggestAddons(catalog, prices, { productType: "pillow", sizeKey: "M" });
     expect(addons.map((a) => a.name).sort()).toEqual(["Cervical Neck Support"]);
-    // Exact M beats one-size for the same name
     expect(addons.find((a) => a.name === "Cervical Neck Support")?.item_id).toBe(2);
     expect(addons.find((a) => a.name === "Cervical Neck Support")?.msrp).toBe(22);
-    // XS-only and bolster-only rows excluded
     expect(addons.some((a) => a.name === "Travel Pouch")).toBe(false);
     expect(addons.some((a) => a.name.includes("Bolster"))).toBe(false);
   });
@@ -63,11 +61,8 @@ describe("suggestAddons", () => {
       productType: "bolster",
       sizeKey: "medium",
     });
-    // Bolster Sleeve (medium), Knee Support (S letter only for short — excluded), Bolster Tie is long
     expect(addons.map((a) => a.name).sort()).toEqual(["Bolster Sleeve"]);
-    // Prefer exact length over BOLSTER for same name
     expect(addons.find((a) => a.name === "Bolster Sleeve")?.item_id).toBe(5);
-    // Cervical (one-size / pillow) excluded
     expect(addons.some((a) => a.name === "Cervical Neck Support")).toBe(false);
     expect(addons.some((a) => a.name === "Travel Pouch")).toBe(false);
   });
@@ -100,11 +95,9 @@ describe("addonsForAnswers", () => {
 });
 
 describe("keepOfferedAddons", () => {
-  // Cervical Neck Support M (62) and L (63); the Ear Comfort Pad (41) is one-size.
   const picked = new Set([62, 41]);
 
   it("keeps a sized pick while the build's size is unknown", () => {
-    // The unscoped list carries the L: the restored M must survive it.
     const unscoped = [{ item_id: 63 }, { item_id: 41 }];
     expect([...keepOfferedAddons(picked, unscoped, null)].sort()).toEqual([41, 62]);
     expect([...keepOfferedAddons(picked, unscoped, "")].sort()).toEqual([41, 62]);

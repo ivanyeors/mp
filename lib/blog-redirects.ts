@@ -1,14 +1,3 @@
-/**
- * Blog posts that no longer live at their own URL, from the October 2026
- * consolidation (`.claude/PRD-search-visibility/content-audit.md`).
- *
- * The proxy answers retired slugs with 410 Gone and merged slugs with a
- * permanent redirect to the post that absorbed them, in every locale, and
- * listings skip both. The code is the source of truth: a stale `published`
- * row in `blog_posts` cannot bring a slug back.
- */
-
-/** Off-topic or dated posts, removed outright. */
 export const RETIRED_BLOG_SLUGS: ReadonlySet<string> = new Set([
   "celebrating-world-sleep-day-how-the-right-pillow-can-help-you-get-a-better-nights-rest",
   "embracing-the-year-of-the-dragon-a-guide-to-auspicious-lunar-new-year-house-cleaning",
@@ -24,7 +13,6 @@ export const RETIRED_BLOG_SLUGS: ReadonlySet<string> = new Set([
   "why-are-you-yawning-so-much",
 ]);
 
-/** Overlapping posts folded into a kept post: slug → the slug that absorbed it. */
 export const MERGED_BLOG_SLUGS: Readonly<Record<string, string>> = {
   "bolster-pillow-vs-regular-pillow-which-offers-better-support":
     "bolsters-vs-pillows-do-you-really-need-both",
@@ -102,7 +90,6 @@ export const MERGED_BLOG_SLUGS: Readonly<Record<string, string>> = {
     "how-to-choose-the-best-pillow-in-singapore",
   "which-type-of-pillow-is-best-for-sleep-amp-neck-pain-relief":
     "how-to-choose-the-best-pillow-in-singapore",
-  // The same post under its address on the old store, which has no "-amp-".
   "which-type-of-pillow-is-best-for-sleep-neck-pain-relief":
     "how-to-choose-the-best-pillow-in-singapore",
   "2024-pillow-revolution-embracing-customization-for-blissful-sleep":
@@ -151,9 +138,7 @@ export const MERGED_BLOG_SLUGS: Readonly<Record<string, string>> = {
 
 export type BlogSlugFate = { kind: "gone" } | { kind: "merged"; into: string };
 
-/** What happened to a slug that is no longer its own post; null for a live slug. */
 export function blogSlugFate(slug: string): BlogSlugFate | null {
   if (RETIRED_BLOG_SLUGS.has(slug)) return { kind: "gone" };
-  // Own keys only: a slug like "constructor" must not read Object.prototype.
   return Object.hasOwn(MERGED_BLOG_SLUGS, slug) ? { kind: "merged", into: MERGED_BLOG_SLUGS[slug] } : null;
 }

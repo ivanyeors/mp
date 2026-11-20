@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The Telegram webhook moves stock, so an unsigned POST must be refused in
- * production — including when TELEGRAM_WEBHOOK_SECRET was never set.
- */
-
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: vi.fn() }));
 
 const { GET, POST } = await import("@/app/api/telegram/webhook/route");
@@ -14,7 +9,6 @@ const SECRET = "tg-secret";
 function post(header?: string) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (header !== undefined) headers["x-telegram-bot-api-secret-token"] = header;
-  // No chat id: an authorised request returns 200 without doing any work.
   return new Request("https://x.test/api/telegram/webhook", {
     method: "POST",
     headers,

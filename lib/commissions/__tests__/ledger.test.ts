@@ -7,19 +7,6 @@ import {
   type CommissionItemInput,
 } from "@/lib/commissions/ledger";
 
-/**
- * The commission ledger under the Referral Partner Agreement's Schedule
- * (ADR 0034): one flat commission per Qualifying Sale — an order holding at
- * least one customised premium pillow — and its reversal when an RMA refunds
- * an Eligible Product. Expectations come from the spec, not the code.
- *
- * The in-memory admin is lib/supabase/__tests__/fake-admin plus an `upsert`
- * that behaves as Postgres does with the `commissions` table's unique indexes
- * (supabase/migrations 20260728020000 and 20261027120000): one row per
- * order_item_id, one `basis = 'order'` row per order_id, `ON CONFLICT … DO
- * NOTHING` for `ignoreDuplicates`, and the column defaults a row would get.
- */
-
 type Row = Record<string, unknown>;
 
 const UNIQUE: Record<string, Array<{ cols: string[]; where?: (r: Row) => boolean }>> = {
@@ -41,7 +28,6 @@ function adminFor(db: FakeDb): SupabaseClient {
         upsert(row: Row, opts: { onConflict?: string; ignoreDuplicates?: boolean } = {}) {
           const rows = (db[table] ??= []);
           const target = (opts.onConflict ?? "id").split(",").map((c) => c.trim());
-          // ON CONFLICT needs a full (non-partial) unique index on exactly these columns.
           const arbiter =
             target.join() === "id" ||
             (UNIQUE[table] ?? []).some((u) => !u.where && u.cols.join() === target.join());
@@ -87,7 +73,6 @@ const snapshot = (over: Row = {}) => ({
   ...over,
 });
 
-/** A goods line from a customisation's premium pillow: an Eligible Product. */
 const premium = (n: number, over: Partial<CommissionItemInput> = {}): CommissionItemInput => ({
   id: id(n),
   kind: "goods",
@@ -178,7 +163,6 @@ describe("createHeldCommissionsForOrder — one held commission per Qualifying S
   });
 
   it("the row sits on the eligible item with the lowest id, whatever order the items arrive in", async () => {
-    // id(1) is a bolster (lowest id overall, not eligible); id(2) is the lowest eligible.
     await create([premium(5), premium(2), bolster(1), premium(3)]);
     expect(commissions()).toHaveLength(1);
     expect(commissions()[0].order_item_id).toBe(id(2));
@@ -187,7 +171,6 @@ describe("createHeldCommissionsForOrder — one held commission per Qualifying S
   it("a second call (webhook redelivery) changes nothing", async () => {
     await create([premium(3), premium(2)], { deliveredAt: null });
     const before = structuredClone(commissions());
-    // Even if the items arrive in another order and the partner's terms moved on.
     db.partners = [partnerRow({ commission_choice: 10 })];
     expect(await create([premium(2), premium(3)], { deliveredAt: null })).toBe(true);
     expect(commissions()).toEqual(before);
@@ -247,10 +230,8 @@ describe("createHeldCommissionsForOrder — commission_amount", () => {
     db.partners = [
       partnerRow({ commission_choice: 30, commission_choice_next: 20, commission_choice_next_from: "2026-10-31" }),
     ];
-    // 15:30Z on 30 Oct is 23:30 on 30 Oct in Singapore: the old pick.
     vi.setSystemTime(new Date("2026-10-30T15:30:00Z"));
     await create([premium(1)], { orderId: ORDER });
-    // 16:30Z on 30 Oct is 00:30 on 31 Oct in Singapore: the waiting pick.
     vi.setSystemTime(new Date("2026-10-30T16:30:00Z"));
     await create([premium(2)], { orderId: OTHER_ORDER });
     const byOrder = new Map(commissions().map((c) => [c.order_id, c.commission_amount]));
@@ -274,14 +255,10 @@ describe("createHeldCommissionsForOrder — release_at", () => {
 
 describe("voidCommissionsForRma — what a refund reverses", () => {
   const RMA = "rma-1";
-  // ORDER: two customised premium pillows (P1, P2), a bolster (B), a legacy shop
-  // premium pillow (L). The order row sits on P1.
   const P1 = id(1);
   const P2 = id(2);
   const B = id(3);
   const L = id(4);
-  // OTHER_ORDER: old per-unit rows on a premium pillow (U1) and a bolster (U2), and
-  // its own order row on U1.
   const U1 = id(11);
   const U2 = id(12);
 

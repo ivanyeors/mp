@@ -42,7 +42,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const post = blogSlugFate(slug) ? null : await getBlogPostBySlugFromDb(slug, locale);
     if (!post || post.status !== "published") return {};
 
-    // A locale with no translation shows the default-locale text, so it canonicalises there.
     return buildPageMetadata({
         title: post.title,
         description: resolveMetaDescription(post),
@@ -58,14 +57,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogPostPage({ params }: Props) {
     const { lang, slug } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-    // The proxy answers these first; this covers any request that skips it.
     const fate = blogSlugFate(slug);
     if (fate?.kind === "merged") permanentRedirect(withLocale(`/blog/${fate.into}`, locale));
     if (fate) notFound();
 
     const post = await getBlogPostBySlugFromDb(slug, locale);
 
-    // Drafts and unpublished posts are not public, even by direct URL.
     if (!post || post.status !== "published") notFound();
 
     const headings = extractHeadings(post.body);
@@ -146,7 +143,6 @@ export default async function BlogPostPage({ params }: Props) {
                             })}
                         </time>
                     )}
-                    {/* Editorial updates only, and only when they land on a later day (slice 17). */}
                     {post.content_updated_at &&
                         (!post.published_at ||
                             Date.parse(post.content_updated_at) - Date.parse(post.published_at) > 86_400_000) && (

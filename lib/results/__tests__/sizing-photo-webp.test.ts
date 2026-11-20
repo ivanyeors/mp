@@ -3,9 +3,6 @@ import { describe, expect, it } from "vitest";
 import { screenableImage } from "@/lib/ai/photo-screening";
 import { sizingPhotoAsWebp } from "@/lib/results/sizing-photo-webp";
 
-/** Sizing photos are stored as WebP (ADR 0047). */
-
-/** A noisy photo-like JPEG, so the encoders have something to compress. */
 async function jpeg(width: number, height: number): Promise<string> {
   const raw = Buffer.alloc(width * height * 3);
   for (let i = 0; i < raw.length; i++) raw[i] = (i * 7919) % 251;
@@ -19,7 +16,6 @@ describe("sizingPhotoAsWebp", () => {
     const stored = await sizingPhotoAsWebp({ mediaType: "image/jpeg", base64 });
     expect(stored).not.toBeNull();
     expect(stored!.dataUrl.startsWith("data:image/webp;base64,")).toBe(true);
-    // Claude is given exactly the bytes that are stored.
     expect(screenableImage(stored!.dataUrl)).toEqual(stored!.image);
     const meta = await sharp(Buffer.from(stored!.image.base64, "base64")).metadata();
     expect(meta.format).toBe("webp");
@@ -40,7 +36,6 @@ describe("sizingPhotoAsWebp", () => {
   });
 
   it("turns a photo the phone saved sideways upright, keeping its shape", async () => {
-    // Stored 2400×1800 with an EXIF note to turn it a quarter: it is a 1800×2400 portrait.
     const base64 = (
       await sharp({ create: { width: 2400, height: 1800, channels: 3, background: "#a86" } })
         .jpeg()

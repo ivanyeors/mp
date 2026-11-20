@@ -50,12 +50,10 @@ export function BottomBar({ onAddToCart }: BottomBarProps) {
   const isFirstStep = step === "preferences";
   const isLastStep = step === "summary";
 
-  // Step 1 has its own "Get Recommendation" button — hide the bottom bar
   if (isFirstStep) return null;
 
   return (
     <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-5 py-4 space-y-3 max-md:pb-[calc(1rem+var(--app-dock-clearance))]">
-      {/* Price summary */}
       {showPrice && (
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
@@ -81,7 +79,6 @@ export function BottomBar({ onAddToCart }: BottomBarProps) {
         </div>
       )}
 
-      {/* Action */}
       {isLastStep ? (
         <Button
           onClick={onAddToCart}

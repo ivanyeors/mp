@@ -5,13 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * *Leave out people in…* (PRD-campaign-audiences slice 06), in the editor as
- * Staff use it: the Segments a campaign leaves out show as chips, each taken
- * back with its ×, and what the editor previews and saves carries them. Once
- * a wave was planned they are fixed with the audience: no × and no picker.
- */
-
 const actions = vi.hoisted(() => ({
   archiveCampaignAction: vi.fn(),
   checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),

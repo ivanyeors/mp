@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -8,13 +7,6 @@ import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { CampaignDraftInput } from "@/lib/email-campaigns/rules";
 import type { EmailRendition } from "@/lib/media-assets/email-renditions";
 import { emptyWorld, fakeCampaignsClient } from "@/lib/email-campaigns/__tests__/fake-db";
-
-/**
- * Images through the page's actions (PRD-campaign-email-editor slice 05):
- * choosing one makes its email rendition; Save asks for alt text by field and
- * refuses an image with no email copy; the preview shows the rendition the
- * test send delivers, byte for byte, `data-block-id` and all.
- */
 
 const PHOTO = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
 const GONE = "99999999-8888-4777-8666-555555555555";
@@ -145,7 +137,6 @@ describe("the preview", () => {
         return { id: "re_1" };
       },
     };
-    // A block campaign's preview and test read as the sample customer (slice 13).
     await sendCampaignTest(draft, { to: ["me@mpillow.com"], ...SAMPLE_RECIPIENT }, {
       admin: fakeCampaignsClient(emptyWorld()) as unknown as SupabaseClient,
       transport,

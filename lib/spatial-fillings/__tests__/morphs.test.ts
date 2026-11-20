@@ -58,7 +58,6 @@ describe("prepareMorph degeneracy fallback", () => {
   });
 
   it("self-intersecting mid-frames fall back to crossfade", () => {
-    // opposing horseshoes: linear vertex motion crosses itself mid-morph
     const morph = prepareMorph(
       "M10 10 L90 10 L90 30 L30 30 L30 70 L90 70 L90 90 L10 90 Z",
       "M90 10 L10 10 L10 30 L70 30 L70 70 L10 70 L10 90 L90 90 Z",

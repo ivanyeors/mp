@@ -1,10 +1,3 @@
-/**
- * What the Create order dialog offers (ADR 0048): the products a Staff order
- * may sell with their price and stock, the Services at their Costings price,
- * the delivery methods, the studios, and the Customer's saved addresses.
- * Prices here are for display; the quote re-reads every one.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolveShippingContent } from "@/lib/ecommerce/shipping";
@@ -22,7 +15,6 @@ export type StaffOrderProductOption = {
   price: number;
   stockAvailable: number;
   imageUrl: string | null;
-  /** Not on sale online (`draft`): sold here all the same (ADR 0048). */
   unlisted: boolean;
 };
 
@@ -32,7 +24,6 @@ export type StaffOrderMethodOption = {
   id: string;
   name: string;
   live: boolean;
-  /** The flat price; a live method is priced per address by the quote. */
   baseRate: number;
   freeAbove: number | null;
   countries: string[];
@@ -48,7 +39,6 @@ export type StaffOrderAddressOption = Pick<
 export type StaffOrderOptions = {
   products: StaffOrderProductOption[];
   services: StaffOrderServiceOption[];
-  /** Null when Costings could not be read: services cannot be added until it can. */
   servicesError: string | null;
   methods: StaffOrderMethodOption[];
   studios: StaffOrderStudioOption[];

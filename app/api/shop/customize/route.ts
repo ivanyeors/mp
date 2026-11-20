@@ -16,10 +16,7 @@ import { HEAD_TO_BACK_MIN_CM } from "@/lib/rules-engine/units";
 
 export const runtime = "nodejs";
 
-// ─── GET RECOMMENDATION ────────────────────────────────────
-
 const RecommendRequestSchema = z.object({
-  /** Online purchase path (mp-config/mbolster-config): size ballpark only, no hardcoded fillings. */
   purpose: z.enum(["ballpark", "full"]).optional(),
   preferences: z.object({
     sleep_position: z.enum(["side", "back", "stomach", "mixed"]),
@@ -52,11 +49,6 @@ const MeasurementRecommendRequestSchema = z.object({
       uses_bolster: z.boolean(),
     }),
   }),
-  /**
-   * Finishing an assigned build (ADR 0017): offer and price the size×tier Staff
-   * assigned, not the engine's ballpark. Catalog data only — nothing is written,
-   * and the price is re-derived server-side at finish.
-   */
   assigned: z
     .object({
       size: z.enum(["XS", "S", "M", "L", "XL"]),
@@ -86,7 +78,6 @@ export async function POST(req: Request) {
 async function handleRecommend(req: Request) {
   const body = await req.json().catch(() => null);
 
-  // Try measurement-based input first, then bolster, then simple preferences
   const measurementParsed = MeasurementRecommendRequestSchema.safeParse(body);
   const bolsterParsed = BolsterRecommendRequestSchema.safeParse(body);
   const simpleParsed = RecommendRequestSchema.safeParse(body);
@@ -98,7 +89,6 @@ async function handleRecommend(req: Request) {
   try {
     const admin = supabaseAdmin();
 
-    // --- Bolster flow ---
     if (bolsterParsed.success) {
       const missingBolster = incompleteEngineInputs("mbolster", {
         height_cm: bolsterParsed.data.bolster_preferences.height_cm,
@@ -111,7 +101,6 @@ async function handleRecommend(req: Request) {
       }
       const recommendation = await getBolsterRecommendation(bolsterParsed.data.bolster_preferences);
 
-      // Engine returns length keys; letter sizes (S/M/L) still accepted from legacy bootstrap.
       const sizeToVariant: Record<string, string> = {
         S: "short",
         M: "medium",
@@ -126,7 +115,6 @@ async function handleRecommend(req: Request) {
         sizeToVariant[recommendation.recommended_size] ||
         "medium";
 
-      // Find the bolster ecommerce product (by product_type or slug pattern)
       const { data: bolsterProducts } = await admin
         .from("products")
         .select("id, slug, product_type")
@@ -135,7 +123,6 @@ async function handleRecommend(req: Request) {
 
       const bolsterProduct = bolsterProducts?.[0] ?? null;
 
-      // Find the variant matching this size
       let variant = null;
       if (bolsterProduct) {
         const { data: variants } = await admin
@@ -144,7 +131,6 @@ async function handleRecommend(req: Request) {
           .eq("product_id", bolsterProduct.id)
           .eq("is_active", true);
 
-        // Match variant by title containing size or variant name
         variant = (variants ?? []).find((v: { title: string | null; sku: string | null }) =>
           v.title?.toLowerCase().includes(recommendation.recommended_size.toLowerCase()) ||
           v.title?.toLowerCase().includes(bolsterVariant) ||
@@ -152,7 +138,6 @@ async function handleRecommend(req: Request) {
         ) ?? variants?.[0] ?? null;
       }
 
-      // Get bolster BOM items for component display
       const { data: bomLines } = await admin
         .from("bolster_bom_lines")
         .select("item_id, quantity")
@@ -163,14 +148,12 @@ async function handleRecommend(req: Request) {
         (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => [bl.item_id, bl.quantity])
       );
 
-      // Get bolster-compatible items (cases, protectors, covers)
       const { data: items } = await admin
         .from("items")
         .select("id, category, subtype, name, size")
         .eq("is_active", true)
         .in("category", ["bolster_case", "bolster_protector", "cover", "case", "protector", "packaging"]);
 
-      // Filter to bolster items + any items in the BOM
       const relevantItems = (items ?? []).filter(
         (i: { id: number; category: string }) =>
           i.category.startsWith("bolster_") || bomItemIds.includes(i.id)
@@ -178,7 +161,6 @@ async function handleRecommend(req: Request) {
 
       const itemIds = relevantItems.map((i: { id: number }) => i.id);
 
-      // Get stock + prices
       const { data: balances } = itemIds.length > 0
         ? await admin.from("inventory_balances").select("item_id, on_hand").in("item_id", itemIds)
         : { data: [] };
@@ -209,8 +191,6 @@ async function handleRecommend(req: Request) {
 
       const components = {
         covers: relevantItems.filter((i: { category: string }) => i.category === "cover").map(toOption),
-        // Only cases cut for this length (plus whatever the BOM ships): the apply
-        // route refuses any other, since cases are priced per length.
         cases: relevantItems
           .filter(
             (i: { id: number; category: string; size: string | null }) =>
@@ -222,7 +202,6 @@ async function handleRecommend(req: Request) {
         packaging: relevantItems.filter((i: { category: string }) => i.category === "packaging").map(toOption),
       };
 
-      // Fetch bolster buildable counts per variant
       const { data: bolsterBuildable } = await admin
         .from("bolster_buildable")
         .select("bolster_variant, buildable");
@@ -232,11 +211,6 @@ async function handleRecommend(req: Request) {
       }
       const composed_buildable = buildable_counts[bolsterVariant] ?? 0;
 
-      // RE slice 07: length-scoped Filling Templates + spatial placements +
-      // color overrides so the completed preview can render the read-only x-ray.
-      // Membership, not `key`: a recipe serving short AND medium carries
-      // primary `short`, and filtering on that would hide it from a medium
-      // shopper while the Admin Panel still offers it (ADR 0018).
       const templateMembers = await templateIdsForKey(admin, bolsterVariant);
       const { data: fillingTemplates } = templateMembers.ok && templateMembers.ids.length
         ? await admin
@@ -285,7 +259,7 @@ async function handleRecommend(req: Request) {
         templates: (fillingTemplates ?? []).map((t: { id: number; name: string }) => ({
           id: t.id,
           name: t.name,
-          lines: [], // bolster fillings are spatial-only (ADR 0008) — no flat lines
+          lines: [],
           placements: (tplPlacements ?? []).filter(
             (p: { template_id: number }) => p.template_id === t.id,
           ),
@@ -298,7 +272,6 @@ async function handleRecommend(req: Request) {
       });
     }
 
-    // --- Pillow flow (measurement-based or simple preferences) ---
     if (measurementParsed.success) {
       const missing = incompleteEngineInputs(
         "premium-mpillow",
@@ -333,7 +306,6 @@ async function handleRecommend(req: Request) {
         }
       : engineRecommendation;
 
-    // Resolve the pillow_product_id for the recommended size/tier (Premium flow → premium)
     const { data: pillowProduct } = await admin
       .from("pillow_products")
       .select("id, size, kind")
@@ -348,7 +320,6 @@ async function handleRecommend(req: Request) {
       }, { status: 404 });
     }
 
-    // Find the matching ecommerce product variant
     const { data: variant } = await admin
       .from("product_variants")
       .select("id, product_id, price, currency")
@@ -356,29 +327,21 @@ async function handleRecommend(req: Request) {
       .eq("is_active", true)
       .single();
 
-    // Get available components for this pillow
     const components = await getAvailableComponents(pillowProduct.id);
 
-    // Everything the preview needs to price a build with the SAME function the hold
-    // route and assign use. Before this the preview showed `variant.price` (the shelf
-    // price) while the server charged shelf + cover + case.
     const composed = await loadComposedSellable(admin, {
       productType: "pillow",
       size: recommendation.recommended_size,
       tier: recommendation.recommended_kind,
     });
 
-    // Get BOM templates as alternatives
     const templates = await getBomTemplates(
       pillowProduct.kind ?? "basic",
       pillowProduct.size
     );
 
-    // Get available fillings for display
     const fillings = await getAvailableFillings();
 
-    // RE slice 07: spatial placements + color overrides so the completed
-    // preview can render the recommended template in the read-only x-ray.
     const { data: tplPlacements } = await admin
       .from("filling_template_placements")
       .select("template_id, section, sub_section, slot, item_id, row_index, offset_x_mm, offset_y_mm")
@@ -389,7 +352,6 @@ async function handleRecommend(req: Request) {
       .select("subtype, color");
     const dimension_overrides = await loadDimensionOverrides(admin);
 
-    // Fetch pillow buildable counts; composed uses product_id (kind×size).
     const { data: pillowBuildable } = await admin
       .from("product_buildable")
       .select("product_id, size, buildable");
@@ -409,8 +371,6 @@ async function handleRecommend(req: Request) {
       recommendation,
       graph_version_id:
         "graph_version_id" in recommendation ? recommendation.graph_version_id ?? null : null,
-      // An assigned build is past the engine: its record would describe a size
-      // Staff may have overridden and re-open a Flow route decision already made.
       recommendation_record:
         !assigned && "recommendation_record" in recommendation
           ? (recommendation as { recommendation_record?: unknown }).recommendation_record ?? null
@@ -456,8 +416,6 @@ async function handleRecommend(req: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-
-// ─── APPLY CUSTOMIZATION ──────────────────────────────────
 
 const ApplyRequestSchema = z.object({
   variant_id: z.string().uuid(),
@@ -562,7 +520,6 @@ async function handleApply(req: Request) {
     return NextResponse.json({ error: "pillow_product_id is required for pillow customizations" }, { status: 400 });
   }
 
-  // Validate variant exists and matches pillow_product_id
   const { data: variant } = await admin
     .from("product_variants")
     .select("id, pillow_product_id")
@@ -573,9 +530,6 @@ async function handleApply(req: Request) {
     return NextResponse.json({ error: "Invalid variant or pillow product mismatch" }, { status: 400 });
   }
 
-  // Price from Costings, through the same rule the preview and /mp-config use. The
-  // quote also rebuilds every line from the database, so what is stored — and later
-  // built, deducted and shown to Staff — is exactly what was priced.
   const { data: pillowProductRow } = await admin
     .from("pillow_products")
     .select("size, kind")
@@ -595,14 +549,11 @@ async function handleApply(req: Request) {
     component_quantities as ConfigLine[],
     filling_lines as FillingLine[],
   );
-  // Refusing beats guessing: a build we cannot price from Costings must not reach
-  // checkout on a stale shelf price.
   if (!quote.ok) {
     return NextResponse.json({ error: quote.error }, { status: 400 });
   }
   const totalAddonPrice = quote.delta;
 
-  // Validate inventory availability
   const validation = await validateCustomizationConfig({
     product_type: "pillow",
     pillow_product_id,

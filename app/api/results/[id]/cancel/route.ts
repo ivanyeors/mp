@@ -17,20 +17,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
-  /**
-   * Write the cancellation even when the hold could not be released. A Stripe
-   * authorization that has already died cannot be cancelled, and without this the
-   * row stays open forever — which is the exact trap the decline route falls into.
-   */
   force: z.boolean().optional(),
   reason: z.string().max(500).optional(),
 });
 
-/**
- * Staff void of an open Result. Unlike decline (customer-driven, `assigned` only)
- * and the SLA cron (`held` only), this covers both open states — an `assigned`
- * Result whose customer goes quiet was previously unreachable by any human.
- */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -79,12 +69,9 @@ export async function POST(
   );
   if (!life.ok) return NextResponse.json({ error: life.error }, { status: 400 });
 
-  // Money moved for the whole pair: the Mbolster can only go with a refund.
   const locked = await companionLockReason(admin, row);
   if (locked) return NextResponse.json({ error: locked, code: "pair_paid" }, { status: 409 });
 
-  // A Paired build shares one hold (ADR 0026): cancelling the Mbolster keeps it
-  // for the Mpillow, and cancelling the Mpillow cancels the Mbolster with it.
   const plan = await loadEndingPlan(admin, row);
 
   let holdReleased = false;
@@ -95,8 +82,6 @@ export async function POST(
       holdReleased = true;
     } catch (e) {
       releaseError = e instanceof Error ? e.message : "Failed to release hold";
-      // Without force this behaves like decline: refuse rather than silently
-      // leaving a live authorization on the customer's card.
       if (!force) {
         return NextResponse.json(
           { error: releaseError, canForce: true },
@@ -106,8 +91,6 @@ export async function POST(
     }
   }
 
-  // CAS on the status we validated, so a concurrent accept/decline wins cleanly
-  // instead of both writing.
   const { data: updated, error: updateErr } = await admin
     .from("mp_config_responses")
     .update({ status: life.status })
@@ -125,8 +108,6 @@ export async function POST(
   }
 
   await cascadeEnding(admin, plan, "cancelled");
-  // The customer hears that their Mbolster went — and, if their Mpillow was
-  // already built and waiting on it, that the Mpillow is ready.
   await notifyCompanionRemoved(admin, { companion: row, partner: plan.partner, origin: getPublicOrigin(req) });
 
   await recordAdminAction({

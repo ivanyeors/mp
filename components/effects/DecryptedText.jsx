@@ -114,7 +114,6 @@ export default function DecryptedText({
     };
 
     if (isHovering) {
-      // Ensure consistent restart behavior (view/hover/loop)
       setDisplayText(text);
       setRevealedIndices(new Set());
       setIsScrambling(true);

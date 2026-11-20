@@ -7,12 +7,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { RichText, type RichTextValue } from "../rich-text";
 import { useEditorHistory, useHistoryKeys } from "../use-editor-history";
 
-/**
- * The shared text input (PRD-campaign-email-editor slice 04) inside a page's
- * one history: ⌘Z undoes the page, except in a field the history does not
- * hold, such as the toolbar's link address, which keeps the browser's own.
- */
-
 const words = (v: RichTextValue) => v.map((p) => (p.kind === "p" ? p.runs.map((r) => ("text" in r ? r.text : "")).join("") : "")).join("\n");
 
 let seen: RichTextValue = [];
@@ -79,7 +73,6 @@ describe("RichText", () => {
     expect(box().className).not.toContain("min-h-24");
     act(() => root!.unmount());
 
-    // On the server and until TipTap loads, the words as they read stand in for it, at the same height.
     const host = document.createElement("div");
     host.innerHTML = renderToString(<RichText aria-label="Subject" singleLine value={value} onChange={() => undefined} />);
     const view = host.querySelector<HTMLElement>('[role="textbox"]')!;
@@ -94,9 +87,7 @@ describe("RichText", () => {
   it("keeps the { list inside a phone's screen when the caret is near its right edge", async () => {
     const width = window.innerWidth;
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 375 });
-    // The caret's spot, as the browser measures it: 340px in on a 375px screen.
     const at = vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(340, 80, 8, 20));
-    // With a caret that has a place, ProseMirror scrolls it into view, which jsdom cannot do.
     const scroll = vi.spyOn(window, "scrollBy").mockImplementation(() => undefined);
     try {
       mount(<RichText aria-label="Subject" singleLine value={[]} variables={[{ key: "order_number", label: "Order number" }]} onChange={() => undefined} />);

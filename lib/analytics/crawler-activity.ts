@@ -2,8 +2,6 @@ import { crawlerByName, type CrawlerPurpose } from "@/lib/analytics/ai-crawlers"
 import { bucketStart, type Granularity } from "@/lib/seo-metrics/aggregate";
 import { addDays } from "@/lib/seo-metrics/dates";
 
-/** Rollups over `ai_crawler_hits` for the visibility section (slice 04). Pure. */
-
 export type CrawlerHitRow = { date: string; bot: string; path_group: string; hits: number };
 
 export type CrawlerBotRow = {
@@ -16,7 +14,6 @@ export type CrawlerBotRow = {
 };
 
 export type CrawlerActivity = {
-  /** AI crawlers only (search engines excluded), per bucket. */
   buckets: { start: string; value: number; partial: boolean }[];
   aiHits: number;
   previousAiHits: number;
@@ -71,7 +68,6 @@ export function buildCrawlerActivity(input: {
   }
 
   return {
-    // The last bucket holds today, so it is still filling.
     buckets: [...buckets].map(([start, value], i, all) => ({ start, value, partial: i === all.length - 1 })),
     aiHits,
     previousAiHits,

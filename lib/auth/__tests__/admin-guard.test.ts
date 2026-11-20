@@ -1,17 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Guard contract tests for the RBAC model (#39 cutover, ADR 0023).
- *
- * `requireAdmin` / `requireAdminContext` / `assertAdmin` are the only way to
- * authorize an admin action. These tests drive the inputs the model depends
- * on — the Supabase auth user, the matched `admin_users` row and its
- * `admin_roles` row — and assert the decision. There is no secret, cookie, or
- * env value that can yield authorization here; absent a valid staff session,
- * every guard denies.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -65,7 +54,6 @@ function signedOut() {
 }
 
 beforeEach(() => {
-  // The bootstrap allowlist must not be a backdoor in these tests.
   delete process.env.ADMIN_BOOTSTRAP_EMAILS;
   h.db = { admin_users: [], admin_roles: seedRoles() };
   h.identity = null;
@@ -127,7 +115,6 @@ describe("permissions come from the role row (ADR 0023)", () => {
     const ctx = await getAdminContext();
     expect(ctx?.isOwner).toBe(false);
     expect([...ctx!.permissions].sort()).toEqual([...ADMIN_PERMISSIONS].sort());
-    // Not in any seeded custom role, and the system rows store no list at all.
     expect(ctx!.permissions.has("telegram.shop-review-moderate")).toBe(true);
   });
 
@@ -156,8 +143,6 @@ describe("permissions come from the role row (ADR 0023)", () => {
 
 describe("getAdminContext (no non-RBAC path)", () => {
   it("returns null for an authenticated user without an admin_users row", async () => {
-    // A valid Supabase session alone — no Member, not allowlisted — is never
-    // sufficient. This is the failure mode the OTP path used to bypass.
     h.identity = { id: "auth-x", email: "stranger@example.com" };
     expect(await getAdminContext()).toBeNull();
   });

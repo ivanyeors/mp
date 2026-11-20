@@ -1,14 +1,6 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-/**
- * The Email funnel's renders (PRD-email-funnel slice 03, owner 2026-11-18):
- * refused without `campaigns` before anything is read; otherwise each card's
- * email by the key the card asked with, from the real renderers, on the sample
- * recipient. A key that does not parse, or is not the programme's, is left out.
- */
 
 const h = vi.hoisted(() => ({ permissions: new Set<string>(["campaigns"]), read: 0 }));
 vi.mock("@/lib/auth/admin", () => ({
@@ -73,11 +65,9 @@ describe("renderFunnelEmails", () => {
     expect(Object.keys(res.renders).sort()).toEqual([...keys].sort());
     expect(res.renders[`campaign:${CAMPAIGN}`].subject).toBe("It has been a while");
     expect(res.renders[`campaign:${CAMPAIGN}`].html).toContain("It has been a while");
-    // Each key holds its own email, not a neighbour's.
     expect(res.renders["template:results.draft_reminder_1w"].subject).not.toBe(res.renders["template:aftercare.review_request"].subject);
     expect(res.renders["template:aftercare.review_request"].templateId).toBeTruthy();
     for (const r of Object.values(res.renders)) expect(r.html).toMatch(/<html/i);
-    // The sample recipient, never a real Customer.
     expect(res.renders[`campaign:${CAMPAIGN}`].html).toContain("Mei Ling");
   });
 

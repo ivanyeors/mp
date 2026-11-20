@@ -6,10 +6,6 @@ import { withLocale } from "@/lib/i18n/routing";
 
 export const runtime = "nodejs";
 
-/**
- * Documentation → Selling from the Customer page (ADR 0048): making a Staff
- * order and sending its Payment link.
- */
 export default async function StaffOrdersGuidePage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

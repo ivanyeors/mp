@@ -23,7 +23,6 @@ interface FillingItem {
   item_id: number;
   subtype: string;
   name: string;
-  /** Item size (XS…XL) — scales the x-ray pouch (RE slice 07 read-only render). */
   size: string | null;
   on_hand: number;
 }
@@ -37,9 +36,6 @@ interface BomTemplate {
   lines: { item_id: number; subtype: string; quantity: number }[];
 }
 
-/**
- * Get available filling items with current stock levels.
- */
 export async function getAvailableFillings(): Promise<FillingItem[]> {
   const admin = supabaseAdmin();
   const { data: items } = await admin
@@ -50,7 +46,6 @@ export async function getAvailableFillings(): Promise<FillingItem[]> {
 
   if (!items || items.length === 0) return [];
 
-  // Get stock levels
   const { data: balances } = await admin
     .from("inventory_balances")
     .select("item_id, on_hand")
@@ -69,18 +64,6 @@ export async function getAvailableFillings(): Promise<FillingItem[]> {
   }));
 }
 
-/**
- * Get BOM templates for a given pillow kind and size.
- *
- * KNOWN ISSUE — see `docs/known-issues.md`. `pillow_kind` is always null on a
- * Filling Template (they carry no Tier), so the filter below can never match
- * one and this returns warehouse templates. Both callers then read
- * `filling_template_placements` for the ids, which exist only for
- * `role = 'filling'`, so the shopper's pillow x-ray renders empty. Deliberately
- * left alone: whether this is dead code or the pillow twin of the bolster
- * reader is a product call. If it is meant to read Filling Templates it also
- * needs ADR 0018 membership scoping — `key` is only the primary size.
- */
 export async function getBomTemplates(kind: string, size: string): Promise<BomTemplate[]> {
   const admin = supabaseAdmin();
   const { data: templates } = await admin
@@ -92,7 +75,6 @@ export async function getBomTemplates(kind: string, size: string): Promise<BomTe
 
   if (!templates) return [];
 
-  // Enrich with subtype info
   const allItemIds = templates.flatMap((t: { bom_template_lines: { item_id: number }[] }) =>
     t.bom_template_lines.map((l) => l.item_id)
   );
@@ -127,17 +109,9 @@ export async function getBomTemplates(kind: string, size: string): Promise<BomTe
   }));
 }
 
-// ─── Recommendation Entry Points ───────────────────────────
-//
-// Each entry point delegates to the recommendation engine, which first tries
-// the optional configured model endpoint and otherwise returns the guaranteed
-// rule-based recommendation (see lib/shop/recommendation/*).
-
-/** Size ballpark only — rule-based, no fillings (online purchase path, slice 12). */
 export function getSizeBallparkFromPreferences(
   preferences: CustomerPreferences,
 ): CustomizationResult {
-  // Preferences-only shape has no measurement graph; keep SIZE_MAP (mp-maker / legacy).
   return recommendSizeFromPreferences(preferences);
 }
 
@@ -161,7 +135,6 @@ function ballparkFromRecord(
   };
 }
 
-/** Measurement size ballpark — Premium Rules Engine (sold tier premium). */
 export async function getSizeBallparkFromMeasurements(
   input: MeasurementBasedPreferences,
 ): Promise<CustomizationResult & { recommendation_record: RecommendationRecord }> {
@@ -178,10 +151,6 @@ export async function getSizeBallparkFromMeasurements(
   );
 }
 
-/**
- * Simple-form recommendation (sleep position + body type + firmness).
- * Legacy mp-maker — includes hardcoded filling lines.
- */
 export async function getFillingRecommendation(
   preferences: CustomerPreferences,
 ): Promise<CustomizationResult> {
@@ -191,9 +160,6 @@ export async function getFillingRecommendation(
   });
 }
 
-/**
- * Measurement-based recommendation (in-store wizard data + health profile).
- */
 export async function getRecommendationFromMeasurements(
   input: MeasurementBasedPreferences,
 ): Promise<CustomizationResult> {
@@ -203,9 +169,6 @@ export async function getRecommendationFromMeasurements(
   });
 }
 
-/**
- * Bolster recommendation (height + sleep position) — Mbolster Rules Engine.
- */
 export async function getBolsterRecommendation(
   input: BolsterPreferences,
 ): Promise<CustomizationResult & { recommendation_record?: RecommendationRecord }> {

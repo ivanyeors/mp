@@ -28,7 +28,6 @@ export default async function AccountOrdersPage({
   const user = await getAuthUser();
   if (!user) redirect(withLocale("/account/login", locale));
 
-  // Ensure the auth user is linked to a customer so RLS can resolve their orders.
   await linkCustomerToAuthUser(user);
   const orders = await getCustomerOrders();
 

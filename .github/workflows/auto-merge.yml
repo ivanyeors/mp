@@ -1,0 +1,362 @@
+name: auto merge
+
+# Merges a pull request by itself when the owner has turned that on, and only
+# then. The switch is the repository variable AUTO_MERGE_CODE (Settings →
+# Secrets and variables → Actions → Variables): `on` is on; unset or anything
+# else is off, and off is how this repo has always worked, with every pull
+# request merged by hand. A variable, not a file or a label, because only the
+# owner can change one: no pull request and no agent can flip it.
+#
+# With the switch on, a pull request merges itself when scripts/pr-risk.mjs
+# says so (decide lists every gate): it is open, not a draft, from this
+# repository, opened by the repository owner's login, aimed at the default
+# branch, and GitHub says it merges cleanly; it touches nothing that always
+# waits for the owner (money, the database, sign-in and roles, the rails) and
+# does not grow the lint baseline; main has not changed any file it changes
+# since the branch left main, so its checks ran against the code it lands on;
+# verify succeeded and no other check run failed or is still going; a Vercel
+# status is success and no status is anything else (ci.yml does not run
+# `next build`, so Vercel is the only gate for code that does not compile);
+# Claude review's first-line verdict is "clean" for this exact head against
+# the default branch, and no review thread is unresolved; main's tip is the
+# owner's (see the latch below); the head did not move while all that was
+# read; and main's tip has not moved by the time it merges. The review job passes
+# without its key, so the gate is the verdict it posts, not the job's result.
+#
+# Every fact it cannot read is a reason not to merge. The reason, in words,
+# goes in the job summary; nothing is posted on a pull request it does not
+# merge.
+#
+# Triggers. Whichever of these lands last finds everything green:
+#   workflow_run      ci or claude review finished on a pull request
+#   status            a commit status (Vercel) turned to success
+#   workflow_dispatch one pull request by number, by hand; also the way to
+#                     re-judge one after its last open thread is resolved,
+#                     which fires nothing here
+# All three run this file and the script from the default branch with a write
+# token. That is safe for the same reason as pr-guard.yml's
+# pull_request_target: nothing below checks out or runs pull request code. The
+# checkout is the default branch, for the script and money.md, and everything
+# about the pull request is read through the API.
+#
+# It merges with squash, pinned to the head it judged, then reads the merge
+# commit back: Vercel builds only commits authored by the repository owner and
+# silently skips any other. A merge it would not deploy fails this job, and
+# comments on the merged pull request, since main is now ahead of production.
+# The latch: before any merge it reads main's tip, and while that tip is not
+# authored by the owner nothing merges itself, since production may be behind
+# main; one bad merge does not become a run of them while the switch is on.
+# It also closes after a merge by hand of someone else's pull request (a
+# Dependabot one is authored dependabot[bot]), and reopens with the next
+# commit authored by the owner on main: any merge the owner makes by hand.
+
+on:
+  workflow_run:
+    workflows: [ci, claude review]
+    types: [completed]
+  status:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to judge, and merge if every condition holds
+        type: number
+        required: true
+
+# One judgement per head at a time, never cancelled half way through a merge.
+# A second run for the same head waits, then finds the pull request merged.
+concurrency:
+  group: auto-merge-${{ github.event.workflow_run.head_sha || github.event.sha || inputs.pr }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  merge:
+    # Switch off: nothing runs, except by hand, where the summary says it is
+    # off. Only a status that turned to success, and only a workflow run that
+    # came from a pull request, is worth reading facts for. And only the
+    # default branch's copy of this file: a dispatch can name any branch, and
+    # that branch's copy could say anything.
+    if: >-
+      (vars.AUTO_MERGE_CODE == 'on' || github.event_name == 'workflow_dispatch') &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+      (github.event_name != 'status' || github.event.state == 'success') &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'pull_request')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+
+    # contents: write and pull-requests: write to merge; checks and statuses
+    # to read the head's check runs and commit status. Nothing else.
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      statuses: read
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      OWNER: ${{ github.repository_owner }}
+
+    steps:
+      # The default branch, never the pull request's. Only the two files the
+      # decision reads, and no token left in .git for anything to use.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/pr-risk.mjs
+            .claude/rules/money.md
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      # Event values go through env, not ${{ }} in the script, so none can
+      # inject shell.
+      - name: Find the pull request
+        id: pr
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_PR: ${{ inputs.pr }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          STATUS_SHA: ${{ github.event.sha }}
+        run: |
+          case "$EVENT" in
+            workflow_dispatch) numbers="$INPUT_PR"; sha="" ;;
+            workflow_run) sha="$RUN_SHA" ;;
+            status) sha="$STATUS_SHA" ;;
+            *) sha="" ; numbers="" ;;
+          esac
+
+          # A head names its pull request through the API; the event's own
+          # pull_requests list is empty in cases GitHub documents and some it
+          # does not. Only an open pull request whose head is this commit.
+          if [ -n "$sha" ]; then
+            numbers="$(gh api "repos/$GH_REPO/commits/$sha/pulls" \
+              --jq "[.[] | select(.state == \"open\" and .head.sha == \"$sha\") | .number] | .[]")" \
+              || numbers="lookup-failed"
+          fi
+
+          count="$(printf '%s\n' "$numbers" | grep -c . || true)"
+          if [ "$count" = 1 ] && printf '%s' "$numbers" | grep -Eq '^[0-9]+$'; then
+            echo "number=$numbers" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          case "$numbers" in
+            lookup-failed) why="could not ask GitHub which pull request has head $sha" ;;
+            "") why="no open pull request has head ${sha:-(none given)}" ;;
+            *) why="$count pull requests have head $sha, so none is judged: $(printf '%s\n' "$numbers" | tr '\n' ' ')" ;;
+          esac
+          echo "### Not merging" >> "$GITHUB_STEP_SUMMARY"
+          echo "$why." >> "$GITHUB_STEP_SUMMARY"
+          echo "$why."
+
+      # Each fact lands in its own file only when it was read in full; a call
+      # that fails leaves its file out, and pr-risk.mjs reads a missing file
+      # as a reason not to merge.
+      - name: Read the facts
+        if: steps.pr.outputs.number != ''
+        env:
+          PR: ${{ steps.pr.outputs.number }}
+        run: |
+          facts="$RUNNER_TEMP/facts"
+          mkdir -p "$facts"
+
+          keep() {
+            local out="$1"; shift
+            if "$@" > "$facts/$out.tmp"; then
+              mv "$facts/$out.tmp" "$facts/$out"
+            else
+              rm -f "$facts/$out.tmp"
+              echo "::warning title=Could not read $out::$*"
+            fi
+          }
+
+          # ESLint's bulk suppressions at one commit, raw (it is too large for
+          # the contents API's JSON). A 404 means the file is not there, which
+          # counts as zero; any other failure leaves the fact unread.
+          suppressions() {
+            local side="$1" sha="$2"
+            [ -n "$sha" ] || return 0
+            if gh api -H "Accept: application/vnd.github.raw+json" \
+                "repos/$GH_REPO/contents/eslint-suppressions.json?ref=$sha" \
+                > "$facts/s.tmp" 2> "$facts/s.err"; then
+              mv "$facts/s.tmp" "$facts/suppressions-$side.json"
+            elif grep -q "(HTTP 404)" "$facts/s.err"; then
+              : > "$facts/suppressions-$side.absent"
+            else
+              echo "::warning title=Could not read eslint-suppressions.json at $sha::$(cat "$facts/s.err")"
+            fi
+            rm -f "$facts/s.tmp" "$facts/s.err"
+          }
+
+          # GitHub works out `mergeable` in the background and answers null
+          # until it has; give it half a minute, then let null refuse.
+          for _ in 1 2 3 4 5 6; do
+            keep pr.json gh api "repos/$GH_REPO/pulls/$PR"
+            [ -f "$facts/pr.json" ] || exit 0
+            [ "$(jq -r '.mergeable' "$facts/pr.json")" != null ] && break
+            sleep 5
+          done
+          head="$(jq -r '.head.sha // empty' "$facts/pr.json")"
+          base_ref="$(jq -r '.base.ref // empty' "$facts/pr.json")"
+          [ -n "$head" ] && [ -n "$base_ref" ] || exit 0
+
+          # The files endpoint pages at 100 and stops at 3000; pr-risk.mjs
+          # compares the count with changed_files. Renames list both names.
+          keep files.ndjson gh api --paginate "repos/$GH_REPO/pulls/$PR/files?per_page=100" \
+            --jq '.[] | {filename, previous_filename} | tojson'
+
+          # The latest run of each check on the head, from every app.
+          keep check-runs.ndjson gh api --paginate "repos/$GH_REPO/commits/$head/check-runs?per_page=100" \
+            --jq '.check_runs[] | {name, status, conclusion} | tojson'
+
+          # The latest status of each context, by name: the combined state
+          # alone is success when every context present is, Vercel or not.
+          keep statuses.ndjson gh api --paginate "repos/$GH_REPO/commits/$head/status?per_page=100" \
+            --jq '.statuses[] | {context, state} | tojson'
+
+          # Every comment on the pull request, for Claude review's verdict.
+          keep comments.ndjson gh api --paginate "repos/$GH_REPO/issues/$PR/comments?per_page=100" \
+            --jq '.[] | {login: .user.login, body} | tojson'
+
+          # The latch: who authored main's tip. "(none)" when the author's
+          # email maps to no GitHub user; no login has parentheses. The sha
+          # pins what main changed (below) to this tip, and the Merge step
+          # checks main is still here.
+          keep base-tip.txt gh api "repos/$GH_REPO/commits/$base_ref" \
+            --jq '.sha + " " + (.author.login // "(none)")'
+          tip=""
+          [ -f "$facts/base-tip.txt" ] && tip="$(cut -d' ' -f1 "$facts/base-tip.txt")"
+
+          # Growth is measured from where the branch left the base, not from
+          # the base's tip: the squash applies head minus merge base onto main,
+          # so that difference is what lands.
+          merge_base=""
+          merge_base="$(gh api "repos/$GH_REPO/compare/$base_ref...$head" --jq .merge_base_commit.sha)" \
+            || echo "::warning title=Could not find the merge base::$base_ref...$head"
+          if [ -n "$merge_base" ]; then
+            suppressions base "$merge_base"
+            suppressions head "$head"
+
+            # What main changed since the branch left it. pr-risk.mjs refuses
+            # when that overlaps this pull request's files, and reads a list
+            # at the API's 300-file cap as cut off. Unread without the tip.
+            if [ -n "$tip" ]; then
+              keep main-changed.json gh api "repos/$GH_REPO/compare/$merge_base...$tip" \
+                --jq '{files: (.files | map({filename, previous_filename}))}'
+            fi
+          fi
+
+          # A count only when every thread was read: past 100 the fact stays
+          # unread rather than counting a partial page. An isResolved that is
+          # not true counts as unresolved. The $ names are GraphQL variables.
+          # shellcheck disable=SC2016
+          keep threads.json gh api graphql \
+            -F owner="$OWNER" -F name="${GH_REPO#*/}" -F number="$PR" \
+            -f query='query($owner: String!, $name: String!, $number: Int!) {
+              repository(owner: $owner, name: $name) {
+                pullRequest(number: $number) {
+                  reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } }
+                }
+              }
+            }'
+          if [ -f "$facts/threads.json" ] && jq -e -r '.data.repository.pullRequest.reviewThreads
+                | if .pageInfo.hasNextPage == false then ([.nodes[] | select(.isResolved != true)] | length) else error("more than 100 threads") end' \
+                "$facts/threads.json" > "$facts/t.tmp"; then
+            mv "$facts/t.tmp" "$facts/unresolved-threads.txt"
+          fi
+
+          # Last, so a push during the reads shows as a moved head.
+          keep head-now.txt gh api "repos/$GH_REPO/pulls/$PR" --jq .head.sha
+
+      - name: Decide
+        id: decide
+        if: steps.pr.outputs.number != ''
+        env:
+          AUTO_MERGE_CODE: ${{ vars.AUTO_MERGE_CODE }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: node scripts/pr-risk.mjs "$RUNNER_TEMP/facts" .claude/rules/money.md
+
+      # First, main's tip once more: two pull requests judged in the same half
+      # minute each read main before the other landed, so each passed the
+      # overlap rule against a main that is already gone. Refusing here is
+      # not a failure; the summary says to run it again. That leaves the
+      # seconds between this read and the merge itself.
+      #
+      # --match-head-commit: GitHub refuses the merge if the head is no longer
+      # the commit judged above. A refusal fails the job with GitHub's words.
+      - name: Merge
+        if: steps.decide.outputs.merge == 'true'
+        env:
+          PR: ${{ steps.pr.outputs.number }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          HEAD_SHA: ${{ steps.decide.outputs.head }}
+          BASE_TIP: ${{ steps.decide.outputs.base_tip }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          tip_now="$(gh api "repos/$GH_REPO/commits/$DEFAULT_BRANCH" --jq .sha)" || tip_now=""
+          if ! node scripts/pr-risk.mjs tip-check "$BASE_TIP" "$tip_now" "$DEFAULT_BRANCH"; then
+            exit 0
+          fi
+
+          # The backticks in the summary are Markdown, not a command.
+          # shellcheck disable=SC2016
+          if ! out="$(gh pr merge "$PR" --squash --match-head-commit "$HEAD_SHA" 2>&1)"; then
+            echo "$out"
+            echo "::error title=GitHub refused to merge #$PR::$out"
+            printf '### #%s: GitHub refused the merge\n\n```\n%s\n```\n' "$PR" "$out" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "$out"
+
+          # The merge commit can take a moment to show on the pull request.
+          merged=""
+          for _ in 1 2 3 4 5 6; do
+            merged="$(gh pr view "$PR" --json state,mergeCommit \
+              --jq 'if .state == "MERGED" then .mergeCommit.oid else "" end')" || merged=""
+            [ -n "$merged" ] && break
+            sleep 5
+          done
+          if [ -z "$merged" ]; then
+            echo "::error title=#$PR did not merge::GitHub accepted the request but the pull request is not merged after 30 seconds (a merge queue would do this). Check it by hand."
+            echo "### #$PR: merge requested, not merged after 30 seconds" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          login="$(gh api "repos/$GH_REPO/commits/$merged" --jq '.author.login // ""')" || login=""
+          author="$(gh api "repos/$GH_REPO/commits/$merged" \
+            --jq '.commit.author.name + " <" + .commit.author.email + ">"')" || author="unreadable"
+
+          if [ "$login" != "$OWNER" ]; then
+            echo "::error title=Vercel will not build $merged::The merge commit's author is $author (GitHub user ${login:-none}), not $OWNER. Vercel builds only $OWNER's commits and skips this one without saying so: main is now ahead of production. Redeploy by hand, and turn AUTO_MERGE_CODE off until the merge identity is fixed."
+            printf '### #%s merged as %s, which Vercel will not build\n\nAuthor: %s (GitHub user %s), not %s.\n' \
+              "$PR" "$merged" "$author" "${login:-none}" "$OWNER" >> "$GITHUB_STEP_SUMMARY"
+
+            # The one comment this workflow posts: a merge happened, and the
+            # pull request is where someone will look for what became of it.
+            # If the comment fails too, the job is failing anyway.
+            gh pr comment "$PR" --body "$(cat <<MSG
+          Auto-merge merged this pull request as $merged, but the merge commit's author is $author (GitHub user ${login:-none}), not $OWNER.
+
+          Vercel builds only $OWNER's commits and skips any other without saying so, so **production has not been built from this commit**: main is ahead of production.
+
+          What to do:
+          1. Turn the AUTO_MERGE_CODE repository variable off.
+          2. Deploy main to production by hand from Vercel (or merge the next pull request by hand, which builds main's tip).
+          3. Fix the identity the auto-merge workflow merges as before turning the variable back on.
+
+          Until main's tip is authored by $OWNER again, no pull request merges itself.
+          MSG
+          )" || echo "::warning title=Could not comment on #$PR::The merge commit's author is still wrong; see the error above."
+            exit 1
+          fi
+
+          printf '### #%s merged as %s\n\nAuthor: %s.\n' "$PR" "$merged" "$author" >> "$GITHUB_STEP_SUMMARY"

@@ -8,13 +8,6 @@ import { LOGO_SRC } from "@/lib/brand-logo";
 import { cn } from "@/lib/utils";
 import type { ActiveChat, PendingMessage } from "./use-support-chat";
 
-/**
- * The website chat's building blocks: bubbles, the assistant cards (the
- * email check before the first message), the code boxes and the composer. Brand palette: the navy to
- * blue of the dock and the spotlight cards (#001736 → #2B69BC), with the
- * progress bar's bright blue (#1298ff → #a5d8ff) for the customer's side.
- */
-
 export const NAVY_GRADIENT = "linear-gradient(160deg, #001736 0%, #06275a 45%, #18478f 78%, #2B69BC 100%)";
 export const NAVY_GLOW = "inset 1px 1px 1.8px 0px rgba(194, 220, 255, 0.5), inset -4px 13px 28.4px 0px rgba(102, 167, 255, 0.5)";
 const CUSTOMER_GRADIENT = "linear-gradient(135deg, #1298ff 0%, #1f74e0 55%, #2B69BC 100%)";
@@ -28,7 +21,6 @@ export function timeOf(iso: string): string {
   return Number.isNaN(d.getTime()) ? "" : TIME.format(d);
 }
 
-/** One line on where the chat stands, under "mpillow team". */
 export function chatStatusLine(active: ActiveChat): string {
   if (active.awaitingCode) return "Check your email to send this";
   if (!active.chat.id) return "Starting your chat…";
@@ -38,7 +30,6 @@ export function chatStatusLine(active: ActiveChat): string {
   return `Sent · we usually reply within a few hours`;
 }
 
-/** Two slow, blurred blue lights behind the glass. */
 export function Aurora() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
@@ -49,18 +40,12 @@ export function Aurora() {
   );
 }
 
-/**
- * The mpillow mark on a white disc, with an optional "here" dot. The disc is
- * white because the logo is the brand's dark blue everywhere on the site; on
- * the navy chat it would not show otherwise.
- */
 export function BrandAvatar({ size = 40, live = false }: { size?: number; live?: boolean }) {
   return (
     <span
       className="relative inline-flex shrink-0 items-center justify-center rounded-full border border-white/40 bg-white"
       style={{ width: size, height: size, boxShadow: "0 0 0 3px rgba(165, 216, 255, 0.18)" }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- a 40px mark, not worth next/image's loader */}
       <img src={LOGO_SRC} alt="" className="h-[68%] w-[68%] object-contain" />
       {live ? (
         <span className="absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-[#001736]">
@@ -95,7 +80,6 @@ function StaffAvatar({ name }: { name: string }) {
   );
 }
 
-/** A note from the chat itself (not a person): the greeting, confirmations, offers. */
 export function AssistantNote({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div className={cn("flex items-start gap-2.5", className)}>
@@ -113,7 +97,6 @@ export function MessageBubble({
   onRetry,
 }: {
   message: PendingMessage;
-  /** The last bubble of a run from one side shows its time (and send state). */
   showMeta: boolean;
   onRetry?: (id: string) => void;
 }) {
@@ -164,7 +147,6 @@ export function MessageBubble({
   );
 }
 
-/** A light-surface card inside the thread: the email check and its code. */
 export function ChatCard({
   icon,
   title,
@@ -243,11 +225,6 @@ export function ChatInput({ label, className, ...props }: React.InputHTMLAttribu
   );
 }
 
-/**
- * Six code boxes over one real input, so pasting, the phone's code suggestion
- * and autofill all work as in a plain field. Calls `onComplete` once all six
- * digits are in.
- */
 export function CodeInput({
   value,
   onChange,
@@ -315,11 +292,6 @@ export function CodeInput({
   );
 }
 
-/**
- * The message box: grows with its text up to a few lines; Enter sends,
- * Shift+Enter starts a new line. `tone` picks the glass-on-navy look of the
- * launcher or the light look inside a chat.
- */
 export function Composer({
   onSend,
   disabled,
@@ -354,7 +326,6 @@ export function Composer({
     const el = ref.current;
     if (!autoFocus || !el) return;
     el.focus({ preventScroll: true });
-    // A suggestion fills the box: keep typing after it, not before.
     el.setSelectionRange(el.value.length, el.value.length);
   }, [autoFocus]);
 
@@ -425,10 +396,6 @@ export function Composer({
   );
 }
 
-/**
- * A signed-in customer's chats, over whichever surface opened it. `safeArea`:
- * that surface fills a phone's screen, so keep clear of the notch and home bar.
- */
 export function HistoryPanel({
   chats,
   activeId,
@@ -451,7 +418,6 @@ export function HistoryPanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 24 }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      // Its own radius: a backdrop blur ignores the parent's rounded clip and would square the corners.
       className="absolute inset-0 z-20 flex flex-col rounded-[inherit] bg-[#001736]/85 backdrop-blur-xl"
       role="dialog"
       aria-label="Your chats"

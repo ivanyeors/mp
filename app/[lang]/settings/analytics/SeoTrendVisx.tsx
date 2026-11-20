@@ -15,12 +15,10 @@ import { AnnotationMarkers, type ChartAnnotation } from "./AnnotationMarkers";
 export type SeoTrendPoint = { start: string; value: number | null; partial: boolean };
 
 type Props = {
-  /** Names the series; a single-series chart needs no legend box. */
   label: string;
   points: SeoTrendPoint[];
   granularity: "day" | "week";
   formatValue: (v: number) => string;
-  /** Average position: 1 is best, so the axis runs best-at-top. */
   invert?: boolean;
   height?: number;
   annotations?: ChartAnnotation[];
@@ -61,14 +59,12 @@ function Chart({ width, height, label, points, granularity, formatValue, invert,
       const lo = values.length ? Math.min(...values) : 1;
       const hi = values.length ? Math.max(...values) : 10;
       const pad = Math.max(0.5, (hi - lo) * 0.1);
-      // Domain [worst, best] → best (lowest number) at the top.
       return scaleLinear({ domain: [hi + pad, Math.max(1, lo - pad)], range: [innerHeight, 0], nice: true });
     }
     const hi = values.length ? Math.max(...values) : 1;
     return scaleLinear({ domain: [0, hi > 0 ? hi * 1.1 : 1], range: [innerHeight, 0], nice: true });
   }, [points, invert, innerHeight]);
 
-  // Solid up to the last settled point, dashed from there through the partial ones.
   const firstPartial = points.findIndex((p) => p.partial);
   const settled = firstPartial === -1 ? points : points.slice(0, firstPartial);
   const partial = firstPartial === -1 ? [] : points.slice(Math.max(0, firstPartial - 1));
@@ -147,9 +143,7 @@ function Chart({ width, height, label, points, granularity, formatValue, invert,
             tickFormat={(v) => format(v as Date, "d MMM")}
             tickLabelProps={() => ({ fill: "var(--muted-foreground)", fontSize: narrow ? 10 : 11, textAnchor: "middle" })}
           />
-          {/* Hit target spans the whole plot, not just the 2px line. */}
           <rect width={innerWidth} height={innerHeight} fill="transparent" onPointerMove={handleMove} onPointerLeave={hideTooltip} />
-          {/* Markers sit above the hit target so their own <title> tooltips work. */}
           <AnnotationMarkers annotations={annotations} xScale={xScale} innerWidth={innerWidth} innerHeight={innerHeight} />
         </Group>
       </svg>

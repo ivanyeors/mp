@@ -1,10 +1,5 @@
 import type { SVGProps } from "react";
 
-/**
- * Product icons drawn on lucide's grid (24px viewBox, 2px round stroke,
- * `currentColor`), so they sit in the dock beside lucide icons and take the same
- * `className` sizing and colour.
- */
 function ProductIcon({ children, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -23,10 +18,6 @@ function ProductIcon({ children, ...props }: SVGProps<SVGSVGElement>) {
   );
 }
 
-/**
- * The Mpillow outline: `public/pillow-shape.svg` fitted to the grid, stretched
- * ~10% taller so the shoulder cut-outs still read at 20px.
- */
 export function PillowIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <ProductIcon {...props}>
@@ -35,7 +26,6 @@ export function PillowIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** An Mbolster from the side: a rounded capsule with a seam near each end. */
 export function BolsterIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <ProductIcon {...props}>

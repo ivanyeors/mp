@@ -47,8 +47,6 @@ export default async function AuditLogPage({
 
   await requireAdminPage("audit-log", locale);
 
-  // Filter chips for the access changes Users & permissions writes; any other
-  // value is ignored rather than passed to the query.
   const raw = (await searchParams).entity;
   const wanted = Array.isArray(raw) ? raw[0] : raw;
   const entityTypes = entityTypesFor(wanted);
@@ -62,7 +60,6 @@ export default async function AuditLogPage({
     .limit(200);
   const rows = (data ?? []) as AuditRow[];
 
-  // "email · profile" when the actor picked who they were working as.
   const profileIds = [...new Set(rows.map((r) => r.actor_profile_id).filter((id): id is string => !!id))];
   const { data: profiles } = profileIds.length
     ? await admin.from("mp_staff").select("id,name").in("id", profileIds)
@@ -71,7 +68,6 @@ export default async function AuditLogPage({
 
   const actorProfile = (r: AuditRow) =>
     r.actor_profile_id ? profileName.get(r.actor_profile_id) : undefined;
-  // No person: a job the system ran by itself, such as kept sending (PRD-campaign-audiences slice 10).
   const actorName = (r: AuditRow) => r.actor_email ?? (r.actor_id ? "—" : "System");
   const actorLabel = (r: AuditRow) => {
     const profile = actorProfile(r);
@@ -135,7 +131,6 @@ export default async function AuditLogPage({
               }
               return (
                 <li key={r.id}>
-                  {/* The whole row opens the changes: one ≥56px target instead of a 16px "View". */}
                   <details className="group">
                     <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 py-3 transition-colors active:bg-press [&::-webkit-details-marker]:hidden">
                       <div className="min-w-0 flex-1">{summary}</div>

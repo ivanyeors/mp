@@ -1,11 +1,3 @@
-/**
- * ADR 0037 — multi-location partners.
- *
- * A partner business with several clinics is one main `partners` row
- * (`parent_id` null) plus a branch row per further clinic, whose `parent_id`
- * is the main row's id. Branch `position` counts within its partner. These
- * tests encode the spec for the pure helpers; all data below is invented.
- */
 import { describe, it, expect } from "vitest";
 import {
   branchesByParent,
@@ -34,8 +26,6 @@ const branch = (id: string, parentId: string, position: number): Loc => ({
 
 const ids = (rows: { id: string }[]) => rows.map((r) => r.id);
 
-// --- 1. isBranch -------------------------------------------------------------
-
 describe("isBranch", () => {
   it("is true when parent_id names a main row", () => {
     expect(isBranch({ parent_id: "alignwell" })).toBe(true);
@@ -54,8 +44,6 @@ describe("isBranch", () => {
   });
 });
 
-// --- 2. locationDisplayName --------------------------------------------------
-
 describe("locationDisplayName", () => {
   it("joins the partner name and branch name with a spaced middle dot", () => {
     expect(locationDisplayName({ name: "Alignwell Chiropractic", branch_name: "Novena" })).toBe(
@@ -70,7 +58,6 @@ describe("locationDisplayName", () => {
   });
 
   it("suffixes the main row too when it has a branch name", () => {
-    // branch_name may sit on the main row: it is the partner's first clinic.
     expect(
       locationDisplayName({ name: "Harbourline Physio", branch_name: "Tanjong Pagar" }),
     ).toBe("Harbourline Physio · Tanjong Pagar");
@@ -95,8 +82,6 @@ describe("locationDisplayName", () => {
     );
   });
 });
-
-// --- 3. branchesByParent -----------------------------------------------------
 
 describe("branchesByParent", () => {
   const rows: Loc[] = [
@@ -130,12 +115,8 @@ describe("branchesByParent", () => {
   });
 });
 
-// --- 4. orderWithBranches ----------------------------------------------------
-
 describe("orderWithBranches", () => {
   it("puts each main row, in input order, straight before its branches", () => {
-    // Already sorted by position: main and branch positions interleave because a
-    // branch's position counts within its partner.
     const rows: Loc[] = [
       main("alignwell", "Alignwell Chiropractic", 0),
       branch("aw-novena", "alignwell", 0),
@@ -220,8 +201,6 @@ describe("orderWithBranches", () => {
     expect(orderWithBranches([])).toEqual([]);
   });
 });
-
-// --- 5. formatLocationAddress ------------------------------------------------
 
 describe("formatLocationAddress", () => {
   it("joins lines and puts the postal code after a trailing Singapore", () => {
@@ -316,8 +295,6 @@ describe("formatLocationAddress", () => {
   });
 });
 
-// --- 6. locationMapsUrl ------------------------------------------------------
-
 describe("locationMapsUrl", () => {
   const base = "https://www.google.com/maps/search/?api=1&query=";
 
@@ -347,8 +324,6 @@ describe("locationMapsUrl", () => {
     expect(locationMapsUrl("  \n , \n", "  ")).toBeNull();
   });
 });
-
-// --- 7. planBranchSave -------------------------------------------------------
 
 describe("planBranchSave", () => {
   const novena: BranchInput = {

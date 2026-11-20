@@ -47,7 +47,7 @@ describe("publishMobileBottomBarHeight", () => {
     const stop = publishMobileBottomBarHeight(el as unknown as HTMLElement);
     expect(props.get(MOBILE_BOTTOM_BAR_HEIGHT_VAR)).toBe("111px");
 
-    el.height = 0; // md:hidden on a wider screen
+    el.height = 0;
     observers[0].cb();
     expect(props.has(MOBILE_BOTTOM_BAR_HEIGHT_VAR)).toBe(false);
 

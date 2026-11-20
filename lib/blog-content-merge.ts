@@ -1,11 +1,5 @@
 import type { BlogLocalizedContent } from "@/lib/blogs";
 
-/**
- * The admin editor sends `content` wholesale but has no Answer lede field, so a
- * save would drop `seo_answer` (PRD-search-visibility slice 17). Carry the stored
- * value forward for any locale where the incoming content does not set it.
- * An explicit empty string clears it.
- */
 export function preserveSeoAnswer(
   existing: Record<string, BlogLocalizedContent> | null | undefined,
   incoming: Record<string, BlogLocalizedContent>,
@@ -18,7 +12,6 @@ export function preserveSeoAnswer(
   return out;
 }
 
-/** Has anything a reader would notice changed? Status flips and image swaps do not count. */
 export function isEditorialChange(
   existing: Record<string, BlogLocalizedContent> | null | undefined,
   incoming: Record<string, BlogLocalizedContent>,

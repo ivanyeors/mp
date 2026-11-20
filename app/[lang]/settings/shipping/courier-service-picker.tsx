@@ -16,12 +16,6 @@ function transit(r: CourierRate): string | null {
     return max === r.min_days ? `${max} ${max === 1 ? "day" : "days"}` : `${r.min_days}–${max} days`;
 }
 
-/**
- * The courier a pinned method charges ("A specific courier"). "Find couriers"
- * quotes one boxed pillow to the method's first country with today's rates and
- * lists every courier that answered, so Staff pick J&T or Ninja Van by name
- * rather than pasting a service id. The id field stays for one already known.
- */
 export function CourierServicePicker({
     value,
     onChange,
@@ -29,7 +23,6 @@ export function CourierServicePicker({
 }: {
     value: string;
     onChange: (id: string) => void;
-    /** Where to quote: the method's first country. */
     country: string;
 }) {
     const [loading, setLoading] = useState(false);

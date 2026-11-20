@@ -17,17 +17,12 @@ export const dynamic = "force-dynamic";
 const PhoneSchema = z.string().trim().max(40).optional();
 
 const BodySchema = z.discriminatedUnion("mode", [
-  /** An existing Customer, found on the panel's search. */
   z.object({
     mode: z.literal("link"),
     customerId: z.string().uuid(),
     phone: PhoneSchema,
     marketingEmail: z.boolean(),
   }),
-  /**
-   * The Customer whose email this is, or a new one. With no `email`, the
-   * Result's own (a Result whose email has no Customer yet).
-   */
   z.object({
     mode: z.literal("create"),
     email: z.string().trim().toLowerCase().email().max(254).optional(),
@@ -50,25 +45,6 @@ type CustomerRow = { id: string; email: string; phone: string | null };
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
 
-/**
- * Staff tie a **Result** to a **Customer**, or create one, from the Result
- * page's Customer panel (ADR 0051 d–g; PRD-results-to-customer slice 02).
- *
- * - **One email, one Customer.** *Create* with an email a Customer holds links
- *   that Customer instead (`created: false`); it never makes a second.
- * - **A found Customer keeps their name.** The Result may be someone they are
- *   with. Staff fill only an empty mobile.
- * - **Which Results.** One with no email, or a Draft whose email Staff typed,
- *   may be pointed at any Customer, and takes that Customer's email, so
- *   *Request payment* and every Result email reach them. Any other Result
- *   keeps its email and links only to the Customer holding it
- *   (`resultContactEditable`).
- * - **The marketing box**, ticked by default on the panel, is the
- *   customisation's own box: `customisation`, subscribing only someone nobody
- *   has asked (ADR 0039).
- * - `customers-edit` and `results`: it changes a Customer and a Result.
- *   Audited as `result.customer_link`.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let ctx: AdminContext;
   try {
@@ -110,7 +86,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
       409,
     );
-  // Refused before anyone is created.
   if (!editable && body.mode === "create" && body.email && body.email !== resultEmail) return lockedEmail();
 
   let customer: CustomerRow;
@@ -142,7 +117,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const customerEmail = normaliseResultEmail(customer.email);
   if (!editable && customerEmail !== resultEmail) return lockedEmail();
 
-  // Fill an empty mobile only: a Customer's own number is never replaced.
   if (phone && !customer.phone) {
     const { error } = await admin.from("customers").update({ phone }).eq("id", customer.id).is("phone", null);
     if (error) return json({ error: error.message }, 500);
@@ -153,8 +127,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     patch.customer_email = customerEmail;
     if (!row.customer_phone && (phone ?? customer.phone)) patch.customer_phone = phone ?? customer.phone;
   }
-  // Written only if the Result is still as read, so a hold that lands between
-  // the read and this write keeps the email it wrote.
   let update = admin.from("mp_config_responses").update(patch).eq("id", row.id);
   update = row.status == null ? update.is("status", null) : update.eq("status", row.status);
   update = row.customer_email == null ? update.is("customer_email", null) : update.eq("customer_email", row.customer_email);

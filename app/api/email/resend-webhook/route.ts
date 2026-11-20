@@ -6,23 +6,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Resend's webhook for campaign mail (PRD-shopify-customer-migration slice 08).
- *
- * The signature is checked first, against CAMPAIGN_RESEND_WEBHOOK_SECRET
- * (`lib/email/resend-webhook.ts`): a missing or forged one, or one older than
- * five minutes, is a 401 and changes nothing. Unset, the route answers 503.
- *
- * Then two events:
- *  - `email.bounced` (a hard bounce): the send is marked `bounced`, and the
- *    Customer is left out of every later wave;
- *  - `email.complained`: the send is marked `complained`, and the Customer is
- *    set `unsubscribed` with source `complaint`, with its consent event, in
- *    the same transaction (`record_campaign_send_event`).
- * Any other event, or a message that is not a campaign send, is answered 200
- * and ignored, so Resend does not retry it. A database failure is a 500, so
- * Resend retries; a repeat changes nothing.
- */
 export async function POST(req: Request) {
   const secret = process.env.CAMPAIGN_RESEND_WEBHOOK_SECRET || undefined;
   if (!secret) return NextResponse.json({ ok: false, error: "not_configured" }, { status: 503 });

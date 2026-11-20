@@ -4,7 +4,6 @@ import { cellLayers, mirrorSection, mirrorTarget } from "@/lib/configurator/staf
 import { flattenToPackList, SUB_SECTIONS } from "@/lib/spatial-fillings/core";
 import type { PillowPlacement } from "@/lib/spatial-fillings/core";
 
-/** The screenshot's case: the right side authored, the left side empty. */
 const authored: PillowPlacement[] = [
   { section: "right", subSection: "front", slot: 1, itemId: 11, insertOrder: 1 },
   { section: "right", subSection: "middle", slot: 1, itemId: 22, row: 0, insertOrder: 2 },
@@ -14,7 +13,6 @@ const authored: PillowPlacement[] = [
   { section: "center", subSection: "middle", slot: 1, itemId: 99 },
 ];
 
-/** A section's pieces in a total order — slot is unique per CELL, not per section. */
 const inSection = (ps: PillowPlacement[], section: string) =>
   ps
     .filter((p) => p.section === section)
@@ -27,7 +25,6 @@ describe("mirrorTarget", () => {
   it("pairs the two sides and leaves center unpaired", () => {
     expect(mirrorTarget("left")).toBe("right");
     expect(mirrorTarget("right")).toBe("left");
-    // center sits ON the mirror plane — it has no opposite side to become.
     expect(mirrorTarget("center")).toBeNull();
   });
 });
@@ -38,8 +35,6 @@ describe("mirrorSection", () => {
     const right = inSection(next, "right");
     const left = inSection(next, "left");
     expect(left).toEqual(right.map((p) => ({ ...p, section: "left" })));
-    // Sub-sections run head→foot, perpendicular to the mirrored axis: front
-    // stays front. Layers come with it, so a stacked cell mirrors as stacked.
     expect(cellLayers(next, { section: "left", subSection: "back" }).map((l) => l.map((p) => p.itemId)))
       .toEqual([[33], [44]]);
     expect(left.map((p) => p.subSection)).toEqual(["front", "middle", "middle", "back", "back"]);
@@ -74,19 +69,16 @@ describe("mirrorSection", () => {
   });
 
   it("refuses an empty source, which would silently clear the other side", () => {
-    // `authored` has nothing in left; mirroring left→right must not wipe right.
     expect(mirrorSection(authored, "left")).toBe(authored);
   });
 
   it("doubles the pack list, because mirroring adds real pieces", () => {
-    // CONTEXT.md: the pack list is derived from placements. Mirroring is not a
-    // view toggle like layer order — it puts five more pieces in the pillow.
     const before = flattenToPackList(authored);
     const after = flattenToPackList(mirrorSection(authored, "right"));
     const countOf = (lines: ReturnType<typeof flattenToPackList>, id: number) =>
       lines.find((l) => l.item_id === id)?.count ?? 0;
     expect(countOf(before, 22)).toBe(2);
     expect(countOf(after, 22)).toBe(4);
-    expect(countOf(after, 99)).toBe(countOf(before, 99)); // center untouched
+    expect(countOf(after, 99)).toBe(countOf(before, 99));
   });
 });

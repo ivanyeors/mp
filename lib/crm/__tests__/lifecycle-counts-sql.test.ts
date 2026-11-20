@@ -2,13 +2,6 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CUSTOMER_OVERVIEW_COLUMNS } from "@/lib/crm/customer-overview";
 
-/**
- * `admin_customer_lifecycle_counts` (20261101020836) counts the Customer
- * lifecycle chart from the Customer overview. A function, so a rebuild of the
- * overview need not drop it; this holds the columns it reads to the
- * overview's, and keeps it server-only.
- */
-
 const dir = new URL("../../../supabase/migrations/", import.meta.url);
 const files = readdirSync(dir)
   .filter((f) => f.endsWith(".sql"))

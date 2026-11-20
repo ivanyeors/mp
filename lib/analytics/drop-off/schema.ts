@@ -7,13 +7,6 @@ import {
   TEXT_REASONS,
 } from "@/lib/analytics/drop-off/reasons";
 
-/**
- * What the ingest and decline routes accept (PRD-crm-retention-loop slice 10).
- * Server-side, apart from ./reasons so the storefront bundle carries no zod.
- */
-
-// Control characters other than tab and newline have no place in a typed
-// answer, and Postgres refuses NUL in text outright.
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
 const optionalText = z
@@ -23,13 +16,11 @@ const optionalText = z
   .nullable()
   .transform((v) => v?.replace(CONTROL_CHARS, "").trim() || null);
 
-/** One answer from the storefront card, as the ingest route accepts it. */
 export const SiteDropOffAnswerSchema = z
   .object({
     step: z.enum(SITE_DROP_OFF_STEPS),
     reason: z.enum(DROP_OFF_REASONS),
     text: optionalText,
-    // The page it was asked on, checked against the step by the route.
     path: z.string().min(1).max(200),
     visitId: z.string().uuid().optional().nullable(),
     visitorId: z.string().uuid().optional().nullable(),
@@ -43,7 +34,6 @@ export const SiteDropOffAnswerSchema = z
   .transform((a) => ({ ...a, text: TEXT_REASONS.includes(a.reason) ? a.text : null }));
 export type SiteDropOffAnswer = z.output<typeof SiteDropOffAnswerSchema>;
 
-/** The optional answer a decline carries. */
 export const DeclineReasonSchema = z
   .object({
     reason: z.enum(DROP_OFF_REASONS),

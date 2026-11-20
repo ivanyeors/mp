@@ -1,5 +1,3 @@
-/** Bridge AppDock Menu → SettingsSidebarNav sheet (siblings under root layout). */
-
 const OPEN_EVENT = "admin-panel-menu:open";
 const bus = new EventTarget();
 

@@ -9,7 +9,6 @@ const MessageSchema = z.object({
   message: z.string().trim().min(1, "Write a message first.").max(CHAT_MESSAGE_MAX_CHARS),
 });
 
-/** POST: the customer's next message, stored and posted to the staff Telegram group. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const limited = await rateLimited(req, "support-chat-message", 30, 60_000);
   if (limited) return limited;

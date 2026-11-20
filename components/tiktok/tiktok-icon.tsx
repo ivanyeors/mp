@@ -1,4 +1,3 @@
-/** TikTok's note mark, in `currentColor`. Decorative: give the control around it a label. */
 export function TikTokIcon({ className }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="currentColor">

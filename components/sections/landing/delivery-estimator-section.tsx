@@ -7,11 +7,6 @@ interface DeliveryEstimatorSectionProps {
   locale: Locale;
 }
 
-/**
- * "What does delivery cost to me?" on the landing page: a postal code in, live
- * delivery options out, quoted for one boxed Mpillow. Rates, couriers and the
- * free-shipping threshold all come from Settings → Shipping.
- */
 export function DeliveryEstimatorSection({ section, locale }: DeliveryEstimatorSectionProps) {
   const content = section.content as DeliveryEstimatorContent;
   return (

@@ -1,30 +1,12 @@
-/**
- * The owner's Shopify customer export (Shopify admin → Customers → Export →
- * All customers → Plain CSV file), read in the browser and read again on the
- * server (PRD-shopify-customer-migration, slice 02; ADR 0029 a).
- *
- * Pure: no Node or Supabase imports, so the Admin Panel page and the server
- * action run the same code.
- *
- *  - `parseShopifyCustomersCsv` checks the header row and returns the raw rows.
- *    A raw row holds only the columns in SHOPIFY_COLUMNS; `Accepts SMS
- *    Marketing`, `Tax Exempt` and anything else in the file are dropped here,
- *    so they never leave the browser.
- *  - `normaliseShopifyRow` turns one raw row into the record an import would
- *    write, or the reason it cannot be imported, and names each repair made.
- */
 import { parseCsv } from "@/lib/csv";
 import { normalizePhone } from "@/lib/appointments/phone";
 
 type ColumnSpec = {
-  /** The header Shopify writes. */
   readonly header: string;
-  /** Older exports name the default address's columns without the prefix. */
   readonly aliases?: readonly string[];
   readonly required?: boolean;
 };
 
-/** Every column the import reads, keyed by the raw row's field name. */
 export const SHOPIFY_COLUMNS = {
   customerId: { header: "Customer ID" },
   email: { header: "Email", required: true },
@@ -50,26 +32,17 @@ export type ShopifyField = keyof typeof SHOPIFY_COLUMNS;
 
 export const SHOPIFY_FIELDS = Object.keys(SHOPIFY_COLUMNS) as ShopifyField[];
 
-/** One data row as the file had it: the columns the import reads, cells untouched. Empty cells are left out. */
 export type ShopifyRawRow = Partial<Record<ShopifyField, string>>;
 
 export type ShopifyHeaderCheck = {
-  /** Every required column is present. */
   ok: boolean;
-  /** Required columns the file lacks. The page stops on these. */
   missing: string[];
-  /** Optional columns the file lacks: a note, not an error. */
   missingOptional: string[];
-  /** Columns in the file the import never reads. They are not sent anywhere. */
   dropped: string[];
 };
 
 export type ParsedShopifyCsv = { header: ShopifyHeaderCheck; rows: ShopifyRawRow[] };
 
-/**
- * Any cell: strip a UTF-8 BOM and the leading `'` that Shopify's "CSV for
- * Excel" variant puts before ids, phones and postcodes, then trim.
- */
 export function cleanCell(value: string | null | undefined): string {
   return (value ?? "").replace(/^﻿/, "").trim().replace(/^'/, "").trim();
 }
@@ -110,15 +83,8 @@ export function parseShopifyCustomersCsv(text: string): ParsedShopifyCsv {
   return { header: { ok: missing.length === 0, missing, missingOptional, dropped }, rows };
 }
 
-// ─── Normalisation ───────────────────────────────────────────────────────────
-
-/** Why a row cannot be imported at all, decided from the row alone. */
 export type RowInvalidReason = "no_email" | "invalid_email";
 
-/**
- * Something the import changed or left out of a row it still imports. Counted
- * on the preview so the owner sees each one.
- */
 export type RowRepair =
   | "zip_repaired"
   | "phone_dropped"
@@ -126,7 +92,6 @@ export type RowRepair =
   | "total_orders_invalid"
   | "total_spent_invalid";
 
-/** The default address, in `customer_addresses` columns. */
 export type ShopifyAddress = {
   recipient: string;
   line1: string;
@@ -134,20 +99,15 @@ export type ShopifyAddress = {
   city: string;
   state: string | null;
   postal_code: string;
-  /** ISO-2, always written explicitly (never the column default; PRD trap 3c). */
   country: string;
   phone: string | null;
 };
 
-/** What an import writes for one row, in `customers` / `migrated_customers` columns. */
 export type NormalisedShopifyRow = {
-  /** A bigint as decimal digits, or null when absent: email is then the key. */
   shopify_customer_id: string | null;
-  /** Lowercased. */
   email: string;
   first_name: string | null;
   last_name: string | null;
-  /** E.164, or null. Never a key. */
   phone: string | null;
   address: ShopifyAddress | null;
   email_marketing_at_export: "yes" | "no";
@@ -161,11 +121,9 @@ export type NormaliseResult =
   | { ok: true; row: NormalisedShopifyRow; repairs: RowRepair[] }
   | { ok: false; reason: RowInvalidReason };
 
-/** The same shape checkout and the partner application accept. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BIGINT_MAX = "9223372036854775807";
 const INT_MAX = 2_147_483_647;
-/** numeric(12,2) holds less than 10^10. */
 const MONEY_LIMIT = 1e10;
 
 const orNull = (s: string) => (s === "" ? null : s);
@@ -212,20 +170,16 @@ function normaliseAddress(
   const state = cleanCell(raw.provinceCode);
   const country = cleanCell(raw.countryCode).toUpperCase();
   const zipCell = cleanCell(raw.zip);
-  // No default address at all is common (newsletter sign-ups) and is not a repair.
   if (![line1, line2, cityCell, state, country, zipCell].some(Boolean)) return null;
 
   const recipient = [names.first, names.last].filter(Boolean).join(" ") || cleanCell(raw.company);
   const city = cityCell || (country === "SG" ? "Singapore" : "");
-  // customer_addresses requires recipient, line1, city and postal_code: an
-  // incomplete address is left out, never padded (PRD trap 3d).
   if (!line1 || !zipCell || !/^[A-Z]{2}$/.test(country) || !recipient || !city) {
     repairs.add("address_incomplete");
     return null;
   }
 
   let postal = zipCell;
-  // A spreadsheet reads 018956 back as 18956.
   if (country === "SG" && /^\d{5}$/.test(postal)) {
     postal = `0${postal}`;
     repairs.add("zip_repaired");
@@ -267,7 +221,6 @@ export function normaliseShopifyRow(raw: ShopifyRawRow): NormaliseResult {
       last_name,
       phone,
       address,
-      // Only an explicit yes is consent; "no" may mean "never asked".
       email_marketing_at_export: cleanCell(raw.acceptsEmailMarketing).toLowerCase() === "yes" ? "yes" : "no",
       shopify_orders_count: orders ?? 0,
       shopify_amount_spent: spent ?? 0,

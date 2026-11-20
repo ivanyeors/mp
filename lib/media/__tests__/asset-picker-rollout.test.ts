@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { resolveUsages } from "@/lib/media/image-usages";
 
-/** Mirrors slice-12 consumer POST/PATCH bodies. */
 const BlogImageSchema = z.object({
   image_url: z.string().nullable().optional().default(null),
   media_asset_id: z.string().uuid().nullable().optional().default(null),

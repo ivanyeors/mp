@@ -11,7 +11,6 @@ export type BreadcrumbNavGroup = {
 
 export type SettingsCrumb = {
   label: string;
-  /** Omitted on the current page. */
   href?: string;
 };
 
@@ -20,7 +19,6 @@ function isNavActive(basePathname: string, href: string): boolean {
   return basePathname === href || basePathname.startsWith(`${href}/`);
 }
 
-/** Longest nav href that matches the path (siblings sharing a prefix need this). */
 export function findActiveHref(
   basePathname: string,
   groups: BreadcrumbNavGroup[],
@@ -49,7 +47,6 @@ function allNavEntries(groups: BreadcrumbNavGroup[]): BreadcrumbNavItem[] {
   return out;
 }
 
-/** Nav parent that lists `href` as a direct child (for nesting that isn't URL-nested). */
 function findStructuralParent(
   groups: BreadcrumbNavGroup[],
   href: string,
@@ -62,7 +59,6 @@ function findStructuralParent(
   return null;
 }
 
-/** UUID or long opaque token — not a human-readable slug. */
 export function isOpaqueId(segment: string): boolean {
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)) {
     return true;
@@ -82,10 +78,6 @@ function detailSegmentLabel(segment: string, detailLabel?: string | null): strin
   return titleCaseSegment(segment);
 }
 
-/**
- * Build an IA trail for Admin Panel: Admin Panel → nav ancestors → active section → detail.
- * Labels come from nav config; only real destinations are linked.
- */
 export function buildSettingsBreadcrumbs(
   basePathname: string,
   groups: BreadcrumbNavGroup[],
@@ -107,10 +99,6 @@ export function buildSettingsBreadcrumbs(
       (activeHref === e.href || activeHref.startsWith(`${e.href}/`)),
   );
 
-  // Include a nav parent that lists the active entry as a child but whose URL
-  // isn't a prefix of it (e.g. Partners → /settings/partner-commissions).
-  // The Admin Panel root is already the first crumb, so a parent whose href is
-  // "/settings" (the General group) would only duplicate it.
   const structuralParentCandidate = activeHref ? findStructuralParent(groups, activeHref) : null;
   const structuralParent =
     structuralParentCandidate && structuralParentCandidate.href !== "/settings"
@@ -128,7 +116,6 @@ export function buildSettingsBreadcrumbs(
     crumbs.push({ label: entry.label, href: entry.href });
   }
 
-  // Path segments beyond the active nav entry (detail routes, possibly nested).
   if (activeHref && path.length > activeHref.length) {
     const rest = path.slice(activeHref.length).replace(/^\//, "");
     const segments = rest.split("/").filter(Boolean);
@@ -141,8 +128,7 @@ export function buildSettingsBreadcrumbs(
       crumbs.push(isLast ? { label } : { label, href: acc });
     }
   } else if (!activeHref) {
-    // Unknown path: walk segments with title-case fallback.
-    const segments = path.split("/").filter(Boolean).slice(1); // drop "settings"
+    const segments = path.split("/").filter(Boolean).slice(1);
     let acc = "/settings";
     for (let i = 0; i < segments.length; i++) {
       const seg = segments[i];
@@ -155,7 +141,6 @@ export function buildSettingsBreadcrumbs(
     }
   }
 
-  // Current page is not a link.
   const last = crumbs[crumbs.length - 1];
   if (last) delete last.href;
 

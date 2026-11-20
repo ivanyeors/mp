@@ -1,13 +1,6 @@
 import raw from "@/mpillow-office/model/midview_08_83_viewer.json";
 import { viewerModelSchema, type ShowroomUnit } from "./types";
 
-/**
- * Midview City Blk 22 #08-83 (Sin Ming Lane), the showroom unit, as a bare
- * shell. The geometry is built from `mpillow-office/plans/midview-08-83.yaml`
- * by `tools/build_massing.py`; everything below only says how to show it.
- * Coordinates are the spec's: X east, Z south, metres from the outer faces of
- * the west and north walls.
- */
 export const MIDVIEW_08_83: ShowroomUnit = {
   slug: "midview-08-83",
   title: "Midview #08-83",

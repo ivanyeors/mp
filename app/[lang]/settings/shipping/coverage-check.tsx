@@ -14,7 +14,6 @@ import type { CourierRate, PackageType } from "@/lib/shipping/types";
 import { apiErrorMessage } from "./couriers/easyship-panel";
 import type { ShippingMethod } from "./shipping-client";
 
-/** One country's answer: couriers that quoted, none that did, or a request that failed. */
 type CountryResult =
     | { status: "covered"; couriers: number; cheapest: CourierRate; fastest: CourierRate }
     | { status: "none" }
@@ -23,10 +22,8 @@ type CountryResult =
 type Scope = Region | "all";
 type Filter = "all" | "covered" | "none";
 
-// Parallel quotes; low enough not to trip the courier API's rate limit.
 const CONCURRENCY = 4;
 
-/** Failures that are the same for every country: stop rather than repeat them 200 times. */
 const ACCOUNT_FAILURES = new Set(["not_configured", "invalid_origin", "too_many_parcels"]);
 
 function methodName(m: ShippingMethod): string {
@@ -64,12 +61,6 @@ async function checkCountry(country: Country, profile: PackageType, signal: Abor
     return { status: "covered", couriers: rates.length, cheapest: rates[0], fastest: byTime[0] };
 }
 
-/**
- * Settings → Shipping "Coverage": quotes one boxed item to every country in a
- * region (or the world) with today's courier rates, so Staff can see where the
- * courier account actually delivers before offering a country — and add the
- * covered ones to a live method in one step. Nothing is saved until then.
- */
 export function CoverageCheck({
     open,
     onOpenChange,
@@ -227,7 +218,6 @@ export function CoverageCheck({
                                     <Select
                                         value={profile}
                                         onValueChange={(v) => {
-                                            // Results for another item would read as this one's.
                                             setProfile(v as PackageType);
                                             setResults({});
                                             setQueue([]);

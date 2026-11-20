@@ -9,15 +9,6 @@ import {
   type UnsubscribeReasonOutcome,
 } from "./unsubscribe-reasons";
 
-/**
- * Unsubscribe reasons on the server (PRD-crm-retention-loop slice 11): the
- * answer's schema, recording it through `record_unsubscribe_reason()`
- * (20261101081458), and the reads for the unsubscribe page, the Customer page
- * and Analytics. Every read and write is the service role's: the table is
- * server-only.
- */
-
-/** One answer, as the unsubscribe page, the account and Staff send it. Words go with *Other* alone. */
 export const UnsubscribeAnswerSchema = z
   .object({
     reason: z.enum(UNSUBSCRIBE_REASONS),
@@ -31,11 +22,6 @@ export const UnsubscribeAnswerSchema = z
   .transform((a) => ({ reason: a.reason, text: a.reason === "other" ? a.text : null }));
 export type UnsubscribeAnswer = z.output<typeof UnsubscribeAnswerSchema>;
 
-/**
- * Records an answer for the Customer's latest unsubscribe. The function says
- * why when it does not: already answered, not unsubscribed now, a spam
- * complaint, or an unsubscribe nobody asks about. It never changes consent.
- */
 export async function recordUnsubscribeReason(
   admin: SupabaseClient,
   customerId: string,
@@ -53,16 +39,12 @@ export async function recordUnsubscribeReason(
   return data as UnsubscribeReasonOutcome;
 }
 
-/** An answer kept on the Customer. */
 export interface CustomerUnsubscribeReason {
   reason: UnsubscribeReason;
-  /** What they typed with *Other*. Staff only. */
   text: string | null;
-  /** When they answered. */
   at: string;
 }
 
-/** The sources a reason is asked for: the link, the account, a request to Staff. */
 const ASKED_SOURCES = ["unsubscribe_link", "account", "support"];
 
 interface LatestUnsubscribe {
@@ -71,7 +53,6 @@ interface LatestUnsubscribe {
   reason: CustomerUnsubscribeReason | null;
 }
 
-/** The Customer's latest consent change, when it unsubscribed them, with its answer if any. */
 async function readLatestUnsubscribe(admin: SupabaseClient, customerId: string): Promise<LatestUnsubscribe | null> {
   const { data, error } = await admin
     .from("customer_consent_events")
@@ -98,24 +79,16 @@ async function readLatestUnsubscribe(admin: SupabaseClient, customerId: string):
   };
 }
 
-/**
- * Whether the unsubscribe page asks: `ask` when their latest change
- * unsubscribed them by the link, in their account or through Staff, and has
- * no answer; `answered` when it has; null otherwise (a spam complaint, an
- * import, or not unsubscribed).
- */
 export async function readUnsubscribeQuestion(admin: SupabaseClient, customerId: string): Promise<"ask" | "answered" | null> {
   const latest = await readLatestUnsubscribe(admin, customerId);
   if (!latest || !ASKED_SOURCES.includes(latest.source)) return null;
   return latest.reason ? "answered" : "ask";
 }
 
-/** Why a *Lost* Customer unsubscribed, for the Customer page: their latest unsubscribe's answer, or null. */
 export async function readCustomerUnsubscribeReason(admin: SupabaseClient, customerId: string): Promise<CustomerUnsubscribeReason | null> {
   return (await readLatestUnsubscribe(admin, customerId))?.reason ?? null;
 }
 
-/** The answers to these consent events, by event id: the Marketing email card's history. */
 export async function readReasonsForEvents(
   admin: SupabaseClient,
   eventIds: readonly number[],
@@ -133,36 +106,26 @@ export async function readReasonsForEvents(
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Analytics: *Why people unsubscribe*
-// ---------------------------------------------------------------------------
-
 export const UNSUBSCRIBE_SUMMARY_DAYS = [30, 90, 365] as const;
 export type UnsubscribeSummaryDays = (typeof UNSUBSCRIBE_SUMMARY_DAYS)[number];
 
-/** The latest typed answers shown. */
 const LATEST_TEXT = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PAGE_ROWS = 1000;
-/** Past this many rows a window is counted from its newest, and the card says so. */
 export const UNSUBSCRIBE_SUMMARY_CAP = 20_000;
 
 export interface UnsubscribeSummary {
   days: number;
-  /** Every unsubscribe in the window, by how it happened. */
   unsubscribes: { total: number; link: number; account: number; support: number; complaint: number; other: number };
-  /** Answers in the window. */
   answers: number;
   byReason: { reason: UnsubscribeReason; count: number }[];
   latestText: { reason: UnsubscribeReason; text: string; at: string }[];
-  /** Set when a window held more rows than were counted. */
   capped?: number;
 }
 
 type EventRow = { source: string };
 type AnswerRow = { reason: string; other_text: string | null; created_at: string };
 
-/** Pure — the window's unsubscribes and answers, summarised. */
 export function summariseUnsubscribes(events: readonly EventRow[], answers: readonly AnswerRow[], days: number): UnsubscribeSummary {
   const unsubscribes = { total: events.length, link: 0, account: 0, support: 0, complaint: 0, other: 0 };
   for (const e of events) {
@@ -191,7 +154,6 @@ export function summariseUnsubscribes(events: readonly EventRow[], answers: read
   };
 }
 
-/** Reads one table's window, newest first, paged. */
 async function readWindow<T>(
   admin: SupabaseClient,
   table: string,
@@ -218,7 +180,6 @@ async function readWindow<T>(
   }
 }
 
-/** *Why people unsubscribe* for the last `days`: every unsubscribe, and the answers given. */
 export async function readUnsubscribeSummary(
   admin: SupabaseClient,
   { days, now = new Date(), cap = UNSUBSCRIBE_SUMMARY_CAP }: { days: number; now?: Date; cap?: number },

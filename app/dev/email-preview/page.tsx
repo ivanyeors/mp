@@ -8,9 +8,6 @@ import {
   type EmailGroup,
 } from "@/lib/email/registry";
 
-// Dev-only surface for eyeballing every outbound email without sending one.
-// Deliberately plain: it is a tool, not a product page, and it must not depend
-// on app chrome that could restyle the iframe.
 export const dynamic = "force-dynamic";
 
 const GROUP_ORDER: EmailGroup[] = [
@@ -28,7 +25,6 @@ const GROUP_ORDER: EmailGroup[] = [
   "ops",
 ];
 
-/** This page for a template, a fixture and Light or Dark. */
 const pageHref = (id: string, fixture: EmailFixture, dark: boolean) =>
   `/dev/email-preview?id=${id}&fixture=${fixture}${dark ? "&dark=1" : ""}`;
 
@@ -52,8 +48,6 @@ export default async function EmailPreviewPage({
   const { id, fixture, dark } = await searchParams;
   const selectedId = (id && getEmailCase(id)?.id) || EMAIL_REGISTRY[0].id;
   const selectedFixture = fixture === "hostile" ? "hostile" : "happy";
-  // Dark: the shell's own dark rules forced on, as a reader in dark mode sees
-  // the email (PRD-campaign-email-editor slice 15).
   const selectedDark = dark === "1";
   const selected = getEmailCase(selectedId)!;
   const asSent = `/dev/email-preview/${selectedId}?fixture=${selectedFixture}`;

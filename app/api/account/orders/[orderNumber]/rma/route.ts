@@ -27,11 +27,9 @@ const BodySchema = z.object({
   resolution: z.enum(["refund", "exchange", "replacement"]),
   reason: z.string().max(1000).optional(),
   customer_note: z.string().max(2000).optional(),
-  // Shown to Staff as links, so only web links: never javascript: or data:.
   photo_urls: z.array(z.string().url().refine((url) => toWebUrl(url) !== null, "Photo links must start with https://")).max(10).optional(),
 });
 
-/** Slice 03: signed-in customer creates an item-level RMA on a delivered order. */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ orderNumber: string }> },
@@ -51,8 +49,6 @@ export async function POST(
 
   const admin = supabaseAdmin();
 
-  // Cross-customer guard: fetch scoped by customer_id (RLS-independent, since we
-  // use the service role here) so a customer can never target another's order.
   const { data: order, error } = await admin
     .from("orders")
     .select(
@@ -76,14 +72,12 @@ export async function POST(
     kind?: string | null;
   }>;
 
-  // How much of each line is already tied up in a non-terminal RMA for this order.
   const alreadyReturnedByItem = await openReturnedQtyByOrder(admin, order.id);
 
   const settings = await getSiteSettings(["rma_return_window_days"]);
   const returnWindowDays =
     Number(settings.rma_return_window_days) || DEFAULT_RETURN_WINDOW_DAYS;
 
-  // Server-side eligibility re-check — never trust the client.
   const plan = planRmaCreate({
     order: { delivered_at: order.delivered_at, status: order.status },
     orderItems,
@@ -115,7 +109,6 @@ export async function POST(
     );
   }
 
-  // Idempotent "request received" email — a retry never double-sends.
   await dispatchRmaEmail({
     rmaRequestId: rma.id,
     template: "rma_requested",

@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 import type { PhotoScreening } from "@/lib/ai/photo-screening";
 
-/**
- * POST /api/mp-config/photos screens a Sizing photo before keeping it (ADR
- * 0047): a rejected photo is never stored, an unchecked one is kept and marked.
- * Who may write is ownership-gate.test.ts; this is what gets written.
- */
-
 const h = vi.hoisted(() => ({
   upsert: vi.fn(),
   screen: vi.fn(),
@@ -64,7 +58,6 @@ describe("POST /api/mp-config/photos screening", () => {
     const res = await post();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, screening: "passed" });
-    // Claude checks the WebP, and the WebP is what is stored.
     const [screened, view] = h.screen.mock.calls[0];
     expect(view).toBe("side");
     expect(screened.mediaType).toBe("image/webp");

@@ -12,11 +12,6 @@ import { BANNED_CLINICAL_ZH, checkBannedClinicalZh } from "@/lib/i18n/copy-bands
 import type { RewritableBlock } from "@/lib/email-campaigns/ai-refine-brief";
 import type { Run } from "@/lib/email-campaigns/content";
 
-/**
- * What Claude may write in a campaign, checked in code (PRD-campaign-email-
- * editor *AI guardrails*, slice 09): only the facts and what Staff typed.
- */
-
 const ctx: GuardrailContext = { staffText: "Sleep cooler this December\nThe FibreCool cover is back in all sizes", pointsLive: false };
 const typed = (staffText: string): GuardrailContext => ({ ...ctx, staffText: `${ctx.staffText}\n${staffText}` });
 
@@ -65,9 +60,7 @@ describe("wordsProblems", () => {
     const brief = typed("20% off every cover until Sunday, with code COOL20. Covers from S$59.");
     expect(wordsProblems("Take 20% off every cover until Sunday with code COOL20.", brief)).toEqual([]);
     expect(wordsProblems("Covers from S$59.", brief)).toEqual([]);
-    // Only what was typed: a different number is still Claude's own.
     expect(wordsProblems("Take 25% off.", brief)).toEqual(['has a percentage ("25%") nobody typed', 'has a number ("25") nobody gave']);
-    // A number counts whole: "1" is not in "10-year".
     expect(wordsProblems("1 pillow for life.", ctx)).toEqual(['has a number ("1") nobody gave']);
   });
 
@@ -125,7 +118,6 @@ describe("previewLineProblems (slice 10)", () => {
       "repeats the subject instead of following it",
     ]);
     expect(previewLineProblems("Save 20% on every cover.", "Sleep cooler this December", ctx)).not.toEqual([]);
-    // Whole words: a short subject inside a longer word is no repeat.
     expect(previewLineProblems("This cover keeps your pillow cool.", "Hi", ctx)).toEqual([]);
   });
 });
@@ -182,7 +174,6 @@ describe("chineseWordsProblems (slice 17): a translation says what its English s
       expect(chineseWordsProblems(`枕头可以${w}`, "relieve")).toEqual([`makes a health claim ("${w}"): write about comfort, fit and sleep`]);
     }
     expect(chineseWordsProblems("减少颈部疼痛", english)).toEqual(['makes a health claim ("疼痛"): write about comfort, fit and sleep']);
-    // Pain or an ache is a health claim, as "pain" and "aches" are in English.
     expect(chineseWordsProblems("告别颈椎酸痛，减轻颈痛", "Wake up refreshed.")).toEqual([
       'makes a health claim ("酸痛"): write about comfort, fit and sleep',
       'makes a health claim ("颈痛"): write about comfort, fit and sleep',
@@ -210,9 +201,7 @@ describe("chineseWordsProblems (slice 17): a translation says what its English s
       'offers "优惠", which the English doesn\'t',
       'offers "特价", which the English doesn\'t',
     ]);
-    // Free shipping translates free shipping, not a code.
     expect(chineseWordsProblems("包邮，并可使用优惠码", "Free shipping on every cover")).toEqual(['offers "优惠码", which the English doesn\'t']);
-    // An N折 is the English's own percentage off: 八折 is 20% off, 八五折 15%.
     expect(chineseWordsProblems("使用优惠码 COOL20 享八折", "Use code COOL20 for 20% off")).toEqual([]);
     expect(chineseWordsProblems("全场八五折", "15% off every cover")).toEqual([]);
     expect(chineseWordsProblems("全场八五折", "20% off every cover")).toEqual(['offers "八五折", which the English doesn\'t']);
@@ -221,7 +210,6 @@ describe("chineseWordsProblems (slice 17): a translation says what its English s
   it("keeps an address the English has, as plain words or a link's, and refuses one it doesn't", () => {
     const english = "Questions? Write to hello@mpillow.com or visit mpillow.com.";
     expect(chineseWordsProblems("有疑问？请写信至 hello@mpillow.com，或访问 mpillow.com。", english)).toEqual([]);
-    // A link's words as a converted campaign writes them, with the English address in its href.
     expect(chineseWordsProblems("请在\nmpillow.com/care\n阅读保养指南", "Read the care guide at https://mpillow.com/care.")).toEqual([]);
     expect(chineseWordsProblems("请访问 mpillow.com/new 或写信至 team@mpillow.com", english)).toEqual([
       'has a web address ("mpillow.com/new"): links are Staff\'s to add',

@@ -4,13 +4,6 @@ import { RETURNS_GROUP } from "@/lib/crm/timeline/groups";
 import { joinBatches, readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter, TimelineRef } from "@/lib/crm/timeline/types";
 
-/**
- * Returns on the Customer timeline (`returns`): when each was opened
- * (`rma_requests`), and every Status event after that (`rma_status_events`,
- * the Return's own append-only timeline). The event that opens a Return
- * (`from_status` null) is the opened entry already, so it is not read twice.
- */
-
 type RequestRow = {
   id: string;
   resolution: string;

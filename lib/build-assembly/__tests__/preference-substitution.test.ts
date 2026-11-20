@@ -1,12 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { assembleBuild } from "@/lib/build-assembly";
 
-/**
- * A Customer preference replaces the composed BOM's default of the same role.
- * Before this, every pillow build shipped two covers and two cases (each BOM
- * carries one of each), deducted both from stock, and charged for the chosen one
- * on top of a base price that already bundled the default.
- */
 const PILLOW_BOM = [
   { item_id: 1, quantity: 2, category: "cover" },
   { item_id: 2, quantity: 1, category: "pillow_case" },
@@ -35,7 +29,6 @@ describe("preference substitution", () => {
       { item_id: 30, quantity: 1, category: "cover" },
       { item_id: 31, quantity: 1, category: "case" },
     ]);
-    // Protector and packaging are not preference roles — they still ship.
     expect(idsFor(res, "composed")).toEqual([3, 4]);
     expect(idsFor(res, "preference")).toEqual([30, 31]);
   });
@@ -51,7 +44,6 @@ describe("preference substitution", () => {
   });
 
   it("keeps a default the shopper did not choose against", () => {
-    // Case only: the BOM cover has nothing to be displaced by.
     const res = build([{ item_id: 31, quantity: 1, category: "case" }]);
     expect(idsFor(res, "composed")).toEqual([1, 3, 4]);
   });
@@ -67,7 +59,6 @@ describe("preference substitution", () => {
       fillingTemplateLines: [],
       preferenceLines: [{ item_id: 31, quantity: 1, category: "case" }],
       addonLines: [],
-      // Default case costs 40, the chosen one 70. Only the chosen one is built.
       costByItem: new Map([[2, 40], [31, 70]]),
     });
     if (!res.ok) throw new Error(res.error);

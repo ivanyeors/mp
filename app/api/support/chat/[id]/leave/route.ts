@@ -3,14 +3,8 @@ import { LEAVE_SETTLE_MS, markChatLeft, settleLeave } from "@/lib/support/chat";
 import { openChat, rateLimited } from "@/lib/support/chat-http";
 
 export const runtime = "nodejs";
-// The transcript decision waits LEAVE_SETTLE_MS after the response.
 export const maxDuration = 30;
 
-/**
- * POST: the page's pagehide beacon. sendBeacon cannot set headers, so the
- * token comes in the body. The transcript goes only if the page does not poll
- * again within LEAVE_SETTLE_MS: a reload does, closing the tab doesn't.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const limited = await rateLimited(req, "support-chat-leave", 20, 60_000);
   if (limited) return limited;

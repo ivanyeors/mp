@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AI_EFFORTS, AI_MODELS, DEFAULT_AI_MODEL_ID, aiModel, isAiModelId, tokenCostUsd } from "@/lib/ai/models";
 
-/** The model list (PRD-campaign-email-editor slice 16): the one place model ids live. */
-
 describe("the model list", () => {
   it("starts with Claude Opus 5.5 at US$4 / US$20 a million tokens, taking every effort", () => {
     expect(aiModel(DEFAULT_AI_MODEL_ID)).toEqual(

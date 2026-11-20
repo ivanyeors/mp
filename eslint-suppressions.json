@@ -1,0 +1,1379 @@
+{
+  ".claude/skills/preview/fixtures/customer-pillows.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 6
+    }
+  },
+  ".claude/skills/preview/fixtures/points.mjs": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "app/[lang]/mbolster-config/mbolster-config-client.tsx": {
+    "mp/no-effect": {
+      "count": 13
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 6
+    }
+  },
+  "app/[lang]/mp-config/mp-config-client.tsx": {
+    "@next/next/no-img-element": {
+      "count": 2
+    },
+    "mp/no-effect": {
+      "count": 17
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    },
+    "react-hooks/immutability": {
+      "count": 3
+    },
+    "react-hooks/preserve-manual-memoization": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 8
+    }
+  },
+  "app/[lang]/mp-maker/page.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/results/[id]/page.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 6
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/analytics/AnalyticsClient.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/analytics/DropOffReasonsCard.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/analytics/InventoryMovementWaterfallVisx.tsx": {
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/analytics/ProductConfigurationCard.tsx": {
+    "mp/no-effect": {
+      "count": 5
+    }
+  },
+  "app/[lang]/settings/analytics/ProspectJourneyCard.tsx": {
+    "mp/no-effect": {
+      "count": 12
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/analytics/SalesTab.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/analytics/SearchVisibilityCard.tsx": {
+    "mp/no-effect": {
+      "count": 5
+    }
+  },
+  "app/[lang]/settings/analytics/UnsubscribeReasonsCard.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/appointments/appointments-client.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/refs": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/blogs/[id]/blog-editor-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/preserve-manual-memoization": {
+      "count": 6
+    }
+  },
+  "app/[lang]/settings/blogs/blogs-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/campaigns/ai/rewrite-ai.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/campaigns/ai/use-ai-draft.ts": {
+    "mp/no-effect": {
+      "count": 5
+    }
+  },
+  "app/[lang]/settings/campaigns/ai/use-ai-refine.ts": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/campaigns/blocks/image-field.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 5
+    }
+  },
+  "app/[lang]/settings/campaigns/blocks/product-picker.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/campaigns/blocks/products-field.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/campaigns/campaign-editor.tsx": {
+    "mp/no-effect": {
+      "count": 6
+    }
+  },
+  "app/[lang]/settings/campaigns/chinese/use-ai-translate.ts": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/campaigns/email-preview.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/campaigns/funnel/funnel-client.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/campaigns/kept-draft.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/campaigns/past-campaigns.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/campaigns/thumbnail-frame.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/costings/page.tsx": {
+    "mp/no-effect": {
+      "count": 10
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/costings/save/route.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/customers/[id]/aftercare-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/[id]/create-order-dialog.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/customers/[id]/customer-detail-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/customers/[id]/customer-fittings-card.tsx": {
+    "@next/next/no-img-element": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/[id]/customer-journey.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/customers/[id]/customer-pillow-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/[id]/customer-pillow-readjust.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/[id]/customer-reviews-card.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/customers/[id]/customer-shortcuts.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/[id]/journey-composer.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/[id]/journey-map.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/customers/[id]/marketing-consent-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/[id]/points-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/aftercare-settings-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/customers-client.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/preserve-manual-memoization": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/customers/filters/filters-page-client.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/customers/followups-tab.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/customers/review-match-parts.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/reviews-tab.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/segments-row.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/customers/telegram-updates-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/discounts/[id]/discount-editor-client.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/discounts/discounts-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/discounts/past-purchase-points.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/discounts/points-settings-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/email-templates/email-copy-editor.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/faq/faq-client.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/purity": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/forms/forms-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/general/general-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/integrations/shopify/shopify-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/inventory/ShopifyAdminPanel.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/inventory/actions.ts": {
+    "no-restricted-imports": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/inventory/configure/[card]/page.tsx": {
+    "mp/no-effect": {
+      "count": 10
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/inventory/configure/configure-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/inventory/configure/dimensions-section.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/inventory/configure/product-visualize.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/inventory/configure/soft-body-section.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/inventory/page.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 12
+    },
+    "react-hooks/preserve-manual-memoization": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/media/media-client.tsx": {
+    "@next/next/no-img-element": {
+      "count": 7
+    },
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/orders/[id]/easyship-fulfilment.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/orders/[id]/order-detail-client.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/orders/orders-client.tsx": {
+    "mp/no-effect": {
+      "count": 5
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/page-builder/page-builder-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/page-builder/slide-in-builder-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/page.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/partner-applications/page.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/partner-commissions/partner-payouts.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/partners/partners-client.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/products/[id]/product-ai.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/products/[id]/product-editor-client.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 5
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/products/categories-manager.tsx": {
+    "@next/next/no-img-element": {
+      "count": 2
+    },
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/products/products-client.tsx": {
+    "mp/no-effect": {
+      "count": 7
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/results/[id]/result-customer-panel.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/results/[id]/result-detail-client.tsx": {
+    "mp/no-effect": {
+      "count": 8
+    },
+    "react-hooks/preserve-manual-memoization": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/settings/results/results-client.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/rma/actions.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "app/[lang]/settings/shipping/couriers/easyship-panel.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/shipping/couriers/shipping-rules-editor.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/shipping/shipping-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/showroom/showroom-viewer.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/settings/users/google-reviews-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/users/social-inbox-card.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/[lang]/settings/users/users-client.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "app/[lang]/shop/[slug]/product-detail-client.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "app/[lang]/shop/[slug]/product-reviews.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/shop/checkout/confirmation/page.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/[lang]/shop/checkout/page.tsx": {
+    "mp/no-effect": {
+      "count": 7
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    },
+    "react-hooks/static-components": {
+      "count": 2
+    }
+  },
+  "app/[lang]/shop/checkout/pay-on-page.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "app/api/appointments/book/__tests__/route.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "app/api/cron/results-sla/route.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "components/account/account-sidebar-nav.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/analytics/analytics-notice-bar.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/analytics/drop-off-question.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/analytics/journey-tracker.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/api-request-tracker.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/auth/footer-sign-up.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/auth/login-form.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/auth/profile-menu.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/auth/sign-in-tabs.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/auth/sign-up-notice.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/block-editor/__tests__/block-editor.test.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/block-editor/__tests__/rich-text.test.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/block-editor/__tests__/use-unsaved-guard.test.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/block-editor/block-editor.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "components/block-editor/rich-text-editor.tsx": {
+    "mp/no-effect": {
+      "count": 5
+    }
+  },
+  "components/block-editor/use-editor-history.ts": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "components/block-editor/use-unsaved-guard.ts": {
+    "mp/no-effect": {
+      "count": 6
+    }
+  },
+  "components/blog/blog-filters.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "components/configurator/addon-cards.tsx": {
+    "@next/next/no-img-element": {
+      "count": 2
+    }
+  },
+  "components/configurator/config-image-upload.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/configurator/preview-contact-fields.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "components/configurator/staff-assist-bolster-panel.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/configurator/staff-assist-panel.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/customise-tier-picker.tsx": {
+    "mp/no-effect": {
+      "count": 5
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/effects/Aurora.jsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react-hooks/refs": {
+      "count": 1
+    }
+  },
+  "components/effects/DecryptedText.jsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/effects/MagicBento.jsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/effects/Stepper.jsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/effects/TextType.jsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react-hooks/refs": {
+      "count": 1
+    }
+  },
+  "components/effects/youtube-autoplay-on-view.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/explore/explore-claim-dialog.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/explore/explore-experience.tsx": {
+    "mp/no-effect": {
+      "count": 11
+    }
+  },
+  "components/haptics.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/markdown-editor/markdown-editor-impl.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    }
+  },
+  "components/marketing/faq-content.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "components/product-builder/overlay-workbench.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    }
+  },
+  "components/product-sections/split-hero-section.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    }
+  },
+  "components/register-sw.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/route-scope.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/rules-engine/workbench.tsx": {
+    "mp/no-effect": {
+      "count": 5
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/sections/landing/hero-contrast-frame.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/settings/ai-writing-section.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/settings/appointments-calendar.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/refs": {
+      "count": 3
+    }
+  },
+  "components/settings/appointments-settings-sheet.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/settings/inventory-push-sheet.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/settings/page-builder/inspector.check.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "components/settings/page-builder/preview-frame.tsx": {
+    "mp/no-effect": {
+      "count": 6
+    }
+  },
+  "components/settings/page-builder/publish-history.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/settings/page-builder/section-editor.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/settings/page-builder/slide-in-section-editor.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/settings/page-builder/tiktok-videos-editor.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    }
+  },
+  "components/settings/page-faqs-panel.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "components/settings/readjustment-panel.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/settings/review-sla-section.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/settings/select-from-drive-dialog.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/settings/sentence-field.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/settings/settings-breadcrumb-context.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/settings/settings-sidebar-nav.tsx": {
+    "mp/no-effect": {
+      "count": 9
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/settings/shop-listing-toggles.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/shop/cart-page-client.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/shop/cart-shell.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/shop/cart/cart-content.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/shop/cart/cart-coupon-field.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/shop/cart/cart-shipping-bar.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/shop/country-picker.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/shop/delivery-estimator.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/shop/hold-shipping-fields.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/shop/saved-address-select.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/slide-in-pages/ambassadors-slide-in.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/slide-in-pages/basic-mpillow-learn-more-slide-in.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/slide-in-pages/book-appointment-overlay.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/slide-in-pages/booking-flow.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/slide-in-pages/cervical-neck-support.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/slide-in-pages/confirming-refresh.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/slide-in-pages/mbolster-learn-more-slide-in.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/slide-in-pages/premium-learn-more-dialog.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/slide-in-pages/size-matters-slide-in.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/spatial/held-pouch.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/spatial/soft-cut.ts": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/spatial/soft-top.ts": {
+    "mp/no-effect": {
+      "count": 5
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "components/spatial/xray-cross-section.tsx": {
+    "mp/no-effect": {
+      "count": 14
+    }
+  },
+  "components/spatial/xray-pillow.tsx": {
+    "mp/no-effect": {
+      "count": 16
+    },
+    "react-hooks/refs": {
+      "count": 1
+    }
+  },
+  "components/support/support-chat-engine.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/support/support-chat-parts.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/support/support-chat-root.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/support/support-chat-window.tsx": {
+    "mp/no-effect": {
+      "count": 4
+    }
+  },
+  "components/support/support-chat.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/support/use-support-chat.ts": {
+    "mp/no-effect": {
+      "count": 5
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/tiktok/tiktok-pip.tsx": {
+    "mp/no-effect": {
+      "count": 1
+    }
+  },
+  "components/tiktok/tiktok-player.tsx": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "components/ui/app-dock.tsx": {
+    "react-hooks/preserve-manual-memoization": {
+      "count": 7
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/ui/apple-cards-carousel.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "components/ui/bubble-menu.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "components/ui/image-picker.tsx": {
+    "@next/next/no-img-element": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/ui/page-dock-actions.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "components/ui/shadcn-io/dock/index.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "components/ui/shadcn-io/particles/index.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    },
+    "react-hooks/immutability": {
+      "count": 3
+    }
+  },
+  "components/ui/sidebar.tsx": {
+    "react-hooks/purity": {
+      "count": 1
+    }
+  },
+  "components/ui/sunburst-menu.tsx": {
+    "react-hooks/refs": {
+      "count": 1
+    }
+  },
+  "components/ui/top-loading-bar.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "hooks/use-mobile.ts": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "lib/checkout-code/use-checkout-code.ts": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "lib/configurator/staff-assist.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "lib/i18n/messages/client.ts": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/immutability": {
+      "count": 1
+    }
+  },
+  "lib/locations/__tests__/projection.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "lib/results/access.ts": {
+    "mp/no-comment": {
+      "count": 3
+    }
+  },
+  "lib/reviews/__tests__/admin-reply.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "lib/rules-engine/__tests__/evaluate.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "lib/rules-engine/__tests__/mbolster-route.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "lib/seo/jsonld-organization.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "lib/seo/jsonld-product.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "lib/shop/cart-context.tsx": {
+    "mp/no-effect": {
+      "count": 5
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "lib/shop/currency-context.tsx": {
+    "mp/no-effect": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "lib/shop/use-cart-stock.ts": {
+    "mp/no-effect": {
+      "count": 2
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "lib/shop/use-delivery-countries.ts": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "lib/shop/use-shipping-quote.ts": {
+    "mp/no-effect": {
+      "count": 2
+    }
+  },
+  "lib/spatial-fillings/visuals.ts": {
+    "mp/no-comment": {
+      "count": 1
+    }
+  }
+}

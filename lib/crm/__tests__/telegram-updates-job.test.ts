@@ -5,15 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SignUpCounts } from "@/lib/crm/telegram-updates";
 import { CRM_TELEGRAM_LAST_SENT_KEY, CRM_TELEGRAM_UPDATES_KEY, TELEGRAM_TEST_MARK } from "@/lib/crm/telegram-updates";
 
-/**
- * The scheduled Telegram updates (CRM slice 14) against an in-memory
- * `site_settings` and `customers`: at most once per period, even when the cron
- * is re-run by hand or two runs overlap; nothing on a zero day; nothing while a
- * type is off; and no customer data in anything posted.
- */
-
 const h = vi.hoisted(() => ({
-  /** The two seams the owning slices fill. null = source not built yet. */
   reviewsToMatch: null as number | null,
   signUps: null as SignUpCounts | null,
 }));
@@ -23,7 +15,6 @@ vi.mock("@/lib/crm/telegram-update-sources", async (orig) => ({
   countGoogleReviewsToMatch: async () => h.reviewsToMatch,
   countSignUps: async () => h.signUps,
 }));
-// The job never uses the process-wide client in these tests; it is passed one.
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 
 const { runCrmTelegramUpdates, sendTelegramUpdatesTest, claimTelegramPeriod } = await import(
@@ -36,11 +27,6 @@ const realSources = await vi.importActual<typeof import("@/lib/crm/telegram-upda
 type Row = Record<string, unknown>;
 type Db = { tables: Record<string, Row[]>; failSettingsRead: boolean };
 
-/**
- * Just enough PostgREST: `site_settings.key` is unique (an insert that collides
- * returns 23505 and writes nothing), `update … eq … select` returns the rows it
- * changed, and every statement yields first, so `Promise.all` interleaves runs.
- */
 function fakeAdmin(db: Db): SupabaseClient {
   const from = (table: string) => {
     const filters: Array<(r: Row) => boolean> = [];
@@ -69,7 +55,6 @@ function fakeAdmin(db: Db): SupabaseClient {
       insert: (p: Row) => ((op = "insert"), (payload = p), b),
       update: (p: Row) => ((op = "update"), (payload = p), b),
       eq: (c: string, v: unknown) => (filters.push((r) => r[c] === v), b),
-      // A comparison with NULL is never true, as in SQL.
       gte: (c: string, v: string) => (filters.push((r) => r[c] != null && String(r[c]) >= v), b),
       lt: (c: string, v: string) => (filters.push((r) => r[c] != null && String(r[c]) < v), b),
       is: (c: string, v: null) => (filters.push((r) => (r[c] ?? null) === v), b),
@@ -86,12 +71,10 @@ function fakeAdmin(db: Db): SupabaseClient {
 }
 
 const ORIGIN = "https://mpillow.test";
-/** Monday 19 October 2026, 10:00 SGT: the cron's usual time. */
 const MONDAY = new Date("2026-10-19T02:00:00Z");
 const TUESDAY = new Date("2026-10-20T02:00:00Z");
 const NEXT_MONDAY = new Date("2026-10-26T02:00:00Z");
 
-/** Fixture customers. Two joined in the week of 12–18 October, one before it. */
 const CUSTOMERS: Row[] = [
   { id: "c1", first_name: "Ana", last_name: "Tan", email: "ana.tan@x.test", phone: "+6591234567", created_at: "2026-10-13T03:00:00.000Z" },
   { id: "c2", first_name: "Wei Ling", last_name: "Lim", email: "weiling@x.test", phone: "+6598765432", created_at: "2026-10-18T15:59:00.000Z" },
@@ -99,11 +82,6 @@ const CUSTOMERS: Row[] = [
 ];
 const PII = CUSTOMERS.flatMap((c) => [c.first_name, c.last_name, c.email, c.phone]) as string[];
 
-/**
- * The same Customers in the overview (migration slice 12): Ana, from Shopify,
- * signed up in that week; Wei Ling signed up on its last day; Raj before it;
- * a fourth has no account.
- */
 const OVERVIEW: Row[] = [
   { id: "c1", from_shopify: true, account_linked_at: "2026-10-13T04:00:00.000Z" },
   { id: "c2", from_shopify: false, account_linked_at: "2026-10-18T15:59:30.000Z" },
@@ -111,21 +89,11 @@ const OVERVIEW: Row[] = [
   { id: "c4", from_shopify: true, account_linked_at: null },
 ];
 
-/**
- * Follow-ups (CRM slice 06) around the week of 12–18 October, which closes at
- * Monday 19 October 00:00 SGT. Their titles name a fixture customer: they must
- * never reach the group.
- */
 const FOLLOW_UPS: Row[] = [
-  // Done in the week.
   { id: "f1", title: "Call Ana Tan about her second pillow", due_on: "2026-10-15", done_at: "2026-10-14T03:00:00.000Z" },
-  // Open, due on the Saturday: overdue as the week closed.
   { id: "f2", title: "Send Wei Ling Lim the fill sample", due_on: "2026-10-17", done_at: null },
-  // Overdue as the week closed, done on the Monday after: overdue, not done in the week.
   { id: "f3", title: "Raj Kumar: chase the return", due_on: "2026-10-10", done_at: "2026-10-19T01:00:00.000Z" },
-  // Due on the Monday itself: not overdue yet.
   { id: "f4", title: "Ana Tan check-in", due_on: "2026-10-19", done_at: null },
-  // Done the week before.
   { id: "f5", title: "Old one", due_on: "2026-10-04", done_at: "2026-10-05T03:00:00.000Z" },
 ];
 
@@ -179,7 +147,6 @@ describe("Weekly summary", () => {
     expect(again).toMatchObject({ weekly_summary: { status: "already_sent", period: "2026-W42" } });
     expect(later).toMatchObject({ weekly_summary: { status: "already_sent" } });
     expect(sent).toHaveLength(1);
-    // The next week is a new period.
     expect(await run(NEXT_MONDAY)).toMatchObject({ weekly_summary: { status: "sent", period: "2026-W43" } });
     expect(sent).toHaveLength(2);
   });
@@ -213,8 +180,6 @@ describe("Weekly summary", () => {
       from: "2026-10-11T16:00:00.000Z",
       to: "2026-10-18T16:00:00.000Z",
     });
-    // New Customers, sign-ups since migration slice 12, follow-ups since CRM slice 06. No
-    // Google review was linked in the week (CRM slice 12), so it adds no line.
     const followUps = { done: 1, overdue: 2 };
     expect(counts).toEqual({ newCustomers: 2, signUps: 2, followUps });
     db.tables.customer_google_reviews = [
@@ -225,7 +190,6 @@ describe("Weekly summary", () => {
       from: "2026-10-11T16:00:00.000Z",
       to: "2026-10-18T16:00:00.000Z",
     });
-    // One linked in the week; the other on the Monday after.
     expect(withLinks).toEqual({ newCustomers: 2, signUps: 2, followUps, googleReviewsLinked: 1 });
     db.tables.customer_google_reviews = [];
     const withSlice07 = await realSources.loadWeeklySummaryCounts(
@@ -238,9 +202,7 @@ describe("Weekly summary", () => {
 
   it("counts follow-ups done in the week, and overdue as it closed (CRM slice 06)", async () => {
     const week = { from: "2026-10-11T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" };
-    // f1 was done in the week; f2 is still open and f3 was done only after it, both due before Monday.
     expect(await realSources.countFollowUps(admin, week)).toEqual({ done: 1, overdue: 2 });
-    // The next week: f3 done in it; f2 and f4 (due that Monday) are overdue by its close.
     expect(
       await realSources.countFollowUps(admin, { from: "2026-10-18T16:00:00.000Z", to: "2026-10-25T16:00:00.000Z" }),
     ).toEqual({ done: 1, overdue: 2 });
@@ -276,7 +238,6 @@ describe("the daily types", () => {
     });
     expect(sent).toEqual([]);
     expect(lastSent()).toEqual({});
-    // A count later the same day still goes.
     h.reviewsToMatch = 2;
     expect(await run(TUESDAY)).toMatchObject({ google_reviews_to_match: { status: "sent" } });
   });
@@ -284,10 +245,8 @@ describe("the daily types", () => {
   it("count sign-ups on account_linked_at, and how many came from Shopify (migration slice 12)", async () => {
     const week = { from: "2026-10-11T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" };
     expect(await realSources.countSignUps(admin, week)).toEqual({ total: 2, migrated: 1 });
-    // 18 October in Singapore: only Wei Ling, who is not from Shopify.
     const day = { from: "2026-10-17T16:00:00.000Z", to: "2026-10-18T16:00:00.000Z" };
     expect(await realSources.countSignUps(admin, day)).toEqual({ total: 1, migrated: 0 });
-    // A Customer with no account never counts.
     expect(await realSources.countSignUps(admin, { from: "2000-01-01T00:00:00.000Z", to: "2100-01-01T00:00:00.000Z" })).toEqual({
       total: 3,
       migrated: 1,
@@ -295,8 +254,6 @@ describe("the daily types", () => {
   });
 
   it("post nothing while a source is not built (a seam returns null)", async () => {
-    // Both seams are filled now (CRM slice 12, migration slice 12); the job keeps the contract.
-    // CRM slice 12's count is tested in lib/crm/__tests__/google-review-match-server.test.ts.
     expect(await run(TUESDAY)).toMatchObject({
       google_reviews_to_match: { status: "not_built" },
       new_sign_ups: { status: "not_built" },
@@ -361,7 +318,6 @@ describe("no customer data reaches the Staff group", () => {
     for (const text of sent) {
       for (const fact of PII) expect(text, fact).not.toContain(fact);
       expect(text).not.toMatch(/@/);
-      // Follow-up titles name customers too (CRM slice 06): counts only.
       for (const f of FOLLOW_UPS) expect(text).not.toContain(String(f.title));
     }
   });
@@ -386,7 +342,6 @@ describe("Send test", () => {
     }
     expect(sent[0]).toContain("Email: test@example.com");
     expect(sent[1]).toContain("5 customers signed up yesterday, 3 of them from Shopify.");
-    // A test claims nothing, so the real update still goes.
     expect(lastSent()).toEqual({});
   });
 

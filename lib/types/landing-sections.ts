@@ -36,8 +36,6 @@ export interface LandingSection {
   updated_at: string;
 }
 
-// --- Per-section content types for type-safe editing ---
-
 export interface HeroContent {
   image?: string;
   alt?: string;
@@ -51,11 +49,10 @@ export interface HeroContent {
 
 export interface TextImageContent {
   image?: string;
-  /** Alt text for the image; falls back to the title. Carried over from the DAM. */
   alt?: string;
   title?: string;
   description?: string;
-  flip?: boolean; // swap text/image sides
+  flip?: boolean;
 }
 
 export interface MarqueeContent {
@@ -108,8 +105,6 @@ export interface FounderNoteContent {
   role?: string;
 }
 
-// Custom section content types
-/** The Explore section: a still of the Explore scene, leading to /explore. Empty fields use the default copy. */
 export interface ExploreContent {
   image?: string;
   alt?: string;
@@ -138,14 +133,14 @@ export interface CustomVideoContent {
 }
 
 export interface CustomRichTextContent {
-  body?: string; // markdown
+  body?: string;
   title?: string;
 }
 
 export interface FeaturedProductsContent {
   title?: string;
   subtitle?: string;
-  limit?: number; // max products to show, default 4
+  limit?: number;
 }
 
 export interface ShopCtaContent {
@@ -153,33 +148,24 @@ export interface ShopCtaContent {
   title?: string;
   subtitle?: string;
   buttonLabel?: string;
-  buttonUrl?: string; // defaults to /shop
+  buttonUrl?: string;
 }
 
-/** Live delivery rates by postal code; title/subtitle fall back to the shop.delivery messages. */
 export interface DeliveryEstimatorContent {
   title?: string;
   subtitle?: string;
 }
 
-/**
- * One TikTok post in a TikTok videos section. Every post carries its own link
- * (`buttonUrl`): the video is shown for display, the button is where it leads.
- */
 export interface TikTokVideoItemContent {
-  /** The post's link on TikTok, stored in canonical form by the editor. */
   tiktokUrl?: string;
-  /** Cover image, picked from the media library. */
   image?: string;
   media_asset_id?: string | null;
   alt?: string;
-  /** Short hook printed on the card. */
   hook?: string;
-  buttonLabel?: string; // defaults to common.shopNow
-  buttonUrl?: string; // required: a path on this site or an https URL
+  buttonLabel?: string;
+  buttonUrl?: string;
 }
 
-/** A scrolling band of TikTok cover cards; title/subtitle fall back to the `tiktok` messages. */
 export interface TikTokVideosContent {
   title?: string;
   subtitle?: string;
@@ -187,10 +173,8 @@ export interface TikTokVideosContent {
   videos?: TikTokVideoItemContent[];
 }
 
-/** Placement only — Q&A copy lives in Settings → Page FAQs (`home` surface). */
 export type FaqContent = Record<string, never>;
 
-/** All section templates available when adding a new section */
 export const CUSTOM_SECTION_TEMPLATES: Array<{
   type: CustomSectionType;
   label: string;

@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-/**
- * Live shipping on a customisation (ADR 0032). A live method is quoted when the
- * hold is placed, charged in the authorised total, and its rate is stored on the
- * Result so assign and accept charge the same figure. No courier for the
- * address refuses the hold — it never falls back to the method's base_rate.
- * Same in-memory harness as measured-by.test.ts.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   requireAnyAdmin: vi.fn(),
@@ -222,10 +214,8 @@ describe("POST /api/results/hold — live shipping", () => {
     const res = await post();
     expect(res.status).toBe(200);
     const row = h.rows.get(ID)!;
-    // Goods 200 (stubbed quote) + live shipping 37.50.
     expect(row.authorized_amount).toBe(237.5);
     expect(row.shipping_rate).toBe(37.5);
-    // One Mpillow, boxed as the configurator quoted it, to the typed address.
     const input = h.quoteShippingMethods.mock.calls[0][1];
     expect(input.lines.map((l: { product_type: string }) => l.product_type)).toEqual(["pillow"]);
     expect(input.destination).toMatchObject({ country: "US", postal_code: "91606" });

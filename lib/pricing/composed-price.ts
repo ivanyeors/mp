@@ -1,71 +1,28 @@
-/**
- * Sell price for a composed pillow / bolster build. Pure, and deliberately free of
- * `supabaseAdmin` so the configurator preview can call the same function the money
- * path calls — they showed different numbers for the same build before this existed.
- *
- * The model, confirmed against Costings:
- *
- *   price = the Costings row for the chosen case's fabric family
- *         + (chosen cover MSRP - the cover that row was priced with)
- *         + (chosen case  MSRP - the case  that row was priced with)
- *         + add-ons at full MSRP
- *
- * A Costings row is the whole selling price of one configuration, not a
- * cover/case-exclusive core: premium XS with a linen case is 340 and with Fibrecool
- * is 360, and those two do not share a core (250 vs 247). So the row is selected,
- * then only components differing from what it was priced with move the total.
- *
- * Basic and Mbolster have a single unkeyed row and reach the same answer through the
- * same path: no family row matches, the unkeyed row is used, and the baseline is the
- * BOM's own default case.
- *
- * What goes inside the pillow is in the row: every filling, and a Cervical Neck
- * Support placed in a premium pillow too, so placing one or taking it out never
- * moves the price off the pillow's MSRP. An Ear Comfort Pad is the exception: one
- * placed in the pillow adds its own MSRP per piece (`placedChargeLines`), as one
- * picked as an Add-on beside the pillow does.
- */
-
 import { isEarPadItem } from "@/lib/spatial-fillings/filling-groups";
 
-/** `product_prices.variant` for a pillow row — `items.price_family` of its case. */
 export type PriceFamily = string;
 
-/** Key under which an unkeyed Costings row (basic, bolster) is stored. */
 export const UNKEYED = "";
 
 export type PricedComponent = {
   item_id: number;
-  /** Costings item MSRP. `null` means nobody priced it — never silently zero. */
   msrp: number | null;
-  /** Fabric family for a case; `null`/absent for covers. */
   family?: PriceFamily | null;
-  /**
-   * How many ship. Defaults to 1, and only the BOM default's value is used: a
-   * preference substitutes at the BOM's quantity, so a premium pillow that ships
-   * TWO covers moves by two covers' difference when the shopper swaps fabric.
-   */
   quantity?: number;
 };
 
 export type ComposedPriceInput = {
-  /** Costings MSRPs by `product_prices.variant`, plus `UNKEYED` for an unkeyed row. */
   msrpByFamily: Record<string, number>;
-  /** Cover and case the composed BOM ships by default. */
   defaultCover: PricedComponent | null;
   defaultCase: PricedComponent | null;
-  /** Every case offered for this size, used to derive each family's baseline. */
   caseOptions: PricedComponent[];
-  /** What the shopper picked; `null` keeps the BOM default. */
   chosenCover: PricedComponent | null;
   chosenCase: PricedComponent | null;
   addonLines: Array<{ msrp: number | null; quantity: number }>;
 };
 
 export type ComposedPriceBreakdown = {
-  /** The Costings row used. */
   base: number;
-  /** `product_prices.variant` of that row, or null when the unkeyed row was used. */
   family: PriceFamily | null;
   coverDelta: number;
   caseDelta: number;
@@ -77,14 +34,6 @@ export type ComposedPriceResult =
   | ({ ok: true } & ComposedPriceBreakdown)
   | { ok: false; code: "no_price" | "unpriced_component"; error: string };
 
-/**
- * The case MSRP each family's Costings row was priced with.
- *
- * Cases inside a family share an MSRP at a given size today (both linens are 65 at
- * XS), so this is normally just "the family's case price". The minimum is taken so
- * that if they ever diverge the baseline is the cheapest member and picking a dearer
- * one adds the difference, rather than the total depending on map ordering.
- */
 export function baselineCaseMsrpByFamily(
   caseOptions: PricedComponent[],
 ): Record<string, number> {
@@ -95,10 +44,6 @@ export function baselineCaseMsrpByFamily(
   return out;
 }
 
-/**
- * The case each family's Costings row was priced with: the cheapest priced member,
- * the lower item id on a tie. Costings reads it to cost the build the row prices.
- */
 export function baselineCaseByFamily(
   caseOptions: PricedComponent[],
 ): Record<string, PricedComponent> {
@@ -117,9 +62,6 @@ export function priceComposedBuild(input: ComposedPriceInput): ComposedPriceResu
   const cover = input.chosenCover ?? input.defaultCover;
   const chosenCase = input.chosenCase ?? input.defaultCase;
 
-  // A component with no MSRP is refused, never counted as free. XL Fibrecool
-  // (item 37) is exactly this: no MSRP and no price row, so XL is linen-only until
-  // someone prices it. Treating null as 0 would have sold it BELOW the linen price.
   for (const [label, c] of [
     ["cover", cover],
     ["case", chosenCase],
@@ -150,16 +92,11 @@ export function priceComposedBuild(input: ComposedPriceInput): ComposedPriceResu
     };
   }
 
-  // Which case the chosen row was priced with. A family row was priced with that
-  // family's case; the unkeyed row was priced with the BOM's own default.
   const baseline =
     familyBase != null
       ? (baselineCaseMsrpByFamily(input.caseOptions)[wantedFamily!] ?? null)
       : (input.defaultCase?.msrp ?? null);
 
-  // A delta has TWO operands and both must be priced. Refusing only the chosen one
-  // made an unpriced BASELINE hand the upgrade away free: an unpriced default case
-  // with a Fibrecool chosen still charged the bare row.
   if (chosenCase != null && baseline == null) {
     return {
       ok: false,
@@ -202,15 +139,6 @@ export function priceComposedBuild(input: ComposedPriceInput): ComposedPriceResu
 
 const CASE_ROLE_CATEGORIES = new Set(["case", "pillow_case", "bolster_case"]);
 
-/**
- * Split stored Customer preference lines into the chosen cover and case.
- *
- * Family and MSRP come from the caller's own `items` / `item_prices` lookup, NOT from
- * membership of the assigned size's option list. Staff re-assigning a size (XS to S)
- * leaves the stored case foreign to the new size's options; reading the family from
- * that list turned a legitimate build into "This build cannot be priced yet. Check
- * Costings" on premium, and into a delta measured against the wrong family on basic.
- */
 export function resolvePreferences(
   preferenceLines: Array<{ item_id: number; category: string }>,
   msrpByItem: Map<number, number>,
@@ -232,12 +160,6 @@ export function resolvePreferences(
   return { chosenCover, chosenCase };
 }
 
-/**
- * Charge lines for the pieces placed in the x-ray that the Costings row does not
- * cover. Fillings and a Neck support are in the row, so they add nothing; an Ear
- * Comfort Pad costs its own MSRP per piece. An unpriced one comes back as
- * `msrp: null`, which priceComposedBuild refuses, never zero.
- */
 export function placedChargeLines(
   pack: ReadonlyArray<{ item_id: number; count: number }>,
   itemById: ReadonlyMap<number, { category?: string | null; name: string }>,

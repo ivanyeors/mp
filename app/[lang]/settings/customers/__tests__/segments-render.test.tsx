@@ -4,13 +4,6 @@ import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import { parseCustomerFilters } from "@/lib/crm/customer-filters";
 import type { CustomerSegment, SegmentParams } from "@/lib/crm/segment-rules";
 
-/**
- * The Segments row (CRM slice 05): every live Segment as a chip with its live
- * count and its own link; *Needs review* instead of a count; *Save as
- * Segment* with a filter active; *Update {name}* and *Save as new* once a
- * chosen Segment's filters change. Only `customers-edit` is offered changes.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -125,7 +118,6 @@ describe("the Segments row", () => {
   it("gives a role with campaigns and no customers-edit a menu on live Segments only (PRD-crm-retention-loop 02)", () => {
     const html = listFor("", { canEdit: false, canEmail: true });
     expect(html).toContain('aria-label="More for Premium, lapsed"');
-    // A Segment that needs review counts nobody, so there is nothing to email.
     expect(html).not.toContain('aria-label="More for Old region"');
     expect(html).not.toContain("Save as Segment");
   });

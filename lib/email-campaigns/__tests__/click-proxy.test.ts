@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, type NextFetchEvent } from "next/server";
 
-/**
- * The request proxy and a campaign email's link (PRD-campaign-audiences slice
- * 08): the click token comes off by redirect before anything renders, and
- * only a person's GET is recorded, after the response.
- */
-
 const h = vi.hoisted(() => ({ record: vi.fn<(admin: unknown, token: string) => Promise<boolean>>(async () => true) }));
 
 vi.mock("@/lib/supabase/middleware", () => ({ refreshSupabaseSession: vi.fn(async () => undefined) }));

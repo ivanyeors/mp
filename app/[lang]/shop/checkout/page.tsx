@@ -76,23 +76,13 @@ import { formatCurrency } from "@/lib/i18n/currencies";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
-/**
- * The on-page payment step (ADR 0053), loaded only once the shopper reaches it:
- * it carries React Stripe.js, which nobody filling in the form needs yet.
- */
 const PayOnPage = dynamic(() => import("./pay-on-page"), {
   ssr: false,
   loading: () => <div className="h-64 animate-pulse rounded-lg bg-muted" aria-busy="true" />,
 });
 
-/**
- * Apple Pay and Google Pay beside the checkout button (ADR 0053), loaded only
- * once Stripe.js is here. Each shows nothing until Stripe says this device can
- * pay with it.
- */
 const WalletButton = dynamic(() => import("./wallet-button"), { ssr: false });
 
-/** An Order made and its Checkout Session opened on this page, awaiting payment. */
 interface OnPagePayment {
   clientSecret: string;
   sessionId: string;
@@ -101,23 +91,12 @@ interface OnPagePayment {
 
 const NEW_ADDRESS = "new";
 
-/**
- * What /api/shop/points/allowance says for the signed-in shopper (ADR 0030
- * (h), (i)). Absent for a guest, a partner, points switched off, or a
- * balance below the minimum: the control does not show.
- */
 interface PointsPreview {
   available: number;
   min: number;
-  /** The most this order takes; null when it is too small to take any. */
   max: number | null;
-  /** Whether the email typed is the account's; null before one is typed. */
   emailOk: boolean | null;
 }
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 interface FormErrors {
   email?: string;
@@ -141,10 +120,6 @@ interface FormData {
   country: string;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 function getShippingContent(
   content: ShippingMethod["content"],
   slug: string,
@@ -153,18 +128,11 @@ function getShippingContent(
   return content[lang] ?? content["en-US"] ?? content["en"] ?? { name: slug };
 }
 
-/**
- * A shipping method as the checkout lists it. Until there is a postal code the
- * list comes from the country's methods, and a live (Easyship) method has no
- * price yet — it is `pending` and cannot be chosen. With a postal code, every
- * option comes from the live quote for this cart and address.
- */
 interface DisplayOption {
   id: string;
   slug: string;
   content: ShippingMethod["content"];
   currency: string;
-  /** Before free_above; null while a live price is pending. */
   price: number | null;
   free_above: number | null;
   courier: ShippingQuoteOptionView["courier"];
@@ -172,10 +140,6 @@ interface DisplayOption {
   max_days: number | null;
   pending: boolean;
 }
-
-// ---------------------------------------------------------------------------
-// Checkout Page
-// ---------------------------------------------------------------------------
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -185,7 +149,6 @@ export default function CheckoutPage() {
   const { items, subtotal, couponCode, hydrated, rememberCode } = useCart();
   const { isConverted } = useCurrency();
 
-  // Form state
   const [form, setForm] = useState<FormData>({
     email: "",
     phone: "",
@@ -198,35 +161,21 @@ export default function CheckoutPage() {
     country: "SG",
   });
   const [errors, setErrors] = useState<FormErrors>({});
-  // Every country an active shipping method delivers to (Settings → Shipping).
   const countryOptions = useDeliveryCountries(form.country);
   const postalRequired = usesPostalCode(form.country);
 
-  // Shipping
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<string>("");
 
-  // Submission
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Paying on this page (ADR 0053) needs Stripe.js in this browser before the
-  // Order is made: an on-page Session has no Stripe page to fall back to. Until
-  // it loads, or when it cannot (no key, an ad blocker), the shopper pays on
-  // Stripe's hosted page as before.
   const [stripeReady, setStripeReady] = useState(false);
   const [payment, setPayment] = useState<OnPagePayment | null>(null);
-  // Said above the payment step when a wallet on the form could not charge.
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
-  // Closing the Order the shopper went back from; a new submit waits for it,
-  // so the points that Order reserved are free again.
   const releasing = useRef<Promise<unknown> | null>(null);
-  // Wallet buttons beside the checkout button: inline on a wide screen, in the
-  // sticky bar on a phone. `walletsAt` is where Stripe said each can show.
   const wide = useMediaQuery("(min-width: 768px)");
-  // A computer shows Apple Pay and Google Pay whether set up or not; a phone
-  // shows the one it has (`WalletDisplay`).
   const computer = useMediaQuery(COMPUTER_MEDIA_QUERY);
   const [walletsAt, setWalletsAt] = useState<Partial<Record<Wallet, "inline" | "bar">>>({});
 
@@ -240,7 +189,6 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  /** Close an unpaid on-page Order now; the next submit waits for this. */
   function releaseSession(sessionId: string) {
     releasing.current = fetch("/api/shop/checkout/release", {
       method: "POST",
@@ -251,7 +199,6 @@ export default function CheckoutPage() {
 
   function editDetails(opts?: { payOnStripe?: boolean }) {
     if (!payment) return;
-    // The form could not load here: the next attempt goes to Stripe's page.
     if (opts?.payOnStripe) setStripeReady(false);
     releaseSession(payment.sessionId);
     setPayment(null);
@@ -259,29 +206,21 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // Order summary collapsible on mobile
   const [summaryOpen, setSummaryOpen] = useState(false);
 
-  // Saved addresses (signed-in shoppers only)
   const [signedIn, setSignedIn] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>(NEW_ADDRESS);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
 
-  // Marketing email: ticked by default (owner, 2026-10-31; ADR 0039). It only
-  // ever subscribes someone nobody has asked; unticking changes nothing.
   const [marketingEmail, setMarketingEmail] = useState(true);
 
-  // Redirect if cart is empty — once the cart has loaded from storage. This
-  // effect runs before the provider's hydration effect, so on a full page load
-  // (a refresh, or Stripe's cancel_url) `items` is still [] here.
   useEffect(() => {
     if (hydrated && items.length === 0) {
       router.replace(`/${lang}/shop`);
     }
   }, [hydrated, items.length, lang, router]);
 
-  // Load the signed-in shopper's saved addresses; preselect the default.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/account/addresses")
@@ -292,22 +231,18 @@ export default function CheckoutPage() {
         const addresses = Array.isArray(data.addresses) ? data.addresses : [];
         setSavedAddresses(addresses);
         setForm((prev) => ({ ...prev, email: prev.email || data.email || "" }));
-        // Addresses are returned default-first, so the first one is the default.
         const preferred = addresses[0];
         if (preferred) {
           setSelectedAddressId(preferred.id);
           applyAddress(preferred);
         }
       })
-      .catch(() => {
-        /* anonymous checkout — nothing to load */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Fetch the country's shipping methods (flat prices) when the country changes.
   useEffect(() => {
     if (!form.country) return;
 
@@ -320,7 +255,6 @@ export default function CheckoutPage() {
       .finally(() => setShippingLoading(false));
   }, [form.country]);
 
-  // Live rates for this cart once there is a postal code (debounced while typing).
   const postalReady = isPostalReady(form.postal_code, form.country);
   const quote = useShippingQuote(
     items.length > 0
@@ -332,7 +266,6 @@ export default function CheckoutPage() {
       : null,
   );
 
-  // The live quote once one has come back for this address; the country's list until then.
   const useQuote =
     postalReady && quote.ready && !quote.error && (quote.options.length > 0 || !quote.loading);
   const displayOptions: DisplayOption[] =
@@ -365,17 +298,11 @@ export default function CheckoutPage() {
           };
         });
 
-  // The shopper's choice while it is still offered, else the first choosable method.
   const selectableIds = displayOptions.filter((o) => !o.pending).map((o) => o.id);
   const chosenShipping = selectableIds.includes(selectedShipping)
     ? selectedShipping
     : (selectableIds[0] ?? "");
 
-  // The one optional code (ADR 0033): a discount or a partner's referral code.
-  // It reads as whatever the cart holds until the shopper types here, and is
-  // checked against this order as they type and as the order changes, so the
-  // summary's discount and total move with it. Checkout prices the order again
-  // from the database; only that is charged.
   const [typedCode, setTypedCode] = useState<string | null>(null);
   const code = typedCode ?? couponCode ?? "";
 
@@ -397,8 +324,6 @@ export default function CheckoutPage() {
   const checkoutDiscount = checkoutCodeDiscount(codeStatus);
   const checkoutFreeShipping = checkoutCodeFreeShipping(codeStatus);
 
-  // The cart keeps what checkout settled on, so the code survives a Stripe
-  // cancel or a trip back to the cart.
   useEffect(() => {
     if (codeStatus.state === "discount") {
       rememberCode({
@@ -423,11 +348,6 @@ export default function CheckoutPage() {
     }
   }, [codeStatus, typedCode, rememberCode]);
 
-  // Points (ADR 0030 (h) to (j)): offered to a signed-in shopper who is not a
-  // partner and holds at least the minimum. The server works the balance out
-  // from the session; the page sends only the products less the coupon, and
-  // the email, to show the most this order takes. Opt-in, because points used
-  // are not refunded; once on, the amount starts at that most.
   const [fetchedPointsPreview, setPointsPreview] = useState<PointsPreview | null>(null);
   const [usePoints, setUsePoints] = useState(false);
   const [pointsChoice, setPointsChoice] = useState<number | null>(null);
@@ -476,11 +396,9 @@ export default function CheckoutPage() {
     if (!pointsPreview || pointsMax === null) return;
     const current = pointsChoice ?? pointsMax;
     const next = Math.min(pointsMax, Math.max(pointsPreview.min, current + direction * POINTS_PER_DOLLAR));
-    // Back at the most: follow it if the order grows or shrinks.
     setPointsChoice(next === pointsMax ? null : next);
   }
 
-  // Derived values
   const selectedMethod =
     displayOptions.find((o) => o.id === chosenShipping && !o.pending) ?? null;
   const currency = items[0]?.currency ?? "SGD";
@@ -492,15 +410,8 @@ export default function CheckoutPage() {
         : (selectedMethod.price ?? 0)
       : 0;
   const total = Math.max(0, subtotal + shippingCost - checkoutDiscount - pointsDiscount);
-  // What the code and the points take off, already inside `total`. Said under
-  // the total, so a total above the subtotal (shipping costing more than the
-  // points take off) cannot read as nothing taken off.
   const savings = Math.round((checkoutDiscount + pointsDiscount) * 100) / 100;
   const pointsLine = pointsUsedRow(pointsToUse);
-
-  // ---------------------------------------------------------------------------
-  // Validation
-  // ---------------------------------------------------------------------------
 
   function validate(): boolean {
     const next: FormErrors = {};
@@ -525,22 +436,12 @@ export default function CheckoutPage() {
     return Object.keys(next).length === 0;
   }
 
-  // ---------------------------------------------------------------------------
-  // Submit
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Price and make the Order, the same for every way of paying. Throws with
-   * the server's message when it refuses.
-   */
   async function createOrder(paymentUi: "elements" | "hosted") {
     if (releasing.current) {
       await releasing.current;
       releasing.current = null;
     }
 
-    // Optionally persist a newly entered address to the signed-in account.
-    // Best-effort: a failure here must not block checkout.
     if (signedIn && selectedAddressId === NEW_ADDRESS && saveNewAddress) {
       try {
         await fetch("/api/account/addresses", {
@@ -578,11 +479,8 @@ export default function CheckoutPage() {
         phone: form.phone || undefined,
       },
       shipping_method_id: chosenShipping,
-      // Resolved and priced again on the server; the page only asks.
       code: checkoutCodeToSend(code, codeStatus),
-      // Checked and reserved again on the server; the page only asks.
       points: pointsToUse > 0 ? pointsToUse : undefined,
-      // Pay on this page once Stripe.js is here; the server may still say hosted.
       payment_ui: paymentUi,
       locale: lang,
       items: items.map((item) => ({
@@ -641,8 +539,6 @@ export default function CheckoutPage() {
       const beginCheckout = beginCheckoutEvent();
 
       if (data.client_secret && data.session_id) {
-        // The Order is made and its Checkout open: pay for it right here. The
-        // cart stays until the confirmation page, exactly as for Stripe's page.
         trackGaEvent(beginCheckout);
         setPaymentNotice(null);
         setPayment({
@@ -652,10 +548,6 @@ export default function CheckoutPage() {
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else if (data.checkout_url || data.url) {
-        // Do NOT clear the cart here. The shopper has not paid yet: Stripe's
-        // cancel_url and the browser back button both land on this page, and
-        // the cart must still be there so they can review it or retry. The
-        // confirmation page clears it once the paid order is confirmed.
         const checkoutUrl: string = data.checkout_url ?? data.url;
         trackGaEventThen(beginCheckout, () => {
           window.location.href = checkoutUrl;
@@ -672,29 +564,14 @@ export default function CheckoutPage() {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Apple Pay and Google Pay beside the checkout button (ADR 0053)
-  // ---------------------------------------------------------------------------
-
-  // What the wallet's sheet shows: the page's total, in the cart's currency.
   const walletAmount = toMinorUnits(total, currency);
 
-  /**
-   * The tap must open the sheet at once, so nothing here waits on the network:
-   * the form is checked as the checkout button checks it, and an open sheet
-   * stays shut while another payment is under way.
-   */
   function tapWallet(): boolean {
     setSubmitError(null);
     if (submitting) return false;
     return validate();
   }
 
-  /**
-   * The shopper approved `authorizedMinor` in the wallet's sheet, which has
-   * closed. Make the Order exactly as the checkout button does, then pay its
-   * Checkout Session with the wallet's payment method.
-   */
   async function payWithWallet(wallet: Wallet, paymentMethodId: string, authorizedMinor: number) {
     const name = WALLET_NAMES[wallet];
     setSubmitError(null);
@@ -705,8 +582,6 @@ export default function CheckoutPage() {
       const beginCheckout = beginCheckoutEvent();
 
       if (!data.client_secret || !data.session_id) {
-        // This deploy cannot pay on the page after all: Stripe's page, where
-        // the wallets show too. The approved payment method is simply unused.
         const checkoutUrl: string | undefined = data.checkout_url ?? data.url;
         if (!checkoutUrl) throw new Error("No checkout URL returned from server.");
         leaving = true;
@@ -727,14 +602,11 @@ export default function CheckoutPage() {
         : ({ type: "failed", message: "Stripe.js is not loaded." } as const);
 
       if (result.type === "paid") {
-        // Stripe is taking this tab to the confirmation page.
         leaving = true;
         return;
       }
 
       if (result.type === "total_changed") {
-        // Keep this Order: its payment step shows the real total, with the
-        // wallets on top again, and charges nothing until the shopper agrees.
         setPaymentNotice(
           `Your total is ${formatCurrency(result.total, currency)}, not the ` +
             `${formatCurrency(fromMinorUnits(authorizedMinor, currency), currency)} ${name} showed, ` +
@@ -749,8 +621,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Declined, or the Session would not load: close this Order so that
-      // another try starts clean and its points are free again.
       console.warn(`[checkout] ${name} payment did not go through:`, result.message);
       releaseSession(data.session_id);
       throw new Error(walletFailedMessage(wallet));
@@ -773,10 +643,6 @@ export default function CheckoutPage() {
     toast.error(message);
   }
 
-  // ---------------------------------------------------------------------------
-  // Field updater
-  // ---------------------------------------------------------------------------
-
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key as keyof FormErrors]) {
@@ -784,7 +650,6 @@ export default function CheckoutPage() {
     }
   }
 
-  // Copy a saved address into the editable form (email is left untouched).
   function applyAddress(a: CustomerAddress) {
     setForm((prev) => ({
       ...prev,
@@ -818,14 +683,9 @@ export default function CheckoutPage() {
     if (match) applyAddress(match);
   }
 
-  // ---------------------------------------------------------------------------
-  // Render: Order Summary (shared between mobile collapsible and desktop card)
-  // ---------------------------------------------------------------------------
-
   function OrderSummaryContent() {
     return (
       <div className="flex flex-col gap-4">
-        {/* Items */}
         <div className="flex flex-col divide-y">
           {items.map((item) => (
             <div key={item.variantId} className="flex gap-3 py-3">
@@ -843,7 +703,6 @@ export default function CheckoutPage() {
                     <ShoppingBag className="size-5 text-muted-foreground" />
                   </div>
                 )}
-                {/* Qty badge */}
                 <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full bg-muted-foreground text-background text-[10px] w-4 h-4 font-medium leading-none">
                   {item.quantity}
                 </span>
@@ -869,7 +728,6 @@ export default function CheckoutPage() {
           ))}
         </div>
 
-        {/* Totals */}
         <div className="flex flex-col gap-2 border-t pt-3 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>
@@ -912,7 +770,6 @@ export default function CheckoutPage() {
             <span>Total</span>
             <PriceDisplay price={total} currency={currency} />
           </div>
-          {/* Not a <p>: public pages force paragraphs to 16px, and this is small print. */}
           {savings > 0 && (
             <div className="text-right text-xs text-green-600 dark:text-green-400">
               Includes{" "}
@@ -930,14 +787,8 @@ export default function CheckoutPage() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
   if (items.length === 0) return null;
 
-  // Shared Pay CTA label so the inline (desktop) and sticky (mobile) buttons
-  // never drift.
   const walletPlace = wide ? "inline" : "bar";
   const walletDisplay: WalletDisplay = computer ? "always" : "auto";
   const walletsShown = walletsBeside(
@@ -952,22 +803,13 @@ export default function CheckoutPage() {
   ) : (
     <>
       <CreditCard className="size-4" />
-      {/* Beside a wallet, say what this button is for instead. */}
       {walletsShown.length > 0 ? "Card or PayNow" : stripeReady ? "Continue to payment" : "Pay with Stripe"}
     </>
   );
 
-  /**
-   * The checkout button, with Apple Pay and Google Pay beside it where this
-   * device can use them: Apple Pay, Google Pay, then card or PayNow, at equal
-   * widths. The wallet buttons are mounted only in the `place` that shows at
-   * this width. Until Stripe says a wallet can show, its button sits unseen
-   * under the checkout button, so nothing moves on a device without it.
-   */
   function checkoutButtons(place: "inline" | "bar") {
     const withWallets = stripeReady && walletAmount > 0 && place === walletPlace;
     const columns = withWallets ? walletsShown.length : 0;
-    // Equal columns once a wallet shows (flex would make the padded button wider).
     return (
       <div
         className={cn(
@@ -982,7 +824,6 @@ export default function CheckoutPage() {
             const seen = walletsShown.includes(wallet);
             return (
               <div
-                // A new display setting is a new Stripe button.
                 key={`${wallet}-${walletDisplay}`}
                 className={seen ? "min-w-0" : "pointer-events-none invisible absolute inset-x-0 top-0"}
                 aria-hidden={seen ? undefined : true}
@@ -1022,7 +863,6 @@ export default function CheckoutPage() {
     <div className={`max-w-5xl mx-auto px-4 py-8 ${mobileStickyActionBarSpacerClassName}`}>
       <h1 className="text-2xl font-bold mb-6">Checkout</h1>
 
-      {/* Mobile: collapsible order summary at top */}
       <div className="lg:hidden mb-6" id="order-summary" data-section="order-summary">
         <Collapsible open={summaryOpen} onOpenChange={setSummaryOpen}>
           <CollapsibleTrigger asChild>
@@ -1052,9 +892,7 @@ export default function CheckoutPage() {
         </Collapsible>
       </div>
 
-      {/* Main grid */}
       <div className="lg:grid lg:grid-cols-5 lg:gap-8">
-        {/* Left: Form */}
         <div className="lg:col-span-3">
           {payment ? (
             <PayOnPage
@@ -1081,7 +919,6 @@ export default function CheckoutPage() {
             />
           ) : (
           <form id="checkout-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
-            {/* Contact */}
             <section id="contact" data-section="contact">
               <h2 className="text-lg font-semibold mb-4">Contact</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1139,11 +976,9 @@ export default function CheckoutPage() {
               </div>
             </section>
 
-            {/* Shipping address */}
             <section id="shipping-address" data-section="shipping-address">
               <h2 className="text-lg font-semibold mb-4">Shipping Address</h2>
 
-              {/* Saved addresses (signed-in shoppers) */}
               {signedIn && savedAddresses.length > 0 && (
                 <div className="mb-4 flex flex-col gap-1.5">
                   <Label htmlFor="saved_address">Use a saved address</Label>
@@ -1169,7 +1004,6 @@ export default function CheckoutPage() {
               )}
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Recipient */}
                 <div className="sm:col-span-2 flex flex-col gap-1.5">
                   <Label htmlFor="recipient">
                     Full name <span className="text-destructive">*</span>
@@ -1189,7 +1023,6 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Address line 1 */}
                 <div className="sm:col-span-2 flex flex-col gap-1.5">
                   <Label htmlFor="line1">
                     Address <span className="text-destructive">*</span>
@@ -1209,7 +1042,6 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Address line 2 */}
                 <div className="sm:col-span-2 flex flex-col gap-1.5">
                   <Label htmlFor="line2">
                     Address line 2{" "}
@@ -1225,7 +1057,6 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                {/* City / State / Postal */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:col-span-2">
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="city">
@@ -1278,7 +1109,6 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Country */}
                 <div className="sm:col-span-2 flex flex-col gap-1.5">
                   <Label htmlFor="country">
                     Country <span className="text-destructive">*</span>
@@ -1306,7 +1136,6 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Save new address to account */}
                 {signedIn && selectedAddressId === NEW_ADDRESS && (
                   <label className="sm:col-span-2 flex items-center gap-2 text-sm">
                     <Checkbox
@@ -1319,7 +1148,6 @@ export default function CheckoutPage() {
               </div>
             </section>
 
-            {/* Shipping method */}
             <section id="shipping-method" data-section="shipping-method">
               <div className="mb-4 flex items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold">Shipping Method</h2>
@@ -1349,7 +1177,6 @@ export default function CheckoutPage() {
                     const isFree =
                       !option.pending && (checkoutFreeShipping || isFreeFor(option) || option.price === 0);
                     const isSelected = chosenShipping === option.id;
-                    // Staff's own delivery time wins over the courier's, and needs no address.
                     const eta = shownDeliveryTime(
                       option.content,
                       lang,
@@ -1434,7 +1261,6 @@ export default function CheckoutPage() {
               )}
             </section>
 
-            {/* Points: signed-in, not a partner, at least the minimum (ADR 0030 h, i) */}
             {pointsPreview && (
               <section id="points" data-section="points" className="flex flex-col gap-3">
                 <h2 className="text-lg font-semibold">Points</h2>
@@ -1494,14 +1320,12 @@ export default function CheckoutPage() {
               </section>
             )}
 
-            {/* Submit error */}
             {submitError && (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {submitError}
               </div>
             )}
 
-            {/* Submit / payment handoff (desktop inline) */}
             <div id="payment" data-section="payment" className="max-md:hidden">
               {checkoutButtons("inline")}
             </div>
@@ -1509,12 +1333,8 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        {/* Mobile sticky Pay CTA — submits the same #checkout-form via the
-            button's form attribute, so no duplicated submit logic. The payment
-            step brings its own bar, with the Pay button. */}
         {!payment && <MobileStickyActionBar>{checkoutButtons("bar")}</MobileStickyActionBar>}
 
-        {/* Right: Desktop order summary */}
         <div className="hidden lg:block lg:col-span-2" id="order-summary" data-section="order-summary">
           <div className="sticky top-8">
             <Card>

@@ -32,14 +32,6 @@ function initialsFrom(name: string, email: string): string {
   return (email.slice(0, 2) || "?").toUpperCase();
 }
 
-/**
- * The session's own points (PRD-loyalty-points slice 02) and their place on
- * the bonus milestones (slice 09) once points are live, or "coming soon" with
- * the milestones before the launch; nothing for a partner (rule r) or once
- * points are switched off after it. Read with the service role, keyed by the
- * Customer this session just linked, never by anything the request names. A
- * failed read hides the card.
- */
 async function readOwnPoints(admin: ReturnType<typeof supabaseAdmin>, customerId: string) {
   try {
     const settings = await readPointsSettings(admin);
@@ -49,7 +41,6 @@ async function readOwnPoints(admin: ReturnType<typeof supabaseAdmin>, customerId
     const [balance, pending, standing] = await Promise.all([
       readPointsBalance(admin, customerId),
       readPendingOrders(admin, customerId),
-      // A failed milestone read only hides the bar, never the balance.
       settings.milestones.length ? readMilestoneStanding(admin, customerId).catch(() => null) : null,
     ]);
     const milestones = standing ? { ladder: settings.milestones, earned: standing.earned } : null;
@@ -59,11 +50,6 @@ async function readOwnPoints(admin: ReturnType<typeof supabaseAdmin>, customerId
   }
 }
 
-/**
- * The session's own pillow (ADR 0042 k): what the Customer page draws, once
- * something says they bought it, copied to what is theirs. Keyed by the
- * Customer this session just linked; a failed read hides the card.
- */
 async function readOwnPillow(
   admin: ReturnType<typeof supabaseAdmin>,
   customerId: string,
@@ -94,16 +80,7 @@ export default async function AccountProfilePage({
   const phone = customer.phone?.trim() || null;
   const googleLinked = (user.identities ?? []).some((i) => i.provider === "google");
   const initials = initialsFrom(displayName, email);
-  // Read server-side by the session's own Customer (CRM slice 13), so the card
-  // does not depend on the customer's column grants on `customers`. A failed
-  // read hides the card rather than the whole Profile.
   const admin = supabaseAdmin();
-  // Points (PRD-loyalty-points slice 02) are read after linkCustomerToAuthUser,
-  // whose Claim may have just granted the Claim bonus. A failed read only
-  // hides the card. Marketing consent (migration slice 07) is read the same
-  // way as the aftercare switches. Fitting records (ADR 0042 h) are the
-  // session's own, without their Drive files; a failed read hides the card.
-  // Their pillow (k) is read from those records once they are in.
   const ownFittings = listOwnFittings(customer.id).catch(() => null);
   const [aftercare, marketingEmail, points, fittings, pillow] = await Promise.all([
     readProfileAftercare(admin, customer.id).catch(() => null),

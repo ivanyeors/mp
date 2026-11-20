@@ -66,17 +66,14 @@ import "./appointments-calendar.css";
 
 type PendingSelect = { start: Date; end: Date };
 
-/** What the detail sheet is showing: a Google event, or a local block to remove. */
 type DetailTarget =
   | { kind: "event"; event: CalendarRangeEvent }
   | { kind: "blocked"; start: string; end: string };
 
 type Props = {
   settings: AppointmentSettings;
-  /** Every Location; the summary tile counts the bookable ones with an address. */
   locations: ResolvedLocation[];
   onAvailabilityChange: (patch: Partial<AppointmentSettings>) => Promise<void>;
-  /** Opens the gear sheet (the Locations tile is a shortcut to it). */
   onOpenSettings: () => void;
 };
 
@@ -87,7 +84,6 @@ const MOBILE_BREAKPOINT_QUERY = "(max-width: 767px)";
 type ViewId = "timeGridDay" | "timeGridThreeDay" | "timeGridWeek" | "dayGridMonth";
 
 const DESKTOP_DEFAULT_VIEW: ViewId = "timeGridWeek";
-/** Three wide, readable columns beats seven unreadable ones on a phone. */
 const MOBILE_DEFAULT_VIEW: ViewId = "timeGridThreeDay";
 
 const VIEW_OPTIONS: { id: ViewId; label: string; mobileOnly?: boolean }[] = [
@@ -97,10 +93,6 @@ const VIEW_OPTIONS: { id: ViewId; label: string; mobileOnly?: boolean }[] = [
   { id: "dayGridMonth", label: "Month" },
 ];
 
-/**
- * Per-view formats. On a phone the header cells are ~45–110px wide, so the
- * day header drops the year/month and the title drops the year.
- */
 const DESKTOP_VIEWS = {
   timeGridThreeDay: { type: "timeGrid", duration: { days: 3 } },
 } as const;
@@ -140,7 +132,6 @@ function padHour(h: number): string {
   return `${String(Math.min(Math.max(h, 0), 24)).padStart(2, "0")}:00`;
 }
 
-/** GCal all-day end is exclusive YYYY-MM-DD — show inclusive range. */
 function formatAllDayLabel(startDate: string, endDateExclusive: string): string {
   const end = new Date(`${endDateExclusive}T00:00:00Z`);
   end.setUTCDate(end.getUTCDate() - 1);
@@ -149,10 +140,6 @@ function formatAllDayLabel(startDate: string, endDateExclusive: string): string 
   return `All day, ${startDate} to ${endInclusive}`;
 }
 
-/**
- * Summary-tile copy for the week's windows. When every open day shares the
- * same windows, show them; otherwise say so and point at the gear sheet.
- */
 function summarizeAvailability(av: WeeklyAvailability): {
   label: string;
   caption: string;
@@ -167,7 +154,6 @@ function summarizeAvailability(av: WeeklyAvailability): {
   return { label: "Varies by day", caption: "edit in settings" };
 }
 
-/** Copy of the week with one day replaced. */
 function withDay(
   av: WeeklyAvailability,
   dow: number,
@@ -176,12 +162,10 @@ function withDay(
   return av.map((d, i) => (i === dow ? windows : d));
 }
 
-/** Browser-local getDay() is wrong when admin isn't in SGT — use wall-clock SGT. */
 function sgtDow(date: Date): number {
   return sgtParts(date.getTime()).dow;
 }
 
-/** Inclusive range label for a selection (end is exclusive). */
 function formatRangeLabel(start: Date, end: Date): string {
   return `${formatSlotLabelSgt(start.toISOString())} to ${formatSlotLabelSgt(
     new Date(end.getTime() - 60_000).toISOString(),
@@ -189,14 +173,8 @@ function formatRangeLabel(start: Date, end: Date): string {
 }
 
 type Rsvp = NonNullable<CalendarRangeEvent["rsvp"]>;
-/** Chip status: the guest's RSVP, or Cancelled when Google dropped the event. */
 type ChipStatus = Rsvp | "cancelled";
 
-/**
- * Status as an icon, not a pill: the chip has one line, so shape carries the
- * status (tick / cross / ? / envelope / ban) and the left-border accent keeps
- * the colour. Labels live in the legend and the detail sheet.
- */
 const STATUS_META: Record<ChipStatus, { label: string; Icon: LucideIcon; className: string }> = {
   accepted: { label: "Confirmed", Icon: Check, className: "text-green-600 dark:text-green-400" },
   declined: { label: "Declined", Icon: X, className: "text-red-600 dark:text-red-400" },
@@ -209,7 +187,6 @@ const STATUS_META: Record<ChipStatus, { label: string; Icon: LucideIcon; classNa
   cancelled: { label: "Cancelled", Icon: Ban, className: "text-muted-foreground" },
 };
 
-/** Type as fill colour + a small icon (blue vs violet alone is thin for colour-blind staff). */
 const TYPE_META: Record<AppointmentType, { label: string; Icon: LucideIcon; fill: string; border: string }> = {
   customisation: { label: "Customise", Icon: Sparkles, fill: "#2563eb", border: "#1d4ed8" },
   readjustment: { label: "Readjust", Icon: RefreshCw, fill: "#7c3aed", border: "#6d28d9" },
@@ -221,11 +198,6 @@ function chipStatus(ev: CalendarRangeEvent | undefined): ChipStatus | null {
   return ev.rsvp;
 }
 
-/**
- * Location dot. A colour when the event resolved to a Location; hollow for
- * "Other / no location". Inside a chip it rides on the dark type fill (white
- * ring); in the legend and sheets it sits on the page background (dark ring).
- */
 function LocationDot({
   color,
   onFill = false,
@@ -244,7 +216,6 @@ function LocationDot({
   );
 }
 
-/** Icon + label, used by the legend and the detail sheet (the chip shows the icon alone). */
 function StatusLabel({ status }: { status: ChipStatus }) {
   const { label, Icon, className } = STATUS_META[status];
   return (
@@ -255,18 +226,10 @@ function StatusLabel({ status }: { status: ChipStatus }) {
   );
 }
 
-/**
- * Custom event body. One line: type icon, guest name, status icon — the grid
- * row already says when, and the fill colour already says which type, so the
- * chip drops the time and the "Mpillow Customisation" text that used to bleed
- * out of short slots. A second line with the venue shows only where the slot
- * is tall enough; otherwise it clips inside the chip.
- */
 function renderEventContent(arg: EventContentArg) {
   const props = arg.event.extendedProps as {
     kind?: string;
     event?: CalendarRangeEvent;
-    /** Resolved at fetch time from the Location colour map (null = unresolved). */
     locationColor?: string | null;
   };
   const ev = props.event;
@@ -295,11 +258,6 @@ function renderEventContent(arg: EventContentArg) {
   );
 }
 
-/**
- * Synchronous mobile flag. This component is loaded with `ssr: false`, so the
- * first render already runs in the browser and can pick the right initial view
- * instead of mounting the desktop week grid and swapping a frame later.
- */
 function useSyncIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === "undefined" ? false : window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
@@ -330,8 +288,6 @@ export function AppointmentsCalendar({
   settingsRef.current = settings;
   const busyRef = useRef(false);
   const toggleRef = useRef<(dow: number) => Promise<void>>(async () => {});
-  // Colour by position across *all* Locations so the sheet and the chips agree.
-  // Ref-backed (like settingsRef) so the stable event source can read it.
   const locationColors = useMemo(() => locationColorMap(locations.map((l) => l.id)), [locations]);
   const locationColorsRef = useRef<LocationColorMap>(locationColors);
   locationColorsRef.current = locationColors;
@@ -345,7 +301,6 @@ export function AppointmentsCalendar({
     title: "",
   });
 
-  // Breakpoint crossed after mount (rotation, resize): move to that side's default view.
   const prevMobileRef = useRef(isMobile);
   useEffect(() => {
     if (prevMobileRef.current === isMobile) return;
@@ -366,7 +321,6 @@ export function AppointmentsCalendar({
         start: r.start,
         end: r.end,
         title: "Blocked",
-        // solid (not background) so eventClick works
         display: "block",
         backgroundColor: "rgba(220, 38, 38, 0.35)",
         borderColor: "rgba(185, 28, 28, 0.6)",
@@ -378,7 +332,6 @@ export function AppointmentsCalendar({
     [settings.blockedRanges],
   );
 
-  // One band per window, so a split day (10–12, 14–18) shows the gap.
   const businessHours = useMemo(
     () =>
       settings.availability.flatMap((day, dow) =>
@@ -408,9 +361,6 @@ export function AppointmentsCalendar({
         success(
           (json.events ?? []).map((e) => {
             const isBusy = e.kind === "busy";
-            // Busy: first description line beats a bare "Busy". Appointment: the
-            // guest's name alone — type is the fill, and the summary's
-            // "Mpillow Customisation" boilerplate is what overflowed the chip.
             const title = isBusy
               ? e.description
                 ? e.description.split("\n")[0]!.trim() || e.summary
@@ -455,7 +405,6 @@ export function AppointmentsCalendar({
     [],
   );
 
-  // Stable eventSources so FullCalendar doesn't thrash-refetch every parent render
   const eventSources = useMemo<EventSourceInput[]>(
     () => [
       { id: "blocked", events: blockedEvents },
@@ -464,8 +413,6 @@ export function AppointmentsCalendar({
     [blockedEvents, fetchAppointments],
   );
 
-  // Re-pull events when the server-side `showCancelled` flips, or when the
-  // Location colour map changes (chips carry their colour from fetch time).
   const showCancelled = settings.showCancelled;
   const firstRefetchDeps = useRef(true);
   useEffect(() => {
@@ -502,7 +449,6 @@ export function AppointmentsCalendar({
 
   const selectAllow = useCallback(
     (span: { start: Date; end: Date }) => {
-      // Every SGT calendar day the selection touches must be bookable
       const bookable = new Set(settings.bookableDays);
       let ms = span.start.getTime();
       const endMs = span.end.getTime() - 1;
@@ -517,11 +463,6 @@ export function AppointmentsCalendar({
     [settings.bookableDays],
   );
 
-  /**
-   * Touch has no drag-to-select without a long press, so on a phone a tap on a
-   * slot selects one appointment-length slot, and a second tap extends the
-   * range to it. Desktop clicks already select through FullCalendar itself.
-   */
   const handleDateClick = (arg: DateClickArg) => {
     if (!isMobile || arg.allDay || arg.view.type === "dayGridMonth") return;
     const api = calendarRef.current?.getApi();
@@ -529,7 +470,6 @@ export function AppointmentsCalendar({
     const slotMs = Math.max(30, settingsRef.current.durationMinutes) * 60_000;
     const tapStart = arg.date;
     const tapEnd = new Date(tapStart.getTime() + slotMs);
-    // FullCalendar re-binds callbacks every render, so this closure is current.
     const current = pendingSelect;
     let next: PendingSelect;
     if (current && tapStart.getTime() >= current.end.getTime()) {
@@ -543,7 +483,6 @@ export function AppointmentsCalendar({
       toast.error("That day is closed. Open it first to block time or set hours.");
       return;
     }
-    // Drives the `select` callback, so the mirror and the action bar stay in sync.
     api.select(next.start, next.end);
   };
 
@@ -559,7 +498,6 @@ export function AppointmentsCalendar({
     if (ok) clearSelection();
   };
 
-  /** SGT weekdays a selection touches (end exclusive). */
   const selectionDows = (sel: PendingSelect): number[] => {
     const dows = new Set<number>();
     let ms = sel.start.getTime();
@@ -573,17 +511,11 @@ export function AppointmentsCalendar({
     return [...dows];
   };
 
-  /**
-   * The selection's wall-clock band becomes the single window for every
-   * weekday it touches (Google's "set hours for Tuesday"). Other days keep
-   * their own windows.
-   */
   const handleSetHoursFromSelection = async () => {
     if (!pendingSelect) return;
     const startP = sgtParts(pendingSelect.start.getTime());
     const endP = sgtParts(pendingSelect.end.getTime());
     const startMin = startP.hour * 60 + startP.minute;
-    // An exclusive end at midnight is the end of the day, not 00:00.
     const endMin = endP.hour === 0 && endP.minute === 0 ? 1440 : endP.hour * 60 + endP.minute;
     if (endMin <= startMin) {
       toast.error("Pick a range that starts and ends on the same day.");
@@ -623,9 +555,6 @@ export function AppointmentsCalendar({
     if (ok) setDetail(null);
   };
 
-  // Ref-backed so dayHeaderDidMount listeners never go stale.
-  // Closing a day clears its windows; reopening copies the first open day's
-  // (or the default window) so the admin has something to adjust.
   toggleRef.current = async (dow: number) => {
     const av = settingsRef.current.availability;
     if (av[dow]?.length) {
@@ -709,9 +638,7 @@ export function AppointmentsCalendar({
 
   return (
     <div className="appointments-calendar flex flex-col gap-3">
-      {/* Config summary — always-visible facts; legend folds away on a phone */}
       <div className="shrink-0 rounded-lg border border-border bg-muted/30">
-        {/* Four facts: 2×2 on a phone (four columns would truncate the hours). */}
         <div className="grid grid-cols-2 sm:grid-cols-4 sm:divide-x divide-border">
           <div className="min-w-0 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -775,9 +702,6 @@ export function AppointmentsCalendar({
           </div>
         </div>
 
-        {/* Phone: the legend folds away, but the location dots are the one key
-            staff need there (the chip has no room for a name), so they stay
-            visible as a scrolling strip. */}
         <div
           className="flex items-center gap-3 overflow-x-auto border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden"
           aria-label="Location colours"
@@ -866,7 +790,6 @@ export function AppointmentsCalendar({
         </Collapsible>
       </div>
 
-      {/* Toolbar — ours, not FullCalendar's, so it wraps and sizes for touch */}
       <div className="flex shrink-0 flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <div className="inline-flex shrink-0 overflow-hidden rounded-md border border-border">
@@ -960,7 +883,6 @@ export function AppointmentsCalendar({
             minute: "2-digit",
             hour12: false,
           }}
-          // The grid row already says when; the chip spends its one line on who.
           displayEventTime={false}
           allDaySlot
           nowIndicator
@@ -969,7 +891,6 @@ export function AppointmentsCalendar({
           selectOverlap
           unselectAuto={false}
           selectAllow={selectAllow}
-          // Touch: a long press of ~⅓s starts a drag-select instead of the 1s default.
           longPressDelay={350}
           selectLongPressDelay={350}
           eventLongPressDelay={350}
@@ -988,7 +909,6 @@ export function AppointmentsCalendar({
           dayHeaderContent={(arg) => {
             const dow = sgtDow(arg.date);
             const open = settings.bookableDays.includes(dow);
-            // Seven columns on a phone: a dot says open/closed where a word can't fit.
             const compact =
               isMobile && (arg.view.type === "timeGridWeek" || arg.view.type === "dayGridMonth");
             return (
@@ -1020,8 +940,6 @@ export function AppointmentsCalendar({
         />
       </div>
 
-      {/* Selection actions: floats inside the grid on desktop; on a phone it
-          pins above the dock so the calendar's own scroll can't hide it. */}
       {pendingSelect ? (
         <div
           className={cn(
@@ -1069,7 +987,6 @@ export function AppointmentsCalendar({
         </div>
       ) : null}
 
-      {/* Detail layer: side panel on desktop, bottom sheet on a phone */}
       <Sheet
         open={detail !== null}
         onOpenChange={(open) => {

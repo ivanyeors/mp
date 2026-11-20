@@ -1,5 +1,3 @@
-/** Media Asset registry — first-class DAM records (not raw bucket listings). */
-
 export const MEDIA_ASSET_KINDS = ["image", "video", "pdf", "link"] as const;
 export type MediaAssetKind = (typeof MEDIA_ASSET_KINDS)[number];
 
@@ -49,9 +47,7 @@ export type CreateMediaAssetInput = {
 export type UpdateMediaAssetInput = {
   name?: string;
   alt_text?: string | null;
-  /** Assign folder, or null to unfile. */
   folder_id?: string | null;
-  /** Replace tags (normalized lowercase). Empty clears. */
   tags?: string[];
 };
 
@@ -62,7 +58,6 @@ export function isMediaAssetKind(value: unknown): value is MediaAssetKind {
   return typeof value === "string" && (MEDIA_ASSET_KINDS as readonly string[]).includes(value);
 }
 
-/** Validate create payload; returns error message or null. */
 export function validateCreateMediaAsset(input: CreateMediaAssetInput): string | null {
   if (!isMediaAssetKind(input.kind)) return "Invalid kind";
   const name = input.name?.trim();
@@ -76,7 +71,6 @@ export function validateCreateMediaAsset(input: CreateMediaAssetInput): string |
   return null;
 }
 
-/** Trim, lowercase, dedupe — empty strings dropped. */
 export function normalizeTags(tags: unknown): string[] | null {
   if (!Array.isArray(tags)) return null;
   const out: string[] = [];
@@ -91,7 +85,6 @@ export function normalizeTags(tags: unknown): string[] | null {
   return out;
 }
 
-/** Validate update payload; returns error message or null. */
 export function validateUpdateMediaAsset(input: UpdateMediaAssetInput): string | null {
   if (input.name !== undefined && !input.name.trim()) return "Name cannot be empty";
   if (
@@ -121,7 +114,6 @@ export function validateUpdateMediaFolder(input: UpdateMediaFolderInput): string
   return null;
 }
 
-/** Pure folder filter for list opts (unit-tested). */
 export function matchesFolderFilter(
   folderId: string | null | undefined,
   opts?: { folder_id?: string; unfiled?: boolean },
@@ -131,7 +123,6 @@ export function matchesFolderFilter(
   return true;
 }
 
-/** Pure kind filter (`all` / empty = no filter). */
 export function matchesKindFilter(
   kind: string,
   kindFilter?: string | null,
@@ -140,7 +131,6 @@ export function matchesKindFilter(
   return kind === kindFilter;
 }
 
-/** Pure tag filter (asset must include tag). */
 export function matchesTagFilter(
   tags: string[] | null | undefined,
   tag?: string | null,
@@ -149,17 +139,11 @@ export function matchesTagFilter(
   return (tags ?? []).includes(tag.trim().toLowerCase());
 }
 
-/** Display name from a storage object path (strip random prefix when present). */
 export function displayNameFromStoragePath(path: string): string {
   const base = path.split("/").pop() ?? path;
-  // e.g. abc123def_1710000000.webp → keep full name for uniqueness in UI
   return base;
 }
 
-/**
- * Idempotent backfill plan: skip hosted_urls already registered.
- * Pure — no I/O. Callers insert only `toInsert`.
- */
 export function planBucketBackfill(
   existingHostedUrls: Iterable<string>,
   bucketFiles: Array<{ name: string; url: string; created_at?: string; metadata?: { mimetype?: string; size?: number } | null }>,

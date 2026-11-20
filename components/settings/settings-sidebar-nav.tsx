@@ -77,7 +77,6 @@ type NavGroup = {
   items: NavItem[];
 };
 
-/** A count of work waiting on a page; urgent when some of it is late or stuck. */
 type NavBadge = { count: number; urgent: boolean; title: string };
 
 const BADGE_URGENT = "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200";
@@ -101,9 +100,6 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // The customer loop, in the order a customer goes round it: who they are,
-    // what they customised, what they bought, a return, and the email that
-    // brings them back (PRD-crm-retention-loop).
     label: "CRM",
     items: [
       { href: "/settings/customers", label: "Customers", tooltip: "Profiles, segments, follow-ups and reviews", Icon: UserCircle },
@@ -116,7 +112,6 @@ export const NAV_GROUPS: NavGroup[] = [
         tooltip: "Write and send marketing email",
         Icon: Mail,
         items: [
-          // PRD-email-funnel: every email sent by itself, by Lifecycle stage.
           { href: "/settings/campaigns/funnel", label: "Funnel", tooltip: "Every email we send by itself, by lifecycle stage", Icon: Funnel },
           { href: "/settings/email-templates", label: "Email templates", tooltip: "Wording of every customer and partner email", Icon: MailCheck },
         ],
@@ -196,12 +191,6 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-/**
- * An item is visible when the permission its page is guarded by is granted.
- * The key comes from the permission catalog by href, so the sidebar and the
- * page guard cannot disagree; a page with no catalog entry is open to any Staff.
- */
-/** Whether a role can open an Admin Panel page; one no key guards is open to all Staff. */
 export function canOpen(href: string, permissions: Permission[]): boolean {
   const perm = permissionForHref(href);
   if (!perm) return true;
@@ -212,11 +201,6 @@ function canSee(item: NavItem, permissions: Permission[]): boolean {
   return canOpen(item.href, permissions);
 }
 
-/**
- * The items a role sees. A parent it cannot open gives way to the children it
- * can, so a role holding Email templates without Email campaigns gets a link
- * that opens, not one that bounces to the denied notice.
- */
 export function visibleItems(items: NavItem[], permissions: Permission[]): NavItem[] {
   return items.flatMap((item) => {
     const subs = (item.items ?? []).filter((sub) => canSee(sub, permissions));
@@ -225,22 +209,15 @@ export function visibleItems(items: NavItem[], permissions: Permission[]): NavIt
   });
 }
 
-/** Flatten nested items into peers for the mobile icon grid. */
 function flattenNavItems(items: NavItem[]): NavItem[] {
   return items.flatMap(({ items: subs, ...item }) => [item, ...(subs ?? [])]);
 }
 
 type AdminStatus = "checking" | "authed" | "unauth";
 
-/**
- * Staff session resolved by the server layout. When present the shell renders
- * the page immediately; the client-side `/api/admin/context` fetch is only a
- * fallback for callers that mount the nav without it.
- */
 export type SettingsInitialAuth = {
   signedIn: boolean;
   permissions: Permission[];
-  /** The login's Staff profiles and who is at this device (slice 10). */
   workingAs?: WorkingAsState;
 };
 
@@ -268,22 +245,16 @@ export function SettingsSidebarNav({
     () => initialAuth?.permissions ?? [],
   );
   const [menuOpen, setMenuOpen] = useState(false);
-  // Work waiting in the Results queue, so staff see it without opening the page.
   const [resultsQueue, setResultsQueue] = useState(0);
   const [resultsStuck, setResultsStuck] = useState(0);
-  // The current profile's follow-ups due today or overdue (CRM slice 06).
   const [followUpCounts, setFollowUpCounts] = useState<FollowUpCounts | null>(null);
 
-  // Keep in sync if the server re-renders the layout with a new session
-  // (e.g. after sign-in redirects back into the Admin Panel).
   const initialSignedIn = initialAuth?.signedIn;
   const initialPermissionKey = initialAuth?.permissions.join(",");
   useEffect(() => {
     if (!initialAuth) return;
     setStatus(initialAuth.signedIn ? "authed" : "unauth");
     setPermissions(initialAuth.permissions);
-    // Compare by value: the layout passes a fresh object on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSignedIn, initialPermissionKey]);
 
   useEffect(() => {
@@ -291,8 +262,6 @@ export function SettingsSidebarNav({
     return subscribeAdminPanelMenu(() => setMenuOpen(true));
   }, [isMobile]);
 
-  // Refetched per navigation (pathname dep) so the badge settles after an assign
-  // without needing a poll. Best-effort: a failure just leaves the badge hidden.
   useEffect(() => {
     if (status !== "authed" || !permissions.includes("results")) return;
     let cancelled = false;
@@ -309,8 +278,6 @@ export function SettingsSidebarNav({
     };
   }, [status, permissions, basePathname]);
 
-  // Same for the Customers badge. Whose it is follows "Working as", so a switch
-  // re-reads it too; with no profile chosen on a shared login it shows nothing.
   useEffect(() => {
     if (status !== "authed" || !permissions.includes("customers")) return;
     let cancelled = false;
@@ -322,7 +289,6 @@ export function SettingsSidebarNav({
         })
         .catch(() => {});
     void read();
-    // Who is at the device changed, or a follow-up was added, done or moved.
     const events = [WORKING_AS_CHANGED_EVENT, FOLLOW_UPS_CHANGED_EVENT];
     for (const e of events) window.addEventListener(e, read);
     return () => {
@@ -354,14 +320,7 @@ export function SettingsSidebarNav({
     };
   }, [isLoginRoute, initialAuth]);
 
-  // Re-read the Member's pages on each navigation after the first, so a role
-  // changed mid-session drops its pages from the sidebar on the next click
-  // instead of on the next full reload (the server layout is not re-run on a
-  // client navigation). The page guards are the real boundary; this is chrome.
   const firstPath = useRef(basePathname);
-  // The path the permissions above were read for: the first page (from the
-  // server layout) or the last refetch. A redirect is only decided on
-  // permissions that are current for this path, never on stale ones.
   const [permissionsPath, setPermissionsPath] = useState(basePathname);
   useEffect(() => {
     if (isLoginRoute || status !== "authed" || basePathname === firstPath.current) return;
@@ -380,11 +339,8 @@ export function SettingsSidebarNav({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basePathname]);
 
-  // The current page is no longer in the Member's role: send them to the
-  // Admin Panel home with the same notice a page guard gives.
   const currentKey = permissionForHref(findActiveHref(basePathname, NAV_GROUPS) ?? "");
   const lostCurrentPage =
     status === "authed" &&
@@ -393,20 +349,16 @@ export function SettingsSidebarNav({
     !permissions.includes(currentKey);
   useEffect(() => {
     if (lostCurrentPage && currentKey) router.replace(to(`/settings?denied=${currentKey}`));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lostCurrentPage, currentKey]);
 
-  // Redirect unauthorized visitors to unified Sign in (preserve deep link).
   useEffect(() => {
     if (status === "unauth" && !isLoginRoute) {
       router.replace(
         to(`/account/login?next=${encodeURIComponent(to(basePathname))}`),
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, isLoginRoute]);
 
-  // Legacy /settings/login only redirects; keep bare shell if it still renders.
   if (isLoginRoute) {
     return <>{children}</>;
   }
@@ -425,7 +377,6 @@ export function SettingsSidebarNav({
 
   const activeHref = findActiveHref(basePathname, NAV_GROUPS);
 
-  // Work waiting in the CRM, on its sidebar item and on its mobile tile.
   const badges = new Map<string, NavBadge>();
   if (resultsQueue > 0) {
     badges.set("/settings/results", {
@@ -447,7 +398,6 @@ export function SettingsSidebarNav({
 
   const header = (
     <header className="flex h-14 min-w-0 items-center gap-2 border-b px-3 md:px-6 lg:px-8">
-      {/* Trigger is desktop chrome; hide with CSS so the server render matches every viewport. */}
       <div className="hidden md:contents">
         <SidebarTrigger />
       </div>
@@ -458,9 +408,6 @@ export function SettingsSidebarNav({
     </header>
   );
 
-  // Mobile nav is a bottom sheet of tiles, opened from the dock menu. Its close
-  // button sits in the header row rather than pinned over the last tile; tapping
-  // the backdrop also closes it.
   const mobileMenu = (
     <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
       <SheetContent
@@ -525,16 +472,10 @@ export function SettingsSidebarNav({
     </Sheet>
   );
 
-  // One tree for every viewport. The desktop sidebar is hidden below `md` with
-  // CSS rather than by branching on `useIsMobile()`, which is false during the
-  // server render and made phones paint the desktop shell before swapping.
   return (
     <SettingsBreadcrumbProvider>
-      {/* Every tappable surface here has its own pressed tint, so iOS's grey tap flash only doubles it. */}
       <div className="flex min-h-svh w-full min-w-0 overflow-x-clip md:overflow-x-visible [-webkit-tap-highlight-color:transparent]">
         <SidebarProvider>
-          {/* shadcn's Sidebar root is `hidden md:block`, so it already stays out of the
-              mobile paint; keep it a direct sibling of SidebarInset for the peer styles. */}
           <Sidebar collapsible="icon">
               <SidebarContent>
                 {groups.map((group) => (
@@ -623,7 +564,6 @@ function SettingsBreadcrumbTrail({
             <Fragment key={`${crumb.label}-${i}`}>
               {i > 0 ? <BreadcrumbSeparator /> : null}
               <BreadcrumbItem className={isLast ? "min-w-0" : "shrink-0"}>
-                {/* A crumb the role cannot open is a label, like the item `visibleItems` hides. */}
                 {isLast || !crumb.href || !canOpen(crumb.href, permissions) ? (
                   <BreadcrumbPage className="truncate" title={crumb.label}>
                     {crumb.label}

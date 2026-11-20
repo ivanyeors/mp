@@ -5,15 +5,8 @@ import { chatError, rateLimited } from "@/lib/support/chat-http";
 
 export const runtime = "nodejs";
 
-/**
- * POST: email a visitor without an account the 6-digit code that proves their
- * address, before their first chat message goes out (lib/support/chat-codes.ts).
- * The page sends the code back with that message (POST ..).
- */
-
 const CodeSchema = z.object({
   email: z.string().trim().email("Enter a valid email address.").max(320),
-  // Honeypot: real visitors never fill this; bots usually do.
   company: z.string().max(0).optional().default(""),
 });
 

@@ -26,7 +26,6 @@ const PutSchema = z.object({
   options: z.array(OptionSchema).min(1).max(50),
 });
 
-/** Admin: full catalog including archived. */
 export async function GET() {
   const denied = await requireAdmin("forms");
   if (denied) return denied;
@@ -35,7 +34,6 @@ export async function GET() {
   return NextResponse.json({ ok: true, catalog });
 }
 
-/** Admin: replace catalog (Other lock enforced in lib). */
 export async function PUT(req: Request) {
   const denied = await requireAdmin("forms");
   if (denied) return denied;

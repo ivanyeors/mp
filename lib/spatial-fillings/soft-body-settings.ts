@@ -1,49 +1,25 @@
-/**
- * Soft cut settings (ADR 0025): the few knobs Staff tune in Settings →
- * Inventory → Configure → Soft body, stored as one JSON site setting. Absent,
- * unparsable or out-of-range values fall back to the defaults below — the
- * values the testing preview settled on (Oct 2026). Every surface that draws
- * the cut reads the same stored value, so what Staff save is what shoppers
- * and the build team see. Pure + browser-safe.
- */
-
-// Type-only: the payload module never loads at runtime from here, so there is no cycle.
 import type { DimensionOverridesPayload } from "./dimension-overrides";
 import { SOLVER_DEFAULTS, type SolverOptions } from "./soft-body";
 
-/** `site_settings.key` holding the soft cut settings as JSON. */
 export const SOFT_BODY_SETTING_KEY = "xray_soft_body";
 
 export type SoftBodySettings = {
-  /** Off draws the cut as rounded slabs, as before the soft cut. */
   enabled: boolean;
-  /** How firmly a pouch keeps its cushion shape, 0 floppy … 100 stiff. */
   rigidity: number;
-  /** How little a Neck support gives where it rests and is pressed, 0 soft (in a crowded cell it squashes as far as fully squashed) … 100 as firm as foam gets (it stays nearly round). */
   neckFirmness: number;
-  /** How firmly an Ear Comfort Pad keeps its shape — its rim and its well — where it rests and is pressed, 0 soft … 100 firm. */
   earFirmness: number;
-  /** The ear pad's sewn well: its diameter as a share of the pad's width, %. */
   earWellPct: number;
-  /** How far the well dips, as a share of the pad's thickness, %. 0 draws a flat cushion. */
   earWellDepthPct: number;
-  /** A pouch's volume as a share of its relaxed size, %. Over 100 lets it fill the space it is given. */
   volumePct: number;
-  /** How high the empty case stands, as a share of its sewn height, %. */
   emptyCasePct: number;
-  /** Smoothing passes on what is drawn: more is rounder, 0 shows the raw settle. */
   smoothing: number;
-  /** Space kept between pieces so each stays countable, view units. */
   gap: number;
-  /** Settle length, steps of 1/60 s. */
   steps: number;
-  /** Animate the settle when the recipe changes (never under reduced motion). */
   animate: boolean;
 };
 
 type NumberKey = { [K in keyof SoftBodySettings]: SoftBodySettings[K] extends number ? K : never }[keyof SoftBodySettings];
 
-/** Each number's range and step, as the Settings sliders offer them. */
 export const SOFT_BODY_RANGES: Record<NumberKey, { min: number; max: number; step: number }> = {
   rigidity: { min: 0, max: 100, step: 1 },
   neckFirmness: { min: 0, max: 100, step: 1 },
@@ -62,7 +38,6 @@ export const SOFT_BODY_DEFAULTS: SoftBodySettings = {
   rigidity: 50,
   neckFirmness: Math.round(SOLVER_DEFAULTS.rollFirmness * 100),
   earFirmness: Math.round(SOLVER_DEFAULTS.padFirmness * 100),
-  // From the product photo (Nov 2026): the well is about a third of the pad across, sewn down past half its rim.
   earWellPct: 32,
   earWellDepthPct: 55,
   volumePct: 130,
@@ -81,7 +56,6 @@ const clampTo = (key: NumberKey, value: unknown): number => {
   return Math.min(Math.max(Number(stepped.toFixed(3)), min), max);
 };
 
-/** The settings from their stored value (JSON text or an object); anything missing or invalid is its default. */
 export function softBodySettings(value: unknown): SoftBodySettings {
   let raw: unknown = value;
   if (typeof value === "string") {
@@ -108,28 +82,17 @@ export function softBodySettings(value: unknown): SoftBodySettings {
   };
 }
 
-/** What is stored: the settings as JSON, validated. */
 export function softBodySettingsToStored(s: Partial<SoftBodySettings>): string {
   return JSON.stringify(softBodySettings(s));
 }
 
-/** What `GET /settings/product-builder/soft-body` returns, and its POST and DELETE too. */
 export type SoftBodyPayload = {
-  /** The effective settings: the stored row, or the defaults without one. */
   settings: SoftBodySettings;
-  /** False when no row is stored and every cut draws the defaults. */
   stored: boolean;
-  /** When the row was last saved; null without one. */
   updatedAt: string | null;
-  /** What Reset returns to. */
   defaults: SoftBodySettings;
 };
 
-/**
- * The settings a host draws the cut with: the stored value its dimension
- * overrides payload carries, or the defaults before it loads (or when the
- * payload predates the setting).
- */
 export function softBodyFromPayload(payload: DimensionOverridesPayload | null | undefined): SoftBodySettings {
   return softBodySettings(payload?.softBody ?? null);
 }
@@ -137,29 +100,14 @@ export function softBodyFromPayload(payload: DimensionOverridesPayload | null | 
 export const sameSoftBodySettings = (a: SoftBodySettings, b: SoftBodySettings) =>
   (Object.keys(SOFT_BODY_DEFAULTS) as (keyof SoftBodySettings)[]).every((k) => a[k] === b[k]);
 
-/**
- * Settle length while a pouch is in hand in either view (linked views,
- * 7-11-2026): the live preview follows the pointer, so each step of it
- * settles in a few milliseconds; the full settle eases in once it is let go.
- */
 export const DRAFT_STEPS = 8;
 
-/** How long a held pouch's preview eases from one pointer step's shapes to the next, ms: quick, so it follows the hand. */
 export const HELD_EASE_MS = 130;
 
-/** The Settings a live preview settles with: the same, only shorter. */
 export function draftSoftBody(s: SoftBodySettings): SoftBodySettings {
   return s.steps <= DRAFT_STEPS ? s : { ...s, steps: DRAFT_STEPS };
 }
 
-/**
- * The solver's options for these settings in a cut drawn `scale` times the
- * 664-wide desktop cut (lengths, speeds and areas scale with it). Rigidity is
- * shape memory and skin tension together: the preview's 0 … 100 mapping.
- * Neck firmness is the roll's own: how much its foam gives, and how hard it
- * springs back to round. Ear pad firmness is the same for the Ear Comfort Pad,
- * springing back to its rim and well.
- */
 export function solverOptionsFor(s: SoftBodySettings, scale = 1): Partial<SolverOptions> {
   const rig = s.rigidity / 100;
   return {
@@ -177,11 +125,6 @@ export function solverOptionsFor(s: SoftBodySettings, scale = 1): Partial<Solver
   };
 }
 
-/**
- * An Ear Comfort Pad's sewn well, as every view draws it: `width` its diameter
- * as a share of the pad's width (side-on, of its span front ↔ back), `depth`
- * how far it dips as a share of the pad's thickness.
- */
 export type PadWell = { width: number; depth: number };
 
 export function padWellOf(s: Pick<SoftBodySettings, "earWellPct" | "earWellDepthPct">): PadWell {

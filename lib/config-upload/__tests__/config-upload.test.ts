@@ -84,17 +84,14 @@ describe("saveConfigUpload", () => {
       originalName: "photo.jpg",
     });
 
-    // compressed once
     expect(h.optimize).toHaveBeenCalledTimes(1);
 
-    // stored under config-uploads/{sessionId}/ as webp, no overwrite
     expect(h.upload).toHaveBeenCalledWith(
       `config-uploads/${SID}/photo_123.webp`,
       expect.any(Buffer),
       expect.objectContaining({ contentType: "image/webp", upsert: false }),
     );
 
-    // row carries the optimized metadata + hosted url; keyed by session
     expect(h.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         session_id: SID,

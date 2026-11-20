@@ -1,5 +1,3 @@
-/** Frozen production build snapshot written onto order_items at Accept. */
-
 import type { BuildLine, BuildLineRole } from "@/lib/build-assembly";
 import type { PriceResultOutput } from "@/lib/result-pricing";
 import type { ServiceLine } from "@/lib/pricing/service-lines";
@@ -13,18 +11,14 @@ export type ResultOrderBuildSnapshot = {
   assigned_size: string | null;
   assigned_tier: string | null;
   assigned_length: string | null;
-  /** Null when the mix diverged from every catalog template (custom spatial mix). */
   filling_template_id: number | null;
   filling_template_name: string | null;
-  /** Spatial placement breakdown for the warehouse (absent on pre-spatial Results).
-   * Pillow cell rows or bolster slot rows, per product_type. */
   filling_placements?: Array<PillowPlacementRow | BolsterPlacementRow>;
   preference_lines: NamedBuildLine[];
   addon_lines: NamedBuildLine[];
   build_lines: NamedBuildLine[];
   cogs: number;
   pricing: PriceResultOutput;
-  /** Service fees charged with this build, frozen at Accept (ADR 0024). Absent before it. */
   service_lines?: ServiceLine[];
 };
 
@@ -89,7 +83,6 @@ export function buildResultOrderSnapshot(input: {
   };
 }
 
-/** Group named lines by role for production UI (stable role order). */
 export function groupBuildLinesByRole(
   lines: NamedBuildLine[],
 ): Array<{ role: BuildLineRole; label: string; lines: NamedBuildLine[] }> {

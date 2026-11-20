@@ -2,14 +2,6 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { reviewFakeDb, type ReviewFakeDb } from "@/lib/aftercare/__tests__/review-request-fake-db";
 
-/**
- * The Draft reminder job (ADR 0050) against an in-memory database: the right
- * reminder on the right day, sent like a campaign (an Unsubscribe link and
- * `List-Unsubscribe`), each claimed in customer_emails so a re-run sends
- * nobody one twice, and nothing at all while the switch is off or no
- * unsubscribe link can be made.
- */
-
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 
 const { runDraftReminders } = await import("@/lib/draft-reminders/server");
@@ -117,7 +109,6 @@ describe("runDraftReminders", () => {
       "Your Mpillow answers are still here",
     ]);
     expect(emails[2].text).toContain("This is the last reminder we'll send about it.");
-    // Past the month's window the Draft is not even read.
     expect(last.sent).toEqual({ "1d": 0, "1w": 0, "1m": 0 });
     expect(emails).toHaveLength(3);
   });

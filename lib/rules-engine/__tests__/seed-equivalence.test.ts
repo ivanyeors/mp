@@ -29,9 +29,7 @@ const premium = premiumSeedGraph(pillowTpl);
 const basic = basicSeedGraph(pillowTpl);
 const mbolster = mbolsterSeedGraph(bolsterTpl);
 
-/** Representative + boundary shoulders (legacy ≤ bands). */
 const SHOULDERS = [30, 36, 36.5, 40, 40.5, 46, 46.5, 52, 52.5, 60];
-/** Representative + boundary heights (cm). */
 const HEIGHTS = [140, 149.9, 150, 170, 180, 180.5, 190];
 
 describe("seed graphs publishable", () => {

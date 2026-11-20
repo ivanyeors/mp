@@ -10,7 +10,6 @@ export type GooglePlaceTestimonial = {
 };
 
 type PlacesV1Review = {
-  /** places/{placeId}/reviews/{reviewId} */
   name?: string;
   googleMapsUri?: string;
   rating?: number;
@@ -39,18 +38,13 @@ function getRequiredEnv(name: string): string | null {
 }
 
 function getOptionalReferrerHeaders(): Record<string, string> {
-  // If the API key is restricted to HTTP referrers, server-side requests will be rejected unless we
-  // explicitly provide a Referer header that matches an allowed pattern for that key.
-  // Prefer using a server-restricted key (IP restriction) in production.
   const ref = getRequiredEnv("GOOGLE_MAPS_API_REFERRER");
   if (!ref) return {};
 
   const headers: Record<string, string> = { Referer: ref };
   try {
     headers.Origin = new URL(ref).origin;
-  } catch {
-    // If ref isn't a valid URL, just omit Origin.
-  }
+  } catch {}
   return headers;
 }
 
@@ -58,30 +52,16 @@ export function hasGooglePlaceReviewsConfig(): boolean {
   return Boolean(getRequiredEnv("GOOGLE_MAPS_API_KEY") && getRequiredEnv("GOOGLE_PLACE_ID"));
 }
 
-/**
- * Reviews rated below this (1..5) are hidden from the storefront by default.
- * Google's Places API returns its own "most relevant" pick of at most 5 reviews,
- * so this is a display filter only — it cannot change what Google shows on Maps.
- */
 export const DEFAULT_MIN_REVIEW_RATING = 4;
 
 export function isTestimonialVisible(rating: number | undefined, minRating: number): boolean {
   return typeof rating === "number" && rating >= minRating;
 }
 
-/**
- * How long one Places read is reused: a week. Asking for `reviews` bills every uncached read
- * as Place Details Enterprise + Atmosphere (1,000 free a month, shared with the weekly review
- * poll in lib/reviews/places-poll.ts), and Google's top five barely move in a week. Every
- * caller shares this one cached response — unless it calls from inside `unstable_cache`,
- * where Next runs the fetch as no-store and every read is billed. The response is reused,
- * never stored by us: Google's terms forbid keeping Places content.
- */
 export const PLACE_REVIEWS_REVALIDATE_SECONDS = 7 * 24 * 60 * 60;
 
 const PLACES_REVIEW_NAME = /^places\/[A-Za-z0-9_-]+\/reviews\/[A-Za-z0-9_-]+$/;
 
-/** places/{placeId}/reviews/{reviewId} — how the Places API names a review. */
 export function isPlacesReviewName(value: string): boolean {
   return PLACES_REVIEW_NAME.test(value);
 }
@@ -89,7 +69,6 @@ export function isPlacesReviewName(value: string): boolean {
 export type PlaceReview = {
   name: string;
   rating: number | null;
-  /** What the reviewer wrote, untranslated. */
   text: string | null;
   authorName: string | null;
   publishTime: string | null;
@@ -100,12 +79,6 @@ export type PlaceReviewsRead =
   | { ok: true; reviews: PlaceReview[]; ratingCount: number | null; mapsUri: string | null }
   | { ok: false; error: string };
 
-/**
- * One fresh, uncached Places read for the review poll: Google's five most relevant reviews,
- * the place's review count, and its Maps link. Billed as one Place Details Enterprise +
- * Atmosphere read (the count and link add nothing on top of `reviews`). The caller counts it
- * against the monthly cap before calling.
- */
 export async function readPlaceReviews(deps: { fetch?: typeof fetch } = {}): Promise<PlaceReviewsRead> {
   const apiKey = getRequiredEnv("GOOGLE_MAPS_API_KEY");
   const placeId = getRequiredEnv("GOOGLE_PLACE_ID");
@@ -125,9 +98,7 @@ export async function readPlaceReviews(deps: { fetch?: typeof fetch } = {}): Pro
       let message = text.slice(0, 300) || `HTTP ${res.status}`;
       try {
         message = (JSON.parse(text) as { error?: { message?: string } }).error?.message ?? message;
-      } catch {
-        /* keep raw */
-      }
+      } catch {}
       return { ok: false, error: `Places API ${res.status}: ${message}` };
     }
     const data = (text ? JSON.parse(text) : {}) as PlacesV1PlaceDetails;
@@ -159,7 +130,6 @@ export async function readPlaceReviews(deps: { fetch?: typeof fetch } = {}): Pro
 export async function getGooglePlaceTestimonials(opts?: {
   limit?: number;
   languageCode?: string;
-  /** Hide reviews rated below this value. Defaults to DEFAULT_MIN_REVIEW_RATING; pass 1 to show all. */
   minRating?: number;
 }): Promise<GooglePlaceTestimonial[]> {
   const apiKey = getRequiredEnv("GOOGLE_MAPS_API_KEY");
@@ -177,7 +147,6 @@ export async function getGooglePlaceTestimonials(opts?: {
   const res = await fetch(url.toString(), {
     headers: {
       "X-Goog-Api-Key": apiKey,
-      // Request only what we read (required by Places API v1). `reviews` alone sets the SKU.
       "X-Goog-FieldMask": "reviews,googleMapsUri",
       ...getOptionalReferrerHeaders(),
     },

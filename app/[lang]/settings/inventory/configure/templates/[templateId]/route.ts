@@ -80,10 +80,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
     placements = (pl ?? []) as unknown as Array<{ item_id: number }>
   }
-  // Pack list is derived: placements when present, legacy flat lines otherwise (ADR 0008)
   const packList = derivePackList(placements, lines ?? [])
 
-  // Sizes this recipe serves — the editor warns before a save reaches the others.
   let keys: string[] = []
   if (tpl.role === 'filling') {
     const loaded = await loadTemplateKeys(admin, [id])
@@ -91,16 +89,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
     keys = loaded.byId.get(id) ?? []
   }
 
-  // Product Builder per-subtype colours for the x-ray CSS-variable pipeline. The
-  // table is service-role-only under RLS, so the Admin Panel must receive them
-  // from here — the browser client cannot query it (and must not be granted a
-  // policy to). Same rows the staff-assist endpoint ships to the configurator,
-  // so both surfaces render a pouch in the same colour.
   const { data: colorOverrides, error: cErr } = await admin
     .from('filling_color_overrides')
     .select('subtype,color')
   if (cErr) return NextResponse.json({ error: cErr.message }, { status: 500 })
-  // Slice 02/12: Settings dimension overrides, same route for the same reason.
   let dimensionOverrides
   try {
     dimensionOverrides = await loadDimensionOverrides(admin)
@@ -120,12 +112,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
   })
 }
 
-// Shape gate only; the spatial-fillings lib does the semantic validation per kind.
-// row_index is the piece's LAYER (0 = top/front). Bound derives from
-// MAX_LAYERS_PER_CELL so it cannot drift from validatePillowPlacements or the
-// `row_index between 0 and 4` DB constraint again — it was left at the retired
-// two-value top/bottom lane long after the 2026-07-21 depth migration, and the
-// per-cell piece cap it briefly borrowed is now five layers' worth, not one.
 const MAX_STACK_DEPTH = MAX_LAYERS_PER_CELL - 1
 const PlacementRowSchema = z.object({
   section: z.string().default(''),
@@ -133,18 +119,13 @@ const PlacementRowSchema = z.object({
   slot: z.number().int(),
   item_id: z.number().int().positive(),
   row_index: z.number().int().min(0).max(MAX_STACK_DEPTH).nullable().optional(),
-  // Insert order: 1-based per-Section assembly step; null = not authored.
   insert_order: z.number().int().min(1).nullable().optional(),
   offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
   offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
 })
 
 const UpdateSchema = z.object({
-  // Rename: the list is where a template is recognised, so its name is editable
-  // there. Order snapshots keep the name they were built with (ADR 0008), so a
-  // rename never rewrites a Result's history.
   name: z.string().trim().min(1).max(120).optional(),
-  // Sizes this Filling Template serves. Replaces the set wholesale; at least one.
   keys: z.array(z.string().min(1).max(40)).optional(),
   notes: z.string().trim().max(2000).optional(),
   is_active: z.boolean().optional(),
@@ -178,8 +159,6 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
   const nextActive = parsed.data.is_active !== undefined ? parsed.data.is_active : tpl.is_active
   const nextName = parsed.data.name !== undefined ? parsed.data.name : tpl.name
 
-  // Rescope before the name lands, so a rename that also widens the template is
-  // checked against every size it is about to appear in, not just today's.
   const kind = tpl.kind === 'bolster' ? 'bolster' : 'pillow'
   let nextKeys: string[] | null = null
   if (parsed.data.keys !== undefined) {
@@ -211,7 +190,6 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
     .update({ name: nextName, notes: nextNotes, is_active: nextActive })
     .eq('id', id)
   if (upErr) {
-    // uq_bom_templates_filling / _warehouse: one name per kind+key scope.
     if (upErr.code === '23505') {
       return NextResponse.json(
         { error: 'Another template here already uses that name.' },
@@ -221,7 +199,6 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
     return NextResponse.json({ error: upErr.message }, { status: 500 })
   }
 
-  // After the row update: a rejected rename must not leave the template rescoped.
   if (nextKeys) {
     const membership = await setTemplateKeys(admin, { templateId: id, kind, keys: nextKeys })
     if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 })
@@ -270,8 +247,6 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
       : validatePillowPlacements(rowsToPillowPlacements(rows), cats.byId)
     if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 })
 
-    // Placements are the "where" truth; legacy bom_template_lines stay untouched
-    // as the pack-list fallback for templates without placements (ADR 0008).
     const table = isBolster ? 'bolster_template_placements' : 'filling_template_placements'
     const payload = rows.map((r) =>
       isBolster

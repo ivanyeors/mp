@@ -15,17 +15,6 @@ import {
 
 export type UnsubscribeAnswerResult = { ok: true } | { ok: false; error: string };
 
-/**
- * *Mind telling us why?* (PRD-crm-retention-loop slice 11): asked once someone
- * is unsubscribed, on the unsubscribe page and in their account. One tap is
- * the answer; *Other* asks for an optional line first. Optional throughout:
- * the unsubscribe has already taken effect, and nothing here changes it. No
- * answer offers a discount or asks them to stay.
- *
- * `order` comes from the caller (`unsubscribeAskOrder`), so a page rendered on
- * the server and the browser agree on it. `send` records the answer: the
- * unsubscribe page's signed link, or the signed-in account.
- */
 export function UnsubscribeReasonQuestion({
   order,
   send,
@@ -64,8 +53,6 @@ export function UnsubscribeReasonQuestion({
   }
 
   return (
-    // Its own sizes: public pages force every h2 to 24px (globals.css), which would make
-    // this optional question louder than the page's own heading.
     <section aria-labelledby="unsubscribe-reason-title" data-typography-scope="app" className={cn("space-y-3", className)}>
       <div className="space-y-1">
         <h2 id="unsubscribe-reason-title" className="text-base font-semibold">
@@ -128,7 +115,6 @@ export function UnsubscribeReasonQuestion({
   );
 }
 
-/** The unsubscribe page's way to send: the same signed link the unsubscribe used. */
 export function UnsubscribeLinkReasonQuestion({
   order,
   u,
@@ -151,7 +137,6 @@ export function UnsubscribeLinkReasonQuestion({
           body: JSON.stringify({ u, t, s, ...answer }),
         });
         if (res.ok) return { ok: true };
-        // Already unsubscribed again, or resubscribed since: nothing to answer, nothing wrong.
         if (res.status === 409) return { ok: true };
         return { ok: false, error: "Could not send that. Please try again." };
       }}

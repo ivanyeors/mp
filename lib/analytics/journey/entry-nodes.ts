@@ -1,21 +1,12 @@
-/**
- * Aggregated entry points — Visit Entry sources collapsed into a source column
- * that feeds the landing page of each Visit. Mirrors the Drop-off / Converted
- * sinks at the other end: the page→page journey itself is untouched, the graph
- * just gains a "where did they arrive from" column on the left.
- */
 import type { JourneyEdge, JourneyNode } from "./transitions";
 
 export const ENTRY_PREFIX = "__entry__:";
 export const DIRECT_ENTRY = "Direct";
-/** Long tail below the top-N cut, so the column stays readable. */
 export const OTHER_ENTRY = "Other";
 export const DEFAULT_ENTRY_TOP_N = 5;
 
 export type EntryFeed = {
-  /** Visit.entry_source; null/blank = Direct. */
   entrySource: string | null;
-  /** First page of the Visit. */
   landingPath: string;
   count: number;
   country?: string;
@@ -38,11 +29,6 @@ export function normalizeEntrySource(raw: string | null | undefined): string {
   return t && t.length > 0 ? t : DIRECT_ENTRY;
 }
 
-/**
- * Visits per source, and which sources fall past the top-N cut into "Other".
- * Shared by the graph column and the "Other" node's breakdown so the two can
- * never disagree about what got rolled up.
- */
 export function rankEntrySources(
   feeds: EntryFeed[],
   topN = DEFAULT_ENTRY_TOP_N,
@@ -66,11 +52,6 @@ export function rankEntrySources(
   };
 }
 
-/**
- * Add one node per Entry source (top-N by Visits, rest rolled into "Other")
- * plus source→landing edges. Feeds whose landing page is not in the graph are
- * dropped so no edge dangles.
- */
 export function attachEntrySources(
   graph: { nodes: JourneyNode[]; edges: JourneyEdge[] },
   feeds: EntryFeed[],
@@ -86,7 +67,7 @@ export function attachEntrySources(
   const kept = new Set(keptList);
 
   const views = new Map<string, number>();
-  const edgeCounts = new Map<string, number>(); // source \0 landing \0 country
+  const edgeCounts = new Map<string, number>();
   for (const f of valid) {
     const raw = normalizeEntrySource(f.entrySource);
     const s = kept.has(raw) ? raw : OTHER_ENTRY;

@@ -1,7 +1,3 @@
-/**
- * Recommendation record — engine advice persisted on the configurator response /
- * Result. Never a filling snapshot (guest snapshot stays null).
- */
 import type {
   EvaluateResult,
   FiredTerminal,
@@ -18,17 +14,13 @@ export type RecommendationRecord = {
   finalFlow: RuleFlow;
   size: SizeOrLength | null;
   templateId: string | null;
-  /** Advisory only — never mutates the held product alone. */
   tierSuggestion: "basic" | "premium" | null;
-  /** Flow-scoped sold tier for pillow product resolution. */
   soldTier: "basic" | "premium" | null;
   flowRoute: EvaluateResult["flowRoute"];
-  /** Set when flowRoute fires; resolved by accept/decline before Stripe hold. */
   flowRouteDecision: FlowRouteDecision | null;
   firedTerminals: FiredTerminal[];
   trace: TraceStep[];
   usedFallback: boolean;
-  /** True when bootstrap guard used legacy rules (no published graph). */
   usedLegacyBootstrap: boolean;
 };
 
@@ -80,7 +72,6 @@ export function legacyBootstrapRecord(
   };
 }
 
-/** Shape stored on mp_config_responses.recommendation_record. */
 export function toPersistedRecommendationRecord(
   record: RecommendationRecord,
 ): Record<string, unknown> {

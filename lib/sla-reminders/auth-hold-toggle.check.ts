@@ -1,14 +1,3 @@
-/**
- * The authorization-hold kill switch, end to end.
- *
- * The subtle half is not the boolean — it is that switching holds off must NOT
- * restamp `source`. `deferred` (an Assisted customisation) and "holds are off"
- * both skip Stripe, but only the former is `staff_assisted`. Get that wrong and
- * every ordinary online submit made while holds are off is indistinguishable
- * from one that came through an Assist link.
- *
- * Run: npx tsx lib/sla-reminders/auth-hold-toggle.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
@@ -18,7 +7,6 @@ import {
 } from "./index";
 import { resultStage } from "../results/result-stage";
 
-// --- settings round-trip -----------------------------------------------------
 assert.equal(DEFAULT_SLA_SETTINGS.authHoldEnabled, true, "holds stay ON by default");
 assert.equal(parseSlaSettings({}).authHoldEnabled, true, "absent key = on");
 assert.equal(
@@ -31,7 +19,6 @@ assert.equal(
     .results_auth_hold_enabled,
   "false",
 );
-// Round-trip must be lossless or a save silently re-enables holds.
 for (const v of [true, false]) {
   const round = parseSlaSettings(
     slaSettingsToStored({ ...DEFAULT_SLA_SETTINGS, authHoldEnabled: v }),
@@ -39,7 +26,6 @@ for (const v of [true, false]) {
   assert.equal(round.authHoldEnabled, v, `round-trip lost authHoldEnabled=${v}`);
 }
 
-// --- the staging consequence --------------------------------------------------
 const base = {
   status: "held",
   source: "online_purchase",
@@ -51,17 +37,14 @@ const base = {
 };
 const NOW = new Date("2026-09-12T00:00:00.000Z");
 
-// Holds off: no amount stamped, so this is queue work, not an abandonment.
 const off = resultStage({ ...base, authorized_amount: null }, NOW);
 assert.equal(off.stage, "needs_assign");
 assert.equal(off.stuckReason, null);
 
-// Holds on and the shopper walked away from Checkout: still caught.
 const abandoned = resultStage({ ...base, authorized_amount: 120 }, NOW);
 assert.equal(abandoned.stage, "stuck");
 assert.equal(abandoned.stuckReason, "abandoned_checkout");
 
-// --- wiring in the submit route ----------------------------------------------
 const route = readFileSync("app/api/results/hold/route.ts", "utf8");
 assert.match(route, /const takeCard = !input\.deferred && authHoldEnabled;/);
 assert.match(
@@ -71,11 +54,6 @@ assert.match(
 );
 assert.match(route, /authorized_amount: takeCard \? priced\.total : null/);
 assert.match(route, /if \(takeCard\) \{/, "Checkout creation must be gated on takeCard");
-// Every money/messaging site reads takeCard, not input.deferred. Exactly five
-// legitimate reads remain: the trust-boundary guard, takeCard's own definition,
-// the source stamp, the customer link and the visitor stitch (#421, 293ad82e):
-// an assisted submit is made on a Staff device, so neither the session user nor
-// this browser is the buyer's. A sixth means a money or email site was missed.
 assert.match(route, /customer_id: input\.deferred \? null : customerId/, "the customer link skips a Staff device");
 assert.match(route, /if \(!input\.deferred\) \{\s*await stitchShopperVisitor\(/, "the visitor stitch skips a Staff device");
 assert.equal(
@@ -84,8 +62,6 @@ assert.equal(
   "a money/messaging site still reads input.deferred instead of takeCard",
 );
 
-// A client that trusts its own `assisted` flag navigates to null when an admin
-// turns holds off, so both configurators must fall back to the status URL.
 for (const f of [
   "app/[lang]/mp-config/mp-config-client.tsx",
   "app/[lang]/mbolster-config/mbolster-config-client.tsx",

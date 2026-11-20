@@ -3,7 +3,6 @@ import type { OverlayFit, OverlayMappingItem } from "./overlays";
 
 export type { OverlayMappingItem };
 
-/** Slice 10: cover/case Item → overlay (Media Asset or color) mappings for Product Builder. */
 export const OVERLAY_CATEGORIES = ["cover", "pillow_case", "bolster_case", "case"];
 
 type MappingRow = {
@@ -14,10 +13,6 @@ type MappingRow = {
   media_assets: { hosted_url: string | null } | { hosted_url: string | null }[] | null;
 };
 
-/**
- * Overlay-eligible items joined to their current mapping (with the asset's
- * hosted URL). Throws on a Supabase error so callers can map it to a status.
- */
 export async function listOverlayMappingItems(): Promise<OverlayMappingItem[]> {
   const admin = supabaseAdmin();
   const [items, mappings] = await Promise.all([

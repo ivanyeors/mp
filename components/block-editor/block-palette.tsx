@@ -8,15 +8,6 @@ import { cn } from "@/lib/utils";
 import { useBlockEditor, type PaletteDrag } from "./block-editor";
 import type { BlockCatalogue, EditorBlock, PaletteItem, PaletteItemsTab, PaletteTab } from "./types";
 
-/**
- * The palette beside the column (PRD-campaign-email-editor slice 04): tabs
- * the page supplies (Blocks here; Starters, each with its thumbnail, in slice
- * 08; Variables, a `VariablePalette`, in slice 13), each item dragged into
- * the column, or added after the selected block with a click or Enter.
- * Inside a `BlockEditorRoot`.
- */
-
-/** Pure — the Blocks tab: one item per block type in the catalogue, in its order. */
 export function blockPaletteTab<B extends EditorBlock>(catalogue: BlockCatalogue<B>, label = "Blocks"): PaletteItemsTab<B> {
   const kinds = catalogue as unknown as Record<string, BlockCatalogue<B>[B["type"]]>;
   return {
@@ -34,17 +25,13 @@ export function blockPaletteTab<B extends EditorBlock>(catalogue: BlockCatalogue
 
 function Item({ item, tab, draggable, onAdded }: { item: PaletteItem<EditorBlock>; tab: string; draggable: boolean; onAdded?: () => void }) {
   const ctx = useBlockEditor();
-  // How many it adds: a Starter that doesn't fit is turned off, not put in half.
   const adds = useMemo(() => item.blocks().length, [item]);
   const why = item.disabledReason ?? ctx.noRoom(adds);
-  // Unique to this palette: the phone's Add sheet holds a second one beside the laptop's, and dnd-kit keeps one draggable per id.
   const uid = useId();
   const { ref, isDragging } = useDraggable({
     id: `palette:${uid}:${tab}:${item.id}`,
     data: { palette: item } satisfies PaletteDrag,
-    // Enter and Space add the item, so only a pointer drags it.
     sensors: [PointerSensor],
-    // A copy follows the pointer and the palette item stays put. Per-draggable since dnd-kit 0.5.
     plugins: [Feedback.configure({ feedback: "clone" })],
     disabled: !draggable || Boolean(why),
   });
@@ -63,8 +50,6 @@ function Item({ item, tab, draggable, onAdded }: { item: PaletteItem<EditorBlock
       </span>
     </>
   );
-  // With a picture (a Starter's thumbnail): the card is the picture over its name, and the button covers both,
-  // so pressing the picture adds it too. The picture sits beside the button, not in it: a frame can't go in a button.
   if (item.preview) {
     return (
       <li
@@ -122,11 +107,8 @@ export function BlockPalette<B extends EditorBlock>({
   className,
 }: {
   tabs: PaletteTab<B>[];
-  /** Off in the phone's *Add* sheet, where a tap adds. */
   draggable?: boolean;
-  /** After a click adds an item: the sheet closes. */
   onAdded?: () => void;
-  /** The tab open, when the page chooses it (a Save error under Variables opens that tab); else the first. */
   tab?: string;
   onTab?: (value: string) => void;
   className?: string;

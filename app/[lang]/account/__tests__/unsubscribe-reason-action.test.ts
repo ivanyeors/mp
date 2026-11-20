@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * *Mind telling us why?* after the account's toggle is turned off
- * (PRD-crm-retention-loop slice 11): the answer is the signed-in Customer's
- * alone, never one named in the request, and it never changes consent.
- */
-
 const h = vi.hoisted(() => ({
   sessionCustomerId: null as string | null,
   calls: [] as { fn: string; args: Record<string, unknown> }[],

@@ -28,7 +28,7 @@ export async function getReviewAggregate(productId: string): Promise<ReviewAggre
   return { average: sum / count, count };
 }
 
-/** Batch fetch for shop/homepage cards. ponytail: O(n) products — fine for storefront scale. */
+// ponytail: O(n) products — fine for storefront scale.
 export async function getReviewAggregates(
   productIds: string[],
 ): Promise<Record<string, ReviewAggregate>> {

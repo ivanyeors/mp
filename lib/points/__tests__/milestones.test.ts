@@ -3,12 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SEEDED_MILESTONES, formatMilestones, milestoneCostRows, milestoneProgress, parseMilestones } from "../milestones";
 
-/**
- * Bonus milestones (PRD-loyalty-points slice 09; ADR 0030 s to w): the ladder
- * setting read exactly as SQL reads it, where a customer stands on it, and
- * what each milestone costs.
- */
-
 type Case = { name: string; value: string | null; expected: [number, number][] };
 const CASES = JSON.parse(
   readFileSync(join(process.cwd(), "supabase/tests/loyalty-points/milestone-cases.json"), "utf8"),
@@ -45,7 +39,6 @@ describe("milestoneProgress", () => {
   it("fills each milestone's own stretch, and shows pending points on top", () => {
     const p = milestoneProgress(ladder, 1750, 500);
     expect(p.steps.map((s) => s.reached)).toEqual([true, false, false, false]);
-    // 1,000 to 2,500: 750 of 1,500 earned, 1,250 with pending.
     expect(p.steps[1]).toMatchObject({ fill: 0.5, pendingFill: 1250 / 1500 });
     expect(p.steps[0]).toMatchObject({ fill: 1, pendingFill: 1 });
     expect(p.steps[2]).toMatchObject({ fill: 0, pendingFill: 0 });
@@ -69,7 +62,6 @@ describe("milestoneCostRows", () => {
     const rows = milestoneCostRows(SEEDED_MILESTONES, 3);
     expect(rows.map((r) => r.spend)).toEqual([334, 834, 1667, 3334]);
     expect(rows.map((r) => r.bonusesSoFar)).toEqual([100, 400, 1200, 3200]);
-    // 10,000 earned and 3,200 in bonuses is S$132 back on S$3,334.
     expect(rows[3]!.backShare).toBeCloseTo(132 / 3334, 6);
   });
 

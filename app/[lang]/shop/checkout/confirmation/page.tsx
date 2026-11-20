@@ -13,10 +13,6 @@ import { formatCurrency as formatPrice } from "@/lib/i18n/currencies";
 import { trackGaEventOnce } from "@/lib/analytics/ga-events";
 import { splitOrderDiscount } from "@/lib/points/order-lines";
 
-// ---------------------------------------------------------------------------
-// Confirmation Page
-// ---------------------------------------------------------------------------
-
 export default function OrderConfirmationPage() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get("order_number") ?? searchParams.get("order");
@@ -29,8 +25,6 @@ export default function OrderConfirmationPage() {
   const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
-    // The order is looked up by order number, gated by the Stripe session id
-    // (a capability token), so both are required to load order details.
     if (!orderNumber || !sessionId) return;
 
     setLoading(true);
@@ -45,7 +39,6 @@ export default function OrderConfirmationPage() {
       })
       .then((data: { ok: boolean; order: Order }) => {
         setOrder(data.order);
-        // GA4 purchase, once per order in this browser: the page can be refreshed or bookmarked.
         const o = data.order;
         if (!["cancelled", "refunded", "payment_failed"].includes(o.status)) {
           trackGaEventOnce(`purchase:${o.order_number}`, {
@@ -67,27 +60,16 @@ export default function OrderConfirmationPage() {
             },
           });
         }
-        // Payment went through and the order was confirmed for this Stripe
-        // session, so the local cart is spent. Clearing it here (instead of
-        // before the Stripe redirect) keeps the items available if the shopper
-        // cancels payment or presses back from Stripe.
         clearCart();
       })
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, [orderNumber, sessionId, clearCart]);
 
-  // The code and the points each on their own line: the points' dollars are
-  // inside discount_amount (PRD-loyalty-points slice 04).
   const discount = order ? splitOrderDiscount(order.discount_amount, order.points_spent) : null;
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-16 flex flex-col items-center gap-8 text-center">
-      {/* Success icon */}
       <div className="flex flex-col items-center gap-4">
         <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-5">
           <CheckCircle className="size-12 text-green-600 dark:text-green-400" />
@@ -103,7 +85,6 @@ export default function OrderConfirmationPage() {
         </div>
       </div>
 
-      {/* Order number */}
       {orderNumber && (
         <Card className="w-full">
           <CardContent className="pt-6 pb-6 flex flex-col items-center gap-1">
@@ -115,7 +96,6 @@ export default function OrderConfirmationPage() {
         </Card>
       )}
 
-      {/* Order details */}
       {loading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
@@ -128,7 +108,6 @@ export default function OrderConfirmationPage() {
           <CardContent className="pt-6 flex flex-col gap-4">
             <h2 className="font-semibold text-base">Order Summary</h2>
 
-            {/* Items */}
             {order.items && order.items.length > 0 && (
               <div className="flex flex-col divide-y">
                 {order.items.map((item) => (
@@ -171,7 +150,6 @@ export default function OrderConfirmationPage() {
               </div>
             )}
 
-            {/* Totals */}
             <div className="flex flex-col gap-2 border-t pt-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
@@ -215,7 +193,6 @@ export default function OrderConfirmationPage() {
               </div>
             </div>
 
-            {/* Shipping address */}
             {order.shipping_address && (
               <div className="border-t pt-4">
                 <p className="text-sm font-medium mb-1">Shipping to</p>
@@ -246,7 +223,6 @@ export default function OrderConfirmationPage() {
         </Card>
       )}
 
-      {/* Actions */}
       <div className="flex flex-col items-center gap-3 w-full">
         <Button asChild size="lg" className="w-full sm:w-auto sm:px-12">
           <Link href="/shop">Continue Shopping</Link>

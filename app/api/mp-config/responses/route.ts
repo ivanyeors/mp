@@ -28,10 +28,6 @@ import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Safety guard: mp-config notifications are restricted to a single Telegram group
-// chat, so a misconfigured env var cannot leak them elsewhere. One definition,
-// in lib/telegram/notify.ts — this file used to carry its own copy of the id.
-
 function getOptionalEnv(name: string): string | null {
   const v = process.env[name];
   return v && v.trim() ? v.trim() : null;
@@ -44,8 +40,6 @@ function formatTelegramTimestamp(date = new Date()): string {
     year: "numeric",
   }).format(date);
 
-  // Example output from Intl can be "3:45 pm" or "3:45 PM" depending on runtime.
-  // Normalize to "3:45PM" (no space).
   const rawTime = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -57,7 +51,6 @@ function formatTelegramTimestamp(date = new Date()): string {
 }
 
 function parseTelegramChatId(): number | null {
-  // Only allow sending to the restricted group chat id.
   return MP_CONFIG_TELEGRAM_CHAT_ID;
 }
 
@@ -80,7 +73,6 @@ async function sendTelegramMessage(chatId: number, text: string) {
   });
 
   if (!res.ok) {
-    // Best-effort logging only. Never block the save path.
     console.error("Failed to send Telegram message", await res.text());
     return { ok: false as const, reason: "api_error" as const };
   }
@@ -99,7 +91,6 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } | null {
 }
 
 function toTelegramCaption(text: string): string {
-  // Telegram photo captions are limited (media group uses per-item captions too).
   const max = 1024;
   if (text.length <= max) return text;
   const trimmed = text.slice(0, Math.max(0, max - 2)).trimEnd();
@@ -121,7 +112,6 @@ async function sendTelegramMediaGroup(
   const token = getOptionalEnv("TELEGRAM_BOT_TOKEN");
   if (!token) return { ok: false as const, reason: "missing_token" as const };
 
-  // Ordered item list: front, side (multipart attach:// data-url blobs), then reference URLs.
   type Item =
     | { kind: "file"; key: "front" | "side"; blob: Blob; ext: string }
     | { kind: "url"; url: string };
@@ -139,8 +129,6 @@ async function sendTelegramMediaGroup(
   }
   if (items.length === 0) return { ok: false as const, reason: "no_photos" as const };
 
-  // Fast-path: exactly one front/side data-url item and no reference URLs → sendPhoto so the
-  // caption lands on the message (unchanged from the front/side-only behavior).
   if (items.length === 1 && items[0].kind === "file") {
     const item = items[0];
     const form = new FormData();
@@ -160,7 +148,6 @@ async function sendTelegramMediaGroup(
     return { ok: true as const };
   }
 
-  // Chunk into ≤10-item media groups. Caption only on the first item of the first chunk.
   const chunks = chunkItems(items, 10);
   let firstItem = true;
   for (const chunk of chunks) {
@@ -176,7 +163,6 @@ async function sendTelegramMediaGroup(
         entry.caption = toTelegramCaption(caption);
         firstItem = false;
       }
-      // Only file items need a multipart part; URL items are referenced directly.
       if (it.kind === "file") form.append(it.key, it.blob, `${it.key}.${it.ext}`);
       return entry;
     });
@@ -212,15 +198,9 @@ const MeasurementSchema = z.object({
   headToBack: z.string().default(""),
   neckLength: z.string().default(""),
   notes: z.string().max(2000).optional().default(""),
-  // The health answers the Premium rule graph reads. Without them here the
-  // object strip dropped them on every save, and a Result whose answers were
-  // dropped could not be evaluated. Optional with no default: a caller that
-  // does not send them (the Admin Panel's Save) keeps what is stored.
   sleepPainAreas: z.array(z.string().max(64)).max(12).optional(),
   sleepPositionType: z.array(z.string().max(64)).max(12).optional(),
   usesBolster: YesNoEmptySchema.optional(),
-  // Asked only of someone signed in who already has a pillow
-  // (lib/customer-pillow/pillow-for.ts); everyone else sends none.
   pillowFor: z.enum(["self", "other"]).optional(),
 });
 
@@ -234,43 +214,20 @@ const UpsertSchema = z.object({
   data: MeasurementSchema,
   isFinal: z.boolean().optional(),
   measuredBy: MeasuredBySchema.optional(),
-  /** When set (Save without purchasing / finalize), contact is required + persisted. */
   email: z.string().email().optional(),
   phone: z.string().min(1).optional(),
   discoverySource: z.string().min(1).optional(),
   discoverySourceOther: z.string().optional(),
-  /** Operator-editable origin Location (partners.id), null to clear. */
   locationId: z.string().uuid().nullable().optional(),
-  /** Explicit flag: require + write contact columns on this upsert. */
   persistContact: z.boolean().optional(),
-  /**
-   * A guest's email from the configurator's first question (ADR 0049), so a
-   * Draft Result Staff can see is one they can reach. Written to
-   * `customer_email` on a Draft only: once a Result is held, its email is the
-   * one the hold wrote.
-   */
   draftEmail: z.string().trim().toLowerCase().email().max(254).optional(),
-  /**
-   * The marketing box beside that email, ticked by default (ADR 0039). Recorded
-   * as `customisation` once the Draft is saved; absent is unticked.
-   */
   marketingEmail: z.boolean().optional(),
-  /**
-   * The configurator the Draft is in (`/mp-config` or `/mp-basic`), sent with
-   * that email and kept as `data.configurator`, so its continue link (ADR
-   * 0050) reopens it in the same one. Later saves never send it, and the
-   * answers merge, so it stays.
-   */
   configurator: z.enum(["full", "basic"]).optional(),
-  /** Result access token — proves the caller owns an existing row. */
   token: z.string().uuid().nullish(),
-  /** Assist link code from `/mp-config?assist=`. Re-resolved server-side. */
   assistCode: z.string().min(1).max(32).optional(),
 });
 
 export async function GET(req: Request) {
-  // Results staff list responses here; the Orders page also searches unlinked
-  // results from the order detail dialog, so either permission is enough.
   const denied = await requireAnyAdmin(["results", "orders"]);
   if (denied) return denied;
 
@@ -283,7 +240,6 @@ export async function GET(req: Request) {
   return NextResponse.json(result.body, {
     status: result.status,
     headers: {
-      // Ensure the results list is never cached (helps avoid “stuck at N rows” issues).
       "Cache-Control": "no-store",
     },
   });
@@ -343,9 +299,6 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const isFinal = parsed.data.isFinal === true;
 
-  // Loaded for every write, not only finalization: the Draft Result guard below
-  // needs the status, and the isFinal branch reuses this same fetch rather than
-  // adding a second round trip.
   const { data: existing, error: existingErr } = await admin
     .from("mp_config_responses")
     .select(
@@ -355,9 +308,6 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
 
-  // An update lays the posted answers over the stored ones instead of replacing
-  // them, so a caller that sends only some fields cannot blank the rest. The
-  // configurator sends every field, cleared ones included, so it still clears.
   const storedData =
     existing?.data && typeof existing.data === "object" && !Array.isArray(existing.data)
       ? (existing.data as Record<string, unknown>)
@@ -367,22 +317,13 @@ export async function POST(req: Request) {
     : parsed.data.data;
   row.data = data;
 
-  // Creating a row stays open — there is nothing to own yet, and the configurator
-  // saves from the first keystroke. Updating one does not.
   if (existing) {
-    // draftOnly: Staff keep editing measured-by / location / is_final on `held`
-    // rows from the Admin Panel; everyone else may write drafts only. Staff means
-    // `results` here — a viewer carries `orders` and would skip draftOnly.
     const access = await requireResultAccess(existing, parsed.data.token ?? null, {
       draftOnly: true,
       staffPermissions: ["results"],
     });
     if (!access.ok) return access.response;
   } else if (
-    // Creating a Draft Result is the one write left that cannot require a
-    // credential, so cap it. One create per configurator session (plus a few for
-    // "start again"), against a limit no real shopper reaches — including several
-    // customers behind one in-store IP.
     (await rateLimitExceeded({
       bucket: "mp-config-create",
       key: clientIp(req),
@@ -396,10 +337,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // The guest's email from the first question (ADR 0049), behind the access
-  // check above. A Draft only: on a held Result the email is the hold's, and
-  // pointing it elsewhere would send that Result's emails, and its access token,
-  // to someone else. "Save without purchasing" writes its own, checked, contact.
   const draftEmail =
     parsed.data.draftEmail && !persistContact && (existing == null || existing.status == null)
       ? parsed.data.draftEmail
@@ -409,12 +346,6 @@ export async function POST(req: Request) {
     if (parsed.data.configurator) row.data = { ...data, configurator: parsed.data.configurator };
   }
 
-  // "Working as" (slice 10): a Result a Staff session creates without saying
-  // who measured defaults to the profile at this device — the one chosen under
-  // "Working as", or a personal login's only profile, which never sees that
-  // picker. Reading the cookie alone left every personal login's in-store
-  // Result `by_user`, and so without its Measurement service fee (ADR 0024).
-  // Attribution only, and re-validated against the signed-in login.
   if (existing == null && !parsed.data.measuredBy) {
     const staff = await getAdminContext();
     const measuring = staff ? await actingProfile(staff.memberId) : null;
@@ -424,8 +355,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // A newly picked "measured by" must be a live Staff profile. A row that
-  // already names one keeps it after it is archived; only a change is checked.
   if (
     parsed.data.measuredBy?.type === "staff" &&
     parsed.data.measuredBy.staffId !== (existing?.measured_by_staff_id ?? null) &&
@@ -437,23 +366,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // Result access token (CONTEXT.md): minted once, when the Draft Result is
-  // created, and returned so the configurator can prove ownership on later
-  // requests. Deliberately never minted on update — a legacy draft carrying a
-  // null token has to stay writable by the pre-deploy browser tab that owns it,
-  // and binding a token here would lock out the very session it just let through.
-  // The hold route keeps this same token (app/api/results/hold/route.ts).
   const accessToken = existing == null ? crypto.randomUUID() : null;
   if (accessToken) row.access_token = accessToken;
 
-  // Assist link stamp (PRD staff-assisted-customisation). On CREATE ONLY, for
-  // the same reason as the token above: `source` is what authorises the no-card
-  // submit downstream, so a later update must never be able to write it — a
-  // caller who reaches an existing row could otherwise relabel a self-serve
-  // Result as staff-assisted and put a free build into the queue.
-  // The client sends the CODE; the Staff id is resolved here and never trusted
-  // from the request. An unknown or deactivated code leaves the row untouched,
-  // so the visitor gets the ordinary flow rather than an error.
   if (existing == null && parsed.data.assistCode) {
     const staff = await getStaffByAssistCode(parsed.data.assistCode);
     if (staff) {
@@ -473,8 +388,6 @@ export async function POST(req: Request) {
       existingMeasuredByStaffId = existingMeasuredByParsed.data.measured_by_staff_id ?? null;
     }
 
-    // Enforce "Measured by" selection before Telegram send / finalization.
-    // Default option is "by user" (stored as measured_by_type = 'by_user').
     const effectiveType = parsed.data.measuredBy?.type ?? existingMeasuredByType;
     const effectiveStaffId =
       parsed.data.measuredBy?.type === "staff" ? parsed.data.measuredBy.staffId : existingMeasuredByStaffId;
@@ -501,23 +414,15 @@ export async function POST(req: Request) {
   const { error } = await admin.from("mp_config_responses").upsert(row, { onConflict: "id" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // The email is a Customer, ticked or not (ADR 0051): found, or a new Lead.
-  // The marketing box beside it (ADR 0039, 0049) is recorded with it, for that
-  // email, and subscribes only someone nobody has asked. Never fails the save.
   if (draftEmail) {
     await customerForCustomisation(
       admin,
       { email: draftEmail, name: parsed.data.data.name },
       parsed.data.marketingEmail === true,
     );
-    // The earliest a guest names themselves: this browser's Visits, and the
-    // Entry source of the first, are theirs from here (ADR 0007). Never on a
-    // Staff or Partner device, and never fails the save.
     await stitchShopperVisitor(admin, req, { email: draftEmail });
   }
 
-  // *Save without purchasing*: the contact typed on the preview is a Customer
-  // too (ADR 0051), with the box shown beside it, as at the hold.
   if (persistContact && typeof row.customer_email === "string") {
     await customerForCustomisation(
       admin,
@@ -530,7 +435,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Optional Telegram notify when a response is marked final (only on the first transition to final).
   let telegramStatus: "sent" | "skipped" | "failed" = "skipped";
   if (isFinal && !wasFinal) {
     const chatId = parseTelegramChatId();
@@ -556,7 +460,6 @@ export async function POST(req: Request) {
           else measuredByLabel = "staff";
         }
       } catch {
-        // Best-effort only; never block the save path.
         measuredByLabel = "by user";
       }
 
@@ -582,14 +485,12 @@ export async function POST(req: Request) {
       const viewMore = `View more: ${origin}/settings/results/${id}`;
 
       try {
-        // Try attaching photos (front/side). Falls back to text-only message if missing.
         const { data: photos, error: pErr } = await admin
           .from("mp_config_response_photos")
           .select("view,data_url,screening_status")
           .eq("response_id", id);
         if (pErr) console.error("Failed to load mp-config photos", pErr.message);
 
-        // ADR 0047: only photos Claude passed are attached; the message says what it left out.
         const { front, side, notes } = await sizingPhotosForTelegram(admin, id, photos ?? []);
         const text = [...lines, ...(notes.length ? [...notes, ""] : []), viewMore].join("\n");
 

@@ -1,12 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-/**
- * The parts of the email tool, side by side at the top of each: Email
- * campaigns (PRD-email-marketing), the Email funnel (PRD-email-funnel) and
- * Email templates (PRD-email-templates). A part the role cannot open is not
- * offered.
- */
 export function EmailsNav({
     current,
     campaignsHref,
@@ -14,11 +8,8 @@ export function EmailsNav({
     templatesHref,
 }: {
     current: "campaigns" | "funnel" | "templates";
-    /** Null when the role does not hold `campaigns`. */
     campaignsHref: string | null;
-    /** Null when the role does not hold `campaigns`. */
     funnelHref: string | null;
-    /** Null when the role does not hold `email-templates`. */
     templatesHref: string | null;
 }) {
     const tabs = [

@@ -1,21 +1,5 @@
 import { blogSlugFate } from "@/lib/blog-redirects";
 
-/**
- * Where the old Shopify store's addresses go once www.mpillow.com points at
- * this site (ADR 0029, the cutover). From the agency's redirect map as audited
- * and approved by the owner on 11 and 13 Nov 2026: every row of it is a case
- * in `lib/__tests__/shopify-redirects.test.ts`.
- *
- * The proxy answers these before anything else, on every host, so they can be
- * tested on custom.mpillow.com before the switch: none of these paths is a page
- * of this site. A page that moved answers 301. A cart, checkout or sign-in link
- * belongs to a person's session, not a page, so it answers 302. A feed or
- * Shopify's own sitemap has no equivalent and answers 410.
- *
- * Owner's rule for an old address with no matching page (13 Nov 2026): a
- * product or collection goes to the shop, any other page to the home page.
- */
-
 export type ShopifyRedirect = { status: 301 | 302; to: string } | { status: 410 };
 
 const HOME = "/en-US";
@@ -23,11 +7,6 @@ const SHOP = "/en-US/shop";
 const BLOG = "/en-US/blog";
 const ACCOUNT = "/en-US/account";
 
-/**
- * Old pages whose new home the patterns below cannot work out: the page moved
- * to a differently named one, or a blog post was never brought over and went
- * to the closest page instead. Lower case, no trailing slash.
- */
 const MOVED: Readonly<Record<string, string>> = {
   "/agents.md": "/llms.txt",
   "/blogs/information/a-word-from-the-founder": "/en-US/blog/what-led-to-the-creation-of-the-world-s-best-pillow",
@@ -115,7 +94,6 @@ const MOVED: Readonly<Record<string, string>> = {
   "/products/terrywaterproof-inner-protector": "/en-US/shop/waterproof-inner-pillow-protector",
 };
 
-/** Ad and campaign tags kept on the redirect; Shopify's own parameters (variant, page, _pos…) are dropped. */
 const KEPT_PARAM = /^(utm_[a-z_]+|gclid|gbraid|wbraid|fbclid|msclkid|ttclid)$/i;
 
 const GONE: ShopifyRedirect = { status: 410 };
@@ -126,22 +104,17 @@ function normalise(pathname: string): string {
   let path = pathname;
   try {
     path = decodeURIComponent(pathname);
-  } catch {
-    // A malformed escape is matched as written.
-  }
+  } catch {}
   return path.toLowerCase().replace(/\/+$/, "") || "/";
 }
 
-/** Where an old Shopify address goes; null for any path that is not one. */
 export function shopifyRedirect(pathname: string): ShopifyRedirect | null {
   let path = normalise(pathname);
   if (Object.hasOwn(MOVED, path)) return moved(MOVED[path]);
 
-  // Feeds and Shopify's own sitemaps: nothing here replaces them.
   if (/^\/sitemap_[a-z0-9_]+\.xml$/.test(path)) return GONE;
   if (/^\/(products|collections|blogs)(\/[^/]+)*\.(json|js|atom|xml|oembed)$/.test(path)) return GONE;
 
-  // A product inside a collection is the product.
   const inCollection = path.match(/^\/collections\/[^/]+\/products\/([^/]+)$/);
   if (inCollection) {
     path = `/products/${inCollection[1]}`;
@@ -152,9 +125,6 @@ export function shopifyRedirect(pathname: string): ShopifyRedirect | null {
   if (path === "/pages" || path.startsWith("/pages/")) return moved(HOME);
   if (path === "/policies" || path.startsWith("/policies/")) return moved(HOME);
 
-  // Blogs: a list or tag page is the blog; a post resolves the October 2026
-  // consolidation in the same hop (merged → the post that absorbed it,
-  // retired → the home page, owner 13 Nov 2026).
   if (path === "/blogs" || /^\/blogs\/[^/]+(\/tagged(\/.*)?)?$/.test(path)) return moved(BLOG);
   const post = path.match(/^\/blogs\/[^/]+\/([^/]+)$/)?.[1];
   if (post) {
@@ -163,22 +133,15 @@ export function shopifyRedirect(pathname: string): ShopifyRedirect | null {
     return moved(`${BLOG}/${fate?.kind === "merged" ? fate.into : post}`);
   }
 
-  // A person's cart, checkout, order-status page or sign-in.
   if (path === "/cart" || path.startsWith("/cart/")) return session(`${SHOP}/cart`);
   if (path === "/search") return session(SHOP);
   if (/^\/(\d+\/)?(checkouts|orders)(\/|$)/.test(path)) return session(ACCOUNT);
   if (path.startsWith("/customer_authentication")) return session(ACCOUNT);
-  // Shopify-only account links. /account itself, /account/login, /addresses and
-  // /orders are pages here too, and reach them through the language redirect.
   if (/^\/account\/(register|activate|reset|logout|invalid_token)(\/|$)/.test(path)) return session(ACCOUNT);
 
   return null;
 }
 
-/**
- * The absolute address to send a visitor to: the new path on `origin`, with the
- * visitor's ad and campaign tags carried over and everything else dropped.
- */
 export function shopifyRedirectUrl(to: string, origin: string, search: URLSearchParams): URL {
   const url = new URL(to, origin);
   for (const [key, value] of search) {

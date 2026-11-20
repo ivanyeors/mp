@@ -40,8 +40,6 @@ import {
 import { ImagePicker } from "@/components/ui/image-picker";
 import type { ProductCategory } from "@/lib/types/ecommerce";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
 interface CategoryWithMeta extends ProductCategory {
     product_count?: number;
     children?: CategoryWithMeta[];
@@ -78,8 +76,6 @@ const LOCALES: { key: "en-US" | "zh-CN"; label: string }[] = [
     { key: "zh-CN", label: "中文" },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function slugify(str: string): string {
     return str
         .toLowerCase()
@@ -96,7 +92,6 @@ function getDisplayName(cat: CategoryWithMeta): string {
     return loc?.name || cat.slug || cat.id;
 }
 
-/** Collect all descendant IDs (including self) to prevent cycle in parent select */
 function getDescendantIds(cat: CategoryWithMeta): Set<string> {
     const ids = new Set<string>([cat.id]);
     function walk(c: CategoryWithMeta) {
@@ -109,7 +104,6 @@ function getDescendantIds(cat: CategoryWithMeta): Set<string> {
     return ids;
 }
 
-/** Flatten a tree into a list with depth for the parent selector */
 function flattenTree(
     nodes: CategoryWithMeta[],
     depth = 0
@@ -121,8 +115,6 @@ function flattenTree(
     }
     return result;
 }
-
-// ─── CategoryRow Component ───────────────────────────────────────────────────
 
 interface CategoryRowProps {
     category: CategoryWithMeta;
@@ -168,10 +160,8 @@ function CategoryRow({
                         ) : (
                             <span className="min-w-11 shrink-0" />
                         )}
-                        {/* Thumbnail */}
                         <div className="h-8 w-8 rounded border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                             {category.image_url ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
                                     src={category.image_url}
                                     alt={getDisplayName(category)}
@@ -240,25 +230,19 @@ function CategoryRow({
     );
 }
 
-// ─── Categories Manager ──────────────────────────────────────────────────────
-
 export function CategoriesManager() {
     const [categories, setCategories] = useState<CategoryWithMeta[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-    // Sheet state
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<CategoryWithMeta | null>(null);
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
-    // Delete dialog state
     const [deleteTarget, setDeleteTarget] = useState<CategoryWithMeta | null>(null);
     const [deleting, setDeleting] = useState(false);
-
-    // ── Data fetching ──────────────────────────────────────────────────────
 
     const fetchCategories = useCallback(async () => {
         setLoading(true);
@@ -267,7 +251,6 @@ export function CategoriesManager() {
             const json = await res.json();
             const tree: CategoryWithMeta[] = json.rows ?? json.categories ?? [];
             setCategories(tree);
-            // Auto-expand top-level categories that have children
             const topIds = tree
                 .filter((c) => (c.children?.length ?? 0) > 0)
                 .map((c) => c.id);
@@ -283,8 +266,6 @@ export function CategoriesManager() {
         fetchCategories();
     }, [fetchCategories]);
 
-    // ── Expand / collapse ──────────────────────────────────────────────────
-
     const toggleExpand = (id: string) => {
         setExpandedIds((prev) => {
             const next = new Set(prev);
@@ -293,8 +274,6 @@ export function CategoriesManager() {
             return next;
         });
     };
-
-    // ── Sheet helpers ──────────────────────────────────────────────────────
 
     const openCreate = () => {
         setEditingCategory(null);
@@ -322,7 +301,7 @@ export function CategoriesManager() {
             parent_id: cat.parent_id ?? "",
             is_active: cat.is_active ?? true,
         });
-        setSlugManuallyEdited(true); // On edit, don't auto-regenerate slug
+        setSlugManuallyEdited(true);
         setSheetOpen(true);
     };
 
@@ -339,7 +318,6 @@ export function CategoriesManager() {
                     [locale]: { ...prev.content[locale], [field]: value },
                 },
             };
-            // Auto-generate slug from English name on create
             if (!editingCategory && !slugManuallyEdited && locale === "en-US" && field === "name") {
                 next.slug = slugify(value);
             }
@@ -387,8 +365,6 @@ export function CategoriesManager() {
         }
     };
 
-    // ── Delete ─────────────────────────────────────────────────────────────
-
     const handleDeleteConfirm = async () => {
         if (!deleteTarget) return;
         setDeleting(true);
@@ -405,8 +381,6 @@ export function CategoriesManager() {
         }
     };
 
-    // ── Parent select options (exclude self + descendants) ─────────────────
-
     const flatCategories = flattenTree(categories);
     const excludedIds: Set<string> = editingCategory
         ? getDescendantIds(editingCategory)
@@ -416,11 +390,8 @@ export function CategoriesManager() {
         ({ cat }) => !excludedIds.has(cat.id)
     );
 
-    // ─────────────────────────────────────────────────────────────────────────
-
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-1.5">
                     <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -436,7 +407,6 @@ export function CategoriesManager() {
                 </Button>
             </div>
 
-            {/* Category tree */}
             {loading ? (
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -474,7 +444,6 @@ export function CategoriesManager() {
                 </div>
             )}
 
-            {/* ── Sheet: Create / Edit ──────────────────────────────────────── */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
                     <SheetHeader>
@@ -489,7 +458,6 @@ export function CategoriesManager() {
                     </SheetHeader>
 
                     <div className="mt-6 space-y-6">
-                        {/* Locale tabs */}
                         <Tabs defaultValue="en-US">
                             <TabsList className="w-full">
                                 {LOCALES.map(({ key, label }) => (
@@ -528,7 +496,6 @@ export function CategoriesManager() {
                             ))}
                         </Tabs>
 
-                        {/* Slug */}
                         <div className="space-y-2">
                             <Label htmlFor="slug">Slug</Label>
                             <Input
@@ -539,13 +506,11 @@ export function CategoriesManager() {
                             />
                         </div>
 
-                        {/* Image */}
                         <div className="space-y-2">
                             <Label>Image</Label>
                             <div className="flex items-center gap-3">
                                 <div className="h-16 w-16 rounded-lg border bg-muted flex items-center justify-center overflow-hidden shrink-0">
                                     {form.image_url ? (
-                                        /* eslint-disable-next-line @next/next/no-img-element */
                                         <img
                                             src={form.image_url}
                                             alt="Category"
@@ -585,7 +550,6 @@ export function CategoriesManager() {
                             </div>
                         </div>
 
-                        {/* Parent category */}
                         <div className="space-y-2">
                             <Label>Parent category</Label>
                             <Select
@@ -613,7 +577,6 @@ export function CategoriesManager() {
                             </Select>
                         </div>
 
-                        {/* Active toggle */}
                         <div className="flex items-center justify-between rounded-lg border p-4">
                             <div className="flex items-center gap-1.5">
                                 <Label htmlFor="is-active" className="text-sm font-medium">
@@ -632,7 +595,6 @@ export function CategoriesManager() {
                             />
                         </div>
 
-                        {/* Save */}
                         <Button
                             className="w-full"
                             onClick={handleSave}
@@ -645,7 +607,6 @@ export function CategoriesManager() {
                 </SheetContent>
             </Sheet>
 
-            {/* ── Delete confirmation dialog ──────────────────────────────── */}
             <Dialog
                 open={deleteTarget !== null}
                 onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}

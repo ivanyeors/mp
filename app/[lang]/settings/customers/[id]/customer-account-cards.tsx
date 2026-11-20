@@ -35,21 +35,6 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
     );
 }
 
-/**
- * The Contact details card (PRD-customer-page-journey slice 01; it was the
- * Contact and sign-in card of CRM slice 11, ADR 0028 (j)): the customer's
- * email and mobile, each with what is known about it and the buttons that
- * reach them. Every fact is derived, none typed by Staff.
- *
- * Email and the mobile's validity come from the Customer row, so they follow
- * an edit at once. WhatsApp and the other numbers seen are matched by phone on
- * the server (`contact`, lib/crm/contact-facts.ts) for the number on file when
- * the page was read.
- *
- * The buttons are handed in (`emailActions`, `mobileActions`), so the card
- * itself only reads and renders on the server in tests. How they sign in is
- * its own rail row (`SignInFacts`).
- */
 export function ContactCard({
     customer,
     createdByImport,
@@ -61,19 +46,12 @@ export function ContactCard({
     children,
 }: {
     customer: Pick<Customer, "email" | "phone" | "auth_user_id" | "account_linked_at">;
-    /** The Shopify import created this Customer (`migrated_customers`): where an unverified email came from. */
     createdByImport?: boolean | null;
-    /** What the server matched by phone; left out when it was not read. */
     contact?: ContactFactsResult;
-    /** Top right of the card: *Edit*, for those who may. */
     headerAction?: ReactNode;
-    /** Under the email: Email, Copy. */
     emailActions?: ReactNode;
-    /** Under the mobile: WhatsApp, Call, Copy. */
     mobileActions?: ReactNode;
-    /** Shown in place of the rows while the details are being edited. */
     editForm?: ReactNode;
-    /** Under the rows: the tags. */
     children?: ReactNode;
 }) {
     const signedUp = customer.auth_user_id != null;
@@ -169,17 +147,11 @@ export function ContactCard({
     );
 }
 
-/** One line for the Sign-in row while it is closed: how they sign in, or that they have no account. */
 export function signInSummary(customer: Pick<Customer, "auth_user_id" | "account_providers">): string {
     if (customer.auth_user_id == null) return "No account yet";
     return describeSignIn(customer.account_providers) ?? "Not recorded yet";
 }
 
-/**
- * How the Customer signs in, and when they last did (CRM slice 11): the
- * Sign-in rail row. It held the same two lines on the Contact and sign-in
- * card.
- */
 export function SignInFacts({
     customer,
 }: {
@@ -254,7 +226,6 @@ function WhatsAppFacts({ whatsapp }: { whatsapp: ContactFacts["whatsapp"] }) {
 
 const SOURCE_LABEL: Record<SeenNumberSource, string> = { booking: "booking", result: "Result" };
 
-/** Numbers from their bookings and Results that are not the one on file. */
 function OtherNumbers({ numbers }: { numbers: OtherNumber[] }) {
     if (numbers.length === 0) return <span className="text-muted-foreground">None</span>;
     return (
@@ -276,25 +247,13 @@ function OtherNumbers({ numbers }: { numbers: OtherNumber[] }) {
     );
 }
 
-/**
- * The From Shopify facts (migration slice 12), only for a Migrated customer:
- * the Shopify-era facts kept beside the Customer in `migrated_customers`
- * (ADR 0029 (d)). Shopify orders stay unlinked, so their count and spend are
- * shown apart from the platform's.
- *
- * On the Journey they sit inside the chapter that holds the import
- * (PRD-customer-page-journey slice 04), so `bare` leaves the card off: a
- * heading and the facts, in a box.
- */
 export function FromShopifyCard({
     migration,
     importHistoryHref,
     bare = false,
 }: {
     migration: MigratedCustomerResult | undefined;
-    /** The import history, for a viewer who holds `customer-import`; null otherwise. */
     importHistoryHref: string | null;
-    /** Inside a Journey chapter: no card around it. */
     bare?: boolean;
 }) {
     if (!migration) return null;
@@ -342,7 +301,6 @@ function FromShopifyFacts({
 }: {
     facts: MigratedCustomerFacts;
     importHistoryHref: string | null;
-    /** Two columns where there is room, for the Journey's wider chapter. */
     columns?: boolean;
 }) {
     const batch = facts.batch;
@@ -416,7 +374,6 @@ function FromShopifyFacts({
                     {facts.claimedAt && (
                         <Row label="Claim">Claimed on {formatAdminDateMY(facts.claimedAt)}</Row>
                     )}
-                    {/* PRD-loyalty-points: the bonus a Claim in its window adds; the Points card has the balance. */}
                     {facts.claimBonusAt && (
                         <Row label="Claim bonus">Granted on {formatAdminDateMY(facts.claimBonusAt)}</Row>
                     )}

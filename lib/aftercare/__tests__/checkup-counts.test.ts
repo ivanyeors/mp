@@ -2,11 +2,6 @@ import { describe, expect, it } from "vitest";
 import { countCheckupSends, summariseCheckupSends } from "@/lib/aftercare/checkup-counts";
 import { reviewFakeDb } from "./review-request-fake-db";
 
-/**
- * The Aftercare card's check-up numbers (CRM slice 08): check-ups sent by
- * channel, and the bookings that followed. Counts only.
- */
-
 const sent = (customer: string, order: string, at: string, template = "aftercare.checkup_12m") => ({
   customer_id: customer,
   template,
@@ -21,13 +16,9 @@ describe("summariseCheckupSends", () => {
         email: [sent("ann", "o1", "2026-10-01T02:00:00Z"), sent("ben", "o2", "2026-10-02T02:00:00Z"), sent("cat", "o3", "2026-10-03T02:00:00Z")],
         whatsapp: [sent("ann", "o1", "2026-10-01T02:00:05Z"), sent("dan", "o4", "2026-10-04T02:00:00Z")],
         bookings: [
-          // Ann booked a week later: followed.
           { customer_id: "ann", created_at: "2026-10-08T02:00:00Z", status: "attended" },
-          // Ben booked before the check-up went: not.
           { customer_id: "ben", created_at: "2026-09-20T02:00:00Z", status: "booked" },
-          // Cat opened a checkout and left it: not a booking.
           { customer_id: "cat", created_at: "2026-10-05T02:00:00Z", status: "expired" },
-          // Dan booked, then cancelled: not a booking.
           { customer_id: "dan", created_at: "2026-10-05T02:00:00Z", status: "cancelled" },
         ],
       }),

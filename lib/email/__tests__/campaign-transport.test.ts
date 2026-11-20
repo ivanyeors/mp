@@ -10,13 +10,6 @@ import {
 } from "../campaign-transport";
 import { getDefaultTransport, resetTransportCache } from "../transport";
 
-/**
- * Campaign mail never goes through the mailbox that sends order email
- * (migration slice 08; ADR 0029 i). The campaign's Resend key is
- * CAMPAIGN_RESEND_API_KEY, and the app's own transport never reads it: a key
- * named RESEND_API_KEY would have moved every order email to Resend.
- */
-
 const PROVIDER_ENV = [
   "EMAIL_PROVIDER",
   "RESEND_API_KEY",

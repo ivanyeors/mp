@@ -13,16 +13,6 @@ import {
 
 export const runtime = "nodejs";
 
-/**
- * Discount editor. The three requests the client used to make on mount
- * (`GET /api/shop/coupons/[id]`, `GET /api/shop/products?limit=100` and
- * `GET /api/shop/categories`) are read here instead, so the form and the
- * "applies to" catalog render in the first paint.
- *
- * `id === "new"` loads no coupon (the client starts from a blank form) but
- * still gets the catalog. A coupon that cannot be read is left to the client's
- * own fetch, which keeps the existing "Failed to load coupon." state.
- */
 export default async function DiscountEditorPage({
     params,
 }: {
@@ -36,7 +26,6 @@ export default async function DiscountEditorPage({
     const isNew = id === "new";
     const [coupon, products, categoryTree] = await Promise.all([
         isNew ? null : getAdminCoupon(id),
-        // Same request the client makes: the public catalog, first 100 rows.
         listAdminProducts(new URLSearchParams({ limit: "100" })),
         getCategoryTree(),
     ]);

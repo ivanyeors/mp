@@ -9,15 +9,6 @@ type Provided = { locale: Locale; messages: Messages } | null;
 
 const I18nMessagesContext = createContext<Provided>(null);
 
-/**
- * Server-provided dictionary for the current locale.
- *
- * The `[lang]` layout renders this with the non-default locale's messages so
- * that server-rendered client components (landing sections, aftercare copy)
- * print the right language on first paint and hydrate without a mismatch.
- * en-US is the static fallback bundled with the client, so nothing is passed
- * for it and the RSC payload only grows on zh-CN pages.
- */
 export function I18nMessagesProvider({
   locale,
   messages,

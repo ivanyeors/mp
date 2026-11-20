@@ -1,13 +1,3 @@
-/**
- * Keep one Google Calendar push channel open, so a cancellation reaches the
- * guest when it happens instead of at the next 09:00 run.
- *
- * Google POSTs to the webhook on any change to the calendar, with the channel
- * id and our per-channel token in headers and no body; the webhook then asks
- * what changed. Channels expire (we ask for a week), so the daily run renews
- * one that is close to it, and stops the one it replaces.
- */
-
 import { randomBytes, randomUUID } from "node:crypto";
 import { secretMatches } from "@/lib/auth/secret";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -15,7 +5,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { stopCalendarChannel, watchCalendarEvents } from "./calendar";
 
 const TTL_SECONDS = 7 * 24 * 60 * 60;
-/** Renew this close to expiry. Two days covers a daily run that misses once. */
 const RENEW_WITHIN_MS = 2 * 24 * 60 * 60 * 1000;
 
 type ChannelRow = {
@@ -35,7 +24,6 @@ export type WatchResult =
   | { status: "skipped"; detail: string };
 
 export async function ensureCalendarWatch(now: Date = new Date()): Promise<WatchResult> {
-  // A preview would point the production calendar at itself.
   if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
     return { status: "skipped", detail: `not production (${process.env.VERCEL_ENV})` };
   }
@@ -69,13 +57,10 @@ export async function ensureCalendarWatch(now: Date = new Date()): Promise<Watch
     expires_at: expiresAt,
   });
   if (insErr) {
-    // Unrecorded, its pushes would fail verification for a week. Close it.
     await stopCalendarChannel(channelId, watch.resourceId).catch(() => {});
     throw new Error(insErr.message);
   }
 
-  // Overlapping channels only double the pushes, which the status locks absorb,
-  // so a stop that fails is logged and the row closed regardless.
   for (const old of open) {
     try {
       await stopCalendarChannel(old.id, old.resource_id);
@@ -90,7 +75,6 @@ export async function ensureCalendarWatch(now: Date = new Date()): Promise<Watch
   return { status: "renewed", expiresAt };
 }
 
-/** Is this push from a channel we opened and have not closed? */
 export async function verifyCalendarChannel(
   channelId: string | null,
   token: string | null,

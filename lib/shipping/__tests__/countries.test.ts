@@ -28,7 +28,6 @@ describe("country catalog", () => {
     for (const c of COUNTRIES) {
       expect(c.city.trim(), c.code).not.toBe("");
       if (c.postal !== null) {
-        // The same rules the quote endpoint applies to a shopper's postal code.
         expect(QuoteDestinationSchema.safeParse({ country: c.code, postal_code: c.postal }).success, c.code).toBe(true);
         expect(isPostalReady(c.postal, c.code), c.code).toBe(true);
       }
@@ -58,7 +57,6 @@ describe("lookups", () => {
     expect(usesPostalCode("SG")).toBe(true);
     expect(usesPostalCode("HK")).toBe(false);
     expect(usesPostalCode("AE")).toBe(false);
-    // Unknown: ask for one rather than quote without.
     expect(usesPostalCode("XX")).toBe(true);
 
     expect(isPostalReady("", "HK")).toBe(true);

@@ -14,7 +14,6 @@ function err(nodeId: string | null, code: string, message: string): ValidationEr
   return { nodeId, code, message };
 }
 
-/** Detect cycle via DFS. Returns a node id on the cycle if found. */
 function findCycleNode(graph: RuleGraphJson): string | null {
   const adj = new Map<string, string[]>();
   for (const e of graph.edges) {
@@ -22,7 +21,7 @@ function findCycleNode(graph: RuleGraphJson): string | null {
     list.push(e.target);
     adj.set(e.source, list);
   }
-  const state = new Map<string, 0 | 1 | 2>(); // 0 unvisited, 1 visiting, 2 done
+  const state = new Map<string, 0 | 1 | 2>();
   for (const n of graph.nodes) state.set(n.id, 0);
 
   let cycleAt: string | null = null;
@@ -137,9 +136,6 @@ const TERMINAL_TYPES = new Set([
   "fallback",
 ]);
 
-/**
- * Publish validation. Pure — errors reference offending node ids.
- */
 export function validateForPublish(
   flow: RuleFlow,
   graph: RuleGraphJson,
@@ -194,9 +190,6 @@ export function validateForPublish(
     }
   }
 
-  // Range/Match out-edges must carry a branch handle (band id / match value).
-  // Without it, evaluate can't select a branch, the path silently dies, and the
-  // graph drops to Fallback at runtime — the #1 cause of "always falls back".
   const bandIds = new Map<string, Set<string>>();
   for (const n of graph.nodes) {
     if (n.type === "range") {
@@ -227,10 +220,6 @@ export function validateForPublish(
 
   for (const fb of fallbacks) {
     if (!reachable.has(fb.id)) {
-      // Fallback may be a catch-all with no inbound from inputs — still require
-      // it to be present; "unreachable" means no edge can ever activate it AND
-      // it isn't wired as an orphan catch-all. Require at least one inbound edge
-      // OR allow zero-inbound as explicit catch-all (engine activates it).
       const hasInbound = graph.edges.some((e) => e.target === fb.id);
       if (hasInbound && !reachable.has(fb.id)) {
         errors.push(err(fb.id, "unreachable-fallback", "Fallback is not reachable"));
@@ -238,7 +227,6 @@ export function validateForPublish(
     }
   }
 
-  // Every non-terminal node on a path from inputs must be able to reach a terminal.
   const revAdj = new Map<string, string[]>();
   for (const e of graph.edges) {
     const list = revAdj.get(e.target) ?? [];
@@ -277,15 +265,12 @@ export function validateForPublish(
       );
     }
     if (pathSize == null) {
-      // Template must be preceded by a Size output on some ancestor path
       errors.push(
         err(n.id, "wrong-size-template", "Template output is not preceded by a Size output"),
       );
     }
   }
 
-  // Size-keyed Template outputs: each slot names a size this flow sells, and some
-  // Size output must exist to pick one — without it the node can never fire.
   const flowSizes: readonly string[] = flow === "mbolster" ? BOLSTER_LENGTHS : PILLOW_SIZES;
   const hasSizeOutput = graph.nodes.some((n) => n.type === "size-output");
   for (const n of graph.nodes) {

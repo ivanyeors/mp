@@ -7,18 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * The image + text block in the campaign editor (PRD-campaign-email-editor
- * slice 06), as the demo goes: add *Image + text*, choose its photo, write
- * its heading, flip the image to the right, and Save it. Its image always
- * has alt text, so it offers no *Decorative*; its button may be removed and
- * added back.
- */
-
 const PHOTO = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
 const RENDITION = { assetId: PHOTO, url: `https://mpillow.supabase.co/storage/v1/object/public/media/email/${PHOTO}.jpg`, width: 1200, height: 800, hasAlpha: false };
 
-// The Media Library's picker, as if Staff chose the photo in it.
 vi.mock("@/components/ui/image-picker", () => ({
   ImagePicker: ({ onSelect, children }: { onSelect: (s: { assetId: string; url: string; alt?: string | null }) => void; children: ReactNode }) => (
     <span onClickCapture={() => onSelect({ assetId: "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f", url: "https://mpillow.supabase.co/storage/v1/object/public/media/photo_1.webp", alt: "A FibreCool cover on a bed" })}>
@@ -124,7 +115,6 @@ describe("an image + text block", () => {
     expect(placeholderOf(heading)).toBe("e.g. Sleep cooler this December");
     expect(split.querySelector('[aria-label="Text beside the image"]')).not.toBeNull();
     expect(split.querySelector('input[aria-label="Button beside the image: label"]')).not.toBeNull();
-    // Beside words, the image always says what it shows.
     expect(split.querySelector('button[role="checkbox"]')).toBeNull();
 
     await click(await until(() => (button("Choose an image")?.disabled === false ? button("Choose an image") : null)));
@@ -133,11 +123,9 @@ describe("an image + text block", () => {
     expect((await until(() => split.querySelector<HTMLImageElement>("img"))).getAttribute("src")).toBe(RENDITION.url);
     expect(split.querySelector<HTMLInputElement>('input[id$="-alt"]')!.value).toBe("A FibreCool cover on a bed");
 
-    // The heading takes Variables as a heading block's does (slice 13).
     await retype(heading, "Why FibreCool, {first_name}");
     expect(wordsOf(heading)).toBe("Why FibreCool, First name");
     typeField(split.querySelector<HTMLInputElement>('input[aria-label="Button beside the image: label"]')!, "Shop the covers");
-    // The selected block's options: the image's side, then its button's look.
     expect(radio(split, "Image", "Left").getAttribute("aria-checked")).toBe("true");
     await click(radio(split, "Image", "Right"));
     expect(radio(split, "Image", "Right").getAttribute("aria-checked")).toBe("true");

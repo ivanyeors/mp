@@ -9,11 +9,6 @@ import { Label } from "@/components/ui/label";
 import { InfoTip } from "@/components/ui/info-tip";
 import type { ClaudeCredentialSource } from "@/lib/ai/claude";
 
-// General → Claude API key (owner, 2026-10-30): paste the key once and review
-// replies and AI writing use it. /api/settings/claude-key checks it with
-// Anthropic before saving, and never sends it back.
-
-/** Pure — the status line for where Claude's credentials come from. */
 export function claudeKeyStatus(source: ClaudeCredentialSource | null): string {
   if (source === "saved") return "Claude is set up with the key saved here.";
   if (source === "environment") return "Claude is set up with the ANTHROPIC_API_KEY in Vercel. A key saved here takes its place.";
@@ -21,7 +16,6 @@ export function claudeKeyStatus(source: ClaudeCredentialSource | null): string {
   return "Claude isn't set up. Paste an API key to turn on review replies and AI writing.";
 }
 
-/** The status, the field and its buttons, without the requests. Exported for tests. */
 export function ClaudeKeyForm({
   source,
   value,
@@ -102,7 +96,6 @@ export function ClaudeKeyForm({
   );
 }
 
-/** General's Claude API key card. `onChange` hears the new source after a save or a removal. */
 export function ClaudeKeySection({
   source,
   onChange,

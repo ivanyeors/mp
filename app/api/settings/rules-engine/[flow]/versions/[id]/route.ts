@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ flow: string; id: string }> };
 
-/** GET one published version including its graph (the list omits graphs). */
 export async function GET(_req: Request, ctx: Ctx) {
   try {
     await requireAdminContext("rules-engine");

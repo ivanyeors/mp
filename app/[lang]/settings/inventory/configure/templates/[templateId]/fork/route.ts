@@ -20,15 +20,6 @@ import {
 
 export const runtime = 'nodejs'
 
-/**
- * Diverge one size from a shared Filling Template.
- *
- * Sharing a recipe across sizes is only safe if an operator can take one size
- * back out again. This copies the recipe (placements and legacy flat lines) to
- * a new template scoped to `key` alone, and drops `key` from the original — so
- * the size that needed to differ stops tracking the shared one, and every other
- * size it served is untouched.
- */
 const PlacementRowSchema = z.object({
   section: z.string().default(''),
   sub_section: z.string().default(''),
@@ -43,12 +34,6 @@ const PlacementRowSchema = z.object({
 const ForkSchema = z.object({
   key: z.string().min(1).max(40),
   name: z.string().trim().min(1).max(120),
-  /**
-   * The recipe to give the copy. The operator forks precisely because they are
-   * mid-edit and do not want the save to reach the other sizes, so the copy
-   * must take what is on their screen — copying the stored rows instead would
-   * silently discard the edits that prompted the fork. Omitted = copy stored.
-   */
   placements: z.array(PlacementRowSchema).optional(),
 })
 
@@ -102,7 +87,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ templateId
     .insert({
       kind: tpl.kind,
       key,
-      // Filling Templates carry no tier or variant (ADR 0003).
       pillow_kind: null,
       pillow_variant: null,
       name,
@@ -117,8 +101,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ templateId
   const membership = await setTemplateKeys(admin, { templateId: created.id, kind, keys: [key] })
   if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 })
 
-  // Placements are the recipe (ADR 0008); the legacy flat lines ride along so a
-  // pre-spatial template forks into something with the same derived pack list.
   const placementTable = kind === 'bolster' ? 'bolster_template_placements' : 'filling_template_placements'
   const placementCols =
     kind === 'bolster' ? 'slot,item_id' : 'section,sub_section,slot,item_id,row_index,insert_order,offset_x_mm,offset_y_mm'
@@ -177,8 +159,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ templateId
     if (copyErr) return NextResponse.json({ error: copyErr.message }, { status: 500 })
   }
 
-  // Only now does the original stop serving this size: if any copy step above
-  // failed, the operator still has the shared template they started with.
   const remaining = currentKeys.filter((k) => k !== key)
   const rescoped = await setTemplateKeys(admin, { templateId: id, kind, keys: remaining })
   if (!rescoped.ok) return NextResponse.json({ error: rescoped.error }, { status: 400 })

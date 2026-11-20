@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 interface CartTriggerProps extends ComponentPropsWithoutRef<"button"> {
   iconClassName?: string;
   badgeClassName?: string;
-  /** When inside PopoverTrigger, Radix onClick opens the popover; skip local open logic. */
   suppressOpen?: boolean;
 }
 
@@ -27,8 +26,6 @@ export const CartTrigger = forwardRef<HTMLButtonElement, CartTriggerProps>(
       suppressOpen,
       onClick,
       children,
-      // PopoverTrigger's aria-expanded, aria-controls and data-state, so the
-      // button says whether the cart is open.
       ...rest
     },
     ref

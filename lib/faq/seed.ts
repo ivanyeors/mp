@@ -2,14 +2,9 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { FAQ_DEFAULTS } from "./defaults";
 
 export type SeedFaqOptions = {
-  /** Delete existing FAQ rows and re-insert from defaults.ts */
   force?: boolean;
 };
 
-/**
- * Insert FAQ categories + items from lib/faq/defaults.ts.
- * Skips if rows already exist unless `force` is true.
- */
 export async function seedFaqDatabase(opts: SeedFaqOptions = {}): Promise<{
   ok: boolean;
   seeded: boolean;

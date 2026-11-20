@@ -2,22 +2,12 @@
 
 import dynamic from "next/dynamic";
 
-/**
- * A Storefront product's body editor: Markdown in, Markdown out, edited
- * visually by default (markdown-editor-impl.tsx). TipTap loads in the
- * browser only, after the page: until then a box of the same size holds its
- * place.
- */
-
 export interface MarkdownEditorProps {
-  /** The Markdown. */
   value: string;
   onChange: (markdown: string) => void;
   placeholder?: string;
-  /** The words' box: a `<Label htmlFor>` points here. */
   id?: string;
   "aria-labelledby"?: string;
-  /** How the footer counts the words: by word, or by character for Chinese. */
   counts?: "words" | "characters";
 }
 

@@ -7,16 +7,6 @@ import { countDueFollowUps } from "@/lib/crm/followups";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/settings/customers/followup-counts — the Customers sidebar badge
- * (CRM slice 06), following the Results badge: the open follow-ups assigned to
- * the profile the viewer works as that are due today, and overdue (due before
- * today in Singapore). Needs `customers`.
- *
- * Answers `{ ok, profile, counts }`. On a shared login where nobody has chosen
- * who they are working as, `profile` and `counts` are null and the badge
- * shows nothing: whose list it would be is not known.
- */
 export async function GET() {
   const denied = await requireAdmin("customers");
   if (denied) return denied;

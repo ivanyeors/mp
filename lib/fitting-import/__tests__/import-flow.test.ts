@@ -27,12 +27,6 @@ import { formCsv } from "./fixtures";
 
 const NOW = Date.parse("2026-10-31T08:00:00Z");
 
-/**
- * Five rows, in file order: a new email, a mobile only, the same new email
- * again later, a duplicate of the first, an unreachable row. They are
- * imported in `importOrder`: the three with an email (file rows 0, 2, 3),
- * then the two without (1, 4).
- */
 const FILE = formCsv([
   { "Email:": "new@example.com", Timestamp: "10/1/2026 10:00:00" },
   { "Email:": "", "Mobile No: ": "8123 0002", Timestamp: "10/2/2026 10:00:00" },
@@ -98,7 +92,6 @@ describe("planFittingRow", () => {
 });
 
 describe("one person's visits", () => {
-  /** Made-up visits of two people, in file order. */
   const VISITS = formCsv([
     { "Name:": "Ivy Ng", "Email:": "", "Mobile No: ": "9123 0010", Timestamp: "3/1/2024 10:00:00" },
     { "Name:": "Ivy Ng", "Email:": "ivy.ng@example.com", "Mobile No: ": "9123 0010", Timestamp: "6/1/2025 10:00:00" },
@@ -118,19 +111,16 @@ describe("one person's visits", () => {
     const normalised = normaliseRows(rowsOf(VISITS).map((raw, i) => ({ i, raw })), "mdy", NOW);
     const previews = settleWholeFile(normalised, planRows(normalised, NO_EXISTING));
     expect(previews.map((p) => p.reason ?? p.outcome)).toEqual([
-      "created", // file row 1: Ivy's first email
-      "matched_phone", // file row 2: Ivy under another email, the same mobile and name
-      "created", // file row 3: Kim, the same mobile, another name
-      // file row 0, Ivy's first visit, mobile only: two people now hold the number, and one is Ivy Ng.
+      "created",
       "matched_phone",
-      // file row 4: the name on the form is only "Ivy", so neither holder is it: listed, not guessed.
+      "created",
+      "matched_phone",
       "mobile_matches_several",
     ]);
   });
 });
 
 describe("the preview", () => {
-  /** A stand-in for the server action: the real reader and planner, against `existing`. */
   const server =
     (existing: ExistingLookup = NO_EXISTING, seen: IndexedRawRow[][] = []) =>
     async (rows: IndexedRawRow[], order: DateOrder): Promise<PreviewChunkResponse> => {
@@ -152,7 +142,6 @@ describe("the preview", () => {
     expect(run.order).toBe("mdy");
     expect(run.previews).toEqual<RowPreview[]>([
       { i: 0, outcome: "created" },
-      // The email the first row creates is a match by the time the next is written.
       { i: 1, outcome: "matched_email" },
       { i: 2, outcome: "skip", reason: "duplicate_in_file" },
       { i: 3, outcome: "matched_phone" },
@@ -236,7 +225,6 @@ describe("the import", () => {
       sent.push(start);
       if (start !== rowsDone) return { ok: true, status: "refused", reason: "out_of_order", rowsDone };
       rowsDone += rows.length;
-      // The first chunk lands, but its answer never reaches the browser.
       if (start === 0) throw new Error("network");
       return { ok: true, status: "applied", rowsDone, outcomes: rows.map((r) => ({ i: r.i, outcome: "created" as const })) };
     };
@@ -251,7 +239,6 @@ describe("the import", () => {
     const first = await runFittingImport({ text: many, batch: { id: "b", rowsDone: 0, rowsTotal: 230 }, order: "mdy", applyChunk, finish });
     expect(first).toMatchObject({ kind: "stopped", rowsDone: 0, error: "network" });
 
-    // Picking the same file again: the page starts from 0, learns the batch is at 100, and carries on.
     const again = await runFittingImport({ text: many, batch: { id: "b", rowsDone: 0, rowsTotal: 230 }, order: "mdy", applyChunk, finish });
     expect(again.kind).toBe("finished");
     expect(sent).toEqual([0, 0, 100, 200]);

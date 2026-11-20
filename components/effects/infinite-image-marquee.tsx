@@ -4,9 +4,7 @@ import Image from "next/image";
 type InfiniteImageMarqueeProps = {
   src: string;
   alt: string;
-  /** Seconds per loop (lower = faster). */
   durationSeconds?: number;
-  /** Direction the content moves. */
   direction?: "left" | "right";
   className?: string;
   imageClassName?: string;

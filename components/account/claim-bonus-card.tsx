@@ -6,10 +6,6 @@ import { formatDollarsShort, formatPointsCount, pointsToDollars } from "@/lib/po
 const sgDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Singapore" });
 
-/**
- * The welcome page's word on the Claim bonus (PRD-loyalty-points slice 05):
- * what was added, or plainly that the window closed. Never a promise.
- */
 export function ClaimBonusCard({ bonus, shopHref, termsHref }: { bonus: ClaimBonusView; shopHref: string; termsHref: string }) {
   if (bonus.kind === "closed") {
     return (

@@ -17,27 +17,21 @@ import { shownDeliveryTime } from "@/lib/shipping/delivery-time";
 import type { PackageType } from "@/lib/shipping/types";
 import type { CustomerAddress } from "@/lib/types/ecommerce";
 
-// Loaded with the shipping section, not with the configurator's first screen:
-// the search and the flags only matter on its last step (bundle budget).
 const CountryPicker = dynamic(() => import("@/components/shop/country-picker").then((m) => m.CountryPicker), {
   loading: () => <div className="h-9 w-full rounded-md border border-input max-md:min-h-11" />,
 });
 
-/** A row of `/api/shop/shipping?collect=1`, the configurator's method list. */
 export type HoldShippingMethod = {
   id: string;
   slug: string;
   base_rate: number;
   free_above: number | null;
   currency?: string;
-  /** Live: priced by courier rates for the address (ADR 0032). Absent reads as flat. */
   rate_source?: "flat" | "easyship";
   content: Record<string, { name?: string; description?: string; estimated_days?: string }>;
-  /** Self-collect: the studio it is collected from. Absent for a delivery method. */
   collect_location?: { id: string; name: string; address: string } | null;
 };
 
-/** The configurator's shipping list: delivery methods plus Self-collect. */
 export const HOLD_SHIPPING_METHODS_PATH = "/api/shop/shipping?collect=1";
 
 export function isSelfCollectMethod(method: HoldShippingMethod | undefined): boolean {
@@ -48,33 +42,15 @@ function isLiveMethod(method: HoldShippingMethod): boolean {
   return method.rate_source === "easyship" && !method.collect_location;
 }
 
-/** One method as the customer sees it: its price for this build and address. */
 export type HoldShippingOption = {
   method: HoldShippingMethod;
-  /**
-   * One price for the shipping: the courier rate with our markup and rounding
-   * for a live method, the base rate for a flat one, before free_above (see
-   * `holdShippingAmount`). Null until a live method has a rate for the address.
-   */
   price: number | null;
   status: "priced" | "needs_postal" | "quoting" | "unavailable";
   currency: string;
-  /**
-   * How long it takes: the delivery time Staff set on the method ("About 2
-   * weeks"), else the courier's transit plus handling days once quoted.
-   */
   window: string | null;
-  /** The courier a live rate is for ("J&T Express"), once quoted. */
   courier: string | null;
 };
 
-/**
- * Each configurator method priced for this build: live methods from the courier
- * quote for the address, boxed as `parcelTypes` — the same boxes the hold
- * quotes, so it charges the price shown here (ADR 0032). Keeps the selection on
- * a method that can ship: one the address turns out to have no courier for is
- * swapped for the first that has a price.
- */
 export function useHoldShippingQuote({
   methods,
   address,
@@ -92,8 +68,7 @@ export function useHoldShippingQuote({
   const wantsLive = parcelTypes.length > 0 && methods.some(isLiveMethod);
   const quote = useShippingQuote(
     wantsLive
-      ? // Couriers price by postal code, so the city and state are left out:
-        // typing them would only re-ask for the same rate.
+      ?
         { profile: parcelTypes, country, postalCode: address.postal_code }
       : null,
   );
@@ -101,7 +76,6 @@ export function useHoldShippingQuote({
   const quoted = new Map(quote.options.map((o) => [o.method_id, o]));
 
   const options = methods.map((method): HoldShippingOption => {
-    // The configurators are English-only, like `holdShippingName`.
     const base = {
       method,
       currency: method.currency ?? "SGD",
@@ -127,26 +101,17 @@ export function useHoldShippingQuote({
   useEffect(() => {
     const current = options.find((o) => o.method.id === selectedId);
     if (current && current.status !== "unavailable") return;
-    // Nothing chosen yet: the store's first method that can ship, even before
-    // its rate is in. One that turned out not to ship: the first with a price.
     const shippable = options.filter((o) => o.status !== "unavailable");
     const next = current ? (shippable.find((o) => o.status === "priced") ?? shippable[0]) : shippable[0];
     if (next && next.method.id !== selectedId) onSelect(next.method.id);
-    // `statusKey` stands for `options`, which is a new array every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusKey, selectedId, onSelect]);
 
   return { options, selected: options.find((o) => o.method.id === selectedId) };
 }
 
-/**
- * What the customer pays for this option: its price, or nothing once the goods
- * reach the method's free_above — the rule every repricing of a Result applies.
- */
 export function holdShippingAmount(
   option: HoldShippingOption | undefined,
   goodsSubtotal: number,
-  /** A free-shipping discount code (ADR 0033): the hold charges no shipping. */
   freeShipping = false,
 ): number | null {
   if (!option || option.price == null) return null;
@@ -155,7 +120,6 @@ export function holdShippingAmount(
   return freeAbove != null && goodsSubtotal >= freeAbove ? 0 : option.price;
 }
 
-/** The shipping step's own check, from the chosen option's status: a method chosen, and a price for it. */
 export function holdShippingCheck(status: HoldShippingOption["status"] | undefined): {
   key: "shipping";
   touched: boolean;
@@ -197,10 +161,6 @@ export function holdShippingName(method: HoldShippingMethod): string {
   return method.content?.["en-US"]?.name ?? method.slug;
 }
 
-/**
- * The preview footer's shipping row: what shipping adds to the one price, or
- * why it is not in it yet.
- */
 export function HoldShippingTotalRow({
   option,
   goodsSubtotal,
@@ -219,11 +179,6 @@ export function HoldShippingTotalRow({
   );
 }
 
-/**
- * Shipping on a configurator's customisation page: where it goes, the method,
- * then the address it needs. Self-collect asks only who collects; the server
- * stores the studio's address (lib/shipping/self-collect).
- */
 export function HoldShippingFields({
   options,
   goodsSubtotal,
@@ -236,14 +191,12 @@ export function HoldShippingFields({
   recipientPlaceholder,
 }: {
   options: HoldShippingOption[];
-  /** For free_above; null while the build cannot be priced. */
   goodsSubtotal: number | null;
   selectedId: string;
   onSelect: (id: string) => void;
   address: HoldShippingAddress;
   setAddress: Dispatch<SetStateAction<HoldShippingAddress>>;
   errors: Record<string, string>;
-  /** Hidden when off: on a Staff device those are the Staff member's own addresses. */
   savedAddresses: {
     signedIn: boolean;
     addresses: CustomerAddress[];
@@ -254,7 +207,6 @@ export function HoldShippingFields({
 }) {
   const country = address.country || "SG";
   const countryOptions = useDeliveryCountries(country);
-  // The hook builds a new list every render; the picker regroups only when it changes.
   const countryKey = countryOptions.map((c) => c.code).join(",");
   const countryCodes = useMemo(() => (countryKey ? countryKey.split(",") : []), [countryKey]);
   const selected = options.find((o) => o.method.id === selectedId);
@@ -271,7 +223,6 @@ export function HoldShippingFields({
           id="hold-country"
           value={country}
           codes={countryCodes}
-          // A state belongs to its country; the rest of the address is kept.
           onChange={(code) => setAddress((a) => ({ ...a, country: code, state: "" }))}
         />
       </div>

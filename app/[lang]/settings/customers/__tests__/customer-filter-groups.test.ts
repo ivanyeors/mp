@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { CUSTOMER_FILTER_KEYS, DEFAULT_CUSTOMER_FILTERS, parseCustomerFilters } from "@/lib/crm/customer-filters";
 
-/**
- * The mega filter's groups: every filter the list reads has one place in it,
- * so a new filter cannot be added to the schema and left out of the panel.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -31,7 +26,6 @@ describe("the mega filter's groups", () => {
     const filters = filtersFor("stage=at-risk&ships_to=sg&emailed=over:30&consent=subscribed&mobile=missing");
     const counts = Object.fromEntries(CUSTOMER_FILTER_GROUPS.map((g) => [g.id, groupFilterCount(filters, g)]));
     expect(counts).toEqual({ stage: 1, purchases: 0, reach: 3, account: 1, reviews: 0 });
-    // The search box is not the mega filter's.
     expect(CUSTOMER_FILTER_GROUPS.map((g) => groupFilterCount(filtersFor("search=tan"), g))).toEqual([0, 0, 0, 0, 0]);
   });
 

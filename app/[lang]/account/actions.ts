@@ -15,15 +15,6 @@ import { readMarketingEmailState, setMarketingEmail } from "@/lib/marketing-cons
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 import { UnsubscribeAnswerSchema, recordUnsubscribeReason } from "@/lib/marketing-consent/unsubscribe-reasons-server";
 
-/**
- * The customer's own Aftercare switches, in their Profile (PRD customer-crm
- * slice 13). The only place a customer changes them: there is no unsubscribe
- * link, no WhatsApp keyword and no checkout checkbox.
- *
- * The Customer comes from the session, never from the request, so a body
- * naming someone else's id changes nothing but the caller's own row.
- */
-
 export type AftercareActionResult =
   | { ok: true; email: boolean; whatsapp: boolean; phone: string | null }
   | { ok: false; error: string; needsMobile?: boolean };
@@ -31,7 +22,6 @@ export type AftercareActionResult =
 const InputSchema = z.object({
   preference: z.enum(AFTERCARE_PREFERENCES),
   value: z.boolean(),
-  /** Asked for only when turning WhatsApp on with no valid mobile on file. */
   mobile: z.string().trim().max(40).optional(),
 });
 
@@ -49,9 +39,6 @@ export async function setMyAftercarePreference(input: unknown): Promise<Aftercar
 
   let wording: string | null = null;
   if (preference === "aftercare_whatsapp" && value) {
-    // A mobile is needed. One on file that is valid is used as it is; otherwise
-    // the number typed here is saved first, normalised, as the Profile's first
-    // editable field.
     let e164 = normalizePhone(current.phone);
     if (!e164) {
       e164 = normalizePhone(mobile ?? null);
@@ -61,7 +48,6 @@ export async function setMyAftercarePreference(input: unknown): Promise<Aftercar
       const { error } = await admin.from("customers").update({ phone: e164 }).eq("id", customerId);
       if (error) return { ok: false, error: "Could not save your mobile number." };
     }
-    // The exact text the toggle showed, with this number in it: the evidence.
     wording = aftercareWhatsAppWording(mobileForWording(e164));
   }
 
@@ -84,22 +70,12 @@ export async function setMyAftercarePreference(input: unknown): Promise<Aftercar
   };
 }
 
-// ─── Marketing consent (migration slice 07) ─────────────────────────────────
-
 export type MarketingEmailActionResult =
   | { ok: true; state: MarketingEmailState }
   | { ok: false; error: string };
 
 const MarketingEmailSchema = z.object({ subscribed: z.boolean() });
 
-/**
- * The Profile's "Email me news and offers" toggle: the platform's first
- * first-party consent capture, source `account`. It is the one way an
- * `unsubscribed` Customer subscribes again. Off is `unsubscribed`, never
- * `not_subscribed`: a "no" given here is a choice, not "never asked".
- *
- * The Customer comes from the session, never from the request.
- */
 export async function setMyMarketingEmail(input: unknown): Promise<MarketingEmailActionResult> {
   const parsed = MarketingEmailSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid change" };
@@ -117,13 +93,6 @@ export async function setMyMarketingEmail(input: unknown): Promise<MarketingEmai
   return { ok: true, state: state ?? to };
 }
 
-/**
- * *Mind telling us why?* after the toggle is turned off (PRD-crm-retention-loop
- * slice 11): one optional answer for the signed-in Customer's latest
- * unsubscribe. It never changes consent; the toggle did that already. With
- * nothing to answer (subscribed again since, or already answered) it is still
- * a thank-you, not an error.
- */
 export async function answerMyUnsubscribeReason(input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
   const parsed = UnsubscribeAnswerSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Choose one of the answers." };

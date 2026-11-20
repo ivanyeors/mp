@@ -16,7 +16,6 @@ export type PageFaqAccordionItem = {
   answer: string;
 };
 
-/** Compact accordion; forceMount keeps answers in HTML for crawlers when collapsed. */
 export function PageFaqAccordion({
   items,
   locale,

@@ -45,10 +45,6 @@ import { toast } from "sonner";
 import { SelectFromDriveDialog } from "@/components/settings/select-from-drive-dialog";
 import { InfoTip } from "@/components/ui/info-tip";
 
-/* ------------------------------------------------------------------ */
-/* Types                                                               */
-/* ------------------------------------------------------------------ */
-
 interface MediaFile {
     name: string;
     url: string | null;
@@ -99,13 +95,8 @@ interface UsageEntry {
 
 type UsageMap = Record<string, UsageEntry[]>;
 type FilterMode = "all" | "in_use" | "unused";
-/** all = no folder filter; unfiled = folder_id null; else folder uuid */
 type FolderFilter = "all" | "unfiled" | string;
 type KindFilter = "all" | "image" | "video" | "pdf";
-
-/* ------------------------------------------------------------------ */
-/* Landing page image slot definitions                                 */
-/* ------------------------------------------------------------------ */
 
 const LANDING_SLOTS: LandingSlot[] = [
     { key: "landing_hero", label: "Hero", defaultUrl: "/m-pillow-417953-web.webp" },
@@ -118,10 +109,6 @@ const LANDING_SLOTS: LandingSlot[] = [
     { key: "landing_mbolster", label: "Mbolster", defaultUrl: "/808907f4-ac2b-499a-ace6-69933883b2f5.webp" },
     { key: "landing_founder", label: "Founder", defaultUrl: "/Darrenyeo-profileshoot_2.webp" },
 ];
-
-/* ------------------------------------------------------------------ */
-/* Server-rendered first paint                                         */
-/* ------------------------------------------------------------------ */
 
 type MediaAssetJson = {
     id: string;
@@ -137,19 +124,11 @@ type MediaAssetJson = {
     tags?: string[];
 };
 
-/**
- * Exactly the JSON `/api/media-assets` and `/api/media-folders` return,
- * pre-fetched by the RSC page wrapper. Null when the server did not load them
- * (including the empty-registry case, which needs the client's backfill), and
- * the client then fetches both on mount as before. Landing-image overrides and
- * usage counts are still fetched by the client.
- */
 export type MediaInitialData = {
     assets: { ok: true; assets: MediaAssetJson[] };
     folders: { ok: true; folders: MediaFolderRow[] };
 } | null;
 
-/** Same projection `loadFiles` applies to the asset registry rows. */
 function toMediaFiles(assets: MediaAssetJson[]): MediaFile[] {
     return assets.map((a) => ({
         id: a.id,
@@ -166,60 +145,40 @@ function toMediaFiles(assets: MediaAssetJson[]): MediaFile[] {
     }));
 }
 
-/* ------------------------------------------------------------------ */
-/* Component                                                           */
-/* ------------------------------------------------------------------ */
-
 export default function MediaPage({ initialData }: { initialData?: MediaInitialData }) {
-    /* Media gallery state */
     const [files, setFiles] = useState<MediaFile[]>(
         initialData ? toMediaFiles(initialData.assets.assets) : [],
     );
     const [loading, setLoading] = useState(!initialData);
 
-    // The server already delivered the assets and folders; skip those two
-    // mount fetches. Overrides + usage still load on the client, and every
-    // later refresh (upload, delete, folder edit) is untouched.
     const skipFilesFetch = useRef(Boolean(initialData));
     const skipFoldersFetch = useRef(Boolean(initialData));
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    /* Landing-image overrides state */
     const [overrides, setOverrides] = useState<Record<string, string>>({});
     const [overridesLoading, setOverridesLoading] = useState(true);
     const [savingSlot, setSavingSlot] = useState<string | null>(null);
 
-    /* Picker dialog state (for landing slots) */
     const [pickerSlot, setPickerSlot] = useState<LandingSlot | null>(null);
 
-    /* Usage data (URL map for grid; detailUsages for open sheet) */
     const [usageMap, setUsageMap] = useState<UsageMap>({});
     const [usageByAssetId, setUsageByAssetId] = useState<UsageMap>({});
     const [usageLoading, setUsageLoading] = useState(true);
     const [detailUsages, setDetailUsages] = useState<UsageEntry[] | null>(null);
 
-    /**
-     * "Now" is sampled once per mount instead of on every render, so the
-     * relative "used" labels are stable while the page is open. The server
-     * samples its own instant, so the elements that print one are marked
-     * `suppressHydrationWarning` — a relative time genuinely cannot agree
-     * across the two passes.
-     */
     const [nowMs] = useState(() => Date.now());
     const relativeUsed = useCallback(
         (iso: string | null | undefined) => formatAdminRelative(iso, nowMs),
         [nowMs],
     );
 
-    /* Image detail sheet */
     const [detailFile, setDetailFile] = useState<MediaFile | null>(null);
     const [editName, setEditName] = useState("");
     const [editAlt, setEditAlt] = useState("");
     const [savingMeta, setSavingMeta] = useState(false);
     const [reimporting, setReimporting] = useState(false);
 
-    /* Search & filter */
     const [searchQuery, setSearchQuery] = useState("");
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
     const [kindFilter, setKindFilter] = useState<KindFilter>("all");
@@ -236,25 +195,17 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
     const [editTags, setEditTags] = useState<string[]>([]);
     const [tagInput, setTagInput] = useState("");
 
-    /* Replace dialog */
     const [replaceFile, setReplaceFile] = useState<MediaFile | null>(null);
     const [replacing, setReplacing] = useState(false);
 
-    /* Delete confirmation dialog (for in-use images) */
-    // `deletable` is false when an email campaign uses it: no "Delete anyway" past that.
     const [deleteConfirm, setDeleteConfirm] = useState<{ file: MediaFile; usages: UsageEntry[]; deletable: boolean } | null>(null);
     const [deleting, setDeleting] = useState(false);
 
-    /* Drive paste import */
     const [driveUrl, setDriveUrl] = useState("");
     const [drivePreview, setDrivePreview] = useState<DrivePreview | null>(null);
     const [drivePreviewing, setDrivePreviewing] = useState(false);
     const [driveImporting, setDriveImporting] = useState(false);
     const [driveBrowseOpen, setDriveBrowseOpen] = useState(false);
-
-    /* ---------------------------------------------------------------- */
-    /* Data loaders                                                      */
-    /* ---------------------------------------------------------------- */
 
     const loadFiles = useCallback(async () => {
         setLoading(true);
@@ -262,7 +213,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             let res = await fetch("/api/media-assets");
             let data = await res.json();
             if (data.ok && Array.isArray(data.assets) && data.assets.length === 0) {
-                // One-shot backfill from existing bucket objects
                 await fetch("/api/media-assets", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -350,10 +300,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         loadUsages();
     }, [loadFiles, loadFolders, loadOverrides, loadUsages]);
 
-    /* ---------------------------------------------------------------- */
-    /* Filtered files                                                    */
-    /* ---------------------------------------------------------------- */
-
     const getFileUsages = useCallback(
         (file: MediaFile): UsageEntry[] => {
             if (file.url && usageMap[file.url]?.length) return usageMap[file.url];
@@ -379,13 +325,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             result = result.filter((f) => (f.tags ?? []).includes(tagFilter));
         }
 
-        // Search filter
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
             result = result.filter((f) => f.name.toLowerCase().includes(q));
         }
 
-        // Usage filter
         if (filterMode === "in_use") {
             result = result.filter((f) => getFileUsages(f).length > 0);
         } else if (filterMode === "unused") {
@@ -402,10 +346,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         }
         return [...set].sort();
     }, [files]);
-
-    /* ---------------------------------------------------------------- */
-    /* Actions                                                           */
-    /* ---------------------------------------------------------------- */
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -510,9 +450,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         setUsageByAssetId((prev) => ({ ...prev, [file.id]: data.usages }));
                     }
                 }
-            } catch {
-                /* grid map is fallback */
-            }
+            } catch {}
         })();
     };
 
@@ -692,7 +630,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         toast.success("URL copied to clipboard");
     };
 
-    /** Set a landing-page image override (URL + Asset id dual-write) */
     const setSlotImage = async (slot: LandingSlot, url: string, assetId?: string) => {
         setSavingSlot(slot.key);
         try {
@@ -722,7 +659,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         }
     };
 
-    /** Reset a landing-page image to default */
     const resetSlot = async (slot: LandingSlot) => {
         if (!confirm(`Reset "${slot.label}" to the default image?`)) return;
         setSavingSlot(slot.key);
@@ -748,7 +684,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         }
     };
 
-    /** Replace an image everywhere (URL + Asset id across all consumers) */
     const handleReplace = async (oldFile: MediaFile, newFile: MediaFile) => {
         if (!oldFile.url || !newFile.url) return;
         setReplacing(true);
@@ -804,10 +739,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         }
     };
 
-    /* ---------------------------------------------------------------- */
-    /* Helpers                                                           */
-    /* ---------------------------------------------------------------- */
-
     const getUsageCount = (file: MediaFile | null | undefined) =>
         file ? getFileUsages(file).length : 0;
 
@@ -858,15 +789,8 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         }
     };
 
-    /* ---------------------------------------------------------------- */
-    /* Render                                                            */
-    /* ---------------------------------------------------------------- */
-
     return (
-        // Flex, not space-y: on a phone the library (upload, folders, assets) comes first,
-        // above the nine landing-image tiles.
         <div className="flex max-w-6xl flex-col gap-10">
-            {/* ===== Landing Page Images Section ===== */}
             <section className="space-y-4 max-md:order-3">
                 <div>
                     <div className="flex items-center gap-1.5">
@@ -893,14 +817,12 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                     key={slot.key}
                                     className="group relative border rounded-lg overflow-hidden bg-background shadow-sm"
                                 >
-                                    {/* Thumbnail */}
                                     <button
                                         type="button"
                                         className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden cursor-pointer transition-opacity active:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                         onClick={() => setPickerSlot(slot)}
                                         disabled={isSaving}
                                     >
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                             src={currentUrl}
                                             alt={slot.label}
@@ -909,7 +831,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                         />
                                     </button>
 
-                                    {/* Label + actions */}
                                     <div className="p-2 flex items-center justify-between gap-1">
                                         <div className="flex items-center gap-1.5 min-w-0">
                                             <span className="text-xs font-medium truncate">{slot.label}</span>
@@ -944,10 +865,8 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 )}
             </section>
 
-            {/* Divider */}
             <hr className="border-border max-md:order-2" />
 
-            {/* ===== Full Media Gallery ===== */}
             <section className="space-y-6 max-md:order-1">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
@@ -975,7 +894,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                     </div>
                 </div>
 
-                {/* Drive paste / browse import */}
                 <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="text-sm font-medium">Import from Google Drive</div>
@@ -1007,7 +925,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <div className="flex flex-col sm:flex-row gap-3 items-start border rounded-lg p-3 bg-background">
                             <div className="w-24 h-24 shrink-0 rounded-md overflow-hidden border bg-muted flex items-center justify-center">
                                 {drivePreview.thumbnailLink ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                         src={drivePreview.thumbnailLink}
                                         alt={drivePreview.name}
@@ -1053,7 +970,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                     )}
                 </div>
 
-                {/* Search & Filter Bar */}
                 <div className="flex flex-col gap-3">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <div className="relative flex-1">
@@ -1206,7 +1122,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                 >
                                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                                         {file.url ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
                                             <img
                                                 src={file.url}
                                                 alt={file.name}
@@ -1218,7 +1133,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                         )}
                                     </div>
 
-                                    {/* Usage badge */}
                                     {!usageLoading && (
                                         <div className="absolute top-2 left-2">
                                             {count > 0 ? (
@@ -1233,7 +1147,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                         </div>
                                     )}
 
-                                    {/* Quick actions: always visible on mobile, hover on sm+ */}
                                     <div className="absolute inset-0 bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
                                         {file.url && (file.kind ?? "image") === "image" && (
                                             <Button
@@ -1301,7 +1214,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 )}
             </section>
 
-            {/* ===== Image Detail Sheet ===== */}
             <Sheet
                 open={!!detailFile}
                 onOpenChange={(open) => {
@@ -1323,7 +1235,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                             </SheetHeader>
 
                             <div className="px-4 pb-4 space-y-6 overflow-y-auto flex-1">
-                                {/* Preview */}
                                 <div className="rounded-lg overflow-hidden border bg-muted flex items-center justify-center min-h-32">
                                     {detailFile.drive_file_id &&
                                     (detailFile.kind === "video" || detailFile.kind === "pdf") ? (
@@ -1334,7 +1245,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             allow="autoplay"
                                         />
                                     ) : detailFile.url ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
                                         <img
                                             src={detailFile.url}
                                             alt={detailFile.name}
@@ -1355,7 +1265,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             Preview thumbnail
                                         </label>
                                         <div className="rounded-md overflow-hidden border bg-muted w-28 h-28">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={detailFile.url}
                                                 alt=""
@@ -1365,7 +1274,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                     </div>
                                 )}
 
-                                {/* URL — hosted image masters only */}
                                 {detailFile.url && detailFile.kind === "image" && (
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-medium text-muted-foreground">URL</label>
@@ -1399,7 +1307,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                     </div>
                                 )}
 
-                                {/* Rename + alt */}
                                 <div className="space-y-3">
                                     <div className="space-y-1.5">
                                         <Label htmlFor="asset-name" className="text-xs text-muted-foreground">
@@ -1508,7 +1415,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                     </Button>
                                 </div>
 
-                                {/* Usage list */}
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium text-muted-foreground">
                                         Used in ({(detailUsages ?? getFileUsages(detailFile)).length}{" "}
@@ -1565,7 +1471,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                     )}
                                 </div>
 
-                                {/* Actions */}
                                 <div className="flex flex-col gap-2 pt-2 border-t">
                                     {(detailFile.kind ?? "image") === "image" &&
                                         detailFile.drive_file_id && (
@@ -1613,7 +1518,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 </SheetContent>
             </Sheet>
 
-            {/* ===== Landing Slot Picker Dialog ===== */}
             <Dialog open={!!pickerSlot} onOpenChange={(open) => !open && setPickerSlot(null)}>
                 <DialogContent className="max-w-3xl max-h-[80dvh] overflow-hidden flex flex-col">
                     <DialogHeader>
@@ -1654,7 +1558,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             }
                                             disabled={!!savingSlot}
                                         >
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={file.url!}
                                                 alt={file.name}
@@ -1680,7 +1583,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 </DialogContent>
             </Dialog>
 
-            {/* ===== Replace Image Dialog ===== */}
             <Dialog open={!!replaceFile} onOpenChange={(open) => !open && setReplaceFile(null)}>
                 <DialogContent className="max-w-3xl max-h-[80dvh] overflow-hidden flex flex-col">
                     <DialogHeader>
@@ -1690,7 +1592,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         </DialogDescription>
                     </DialogHeader>
 
-                    {/* Usage summary */}
                     {replaceFile && getFileUsages(replaceFile).length > 0 && (
                         <div className="px-6 -mt-2">
                             <div className="flex flex-wrap gap-1.5">
@@ -1728,7 +1629,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             }
                                             disabled={replacing}
                                         >
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={file.url!}
                                                 alt={file.name}
@@ -1748,7 +1648,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 </DialogContent>
             </Dialog>
 
-            {/* ===== Delete Confirmation Dialog (for in-use images) ===== */}
             <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
                 <DialogContent>
                     <DialogHeader>

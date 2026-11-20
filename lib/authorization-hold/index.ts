@@ -1,5 +1,3 @@
-/** Stripe authorization hold: manual-capture PaymentIntent create / capture / release. */
-
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe/client";
@@ -9,19 +7,6 @@ export function toStripeAmountCents(amountMajor: number): number {
   return Math.round(amountMajor * 100);
 }
 
-/**
- * Attach a completed hold Checkout's payment intent to its Result. The ONE
- * writer for both the Stripe webhook and the status page's return-from-Stripe
- * sync, so neither can skip a check the other makes.
- *
- * A re-submitted build opens a new Checkout without expiring the old one, so an
- * Owner can still pay the OLD session. Its card must not land on a Result now
- * quoting a different amount: capture would fail or under-charge. Written only
- * onto a `held` Result with no intent yet, so a card already attached — or a
- * Result that moved on — is never replaced.
- *
- * `mismatch` explains a refusal worth recording; `null` means nothing to attach.
- */
 export async function attachHoldPaymentIntent(
   admin: SupabaseClient,
   session: Stripe.Checkout.Session,
@@ -31,13 +16,10 @@ export async function attachHoldPaymentIntent(
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : session.payment_intent?.id ?? null;
-  // `complete`, not `payment_status`: a manual-capture hold reads `unpaid` until capture.
   if (!resultId || !paymentIntentId || session.status !== "complete") {
     return { ok: false, mismatch: null };
   }
 
-  // Read and write errors throw: the webhook answers 500 and Stripe retries,
-  // rather than an authorised card ending up attached to nothing.
   const { data: held, error: heldError } = await admin
     .from("mp_config_responses")
     .select("authorized_amount, currency, paired_build_id")
@@ -48,16 +30,9 @@ export async function attachHoldPaymentIntent(
   if (heldError) throw new Error(`Hold attach read failed for ${resultId}: ${heldError.message}`);
   if (!held) return { ok: false, mismatch: null };
 
-  // A Paired build's one Checkout authorised both Results (ADR 0026): it must
-  // match the anchor's quote plus the companion it named, and its intent is
-  // written onto both. The companion counts whatever has become of it since —
-  // Staff cancelling it before Checkout completed must not void the Mpillow's
-  // card — but only a companion still waiting for one takes the intent.
   let memberIds = [resultId];
   let quoted = held.authorized_amount == null ? null : Number(held.authorized_amount);
   if (held.paired_build_id === resultId && !session.metadata?.paired_result_id) {
-    // A session that does not name its companion: it authorised the members
-    // still waiting for a card.
     const { data: waiting, error: waitingError } = await admin
       .from("mp_config_responses")
       .select("id, authorized_amount")
@@ -78,7 +53,6 @@ export async function attachHoldPaymentIntent(
           .maybeSingle()
       : { data: null };
     const ours = companion?.paired_build_id === resultId;
-    // Deleted since: the session still carries what it authorised for it.
     const companionQuote = ours
       ? companion!.authorized_amount
       : session.metadata?.paired_result_amount ?? null;
@@ -128,7 +102,6 @@ export type CreateHoldResult = {
   clientSecret: string;
 };
 
-/** Create an uncaptured PaymentIntent (card authorized, not charged). */
 export async function createHold(input: CreateHoldInput): Promise<CreateHoldResult> {
   const stripe = getStripe();
   const pi = await stripe.paymentIntents.create(
@@ -151,17 +124,12 @@ export type CreateHoldCheckoutInput = CreateHoldInput & {
   resultId: string;
   successUrl: string;
   cancelUrl: string;
-  /**
-   * One line per product when a Paired build is held together (ADR 0026); they
-   * must sum to `amount`. Omitted, the Checkout shows one line for the whole hold.
-   */
   lines?: Array<{ name: string; amount: number }>;
 };
 
 const HOLD_LINE_NOTE =
   "Card authorization only — you are not charged until you accept the final build.";
 
-/** Hosted Checkout that creates a manual-capture PaymentIntent. */
 export async function createHoldCheckout(
   input: CreateHoldCheckoutInput,
 ): Promise<{ sessionId: string; url: string }> {
@@ -203,7 +171,6 @@ export async function createHoldCheckout(
   return { sessionId: session.id, url: session.url };
 }
 
-/** Capture up to the authorized amount (optional partial). Never pass amount > authorized. */
 export async function captureHold(paymentIntentId: string, amountMajor?: number) {
   const stripe = getStripe();
   return stripe.paymentIntents.capture(
@@ -214,23 +181,15 @@ export async function captureHold(paymentIntentId: string, amountMajor?: number)
   );
 }
 
-/** Cancel / release an uncaptured hold. */
 export async function releaseHold(paymentIntentId: string) {
   const stripe = getStripe();
   return stripe.paymentIntents.cancel(paymentIntentId);
 }
 
-// The settlement split lives in its own module: it is pure, and the "build
-// updated" email needs it without loading the Stripe SDK this file pulls in.
 export { planCapture, type CapturePlan } from "./settlement-plan";
 
 export type CreateTopUpCheckoutInput = {
   amount: number;
-  /**
-   * What is being captured from an Authorization hold alongside this payment.
-   * Zero means there is no hold and this Checkout is the entire price, which
-   * changes only the customer-facing wording — the Stripe call is identical.
-   */
   holdCapture?: number;
   currency: string;
   customerEmail: string;
@@ -241,7 +200,6 @@ export type CreateTopUpCheckoutInput = {
   idempotencyKey?: string;
 };
 
-/** Immediate-capture Checkout for the amount above the authorization hold. */
 export async function createTopUpCheckout(
   input: CreateTopUpCheckoutInput,
 ): Promise<{ sessionId: string; url: string }> {

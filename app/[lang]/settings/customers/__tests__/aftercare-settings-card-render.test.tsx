@@ -5,12 +5,6 @@ import { emptyReviewRequestReport, parseReviewRequestSettings } from "@/lib/afte
 import type { AftercareCardData } from "@/lib/aftercare/settings";
 import { AftercareSettingsCard } from "../aftercare-settings-card";
 
-/**
- * The Aftercare card (CRM slices 07 and 08): the Review request's and the
- * Check-up reminder's settings, read-only without `customers-edit`, with what
- * went out recently, today's skips by reason, and open STOP requests.
- */
-
 const settings = parseReviewRequestSettings({
   review_requests_enabled: "false",
   google_review_url: "https://g.page/r/CfdGhvgB1hwUEBM/review",

@@ -9,13 +9,6 @@ import { REVIEWS_GROUP } from "@/lib/crm/timeline/groups";
 import { cappedBatch } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 
-/**
- * Review requests (CRM 07) on the Customer timeline (`customers`, like the
- * Aftercare card), under the Reviews chip: *Review requested (email,
- * WhatsApp)* at the earlier send, then *Review link clicked*. A Customer is
- * asked once, so this is one row and its two ledgers' rows, always read whole.
- */
-
 type Send = { status: string; sent_at: string | null };
 
 export const reviewRequestsAdapter: TimelineAdapter = {
@@ -52,7 +45,6 @@ export const reviewRequestsAdapter: TimelineAdapter = {
         ...((whatsapp.data ?? []) as Send[]).map((s) => ({ ...s, channel: "whatsapp" as const })),
       ],
     });
-    // Everything was read, so nothing older is missing: no floor.
     return cappedBatch(entries, before, null);
   },
 };

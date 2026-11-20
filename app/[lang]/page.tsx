@@ -44,7 +44,6 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <SiteJsonLd lang={locale} />
 
       <main className="relative min-w-0 max-w-full overflow-x-hidden">
-        {/* Shared with Preview mode, so the builder cannot drift from production. */}
         <LandingSectionsList
           sections={sections}
           messages={m}

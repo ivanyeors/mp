@@ -1,19 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Assist link: minting and resolving.
- *
- * The resolver is a trust boundary — what it returns decides whether a Draft
- * Result is stamped `source = 'staff_assisted'`, which later authorises a
- * no-card submit. So these tests drive the two observable behaviours that
- * matter: a code resolves to exactly one ACTIVE Staff member or to nothing, and
- * a Staff member ends up with exactly one code no matter how the race goes.
- *
- * The Supabase fake below enforces the partial unique index from
- * 20260912000000_admin_assist_code.sql, because the retry loop only exists to
- * survive that index rejecting a write.
- */
-
 type Row = {
   id: string;
   email: string;
@@ -23,7 +9,6 @@ type Row = {
 };
 
 let rows: Row[] = [];
-/** Runs before an update lands — lets a test simulate a concurrent writer. */
 let beforeUpdate: (() => void) | null = null;
 
 const generateMock = vi.fn<() => string>();
@@ -63,7 +48,6 @@ vi.mock("@/lib/supabase/server", () => ({
             beforeUpdate?.();
             const code = patch.assist_code;
             const matched = rows.filter((r) => filters.every((f) => f(r)));
-            // The partial unique index on lower(assist_code).
             if (
               typeof code === "string" &&
               rows.some(
@@ -134,13 +118,10 @@ describe("ensureAssistCode", () => {
   });
 
   it("returns the winner's code when a concurrent request mints first", async () => {
-    // Two requests for the same Staff member's FIRST code must return the same
-    // code, not two. The `.is(assist_code, null)` guard makes the loser's write
-    // match no row; it then re-reads rather than overwriting.
     rows = [staff()];
     generateMock.mockReturnValue("MINE0001");
     beforeUpdate = () => {
-      rows[0].assist_code = "THEIRS01"; // the other request landed first
+      rows[0].assist_code = "THEIRS01";
       beforeUpdate = null;
     };
     expect(await ensureAssistCode("staff-1")).toBe("THEIRS01");

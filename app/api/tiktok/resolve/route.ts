@@ -8,12 +8,6 @@ export const runtime = "nodejs";
 
 const BodySchema = z.object({ url: z.string().min(1).max(2048) });
 
-/**
- * POST /api/tiktok/resolve
- * Checks a pasted TikTok link for the Page Builder: follows a share link to its
- * post and asks TikTok whether the post can be embedded. Returns the canonical
- * link to store. Only Staff who can edit the page builder may call it.
- */
 export async function POST(req: Request) {
   try {
     await requireAdminContext("page-builder");

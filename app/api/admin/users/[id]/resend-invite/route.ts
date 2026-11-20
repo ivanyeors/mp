@@ -4,7 +4,6 @@ import { resendInvite } from "@/lib/auth/members";
 
 export const runtime = "nodejs";
 
-/** Re-send an Invited Member's invite email; refused (429) within a minute of the last one. */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   let ctx;
   try {

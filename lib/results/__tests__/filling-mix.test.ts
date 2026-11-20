@@ -1,14 +1,3 @@
-/**
- * The Result's own filling mix on the Result detail page: Staff may lay it out
- * on a Draft Result before the customer submits, confirm it on a held one, and
- * only read it after.
- *
- * The draft save is safe only because three things hold, and none of them is
- * visible from the page: the save moves nothing but the snapshot, it refuses
- * once the customer has submitted, and the customer's submit keeps a mix it
- * did not send. These tests pin all three.
- */
-
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { canAssignResult, canEditFillingMix } from "../admin/detail-prep";
@@ -82,7 +71,6 @@ describe("the draft mix route", () => {
   });
 
   it("moves nothing but the snapshot: no status, price, hold or email", () => {
-    // One update, and it names the two snapshot columns only.
     expect(src.match(/\.update\(/g)?.length).toBe(1);
     expect(src).toMatch(
       /\.update\(\{ filling_fingerprint: snapshot\.fingerprint, filling_template_id: snapshot\.fillingTemplateId \}\)/,
@@ -122,7 +110,6 @@ describe("the customer's submit keeps a mix Staff saved on the draft", () => {
     const replace = hold.indexOf(".from(snapshotTable)\n      .delete()");
     expect(guard).toBeGreaterThan(-1);
     expect(replace).toBeGreaterThan(guard);
-    // Nothing between the guard and the delete closes the guarded block.
     expect(hold.slice(guard, replace)).not.toMatch(/\n  \}\n/);
   });
 });

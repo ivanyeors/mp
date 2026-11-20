@@ -12,7 +12,6 @@ import type { ReadjustmentQuote } from "@/lib/readjustment/eligibility";
 import { formatSgd, quoteBadge, shortDate } from "@/lib/readjustment/format";
 import { cn } from "@/lib/utils";
 
-/** The serialisable slice of a purchase the picker shows. */
 export type ReadjustmentPurchaseOption = {
   orderItemId: string;
   orderNumber: string;

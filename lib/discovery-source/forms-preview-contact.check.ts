@@ -1,7 +1,3 @@
-/**
- * Slice 03–04 wiring check: Forms admin + preview contact + hold/upsert persistence.
- * Run: npx tsx lib/discovery-source/forms-preview-contact.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,7 +11,6 @@ function read(rel: string) {
   return readFileSync(join(ROOT, rel), "utf8");
 }
 
-// --- Contact field checks ---
 assert.equal(
   previewContactFieldChecks({
     email: "",
@@ -24,7 +19,7 @@ assert.equal(
     discoverySourceOther: "",
     notes: "",
   }).filter((f) => !f.valid).length,
-  3, // email, phone, discovery (other not required yet)
+  3,
 );
 
 assert.ok(
@@ -58,7 +53,6 @@ assert.ok(
   }).every((f) => f.valid),
 );
 
-// --- Forms nav + page ---
 const nav = read("components/settings/settings-sidebar-nav.tsx");
 assert.match(nav, /\/settings\/forms/);
 assert.match(nav, /label: "Forms"/);
@@ -74,7 +68,6 @@ assert.match(formsPage, /Archive/);
 
 assert.equal(roleHasPermission("viewer", "forms"), false);
 
-// --- Shared preview component wired into both clients ---
 const preview = read("components/configurator/preview-contact-fields.tsx");
 assert.match(preview, /data-preview-contact/);
 assert.match(preview, /How did you hear about us/);
@@ -92,7 +85,6 @@ assert.match(bolster, /PreviewContactFields/);
 assert.match(bolster, /phone:\s*holdPhone\.trim\(\)/);
 assert.match(bolster, /discoverySource/);
 
-// --- Hold + upsert APIs persist columns ---
 const hold = read("app/api/results/hold/route.ts");
 assert.match(hold, /customer_phone/);
 assert.match(hold, /discovery_source/);
@@ -104,7 +96,6 @@ assert.match(upsert, /persistContact/);
 assert.match(upsert, /customer_phone/);
 assert.match(upsert, /discovery_source/);
 
-// --- Results detail (slice 05) ---
 const detailApi = read("lib/results/admin/response-detail.ts");
 assert.match(detailApi, /customer_phone/);
 assert.match(detailApi, /discovery_source/);

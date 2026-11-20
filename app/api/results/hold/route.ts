@@ -106,12 +106,9 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Customer-facing message when a configuration's price isn't set up in Costings yet. */
 const PRICING_UNAVAILABLE_MESSAGE =
   "This configuration isn’t available for purchase yet. Please contact us to complete your order.";
 
-/** Staff assist spatial mix (slices 05/13). Shape gate — the per-kind lib validation
- * does the rest (bolster rows carry no cell address; pillow validation rejects ""). */
 const AssistFillingSchema = z.object({
   placements: z
     .array(
@@ -120,9 +117,6 @@ const AssistFillingSchema = z.object({
         sub_section: z.string().default(""),
         slot: z.number().int(),
         item_id: z.number().int().positive(),
-        // The piece's LAYER (0 = top/front). Without this, zod strips it and
-        // every layered cell the configurator built persists to
-        // result_filling_placements with depth NULL.
         row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
         insert_order: z.number().int().min(1).nullable().optional(),
         offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
@@ -130,87 +124,48 @@ const AssistFillingSchema = z.object({
       }),
     )
     .min(1),
-  /** Client's still-matching template claim — re-verified server-side, never trusted alone. */
   templateId: z.number().int().positive().nullable().optional(),
 });
 
-/**
- * The Mbolster bought with this Mpillow under the same hold (ADR 0026). Its own
- * build and case; contact, address and shipping are the anchor's.
- */
 const PairedBolsterSchema = z.object({
-  /** Minted by the configurator and reused on a re-submit, like an Mbolster session id. */
   responseId: z.string().uuid(),
   suggestedLength: z.enum(BOLSTER_LENGTHS),
   measurements: z.record(z.string(), z.unknown()).optional(),
   preferenceLines: z.array(PreferenceLineSchema).min(1),
   addonLines: z.array(AddonLineSchema).default([]),
   recommendationRecord: z.record(z.string(), z.unknown()).optional(),
-  /** Staff's bolster mix from the Mbolster page's x-ray editor; guests send nothing. */
   assistFilling: AssistFillingSchema.optional(),
 });
 
 const HoldSchema = z
   .object({
     responseId: z.string().uuid().optional(),
-    /** Result access token — proves the caller owns an existing `responseId` row. */
     token: z.string().uuid().nullish(),
     email: z.string().email(),
     phone: z.string().min(1),
     discoverySource: z.string().min(1),
     discoverySourceOther: z.string().optional(),
-    /**
-     * The one optional code (ADR 0033): a partner's referral code or a discount
-     * code, resolved here. An unrecognised code never blocks the hold; a
-     * discount code that cannot be used on this build does, with its reason.
-     */
     code: z.string().trim().max(CHECKOUT_CODE_MAX_LENGTH).optional(),
-    /** Referral only — what a configurator tab from before `code` still sends. */
     referralCode: z.string().trim().optional(),
-    /**
-     * Partner-assisted run (#78): the launching partner's own referral code. The
-     * server RE-RESOLVES this to a partner id (never trust a client id) and gives
-     * it ASSIST priority, outranking a typed code / windowed link stamp.
-     */
     partnerAssistCode: z.string().trim().optional(),
-    /**
-     * Submit with no card: an Assisted customisation. Honoured only when the
-     * stored row is already `source = 'staff_assisted'` — see the guard in POST.
-     */
     deferred: z.boolean().optional(),
     measurements: z.record(z.string(), z.unknown()).optional(),
     productType: z.enum(["pillow", "bolster"]).default("pillow"),
     suggestedSize: z.enum(["XS", "S", "M", "L", "XL"]).optional(),
-    /** Customer-facing tier (basic | premium). Maps to pillow_products.kind in DB. */
     suggestedTier: z.enum(["basic", "premium"]).optional(),
-    /** Bolster length key (short | medium | long). */
     suggestedLength: z.enum(BOLSTER_LENGTHS).optional(),
-    /** Cover/case and shipping: required, except on a deferred submit (see superRefine). */
     preferenceLines: z.array(PreferenceLineSchema).default([]),
     addonLines: z.array(AddonLineSchema).default([]),
     shippingMethodId: z.string().uuid().optional(),
-    /** Full for a delivery method; the recipient alone for Self-collect. */
     shippingAddress: ShippingAddressInputSchema.optional(),
-    /** Present only for Staff assist holds; guests send nothing. */
     assistFilling: AssistFillingSchema.optional(),
-    /** Locale-less return path when Stripe checkout is cancelled (default: /mp-config or /mbolster-config). */
     cancelPath: z.string().regex(/^\//).optional(),
-    /** Client journey-resolved recommendation record (entry→final flow + route decision). */
     recommendationRecord: z.record(z.string(), z.unknown()).optional(),
-    /** Paired build: an Mbolster held with this Mpillow, under one Checkout. */
     pairedBolster: PairedBolsterSchema.optional(),
-    /**
-     * The marketing email box on the contact step, ticked by default (ADR 0039;
-     * PRD-campaign-audiences slice 02). Absent, as from a configurator tab
-     * opened before it, is unticked. A Paired build asks once, here, on the
-     * anchor.
-     */
     marketingEmail: z.boolean().optional(),
   })
   .superRefine((v, ctx) => {
     if (v.pairedBolster) {
-      // A pair is bought in one go, so it needs the card path and a session the
-      // companion can hang off; v1 never pairs an Assisted customisation.
       if (v.productType !== "pillow" || v.deferred || !v.responseId) {
         ctx.addIssue({
           code: "custom",
@@ -245,9 +200,6 @@ const HoldSchema = z
         path: ["suggestedLength"],
       });
     }
-    // Only an Assisted customisation may leave the finish for later: it is sent
-    // from the questionnaire, and the customer picks cover, case and shipping
-    // after Staff assign the fillings (ADR 0017). Everyone else finishes now.
     if (!v.deferred) {
       if (v.preferenceLines.length === 0) {
         ctx.addIssue({ code: "custom", message: "Choose a cover and case", path: ["preferenceLines"] });
@@ -278,7 +230,6 @@ const HoldSchema = z
   });
 
 
-/** Best-effort "under review" notice. Rendering lives in lib/email/results.ts. */
 async function sendHeldEmail(opts: {
   to: string;
   resultId: string;
@@ -286,7 +237,6 @@ async function sendHeldEmail(opts: {
   origin: string;
   productType: "pillow" | "bolster";
   label: string;
-  /** Null for an Assisted customisation — no card, so no authorized amount. */
   amount: number | null;
   currency: string;
 }) {
@@ -318,15 +268,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   const input = parsed.data;
-  // A hold creates a Stripe Checkout Session, posts to the Staff Telegram group
-  // and emails the address given, all before the card is authorised.
   const limited = await tooManyRequests([
     { bucket: "hold-ip", key: clientIp(req), windowMs: 60 * 60_000, max: 20 },
     { bucket: "hold-email", key: input.email.trim().toLowerCase(), windowMs: 60 * 60_000, max: 10 },
   ]);
   if (limited) return limited;
-  // A code is checked against the database below, so a hold is as good an
-  // oracle for guessing codes as the check endpoint: it draws on the same meter.
   if (input.code && (await checkoutCodeRateLimited(req))) {
     return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE, field: "code" }, { status: 429 });
   }
@@ -334,14 +280,6 @@ export async function POST(req: Request) {
   const origin = getPublicOrigin(req);
   const productType = input.productType;
 
-  // Deferred (no-card) submit — the trust boundary of the assisted flow.
-  //
-  // A request cannot ASK to skip payment. The only thing that authorises it is
-  // the row already on disk carrying `source = 'staff_assisted'`, which the
-  // responses route wrote on create after re-resolving a real Assist link code.
-  // Without this, any caller could post `deferred: true` and drop a free build
-  // into the build queue. Checked before pricing, Stripe and every write, so a
-  // refusal costs nothing and leaves nothing behind.
   const { data: assisted, error: assistedErr } = input.responseId
     ? await admin
         .from("mp_config_responses")
@@ -354,24 +292,12 @@ export async function POST(req: Request) {
   if (assistedErr) {
     return NextResponse.json({ error: assistedErr.message }, { status: 500 });
   }
-  // Creating a Result stays open. Re-submitting one does not: the write below
-  // rewrites its email and payment fields, so knowing the id alone would let a
-  // stranger take the Result over and orphan the owner's Authorization hold.
-  // Same gate as every other write to an existing Result (lib/results/access.ts),
-  // with Staff narrowed to `results`: a viewer carries `orders` and must not
-  // rewrite a customer's Result.
   if (assisted) {
     const access = await requireResultAccess(assisted, input.token ?? null, {
       staffPermissions: ["results"],
     });
     if (!access.ok) return access.response;
   }
-  // Nothing Staff have assigned, or a customer has paid for, is resubmittable.
-  // The write below would otherwise reset it to a fresh `held` row. A stale
-  // configurator tab could do that with the same session id. A `held` row with
-  // a payment intent is paid for too: re-submitting would null the intent and
-  // orphan the card hold, and the same params replay an already-completed
-  // Checkout whose webhook never fires again.
   if (
     (assisted?.status && ["assigned", "accepted", "captured"].includes(assisted.status)) ||
     (assisted?.status === "held" && assisted.payment_intent_id)
@@ -402,9 +328,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Paired build (ADR 0026). A re-submit reuses the companion's id, so it may
-  // already exist, but only as this anchor's own companion and still unpaid; any
-  // other row with that id is someone else's Result.
   const paired = input.pairedBolster ?? null;
   let companionPrior: { status: string | null } | null = null;
   if (paired) {
@@ -447,9 +370,6 @@ export async function POST(req: Request) {
     input.discoverySourceOther,
   );
 
-  // Staff assist snapshot (slices 05/13): staff-gated, validated per product kind,
-  // template claim re-verified against the catalog's current placements. Guests
-  // never reach this. Bolster uses its own schema — never the pillow enums.
   let fillingSnapshot: FillingSnapshot | BolsterFillingSnapshot | null = null;
   const snapshotTable =
     productType === "bolster" ? "result_bolster_filling_placements" : "result_filling_placements";
@@ -508,8 +428,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // The paired Mbolster's Staff mix: the same gate and validation as a bolster
-  // hold's own, written to the companion once it exists.
   let companionSnapshot: BolsterFillingSnapshot | null = null;
   if (paired?.assistFilling) {
     if (!(await getAdminContext())) {
@@ -540,7 +458,6 @@ export async function POST(req: Request) {
 
   const prefIds = input.preferenceLines.map((l) => l.item_id);
   const addonIds = input.addonLines.map((l) => l.item_id);
-  // An Ear Comfort Pad staff placed is charged, so its price is looked up with the rest.
   const placedPack = derivePackList(input.assistFilling?.placements ?? [], []);
   const allItemIds = [...new Set([...prefIds, ...addonIds, ...placedPack.map((l) => l.item_id)])];
 
@@ -554,9 +471,6 @@ export async function POST(req: Request) {
       : { productType: "bolster", length: input.suggestedLength! };
   const composed = await loadComposedSellable(admin, composedKey);
   if (!composed.ok) {
-    // Both pricing faults look identical to a shopper and must not leak the
-    // reason, but they are very different to whoever reads the log: one means
-    // nobody set a price, the other that two are set and the code cannot choose.
     if (composed.code) {
       console.error(`[results/hold] pricing not usable (${composed.code}): ${composed.error}`);
       return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
@@ -584,8 +498,6 @@ export async function POST(req: Request) {
   if (input.shippingMethodId && !shippingRow) {
     return NextResponse.json({ error: "Invalid shipping method" }, { status: 400 });
   }
-  // A paired Mbolster copies this address: it rides in the same shipment, or is
-  // collected with the Mpillow.
   const shippingAddress =
     shippingRow && input.shippingAddress
       ? await resolveShippingAddress(admin, shippingRow, input.shippingAddress)
@@ -594,9 +506,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: shippingAddress.error }, { status: shippingAddress.status });
   }
   const shippingCountry = shippingAddress?.ok ? shippingAddress.address.country : "SG";
-  // A live method's rate is quoted now and kept on the Result, so assign and
-  // accept charge what the customer is shown here (ADR 0032). A pair ships both
-  // builds in one shipment, so it is boxed as both.
   let shippingRate: number | null = null;
   if (shippingRow && shippingAddress?.ok) {
     const quoted = await quoteResultShipping(admin, {
@@ -639,9 +548,6 @@ export async function POST(req: Request) {
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  // The quote the shopper is about to authorise. Same function as the final charge
-  // at assign and as the preview total — they disagreed before, showing the shelf
-  // price and charging shelf + cover + case.
   const familyByItem = new Map<number, string | null>(
     (items ?? []).map((i) => [
       i.id as number,
@@ -656,8 +562,6 @@ export async function POST(req: Request) {
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    // Add-ons, plus each Ear Comfort Pad placed inside: a placed neck support is
-    // in the pillow's MSRP, like the fillings, but an ear pad adds its own.
     addonLines: [
       ...input.addonLines.map((l) => ({
         msrp: msrpByItem.get(l.item_id) ?? null,
@@ -674,18 +578,11 @@ export async function POST(req: Request) {
     );
   }
 
-  // The one code field (ADR 0033): a partner's referral code or a discount code.
   const typedCode = await resolveCheckoutCode(input.code);
 
-  // Referral attribution (#74/#78): assist > typed > windowed link stamp.
-  // A partner-assisted run (#78) re-resolves the launch code server-side and
-  // wins over any typed code / link. Discovery source never attributes.
-  // STAMP only — no commission.
   const assistPartner = input.partnerAssistCode
     ? await getPartnerByReferralCode(input.partnerAssistCode)
     : null;
-  // One code per order (ADR 0033): the legacy referralCode only counts when
-  // the code field is empty, so it cannot stack with a discount code.
   const typedPartner =
     typedCode?.kind === "referral"
       ? typedCode.partner
@@ -707,8 +604,6 @@ export async function POST(req: Request) {
       linkPartner = await getPartnerByReferralCode(visitor.ref_code as string);
     }
   }
-  // A partner's own code, assist link or referral link on their own build
-  // attributes nothing: no commission or milestone progress at Accept.
   const sessionPartnerId =
     assistPartner || typedPartner || linkPartner ? (await getPartnerContext())?.partnerId : null;
   const notSelf = async (partnerId: string | null | undefined) =>
@@ -728,11 +623,6 @@ export async function POST(req: Request) {
           : null;
   const attributedRefCode = attributedPartner?.referral_code ?? null;
 
-  // A discount code is checked now, as shop checkout checks one, on this build's
-  // goods: limits count every live Result already holding it, except this one and
-  // its companion. What the Result keeps is the coupon's terms, which every
-  // repricing takes off the goods from here on. A Paired build's Mbolster never
-  // carries it: the Mpillow does.
   let coupon: { id: string | null; code: string; terms: ResultCouponTerms } | null = null;
   if (typedCode?.kind === "coupon") {
     const check = await checkCoupon(typedCode.coupon, goods.subtotal, undefined, undefined, {
@@ -753,12 +643,6 @@ export async function POST(req: Request) {
       terms: couponTermsOf(typedCode.coupon),
     };
   }
-  // The referring partner's terms (ADR 0034). The commission is fixed now, the day
-  // the customer pays (clause 7.2), and Accept pays exactly it. When Staff pass the
-  // pool the partner leaves on to customers, a customer who typed the partner's
-  // code gets it off a customised premium pillow, kept as the Result's terms like
-  // a discount code's (no coupon behind it), so every repricing takes it off too.
-  // One code per order: a typed discount code means no partner code was typed.
   const today = sgtDate(new Date());
   const partnerCommission = attributedPartner ? commissionInEffect(attributedPartner.terms, today) : null;
   if (!coupon && attribution.source === "typed" && typedPartner?.referral_code) {
@@ -773,14 +657,6 @@ export async function POST(req: Request) {
   }
   const couponPricing = resultCouponPricing(coupon?.terms ?? null, goods.subtotal);
 
-  // Who measured decides the Measurement service fee (ADR 0024), so it is settled
-  // before pricing. An existing Draft keeps what it says — the responses route
-  // stamped it on create (the profile at a Staff device) and the Results list may
-  // have corrected it since. A brand-new row (Mbolster mints its id at hold) gets
-  // the same create rule the responses route applies: the profile at a Staff
-  // device — chosen under "Working as", or a personal login's only one — measured
-  // this customer. Writing `by_user` over a staff-stamped Draft used to break the
-  // 0025 consistency check; now it would also drop the fee.
   let measuredBy: { type: "by_user" | "staff"; staffId: string | null };
   if (assisted) {
     measuredBy =
@@ -809,10 +685,6 @@ export async function POST(req: Request) {
   }
   const services = sumServiceLines(serviceLines);
 
-  // No shipping yet on an Assisted submit sent from the questionnaire. The quote
-  // is goods-only, the same as assign prices it until the customer finishes.
-  // Free shipping is earned by goods alone (before any discount); tax is due on
-  // goods and services, less the discount.
   const shippingMethod = shippingRow as ShippingMethod | null;
   const shippingAmount =
     shippingMethod && !couponPricing.freeShipping
@@ -831,11 +703,8 @@ export async function POST(req: Request) {
     tax: tax.taxAmount,
     discount: couponPricing.discount,
   });
-  // Cents, once: the row's numeric(12,2) would round a float-dust total on store,
-  // and the hold webhook compares that stored amount against what Checkout charged.
   priced.total = round2(priced.total);
 
-  // The paired Mbolster quotes its own build and rides in this shipment.
   const companion = paired
     ? await priceCompanionBolster(admin, {
         length: paired.suggestedLength,
@@ -853,30 +722,14 @@ export async function POST(req: Request) {
   if (companion && companion.currency !== composed.sellable.currency) {
     return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
   }
-  /** What the one Checkout authorises: both quotes for a pair, else this one. */
   const holdTotal = companion ? round2(priced.total + companion.total) : priced.total;
 
-  // Whether to take a card now. Two independent reasons not to:
-  //   - `deferred` — an Assisted customisation, authorised by the stored row above.
-  //   - the admin kill switch — holds turned off for ordinary online submits.
-  // They differ in ONE respect and it matters: `deferred` also stamps
-  // `source = 'staff_assisted'`, which the switch must NOT, or every online
-  // submit made while holds are off would look like it came through an Assist
-  // link. `resultStage` keys the queue off `authorized_amount` rather than
-  // `source` precisely so both land in `needs_assign` instead of reading as an
-  // abandoned checkout.
   const { authHoldEnabled } = parseSlaSettings(
     await getSiteSettings([...SLA_SETTING_KEYS]),
   );
   const takeCard = !input.deferred && authHoldEnabled;
 
   const currency = composed.sellable.currency;
-  // Kept only when this request presented it: a fresh token would change the
-  // Checkout success URL, so the Owner's honest retry would no longer match its
-  // own idempotency key. Anyone else who passed the gate (Staff, a signed-in
-  // Customer, a legacy Draft) gets a new one — otherwise Staff re-submitting on a
-  // shared device would email the next customer the previous customer's token.
-  // Same plain comparison as authorizeResultAccess: a random per-row uuid.
   const accessToken =
     input.token && secretMatches(assisted?.access_token ?? undefined, input.token) ? input.token : randomUUID();
   const resultId = input.responseId ?? randomUUID();
@@ -902,7 +755,6 @@ export async function POST(req: Request) {
     quantity: l.quantity,
   }));
 
-  // Sticky Pre-order at hold create — recompute from inventory (ADR 0005).
   const is_pre_order = preOrderFlagForResult(
     await loadPreOrderTriggerAtHold(admin, {
       productType,
@@ -913,8 +765,6 @@ export async function POST(req: Request) {
     }),
   );
 
-  // Recommendation record at hold: client journey wins, else response copy, else recompute.
-  // Guest filling snapshot stays null.
   let recommendation_record: Record<string, unknown> | null =
     input.recommendationRecord && typeof input.recommendationRecord === "object"
       ? input.recommendationRecord
@@ -957,8 +807,6 @@ export async function POST(req: Request) {
     id: resultId,
     data: input.measurements ?? {},
     is_final: true,
-    // Only a fresh row is stamped. An update leaves the Draft's own values — see
-    // `measuredBy` above.
     ...(assisted
       ? {}
       : { measured_by_type: measuredBy.type, measured_by_staff_id: measuredBy.staffId }),
@@ -968,15 +816,9 @@ export async function POST(req: Request) {
     suggested_length: productType === "bolster" ? input.suggestedLength! : null,
     preference_lines: preferenceLines,
     addon_lines: addonLines,
-    // Null on an Assisted submit from the questionnaire — needsCustomerFinish()
-    // reads exactly that until the customer picks their finish.
     shipping_method: shippingMethod?.slug ?? null,
     shipping_address: shippingAddress?.ok ? shippingAddress.address : null,
     shipping_rate: shippingRate,
-    // No card was taken for an Assisted customisation, so there is no authorized
-    // amount. The price is still computed above — an unpriced Composed sellable
-    // must refuse here exactly as on the hold path, or Staff inherit a
-    // submission they cannot quote.
     authorized_amount: takeCard ? priced.total : null,
     currency,
     payment_intent_id: null as string | null,
@@ -987,25 +829,17 @@ export async function POST(req: Request) {
     discovery_source_other: discoverySourceOther,
     partner_id: attribution.partnerId,
     ref_code: attributedRefCode,
-    // How it attributed (assist>typed>link) — #80 reads this for PDPA masking.
     attribution_source: attribution.source,
     partner_commission: partnerCommission,
-    // Null clears a code a re-submit dropped.
     coupon_id: coupon?.id ?? null,
     coupon_code: coupon?.code ?? null,
     coupon_terms: coupon?.terms ?? null,
-    // An Assisted submit is usually made on a Staff member's signed-in device, so
-    // the session user is not the buyer. Link nothing. The customer still finds
-    // the Result by `customer_email` when they sign in.
     customer_id: input.deferred ? null : customerId,
     access_token: accessToken,
     source: input.deferred ? "staff_assisted" : "online_purchase",
     is_pre_order,
-    // The anchor's own id marks it as one; null unpairs a re-submit that dropped
-    // the Mbolster.
     paired_build_id: paired ? resultId : null,
     ...(recommendation_record ? { recommendation_record } : {}),
-    // Only assist holds carry snapshot columns; guest rows stay untouched (null snapshot).
     ...(fillingSnapshot
       ? {
           filling_fingerprint: fillingSnapshot.fingerprint,
@@ -1027,15 +861,6 @@ export async function POST(req: Request) {
       : `Mpillow ${input.suggestedSize} ${input.suggestedTier} hold`;
   const companionDescription = paired ? `Mbolster ${paired.suggestedLength} hold` : null;
 
-  // An Assisted customisation takes no card, so there is no Checkout to create.
-  // Everything else still runs: pricing, attribution, discovery source, the
-  // Pre-order flag, the token and the filling snapshot are identical — this is
-  // the same submit with the Stripe step removed (ADR 0016).
-  //
-  // Checkout is created BEFORE the row is written, so a Stripe failure leaves
-  // nothing behind to clean up. The old order wrote first and deleted on failure,
-  // which destroyed the Owner's existing Result on an ordinary retry. A session
-  // whose write then fails is never handed out and expires unpaid.
   let checkout: { sessionId: string; url: string } | null = null;
   if (takeCard) {
     try {
@@ -1062,9 +887,6 @@ export async function POST(req: Request) {
             }
           : {}),
       };
-      // Stripe rejects a reused key sent with different parameters, so the key
-      // hashes exactly what is sent: an honest retry replays the same session, a
-      // changed build gets a new one.
       const paramsHash = createHash("sha256").update(JSON.stringify(hold)).digest("hex");
       checkout = await createHoldCheckout({
         ...hold,
@@ -1079,10 +901,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // An existing row is written only if it is still what the checks above saw.
-  // The Stripe call sits between them, and in that window Staff can assign the
-  // Result or the webhook can attach a card; overwriting either would reset a
-  // live Result to a fresh `held` one. A brand-new Result is a plain insert.
   let write;
   if (assisted) {
     let update = admin.from("mp_config_responses").update(row).eq("id", resultId);
@@ -1105,14 +923,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // The companion is written after the anchor its paired_build_id points at.
-  // A companion this anchor carried before and no longer does: one that never
-  // took money (the anchor gate above refuses a paid one) goes; one that ended
-  // with the pair stays as a record but is unlinked, so this anchor never has
-  // two companions for Accept, the endings or the status page to choose from.
-  // Unlinked, it no longer shares the anchor's access token either: the token is
-  // unique among Results that are not companions, and an Owner retry keeps it on
-  // the anchor.
   if (assisted?.paired_build_id === resultId) {
     const keep = paired?.responseId ?? resultId;
     const { error: dropErr } = await admin
@@ -1151,9 +961,7 @@ export async function POST(req: Request) {
         category: l.category,
       })),
       addon_lines: paired.addonLines.map((l) => ({ item_id: l.item_id, quantity: l.quantity })),
-      // It rides in the anchor's shipment, whose rate is the anchor's.
       shipping_rate: null,
-      // The anchor carries the pair's discount code (ADR 0033).
       coupon_id: null,
       coupon_code: null,
       coupon_terms: null,
@@ -1189,7 +997,6 @@ export async function POST(req: Request) {
         { status: 409 },
       );
     }
-    // Replace-insert, as for any Result: a re-submit without a mix clears it.
     const { error: snapDelErr } = await admin
       .from("result_bolster_filling_placements")
       .delete()
@@ -1204,9 +1011,6 @@ export async function POST(req: Request) {
   }
 
   if (fillingSnapshot) {
-    // Replace-insert copy rows keyed by result — no FK to template placements, so
-    // later catalog template edits never change this Result (ADR 0008). Bolster
-    // rows land in their own table (own schema).
     const { error: delErr } = await admin
       .from(snapshotTable)
       .delete()
@@ -1222,11 +1026,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // The email typed on the contact step is a Customer, ticked or not (ADR
-  // 0051): on a Staff member's device it is the shopper's, never the Staff
-  // login's. A Customer it matches is left as it is. The marketing email box
-  // (ADR 0039) subscribes a Customer nobody has asked, never one who
-  // unsubscribed. Never stops the hold.
   await customerForCustomisation(
     admin,
     {
@@ -1237,20 +1036,11 @@ export async function POST(req: Request) {
     input.marketingEmail === true,
   );
 
-  // This browser's Visits belong to the shopper who just gave this email
-  // (ADR 0007). Not an Assisted customisation, whose device is Staff's, and
-  // never on a Staff or Partner session. Never stops the hold.
   if (!input.deferred) {
     await stitchShopperVisitor(admin, req, { email: input.email, customerId });
   }
 
-  // No inventory reserve or deduct on hold (US36).
-
   const platformLink = `${origin}/settings/results/${resultId}`;
-  // The build team's notice. Its content is unchanged (the renderer is today's
-  // text, moved so *Send test* shows the same); only its switch is new, on the
-  // Customers page (CRM slice 14). An unreadable setting leaves it on: the
-  // switch can silence the notice, but it can never break a hold.
   const telegramStatus: TelegramStatus = (await isOnlineResultNoticeOn())
     ? await sendTelegram(
         renderOnlineResultHeld({
@@ -1283,8 +1073,6 @@ export async function POST(req: Request) {
     origin,
     productType,
     label: paired ? `${suggestLabel} + Mbolster ${paired.suggestedLength}` : suggestLabel,
-    // Null swaps the email to its no-card voice: no authorized-amount panel, and
-    // a promise of the price by email once Staff finish the build.
     amount: takeCard ? holdTotal : null,
     currency,
   });
@@ -1298,8 +1086,6 @@ export async function POST(req: Request) {
     authorizedAmount: takeCard ? holdTotal : null,
     ...(paired ? { pairedResultId: paired.responseId } : {}),
     currency,
-    // Deferred submits have no Checkout — the client goes straight to the status
-    // page, which is where the customer waits for Staff to finish the build.
     checkoutUrl: checkout?.url ?? null,
     statusUrl: `${origin}${statusPath}`,
     telegramStatus,

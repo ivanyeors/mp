@@ -1,21 +1,9 @@
-/**
- * Slice 06 self-check: one filling editor, three surfaces.
- *
- * The catalog went un-authored for months because the surface that could save a
- * Filling Template (Configure) gave less feedback than the surface that could
- * not (the configurator). This asserts the three surfaces cannot diverge again.
- *
- * Run: npx tsx lib/spatial-fillings/surface-parity.check.ts
- */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
-/** Every surface that edits pillow Placements. Adding a fourth? Add it here. */
 const EDITING_SURFACES = {
   "configurator (Staff assist mode)": {
     path: "app/[lang]/mp-config/mp-config-client.tsx",
-    // The configurator mounts XrayPillow directly over its full-bleed stage; it
-    // predates the frame and does not need it.
     component: "XrayPillow",
   },
   "Configure → Filling Template": {
@@ -37,15 +25,11 @@ for (const [surface, { path, component }] of Object.entries(EDITING_SURFACES)) {
   );
 }
 
-// The grid is gone, not merely unused — an orphan file invites a fourth surface
-// to pick it back up.
 assert.ok(
   !existsSync("components/spatial/pillow-cell-grid.tsx"),
   "the 3×3 cell grid component is deleted",
 );
 
-// Its pure helpers survived the deletion: order detail summarises a recipe by
-// cell order without mounting an editor.
 const cells = readFileSync("lib/spatial-fillings/cells.ts", "utf8");
 for (const helper of ["CELLS", "placementsToCells", "cellsToPlacements"]) {
   assert.ok(cells.includes(`export ${helper.startsWith("CELLS") ? "const" : "function"} ${helper}`),
@@ -57,8 +41,6 @@ assert.ok(
   "order detail imports CELLS from the lib, not the deleted component",
 );
 
-// Mbolster keeps its own spatial model (ADR 0008) — never the 3×3 pillow metaphor.
-// Configure edits it on the configurator's capsule x-ray; Result assign keeps the list.
 const BOLSTER_EDITORS: Record<string, string> = {
   "Configure → Filling Template": "<XrayBolsterEditor",
   "Result detail → assign": "BolsterCompartmentList",
@@ -68,8 +50,6 @@ for (const [surface, marker] of Object.entries(BOLSTER_EDITORS)) {
   assert.ok(src.includes(marker), `${surface} edits the bolster with ${marker.replace("<", "")}`);
 }
 
-// The frame supplies the positioned, definite-height box XrayPillow needs; it
-// must stay a wrapper, never a second implementation of the editing behaviour.
 const frame = readFileSync("components/spatial/xray-editor.tsx", "utf8");
 assert.ok(frame.includes("XrayPillow"), "the frame delegates to XrayPillow");
 assert.ok(frame.includes("<XrayBolster"), "the bolster frame delegates to the configurator's XrayBolster");
@@ -79,9 +59,6 @@ assert.ok(
   "the frame applies Product Builder colour overrides as CSS variables",
 );
 
-// Slice 02 (ADR 0019): every pillow x-ray mount passes the Size, so the
-// silhouette and the pouch footprints are the Size's, never the placeholder's,
-// and the dimension overrides ride beside the colour overrides.
 for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   const src = readFileSync(path, "utf8");
   assert.ok(/pillowSize=\{/.test(src), `${surface} passes pillowSize to the x-ray`);
@@ -93,11 +70,6 @@ assert.ok(itemMaps.includes("resolveItemDims"), "the item maps hook resolves ite
 assert.ok(!itemMaps.includes("xray-pillow"), "the fit hook never imports the renderer (the lazy Configure editor keeps its chunk)");
 assert.ok(frame.includes("pillowSize"), "the frame passes the Size through");
 
-// Slice 04 (ADR 0019): every editing surface computes the fit once, hands it to
-// the x-ray, and confirms — never blocks — the save or hold that carries a cell
-// that cannot close. Same posture as Spatially authored. No surface shows a
-// banner for it (1-11-2026), and nothing turns red: the pieces' dashed outline, the
-// Section tab's amber dot and the dive's gauge do.
 for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   const src = readFileSync(path, "utf8");
   assert.ok(/\bfit=\{/.test(src), `${surface} hands its own fit to the x-ray`);
@@ -113,15 +85,11 @@ assert.ok(scope.includes("fitBySize"), "the Size membership chips carry a fit do
 const configure = readFileSync(EDITING_SURFACES["Configure → Filling Template"].path, "utf8");
 assert.ok(configure.includes("useFitAtSizes(placements, scopeKeys"), "the chips' dots come from the recipe judged at every member Size");
 
-// Slice 05: the cross-section is mounted on all three surfaces, reads the same
-// fit object as the x-ray, and is read-only on the shopper preview.
 for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   const src = readFileSync(path, "utf8");
   assert.ok(src.includes("<XrayCrossSection"), `${surface} mounts the cross-section`);
   assert.ok(src.includes("useCut()"), `${surface} holds the cut in the shared hook`);
 }
-// The Result detail page shows left, center and right at once (2026-11-05): three
-// XrayCrossSection cuts, each pinned to its Section — a layout, never a second cross-section.
 const resultDetail = readFileSync(EDITING_SURFACES["Result detail → assign"].path, "utf8");
 assert.ok(resultDetail.includes("<XrayCrossSectionStrip"), "Result detail shows all three cuts together");
 const strip = readFileSync("components/spatial/xray-cross-section-strip.tsx", "utf8");
@@ -141,10 +109,8 @@ assert.ok(
 assert.ok(configurator.includes("fit={staffAssist ? assistFit : guestFit}"), "the preview's cross-section and x-ray read the same guest fit");
 const crossSection = readFileSync("components/spatial/xray-cross-section.tsx", "utf8");
 assert.ok(crossSection.includes("crossSectionSlabs(fit, cut)"), "the cross-section draws from the pure slab model — nothing recomputed");
-// A drag previews through the pure slab-drag model (the same move the commit makes); the committed cut draws the host's fit.
 assert.ok(!crossSection.includes("fitPillow("), "the cross-section never recomputes the fit itself");
 assert.ok(crossSection.includes("previewSlabDrop(") && crossSection.includes("applySlabDrop("), "a drop previews and commits through the one pure move");
-// The cut is an editor wherever the x-ray is: Staff drag pouches between columns, Layers and Sections on it too.
 for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   const src = readFileSync(path, "utf8");
   const mount = src.slice(src.indexOf("<XrayCrossSection"), src.indexOf("/>", src.indexOf("<XrayCrossSection")));
@@ -155,8 +121,6 @@ assert.ok(
   configurator.includes("onPlacementsChange={staffAssist ? setAssistPlacements : undefined}"),
   "a guest's cross-section stays read-only",
 );
-// ADR 0025: every cut draws with the soft cut settings Staff saved, read from
-// the dimension overrides payload the surface already holds — never the defaults alone.
 for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   const src = readFileSync(path, "utf8");
   const mount = src.slice(src.indexOf("<XrayCrossSection"), src.indexOf("/>", src.indexOf("<XrayCrossSection")));
@@ -172,8 +136,6 @@ assert.ok(crossSection.includes("<pattern"), "compressed slabs are hatched with 
 assert.ok(crossSection.includes("var(${visual.cssVar}, ${visual.defaultColor})"), "slabs take the pouches' family colour variables");
 assert.ok(crossSection.includes("Collapsible"), "phones get the collapsed disclosure");
 
-// Slice 09: the Mbolster speaks the same fit language on its three surfaces —
-// the end-on cross-section beside the capsule (or the list), the save confirm.
 const BOLSTER_SURFACES = {
   "mbolster configurator": "app/[lang]/mbolster-config/mbolster-config-client.tsx",
   "Configure → Filling Template (bolster)": EDITING_SURFACES["Configure → Filling Template"].path,

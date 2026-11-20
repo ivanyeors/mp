@@ -8,16 +8,6 @@ const DEFAULT_SPOTLIGHT_RADIUS = 300;
 const DEFAULT_GLOW_COLOR = 'var(--mp-glow-rgb)';
 const MOBILE_BREAKPOINT = 768;
 
-/**
- * @typedef {Object} MagicBentoCard
- * @property {string=} key
- * @property {string=} color
- * @property {string} title
- * @property {string} description
- * @property {string} label
- */
-
-/** @type {MagicBentoCard[]} */
 const DEFAULT_CARDS = [
   {
     color: 'var(--card)',
@@ -481,23 +471,6 @@ const useMobileDetection = () => {
   return isMobile;
 };
 
-/**
- * @param {{
- *  cards?: MagicBentoCard[];
- *  className?: string;
- *  textAutoHide?: boolean;
- *  enableStars?: boolean;
- *  enableSpotlight?: boolean;
- *  enableBorderGlow?: boolean;
- *  disableAnimations?: boolean;
- *  spotlightRadius?: number;
- *  particleCount?: number;
- *  enableTilt?: boolean;
- *  glowColor?: string;
- *  clickEffect?: boolean;
- *  enableMagnetism?: boolean;
- * }} props
- */
 const MagicBento = ({
   cards = DEFAULT_CARDS,
   className = '',

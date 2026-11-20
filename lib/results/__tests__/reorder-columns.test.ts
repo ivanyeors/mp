@@ -1,9 +1,3 @@
-/**
- * The allowlist is the safety property of a reorder, so it gets asserted rather
- * than trusted. A clone that inherited a PaymentIntent, an Order or an
- * authorized amount would look like a legitimate new sale while pointing at
- * money that belongs to a different one.
- */
 import { describe, expect, it } from "vitest";
 
 import { REORDERABLE_STATUSES, REORDER_CARRIED_COLUMNS } from "../reorder";
@@ -26,10 +20,7 @@ const MUST_NEVER_CARRY = [
   "payment_reminder_count",
   "is_pre_order",
   "pre_order_restock_notified_at",
-  // A reordered Mbolster ships on its own; its old pair's hold is not its money.
   "paired_build_id",
-  // A discount code was checked against its limits for the old sale; carried,
-  // a new sale would take it off again with nothing checked (ADR 0033).
   "coupon_id",
   "coupon_code",
   "coupon_terms",

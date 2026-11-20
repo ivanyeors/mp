@@ -37,11 +37,6 @@ async function call(url: string, method: "POST" | "PATCH" | "DELETE", body?: unk
   return payload as { row?: TelegramLinkRow; linkCode?: string };
 }
 
-/**
- * Users & permissions → Telegram: who may press buttons on review cards, and
- * answer customer message cards, in the measurements Telegram group. Access is a Telegram link on a Staff
- * profile, with actions limited by the profile's login role (Roles tab).
- */
 export function TelegramAccessTab({
   actor,
   links,
@@ -66,7 +61,6 @@ export function TelegramAccessTab({
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const roleById = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
 
-  /** The login and role a profile works under, and the Telegram actions that role allows. */
   const contextFor = (profileId: string) => {
     const profile = profileById.get(profileId);
     const member = profile ? memberById.get(profile.memberId) : undefined;
@@ -95,7 +89,6 @@ export function TelegramAccessTab({
     if (!profile) return;
     setLinking(true);
     try {
-      // Start with what the login's role allows and the actor may grant.
       const actions = TELEGRAM_ACTIONS.filter((a) => grants.has(a) && (actor.grantsAll || actor.permissions.has(a)));
       const payload = await call("/api/staff/telegram-operators", "POST", { staff_profile_id: profileId, actions });
       const row = payload.row!;
@@ -163,7 +156,6 @@ export function TelegramAccessTab({
     }
   }
 
-  // Group unlinked profiles by login for the picker.
   const pickerGroups = members
     .map((m) => ({ member: m, profiles: unlinkedProfiles.filter((p) => p.memberId === m.id) }))
     .filter((g) => g.profiles.length > 0);
@@ -270,8 +262,6 @@ export function TelegramAccessTab({
           {links.map((link) => {
             const { profile, member, role, grants } = contextFor(link.staff_profile_id);
             const telegramLinked = link.telegram_user_id != null;
-            // The server refuses any change to a link that can do something the
-            // actor can't (link-admin.ts), so don't offer one.
             const beyond = actor.grantsAll ? [] : link.actions.filter((a) => !actor.permissions.has(a));
             const busy = busyId === link.id;
             const frozen = busy || beyond.length > 0;
@@ -369,7 +359,6 @@ export function TelegramAccessTab({
                   >
                     {link.is_active ? "Turn off" : "Turn on"}
                   </Button>
-                  {/* Destructive: kept apart from the other actions on a phone. */}
                   <Button variant="ghost" size="sm" disabled={frozen} onClick={() => remove(link)} className="max-md:ml-auto">
                     Remove
                   </Button>

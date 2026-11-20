@@ -9,12 +9,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/staff-orders/[id]/send — email a Staff order's Payment link again
- * (ADR 0048). Renews the link for 7 days, so it also revives one that lapsed
- * before the daily job cancelled its Order. Refused once the Order is paid or
- * closed.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;

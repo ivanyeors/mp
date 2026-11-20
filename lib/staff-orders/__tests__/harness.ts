@@ -1,9 +1,3 @@
-/**
- * Test harness for Staff orders (ADR 0048): the shared fake Supabase client,
- * plus what the database does on insert that these paths rely on — several
- * rows in one insert, the order number trigger, and the link token default.
- */
-
 import { fakeSupabaseAdmin, type FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
 type Row = Record<string, unknown>;
@@ -23,7 +17,6 @@ export function staffOrderAdmin(db: FakeDb) {
   const base = fakeSupabaseAdmin(db);
   return {
     from(table: string) {
-      // Loosened from the fake's own type so `insert` can take an array too.
       const q = base.from(table) as unknown as Record<string, unknown> & { insert: (row: Row | Row[]) => unknown };
       const insertOne = q.insert.bind(q) as (row: Row) => unknown;
       q.insert = (row: Row | Row[]) => {
@@ -47,7 +40,6 @@ export function staffOrderAdmin(db: FakeDb) {
   };
 }
 
-/** One Customer, two accessories, a pillow, one sold out; a flat and a self-collect method; Costings. */
 export function seedStaffOrderDb(): FakeDb {
   const product = (id: string, title: string, type: string, status = "active") => ({
     id,

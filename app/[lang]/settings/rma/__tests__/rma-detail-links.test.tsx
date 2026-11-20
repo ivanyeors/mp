@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { Permission } from "@/lib/auth/permissions";
 
-/**
- * PRD-crm-retention-loop slice 02: a Return links to its Customer (with
- * `customers`) and its Order (with `orders`), and stays plain text for a role
- * without the key, so no link leads to the denied notice.
- */
-
 const h = vi.hoisted(() => ({ permissions: new Set<string>() }));
 
 const RMA = {
@@ -25,7 +19,6 @@ const RMA = {
   customers: { id: "c-456", email: "mei@example.com" },
 };
 
-/** Each table answers the one query the page makes of it. */
 const rowsFor: Record<string, unknown> = { rma_requests: RMA, rma_request_items: [], rma_status_events: [] };
 function chain(table: string) {
   const data = rowsFor[table];

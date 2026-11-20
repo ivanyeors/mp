@@ -1,7 +1,3 @@
-/**
- * Slice 05 — Filling configuration snapshot at hold create.
- * Maps to .claude/PRD-staff-assist-spatial-fillings/issues/05-hold-snapshot.md
- */
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import {
@@ -37,7 +33,6 @@ describe("buildFillingSnapshot", () => {
   });
 
   it("template untouched: server-confirmed exact match sets filling_template_id", () => {
-    // Same multiset per cell with different slot numbering still counts as untouched.
     const tpl: PillowPlacement[] = [
       { section: "left", subSection: "front", slot: 2, itemId: 11 },
       { section: "center", subSection: "middle", slot: 1, itemId: 12 },
@@ -88,7 +83,7 @@ describe("buildBolsterFillingSnapshot (slice 13: own schema, no cap, never pillo
   const bolsterMix: BolsterPlacement[] = [
     { slot: 1, itemId: 11 },
     { slot: 2, itemId: 12 },
-    { slot: 7, itemId: 12 }, // slot > 5 fine — no cap
+    { slot: 7, itemId: 12 },
   ];
 
   it("copies the mix as slot-only rows and records the fingerprint", () => {
@@ -102,7 +97,6 @@ describe("buildBolsterFillingSnapshot (slice 13: own schema, no cap, never pillo
       { slot: 2, item_id: 12 },
       { slot: 7, item_id: 12 },
     ]);
-    // Rows never carry the pillow Section/sub-section enums.
     for (const row of snap.rows) expect(Object.keys(row).sort()).toEqual(["item_id", "slot"]);
     expect(snap.fingerprint).toBe(fingerprintPlacements(bolsterMix));
     expect(snap.fillingTemplateId).toBeNull();
@@ -157,7 +151,6 @@ describe("hold route wiring (slices 05/13)", () => {
     expect(src).toContain("buildBolsterFillingSnapshot");
     expect(src).toContain('"result_filling_placements"');
     expect(src).toContain('"result_bolster_filling_placements"');
-    // Template placements are only read to verify the claim, before the snapshot write.
     expect(src.lastIndexOf('from("filling_template_placements")')).toBeLessThan(
       src.indexOf("from(snapshotTable)"),
     );

@@ -1,16 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-/**
- * Guard contract for the two dual-audience mp-config handlers.
- *
- * Asserts the refusal *and* that it short-circuits before any real work — the
- * detail load runs the Rules Engine and writes a recommendation record, and the
- * photo write touches the table, so a refused caller must reach neither. Same
- * technique as app/api/appointments/book/__tests__/route.test.ts: call the
- * handler with a real Request and mock only what runs before the guard.
- */
-
 const h = vi.hoisted(() => ({
   requireAnyAdmin: vi.fn(),
   getAuthUser: vi.fn(),
@@ -36,7 +26,6 @@ vi.mock("@/lib/supabase/server", () => ({
     return b;
   },
 }));
-// The photo route screens what it keeps (ADR 0047); this file is about who may write, not what.
 vi.mock("@/lib/ai/photo-screening", async (orig) => ({
   ...(await orig<typeof import("@/lib/ai/photo-screening")>()),
   screenSizingPhoto: async () => ({ status: "passed", model: "claude-haiku-5-5" }),
@@ -50,7 +39,6 @@ const { GET } = await import("@/app/api/mp-config/responses/[id]/route");
 const { POST: photosPost } = await import("@/app/api/mp-config/photos/route");
 const { POST: responsesPost } = await import("@/app/api/mp-config/responses/route");
 
-/** A viewer: signed in as an admin whose role carries `orders` but not `results`. */
 const signInViewer = () =>
   h.requireAnyAdmin.mockImplementation(async (wanted: string[]) =>
     wanted.some((p) => ["orders", "analytics"].includes(p))
@@ -62,7 +50,6 @@ const ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TOKEN = "11111111-1111-4111-8111-111111111111";
 const params = { params: Promise.resolve({ id: ID }) };
 
-/** A Result that has been through hold: it carries a token and a live status. */
 const liveRow = { access_token: TOKEN, customer_id: null, customer_email: null, status: "held" };
 
 beforeEach(() => {
@@ -162,8 +149,6 @@ describe("POST /api/mp-config/photos", () => {
     expect(h.upsert).not.toHaveBeenCalled();
   });
 
-  // Sizing photos are part of the submission: once it leaves draft, even its
-  // Owner cannot replace them.
   it("refuses the Owner once the Result has left draft", async () => {
     const res = await photosPost(
       new Request("https://x.test/api/mp-config/photos", body({ token: TOKEN })),

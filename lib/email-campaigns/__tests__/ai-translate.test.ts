@@ -10,16 +10,6 @@ import { chineseGaps, chineseVersionOf, withChineseTranslation, type BlockWords 
 import type { CampaignContent, EmailBlock } from "../content";
 import { ENGLISH, TRANSLATE, translateAnswer, withWords } from "./ai-translate-fixtures";
 
-/**
- * ✨ Translate's call (PRD-campaign-email-editor slice 17), against a fake
- * client: the request it sends at the whole drafts effort, a translation that
- * fills every block, the subject, the preview line and the fallbacks and
- * keeps every block id, link and Variable; one that loses or adds a link or a
- * Variable, or says what the guardrails don't allow in Chinese, refused with
- * the block named and nothing kept; the one retry, and how a refusal, a
- * cut-off answer and Stop end it.
- */
-
 async function run(answers: FakeAnswer[], request: TranslateRequest = TRANSLATE, { settings = AI_WRITING_DEFAULTS, signal }: { settings?: AiWritingSettings; signal?: AbortSignal } = {}) {
   const fake = fakeClaude(answers);
   const outcome = await runCampaignTranslate(request, { client: fake.client, settings, signal });
@@ -48,9 +38,7 @@ describe("the request", () => {
     expect(prompt).toContain('"link": "L2"');
     expect(prompt).not.toMatch(/https?:\/\//);
     expect(prompt).not.toContain("SAMPLE");
-    // No layout: no image asset, product, target or option.
     for (const key of ['"asset":', '"products":', '"target":', '"style":', '"side":', '"width":', '"layout":']) expect(prompt).not.toContain(key);
-    // A divider has no words: it isn't sent.
     expect(prompt).not.toContain('"divider"');
     expect(blocksToTranslate(TRANSLATE).map((b) => b.id)).toEqual(["hero", "intro", "why", "split", "products", "photo", "pair"]);
   });
@@ -94,7 +82,6 @@ describe("a translation that keeps everything", () => {
     const t = outcome.translation!;
     expect(Object.keys(t.blocks).sort()).toEqual(Object.keys(CHINESE_SAMPLE_WORDS).sort());
     expect(t).toMatchObject({ subject: "{first_name}，这个十二月睡得更清凉", preheader: "FibreCool 枕套回来了，各种尺寸都有。" });
-    // Put in, it is the sample's 中文 version: every block current, links where the English has them.
     const made = withChineseTranslation(ENGLISH, t);
     expect(chineseGaps(made)).toEqual([]);
     expect(chineseVersionOf(made)!.blocks).toEqual(chineseVersionOf(CHINESE_SAMPLE_CONTENT)!.blocks);
@@ -191,7 +178,6 @@ describe("how a call ends", () => {
     stop.abort();
     const { outcome, delivered } = await promise;
     expect(outcome).toMatchObject({ ok: false, stopped: true, translation: null, inputTokens: 3000 });
-    // The API counts output tokens only at a message's end: what it streamed before Stop, about four bytes a token.
     expect(delivered()).toBeGreaterThan(0);
     expect(outcome.outputTokens).toBe(Math.ceil(new TextEncoder().encode(translateAnswer().slice(0, delivered())).length / 4));
   });

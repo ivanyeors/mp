@@ -1,8 +1,3 @@
-/**
- * Slice 05 — Results bulk export.
- * Pure CSV builder for selected Result rows. RFC-4180 escaping, stable field order.
- */
-
 export type CsvRow = {
   id: string;
   updated_at?: string | null;
@@ -12,7 +7,6 @@ export type CsvRow = {
   source?: string | null;
   location_id?: string | null;
   order_number?: string | null;
-  /** Derived queue stage (see lib/results/result-stage) — an exported queue stays legible. */
   stage?: string | null;
   order_status?: string | null;
   suggested_size?: string | null;
@@ -21,7 +15,6 @@ export type CsvRow = {
   assigned_tier?: string | null;
 };
 
-// Stable field order — header row is derived from these keys.
 const FIELDS = [
   "id",
   "updated_at",
@@ -39,8 +32,6 @@ const FIELDS = [
   "assigned_tier",
 ] as const;
 
-// RFC-4180: wrap in quotes and double interior quotes when the field contains
-// a comma, double-quote, CR, or LF.
 const escapeCell = (value: unknown): string => {
   const s = value == null ? "" : String(value);
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

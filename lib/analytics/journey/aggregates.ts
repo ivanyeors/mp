@@ -58,13 +58,8 @@ function rowsOrThrow<T>({ data, error }: Rows<T>): T[] {
   return data ?? [];
 }
 
-// Supabase answers at most max-rows (1,000) rows and drops the rest without an
-// error, so no read may stop at a full answer. Plain reads page through
-// `.range()`, which needs a total order (a unique column last) so pages don't
-// overlap; id lookups split instead (below).
 const PAGE_ROWS = 1000;
 
-/** Stops early once past `maxRows`, so the caller can refuse an oversized read. */
 async function selectAll<T>(query: () => Pageable<T>, maxRows = Infinity): Promise<T[]> {
   const rows: T[] = [];
   for (;;) {
@@ -74,13 +69,6 @@ async function selectAll<T>(query: () => Pageable<T>, maxRows = Infinity): Promi
   }
 }
 
-// `.in()` is serialised into the request URL: past ~400 Visit ids Supabase still
-// answers 200, but Node's fetch fails reading the response ("TypeError: fetch
-// failed"). So ids go in chunks small enough that their events rarely fill an
-// answer, and a chunk whose answer does come back full is split in half rather
-// than paged — paging needs a unique sort column, and events that share a
-// timestamp must keep the order they were stored in, which is the order the
-// browser sent them.
 const IN_CHUNK = 100;
 const IN_CHUNKS_IN_FLIGHT = 4;
 
@@ -92,9 +80,7 @@ type InQuery<T> = Pageable<T> & {
 async function selectIn<T>(ids: string[], query: (ids: string[]) => InQuery<T>): Promise<T[]> {
   const rows = rowsOrThrow(await query(ids).limit(PAGE_ROWS));
   if (rows.length < PAGE_ROWS) return rows;
-  // One id with 1,000+ rows (a bot Visit) can only be paged.
   if (ids.length === 1) return selectAll(() => query(ids).order("id"));
-  // Halves in turn, so a split never adds requests in flight.
   const mid = Math.ceil(ids.length / 2);
   const first = await selectIn(ids.slice(0, mid), query);
   return [...first, ...(await selectIn(ids.slice(mid), query))];
@@ -122,10 +108,6 @@ async function selectAllIn<T>(
   return results.flat();
 }
 
-/**
- * Merge chunks into one time order, the same every load. A stable sort keeps each
- * Visit's tied events in stored order — a Visit's events never span two chunks.
- */
 function byOccurredAt(
   a: { occurred_at: string; visit_id: string },
   b: { occurred_at: string; visit_id: string },
@@ -133,10 +115,8 @@ function byOccurredAt(
   return a.occurred_at.localeCompare(b.occurred_at) || a.visit_id.localeCompare(b.visit_id);
 }
 
-/** Past this the graph is unreadable anyway; refuse rather than load it all. */
 const MAX_RANGE_VISITS = 20_000;
 
-/** Distinct Entry sources and countries across every Visit, for the filters. */
 export async function listJourneyFacetsFromDb(
   db: SupabaseClient,
 ): Promise<{ entrySources: string[]; countries: string[] }> {
@@ -239,7 +219,6 @@ function buildSectionGraph(
   );
 }
 
-/** First page_view path per Visit (return landing). */
 function landingsFromEvents(events: PageViewEvent[]): Map<string, string> {
   const byVisit = new Map<string, PageViewEvent[]>();
   for (const e of events) {
@@ -310,16 +289,11 @@ function buildConvertedFromRows(
   });
 }
 
-/** What one date range reads from the database. Every other filter runs in memory. */
 type JourneyRows = {
-  /** Visits started in range that pass the Entry source + country filters. */
   visits: VisitRow[];
-  /** Every Visit, any date, of those Prospect Visitors — Returning + gaps. */
   history: HistoryRow[];
-  /** In-range events of the Prospect Visits, in time order. */
   pageViews: PageViewRow[];
   sectionViews: SectionViewRow[];
-  /** Orders + page views behind the converted Visits, read on first use. */
   converted: () => Promise<{ orders: OrderRow[]; pageViews: PageViewRow[] }>;
 };
 
@@ -327,7 +301,6 @@ type JourneyFilters = {
   from: string;
   to: string;
   entrySource?: string | null;
-  /** Multi-select ISO countries (Unknown allowed). Empty/omit = all. */
   countries?: string[] | null;
 };
 
@@ -335,11 +308,6 @@ function selectedCountriesOf(countries: string[] | null | undefined): string[] {
   return [...new Set((countries ?? []).map((c) => c.trim()).filter(Boolean))];
 }
 
-/**
- * Two steps whatever the filters: the range, then the Visitors' history and both
- * event kinds side by side. Drop-offs and end times come from the range rows
- * rather than more lookups.
- */
 async function fetchJourneyRows(
   db: SupabaseClient,
   opts: JourneyFilters,
@@ -372,7 +340,6 @@ async function fetchJourneyRows(
     });
   }
 
-  // Prospect cohort excludes paid Visits (slice 10).
   const prospects = visits.filter((v) => isProspectVisit(v.converted_order_id));
   const prospectIds = prospects.map((v) => v.id);
   let history: HistoryRow[] = [];
@@ -380,7 +347,6 @@ async function fetchJourneyRows(
   let sectionViews: SectionViewRow[] = [];
   if (prospects.length > 0) {
     [history, pageViews, sectionViews] = await Promise.all([
-      // Prior Visits may sit outside the date window — needed for Returning + gaps.
       selectAllIn<HistoryRow>([...new Set(prospects.map((v) => v.visitor_id))], (ids) =>
         db
           .from("analytics_visits")
@@ -460,9 +426,7 @@ type JourneyGraph = {
   sectionEdges: SectionEdge[];
   expandablePaths: string[];
   detail: NodeSidePanel | null;
-  /** Members behind an aggregated node (`/blog/*`, an Entry source). */
   groupDetail: JourneyGroupDetail | null;
-  /** Non-empty when ≥2 countries selected (color-by-country mode). */
   countryLegend: { code: string; color: string }[];
   convertedDetail: ConvertedSinkDetail | null;
 };
@@ -480,24 +444,16 @@ const emptyGraph: JourneyGraph = {
 };
 
 type JourneyOptions = JourneyFilters & {
-  /** new = first Visit for Visitor; returning = prior ended Visit exists. */
   visitorCohort?: VisitorCohort | null;
-  /** When true, attach muted Converted sink (default Prospect cohort). */
   includeConverted?: boolean;
-  /** When set, replace that page node with its section children. */
   expandPath?: string | null;
-  /** Aggregated Entry source column feeding landing pages (default on). */
   entryNodes?: boolean;
-  /** Sources kept before the long tail rolls into "Other"; 0 = keep all. */
   entryTopN?: number;
-  /** Collapse detail pages (/blog/<slug> → /blog/*) into one node; default on. */
   groupPaths?: boolean;
-  /** When set, include side-panel detail for this page node. */
   detailPath?: string | null;
 };
 
 async function buildJourney(rows: JourneyRows, opts: JourneyOptions): Promise<JourneyGraph> {
-  // One rewrite, applied where paths enter — every metric below aggregates with it.
   const groupPath =
     opts.groupPaths === false
       ? (path: string) => path
@@ -588,7 +544,6 @@ async function buildJourney(rows: JourneyRows, opts: JourneyOptions): Promise<Jo
   const feeds: { lastPath: string; count: number; country?: string }[] = [];
   for (const v of focusVisits) {
     if (v.ended_at) visitEndedAt.set(v.id, v.ended_at);
-    // A Drop-off is an ended Visit with its last path recorded.
     if (!v.drop_off_path || !v.ended_at) continue;
     const p = groupPath(v.drop_off_path);
     feedMap.set(p, (feedMap.get(p) ?? 0) + 1);
@@ -661,8 +616,6 @@ async function buildJourney(rows: JourneyRows, opts: JourneyOptions): Promise<Jo
       : {}),
   }));
 
-  // Rank from the feeds the column is actually built from, so the "Other"
-  // rollup and its breakdown can never disagree.
   const graphPaths = new Set(withReturns.nodes.map((n) => n.path));
   const validEntryFeeds = entryFeeds.filter((f) => graphPaths.has(f.landingPath));
   const entryTopN = opts.entryTopN ?? DEFAULT_ENTRY_TOP_N;
@@ -677,7 +630,7 @@ async function buildJourney(rows: JourneyRows, opts: JourneyOptions): Promise<Jo
   const expandPath = opts.expandPath?.trim() || null;
   const expanded =
     expandPath && expandablePaths.includes(expandPath)
-      ? // Section dive swaps the canvas — the source column would dangle there.
+      ?
         expandPageToSections(withReturns, sectionGraph, expandPath)
       : opts.entryNodes === false
         ? withReturns
@@ -719,7 +672,6 @@ async function buildJourney(rows: JourneyRows, opts: JourneyOptions): Promise<Jo
   if (detailPath && isEntryNode(detailPath)) {
     const source = entrySourceOf(detailPath);
     if (source === OTHER_ENTRY) {
-      // The tail this node stands for.
       groupDetail = buildGroupDetail(
         "sources",
         entryRank.rolled.map(
@@ -727,7 +679,6 @@ async function buildJourney(rows: JourneyRows, opts: JourneyOptions): Promise<Jo
         ),
       );
     } else if (source) {
-      // A single source: the landing pages it arrives on.
       const landingCounts = new Map<string, number>();
       for (const f of validEntryFeeds) {
         if (normalizeEntrySource(f.entrySource) !== source) continue;
@@ -797,15 +748,12 @@ export async function loadPageTransitionsFromDb(
 type NodeDetailOptions = JourneyFilters & {
   visitorCohort?: VisitorCohort | null;
   includeConverted?: boolean;
-  /** Must match the graph call, or a group node resolves to no detail. */
   groupPaths?: boolean;
-  /** Must match the graph call, or "Other" rolls up a different tail. */
   entryTopN?: number;
 };
 
 type NodeDetail = Pick<JourneyGraph, "detail" | "groupDetail" | "convertedDetail">;
 
-/** Dig-in only — same filters as the graph; one read serves every selected node. */
 export async function loadNodeDetailsFromDb(
   db: SupabaseClient,
   opts: NodeDetailOptions & { paths: string[] },
@@ -823,8 +771,6 @@ export async function loadNodeDetailsFromDb(
       includeConverted: opts.includeConverted === true || path === CONVERTED_NODE,
       groupPaths: opts.groupPaths !== false,
       entryTopN: opts.entryTopN,
-      // Detail-only call: the column itself is not needed, but the source ranking
-      // behind it is — that is what an Entry node's breakdown is built from.
       entryNodes: false,
       detailPath: path,
     });
@@ -838,7 +784,6 @@ export async function loadNodeDetailsFromDb(
   return out;
 }
 
-/** Dig-in only — same filters as the graph; does not need expandPath. */
 export async function loadNodeDetailFromDb(
   db: SupabaseClient,
   opts: NodeDetailOptions & { path: string },

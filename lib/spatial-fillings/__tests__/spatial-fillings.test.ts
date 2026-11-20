@@ -24,7 +24,6 @@ const categories = new Map([
 const SECTIONS: Section[] = ["left", "center", "right"];
 const SUB_SECTIONS: SubSection[] = ["front", "middle", "back"];
 
-/** All nine cells: 5× item 1 in left/front, one item 2 in each other cell. */
 function nineCells(): PillowPlacement[] {
   const placements: PillowPlacement[] = [];
   for (const section of SECTIONS) {
@@ -128,7 +127,6 @@ describe("validatePillowPlacements", () => {
     });
     expect(validatePillowPlacements([1, 2, 3, 4, 5].map((s) => cell(s, 0)), categories).ok).toBe(true);
     expect(validatePillowPlacements([1, 2, 3, 4, 5, 6].map((s) => cell(s, 0)), categories).ok).toBe(false);
-    // Mixed encodings of the same layer must add up, or the cap is bypassable.
     const mixed = validatePillowPlacements(
       [cell(1), cell(2), cell(3), cell(4, 0), cell(5, 0), cell(6, 0)],
       categories,
