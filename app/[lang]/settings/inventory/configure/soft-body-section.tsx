@@ -509,8 +509,6 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
   const [registry, setRegistry] = useState<DimensionRegistry>(CODE_REGISTRY);
   const [dimsFailed, setDimsFailed] = useState(false);
 
-  useEffect(() => writePreview(preview), [preview]);
-
   // Settings › Dimensions rows, so a measured pouch draws at its measured size; the code defaults until (or unless) they load.
   useEffect(() => {
     let live = true;
@@ -537,7 +535,12 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
     [placements, preview.size, itemDims, registry.loftAllowance],
   );
   const cut = useMemo(() => ({ section: preview.section }), [preview.section]);
-  const update = (patch: Partial<PreviewState>) => setPreview((p) => ({ ...p, ...patch }));
+  // Each picker changes one field per event, so `preview` here is current.
+  const update = (patch: Partial<PreviewState>) => {
+    const next = { ...preview, ...patch };
+    setPreview(next);
+    writePreview(next);
+  };
 
   const compare = preview.compare && draft.enabled;
   const problems = fit.cells.filter((c) => c.section === preview.section && c.status !== "ok");
