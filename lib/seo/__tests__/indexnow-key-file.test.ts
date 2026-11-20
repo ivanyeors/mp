@@ -7,7 +7,8 @@ import { proxy } from "@/proxy";
  * Audit verifies a key only there; the site's own pings name /indexnow-key.txt
  * as keyLocation, which IndexNow engines accept but Ahrefs does not.
  */
-const KEY = "0123456789abcdef0123456789abcdef";
+// Made up, and low-entropy so the secret scan does not take it for a credential.
+const KEY = "aaaaaaaa-bbbb-cccc-dddd";
 const event = { waitUntil: () => {} } as unknown as NextFetchEvent;
 
 function get(url: string) {
