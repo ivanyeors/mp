@@ -35,7 +35,7 @@ import { ExploreExperience } from "../explore-experience";
 type Props = ComponentProps<typeof ExploreExperience>;
 const NOW = Date.parse("2026-11-20T10:00:00+08:00");
 const props = (over: Partial<Props> = {}): Props => ({
-  locale: "en",
+  locale: "en-US",
   serverNow: NOW,
   launchAt: NOW + 86_400_000,
   initialSky: skyAt(new Date(NOW), { lat: 1.35, lon: 103.8 }),
@@ -80,7 +80,7 @@ describe("ExploreExperience", () => {
     await act(async () => root.render(<ExploreExperience {...props({ signedIn: true, finishClaim: true })} />));
     await act(async () => root.render(<ExploreExperience {...props({ signedIn: true, finishClaim: true })} />));
     expect(actions.claimExplorePoints).toHaveBeenCalledTimes(1);
-    expect(actions.claimExplorePoints).toHaveBeenCalledWith({ agree: false, lang: "en" });
+    expect(actions.claimExplorePoints).toHaveBeenCalledWith({ agree: false, lang: "en-US" });
     expect(window.location.search).toBe("");
     expect(host.querySelector("[data-claim]")?.getAttribute("data-claim")).toBe("error");
   });
