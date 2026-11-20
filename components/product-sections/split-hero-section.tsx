@@ -264,7 +264,6 @@ export function SplitHeroSection({
             // Animated GIFs and tall charts keep their own shape; a fixed frame would crop
             // them. A plain <img>: next/image needs dimensions, and serves GIFs unoptimised.
             <div className={cn("overflow-hidden rounded-xl bg-muted/20", imageWrapperClassName)}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.src}
                 alt={image.alt}

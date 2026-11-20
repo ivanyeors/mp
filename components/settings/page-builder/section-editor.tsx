@@ -130,7 +130,6 @@ function ImageField({
       </div>
       {value && (
         <div className="mt-2 relative h-24 w-40 overflow-hidden rounded-md border bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="Preview" className="h-full w-full object-cover" />
         </div>
       )}

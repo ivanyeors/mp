@@ -900,7 +900,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                         onClick={() => setPickerSlot(slot)}
                                         disabled={isSaving}
                                     >
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                             src={currentUrl}
                                             alt={slot.label}
@@ -1007,7 +1006,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <div className="flex flex-col sm:flex-row gap-3 items-start border rounded-lg p-3 bg-background">
                             <div className="w-24 h-24 shrink-0 rounded-md overflow-hidden border bg-muted flex items-center justify-center">
                                 {drivePreview.thumbnailLink ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                         src={drivePreview.thumbnailLink}
                                         alt={drivePreview.name}
@@ -1206,7 +1204,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                 >
                                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                                         {file.url ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
                                             <img
                                                 src={file.url}
                                                 alt={file.name}
@@ -1334,7 +1331,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             allow="autoplay"
                                         />
                                     ) : detailFile.url ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
                                         <img
                                             src={detailFile.url}
                                             alt={detailFile.name}
@@ -1355,7 +1351,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             Preview thumbnail
                                         </label>
                                         <div className="rounded-md overflow-hidden border bg-muted w-28 h-28">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={detailFile.url}
                                                 alt=""
@@ -1654,7 +1649,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             }
                                             disabled={!!savingSlot}
                                         >
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={file.url!}
                                                 alt={file.name}
@@ -1728,7 +1722,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             }
                                             disabled={replacing}
                                         >
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={file.url!}
                                                 alt={file.name}

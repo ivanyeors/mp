@@ -89,7 +89,6 @@ export function YouTubeAutoplayOnView({
         aria-label={`Play ${title}`}
         className={cn("group absolute inset-0 h-full w-full", className)}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
           alt=""

@@ -1,0 +1,117 @@
+#!/usr/bin/env node
+// Totals of eslint-suppressions.json, ESLint's bulk-suppression baseline: the
+// violations that existed when the lint rails went in (agent-rails PRD,
+// decision 2). The baseline only goes down; this shows by how much.
+//
+//   node scripts/lint-baseline.mjs                    total per rule
+//   node scripts/lint-baseline.mjs --against          and the change against origin/main
+//   node scripts/lint-baseline.mjs --against <ref>    ... against <ref> (or --against=<ref>)
+//
+// A ref that exists but has no baseline file counts as zero, and says so; a
+// ref that does not exist is named as such, not read as zero. It only
+// reports: every outcome, problems included, exits 0, so nothing gates on it
+// by accident; slice 03's hooks do the gating.
+
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+
+const FILE = "eslint-suppressions.json";
+const DEFAULT_REF = "origin/main";
+
+// The file is { "<path>": { "<ruleId>": { "count": n } } }.
+export function totalsByRule(baseline) {
+  const totals = {};
+  for (const rules of Object.values(baseline ?? {})) {
+    for (const [rule, { count }] of Object.entries(rules)) {
+      totals[rule] = (totals[rule] ?? 0) + count;
+    }
+  }
+  return totals;
+}
+
+// Returns the ref named by `--against`, `--against <ref>` or
+// `--against=<ref>`, or null when there is no `--against`.
+export function parseAgainst(argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith("--against=")) return arg.slice("--against=".length) || DEFAULT_REF;
+    if (arg === "--against") {
+      const next = argv[i + 1];
+      return next && !next.startsWith("--") ? next : DEFAULT_REF;
+    }
+  }
+  return null;
+}
+
+function git(args) {
+  return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 * 1024 * 1024 });
+}
+
+// { baseline } or { problem } in words.
+function readAt(ref) {
+  try {
+    git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+  } catch {
+    return { problem: `no commit or branch named "${ref}" (fetch it, or check the spelling)` };
+  }
+  let text;
+  try {
+    text = git(["show", `${ref}:${FILE}`]);
+  } catch {
+    return { baseline: {}, note: `${ref} has no ${FILE}; counted as zero` };
+  }
+  try {
+    return { baseline: JSON.parse(text) };
+  } catch {
+    return { problem: `${FILE} at ${ref} is not valid JSON` };
+  }
+}
+
+function readWorkingTree() {
+  let text;
+  try {
+    text = readFileSync(FILE, "utf8");
+  } catch {
+    return { problem: `no ${FILE} in ${process.cwd()} (run from the repo root)` };
+  }
+  try {
+    return { baseline: JSON.parse(text) };
+  } catch (e) {
+    return { problem: `${FILE} is not valid JSON: ${e.message}` };
+  }
+}
+
+function main(argv) {
+  const current = readWorkingTree();
+  if (current.problem) return console.log(`lint-baseline: ${current.problem}`);
+
+  const ref = parseAgainst(argv);
+  let then = {};
+  if (ref) {
+    const old = readAt(ref);
+    if (old.problem) return console.log(`lint-baseline: ${old.problem}`);
+    if (old.note) console.log(`lint-baseline: ${old.note}`);
+    then = totalsByRule(old.baseline);
+  }
+
+  const now = totalsByRule(current.baseline);
+  const rules = [...new Set([...Object.keys(now), ...Object.keys(then)])].sort(
+    (a, b) => (now[b] ?? 0) - (now[a] ?? 0) || a.localeCompare(b),
+  );
+
+  const width = Math.max(5, ...rules.map((r) => r.length));
+  const sum = (t) => Object.values(t).reduce((a, b) => a + b, 0);
+  const delta = (n) => (n > 0 ? `+${n}` : String(n));
+  const row = (name, n, d) => `${name.padEnd(width)}  ${String(n).padStart(7)}${ref ? `  ${d.padStart(7)}` : ""}`;
+
+  console.log(row("rule", "count", ref ? `vs ${ref}` : ""));
+  for (const rule of rules) {
+    console.log(row(rule, now[rule] ?? 0, delta((now[rule] ?? 0) - (then[rule] ?? 0))));
+  }
+  console.log(row("total", sum(now), delta(sum(now) - sum(then))));
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main(process.argv.slice(2));
+}

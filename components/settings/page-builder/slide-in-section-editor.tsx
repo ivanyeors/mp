@@ -335,7 +335,6 @@ function ImageSlot({
       <div className="flex items-center gap-3">
         <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
           {src ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={src} alt="" className="h-full w-full object-cover" />
           ) : (
             <ImageIcon className="absolute inset-0 m-auto h-4 w-4 text-muted-foreground" />

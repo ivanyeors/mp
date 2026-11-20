@@ -70,7 +70,6 @@ const titleOf = (state: Described | undefined) => (state?.ok ? state.card.title 
 /** A product's photo, small, or a box where it has none. */
 export function ProductThumb({ url, className = "h-12 w-12" }: { url: string | null; className?: string }) {
     return url ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className={cn(className, "shrink-0 rounded object-cover")} />
     ) : (
         <span className={cn(className, "flex shrink-0 items-center justify-center rounded bg-muted text-muted-foreground")}>

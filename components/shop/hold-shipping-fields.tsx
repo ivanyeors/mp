@@ -133,7 +133,6 @@ export function useHoldShippingQuote({
     const next = current ? (shippable.find((o) => o.status === "priced") ?? shippable[0]) : shippable[0];
     if (next && next.method.id !== selectedId) onSelect(next.method.id);
     // `statusKey` stands for `options`, which is a new array every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusKey, selectedId, onSelect]);
 
   return { options, selected: options.find((o) => o.method.id === selectedId) };

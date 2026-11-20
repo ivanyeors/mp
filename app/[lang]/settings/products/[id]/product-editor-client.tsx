@@ -868,7 +868,6 @@ export function ProductEditorClient({
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                     {images.map((img, idx) => (
                                         <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border bg-muted">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={img.url}
                                                 alt={img.alt_text ?? "product image"}

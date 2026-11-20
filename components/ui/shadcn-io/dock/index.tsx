@@ -192,7 +192,6 @@ const DockItem = forwardRef<HTMLDivElement, DockItemProps>(function DockItem(
       {...props}
     >
       {Children.map(children, (child) =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         cloneElement(child as React.ReactElement<any>, { width, isHovered })
       )}
     </motion.div>

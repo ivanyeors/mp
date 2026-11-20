@@ -328,7 +328,6 @@ export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings
     }
     return out.size > 0 ? out : null;
     // `settledMore` re-reads the cache once the frames have filled it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, planes, settings, view, settledMore]);
 
   // What the render had no time for: a few steps per frame, published together.
@@ -398,7 +397,6 @@ export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
     // The easing restarts only for a new settle; a re-render with the same one keeps it going.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
   const rings = frame && frame.of === target ? frame.rings : target;

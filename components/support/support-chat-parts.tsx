@@ -60,7 +60,6 @@ export function BrandAvatar({ size = 40, live = false }: { size?: number; live?:
       className="relative inline-flex shrink-0 items-center justify-center rounded-full border border-white/40 bg-white"
       style={{ width: size, height: size, boxShadow: "0 0 0 3px rgba(165, 216, 255, 0.18)" }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- a 40px mark, not worth next/image's loader */}
       <img src={LOGO_SRC} alt="" className="h-[68%] w-[68%] object-contain" />
       {live ? (
         <span className="absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-[#001736]">

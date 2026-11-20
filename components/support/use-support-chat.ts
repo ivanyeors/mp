@@ -177,7 +177,6 @@ export function useSupportChat() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- first load only
   }, []);
 
   // Poll the open chat for staff replies; slower when the tab is in the background.

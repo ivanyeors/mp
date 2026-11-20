@@ -222,7 +222,6 @@ export function TikTokVideosEditor({ content, locale, setContent }: TikTokVideos
                 <div className="flex items-start gap-3">
                   <div className="relative aspect-[9/16] w-16 shrink-0 overflow-hidden rounded-md border bg-muted">
                     {cover ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={cover} alt="" className="h-full w-full object-cover" />
                     ) : null}
                   </div>

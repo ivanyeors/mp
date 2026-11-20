@@ -1479,7 +1479,6 @@ export function MpConfigClient({
       );
     }
     // ponytail: mount-only restore; holdSurface/sessionStorageKey stable per page
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist preview + hold-prep so cancel URL can restore.
@@ -2116,7 +2115,6 @@ export function MpConfigClient({
     if (!resumeDraft || currentStep !== "preview") return;
     if (isBasic) void fetchBasicRecommendation();
     else void Promise.all([loadSuggestion(), fetchShopRecommendation()]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: the link opens once
   }, []);
 
   // After hold-cancel restore, re-fetch recommendation without clobbering cover/case.
@@ -2141,7 +2139,6 @@ export function MpConfigClient({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restoringHoldCancel, currentStep]);
 
   /**
@@ -2201,7 +2198,6 @@ export function MpConfigClient({
       // recommendation's defaults as before.
       preserveSelections: Boolean(staffEdit),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; the answers never change here
   }, []);
 
   // Load size-scoped add-ons + shipping when entering purchase preview.
@@ -5277,7 +5273,6 @@ export function MpConfigClient({
 
                     <div className="relative overflow-hidden rounded-md border bg-background/40 aspect-[4/3]">
                       {photoDataUrls.front ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={photoDataUrls.front}
                           alt="Front view"
@@ -5326,7 +5321,6 @@ export function MpConfigClient({
 
                     <div className="relative overflow-hidden rounded-md border bg-background/40 aspect-[4/3]">
                       {photoDataUrls.side ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={photoDataUrls.side}
                           alt="Side view"

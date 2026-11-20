@@ -285,7 +285,6 @@ function ResultStatusPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on identity params only
   }, [id, token, sessionId]);
 
   const accept = async (topupSession?: string | null) => {
@@ -446,7 +445,6 @@ function ResultStatusPage() {
     if (topupStarted.current) return;
     topupStarted.current = true;
     void accept(topupSessionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when top-up session present
   }, [topupSessionId, loading, result?.status]);
 
   useEffect(() => {

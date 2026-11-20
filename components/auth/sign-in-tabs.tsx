@@ -56,10 +56,8 @@ export function SignInTabs({
   useEffect(() => {
     if (tabFixed || error) return;
     const last = readLastTab();
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is only readable after mount
     if (last && last !== tab) setTab(last);
     // Once, on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const change = (value: string) => {

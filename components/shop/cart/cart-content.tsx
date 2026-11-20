@@ -76,7 +76,6 @@ export function CartContent({
         updateQuantity(item.variantId, max, item.customizationId);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stock]);
 
   const hasShortage = items.some((item) => {

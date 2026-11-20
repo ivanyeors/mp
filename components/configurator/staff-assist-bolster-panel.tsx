@@ -86,7 +86,6 @@ export function StaffAssistBolsterPanel({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onItemsChange is a setState setter
   }, [length, catalogVersion]);
 
   const loadTemplate = async (templateId: number) => {

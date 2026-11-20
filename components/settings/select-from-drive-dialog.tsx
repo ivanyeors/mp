@@ -492,7 +492,6 @@ export function SelectFromDriveDialog({
                       )}
                       <div className="w-9 h-9 shrink-0 rounded border bg-muted flex items-center justify-center overflow-hidden">
                         {!item.isFolder && item.thumbnailLink ? (
-                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={item.thumbnailLink}
                             alt=""

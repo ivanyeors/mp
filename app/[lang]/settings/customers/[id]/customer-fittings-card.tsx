@@ -125,7 +125,6 @@ function PhotoTile({
     return (
         <button type="button" onClick={onOpen} className="group block w-full space-y-1 text-left">
             <span className="block aspect-[4/3] overflow-hidden rounded-md border bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element -- a Staff-only, uncached route; next/image would cache it */}
                 <img
                     src={fittingFileSrc(customerId, fittingId, file.index, "thumb")}
                     alt={label}
@@ -157,7 +156,6 @@ function FullPreview({ customerId, fittingId, file }: { customerId: string; fitt
     }
     return (
         <div className="flex max-h-[70vh] justify-center overflow-auto rounded-md bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element -- a Staff-only, uncached route; next/image would cache it */}
             <img src={src} alt={DRIVE_SLOT_LABELS[file.slot]} onError={() => setFailed(true)} className="h-auto max-w-full object-contain" />
         </div>
     );

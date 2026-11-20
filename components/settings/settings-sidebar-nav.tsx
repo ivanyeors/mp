@@ -283,7 +283,6 @@ export function SettingsSidebarNav({
     setStatus(initialAuth.signedIn ? "authed" : "unauth");
     setPermissions(initialAuth.permissions);
     // Compare by value: the layout passes a fresh object on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSignedIn, initialPermissionKey]);
 
   useEffect(() => {
@@ -380,7 +379,6 @@ export function SettingsSidebarNav({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basePathname]);
 
   // The current page is no longer in the Member's role: send them to the
@@ -393,7 +391,6 @@ export function SettingsSidebarNav({
     !permissions.includes(currentKey);
   useEffect(() => {
     if (lostCurrentPage && currentKey) router.replace(to(`/settings?denied=${currentKey}`));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lostCurrentPage, currentKey]);
 
   // Redirect unauthorized visitors to unified Sign in (preserve deep link).
@@ -403,7 +400,6 @@ export function SettingsSidebarNav({
         to(`/account/login?next=${encodeURIComponent(to(basePathname))}`),
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, isLoginRoute]);
 
   // Legacy /settings/login only redirects; keep bare shell if it still renders.

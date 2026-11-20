@@ -171,7 +171,6 @@ export function ConfigImageUpload({
               key={image.id}
               className="group relative aspect-square overflow-hidden rounded-md border bg-muted"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.hostedUrl}
                 alt="Reference photo"

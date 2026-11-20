@@ -138,7 +138,6 @@ export function ImageField({
                     </div>
                 ) : shown?.ok ? (
                     // The rendition, as the email shows it: on its light plate when it has transparency.
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                         src={shown.image.url}
                         alt={decorative ? "" : image.alt}

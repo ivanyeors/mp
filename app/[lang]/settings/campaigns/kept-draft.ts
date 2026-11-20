@@ -64,7 +64,6 @@ export function keptDraft(raw: unknown): KeptDraft | null {
 }
 
 /** Pure — the editor's draft as the browser keeps it. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- the wanted Segment and the note are the editor's, never kept
 export function keptOf({ audience, segmentId, excludeSegmentIds, includeUnengaged, wanted, audienceNote, ...email }: EditorDraft): KeptDraft {
   return { email, audience, segmentId, excludeSegmentIds, includeUnengaged };
 }

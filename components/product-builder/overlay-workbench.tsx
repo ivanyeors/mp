@@ -370,7 +370,6 @@ function Thumb({ mapping, alt }: { mapping: OverlayMappingItem["mapping"]; alt: 
       style={state === "color" ? { backgroundColor: mapping!.color! } : undefined}
     >
       {state === "image" ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={mapping!.hosted_url!} alt={alt} className="h-full w-full object-cover" loading="lazy" />
       ) : state === "color" ? null : (
         <ImageIcon className="h-4 w-4 text-muted-foreground opacity-50" />

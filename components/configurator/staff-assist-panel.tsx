@@ -145,7 +145,6 @@ export function StaffAssistPanel({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onItemsChange is a setState setter
   }, [current.size, current.tier, catalogVersion]);
 
   const request = (next: SizeTier) => {

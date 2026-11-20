@@ -112,7 +112,6 @@ export default async function PartnerApplicationsPage({
                       <dd className="mt-1">
                         {logoUrl ? (
                           // A raw <img>: the URL is verified as our own storage above.
-                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={logoUrl}
                             alt={`${q.companyName || app.email} logo`}

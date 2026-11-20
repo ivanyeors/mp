@@ -154,7 +154,6 @@ export async function PartnerPayouts() {
                     PayNow QR
                   </div>
                   {qr ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={qr}
                       alt="PayNow QR"

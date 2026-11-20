@@ -2335,7 +2335,6 @@ function BaseImageControl({ name, current, title, save }: {
           className={cn("max-md:min-w-11", current && "overflow-hidden p-0")}
         >
           {current ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={current} alt="" className="h-full w-9 object-cover max-md:w-11" />
           ) : (
             <ImageIcon className="h-4 w-4" />

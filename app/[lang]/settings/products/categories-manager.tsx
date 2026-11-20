@@ -171,7 +171,6 @@ function CategoryRow({
                         {/* Thumbnail */}
                         <div className="h-8 w-8 rounded border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                             {category.image_url ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
                                     src={category.image_url}
                                     alt={getDisplayName(category)}
@@ -545,7 +544,6 @@ export function CategoriesManager() {
                             <div className="flex items-center gap-3">
                                 <div className="h-16 w-16 rounded-lg border bg-muted flex items-center justify-center overflow-hidden shrink-0">
                                     {form.image_url ? (
-                                        /* eslint-disable-next-line @next/next/no-img-element */
                                         <img
                                             src={form.image_url}
                                             alt="Category"

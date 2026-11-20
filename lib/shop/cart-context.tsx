@@ -208,7 +208,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         couponError: null,
       }));
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.items, state.customerEmail, hydrated]);
 
   const addItem = useCallback((item: CartItemClient) => {

@@ -34,7 +34,6 @@ export function AddonOptionButton({
     >
       <span className="flex min-w-0 items-center gap-3">
         {addon.image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={addon.image_url}
             alt={addon.name}
@@ -67,7 +66,6 @@ export function SelectedAddonPreviews({
   return (
     <div className="flex flex-col items-center gap-2 lg:flex-row lg:justify-center">
       {selected.map((a) => (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           key={a.item_id}
           src={a.image_url!}

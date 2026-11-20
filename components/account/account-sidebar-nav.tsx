@@ -163,7 +163,6 @@ export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
         to(`/account/login?next=${encodeURIComponent(to(basePathname))}`),
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, isLoginRoute]);
 
   // Login and welcome: no shell. Stable tree — never flip between shell and bare children

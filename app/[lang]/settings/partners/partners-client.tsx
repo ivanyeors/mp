@@ -686,7 +686,6 @@ export default function PartnersSettingsPage({
 
                         <div className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted max-md:hidden">
                           {partner.logo_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={partner.logo_url}
                               alt=""
