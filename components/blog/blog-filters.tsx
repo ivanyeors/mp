@@ -2,7 +2,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 
 interface BlogFiltersProps {
     availableLabels: string[];
@@ -13,46 +14,41 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
     const pathname = usePathname() ?? "";
     const searchParams = useSearchParams();
 
-    const initialQuery = searchParams?.get("q") ?? "";
+    const urlQuery = searchParams?.get("q") ?? "";
     const activeLabel = searchParams?.get("label");
 
-    const [query, setQuery] = useState(initialQuery);
-    const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedQuery(query), 300);
-        return () => clearTimeout(timer);
-    }, [query]);
-
-    useEffect(() => {
-        const params = new URLSearchParams(searchParams?.toString() ?? "");
-        let changed = false;
-
-        if (debouncedQuery) {
-            if (params.get("q") !== debouncedQuery) {
-                params.set("q", debouncedQuery);
-                changed = true;
-            }
-        } else {
-            if (params.has("q")) {
-                params.delete("q");
-                changed = true;
-            }
+    const [query, setQuery] = useState(urlQuery);
+    // When ?q= changes to something the box did not send (Back, Forward, a
+    // link), the box follows it. The URL catching up with what the box sent
+    // leaves anything typed since alone.
+    const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
+    const [sent, setSent] = useState(urlQuery);
+    if (urlQuery !== seenUrlQuery) {
+        setSeenUrlQuery(urlQuery);
+        if (urlQuery !== sent) {
+            setSent(urlQuery);
+            setQuery(urlQuery);
         }
+    }
 
-        if (changed) {
+    const go = (q: string, label: string | null | undefined) => {
+        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        if (q) params.set("q", q);
+        else params.delete("q");
+        if (label) params.set("label", label);
+        else params.delete("label");
+        setSent(q);
+        if (params.toString() !== (searchParams?.toString() ?? "")) {
             router.push(`${pathname}?${params.toString()}`);
         }
-    }, [debouncedQuery, pathname, router, searchParams]);
+    };
+
+    const pushQuery = useDebouncedCallback((q: string) => go(q, activeLabel), 300);
 
     const toggleLabel = (label: string) => {
-        const params = new URLSearchParams(searchParams?.toString() ?? "");
-        if (activeLabel === label) {
-            params.delete("label");
-        } else {
-            params.set("label", label);
-        }
-        router.push(`${pathname}?${params.toString()}`);
+        // A search still waiting to be written goes with the label, not after it.
+        pushQuery.cancel();
+        go(query, activeLabel === label ? null : label);
     };
 
     return (
@@ -65,7 +61,10 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
                 <input
                     type="text"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => {
+                        setQuery(e.target.value);
+                        pushQuery(e.target.value);
+                    }}
                     className="block w-full pl-10 pr-3 py-2 border border-input rounded-full bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm shadow-sm"
                     placeholder="Search articles..."
                 />

@@ -779,19 +779,25 @@ export function XrayPillow({
     selectedRef.current = selected;
   }, [selected]);
 
-  useEffect(() => {
-    onDiveChange?.(dived);
-  }, [dived, onDiveChange]);
+  // Every dive change goes through here, so the host hears of it in the same
+  // event. No host needs a call on mount: they all start from no dive too.
+  const changeDive = useCallback(
+    (next: Section | null) => {
+      setDived(next);
+      onDiveChange?.(next);
+    },
+    [onDiveChange],
+  );
 
   // Leaving the dive takes the open picker and the cell hover with it — the
   // cell hit areas unmount, so no mouseleave would ever fire to clear them.
   const endDive = useCallback(() => {
-    setDived(null);
+    changeDive(null);
     setOpenSub(null);
     setOpenLayer(null);
     setHoverSub(null);
     setSelected(null);
-  }, []);
+  }, [changeDive]);
 
   /** Open the add-filling bloom on a cell, targeting one of its layers. */
   const openPicker = useCallback((subSection: SubSection, layer: number | null) => {
@@ -1061,7 +1067,7 @@ export function XrayPillow({
     onPlacementsChange?.(next);
     setSelected(nextRef);
     // A dive follows the pouch across Sections, so it stays in view, selected.
-    if (dived && nextRef.section !== dived) setDived(nextRef.section);
+    if (dived && nextRef.section !== dived) changeDive(nextRef.section);
     const label = pieceLabel(ref.itemId);
     // One toast id: a run of nudges or moves updates one toast (its Undo the latest), never a stack.
     toast.success(nudged ? `Moved ${label} within ${nextRef.section} ${nextRef.subSection}` : `Moved ${label} to ${nextRef.section} ${nextRef.subSection}`, {
@@ -1485,7 +1491,7 @@ export function XrayPillow({
   /** A tap on a pouch on the pillow: select it, diving into its Section first. */
   const tapPouch = (ref: PieceRef, inDive: boolean) => {
     if (!inDive && !justDraggedRef.current) {
-      setDived(ref.section);
+      changeDive(ref.section);
       setOpenSub(null);
     }
     selectPiece(ref);
@@ -2161,7 +2167,7 @@ export function XrayPillow({
               onClick={
                 editable
                   ? () => {
-                      setDived(section);
+                      changeDive(section);
                       setOpenSub(null);
                       setSelected(null);
                     }

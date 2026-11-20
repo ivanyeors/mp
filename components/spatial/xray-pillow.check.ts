@@ -129,7 +129,7 @@ assert.doesNotMatch(renderer, /squeezeLines|↕ \$\{|↔ \$\{/, "no ↕ / ↔ sq
 assert.match(renderer, /fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
 // Slice 05, as reviewed 26-9-2026: the x-ray draws no cut line (the cross-section's own controls say where it is taken).
 assert.doesNotMatch(renderer, /cutAt|data-xray-cut=/, "no dashed cut line on the x-ray");
-assert.match(renderer, /onDiveChange\?\.\(dived\)/, "the dive is reported so an along cut can follow it");
+assert.match(renderer, /setDived\(next\);\s*onDiveChange\?\.\(next\);/, "the dive is reported, by the one helper that changes it, so an along cut can follow it");
 assert.match(renderer, /onMouseEnter=\{\(\) => setHovered\(section\)\}/, "Section hover highlight");
 
 // --- Wiring: one gated mount over the silhouette (RE slice 07: guests read-only) ---

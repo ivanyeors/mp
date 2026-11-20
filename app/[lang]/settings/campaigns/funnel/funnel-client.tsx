@@ -116,14 +116,15 @@ export function FunnelClient({
 
     const [target, setTarget] = useState<PreviewTarget | null>(null);
     // A card opened full size while its preview is hidden asks for its render then.
-    useEffect(() => {
-        const key = target?.key;
+    const open = (t: PreviewTarget) => {
+        setTarget(t);
+        const key = t.key;
         if (!key || asked.current.has(key)) return;
         asked.current.add(key);
         renderFunnelEmails([key])
             .then((r) => setRenders((prev) => ({ ...prev, [key]: (r.ok ? r.renders[key] : null) ?? null })))
             .catch(() => setRenders((prev) => ({ ...prev, [key]: null })));
-    }, [target]);
+    };
 
     // The stage lives in the URL, so a view can be shared; switching needs no new page read.
     const choose = (s: FunnelStageView) => (e: MouseEvent<HTMLAnchorElement>) => {
@@ -139,7 +140,7 @@ export function FunnelClient({
         renders,
         to,
         canOpen,
-        open: setTarget,
+        open,
         // A move may make a Segment, which needs the Segments' own permission.
         canArrange: permissions.includes("campaigns") && permissions.includes("customers-edit"),
         shown,
