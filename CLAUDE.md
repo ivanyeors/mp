@@ -116,6 +116,19 @@ back to it to fix. How much the owner reviews depends on risk:
   also gets a second, independent check before the owner merges. Run the
   `reviewer` subagent on the diff and record its verdict in the pull request.
 
+## Merging to main does not go live
+
+Vercel builds every merge to `main` as a production deployment but leaves it
+**staged**: "Auto-assign Custom Production Domains" is off on the `mp-inv`
+project (owner, 2026-11-20). mpillow.com keeps serving the previous build until
+the staged one is promoted (Vercel dashboard, Deployments, Promote). The staged
+build runs on production environment variables, so it reads the live database
+and live Stripe. **stage.mpillow.com** shows the newest staged build
+(`.github/workflows/stage-alias.yml` moves it after each build) and, like the
+build's own URL, needs a Vercel sign-in. Never add stage.mpillow.com under the
+project's Domains: that makes it public. Say "staged", not "live", after a
+merge, and promote only when the owner asks.
+
 ## Large work: one orchestrator
 
 For a whole PRD, run `/orchestrate .claude/PRD-<name>` in a session on Fable.
