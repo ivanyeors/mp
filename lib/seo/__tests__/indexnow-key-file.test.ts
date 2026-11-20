@@ -38,9 +38,17 @@ describe("IndexNow key at /<key>.txt", () => {
     expect(res.headers.get("x-middleware-rewrite")).toBeNull();
   });
 
-  it("serves nothing when no valid key is set", async () => {
-    vi.stubEnv("INDEXNOW_KEY", "bad key!");
-    const res = await get("https://www.mpillow.com/bad key!.txt");
+  it("serves nothing for a key that fails validation", async () => {
+    // Under 8 characters: a path that survives URL parsing unchanged, so only
+    // the validation keeps it from matching.
+    vi.stubEnv("INDEXNOW_KEY", "short");
+    const res = await get("https://www.mpillow.com/short.txt");
+    expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("serves nothing when no key is set", async () => {
+    vi.stubEnv("INDEXNOW_KEY", "");
+    const res = await get("https://www.mpillow.com/.txt");
     expect(res.headers.get("x-middleware-rewrite")).toBeNull();
   });
 });

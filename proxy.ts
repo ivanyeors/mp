@@ -121,6 +121,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   // The IndexNow key at the protocol's default address, /<key>.txt, on every
   // host: Ahrefs Site Audit verifies a key only there. Our own pings name
   // /indexnow-key.txt as keyLocation, which the engines accept.
+  // ponytail: a key starting with "auth" never reaches here (the matcher skips
+  // /auth*); keys are generated hex, so pick another if that ever changes.
   if (pathname === indexNowKeyFilePath()) {
     return NextResponse.rewrite(new URL(INDEXNOW_KEY_PATH, request.url));
   }
