@@ -79,3 +79,92 @@ agent can flip it.
   not confirm.
 - `actionlint` on both workflow files if it can be installed here; otherwise
   say it was not run.
+
+## As built, after review
+
+`decide` in `scripts/pr-risk.mjs` merges only when every one of these holds.
+Any fact it could not read is a reason not to merge, and every reason goes
+in the job summary.
+
+- **Switch:** `AUTO_MERGE_CODE` is exactly `on`.
+- **Pull request:** open, not a draft, from this repository, opened by the
+  repository owner's login, aimed at the default branch, and GitHub's
+  `mergeable` is `true` (null after 30 seconds of asking counts as no).
+- **Paths (`classify` is `auto`):** nothing is
+  - a money path: every line of `.claude/rules/money.md`'s `paths:`, read
+    from the default branch. Parsing is strict: a line that is not one
+    supported pattern (plain segments, `*` in a segment, `**` as a whole
+    segment) makes the list unread, so nothing merges;
+  - under `supabase/`;
+  - a rail, by rule rather than by name:
+    - every file at the repository root, except Markdown other than
+      `CLAUDE.md` and `CLAUDE.local.md`, and except `eslint-suppressions.json`
+      (judged by its totals, below). The root holds configuration, and the
+      tools try other spellings first: ESLint 9.39 tries `eslint.config.js`
+      before `.mjs`, and Next 16.4 tries `next.config.js` and `.mjs` before
+      `.ts`;
+    - every root dot-folder (`.github`, `.githooks`, `.claude` and the rest)
+      except `.claude/PRD-*/**`;
+    - a `CLAUDE.md`, `CLAUDE.local.md` or `.claude/` folder at any depth,
+      inside a PRD folder included;
+    - a `package.json`, `tsconfig*.json` or `eslint.config.*` in any folder;
+    - `eslint-rules/**`, `scripts/checks.mjs`, `scripts/pr-risk.mjs` and its
+      test, and `scripts/git-identity`;
+  - sign-in, sessions, roles or permissions: `lib/auth`, `lib/supabase`,
+    `lib/staff`, `lib/results/access.ts`, `lib/partner-backup-email.ts`,
+    `app/api/partner/backup-email`, `app/auth`, `components/auth`,
+    `app/*/account/login`, `app/*/settings/login`, `app/*/settings/users`,
+    `app/api/admin`, `app/api/staff`, `app/api/partner/context`;
+  - a path with a control character or line terminator in its name.
+  
+  Matching ignores case. A rename counts its old path too.
+- **Lint baseline:** no rule's total in `eslint-suppressions.json` is
+  higher at the head than at the merge base (a side with no file counts as
+  zero).
+- **Main has not moved under it:** no file this pull request changes (old
+  names included) has changed on the default branch since the merge base,
+  except `eslint-suppressions.json`. A compare list at the API's 300-file
+  cap counts as unread. The remedy is to merge the default branch into the
+  branch.
+- **Checks:** `verify` ran and every run of it concluded `success`. Every
+  other check run is completed, with `success`, `neutral` or `skipped`.
+- **Vercel:** at least one commit status whose context starts with `Vercel`
+  is `success`, and no status is in any other state. When this refuses, the
+  summary lists every context it saw.
+- **Review:** a comment by one of the verdict logins (`VERDICT_LOGINS`:
+  `claude[bot]` or `github-actions[bot]`, to be narrowed to the one the
+  first real review used) whose first line is exactly
+  `Verdict: clean at <head sha> against <default branch>`, and no `findings`
+  verdict for that head against any base. A verdict against another branch,
+  or in the older form without `against`, does not count. All comments are
+  read, paginated.
+  - `claude-review.yml` also runs on `synchronize`, and on `edited` when the
+    base changed, both only when the switch is on.
+  - Its concurrency is at job level, and only a run that will review joins
+    the shared group; every other run gets a group of its own, so a push
+    with the switch off, or an unrelated label, cannot cancel a review in
+    progress.
+  - Its prompt names the head sha and the base branch, gives the verdict
+    line, and says to post exactly one summary, last, after every inline
+    comment.
+  - Without `ANTHROPIC_API_KEY` there is no verdict, so nothing merges.
+- **Threads:** no review thread is unresolved (more than 100 threads counts
+  as unread).
+- **Latch:** the default branch's tip commit is authored by the owner's
+  GitHub user. Vercel builds only commits authored by the owner, so if it is
+  not, production may be behind the default branch. That also happens after
+  the owner merges someone else's pull request by hand (a Dependabot one is
+  authored `dependabot[bot]`). Nothing merges itself until a commit authored
+  by the owner reaches the default branch, which any merge the owner makes
+  by hand does.
+- **Head:** the head read last is the head the facts describe, and the merge
+  is pinned to it (`--match-head-commit`).
+- **Main's tip, again:** the Merge step reads the default branch's tip
+  immediately before `gh pr merge`. If it is not the tip the facts were read
+  against (what main changed is compared up to that sha), there is no merge,
+  and the summary says to run it again (`tipReason`).
+
+After a merge, the workflow reads the merge commit back. If its author is not
+the owner, the job fails and the workflow comments on the merged pull
+request: production was not built from this commit, and what to do. That is
+the one comment it ever posts. The latch above then holds every later merge.
