@@ -20,7 +20,7 @@ window.scrollTo = () => undefined;
 
 const picker = (
   <CustomiseTierPicker
-    locale="en"
+    locale="en-US"
     images={{}}
     basicLabel="Basic"
     premiumLabel="Premium"
