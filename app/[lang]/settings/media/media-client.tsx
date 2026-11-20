@@ -193,7 +193,8 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
     /* Picker dialog state (for landing slots) */
     const [pickerSlot, setPickerSlot] = useState<LandingSlot | null>(null);
 
-    /* Usage data (URL map for grid; detailUsages for open sheet) */
+    /* Usage data (URL map for grid; per-asset results from openDetail, read
+       when the URL map has none; detailUsages for open sheet) */
     const [usageMap, setUsageMap] = useState<UsageMap>({});
     const [usageByAssetId, setUsageByAssetId] = useState<UsageMap>({});
     const [usageLoading, setUsageLoading] = useState(true);
@@ -326,14 +327,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             setUsageLoading(false);
         }
     }, []);
-
-    useEffect(() => {
-        const byId: UsageMap = {};
-        for (const f of files) {
-            if (f.url && usageMap[f.url]) byId[f.id] = usageMap[f.url];
-        }
-        setUsageByAssetId(byId);
-    }, [files, usageMap]);
 
     useEffect(() => {
         if (skipFilesFetch.current) {
@@ -506,9 +499,8 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 const data = await res.json();
                 if (data.ok && Array.isArray(data.usages)) {
                     setDetailUsages(data.usages);
-                    if (data.usages.length > 0) {
-                        setUsageByAssetId((prev) => ({ ...prev, [file.id]: data.usages }));
-                    }
+                    // Always store it, so a file whose usages went to zero stops counting as used.
+                    setUsageByAssetId((prev) => ({ ...prev, [file.id]: data.usages }));
                 }
             } catch {
                 /* grid map is fallback */
