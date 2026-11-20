@@ -25,7 +25,6 @@ const { requireResultAccess } = await import("@/lib/results/access");
 
 const TOKEN = "11111111-1111-4111-8111-111111111111";
 
-/** A Result that has been through hold: it has a token and a live status. */
 const live = {
   access_token: TOKEN,
   customer_id: null,
@@ -33,9 +32,7 @@ const live = {
   status: "held" as string | null,
   order_id: null as string | null,
 };
-/** A Draft Result created after tokens started being minted at create. */
 const draft = { ...live, status: null };
-/** A Draft Result that predates that change. */
 const legacyDraft = { access_token: null, customer_id: null, customer_email: null, status: null, order_id: null };
 
 const asStaff = () => h.requireAnyAdmin.mockResolvedValue(null);
@@ -82,7 +79,6 @@ describe("requireResultAccess", () => {
     ).resolves.toEqual({ ok: true, mode: "owner" });
   });
 
-  // The attack this whole initiative exists to stop.
   it("refuses a stranger holding only the Result id", async () => {
     notStaff();
     const access = await requireResultAccess(live, null);
@@ -123,7 +119,6 @@ describe("requireResultAccess", () => {
       expect(access.ok).toBe(false);
     });
 
-    // Order sync and Staff create these tokenless and permanent — not Drafts.
     it("does not extend the allowance to an order-linked row", async () => {
       notStaff();
       const access = await requireResultAccess({ ...legacyDraft, order_id: "ord-1" }, null, {

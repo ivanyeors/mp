@@ -23,14 +23,8 @@ import {
   telegramUpdatesPatchSchema,
 } from "@/lib/crm/telegram-updates";
 
-/**
- * Telegram updates (CRM slice 14): the settings shape, the Singapore-time
- * periods, and one renderer per type, from fixtures to the PRD's own wording.
- */
-
 const ORIGIN = "https://mpillow.test";
 
-/** Fixture customers: none of this may ever reach a CRM type's message. */
 const FIXTURE_CUSTOMERS = [
   { first_name: "Ana", last_name: "Tan", email: "ana.tan@x.test", phone: "+6591234567" },
   { first_name: "Wei Ling", last_name: "Lim", email: "weiling@x.test", phone: "+6598765432" },
@@ -102,7 +96,6 @@ describe("crm_telegram_updates settings", () => {
 });
 
 describe("periods in Singapore time", () => {
-  // 2026-10-19 is a Monday. 16:00 UTC is midnight in Singapore.
   it("takes the Singapore calendar day, across UTC midnight", () => {
     expect(sgtDay(new Date("2026-10-19T15:59:59Z"))).toBe("2026-10-19");
     expect(sgtDay(new Date("2026-10-19T16:00:00Z"))).toBe("2026-10-20");
@@ -111,7 +104,6 @@ describe("periods in Singapore time", () => {
   });
 
   it("counts New sign-ups over yesterday, midnight to midnight SGT", () => {
-    // The cron at about 10:00 SGT on Tuesday 20 October.
     expect(previousSgtDay(new Date("2026-10-20T02:00:00Z"))).toEqual({
       day: "2026-10-19",
       from: "2026-10-18T16:00:00.000Z",
@@ -125,14 +117,13 @@ describe("periods in Singapore time", () => {
       from: "2026-10-11T16:00:00.000Z",
       to: "2026-10-18T16:00:00.000Z",
     };
-    // Monday's run and Sunday's run (same ISO week) both summarise the week before.
     expect(previousSgtWeek(new Date("2026-10-19T02:00:00Z"))).toEqual(week);
     expect(previousSgtWeek(new Date("2026-10-25T02:00:00Z"))).toEqual(week);
     expect(previousSgtWeek(new Date("2026-10-26T02:00:00Z")).week).toBe("2026-W43");
   });
 
   it("numbers ISO weeks across the year boundary", () => {
-    expect(isoWeekKey("2026-01-01")).toBe("2026-W01"); // a Thursday
+    expect(isoWeekKey("2026-01-01")).toBe("2026-W01");
     expect(isoWeekKey("2025-12-29")).toBe("2026-W01");
     expect(isoWeekKey("2027-01-03")).toBe("2026-W53");
     expect(isoWeekKey("2027-01-04")).toBe("2027-W01");
@@ -250,9 +241,6 @@ describe("renderers: the PRD's example wording, from fixtures", () => {
 });
 
 describe("no customer data in the CRM's own types", () => {
-  // The CRM renderers take counts and an origin, so a customer cannot be passed
-  // in. Render every shape and scan anyway, so a renderer that grows a
-  // name parameter later fails here.
   const outputs = [
     renderGoogleReviewsToMatch(0, ORIGIN),
     renderGoogleReviewsToMatch(1, ORIGIN),
@@ -269,7 +257,6 @@ describe("no customer data in the CRM's own types", () => {
   it.each(outputs.map((o) => [o.split("\n")[0], o]))("%s", (_label, text) => {
     for (const fact of PII) expect(text, fact).not.toContain(fact);
     expect(text).not.toMatch(/@/);
-    // Counts and an Admin Panel link, nothing else.
     expect(text.split("\n").at(-1)).toMatch(/^Open: https:\/\/mpillow\.test\/settings\/customers/);
   });
 });
@@ -287,7 +274,6 @@ describe("Send test messages", () => {
     expect(text).toContain("Email: test@example.com");
     expect(text).toContain("➕ Paired Mbolster medium — same hold, ships with this pillow");
     expect(text).toContain("Quoted: SGD 163.50");
-    // Two Platform lines, and neither opens a Result: there is no real one.
     expect(text.match(/^Platform: https:\/\/mpillow\.test\/settings\/results$/gm)).toHaveLength(2);
   });
 });

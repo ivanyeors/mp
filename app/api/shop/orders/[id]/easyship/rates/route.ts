@@ -12,10 +12,6 @@ import {
 
 export const runtime = "nodejs";
 
-/**
- * Today's courier rates for this order — what Settings → Orders shows before
- * buying a label — and the courier the customer's choice comes to, preselected.
- */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;
@@ -34,7 +30,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const [shipment, method] = await Promise.all([
     loadOrderShipment(admin, id).catch(() => null),
-    // Without it the dialog still opens, on the cheapest courier.
     loadOrderShippingMethod(admin, order).catch((err: unknown) => {
       console.error(`[orders/easyship] Could not read the shipping method of ${id}:`, err);
       return null;
@@ -46,10 +41,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({
     ok: true,
     selected_courier_service_id: pick.courierServiceId,
-    /** checkout: what the customer paid for · method: what their method picks today · cheapest: neither. */
     selected_by: pick.by,
     method_name: method ? resolveShippingContent(method).name : null,
-    /** The courier the customer paid for, when today's rates no longer offer it. */
     paid_for_unavailable: pick.paidForMissing ? (order.shipping_courier ?? "The courier the customer chose") : null,
     rates,
   });

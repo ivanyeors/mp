@@ -1,16 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Accept runs exactly once per Result (#172).
- *
- * The real POST handler against an in-memory table whose conditional update is a
- * genuine check-and-set, and whose every query yields a macrotask first, so two
- * `Promise.all` requests interleave through the same code the way two Vercel
- * invocations would. Only I/O is mocked: Stripe, the build loader, and the
- * commission / milestone / ledger / email writers. The lifecycle, capture plan,
- * settlement and snapshot are the real modules.
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -23,7 +12,6 @@ const h = vi.hoisted(() => ({
   loadAssignedBuild: vi.fn(),
   sessionsRetrieve: vi.fn(),
   incrementCouponUsage: vi.fn(),
-  /** The `customers` table is unreachable. */
   failCustomers: false,
 }));
 
@@ -36,7 +24,6 @@ function query(table: string) {
   const run = async (): Promise<Row[]> => {
     await tick();
     if (table === "customers" && h.failCustomers) throw new Error("connection reset");
-    // Everything below is synchronous: one query is one atomic step.
     const rows = (h.db[table] ??= []);
     if (op !== "select") h.writes.push({ table, op });
     if (op === "insert") {
@@ -61,7 +48,6 @@ function query(table: string) {
     neq: (c: string, v: unknown) => (filters.push((r) => r[c] !== v), b),
     is: (c: string, v: unknown) => (filters.push((r) => (r[c] ?? null) === v), b),
     in: (c: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[c])), b),
-    // An exact match without case, as findCustomerByEmail escapes its pattern.
     ilike: (c: string, v: string) => (
       filters.push((r) => String(r[c] ?? "").toLowerCase() === v.replace(/\\([\\%_*])/g, "$1").toLowerCase()), b
     ),
@@ -88,9 +74,6 @@ vi.mock("@/lib/authorization-hold", async (orig) => ({
   createTopUpCheckout: vi.fn(),
 }));
 vi.mock("@/lib/results/access", () => ({ authorizeResultAccess: async () => true }));
-// importOriginal so the real ASSIGNED_BUILD_COLUMNS reaches the route: accept
-// interpolates it into its select, and a mock that omits it fails at the query
-// rather than at the concurrency behaviour under test.
 vi.mock("@/lib/results/assigned-build", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/results/assigned-build")>()),
   loadAssignedBuild: h.loadAssignedBuild,
@@ -124,7 +107,6 @@ const accept = (body: Row = {}) =>
 const count = (table: string) => h.db[table]?.length ?? 0;
 const result = () => h.db.mp_config_responses[0];
 
-/** An attributed, shipped, assigned Result whose hold covers the final total. */
 const assignedRow = (extra: Row = {}): Row => ({
   id: ID,
   status: "assigned",
@@ -160,8 +142,6 @@ beforeEach(() => {
   h.writes = [];
   h.failCustomers = false;
   h.piStatus = "requires_capture";
-  // incrementCouponUsage now reports whether the capped increment applied;
-  // the happy path is "applied".
   h.incrementCouponUsage.mockResolvedValue(true);
   h.captureHold.mockImplementation(async () => {
     await tick();
@@ -199,7 +179,6 @@ describe("POST /api/results/[id]/accept — exactly once", () => {
     });
     await Promise.all([accept(), accept()]);
     expect(count("orders")).toBe(1);
-    // subtotal − discount + shipping + tax = total.
     expect(h.db.orders[0]).toMatchObject({
       subtotal: 100,
       discount_amount: 10,
@@ -222,7 +201,7 @@ describe("POST /api/results/[id]/accept — exactly once", () => {
     const responses = await Promise.all([accept(), accept()]);
 
     expect(count("orders")).toBe(1);
-    expect(count("inventory_transactions")).toBe(2); // the two build lines, once
+    expect(count("inventory_transactions")).toBe(2);
     expect(h.createHeldCommissionsForOrder).toHaveBeenCalledOnce();
     expect(h.applyMilestoneProgress).toHaveBeenCalledOnce();
     expect(h.captureHold).toHaveBeenCalledOnce();
@@ -250,9 +229,7 @@ describe("POST /api/results/[id]/accept — exactly once", () => {
   });
 
   it("a quote with no card behind it is not credited: the whole total is a Balance payment", async () => {
-    // An abandoned hold Checkout: authorized_amount was written, no card attached.
     h.db.mp_config_responses = [assignedRow({ payment_intent_id: null, authorized_amount: 100 })];
-    // The shortfall-only top-up (110 - 100) settles nothing.
     h.sessionsRetrieve.mockResolvedValue({
       metadata: { result_id: ID, purpose: "result_topup" },
       payment_status: "paid",
@@ -262,7 +239,6 @@ describe("POST /api/results/[id]/accept — exactly once", () => {
     expect((await accept({ topupSessionId: "cs_short" })).status).not.toBe(200);
     expect(count("orders")).toBe(0);
 
-    // The whole total does, and nothing is captured from a hold that never existed.
     h.sessionsRetrieve.mockResolvedValue({
       metadata: { result_id: ID, purpose: "result_topup" },
       payment_status: "paid",
@@ -334,7 +310,7 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
     expect(items).toHaveLength(2);
     const [build, service] = items;
     expect(build).toMatchObject({ unit_price: 100, total_price: 100 });
-    expect(build.kind).toBeUndefined(); // the column default: goods
+    expect(build.kind).toBeUndefined();
     expect(service).toMatchObject({
       kind: "service",
       service_key: "measurement_premium",
@@ -348,12 +324,10 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
     const lineSum = items.reduce((s, r) => s + Number(r.total_price), 0);
     expect(lineSum).toBe(order.subtotal);
     expect(order).toMatchObject({ subtotal: 150, total: 160 });
-    // Only the build's lines move stock; a service is never deducted.
     expect(count("inventory_transactions")).toBe(2);
   });
 
   it("writes no fee line for a Result whose stored total was priced before the fee existed", async () => {
-    // Assigned before Service fees shipped: final_amount 110 = today's 160 less the 50 fee.
     h.db.mp_config_responses = [assignedRow({ authorized_amount: 170, final_amount: 110 })];
     h.loadAssignedBuild.mockResolvedValue({
       ok: true,
@@ -403,7 +377,6 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
 
 describe("POST /api/results/[id]/accept — Paired build (ADR 0026)", () => {
   const BOLSTER = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-  /** The Mbolster bought with the Mpillow: same hold, ships with it, quoting 60. */
   const companionRow = (extra: Row = {}): Row =>
     assignedRow({
       id: BOLSTER,
@@ -462,7 +435,6 @@ describe("POST /api/results/[id]/accept — Paired build (ADR 0026)", () => {
     expect(count("orders")).toBe(1);
     expect(h.db.orders[0]).toMatchObject({ subtotal: 160, shipping_amount: 10, total: 170 });
     expect(h.db.order_items.map((i) => i.sku)).toEqual(["RESULT-M-premium", "RESULT-BOLSTER-medium"]);
-    // Both builds move stock, each tagged with its own Result.
     expect(h.db.inventory_transactions.map((t) => (t.metadata as Row).result_id)).toEqual([ID, ID, BOLSTER]);
     expect(h.createHeldCommissionsForOrder.mock.calls[0][1].items).toHaveLength(2);
 
@@ -498,7 +470,6 @@ describe("POST /api/results/[id]/accept — Paired build (ADR 0026)", () => {
     row(BOLSTER).status = "declined";
     const res = await accept();
     expect(res.status).toBe(200);
-    // Capturing less than the whole 180 intent is what frees the Mbolster's share.
     expect(h.captureHold).toHaveBeenCalledWith("pi_hold", 110);
     expect(h.db.order_items).toHaveLength(1);
     expect(row(BOLSTER)).toMatchObject({ status: "declined", order_id: null });

@@ -17,7 +17,6 @@ const at = (section: Section, subSection: SubSection, slot: number): PillowPlace
   itemId: 1,
 });
 
-/** The shape the 2026-07-24 backfill produced: cells filled in order, left first. */
 const leftPacked: PillowPlacement[] = [
   at("left", "front", 1),
   at("left", "front", 2),
@@ -79,8 +78,6 @@ describe("isSpatiallyAuthored", () => {
   });
 
   it("is false for the XL spill — left+center with right still empty is the same artefact", () => {
-    // XL - basic (16 pieces) and XL - premium (17) overflow the three left cells
-    // and land 1-2 pieces in center. Spanning two Sections must not be enough.
     expect(isSpatiallyAuthored([...leftPacked, at("center", "front", 1)])).toBe(false);
   });
 
@@ -117,7 +114,6 @@ describe("isSpatiallyAuthoredCoverage", () => {
     expect(isSpatiallyAuthoredCoverage([null as unknown as string])).toBe(false);
   });
 
-  /** The exact catalog, queried from production while building this. */
   it("flags all ten default templates and no legitimate build", () => {
     const catalog: Array<[string, string[]]> = [
       ["XS - basic - default", ["left"]],
@@ -143,8 +139,6 @@ describe("unauthoredReason", () => {
   });
 
   it("names the missing flank for the XL spill rather than claiming one section", () => {
-    // The old copy said "Every piece sits in the left section" for left+center,
-    // which was false — one piece is in center.
     expect(unauthoredReason(["left", "center"])).toBe(
       "Nothing is placed in the right section, so the two sides are not balanced.",
     );

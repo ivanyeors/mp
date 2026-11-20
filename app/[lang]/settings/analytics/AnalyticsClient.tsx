@@ -45,7 +45,6 @@ const MpConfigMetricsStackedBarVisx = dynamic(() => import("./MpConfigMetricsSta
 
 type Period = { from: string; to: string; dateRange: { from: Date; to: Date } };
 
-/** The months picked, as the Singapore-month instants every loader reads. */
 function periodOf(range: { from: Date; to: Date }): Period {
   const iso = sgMonthRangeIso(format(range.from, "yyyy-MM"), format(range.to, "yyyy-MM"));
   return { ...iso, dateRange: range };
@@ -64,7 +63,6 @@ function PeriodPicker({
 
   const select = (range: { from?: Date; to?: Date } | undefined) => {
     if (!range?.from && !range?.to) return;
-    // DayPicker's range mode may move either end; take whichever one changed.
     const changedFrom = range.from && range.from.getTime() !== value.from.getTime() ? range.from : null;
     const changedTo = range.to && range.to.getTime() !== value.to.getTime() ? range.to : null;
     const picked =
@@ -126,7 +124,6 @@ function PeriodPicker({
   );
 }
 
-/** Stock & builds: how stock moved over the period, and what each build is made of. */
 function StockTab({ period, costingsHref }: { period: Period; costingsHref: string }) {
   const [rows, setRows] = useState<InventoryMovementRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,7 +242,6 @@ function StockTab({ period, costingsHref }: { period: Period; costingsHref: stri
   );
 }
 
-/** Customers: what customisers told us about themselves, and why people leave. */
 function CustomersTab({ period }: { period: Period }) {
   const [metrics, setMetrics] = useState<MpConfigMetricBreakdown[]>([]);
   const [loading, setLoading] = useState(true);
@@ -299,7 +295,6 @@ function CustomersTab({ period }: { period: Period }) {
       </Card>
 
       <DropOffReasonsCard />
-      {/* PRD-crm-retention-loop slice 11: beside why people leave, why they unsubscribe. */}
       <UnsubscribeReasonsCard />
     </div>
   );
@@ -315,7 +310,6 @@ export default function AnalyticsClient({ initialTab = "sales" }: { initialTab?:
   }));
   const period = useMemo(() => periodOf(range), [range]);
 
-  // Keep ?tab= in the address bar so a tab can be linked and survives reload.
   const selectTab = (next: string) => {
     const value = parseAnalyticsTab(next);
     setTab(value);
@@ -347,7 +341,6 @@ export default function AnalyticsClient({ initialTab = "sales" }: { initialTab?:
         </TabsList>
         <p className="pt-2 text-sm text-muted-foreground">{ANALYTICS_TAB_QUESTIONS[tab]}</p>
 
-        {/* Each tab mounts only while open, so it loads only what it shows. */}
         <TabsContent value="sales" className="pt-4">
           <SalesTab from={period.from} to={period.to} dateRange={period.dateRange} />
         </TabsContent>

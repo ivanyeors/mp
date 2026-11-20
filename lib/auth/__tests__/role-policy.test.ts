@@ -134,7 +134,6 @@ describe("roles", () => {
     expect(canCreateRole(me, ["orders", "media"])).toMatchObject({ ok: false, status: 403 });
     expect(canEditRole(me, ORDERS, ["orders", "results"]).ok).toBe(true);
     expect(canEditRole(me, ORDERS, ["orders", "faq"])).toMatchObject({ ok: false, status: 403 });
-    // Cannot narrow a role that already holds pages they lack either.
     expect(canEditRole(me, MEDIA, ["media"])).toMatchObject({ ok: false, status: 403 });
     expect(canEditRole(actor(ADMIN), MEDIA, ["media", "faq"]).ok).toBe(true);
   });

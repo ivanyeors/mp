@@ -88,7 +88,6 @@ function productTitle(row: {
   };
 }
 
-/** Presentational empty / chrome markers for self-check + Settings. */
 export function PageFaqsEmptyState({ surfaceKey }: { surfaceKey: string }) {
   return (
     <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground" data-page-faq-empty>
@@ -114,9 +113,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
       const res = await fetch("/api/shop/products?include_custom=true&limit=100&status=active");
       const json = await res.json();
       setProducts((json.rows ?? []).map(productTitle));
-    } catch {
-      /* picker degrades to fixed surfaces only */
-    }
+    } catch {}
   }, []);
 
   const loadSet = useCallback(async (key: string) => {
@@ -377,10 +374,6 @@ function PageItemEditor({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      {/*
-        Phones: a flat row (the list draws the dividers) where the question opens it,
-        and one menu instead of five icons.
-      */}
       <div
         className={`flex items-center gap-2 rounded-md border px-3 py-2 max-md:rounded-none max-md:border-0 max-md:px-0 max-md:py-0.5 ${!item.visible ? "opacity-60" : ""}`}
       >

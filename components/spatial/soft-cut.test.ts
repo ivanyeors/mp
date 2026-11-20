@@ -8,7 +8,6 @@ import { SOFT_BODY_DEFAULTS } from "@/lib/spatial-fillings/soft-body-settings";
 import { morph, rollRing, seedShapes, settleSoftCut, softCutScene, type SoftCutInput } from "./soft-cut";
 import { softCutInputFor } from "./xray-cross-section";
 
-// The testing preview's items and the brand diagrams' recipes (Oct 2026), each cell top → bottom.
 const ITEMS: Record<number, { name: string; subtype: string; category?: string }> = {
   1: { name: "6D (S)", subtype: "6D" },
   2: { name: "6D Fold (S)", subtype: "6D" },
@@ -42,7 +41,6 @@ function settleFresh(input: SoftCutInput, split?: number) {
   return sim.snapshot();
 }
 
-/** How often an outline's bend flips direction, and how jittery its bend is (the preview's wobble metric). */
 function wobble(ring: readonly Pt[], skip?: (p: Pt) => boolean) {
   let len = 0;
   for (let i = 0; i < ring.length; i++) len += Math.hypot(ring[(i + 1) % ring.length][0] - ring[i][0], ring[(i + 1) % ring.length][1] - ring[i][1]);
@@ -88,7 +86,6 @@ describe("soft cut", () => {
         const gap = input.settings.gap * input.frame.scale;
         const rings = [...new Map([...shapes.rings].map(([k, r]) => [r, k])).keys()];
         for (const ring of rings) {
-          // It rests on something: somewhere under it, the floor or another piece is within a few gaps.
           const clearance = (p: Pt) => {
             let below = input.frame.floor;
             for (const other of rings) {
@@ -105,7 +102,6 @@ describe("soft cut", () => {
           };
           expect(Math.min(...ring.map(clearance)), `${name} ${size}: a piece floats`).toBeLessThan(3 * gap + 2);
         }
-        // Per cell, Layer 0 (the top) sits above the deeper ones.
         for (const sub of SUB_SECTIONS) {
           const stack = cells[sub];
           if (stack.length < 2) continue;
@@ -136,7 +132,6 @@ describe("soft cut", () => {
   });
 
   it("lets a soft Neck support share a crowded cell: it squashes toward fully squashed, and the pouch on it keeps more cushion", () => {
-    // A Neck support as big as Staff measure it, filling the middle cell past what the case holds.
     const registry: DimensionRegistry = { ...CODE_REGISTRY, neck: { ...CODE_REGISTRY.neck, M: { lengthMm: 300, radiusMm: 70, minRadiusMm: 40, measuredOn: "test" } } };
     const dims = new Map([...DIMS].map(([id]) => [id, resolveDims({ name: ITEMS[id].name, category: ITEMS[id].category ?? "filling" }, registry)] as const));
     const fit = fitPillow(placementsOf(RECIPES.mix), { size: "L", dims });
@@ -150,17 +145,13 @@ describe("soft cut", () => {
     };
     const firm = at(100);
     const soft = at(0);
-    // Fully firm, it is seeded round and keeps nearly round, as before softness reached the stack.
     expect(firm.aspect).toBeLessThan(1.15);
     expect(at(75).aspect).toBeLessThan(1.15);
-    // Pressed along by the pouches stuffed against it at its height (9-11-2026), it spreads a little less than alone.
     expect(soft.aspect).toBeGreaterThan(1.3);
     expect(soft.height).toBeLessThan(firm.height * 0.85);
-    // Never below fully squashed: twice the squashed radius at this Size.
     const squashedMm = fit.settle.pieces.find((p) => p.key === "center/middle/2")!.minThicknessMm;
     expect(soft.height).toBeGreaterThan(squashedMm - 2);
     expect(soft.pouch).toBeGreaterThan(firm.pouch * 1.2);
-    // Squashed, it still rests on the floor under the pouch, apart from its neighbours and inside the cloth.
     const { input, shapes } = soft;
     const rings = [...new Set(shapes.rings.values())];
     const roll = shapes.rings.get("center/middle/2")!;
@@ -187,8 +178,6 @@ describe("soft cut", () => {
   });
 
   it("stuffs Front, Middle and Back end to end: pressed shorter, they stand taller, never laid over", () => {
-    // Ivan, 9-11-2026: "the front filling and the back filling are supposed to collide". Three 140 mm pouches in a
-    // 330 mm Section are pressed to 110 mm each; one alone keeps its 140 mm.
     const full = inputOf({ front: [1], middle: [1], back: [1] });
     const alone = inputOf({ middle: [1] });
     const spans = full.fit.sections.center.pieces.map((p) => [p.startMm, p.endMm]);
@@ -205,7 +194,6 @@ describe("soft cut", () => {
       const ring = settleSoftCut(input).rings.get("center/middle/1")!;
       return Math.max(...ring.map((p) => p[0])) - Math.min(...ring.map((p) => p[0]));
     };
-    // It holds the fill of its own length, so pressed shorter it bulges up.
     expect(width(full)).toBeLessThan(width(alone) - 10);
     expect(height(full)).toBeGreaterThan(height(alone) + 2);
   });
@@ -215,12 +203,10 @@ describe("soft cut", () => {
       const input = inputOf(cells, "M");
       const shapes = settleSoftCut(input);
       const sewn = input.casePolygon;
-      // The cloth may billow 1.5 past its seam, and the drawn line, smoothed, within a unit of that.
       const billow = 1.5 * input.frame.scale;
       for (const p of shapes.case) {
         if (!pointInPolygon(sewn, p[0], p[1])) expect(distanceToPolygon(sewn, p[0], p[1]), `${name}: cloth past the seam`).toBeLessThan(billow + 1);
       }
-      // Stuffed (9-11-2026): no two pieces overlap — neighbours at one height are pressed end to end, never laid over.
       const rings = [...shapes.rings];
       for (const [key, ring] of rings) {
         for (const p of ring) {
@@ -261,7 +247,6 @@ describe("soft cut", () => {
         scenes++;
       }
     }
-    // Measured Oct 2026: pouches 0.043, the cloth 0.025 with 1.5 flips — the sewn outline itself is 0.040 with 2.
     expect(pouchRough / pieces).toBeLessThan(0.07);
     expect(caseRough / scenes).toBeLessThan(0.04);
     expect(caseFlips / scenes).toBeLessThan(3);
@@ -273,7 +258,6 @@ describe("soft cut", () => {
     const from = settleSoftCut(a);
     const to = settleSoftCut(b);
     for (const plan of [morph(seedShapes(b), to, () => seedShapes(b)), morph(from, to, () => seedShapes(b))]) {
-      // It ends on the settled shape (the hook then draws the settled shape itself).
       const end = plan.at(1).rings.get("center/back/3")!;
       for (const p of end) expect(distanceToPolygon(to.rings.get("center/back/3")!, p[0], p[1])).toBeLessThan(0.5);
       for (const t of [0.25, 0.5, 0.75]) {
@@ -310,7 +294,6 @@ describe("soft cut", () => {
       const piece = fit.sections.center.pieces.find((p) => p.key === key)!;
       return { x: ring.reduce((a, q) => a + q[0], 0) / ring.length / input.frame.kx, piece, cellMm: fit.settle.cellLengthMm };
     };
-    // The Neck support roll has room in its column: it lands where it was nudged, to the millimetre.
     const home = at(undefined);
     expect(home.piece.nudged).toBeUndefined();
     for (const mm of [5, -5, 20, -20]) {
@@ -318,11 +301,8 @@ describe("soft cut", () => {
       expect(moved.piece.nudged).toBe(true);
       expect(Math.abs(moved.x - home.x - mm), `roll nudged ${mm} mm`).toBeLessThan(1);
     }
-    // Nudged past its column's room, it stops at the column's edge: it never stands in the next column.
     const far = at(80);
     expect(far.piece.endMm).toBeLessThanOrEqual(2 * far.cellMm + 0.05);
-    // A 6D longer than its column (140 mm), between full neighbours, has no room to be nudged: it stays where its
-    // height in the stack packs it, its own length (true size), and a nudge neither moves nor shrinks it.
     const full = at(20, RECIPES["11"], "center/middle/1");
     const still = at(undefined, RECIPES["11"], "center/middle/1");
     expect(full.piece.endMm - full.piece.startMm).toBeCloseTo(140, 1);
@@ -333,7 +313,6 @@ describe("soft cut", () => {
     const input = inputOf(RECIPES.mix, "XL");
     const t = performance.now();
     settleFresh(input);
-    // ~15–45 ms in a browser; generous for a shared CI runner.
     expect(performance.now() - t).toBeLessThan(400);
   });
 });

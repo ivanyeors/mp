@@ -12,24 +12,9 @@ type Props = {
   googleLinked: boolean;
 };
 
-/**
- * Connected-account controls for the customer profile page.
- *
- * Sign-in here is passwordless by design: Google OAuth, or an emailed magic
- * link / 6-digit code (see {@link ../auth/login-form.tsx}). This panel used to
- * offer "set a password" and "email a reset link" too, but nothing in the app
- * ever called `signInWithPassword`, so a password set here could not be used to
- * sign in — it was a credential with no door. Removed rather than completed:
- * OTP already covers the cross-device case Google doesn't.
- *
- * If password sign-in is ever wanted, it needs a field in `LoginForm` and
- * leaked-password protection turned on in Supabase, not just this panel back.
- */
 export function AccountSecurity({ googleLinked }: Props) {
   const { locale } = useI18n();
 
-  // No local mirror of `googleLinked`: a successful link navigates to Google and
-  // the page re-renders from the server on the way back.
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +26,6 @@ export function AccountSecurity({ googleLinked }: Props) {
       provider: "google",
       options: { redirectTo: authCallbackUrl(withLocale("/account", locale)) },
     });
-    // On success the browser navigates to Google, so only failure lands here.
     if (err) {
       setError(err.message);
       setLoading(false);

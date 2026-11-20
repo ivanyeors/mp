@@ -6,8 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AiButton } from "../ai-button";
 
-/** The ✨ button's states (PRD-campaign-email-editor slice 04): idle, working with words, and off with its reason. */
-
 let root: Root | null = null;
 function mount(node: ReactNode) {
   const host = document.createElement("div");

@@ -1,5 +1,3 @@
-/** Pain-area multi-select: "none" is exclusive with every other chip. */
-
 export const PAIN_AREA_NONE = "none";
 
 export const PAIN_AREA_OPTIONS = [
@@ -11,7 +9,6 @@ export const PAIN_AREA_OPTIONS = [
   { value: "bad-sleep-quality", label: "Bad Sleep Quality" },
 ] as const;
 
-/** Toggle one chip; selecting None clears others, selecting any other clears None. */
 export function togglePainArea(selected: string[], value: string): string[] {
   const has = selected.includes(value);
   if (value === PAIN_AREA_NONE) {

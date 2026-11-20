@@ -39,7 +39,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const admin = supabaseAdmin();
 
-  // Price/cost/compare-at are managed by price-sync for auto-generated products; strip to prevent drift.
   const { data: product } = await admin.from("products").select("is_auto_generated").eq("id", id).single();
   const update = { ...parsed.data };
   if (product?.is_auto_generated) {
@@ -57,8 +56,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Re-push to Stripe on price/active edits so checkout charges the new amount.
-  // syncProductToStripe archives the old immutable Price and creates a new one.
   const stripe =
     data.price > 0 && data.is_active !== false
       ? await syncProductToStripeSafe(id)

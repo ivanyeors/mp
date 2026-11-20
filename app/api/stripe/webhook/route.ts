@@ -34,11 +34,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-/**
- * Thrown by critical webhook steps (order confirmation, inventory deduction).
- * Every unexpected failure, critical or not, is dead-lettered and answered with
- * HTTP 500 so Stripe retries; each step is idempotent, so a retry is safe.
- */
 class CriticalWebhookError extends Error {
   constructor(message: string, public override cause?: unknown) {
     super(message);
@@ -46,11 +41,6 @@ class CriticalWebhookError extends Error {
   }
 }
 
-/**
- * Gives back the points an unpaid Order reserved (ADR 0030 (j)). Not critical:
- * the Order is already cancelled or failed by now, and the daily sweep
- * releases any reservation on such an Order that this missed.
- */
 async function releaseOrderPoints(admin: SupabaseClient, orderId: string) {
   const released = await releasePoints(admin, orderId);
   if (!released.ok) {
@@ -66,13 +56,6 @@ async function releaseOrderPoints(admin: SupabaseClient, orderId: string) {
   }
 }
 
-/**
- * Takes back the points each newly recorded refund's cash earned (ADR 0030
- * (m)); once per refund id in SQL. Only refunds this delivery recorded: an
- * older one was settled when it arrived, and if it came before the points
- * were written it is already in their base. Never fails the webhook: the
- * money has already moved, so a failure is logged.
- */
 async function clawbackRefundPoints(admin: SupabaseClient, orderId: string, refunds: Stripe.Refund[]) {
   for (const r of refunds) {
     const clawback = await clawbackPointsForRefund(admin, { orderId, refundId: r.id, amount: r.amount / 100 });
@@ -80,12 +63,6 @@ async function clawbackRefundPoints(admin: SupabaseClient, orderId: string, refu
   }
 }
 
-/**
- * The Order an intent paid. Most Orders name their only intent as
- * `payment_reference`; a Result topped up past its hold was paid on two
- * (ADR 0016), and only the ledger's charge rows name the other, so a refund on
- * it would otherwise find no Order and never reach the ledger.
- */
 async function orderIdForIntent(admin: SupabaseClient, paymentIntentId: string): Promise<string | null> {
   const { data: byReference, error } = await admin
     .from("orders")
@@ -105,7 +82,6 @@ async function orderIdForIntent(admin: SupabaseClient, paymentIntentId: string):
   return (charge?.order_id as string | undefined) ?? null;
 }
 
-/** Idempotently record a failed event to the dead-letter table (keyed by event id). */
 async function recordWebhookFailure(
   admin: SupabaseClient,
   event: Stripe.Event,
@@ -126,13 +102,8 @@ async function recordWebhookFailure(
   }
 }
 
-/**
- * Statuses an unpaid Order may be confirmed from. `payment_failed` stays for
- * Orders a declined attempt marked before attempts stopped changing the status.
- */
 const CONFIRMABLE_STATUSES = new Set(["pending", "payment_failed"]);
 
-/** True when the points this Order reserved were given back. */
 async function pointsWereReleased(admin: SupabaseClient, orderId: string): Promise<boolean> {
   const { data, error } = await admin
     .from("points_ledger")
@@ -144,7 +115,6 @@ async function pointsWereReleased(admin: SupabaseClient, orderId: string): Promi
   return (data?.length ?? 0) > 0;
 }
 
-/** Puts an Order in front of Staff (needs_attention + a timeline entry). */
 async function flagOrder(
   admin: SupabaseClient,
   orderId: string,
@@ -184,47 +154,30 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
-      // Delayed-notification methods (PayNow, EPS, Bancontact — all enabled on
-      // the live account) fire `completed` when the customer AUTHORISES, with
-      // the money not yet settled, then `async_payment_succeeded` when it does.
-      // Both fulfil identically, so they share this block; the payment_status
-      // gate below is what keeps the authorise-only pass from fulfilling early.
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
         const resultId = session.metadata?.result_id;
         const orderId = session.metadata?.order_id;
 
-        // Result authorization hold (manual-capture PI) — attach PI id, do not create an order.
         if (resultId && !orderId) {
           const paymentIntent =
             typeof session.payment_intent === "string"
               ? session.payment_intent
               : session.payment_intent?.id ?? null;
 
-          // A top-up rides the same shape (result_id, no order_id) but is an
-          // immediate-capture second charge on an ALREADY-assigned Result. The old
-          // `.eq("status","held")` guard made it a silent no-op, so a customer who
-          // paid and never returned left money charged with nothing recording it.
-          // Stamp it instead; accept settles with this intent rather than charging
-          // twice, and the Results queue can surface it as stuck meanwhile.
           if (session.metadata?.purpose === "result_topup") {
             if (paymentIntent && session.payment_status === "paid") {
               const { data: stamped, error: stampError } = await admin
                 .from("mp_config_responses")
                 .update({
                   topup_payment_intent_id: paymentIntent,
-                  // Stripe's time for the payment, not when this delivery ran.
                   topup_paid_at: stripeEventTime(event),
                 })
                 .eq("id", resultId)
-                // `accepted` too: accept holds that status while it settles, and a
-                // stamp dropped there is lost if that attempt fails and hands back.
                 .in("status", ["assigned", "accepted"])
                 .select("id");
               if (stampError) throw new Error(`Top-up stamp failed for Result ${resultId}: ${stampError.message}`);
-              // The Result moved on (cancelled, expired) while its Checkout was
-              // open: the money is in with nothing to settle it. A human refunds.
               if (!stamped?.length) {
                 const detail = `Balance payment ${paymentIntent} for Result ${resultId} arrived after the Result left assigned/accepted. Refund or settle it by hand.`;
                 console.error(`[stripe/webhook] ${detail}`);
@@ -234,14 +187,10 @@ export async function POST(req: Request) {
             break;
           }
 
-          // Amount, currency and state checks live in the shared writer, which the
-          // status page's return-from-Stripe sync also uses.
           const attached = await attachHoldPaymentIntent(admin, session);
           if (!attached.ok && attached.mismatch) {
             console.error(`[stripe/webhook] ${attached.mismatch}`);
             await recordWebhookFailure(admin, event, attached.mismatch);
-            // The refused card is attached to nothing, so no cron would ever
-            // release it: free the customer's funds now instead of in 7 days.
             const refusedIntent =
               typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
             if (refusedIntent) {
@@ -255,36 +204,12 @@ export async function POST(req: Request) {
 
         if (!orderId) break;
 
-        // Fulfil only once Stripe says the money is claimed. `unpaid` means a
-        // delayed-notification method is mid-flight: fulfilling now would deduct
-        // inventory, hold commissions and email a receipt for cash that may
-        // never arrive, and stamping paid_at would make the later
-        // async_payment_failed a no-op.
-        //
-        // Defence in depth, not a live path today: this account is SGD-only, and
-        // its presentable methods (card, Apple Pay, Link, PayNow) all confirm in
-        // real time — PayNow is Stripe's "real-time payments" family, NOT delayed
-        // notification. The gate matters the day a delayed method or a second
-        // currency is turned on, and costs nothing before then.
-        //
-        // Test `unpaid` rather than `!== "paid"`: a 100%-discount order settles as
-        // `no_payment_required` and must still fulfil.
-        //
-        // The authorization-hold branch above deliberately does NOT get this
-        // gate — a manual-capture PI reads `unpaid` until capture, by design.
         if (session.payment_status === "unpaid") {
-          // The session is `complete`, so the cart is spent either way. Leaving it
-          // intact lets the shopper re-checkout (the confirmation page shows
-          // success unconditionally, and /api/shop/checkout has no pending-order
-          // guard) and pay a second time for the same goods.
           const pendingCartToken = session.metadata?.cart_token;
           if (pendingCartToken) {
             await admin.from("carts").delete().eq("token", pendingCartToken);
           }
 
-          // Flag it: an order sitting `pending` with money in flight is otherwise
-          // indistinguishable from an abandoned cart, and nothing sweeps for it.
-          // If async_payment_succeeded never arrives, this is the only signal.
           await admin
             .from("orders")
             .update({ needs_attention: true })
@@ -299,7 +224,6 @@ export async function POST(req: Request) {
           break;
         }
 
-        // Fetch order with items
         const { data: order, error: orderError } = await admin
           .from("orders")
           .select(
@@ -316,10 +240,6 @@ export async function POST(req: Request) {
             ? session.payment_intent
             : session.payment_intent?.id ?? null;
 
-        // Reconcile what Stripe charged against what we computed. The pre-tax
-        // amount (subtotal − discount + shipping) is ours to get right; tax and
-        // grand total are Stripe's authority and get written back. A mismatch
-        // means a discount/price/shipping leak — flag it, never silently confirm.
         const totals = sessionTotals(session);
         const recon = reconcileOrderTotal(order, totals);
         if (!recon.ok && !order.paid_at) {
@@ -333,15 +253,9 @@ export async function POST(req: Request) {
             session_total: recon.sessionTotal,
             expected_total: recon.expectedTotal,
           });
-          // Leave the order unconfirmed for manual review and ack the event so
-          // Stripe doesn't retry a deterministic mismatch forever.
           break;
         }
 
-        // Paid after the Order was closed (Staff cancelled it while its
-        // Checkout was still open). Its points may already be back with the
-        // customer, so it is not fulfilled: the money is recorded and a human
-        // refunds or reinstates it.
         if (!order.paid_at && !CONFIRMABLE_STATUSES.has(String(order.status))) {
           if (paymentIntent) {
             await recordLedgerEntry(admin, orderId, {
@@ -360,9 +274,6 @@ export async function POST(req: Request) {
           break;
         }
 
-        // Points come off at checkout and are only given back for an unpaid
-        // Order. If they came back before this payment landed, the discount
-        // was paid for with nothing: flag it rather than fulfil it silently.
         if (!order.paid_at && Number(order.points_spent ?? 0) > 0 && (await pointsWereReleased(admin, orderId))) {
           await flagOrder(
             admin,
@@ -373,17 +284,12 @@ export async function POST(req: Request) {
           );
         }
 
-        // Step 1 (CRITICAL): confirm the Order, claimed atomically: only the
-        // delivery that moves paid_at from null runs the once-only steps below
-        // (coupon count, timeline). Tax/total are written back from the session.
         let justConfirmed = false;
         if (!order.paid_at) {
           const { data: confirmed, error: confirmError } = await admin
             .from("orders")
             .update({
               status: "confirmed",
-              // When Stripe took the payment (the event's own time), not when
-              // this delivery ran: Stripe retries a failed webhook for days.
               paid_at: stripeEventTime(event),
               payment_method: "stripe",
               payment_reference: paymentIntent,
@@ -403,9 +309,6 @@ export async function POST(req: Request) {
           justConfirmed = Boolean(confirmed);
         }
 
-        // Step 1b: Record the captured charge in the money ledger (idempotent on
-        // the PaymentIntent id) and roll up amount_captured. The ledger — not the
-        // order status — is the source of truth for the order's net money.
         if (paymentIntent) {
           await recordLedgerEntry(admin, orderId, {
             type: "charge",
@@ -418,11 +321,6 @@ export async function POST(req: Request) {
           await rollupOrderMoney(admin, orderId);
         }
 
-        // Step 1c: The partner's commission for an attributed order (ADR 0034):
-        // flat, once per Qualifying Sale, only for an order holding a customised
-        // premium pillow, so a shop order earns none. Idempotent on redelivery.
-        // delivered_at is null at paid-time for shop orders, so release stays
-        // undated until the order is delivered (never paid_at).
         if (order.partner_id) {
           let qualifies = false;
           try {
@@ -435,15 +333,11 @@ export async function POST(req: Request) {
           } catch (err) {
             console.error(`[stripe/webhook] Commission creation failed for ${orderId}:`, err);
           }
-          // Milestone rung-crossing (#79): best-effort, never break the webhook.
           try {
             await applyMilestoneProgress(admin, order.partner_id as string);
           } catch (err) {
             console.error(`[stripe/webhook] Milestone progress failed for ${orderId}:`, err);
           }
-          // Referral-earned email (#84): once per Qualifying Sale (entity_id = order
-          // id). delivered_at is null for a fresh shop order, so the copy states the
-          // release is 30 days after delivery. Best-effort — never break the webhook.
           if (qualifies) {
             try {
               await sendReferralEarnedEmail(admin, {
@@ -464,8 +358,6 @@ export async function POST(req: Request) {
           customization_snapshot?: Record<string, unknown> | null;
         }>;
 
-        // Step 2 (CRITICAL): Deduct inventory once. Claiming the Order first means
-        // two concurrent deliveries cannot both deduct.
         const { data: claimed, error: claimError } = await admin
           .from("orders")
           .update({ inventory_deducted_at: new Date().toISOString() })
@@ -484,12 +376,8 @@ export async function POST(req: Request) {
           try {
             await deductInventoryForOrder(orderId, items);
           } catch (err) {
-            // Release the claim so Stripe's retry deducts; the ledger insert is all-or-nothing.
             await admin.from("orders").update({ inventory_deducted_at: null }).eq("id", orderId);
             const message = err instanceof Error ? err.message : String(err);
-            // Oversold: a PAID order can't be fulfilled from stock. Flag it loudly
-            // for a human to refund/reconcile (the dead-letter + 500 retry happens
-            // via CriticalWebhookError below) instead of silently overselling.
             await admin.from("orders").update({ needs_attention: true }).eq("id", orderId);
             await addOrderTimelineEvent(
               orderId,
@@ -507,7 +395,6 @@ export async function POST(req: Request) {
           }
         }
 
-        // Step 3: Auto-create mp-config responses (already idempotent internally)
         const orderItemsForSync = (order.order_items ?? []) as Array<{
           id: string;
           variant_id: string;
@@ -522,7 +409,6 @@ export async function POST(req: Request) {
           console.error(`[stripe/webhook] MP config creation failed for order ${orderId}:`, err);
         }
 
-        // Step 4: Increment coupon usage (once — only the delivery that confirmed)
         if (justConfirmed && order.coupon_id) {
           const { incrementCouponUsage } = await import("@/lib/ecommerce/discounts");
           let counted = true;
@@ -542,7 +428,6 @@ export async function POST(req: Request) {
           }
         }
 
-        // Step 5: Update customer stats
         if (order.customer_id) {
           try {
             await updateCustomerStats(order.customer_id);
@@ -551,7 +436,6 @@ export async function POST(req: Request) {
           }
         }
 
-        // Step 6: Add timeline event (once — only the delivery that confirmed)
         if (justConfirmed) {
           await addOrderTimelineEvent(
             orderId,
@@ -559,11 +443,6 @@ export async function POST(req: Request) {
             "Payment confirmed via Stripe",
             { stripe_session_id: session.id, payment_intent: paymentIntent }
           );
-          // The Visit that paid (ADR 0007), found through the Order's Customer
-          // or email: Stripe's delivery carries no Visitor cookie. A shop
-          // checkout only. A Staff order or a readjustment fee (both carry a
-          // `purpose`) was sold by a person, not by the Visit that opened its
-          // link. Never fails the webhook.
           if (!session.metadata?.purpose) {
             await recordPaidOrderVisit(admin, {
               orderId,
@@ -573,29 +452,19 @@ export async function POST(req: Request) {
           }
         }
 
-        // Step 7: Clear cart if cart token in metadata
         const cartToken = session.metadata?.cart_token;
         if (cartToken) {
           await admin.from("carts").delete().eq("token", cartToken);
         }
 
-        // Step 8: Send order-confirmation + payment-receipt emails. On every
-        // delivery, not only the confirming one: order_emails sends each at most
-        // once, so a retry after a later step failed still sends them.
         try {
           await sendOrderConfirmedEmails(orderId, order, admin);
         } catch (err) {
           console.error(`[stripe/webhook] Order emails failed for ${orderId}:`, err);
         }
 
-        // Step 8b: make the courier label Staff print for the box (ADR 0044),
-        // after the response so a slow courier never holds up the payment. An
-        // order with a label, or nothing to ship, is left alone.
         scheduleAutoLabel(admin, orderId);
 
-        // Step 9: a paid Re-adjustment (ADR 0024) — the money is in, so put the
-        // visit on the calendar. Idempotent on the booking's calendar event, so a
-        // replay writes nothing. Critical: money with no booked visit must retry.
         const readjustmentBookingId = session.metadata?.readjustment_booking_id;
         if (session.metadata?.purpose === READJUSTMENT_PURPOSE && readjustmentBookingId) {
           try {
@@ -617,13 +486,8 @@ export async function POST(req: Request) {
         break;
       }
 
-      // The delayed payment never settled. Without this the order sits `pending`
-      // forever: `expired` never fires for a session that completed, so nothing
-      // else would ever close it out.
       case "checkout.session.async_payment_failed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        // Keyed on stripe_session_id like the `expired` case below, not on
-        // metadata — the column is stored and indexed, and survives metadata edits.
         const { data: order } = await admin
           .from("orders")
           .select("id, status")
@@ -632,7 +496,6 @@ export async function POST(req: Request) {
 
         if (!order) break;
 
-        // Never clobber an order that got paid another way.
         if (order.status === "pending") {
           await admin
             .from("orders")
@@ -647,9 +510,6 @@ export async function POST(req: Request) {
           );
         }
 
-        // Points reserved for it come back (ADR 0030 (j)). Also on a replay,
-        // in case the first delivery failed here: release_points writes at
-        // most once, and never for a paid Order.
         await releaseOrderPoints(admin, order.id);
 
         break;
@@ -658,8 +518,6 @@ export async function POST(req: Request) {
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        // A Re-adjustment Checkout that lapsed unpaid releases its slot hold
-        // (ADR 0024); the Order below is cancelled exactly like a shop order's.
         if (
           session.metadata?.purpose === READJUSTMENT_PURPOSE &&
           session.metadata?.readjustment_booking_id
@@ -667,10 +525,6 @@ export async function POST(req: Request) {
           await expireReadjustmentBooking(admin, session.metadata.readjustment_booking_id);
         }
 
-        // A Staff order's Checkout lapsing is not the end of its Payment link
-        // (ADR 0048): the link opens a new session next time, and only the
-        // link's own expiry cancels the Order (the daily job). It holds no
-        // points, so there is nothing below to give back.
         if (session.metadata?.purpose === STAFF_ORDER_PURPOSE) break;
 
         const { data: order, error: expiredError } = await admin
@@ -699,9 +553,6 @@ export async function POST(req: Request) {
           );
         }
 
-        // The Checkout lapsed unpaid: points reserved for it come back
-        // (ADR 0030 (j)). A replay writes nothing, and a paid Order never
-        // gives them back.
         await releaseOrderPoints(admin, order.id);
 
         break;
@@ -732,11 +583,9 @@ export async function POST(req: Request) {
 
         const wasFullyRefunded = order.status === "refunded";
 
-        // Record each SUCCEEDED refund as a signed ledger row, idempotent on the
-        // refund id. A re-delivered event records nothing new and is a no-op.
-        // ponytail: relies on charge.refunds.data (Stripe returns the latest ~10).
-        // Ceiling: an order with >10 distinct refunds could miss older ids on a
-        // late redelivery. Upgrade path: handle refund.* events directly.
+        // ponytail: relies on charge.refunds.data (Stripe returns the latest ~10). Ceiling: an
+        // order with >10 distinct refunds could miss older ids on a late redelivery. Upgrade path:
+        // handle refund.* events directly.
         const refunds = (charge.refunds?.data ?? []).filter((r) => r.status === "succeeded");
         let newlyRecorded = 0;
         const recordedNow: Stripe.Refund[] = [];
@@ -756,9 +605,6 @@ export async function POST(req: Request) {
           if (recorded) {
             newlyRecorded++;
             recordedNow.push(r);
-            // If this refund was issued for an RMA (slice 06), settle it now that
-            // the money has moved. Idempotent + best-effort: a redelivered event
-            // no-ops (canTransition false) and RMA settlement never breaks money.
             const rmaId = r.metadata?.rma_request_id;
             if (rmaId) {
               try {
@@ -772,14 +618,9 @@ export async function POST(req: Request) {
 
         if (newlyRecorded === 0) break;
 
-        // Derive money state from the ledger: partially_refunded unless fully
-        // refunded. Refunds NEVER auto-restock — restocking is a deliberate
-        // manual action linked to the refund (slice 08).
         const state = await rollupOrderMoney(admin, order.id);
         const nowFullyRefunded = state.status === "refunded";
 
-        // After the rollup: the clawback reads amount_refunded to tell a
-        // refund already in the Order's earn base from a later one.
         await clawbackRefundPoints(admin, order.id, recordedNow);
 
         await addOrderTimelineEvent(
@@ -795,17 +636,8 @@ export async function POST(req: Request) {
           }
         );
 
-        // On FULL refund only (first transition), reverse coupon usage and
-        // recompute customer lifetime stats so reporting and coupon limits stay
-        // accurate. Partial refunds leave both untouched.
         if (nowFullyRefunded && !wasFullyRefunded) {
-          // Its label was made at payment (ADR 0044): cancel it while the parcel
-          // is still here, so the courier fee comes back. After the response.
           scheduleLabelCancel(admin, order.id);
-          // Void the partner's commission on the whole reversed sale (#77). The
-          // RMA path voids per-item; this covers a full refund with NO RMA link
-          // (e.g. a staff Stripe-dashboard refund), which would otherwise pay
-          // commission on a fully-refunded order. Idempotent + best-effort.
           if (order.partner_id) {
             try {
               await voidCommissionsForOrder(admin, order.id);
@@ -830,7 +662,6 @@ export async function POST(req: Request) {
           }
         }
 
-        // Refund email (non-critical) — only when a new refund was recorded.
         try {
           await sendRefundEmail(order.id, order, state.amountRefunded, admin);
         } catch (err) {
@@ -844,7 +675,6 @@ export async function POST(req: Request) {
         const intent = event.data.object as Stripe.PaymentIntent;
         const orderId = intent.metadata?.order_id ?? null;
 
-        // Fall back to payment_reference in case the order already stored it.
         const { data: order } = orderId
           ? await admin
               .from("orders")
@@ -859,13 +689,8 @@ export async function POST(req: Request) {
 
         if (!order) break;
 
-        // Only while still awaiting payment — never a confirmed/paid order.
         if (order.status !== "pending") break;
 
-        // A declined attempt is not the end of the Order: the customer can try
-        // another card in the same Checkout, which stays open. The status stays
-        // `pending`, so nothing (the points sweep included) treats the Order as
-        // over while it can still be paid; only the timeline records the attempt.
         const failureMessage =
           intent.last_payment_error?.message ?? "Payment failed";
 
@@ -882,12 +707,6 @@ export async function POST(req: Request) {
         break;
       }
 
-      // Stripe cancels an uncaptured Authorization hold on its own after seven
-      // days (`cancellation_reason: "automatic"`). Our own releases (decline,
-      // cancel, re-submit) carry no reason and are recorded where they happen.
-      // Nothing can be captured from that card any more, so the intent is
-      // dropped: Accept then takes the whole total as a Balance payment instead
-      // of failing to capture on every try.
       case "payment_intent.canceled": {
         const intent = event.data.object as Stripe.PaymentIntent;
         if (intent.cancellation_reason !== "automatic") break;
@@ -943,8 +762,6 @@ export async function POST(req: Request) {
           }
         );
 
-        // Disputes are revenue-affecting and time-sensitive (the evidence
-        // deadline is days away): log loudly and tell the Staff group.
         console.error(
           `[stripe/webhook] DISPUTE opened for order ${order.id} (dispute ${dispute.id}, reason: ${dispute.reason})`
         );
@@ -972,22 +789,16 @@ export async function POST(req: Request) {
 
         if (!order) break;
 
-        // Only the terminal outcomes move money; intermediate closes are ignored.
         if (dispute.status !== "won" && dispute.status !== "lost") break;
 
-        // Dispute fee (e.g. SGD ~20) is charged regardless of outcome, surfaced
-        // via the dispute's balance transactions.
         const feeMinor = (dispute.balance_transactions ?? []).reduce(
           (sum, bt) => sum + (bt.fee ?? 0),
           0
         );
 
         if (dispute.status === "won") {
-          // Funds were only ever held by Stripe, now returned — our captured
-          // charge stands, so no ledger debit. Restore the active status.
           await admin.from("orders").update({ status: "confirmed" }).eq("id", order.id);
         } else {
-          // Lost: the charge is reversed. Record the loss against the ledger.
           await recordLedgerEntry(admin, order.id, {
             type: "dispute_loss",
             amount: -(dispute.amount / 100),
@@ -1040,9 +851,6 @@ export async function POST(req: Request) {
         if (order) {
           await admin.from("orders").update({ needs_attention: true }).eq("id", order.id);
 
-          // If we optimistically recorded this refund as succeeded earlier, post a
-          // compensating adjustment so the ledger reflects that the money never
-          // actually moved, then recompute the rollup.
           const { count } = await admin
             .from("order_payments")
             .select("id", { count: "exact", head: true })
@@ -1065,7 +873,6 @@ export async function POST(req: Request) {
           });
         }
 
-        // Dead-letter for visibility regardless of whether we matched an order.
         await recordWebhookFailure(admin, event, detail);
         console.error(`[stripe/webhook] ${detail}`);
 
@@ -1073,16 +880,12 @@ export async function POST(req: Request) {
       }
 
       default:
-        // Return 200 for all unhandled events
         break;
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Webhook handler error";
     console.error(`[stripe/webhook] Error handling ${event.type}:`, message);
 
-    // Every unexpected failure is dead-lettered and answered with 500 so Stripe
-    // retries (for up to three days). A 200 here would lose the event for good:
-    // a paid Order never confirmed, or confirmed but never fulfilled.
     await recordWebhookFailure(admin, event, message);
     return NextResponse.json(
       { ok: false, error: err instanceof CriticalWebhookError ? message : "Webhook handler error" },

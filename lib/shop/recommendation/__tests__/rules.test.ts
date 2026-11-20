@@ -45,7 +45,7 @@ describe("recommendFromPreferences", () => {
   it("drops filling lines whose subtype is unavailable", () => {
     const result = recommendFromPreferences(
       { sleep_position: "side", body_type: "large", firmness: "firm" },
-      [{ item_id: 4, subtype: "6D-L", name: "6D Large" }], // missing 6D-L+
+      [{ item_id: 4, subtype: "6D-L", name: "6D Large" }],
     );
     expect(result.recommended_size).toBe("L");
     expect(result.filling_lines.map((l) => l.subtype)).toEqual(["6D-L"]);
@@ -102,7 +102,7 @@ describe("recommendFromMeasurements", () => {
       },
     };
     const result = recommendFromMeasurements(input, FILLINGS);
-    expect(result.recommended_size).toBe("L"); // large build + side sleeper
+    expect(result.recommended_size).toBe("L");
     expect(result.explanation).toContain("Shoulder width 50cm");
   });
 });

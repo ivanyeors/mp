@@ -5,12 +5,6 @@ import { setMarketingEmailRpc } from "@/lib/marketing-consent/__tests__/fake-con
 import { recordCheckoutConsent } from "@/lib/marketing-consent/consent";
 import { MARKETING_BOX_LABEL, describeConsent } from "@/lib/marketing-consent/state";
 
-/**
- * The checkout box, ticked by default (ADR 0039): ticked, it subscribes a
- * Customer nobody has asked, with source `checkout`, and nobody else; unticked,
- * it changes nothing; a failure never stops the sale.
- */
-
 let db: AftercareFakeDb;
 const client = () => fakeAftercareDb(db, { set_marketing_email: setMarketingEmailRpc }) as unknown as SupabaseClient;
 const customer = (id: string) => db.customers.find((c) => c.id === id)!;

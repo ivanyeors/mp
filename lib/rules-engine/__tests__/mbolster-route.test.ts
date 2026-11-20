@@ -4,11 +4,6 @@ import { validateForPublish } from "../validate";
 import { DEFAULT_TEMPLATE_IDS, premiumHandGraph, premiumSampleInputs } from "../fixtures";
 import type { RuleGraphJson } from "../types";
 
-/**
- * The Premium graph's Mbolster cross-sell (ADR 0026), wired exactly as on the
- * live canvas: the bolster answer feeds a Match whose `true` value fires the
- * Flow route that starts the Paired build stepper.
- */
 function withBolsterRoute(graph: RuleGraphJson): RuleGraphJson {
   return {
     nodes: [

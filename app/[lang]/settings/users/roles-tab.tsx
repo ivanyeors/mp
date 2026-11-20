@@ -29,7 +29,6 @@ import {
 import { canDeleteRole, canEditRole, type PolicyActor } from "@/lib/auth/role-policy";
 import { samePermissions, togglePermission } from "@/lib/auth/permission-matrix";
 
-/** The catalog grouped as the sidebar is, Telegram last; adding an entry adds a row. */
 const GROUPS: { group: string; entries: PermissionEntry[] }[] = (() => {
   const out: { group: string; entries: PermissionEntry[] }[] = [];
   for (const e of PERMISSION_CATALOG as readonly PermissionEntry[]) {
@@ -45,11 +44,6 @@ const held = (role: RoleRow): Set<Permission> =>
 
 type Cell = { checked: boolean; disabled: boolean; why: string | null };
 
-/**
- * Roles tab: the permission matrix. One row per Admin Panel page and Telegram
- * action, one column per role. Owner and Admin are locked to everything;
- * custom roles are edited per column and saved per column.
- */
 export function RolesTab({
   actor,
   roles,
@@ -147,7 +141,6 @@ export function RolesTab({
         </Button>
       </div>
 
-      {/* Phone: pick a role, then its grouped checklist. */}
       {mobileRole ? (
         <div className="space-y-3 sm:hidden">
           <div className="flex items-center gap-2">
@@ -207,7 +200,6 @@ export function RolesTab({
         </div>
       ) : null}
 
-      {/* Desktop and tablet: the full matrix, page labels pinned while roles scroll. */}
       <div className="hidden min-w-0 overflow-x-auto rounded-lg border sm:block">
         <table className="w-full border-collapse text-sm">
           <thead>

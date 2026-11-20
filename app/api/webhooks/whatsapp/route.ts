@@ -41,7 +41,6 @@ import {
   recordAftercareDeliveryFailure,
 } from "@/lib/whatsapp/aftercare-notify";
 
-/** One auto-reply per phone per window, however many messages it sends. */
 const AUTO_REPLY_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 
 export const runtime = "nodejs";
@@ -67,10 +66,6 @@ export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-hub-signature-256");
   if (!verifyWhatsAppSignature(rawBody, signature)) {
-    // Meta signs with the secret of the app the webhook is set up on. If that is
-    // not WHATSAPP_APP_SECRET, every guest reply dies here and the guest just
-    // hears nothing — this line is the only trace. scripts/whatsapp-preflight.ts
-    // checks the secret against the app.
     console.warn(
       "[whatsapp/webhook] signature rejected",
       signature ? "(signed with another secret)" : "(unsigned)",
@@ -87,7 +82,6 @@ export async function POST(req: Request) {
 
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
 
-  // A send Meta accepted but could not deliver only ever shows up here.
   for (const f of parseFailedDeliveries(payload, phoneNumberId)) {
     console.error("[whatsapp/webhook] delivery failed", f.recipient, f.reason);
     try {
@@ -95,8 +89,6 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("[whatsapp/webhook] record failure", e instanceof Error ? e.message : e);
     }
-    // An aftercare send (CRM slice 13) fails the same way, including a 131050
-    // "turned off marketing messages", which its ledger records by name.
     try {
       await recordAftercareDeliveryFailure(f.waId, f.reason);
     } catch (e) {
@@ -110,12 +102,7 @@ export async function POST(req: Request) {
   const stored = await getSiteSettings([...APPOINTMENT_SETTING_KEYS]);
   const settings = parseAppointmentSettings(stored);
 
-  // Always 200 to Meta after signature ok — process best-effort.
   for (const action of actions) {
-    // Meta redelivers until it gets a 200, and now and then twice regardless.
-    // The first delivery claims the message id; a repeat stops here. If the
-    // claim itself fails, act anyway — the status locks stop a double effect,
-    // and a lost Confirm is worse than a repeated "thanks".
     let fresh = true;
     try {
       fresh = await claimInboundMessage(action.messageId, action.fromE164, action.kind);
@@ -124,9 +111,6 @@ export async function POST(req: Request) {
     }
     if (!fresh) continue;
 
-    // Admin kill switch (Settings → Appointments): neither reply nor mutate
-    // the reminder while notifications are off. The message is still on
-    // record, so the switch cannot be mistaken for a broken webhook.
     if (!settings.whatsappEnabled) {
       await recordInboundOutcome(action.messageId, "notifications off").catch(() => {});
       continue;
@@ -145,22 +129,12 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-/**
- * Answer one inbound message. Every path replies — a guest who taps or types
- * something and hears nothing assumes it worked, or that nobody is there.
- * Returns what happened, for the inbound record.
- */
 async function handleAction(
   action: ReturnType<typeof parseInboundActions>[number],
   settings: AppointmentSettings,
 ): Promise<string> {
   const from = action.fromE164;
 
-  // A request to stop aftercare messages (CRM slice 13). Answered before the
-  // reminder lookup, every time, with no cooldown, and nothing is switched
-  // off: the inbound row (kind `stop`) is what Staff see as an open request,
-  // and it pauses aftercare WhatsApp until a later preference change. An open
-  // appointment reminder for this number is left exactly as it was.
   if (action.kind === "stop") {
     await sendText(from, guestText.stopReply());
     return "stop: replied";
@@ -169,16 +143,10 @@ async function handleAction(
   const row = await getOpenReminderByPhone(from);
 
   if (action.kind === "unknown") {
-    // Mid-reschedule, the guest is most likely trying to pick a time: say how,
-    // every time, rather than wait out the cooldown.
     if (row?.status === "offering_slots") {
       await sendText(from, guestText.slotHint());
       return "unknown: slot hint";
     }
-    // Free text, a photo, a voice note: nothing here can act on it, and nobody
-    // will see it. Say so and point at the staffed line, so the guest is not
-    // left waiting on an answer that never comes. The inbound message opens the
-    // 24h service window, so free text is allowed.
     if (!(await claimAutoReply(from, AUTO_REPLY_COOLDOWN_MS))) {
       return "unknown: auto-reply cooling down";
     }
@@ -187,8 +155,6 @@ async function handleAction(
   }
 
   if (!row) {
-    // A real intent with nothing upcoming to apply it to: already cancelled,
-    // already happened, or booked but not yet reminded.
     await sendText(from, guestText.noUpcoming());
     return `${action.kind}: no upcoming appointment`;
   }
@@ -197,17 +163,11 @@ async function handleAction(
   if (action.kind === "reschedule") return offerNewTimes(row, settings);
   if (action.kind === "slot") return pickSlot(row, action.slotId, settings);
 
-  // "none of these" only means cancel while a list of times is open; "cancel"
-  // always does.
   if (action.kind === "reject_slots" && row.status !== "offering_slots") {
     await sendText(from, guestText.stillOn(row.starts_at));
     return "reject_slots: no list open";
   }
 
-  // A bare "cancel" right after an aftercare message most likely means "stop
-  // these", not "cancel my re-adjustment": ask instead (CRM slice 13). If the
-  // aftercare lookup itself fails, ask too — a question is recoverable, a
-  // cancelled booking less so.
   if (action.kind === "cancel" && action.bare) {
     let ask: boolean;
     try {
@@ -260,8 +220,6 @@ async function offerNewTimes(row: ReminderRow, settings: AppointmentSettings): P
     sgtLocalToUtcMs(endDay.y, endDay.m, endDay.d, 0, 0),
   ).toISOString();
 
-  // A slot someone is paying for (re-adjustment Checkout open) is not on the
-  // calendar yet but is taken all the same (ADR 0024).
   const [calendarBusy, holds] = await Promise.all([
     freeBusy(timeMin, timeMax),
     liveSlotHolds(timeMin, timeMax),
@@ -273,7 +231,6 @@ async function offerNewTimes(row: ReminderRow, settings: AppointmentSettings): P
     return "reschedule: no slots";
   }
 
-  // Append a reject row via text instruction (list has no native reject).
   const waId = await sendSlotList(row.phone, slots);
   await sendText(row.phone, guestText.slotListNone());
 
@@ -305,14 +262,12 @@ async function pickSlot(
   const picked =
     offered.find((s) => s.id === slotId) ??
     parseSlotId(slotId, settings.durationMinutes);
-  // The list may be a day old: someone else can have booked that time since.
   if (!picked || !(await isSlotFree(picked.startIso, picked.endIso))) {
     await sendText(row.phone, guestText.slotTaken());
     return "slot: taken";
   }
 
   await patchEventTimes(row.calendar_event_id, picked.startIso, picked.endIso);
-  // A Re-adjustment booking's times follow its event (ADR 0024).
   await moveReadjustmentByEvent(row.calendar_event_id, picked.startIso, picked.endIso);
 
   const ok = await updateReminder(
@@ -333,7 +288,6 @@ async function pickSlot(
 
 async function cancelByGuest(row: ReminderRow, settings: AppointmentSettings): Promise<string> {
   try {
-    // The guest just wrote to us, so the 24h window is open: free text.
     const outcome = await cancelAppointment(row, settings, { cause: "guest", within24h: true });
     return outcome.kind === "cancelled" ? "cancelled" : `cancel: ${outcome.kind}`;
   } catch (e) {

@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { resolveUsages } from "@/lib/media/image-usages";
 
-/** Mirrors POST /api/shop/products/[id]/images body (slice 11). */
 const CreateImageSchema = z.object({
   url: z.string().min(1),
   alt_text: z.string().nullable().optional().default(null),

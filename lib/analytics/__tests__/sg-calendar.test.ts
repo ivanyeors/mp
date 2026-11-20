@@ -11,7 +11,6 @@ import {
 
 describe("Singapore months", () => {
   it("files an instant under its Singapore date, not its UTC one", () => {
-    // 1am on 1 May in Singapore is still 30 April in UTC.
     expect(sgDate("2026-04-30T17:00:00Z")).toBe("2026-05-01");
     expect(sgMonthKey("2026-04-30T17:00:00Z")).toBe("2026-05");
     expect(sgMonthKey("2026-04-30T15:59:59Z")).toBe("2026-04");
@@ -28,7 +27,6 @@ describe("Singapore months", () => {
   });
 
   it("reads back the months a Singapore browser sent, on a server in any timezone", () => {
-    // What the client sent for May–Oct before this fix: local month bounds in SGT.
     const range = sgMonthRange("2026-04-30T16:00:00.000Z", "2026-10-31T15:59:59.999Z");
     expect(range.fromMonth).toBe("2026-05");
     expect(range.toMonth).toBe("2026-10");

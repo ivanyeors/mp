@@ -1,14 +1,3 @@
-// ============================================================
-// Customer account emails: the Claim bonus
-// (PRD-loyalty-points slice 05; ADR 0030 f, g)
-// ============================================================
-//
-// Transactional: it confirms the points the customer's own sign-in just
-// added, so it is sent once, whatever their Marketing consent, through the
-// customer_emails ledger (`account.claim_bonus`). It names no old platform
-// (owner, 2026-10-21). Its words are editable on Email templates. Campaign
-// mail is not sent from here.
-
 import { renderEmailShell } from "./base";
 import { infoList, link, paragraph, paragraphHtml } from "./components";
 import { defaultEmailCopy, defineEmailCopy, fillCopy, type EmailCopy } from "./copy";
@@ -49,7 +38,6 @@ export interface ClaimBonusEmailData {
   firstName: string | null;
   points: number;
   shopUrl: string;
-  /** The points terms, /[lang]/points (PRD-loyalty-points slice 08). */
   termsUrl: string;
 }
 

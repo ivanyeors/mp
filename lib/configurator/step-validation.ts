@@ -1,20 +1,14 @@
-/** Hybrid CTA enablement + submit-time field error maps for configurator steps. */
-
 export type FieldCheck = {
   key: string;
-  /** Any input present (counts toward enabling the CTA). */
   touched: boolean;
-  /** Satisfies the required rule for this field. */
   valid: boolean;
   message?: string;
 };
 
-/** Empty step → disabled; any field touched → enabled (validate on submit). */
 export function hybridCtaEnabled(fields: FieldCheck[]): boolean {
   return fields.some((f) => f.touched);
 }
 
-/** Build error map for every invalid required field. */
 export function buildFieldErrorMap(fields: FieldCheck[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const f of fields) {
@@ -23,7 +17,6 @@ export function buildFieldErrorMap(fields: FieldCheck[]): Record<string, string>
   return out;
 }
 
-/** Drop errors for fields that are now valid (no remount needed). */
 export function pruneFieldErrors(
   errors: Record<string, string>,
   fields: FieldCheck[],

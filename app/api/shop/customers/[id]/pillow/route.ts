@@ -18,7 +18,6 @@ const LinkSchema = z.object({
   fillingTemplateId: z.number().int().positive().nullable(),
 });
 
-/** The pillow as the card draws it, after a change: the fittings are read again so the match is current. */
 async function pillowResponse(customerId: string) {
   const loaded = await reloadCustomerPillow(customerId);
   if (!loaded.ok) return NextResponse.json({ error: loaded.error }, { status: 500 });
@@ -30,14 +29,6 @@ async function customerExists(id: string): Promise<boolean> {
   return Boolean(data);
 }
 
-/**
- * PUT /api/shop/customers/[id]/pillow — link a pillow to the Customer: a size,
- * and the active pillow Filling Template it is built with (or none, when only
- * the size is known). It replaces the fitting's match on the Customer page
- * (ADR 0042 j). It writes `customer_pillows` and nothing else: no Result, no
- * stock, no price. A Re-adjustment's mix on the link is replaced too: the
- * pillow is drawn from the template as it is now (ADR 0042 l).
- */
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
@@ -98,10 +89,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   return pillowResponse(id);
 }
 
-/**
- * DELETE /api/shop/customers/[id]/pillow — remove the link: the Customer page
- * goes back to the latest Fitting record's match.
- */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

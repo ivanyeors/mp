@@ -6,14 +6,6 @@ import { CampaignDraftSchema, mentionsPoints, variablesInEmail } from "../rules"
 import { campaignFitChecks } from "../fit-checks";
 import { APPROVED_PLAYBOOKS, PLAYBOOK_DRAFTS, PLAYBOOK_STARTERS, STARTERS, starterDraft } from "../starters";
 
-/**
- * The CRM's Playbooks (PRD-crm-retention-loop slice 07): a ready-written
- * campaign per stage. Each saves as written once its Segment is chosen, sends
- * to a Segment the Customers list can save, never offers a discount, asks for
- * a review or rating, or carries an aftercare message, and is offered only
- * once the owner has approved its words.
- */
-
 const SEGMENT = "00000000-0000-4000-8000-0000000000aa";
 const wordsOf = (id: string) => {
   const p = PLAYBOOK_DRAFTS.find((x) => x.id === id)!;
@@ -112,14 +104,11 @@ describe("the Playbooks", () => {
   });
 
   it("How your pillow is made offers a visit only where it says Singapore, by the send's own fit check", () => {
-    // A Lead whose country is unknown, as most are: the in-store fit check's case.
     const lead = [{ customerId: "c1", firstName: "Ann", lastName: "Tan", pointsBalance: 0, pillow: null, locale: "en-US", shipCountry: null, bought: [], lastPurchaseAt: null }];
     const fitFacts = { origin: "https://custom.mpillow.com", productClasses: {}, now: new Date("2026-11-18T00:00:00Z") };
     const d = { ...starterDraft(PLAYBOOK_DRAFTS.find((p) => p.id === "playbook_how_its_made")!), segmentId: SEGMENT };
     const inStore = (e: typeof d) => campaignFitChecks(e, lead, fitFacts).some((c) => c.key === "fit_in_store");
-    // The subject and the preview line, on their own: no visit offered to everyone.
     expect(inStore({ ...d, content: null, body: "" })).toBe(false);
-    // Each block the check reads as an in-store offer says it is for Singapore.
     for (const b of d.content!.blocks) {
       if (!inStore({ ...d, content: { ...d.content!, blocks: [b] } })) continue;
       const said = contentWords({ ...d.content!, blocks: [b] }).join(" ");
@@ -131,7 +120,6 @@ describe("the Playbooks", () => {
     const words = wordsOf("playbook_how_its_made");
     expect(words).toMatch(/in Singapore, you can book an appointment for a fitting/);
     expect(words).not.toMatch(/money pillow/i);
-    // Each claim is a fact: the measuring, the height, both sleep positions, washable and replaceable layers.
     const facts = MPILLOW_FACTS.join(" ");
     for (const claim of ["shoulder width", "height and width", "back and side sleeping", "washable", "replaced without replacing the whole pillow", "customise", "book an appointment for a fitting"]) {
       expect(words.toLowerCase(), claim).toContain(claim);

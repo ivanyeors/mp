@@ -12,17 +12,6 @@ import { POINTS_KIND_LABEL } from "@/lib/points/kinds";
 import { formatDollars, pointsToDollars } from "@/lib/points/value";
 import { stepEndLabel, stepStartLabel, welcomeLeftShare, type WelcomeGrantReason, type WelcomeOffer } from "@/lib/points/welcome";
 
-/**
- * The Explore page's popup: the points flow (ADR 0030, amendment of
- * 2026-11-17). What it asks, then what the visitor holds.
- *
- * Before the claim it shows points only, never what they are worth (owner,
- * 2026-11-16); the value appears with the balance once they have claimed. The
- * count of bonuses left is the database's count, on a bar that only goes
- * down. Pressing Claim is the consent to our emails, said in the line under
- * the button at a size people can read; there is no box.
- */
-
 export type ClaimStage = "offer" | "working" | "done" | "error";
 
 const number = (n: number) => n.toLocaleString("en-SG");
@@ -34,7 +23,6 @@ const GIFT_LABEL: Record<ExploreGiftKind, string> = {
   explore_flower: "Flowers picked",
 };
 
-/** What the popup says above the balance, by how the claim ended. */
 const DONE_LINE: Record<WelcomeGrantReason | "balance", string> = {
   granted: "Your welcome bonus is in.",
   migrated: "Welcome back. Your points came with you.",
@@ -45,7 +33,6 @@ const DONE_LINE: Record<WelcomeGrantReason | "balance", string> = {
   balance: "Here is what you have.",
 };
 
-/** The bonuses left at the open step: a bar that only ever empties. */
 export function LeftMeter({ offer, className }: { offer: WelcomeOffer; className?: string }) {
   if (!offer.current) return null;
   const share = welcomeLeftShare(offer);
@@ -79,10 +66,6 @@ export function LeftMeter({ offer, className }: { offer: WelcomeOffer; className
   );
 }
 
-/**
- * The balance, counted up once when it appears. Mounted only when there is a
- * balance to show, so it starts from nothing each time the popup reaches it.
- */
 function PointsCount({ points }: { points: number }) {
   const [progress, setProgress] = useState(() =>
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : 0,
@@ -138,10 +121,8 @@ export function ExploreClaimDialog({
   offer: WelcomeOffer | null;
   signedIn: boolean;
   viewer: ExploreViewer | null;
-  /** How the claim ended, or "balance" when the popup only shows what they hold. */
   doneReason: WelcomeGrantReason | "balance";
   rules: { minRedeem: number; maxShare: number };
-  /** Where a sign-in comes back to, to finish the claim. */
   claimPath: string;
   links: { home: string; points: string; privacy: string };
   onClaim: () => void;

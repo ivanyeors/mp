@@ -19,12 +19,6 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * TikTok sends the admin back here with a one-time code. Exchange it, store
- * the tokens (social_channel_tokens), and — on the production deployment only,
- * so a preview can never steal the live webhook — point TikTok's message
- * webhook at this site. Then back to the Users & permissions → Telegram tab with the outcome.
- */
 export async function GET(req: NextRequest) {
   let ctx;
   try {

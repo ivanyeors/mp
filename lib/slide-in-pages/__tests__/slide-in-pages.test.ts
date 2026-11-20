@@ -52,12 +52,6 @@ describe("sub page registry", () => {
   });
 });
 
-/**
- * Size Matters and Ambassadors were hand-built sheets before they moved onto the section
- * templates. Every string they showed must still reach the page (CONTEXT.md — content
- * preservation is non-negotiable), so collect every string the templates now render and
- * check each i18n string is among them.
- */
 describe("content kept when Size Matters and Ambassadors moved onto templates", () => {
   const rendered = (page: "size-matters" | "ambassadors", locale: (typeof SUPPORTED_LOCALES)[number]) => {
     const messages = slideMessages(getMessages(locale), page);
@@ -131,7 +125,6 @@ describe("slideInSectionViews", () => {
       row({ slug: "hero", position: 3 }),
     ];
     const views = slideInSectionViews("basic-mpillow", rows, "published");
-    // sizing-video at 0; hero (row) and size-guide (index 3) tie at 3 → config order.
     expect(views.map((v) => v.slug)).toEqual([
       HEADER_SLUG,
       "sizing-video",

@@ -11,7 +11,6 @@ export async function easyship<T = unknown>(
   return easyshipRequest<T>(config, path, { ...init, timeoutMs: SYNC_TIMEOUT_MS });
 }
 
-/** Follows `meta.pagination.next` until exhausted. */
 export async function easyshipList<T>(path: string, key: string): Promise<T[]> {
   const out: T[] = [];
   const sep = path.includes("?") ? "&" : "?";

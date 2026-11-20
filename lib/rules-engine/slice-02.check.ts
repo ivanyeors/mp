@@ -1,7 +1,3 @@
-/**
- * Slice 02 self-check: workbench mount, rules-engine gating, save/publish contract.
- * Run: npx tsx lib/rules-engine/slice-02.check.ts
- */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +16,6 @@ import { cmToInches, inchesToCm, roundCm } from "./units";
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 
-// --- Mount: pages + entry + React Flow workbench ---
 const flowPage =
   "app/[lang]/settings/product-builder/rules-engine/[flow]/page.tsx";
 const indexPage = "app/[lang]/settings/product-builder/rules-engine/page.tsx";
@@ -44,7 +39,6 @@ assert.match(
   /\/settings\/product-builder\/rules-engine/,
 );
 
-// --- Perm gating: rules-engine yes for owner, no for viewer ---
 assert.equal(roleHasPermission("owner", "rules-engine"), true);
 assert.equal(roleHasPermission("viewer", "rules-engine"), false);
 
@@ -59,7 +53,6 @@ for (const r of apiRoutes) {
   assert.match(read(r), /requireAdminContext\("rules-engine"\)/);
 }
 
-// Save contract: PUT body { graph }; Publish: POST → ok | errors[]
 const draftRoute = read("app/api/settings/rules-engine/[flow]/route.ts");
 assert.match(draftRoute, /export async function PUT/);
 assert.match(draftRoute, /graph:\s*GraphSchema|z\.object\(\{\s*graph/);
@@ -77,12 +70,10 @@ const restoreRoute = read(
 );
 assert.match(restoreRoute, /restoreToDraft/);
 
-// --- Flow labels (breadcrumbs / switcher) ---
 assert.equal(FLOW_LABELS["premium-mpillow"], "Premium Mpillow");
 assert.equal(FLOW_LABELS["basic-mpillow"], "Basic Mpillow");
 assert.equal(FLOW_LABELS.mbolster, "Mbolster");
 
-// --- Type-checked ports ---
 assert.equal(inputValuePort("number"), "number");
 assert.equal(inputValuePort("enum"), "enum");
 assert.equal(sourcePort({ type: "size-output" }), "size");
@@ -96,11 +87,9 @@ assert.equal(canConnect("size", "signal"), false);
 assert.equal(canConnect("signal", "signal"), true);
 assert.equal(canConnect("enum", "enum"), true);
 
-// --- Units: Range bands authored inches ↔ canonical cm ---
 assert.equal(roundCm(inchesToCm(10)), 25.4);
 assert.ok(Math.abs(cmToInches(25.4) - 10) < 1e-9);
 
-// --- Test panel contract: evaluate() outputs for seeded Premium graph ---
 const graph = premiumHandGraph(DEFAULT_TEMPLATE_IDS);
 const result = evaluateOrThrow(
   "premium-mpillow",
@@ -112,7 +101,6 @@ assert.equal(result.templateId, DEFAULT_TEMPLATE_IDS.M);
 assert.ok(result.trace.some((t) => t.nodeId === "rng-shoulder"));
 assert.ok(result.firedTerminals.some((t) => t.nodeId === "tpl-m"));
 
-// Workbench must call the same evaluate (not a parallel client engine)
 assert.match(read(workbench), /evaluate\(flow,\s*graph,\s*inputs\)/);
 
 console.log("rules-engine slice 02 self-check ok");

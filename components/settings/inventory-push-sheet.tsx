@@ -51,11 +51,6 @@ async function fetchUnpushedFamilies(): Promise<InventoryFamily[]> {
   return ((json.rows ?? []) as InventoryFamily[]).filter((f) => f.push !== "pushed");
 }
 
-/**
- * Products → Add from Inventory: every cover, case, protector and accessory in
- * Inventory that is not in Products yet (or has sizes the product lacks). Each
- * is pushed through the price check, or sent to Costings first.
- */
 export function InventoryPushSheet({
   open,
   onOpenChange,
@@ -75,7 +70,6 @@ export function InventoryPushSheet({
             yet. Each needs a cost and MSRP in Costings, then a price check.
           </SheetDescription>
         </SheetHeader>
-        {/* Mounted only while open, so every opening reads Inventory afresh. */}
         <PushList onPushed={onPushed} />
       </SheetContent>
     </Sheet>
@@ -87,7 +81,6 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const to = (href: string) => withLocale(href, locale);
 
-  /** Null until the first read lands. */
   const [families, setFamilies] = useState<InventoryFamily[] | null>(null);
   const [pushing, setPushing] = useState<InventoryFamily | null>(null);
 

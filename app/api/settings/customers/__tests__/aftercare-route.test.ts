@@ -1,15 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Customers → Settings → Aftercare (CRM slice 07). Seeing the card needs
- * `customers`; changing a setting needs `customers-edit`. Each value is its own
- * `site_settings` key, every change is audited, and a link that is not https
- * is refused. Real permission checks, through the shared fake admin; the card's
- * numbers (a dry run of the daily job) are stubbed here and tested in
- * lib/aftercare.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -27,7 +18,6 @@ vi.mock("@/lib/supabase/server", async () => {
       return {
         from: (table: string) => {
           const q = fake.from(table) as ReturnType<typeof fake.from> & { upsert?: unknown };
-          // The shared fake has no upsert; site_settings is keyed by `key`.
           q.upsert = async (rows: Record<string, unknown>[]) => {
             const list = (h.db[table] ??= []);
             for (const row of rows) {
@@ -98,8 +88,6 @@ beforeEach(() => {
       role("orders-only", ["orders"]),
     ],
     admin_users: [],
-    // As seeded by 20261020124000_customer_review_requests.sql and
-    // 20261020133000_checkup_reminders.sql.
     site_settings: [
       { key: "review_requests_enabled", value: "false" },
       { key: "review_request_days_after", value: "14" },

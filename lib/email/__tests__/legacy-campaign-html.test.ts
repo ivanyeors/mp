@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -9,22 +8,9 @@ import { renderCampaignFor, renderCampaignPreview } from "@/lib/email-campaigns/
 import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/rules";
 import type { RenderedEmail } from "../types";
 
-/**
- * Campaigns written as plain text keep their renderer, byte for byte
- * (PRD-campaign-email-editor decision 5, slice 03). These files were written
- * from the renderer before typed blocks existed, so a change to the shell,
- * the components or the sender that reaches a legacy campaign shows here.
- *
- * The `.txt` files are for good: a legacy campaign's words, order and links
- * never change. The `.html` files may change only where slice 15 improves the
- * shell's light and dark rules for every email: it underlined the footer's
- * links, and changed nothing else.
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 const UNSUB = `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=abc`;
 
-/** A legacy draft as stored: the plain-text body and one button. */
 const legacy = (over: Partial<CampaignDraft> = {}): CampaignDraft => ({ ...FIRST_CAMPAIGN_DRAFT, ...over });
 
 const send = (c: CampaignDraft, p: { firstName: string | null; locale?: "en-US" | "zh-CN"; claimUrl?: string | null }) =>
@@ -53,7 +39,6 @@ const CASES: [name: string, render: () => RenderedEmail][] = [
     "empty.preview",
     () =>
       renderCampaignPreview(
-        // An empty legacy draft: a message box, not blocks (a new campaign is blocks now).
         { ...EMPTY_CAMPAIGN_DRAFT, content: null, button: { target: "sign_in", label: "", url: null } },
         { origin: ORIGIN, firstName: "Ivan" },
       ),
@@ -62,7 +47,6 @@ const CASES: [name: string, render: () => RenderedEmail][] = [
   ["composed.hostile", () => renderComposedCampaignEmail(sampleComposedCampaign("hostile"))],
 ];
 
-// The footer's year is the clock's.
 beforeAll(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-29T00:00:00Z"));

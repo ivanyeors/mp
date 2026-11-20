@@ -10,14 +10,6 @@ import SlideInBuilder from "./slide-in-builder-client";
 
 export const runtime = "nodejs";
 
-/**
- * The Page Builder edits the landing page, or — with `?page=<key>` — one of the sub
- * pages it opens (CONTEXT.md — **Slide-in section**).
- *
- * Sections are read on the server so the builder mounts with its list instead of
- * fetching it after hydration. A failed read must not look like "no sections": leave
- * `initialData` undefined so the client runs its own fetch and surfaces the error.
- */
 export default async function PageBuilderRoute({
   params,
   searchParams,
@@ -34,7 +26,6 @@ export default async function PageBuilderRoute({
     const rows = await listSlideInRows(page).catch(() => null);
     return (
       <SlideInBuilder
-        // A different sub page is a different builder: drop the old one's state.
         key={page}
         page={page}
         initialData={
@@ -46,7 +37,6 @@ export default async function PageBuilderRoute({
     );
   }
 
-  // The builder edits the Section draft, so it mounts with drafts applied.
   const rows = await listLandingSectionRows().catch(() => null);
   return (
     <PageBuilderPage

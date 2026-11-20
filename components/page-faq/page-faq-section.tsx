@@ -19,7 +19,6 @@ const VIEW_ALL: Record<Locale, string> = {
   "zh-CN": "查看全部常见问题",
 };
 
-/** Presentational: null when empty. Used by server fetch wrapper + self-check. */
 export function PageFaqSectionView({
   title,
   items,
@@ -29,7 +28,6 @@ export function PageFaqSectionView({
   title: string;
   items: PageFaqSectionItem[];
   locale: Locale;
-  /** Set false when parent already emits FAQPage JSON-LD (e.g. PDP server page). */
   withJsonLd?: boolean;
 }) {
   if (items.length === 0) return null;
@@ -64,7 +62,6 @@ export function PageFaqSectionView({
   );
 }
 
-/** Public embed: loads Page FAQ for surface; hides entirely when no visible items. */
 export async function PageFaqSection({
   surfaceKey,
   locale,

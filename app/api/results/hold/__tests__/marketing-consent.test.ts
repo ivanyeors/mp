@@ -2,21 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
-/**
- * The email and the marketing email box on a customisation's contact step
- * (PRD-campaign-audiences slice 02; ADR 0039, 0051). The hold makes the email
- * typed on the form a Customer, ticked or not, with its name and mobile, and
- * records the box with it, once a Paired build included, and only once every
- * gate has passed. Same in-memory harness as telegram-switch.test.ts; finding
- * or creating the Customer and the consent write are
- * lib/crm/__tests__/customisation-customer.test.ts's.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
-  /** The stored `crm_telegram_updates` value, or null for no row. */
   telegramUpdates: null as string | null,
-  /** Make every `site_settings` read fail. */
   settingsFail: false,
   requireAnyAdmin: vi.fn(),
   getAuthUser: vi.fn(),

@@ -5,15 +5,8 @@ import { sendReviewCardPreview } from "@/lib/reviews/preview";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Claude drafts the sample replies (in parallel) before anything is sent.
 export const maxDuration = 120;
 
-/**
- * Users & permissions → Telegram → "Send preview": sample review cards to
- * the measurements group, so the team sees what real reviews will look like
- * and can tap a button to check their own access. Nothing is stored or posted
- * to Google. The `users` permission, like the rest of the page.
- */
 export async function POST() {
   let ctx;
   try {

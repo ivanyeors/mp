@@ -1,17 +1,3 @@
-// ============================================================
-// Customisation (Result) lifecycle emails
-// ============================================================
-//
-// These used to live as bare <p> fragments inside the API routes — no <html>
-// document, no branding, and user-controlled strings interpolated straight into
-// HTML. Rendering now happens here, through the shared shell and the escaping
-// components, so route files only send.
-//
-// Every renderer is pure: (data, copy?) -> RenderedEmail, where `copy` is its
-// editable words (RESULT_EMAIL_COPY below) and defaults to their defaults. The
-// routes load the saved words first, and keep their own try/catch and their
-// "sent" | "failed" return contract.
-
 import { renderEmailShell } from "./base";
 import {
   amountPanel,
@@ -30,15 +16,10 @@ import { LAYOUT, SPACE } from "./theme";
 import { planCapture } from "@/lib/authorization-hold/settlement-plan";
 import type { RenderedEmail } from "./types";
 
-/** Human product name from the stored product type. */
 function productName(productType: string | null): string {
   return productType === "bolster" ? "Mbolster" : "Mpillow";
 }
 
-/**
- * The customer's tokenised status page. Exported so Staff-facing routes can hand
- * the same link out (Request payment) instead of hand-assembling a token URL.
- */
 export function statusUrl(
   origin: string,
   resultId: string,
@@ -48,36 +29,11 @@ export function statusUrl(
   return accessToken ? `${base}?token=${encodeURIComponent(accessToken)}` : base;
 }
 
-/**
- * Link text for the status page.
- *
- * Never the URL itself: a tokenised status URL is ~95 characters, which wraps to
- * three lines of muted 12px and reads as noise rather than as something to click.
- */
 const STATUS_PAGE_LABEL = "status page";
 
-/**
- * The decision card's anchor on the status page. Both Pay and Decline live
- * there, so a cancel link is just a deep link to the same page the CTA opens.
- *
- * Cancelling is deliberately NOT a bare link that acts on click: Gmail, Outlook
- * and corporate security gateways fetch every URL in an email before a human
- * sees it, and a GET that cancelled an order would let them cancel orders
- * nobody clicked. Decline stays a POST behind a confirm dialog.
- */
 const DECIDE_ANCHOR = "#decide";
-/** The Reorder / Start from scratch block a closed Result shows. */
 const REORDER_ANCHOR = "#reorder";
 
-/**
- * Reorder link for a Result that is over.
- *
- * Points at the status page, never at an endpoint that acts. Reordering creates
- * a real, staff-visible order, and mail providers and security gateways fetch
- * every URL in an email before a human sees it — a GET that rebuilt a build
- * would fill the queue with orders nobody asked for. Same rule as the cancel
- * link above.
- */
 function reorderUrl(url: string): string {
   return `${url}${REORDER_ANCHOR}`;
 }
@@ -86,22 +42,11 @@ function cancelUrl(url: string): string {
   return `${url}${DECIDE_ANCHOR}`;
 }
 
-/** Link text for the cancel link, and for the configurator link of a cancelled order. */
 const CANCEL_LABEL = "cancel this order";
 const RESTART_LABEL = "start a new customisation";
 
 type CopyValues = Record<string, string | number | null | undefined>;
 
-/**
- * A sentence of editable copy with a link inside it, as HTML.
- *
- * The link is a placeholder ({status_page_link}, {cancel_link},
- * {restart_link}): Staff move it with the words around it, but never write its
- * markup. Each side of it is filled and escaped like any other copy, and the
- * link itself is the `link()` component's. Everywhere else — the plain-text
- * body, a field that is not drawn through here — the same placeholder fills to
- * the link's words alone.
- */
 function withLink(
   raw: string,
   values: CopyValues,
@@ -114,7 +59,6 @@ function withLink(
     .join(link(target));
 }
 
-/** Muted "changed your mind" line for the emails that ask for money. */
 function cancelLineHtml(raw: string, values: CopyValues, url: string): string {
   return paragraphHtml(withLink(raw, values, "cancel_link", { href: cancelUrl(url), label: CANCEL_LABEL }), {
     muted: true,
@@ -126,24 +70,11 @@ function cancelLineText(line: string, url: string): string[] {
   return ["", line, cancelUrl(url)];
 }
 
-/** Fill every field of `copy` from `values`. */
 function filled<K extends string>(copy: EmailCopy<K>, values: CopyValues): EmailCopy<K> {
   const out = {} as EmailCopy<K>;
   for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
   return out;
 }
-
-// ------------------------------------------------------------
-// The words of each Result email (PRD-email-templates)
-// ------------------------------------------------------------
-//
-// One spec per renderer. A renderer with several voices (a card hold or none,
-// a balance to pay, a finish still to choose) gives each voice its own fields
-// under the voice's group; a field with no group shows in every voice. The
-// spec rows, amounts and data labels stay in code, and so do the status pills
-// and the settlement sentences `renderResultUpdatedEmail` takes from
-// `planCapture`: those must agree with what Accept charges, whatever the copy
-// says. A field that states a payment fact says so in its hint.
 
 const SUBJECT_HINT = "Also the heading at the top of the email.";
 const linkHint = (token: string) => `Keep {${token}} in it: that is the link.`;
@@ -554,23 +485,12 @@ type CopyOf<T extends keyof typeof RESULT_EMAIL_COPY> = EmailCopy<
   keyof (typeof RESULT_EMAIL_COPY)[T]["fields"] & string
 >;
 
-// ------------------------------------------------------------
-// Submission received → "under review" (hold) / "being made" (assisted)
-// ------------------------------------------------------------
-
 export function renderResultHeldEmail(p: {
   origin: string;
   resultId: string;
   accessToken: string;
   productType: "pillow" | "bolster";
   label: string;
-  /**
-   * The Authorization hold, or `null` for an Assisted customisation — submitted
-   * with no card, so there is no authorized amount and nothing true to say
-   * about one. Null is the same discriminator the DB uses (`payment_intent_id
-   * IS NULL`); a separate `hasHold` flag could contradict the amount, a null
-   * amount cannot. One renderer, so the two voices cannot drift apart.
-   */
   amount: number | null;
   currency: string;
 }, copy: CopyOf<"held"> = defaultEmailCopy(RESULT_EMAIL_COPY.held)): RenderedEmail {
@@ -615,43 +535,21 @@ ${closing ? paragraph(closing, { muted: true }) : ""}`,
   return { subject, text, html };
 }
 
-// ------------------------------------------------------------
-// Operator assigned the final build → "accept or decline" (hold)
-//                                   / "review and pay" (Balance payment)
-// ------------------------------------------------------------
-
 export interface ResultPricing {
   subtotal: number;
   shipping: number;
   tax: number;
   total: number;
   currency: string;
-  /**
-   * The Authorization hold, or `null` for an Assisted customisation — submitted
-   * with no card, so the whole total is owed by Balance payment. Null is the
-   * same discriminator the DB uses (`authorized_amount IS NULL`), so it also
-   * chooses this email's voice: a separate `hasHold` flag could contradict the
-   * amount, a null amount cannot.
-   */
   authorized: number | null;
-  /**
-   * Service fees inside `subtotal` (ADR 0024) — the Measurement service when Staff
-   * measured. Listed on their own rows so the customer sees what they pay for.
-   */
   services?: Array<{ label: string; amount: number }>;
-  /**
-   * A discount code on the Result (ADR 0033): off the goods, after the Subtotal.
-   * Amount 0 is a free-shipping code — the Shipping row already reads 0.
-   */
   discount?: { code: string; amount: number };
 }
 
-/** One row per Service fee, before the Subtotal they are part of. */
 function serviceRows(pricing: ResultPricing): Array<{ label: string; value: string }> {
   return (pricing.services ?? []).map((s) => ({ label: s.label, value: money(s.amount, pricing.currency) }));
 }
 
-/** The discount code's row, after the Subtotal it comes off. */
 function discountRows(pricing: ResultPricing): Array<{ label: string; value: string }> {
   if (!pricing.discount) return [];
   return [
@@ -665,7 +563,6 @@ function discountRows(pricing: ResultPricing): Array<{ label: string; value: str
   ];
 }
 
-/** What the build IS — size and tier, or a bolster's length. */
 function buildSpecRows(p: {
   productType: string;
   size: string | null;
@@ -680,16 +577,6 @@ function buildSpecRows(p: {
       ];
 }
 
-/**
- * Fillings, preferences and add-ons as bullet sections.
- *
- * These come from admin-editable item names, so they MUST go through an
- * escaping component — they were interpolated raw before this module existed.
- *
- * Asymmetric spacing binds each label to the list it introduces. With
- * heading()'s flat `0 0 16px` the three labels sat equidistant between the
- * lists and read as belonging to neither.
- */
 function buildSectionsHtml(p: {
   fillingSummary: string[];
   preferences: string[];
@@ -718,23 +605,11 @@ export function renderResultAssignedEmail(p: {
   preferences: string[];
   addons: string[];
   pricing: ResultPricing | null;
-  /**
-   * Assisted customisation sent from the questionnaire (ADR 0017): Staff have
-   * composed the fillings, but the customer has not chosen cover, case or
-   * shipping yet. The price is a floor, not a total, so the email shows
-   * "from" and asks the customer to choose rather than to pay.
-   */
   needsFinish?: boolean;
-  /**
-   * The other half of a Paired build (ADR 0026), accepted and paid together with
-   * this one: named, priced, and added into a total for both.
-   */
   paired?: { label: string; total: number } | null;
 }, copy: CopyOf<"assigned"> = defaultEmailCopy(RESULT_EMAIL_COPY.assigned)): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
-  // One renderer, three voices — the spec rows are shared so they cannot drift;
-  // only the ask and how much of the price is known differ.
   const hasHold = p.pricing?.authorized != null;
   const finish = Boolean(p.needsFinish) && !hasHold;
   const values = { product_name: name, cancel_link: CANCEL_LABEL };
@@ -838,27 +713,6 @@ ${cancelLineHtml(copy.cancel_line, values, url)}`,
   return { subject, text, html };
 }
 
-// ------------------------------------------------------------
-// Staff re-configured an assigned build → "your build has been updated"
-// ------------------------------------------------------------
-
-/**
- * Staff changed a build the customer has already been told about, and the price
- * moved with it (`/api/results/[id]/reconfigure`, then Request payment).
- *
- * Its own template rather than a second copy of the assigned email, for the
- * same reason `renderBalanceDueReminderEmail` is: that one announces a build as
- * news. Re-sending it under "Your final build is ready" with a different total
- * gives the customer two emails with the same subject, different numbers and
- * nothing saying which is current — and if the new total outgrew their
- * Authorization hold, the one thing they most need to know is the thing it
- * never mentions.
- *
- * So this says what changed, what it costs now, and what that means for their
- * card. The money sentence comes from `planCapture` — the function Accept
- * actually settles with — so the email cannot promise a split the checkout
- * then contradicts.
- */
 export function renderResultUpdatedEmail(p: {
   origin: string;
   resultId: string;
@@ -871,7 +725,6 @@ export function renderResultUpdatedEmail(p: {
   preferences: string[];
   addons: string[];
   pricing: ResultPricing;
-  /** What they were last quoted. Null when the Result carried no stored total. */
   previousTotal: number | null;
 }, copy: CopyOf<"updated"> = defaultEmailCopy(RESULT_EMAIL_COPY.updated)): RenderedEmail {
   const name = productName(p.productType);
@@ -884,9 +737,6 @@ export function renderResultUpdatedEmail(p: {
   const subject = t.subject;
   const priceChanged = p.previousTotal != null && Math.abs(p.previousTotal - total) >= 0.005;
 
-  // One authority for the settlement split: `planCapture` is what Accept runs.
-  // It refuses a non-positive total, which is not a case this email can
-  // describe either, so fall back to the plain "here is the total" voice.
   const plan =
     total > 0
       ? planCapture(total, authorized ?? 0)
@@ -958,9 +808,6 @@ export function renderResultUpdatedEmail(p: {
       ? [`Balance to pay at checkout: ${money(plan.topUp, currency)}`]
       : []),
     "",
-    // The same reassurance the HTML carries in its amount panel. Without it a
-    // plain-text reader sees a total under an authorized hold and has to guess
-    // which of the two numbers is coming off their card.
     moneyPanel.caption,
     "",
     [closing, t.status_line].filter(Boolean).join(" "),
@@ -995,17 +842,6 @@ ${cancelLineHtml(copy.cancel_line, values, url)}`,
   return { subject, text, html };
 }
 
-// ------------------------------------------------------------
-// Build ready, nobody paid → "your build is waiting"
-// ------------------------------------------------------------
-
-/**
- * Reminder for an assigned Result awaiting a Balance payment (ADR 0016).
- *
- * Its own template rather than a re-send of the assigned email: that one is the
- * full build spec and reads as news, and a customer who already has it does not
- * need it twice. This is a nudge — what is owed, and the way back.
- */
 export function renderBalanceDueReminderEmail(p: {
   origin: string;
   resultId: string;
@@ -1013,7 +849,6 @@ export function renderBalanceDueReminderEmail(p: {
   productType: string | null;
   amount: number | null;
   currency: string;
-  /** Cover, case and shipping still to choose (ADR 0017): nudge to finish, not to pay. */
   needsFinish?: boolean;
 }, copy: CopyOf<"balance_due"> = defaultEmailCopy(RESULT_EMAIL_COPY.balance_due)): RenderedEmail {
   const name = productName(p.productType);
@@ -1080,42 +915,18 @@ ${cancelLineHtml(copy.cancel_line, values, url)}`,
   return { subject, text, html };
 }
 
-// ------------------------------------------------------------
-// Customer declined → "your order is cancelled"
-// ------------------------------------------------------------
-
-/**
- * Confirmation that a customer's own Decline went through.
- *
- * Until now Decline was silent: the status flipped, any hold was released, and
- * nobody told the customer anything. A cancellation the customer cannot see
- * confirmed is the one most likely to become a support message, so this closes
- * the loop and says plainly that no money was taken.
- *
- * Separate from `renderHoldExpiredEmail`, which reports a cancellation WE made
- * when the SLA ran out. Same outcome, opposite author — telling someone their
- * order "expired" when they cancelled it reads as a system that was not
- * listening.
- */
 export function renderResultDeclinedEmail(p: {
   origin: string;
   resultId: string;
   accessToken: string | null;
   productType: string | null;
-  /** The released Authorization hold, or null when no card was ever taken. */
   releasedAmount: number | null;
   currency: string;
 }, copy: CopyOf<"declined"> = defaultEmailCopy(RESULT_EMAIL_COPY.declined)): RenderedEmail {
   const name = productName(p.productType);
-  // Derived, not passed: same as renderHoldExpiredEmail. A caller-supplied path
-  // would be an unescaped fragment of an href for no benefit — product_type is
-  // already the only thing that decides it.
   const restartPath = p.productType === "bolster" ? "/mbolster-config" : "/mp-config";
   const restartHref = `${p.origin}${restartPath}`;
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
-  // statusUrl without a token still resolves to the Result page, but a customer
-  // arriving there unauthenticated cannot act on it — so the reorder CTA only
-  // leads the email when the token is there to make it work.
   const canReorder = p.accessToken != null;
   const released = p.releasedAmount == null ? null : money(p.releasedAmount, p.currency);
   const values = { product_name: name, released_amount: released, restart_link: RESTART_LABEL };
@@ -1167,35 +978,16 @@ ${
   return { subject, text, html };
 }
 
-// ------------------------------------------------------------
-// SLA passed → hold released
-// ------------------------------------------------------------
-
 export function renderHoldExpiredEmail(p: {
   origin: string;
   resultId: string;
   accessToken: string | null;
   productType: string | null;
-  /**
-   * Which expiry this is.
-   *
-   * `unreviewed` — the default and the original behaviour: the Result was still
-   * waiting on an operator when the SLA ran out. That is our delay, not theirs.
-   *
-   * `unpaid` — the build was finished and priced, and the Authorization hold
-   * died before the customer accepted it. Telling that customer their "review
-   * window expired" is the wrong story: there was nothing left for them to
-   * review, only something to pay for.
-   */
   reason?: "unreviewed" | "unpaid";
 }, copy: CopyOf<"hold_expired"> = defaultEmailCopy(RESULT_EMAIL_COPY.hold_expired)): RenderedEmail {
   const restartPath = p.productType === "bolster" ? "/mbolster-config" : "/mp-config";
   const restartUrl = `${p.origin}${restartPath}`;
   const url = p.accessToken ? statusUrl(p.origin, p.resultId, p.accessToken) : restartUrl;
-  // Reorder needs a status page to land on, and `url` degrades to the
-  // configurator when there is no token — a "Reorder this build" button that
-  // opened a blank questionnaire would promise exactly what the feature exists
-  // to remove. Without a token there is no way back to the build, so say so.
   const canReorder = p.reason === "unpaid" && p.accessToken != null;
   const unpaid = p.reason === "unpaid";
   const values = { status_page_link: STATUS_PAGE_LABEL };
@@ -1211,8 +1003,7 @@ export function renderHoldExpiredEmail(p: {
     "",
     ...(canReorder
       ? [`${t.button_reorder}:`, reorderUrl(url), "", "Or start from scratch:", restartUrl]
-      : // The HTML still links the status page here, and the text body has to
-        // carry every link the HTML does.
+      :
         [`${t.button_restart}:`, restartUrl, "", `Status page: ${url}`]),
   ].join("\n");
 
@@ -1223,9 +1014,6 @@ export function renderHoldExpiredEmail(p: {
 ${paragraph(lead, { top: 16 })}
 ${closing ? paragraph(closing, { muted: true }) : ""}
 ${
-      // The plain-text body has always linked the status page; the old HTML
-      // dropped it, then carried it as unlinked text. Keep both in step, and
-      // make it clickable — a URL printed as prose is not a link.
       copy.status_line
         ? paragraphHtml(withLink(copy.status_line, values, "status_page_link", { href: url, label: STATUS_PAGE_LABEL }), {
             muted: true,
@@ -1240,25 +1028,11 @@ ${
   return { subject, text, html };
 }
 
-// ------------------------------------------------------------
-// Paired build: the Mbolster dropped out, the Mpillow carries on (ADR 0026)
-// ------------------------------------------------------------
-
-/**
- * The Mbolster of a Paired build ended on its own — Staff cancelled it, or it
- * was not reviewed in time — while its Mpillow carries on. The hold stays for
- * the Mpillow, so this never claims a release. When the Mpillow is already
- * built, it is also the "ready" email the customer was waiting for: that one
- * waits until no build is still being made.
- */
 export function renderPairedMbolsterRemovedEmail(p: {
   origin: string;
-  /** The Mpillow's Result: where the customer reviews and accepts. */
   anchorId: string;
   accessToken: string | null;
-  /** The Mpillow is assigned and can be accepted now. */
   anchorReady: boolean;
-  /** The Mpillow's total, when it is ready. */
   amount: number | null;
   currency: string;
 }, copy: CopyOf<"paired_mbolster_removed"> = defaultEmailCopy(RESULT_EMAIL_COPY.paired_mbolster_removed)): RenderedEmail {
@@ -1279,10 +1053,6 @@ ${total ? paragraph(total, { muted: true }) : ""}`,
   });
   return { subject, text, html };
 }
-
-// ------------------------------------------------------------
-// Pre-order stock recovered → restock notice
-// ------------------------------------------------------------
 
 export function renderRestockEmail(p: {
   origin: string;

@@ -1,15 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * A refund takes back the points its cash earned (PRD-loyalty-points slice
- * 03; ADR 0030 (m)): `charge.refunded` calls clawback_points_for_refund for
- * each refund that delivery recorded, after the Order's money is rolled up,
- * and never fails the webhook over it. What the SQL takes, and that it takes
- * once per refund id, is asserted against Postgres in
- * supabase/tests/loyalty-points/assert-03-earning.sql.
- */
-
 const ORDER = "0b0b0b0b-0000-4000-8000-000000000001";
 
 const h = vi.hoisted(() => ({
@@ -117,7 +108,6 @@ describe("Stripe webhook — a refund takes back its points", () => {
   it("a later refund takes back only its own; a replay takes nothing", async () => {
     await deliver([refund("re_1", 3000)]);
     h.steps = [];
-    // Stripe lists every refund on the charge, newest first.
     await deliver([refund("re_2", 2000), refund("re_1", 3000)]);
     expect(h.steps).toEqual(["rollup", "clawback re_2 20"]);
     h.steps = [];

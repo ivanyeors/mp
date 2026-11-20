@@ -12,8 +12,6 @@ import {
   type SignInIntent,
 } from "../sign-in-intent";
 
-/** Who is signing in, and what happens after (PRD-campaign-audiences slice 03). */
-
 const SITE = "https://custom.mpillow.com";
 const intent = (over: Partial<SignInIntent>): SignInIntent => ({
   audience: "customer",
@@ -99,7 +97,6 @@ describe("consent", () => {
   it("does not let a box left ticked out of habit put the team on the list; their own sign-up does", () => {
     expect(consentToRecord(intent({ consent: "sign_in" }), true)).toBeNull();
     expect(consentToRecord(intent({ consent: "newsletter" }), true)).toBe("newsletter");
-    // The Explore page's Claim is their own press too, Staff or not.
     expect(consentToRecord(intent({ consent: "explore_claim" }), true)).toBe("explore_claim");
     expect(consentToRecord(intent({ consent: "explore_claim" }), false)).toBe("explore_claim");
   });
@@ -109,7 +106,6 @@ describe("consent", () => {
     expect(signUpNotice({ consent: "newsletter", before: "not_subscribed", changed: true })).toBe("subscribed");
     expect(signUpNotice({ consent: "newsletter", before: "subscribed", changed: false })).toBe("already");
     expect(signUpNotice({ consent: "newsletter", before: "unsubscribed", changed: false })).toBe("come_back");
-    // The box changed nothing: nothing to say.
     expect(signUpNotice({ consent: "sign_in", before: "unsubscribed", changed: false })).toBeNull();
     expect(signUpNotice({ consent: "sign_in", before: "subscribed", changed: false })).toBeNull();
     expect(signUpNotice({ consent: null, before: "not_subscribed", changed: false })).toBeNull();
@@ -133,7 +129,6 @@ describe("the scanner-safe link", () => {
   it("ignores a return address on another site, and needs a token", () => {
     const q = new URLSearchParams({ token_hash: "h1", next: "https://evil.example/auth/callback?next=/en-US/shop&as=staff" });
     expect(readEmailLink(q, [SITE])?.intent).toEqual(intent({}));
-    // Supabase falls back to the Site URL when RedirectTo is not allowed.
     expect(readEmailLink(new URLSearchParams({ token_hash: "h1", next: SITE }), [SITE])?.intent).toEqual(intent({}));
     expect(readEmailLink(new URLSearchParams({ type: "email" }), [SITE])).toBeNull();
     expect(readEmailLink(new URLSearchParams({ token_hash: "h1", type: "recovery" }), [SITE])).toBeNull();

@@ -10,8 +10,6 @@ import {
 import { premiumSeedGraph } from "../seeds";
 import { HEAD_TO_BACK_MIN_CM, inchesToCm, roundCm } from "../units";
 
-// A head resting on the wall line measures 0, which the configurator refused
-// as "Enter a valid measurement". Head-to-back now accepts 0 and down to −3 in.
 describe("head-to-back floor", () => {
   it("is −3 in", () => {
     expect(HEAD_TO_BACK_MIN_CM).toBe(roundCm(inchesToCm(-3)));

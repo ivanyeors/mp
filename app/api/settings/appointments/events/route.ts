@@ -29,7 +29,6 @@ export async function GET(req: Request) {
   if (!Number.isFinite(minMs) || !Number.isFinite(maxMs) || minMs >= maxMs) {
     return NextResponse.json({ error: "Invalid timeMin or timeMax" }, { status: 400 });
   }
-  // Cap range so a bad client can't pull an unbounded GCal dump
   if (maxMs - minMs > 100 * 24 * 60 * 60 * 1000) {
     return NextResponse.json({ error: "Range too large (max 100 days)" }, { status: 400 });
   }
@@ -47,7 +46,6 @@ export async function GET(req: Request) {
   const settings = parseAppointmentSettings(stored);
 
   try {
-    // Cached behind the `locations` tag; lets each event name its Location.
     const locations = await getLocations().catch(() => []);
     const events = await listRangeEvents(timeMin, timeMax, settings, locations);
     return NextResponse.json({ ok: true, events });

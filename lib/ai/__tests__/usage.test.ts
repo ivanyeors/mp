@@ -13,14 +13,8 @@ import {
   readAiUsageThisMonth,
 } from "@/lib/ai/usage";
 
-/**
- * This month's AI writing use (PRD-campaign-email-editor slice 16), counted
- * from the `email_campaign.ai_*` audit entries slices 09, 10 and 17 write.
- */
-
 const MODEL = DEFAULT_AI_MODEL_ID;
 
-/** Audit rows as `admin_audit_log` holds them, written through the shared helper. */
 const fixtureRows = [
   { action: "email_campaign.ai_draft", after: { ...aiUsageAuditEntry("draft", { model: MODEL, usage: { input_tokens: 3_000, output_tokens: 3_500 } }).after, kept: true } },
   { action: "email_campaign.ai_draft", after: { ...aiUsageAuditEntry("draft", { model: MODEL, usage: { input_tokens: 2_800, output_tokens: 4_100 } }).after, kept: false } },
@@ -28,9 +22,7 @@ const fixtureRows = [
   { action: "email_campaign.ai_subjects", after: aiUsageAuditEntry("subjects", { model: MODEL, usage: { input_tokens: 1_900, output_tokens: 600 } }).after },
   { action: "email_campaign.ai_preview_lines", after: aiUsageAuditEntry("preview_lines", { model: MODEL, usage: { input_tokens: 1_700, output_tokens: 300 } }).after },
   { action: "email_campaign.ai_rewrite", after: aiUsageAuditEntry("rewrite", { model: MODEL, usage: { input_tokens: 1_200, output_tokens: 450 } }).after },
-  // Served by a fallback the list does not hold: counted, priced as the default.
   { action: "email_campaign.ai_rewrite", after: { kind: "rewrite", model: "a-fallback-model", input_tokens: 1_000, output_tokens: 500 } },
-  // A call that ended without usage still counts as a call.
   { action: "email_campaign.ai_draft", after: { kind: "draft", model: MODEL } },
 ];
 
@@ -126,7 +118,6 @@ describe("estimateAiUsage", () => {
 describe("aiUsageMonthStart", () => {
   it("is midnight on the 1st in Singapore", () => {
     expect(aiUsageMonthStart(new Date("2026-10-29T09:00:00+08:00"))).toBe("2026-09-30T16:00:00.000Z");
-    // 1 November, 3 am in Singapore, is still 31 October in UTC.
     expect(aiUsageMonthStart(new Date("2026-11-01T03:00:00+08:00"))).toBe("2026-10-31T16:00:00.000Z");
     expect(aiUsageMonthStart(new Date("2027-01-15T12:00:00+08:00"))).toBe("2026-12-31T16:00:00.000Z");
   });

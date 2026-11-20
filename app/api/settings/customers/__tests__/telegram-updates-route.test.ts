@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Customers → Settings → Telegram updates (CRM slice 14). Seeing the card needs
- * `customers`; changing it needs `customers-edit`; the online Result switch
- * also needs `results`. Every change is audited, and *Send test* posts only the
- * enabled types. Real permission checks, through the shared fake admin.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -26,7 +19,6 @@ vi.mock("@/lib/supabase/server", async () => {
       return {
         from: (table: string) => {
           const q = fake.from(table) as ReturnType<typeof fake.from> & { upsert?: unknown };
-          // The shared fake has no upsert; site_settings is keyed by `key`.
           q.upsert = async (row: Record<string, unknown>) => {
             const rows = (h.db[table] ??= []);
             const at = rows.findIndex((r) => r.key === row.key);
@@ -163,7 +155,6 @@ describe("PUT: changing it needs customers-edit", () => {
     expect(res.status).toBe(403);
     expect((await res.json()).error).toMatch(/Results permission/);
     expect(stored()).toBeNull();
-    // Sending today's value back is not a change, so it is not refused.
     expect((await put({ online_result_held: { enabled: true }, new_sign_ups: { enabled: false } })).status).toBe(200);
   });
 

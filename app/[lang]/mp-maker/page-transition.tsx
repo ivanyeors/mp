@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-/** Page transitions only — cart and currency providers live in the root layout. */
 export function MpMakerPageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 

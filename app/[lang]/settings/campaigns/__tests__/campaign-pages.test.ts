@@ -2,15 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CustomerSegment } from "@/lib/crm/segment-rules";
 import type { Campaign } from "@/lib/email-campaigns/rules";
 
-/**
- * What New campaign and a saved campaign's page hand the editor
- * (PRD-email-funnel slices 04 and 06, review findings): *Create the Segment*
- * for Staff who may create Segments on both pages; each wanted Segment found
- * on the server, so no Segment's filters (which can name a Customer) reach
- * the browser, whatever the role; a failed Segments read said, not taken for
- * "none".
- */
-
 const PARENT = "7c0a1e2b-3d4f-4a5b-8c6d-9e0f1a2b3c4d";
 const SAVED = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
 const h = vi.hoisted(() => ({
@@ -37,7 +28,6 @@ vi.mock("@/lib/email-campaigns/store", () => ({
 }));
 vi.mock("../points-live", () => ({ campaignPointsLive: vi.fn(async () => true) }));
 vi.mock("../ai-writing", () => ({ campaignAiWriting: vi.fn(async () => ({ on: false })) }));
-// The editor itself is tested elsewhere: here, only what the page gives it.
 vi.mock("../campaign-editor", () => ({ CampaignEditor: () => null }));
 
 const { default: NewCampaignPage } = await import("../new/page");
@@ -82,7 +72,6 @@ const savedPage = async () => ((await CampaignPage({ params: Promise.resolve({ l
 beforeEach(() => {
   h.permissions = ["campaigns", "customers", "customers-edit"];
   h.segments = [
-    // A Segment that names a Customer: its filters must never reach the editor.
     segment("seg-tan", "Mrs Tan", { search: "tan@example.com", tags: "vip" }),
     segment("seg-lapsed", "At risk · Lapsed", { stage: "at-risk:lapsed" }),
     segment("seg-risk", "At risk", { stage: "at-risk" }),

@@ -15,11 +15,6 @@ const UpdateSchema = z
     message: "Nothing to update",
   });
 
-/**
- * Rename, re-describe or change a custom role's pages. Built-in roles are
- * refused; `requires` is applied; a non-Owner/Admin may only edit within
- * their own pages.
- */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let ctx;
   try {
@@ -45,7 +40,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-/** Delete a custom role nobody holds. */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   let ctx;
   try {

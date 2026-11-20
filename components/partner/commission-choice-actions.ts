@@ -13,13 +13,6 @@ import {
 
 export type PickCommissionResult = { ok: true; startsOn: string | null } | { ok: false; error: string };
 
-/**
- * The partner picks how much of the Commission Pool they take (agreement clause
- * 7.2). Only their own row, only while approved and on the current agreement; the
- * pool and the customer discount stay Staff's. A changed pick starts the day after
- * the next Payout Date; picking what is already in force cancels a waiting change.
- * `amount` null = the whole pool.
- */
 export async function pickPartnerCommission(amount: number | null): Promise<PickCommissionResult> {
   const ctx = await getPartnerContext();
   if (!isPartnerActive(ctx)) return { ok: false, error: "Sign in to your Partner Hub to change this." };

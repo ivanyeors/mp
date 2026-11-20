@@ -7,7 +7,6 @@ export type IngestImageResult = {
   storagePath: string;
 };
 
-/** Optimize → upload to `media` bucket → create image Media Asset. */
 export async function ingestImageAsset(opts: {
   bytes: Buffer;
   originalName?: string;
@@ -49,10 +48,6 @@ export async function ingestImageAsset(opts: {
   return { asset, storagePath };
 }
 
-/**
- * Optimize + upload a small preview image (e.g. Drive video/PDF thumb).
- * Does not create a Media Asset — caller stores the URL on an existing record.
- */
 export async function hostPreviewImage(opts: {
   bytes: Buffer;
   originalName?: string;
@@ -77,7 +72,6 @@ export async function hostPreviewImage(opts: {
   return { publicUrl: pub.publicUrl, storagePath };
 }
 
-/** Re-optimize and upsert over an existing storage object (keeps public URL stable). */
 export async function replaceHostedImage(opts: {
   bytes: Buffer;
   storagePath: string;
@@ -112,7 +106,6 @@ export async function replaceHostedImage(opts: {
   };
 }
 
-/** Storage object key from a public media URL (last path segment). */
 export function storagePathFromHostedUrl(hostedUrl: string): string | null {
   const path = hostedUrl.split("/").pop()?.split("?")[0];
   return path || null;

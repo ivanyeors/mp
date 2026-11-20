@@ -57,7 +57,6 @@ function DigInTip({
   if (!open || left == null || top == null || typeof document === "undefined") {
     return null;
   }
-  // Portal out of SVG foreignObject — fixed positioning is broken under SVG transforms.
   return createPortal(
     <TooltipWithBounds top={top} left={left} style={tipStyles}>
       {children}
@@ -66,7 +65,6 @@ function DigInTip({
   );
 }
 
-/** Line histogram of per-Visit page dwells (10s bins, 10m cap + overflow). */
 export function TimeOnPageChart({
   samplesMs = [],
 }: {
@@ -237,7 +235,6 @@ export function TimeOnPageChart({
 
 export type RouteRow = { pathSeq: string[]; count: number };
 
-/** Ranked route bars — idle: rank only; hover tooltip = full path + count. */
 export function RoutesChart({
   routes = [],
   labelPath,
@@ -326,7 +323,6 @@ export function RoutesChart({
   );
 }
 
-/** Height budget for expanded-node sizing (top-10 max so chevron never clips). */
 export function timeOnPageBlockH(sampleCount: number): number {
   return sampleCount === 0 ? 16 : 96;
 }

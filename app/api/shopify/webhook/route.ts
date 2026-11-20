@@ -17,11 +17,6 @@ function isShopifyOrder(value: unknown): value is ShopifyOrderLike {
   return Array.isArray(v.line_items)
 }
 
-/**
- * Shopify order and refund webhooks feed the Shopify order mirror, the read-only
- * Analytics input (CONTEXT.md). Shopify sales take no stock here: this platform
- * replaces Shopify, and its stock moves only through its own sales.
- */
 export async function POST(req: NextRequest) {
   const webhookSecret = getShopifyWebhookSecret()
 
@@ -39,19 +34,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
   }
 
-  // Failures are logged; 200 so Shopify does not hammer retries. The mirror
-  // catch-up cron recovers a missed order.
   if (isShopifyRefundPayload(payload)) {
     await bestEffortApplyRefundMirror(payload)
     return NextResponse.json({ ok: true, refund: true })
   }
 
-  // Only order-like payloads are mirrored; 200 for unhandled topics to prevent retries.
   if (!isShopifyOrder(payload)) {
     return NextResponse.json({ ok: true, ignored: true })
   }
 
-  // Idempotent upsert: a redelivered order is mirrored again, harmlessly.
   await bestEffortUpsertOrderMirror(payload)
   return NextResponse.json({ ok: true })
 }

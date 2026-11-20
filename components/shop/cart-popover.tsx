@@ -56,8 +56,6 @@ export function CartPopover({ trigger }: CartPopoverProps) {
         sideOffset={8}
         role="dialog"
         aria-label={messages.title}
-        // App UI, not marketing copy: without this the public-route typography
-        // forces the "Your Cart" heading to 28px and each line's variant to 18px.
         data-typography-scope="app"
         className="w-[min(100vw-2rem,420px)] rounded-xl border p-0 shadow-lg"
       >

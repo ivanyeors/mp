@@ -1,7 +1,3 @@
-/**
- * Single recommendation authority: evaluate published graph, with bootstrap
- * fallback to legacy rules while a flow has no published version.
- */
 import {
   inferSizeFromMeasurements,
   inferTierFromQuestions,
@@ -39,7 +35,6 @@ function toNum(v: unknown): number | null {
   return null;
 }
 
-/** mp-config camelCase response.data → Premium engine inputs (graph-referenced keys). */
 export function inputsFromMpConfigData(data: Record<string, unknown>): EngineInputs {
   const out: EngineInputs = {};
   const shoulder = toNum(data.shoulderLength);
@@ -73,7 +68,6 @@ export function inputsFromMpConfigData(data: Record<string, unknown>): EngineInp
   return out;
 }
 
-/** Shop customize measurement_preferences → Premium engine inputs. */
 export function inputsFromMeasurementPrefs(input: MeasurementBasedPreferences): EngineInputs {
   return {
     shoulder_length_cm: input.measurements.shoulder_length_cm,
@@ -101,7 +95,6 @@ export function inputsFromBolsterHeight(heightCm: number): EngineInputs {
   return { height_cm: heightCm };
 }
 
-/** Map legacy bolster S/M/L → length keys. */
 export function bolsterSizeToLength(size: string): SizeOrLength {
   if (size === "S" || size === "short") return "short";
   if (size === "L" || size === "long") return "long";
@@ -116,10 +109,7 @@ export function lengthToBolsterLetter(length: SizeOrLength): "S" | "M" | "L" {
 
 type LatestFn = typeof getLatestPublished;
 
-/**
- * Evaluate the published graph for `flow`, or fall back to legacy rules.
- * // ponytail: bootstrap guard — delete once all three seeds are published in every env
- */
+// ponytail: bootstrap guard — delete once all three seeds are published in every env
 export async function recommendWithEngine(
   flow: RuleFlow,
   inputs: EngineInputs,
@@ -153,7 +143,6 @@ function legacyRecommend(
     };
     const size = inferSizeFromMeasurements(data).size;
     const tier = inferTierFromQuestions(data).tier;
-    // Sold tier stays flow-scoped premium; advisory tier mirrors legacy questions.
     return legacyBootstrapRecord(flow, size, soldTier, tier);
   }
 
@@ -165,7 +154,6 @@ function legacyRecommend(
     return legacyBootstrapRecord(flow, r.recommended_size, "basic", "basic");
   }
 
-  // mbolster
   const height = Number(inputs.height_cm);
   const r = recommendBolster({
     height_cm: Number.isFinite(height) ? height : 170,
@@ -174,22 +162,16 @@ function legacyRecommend(
   return legacyBootstrapRecord(flow, bolsterSizeToLength(r.recommended_size), null, null);
 }
 
-/** Pure legacy size for seed-equivalence (Premium/Basic shoulder). */
 export function legacyShoulderSize(shoulderCm: number): SizeOrLength {
   return inferSizeFromMeasurements({ shoulderLength: String(shoulderCm) }).size;
 }
 
-/** Pure legacy bolster length for seed-equivalence. */
 export function legacyBolsterLength(heightCm: number): SizeOrLength {
   return bolsterSizeToLength(
     recommendBolster({ height_cm: heightCm, sleep_position: "side" }).recommended_size,
   );
 }
 
-/**
- * Legacy SIZE_MAP path kept for mp-maker / bootstrap only.
- * Premium online ballpark must not use this (hardcoded basic).
- */
 export function legacyOnlineMeasurementBallpark(input: MeasurementBasedPreferences) {
   return recommendSizeFromMeasurements(input);
 }

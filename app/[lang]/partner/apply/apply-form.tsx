@@ -44,7 +44,6 @@ function Field({
 }: {
   id: string;
   label: string;
-  /** Short help under the control, e.g. who sees the answer. */
   hint?: string;
   error?: string;
   children: React.ReactNode;
@@ -68,7 +67,6 @@ export function ApplyForm({
   lang: string;
   initialEmail: string;
   agreementMd: string;
-  /** They just withdrew an application: say so above the empty form. */
   withdrawn?: boolean;
 }) {
   const [values, setValues] = useState<FormValues>({
@@ -87,8 +85,6 @@ export function ApplyForm({
   const [agreed, setAgreed] = useState(false);
   const [agreementOpen, setAgreementOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  // Errors only the server can find (e.g. a logo it doesn't recognise); a field's
-  // clears when the applicant changes it.
   const [serverErrors, setServerErrors] = useState<Partial<Record<keyof FormValues, string>>>({});
   const [pending, startTransition] = useTransition();
 
@@ -105,7 +101,6 @@ export function ApplyForm({
   const blur = (key: keyof FormValues) => setTouched((t) => new Set(t).add(key));
   const errorFor = (key: keyof FormValues) => (touched.has(key) ? errors[key] : undefined);
 
-  // The agreement modal opens only once the fields validate; otherwise reveal inline errors.
   function openAgreement() {
     setTouched(new Set(Object.keys(values)));
     if (Object.keys(errors).length === 0) setAgreementOpen(true);
@@ -115,11 +110,10 @@ export function ApplyForm({
     setFormError(null);
     startTransition(async () => {
       const res = await submitApplication(lang, values as ApplicationFields, agreed);
-      // Reached only on failure (success redirects server-side).
       if (res?.fieldErrors && Object.keys(res.fieldErrors).length > 0) {
         setServerErrors(res.fieldErrors);
         setTouched(new Set(Object.keys(res.fieldErrors)));
-        setAgreementOpen(false); // close so inline field errors are visible
+        setAgreementOpen(false);
       }
       if (res?.formError) setFormError(res.formError);
     });
@@ -141,7 +135,6 @@ export function ApplyForm({
         </p>
       ) : null}
 
-      {/* App type scale: the marketing scope would size hints above their labels. */}
       <form
         className="space-y-6"
         data-typography-scope="app"
@@ -304,8 +297,6 @@ export function ApplyForm({
         </Button>
       </form>
 
-      {/* Agreement pops up only after the fields validate — 70% of the screen wide for
-          comfortable reading; below md it is the full-width drawer. */}
       <Dialog open={agreementOpen} onOpenChange={setAgreementOpen}>
         <DialogContent className="md:max-w-[70vw]">
           <DialogHeader>

@@ -15,14 +15,12 @@ import type { PointsSettings } from "@/lib/points/settings";
 import { formatDollarsShort, formatEarnRate, formatPoints } from "@/lib/points/value";
 import { PastPurchasePoints } from "./past-purchase-points";
 
-/** "2026-11-01T00:00" in Singapore, for a datetime-local input. */
 function toSgInput(iso: string | null): string {
     if (!iso) return "";
     const sg = new Date(Date.parse(iso) + 8 * 60 * 60 * 1000);
     return sg.toISOString().slice(0, 16);
 }
 
-/** The input's Singapore wall time as an ISO timestamp. */
 function fromSgInput(value: string): string | null {
     return value ? new Date(`${value}:00+08:00`).toISOString() : null;
 }
@@ -51,11 +49,6 @@ function NumberField({
     );
 }
 
-/**
- * The bonus milestones (slice 09): points earned from orders, and the bonus
- * each adds once, lowest first. Each row says roughly what a customer spends to
- * reach it and what they then have back, earn rate and bonuses together.
- */
 function MilestonesField({
     milestones,
     earnPerDollar,
@@ -85,7 +78,6 @@ function MilestonesField({
                 </p>
             </div>
             {milestones.length ? (
-                // Phones: one row per milestone (earned · bonus · remove) between rules, not a box each.
                 <ol className="max-md:divide-y md:space-y-3">
                     {milestones.map((m, i) => {
                         const c = cost(m.at);
@@ -151,21 +143,12 @@ function MilestonesField({
     );
 }
 
-/**
- * Discounts → Points (PRD-loyalty-points slice 02; ADR 0030): the programme's
- * settings and what it costs now. 100 points = S$1 is fixed in code. Turning
- * points on needs a launch date; only Orders paid from then earn. Customers
- * imported from Shopify are given points for past purchases once, from the
- * panel under the settings (ADR 0030, amendment of 2026-11-08).
- */
 export function PointsSettingsCard() {
     const [settings, setSettings] = useState<PointsSettings | null>(null);
-    // As saved: Past-purchase points are worked out at the saved rate.
     const [saved, setSaved] = useState<PointsSettings | null>(null);
     const [summary, setSummary] = useState<PointsSummary | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    // Bumped after Past-purchase points are given, to read the cost again.
     const [reads, setReads] = useState(0);
 
     useEffect(() => {
@@ -175,7 +158,6 @@ export function PointsSettingsCard() {
             .then((json) => {
                 if (!live) return;
                 if (json?.ok) {
-                    // A later read refreshes the cost only, never a form being edited.
                     setSettings((s) => s ?? (json.settings as PointsSettings));
                     setSaved((s) => s ?? (json.settings as PointsSettings));
                     setSummary(json.summary as PointsSummary);

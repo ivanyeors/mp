@@ -4,7 +4,6 @@ import { validateHeroContent, validateSectionCopy } from "@/lib/page-builder/cop
 import { HERO_H1_CHAR_MAX, HERO_H1_WORD_MAX } from "@/lib/i18n/copy-bands";
 import { writeLocalisedField } from "@/lib/page-builder/locale";
 
-/** Compose an en-US-only hero override. */
 function heroEn(fields: Record<string, string>): Record<string, unknown> {
   let content: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {
@@ -49,7 +48,6 @@ describe("hero copy-fit gate", () => {
   });
 
   it("measures the composed headline, not each field alone", () => {
-    // Two words each: fine together (4 words), and each part alone would be under the min.
     const issues = validateHeroContent(
       heroEn({ titlePrefix: "Sleep right,", titleEmphasis: "rest easy", titleSuffix: "" }),
     );

@@ -1,15 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * POST /api/readjustments/book — a Complimentary re-adjustment (ADR 0024).
- *
- * The real route against an in-memory readjustment_bookings, with the purchase
- * resolution and the calendar stubbed. What matters is the order of writes: the
- * free visit is claimed on the database before the calendar is touched, and a
- * visit the server says is charged is never booked here.
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -238,7 +229,6 @@ describe("POST /api/readjustments/book", () => {
   });
 });
 
-// PRD-campaign-audiences slice 02: the marketing email box, ticked by default.
 describe("POST /api/readjustments/book — the marketing email box", () => {
   const consent = () => h.recordBoxConsent.mock.calls.map(([, customerId, ticked, source]) => ({ customerId, ticked, source }));
 

@@ -2,15 +2,6 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/ssr-server";
 import type { CustomerAddress } from "@/lib/types/ecommerce";
 
-/**
- * Customer-facing saved-address reads and validation.
- *
- * Everything runs through the cookie-based (anon/SSR) Supabase client so each
- * query is evaluated under the signed-in shopper's RLS context. The policies in
- * migration 0040 ensure a customer only ever sees and mutates their own
- * addresses — there is no application-level customer filter here on purpose.
- */
-
 export const AddressInputSchema = z.object({
   label: z.string().trim().max(60).optional(),
   recipient: z.string().trim().min(1, "Recipient is required").max(120),
@@ -26,7 +17,6 @@ export const AddressInputSchema = z.object({
 
 export type AddressInput = z.infer<typeof AddressInputSchema>;
 
-/** Resolve the signed-in shopper's customer id, or null when not linked yet. */
 export async function getCurrentCustomerId(): Promise<string | null> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -34,8 +24,6 @@ export async function getCurrentCustomerId(): Promise<string | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Granted columns only, never `*`: notes and tags are Staff-only
-  // (20261020101000_customer_notes_and_column_grants.sql).
   const { data } = await supabase
     .from("customers")
     .select("id")
@@ -45,7 +33,6 @@ export async function getCurrentCustomerId(): Promise<string | null> {
   return (data?.id as string | undefined) ?? null;
 }
 
-/** All saved addresses for the signed-in customer, default first. */
 export async function getCustomerAddresses(): Promise<CustomerAddress[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

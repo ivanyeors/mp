@@ -13,13 +13,6 @@ import type { SendingStatus } from "@/lib/email-campaigns/sender";
 import { checkCampaignReadiness } from "./actions";
 import { AllowanceMeters, CheckList, StatusIcon } from "./send-parts";
 
-/**
- * Email campaigns → the Sending card (PRD-campaign-send-flow slice 02): is
- * Resend connected, from which address, where replies go, whether bounces
- * and spam reports arrive, and how much of the plan is left today and this
- * month. The key stays in Vercel (PRD decision 1): nothing here carries it.
- * *Run every check* adds the ones that call the live site.
- */
 export function SendingStatusCard({
     status,
     origin,
@@ -27,7 +20,6 @@ export function SendingStatusCard({
 }: {
     status: SendingStatus | null;
     origin: string;
-    /** Campaigns kept sending and not paused (PRD-campaign-audiences slice 10). */
     keptSending?: number;
 }) {
     const [full, setFull] = useState<PreflightCheck[] | null>(null);
@@ -78,7 +70,6 @@ export function SendingStatusCard({
             </CardHeader>
             {status ? (
                 <CardContent className="grid gap-6 md:grid-cols-2">
-                    {/* min-w-0: a long URL in a fix must wrap, not widen the grid past a phone's screen. */}
                     <ul className="min-w-0 space-y-3">
                         {rows.map((r) => (
                             <li key={r.key} className="flex items-start gap-2 text-sm">
@@ -99,12 +90,10 @@ export function SendingStatusCard({
                                 The send limit could not be counted{status.allowanceError ? `: ${status.allowanceError}` : ""}.
                             </p>
                         )}
-                        {/* PRD-campaign-audiences slice 07: the rest period, in words. */}
                         <p className="text-xs text-muted-foreground">
                             <span className="font-medium text-foreground">Rest period. </span>
                             {REST_PERIOD_TEXT} Someone resting is skipped, not failed, and a later wave reaches them.
                         </p>
-                        {/* PRD-campaign-audiences slice 10: what the daily job sent today. */}
                         {keptSending > 0 || (status.keptToday ?? 0) > 0 ? (
                             <p className="text-xs text-muted-foreground">
                                 <span className="font-medium text-foreground">Kept sending. </span>

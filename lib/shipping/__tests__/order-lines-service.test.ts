@@ -3,11 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { loadOrderShippableLines } from "@/lib/shipping/lines";
 
-/**
- * A Service fee line (ADR 0024) has no variant and no customisation snapshot —
- * exactly the shape the label path used to box as a "pillow". It must never reach
- * a parcel: the query leaves service lines out at the database.
- */
 describe("loadOrderShippableLines — Service fee lines are not parcels", () => {
   it("excludes kind = 'service' and keeps the build line", async () => {
     const rows = [

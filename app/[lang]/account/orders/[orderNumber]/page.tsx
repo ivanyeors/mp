@@ -55,9 +55,6 @@ export default async function AccountOrderDetailPage({
 
   const items = order.items ?? [];
 
-  // Re-adjustment (ADR 0024): each pillow or bolster line can start a booking,
-  // with the same server quote the booking page shows; a line with one coming up
-  // shows it instead. Best-effort — the order page never fails on this.
   const readjustT = getMessages(locale).slides.bookAppointment.readjust;
   const [readjustCtx, upcoming] = await Promise.all([
     loadReadjustmentContext(supabaseAdmin(), customer.id).catch(() => null),
@@ -97,11 +94,7 @@ export default async function AccountOrderDetailPage({
     isResultOrder && customerRefundRequestDeniedReason(order, items) === null;
   const refundRequestStatus = order.refund_request_status ?? null;
 
-  // Per-item RMA eligibility (ADR 0011). Same pure rule set the server insert
-  // uses; alreadyReturnedQty comes from open RMAs on this order (service role).
   const admin = supabaseAdmin();
-  // Points (PRD-loyalty-points slices 03, 04): what the order spent and what
-  // it earns. A failed read only leaves the lines out.
   const [alreadyReturned, settings, points] = await Promise.all([
     openReturnedQtyByOrder(admin, order.id),
     getSiteSettings(["rma_return_window_days"]),
@@ -155,7 +148,6 @@ export default async function AccountOrderDetailPage({
         </span>
       </div>
 
-      {/* Tracking */}
       {order.status === "shipped" && order.tracking_number ? (
         <div className="rounded-lg border bg-muted/30 p-4">
           <div className="flex items-start gap-3">
@@ -196,7 +188,6 @@ export default async function AccountOrderDetailPage({
         </div>
       ) : null}
 
-      {/* Items */}
       <section className="rounded-lg border">
         <div className="divide-y">
           {items.map((item) => (
@@ -257,7 +248,6 @@ export default async function AccountOrderDetailPage({
           ))}
         </div>
 
-        {/* Totals */}
         <div className="space-y-1.5 border-t p-4 text-sm">
           <div className="flex justify-between text-muted-foreground">
             <span>Subtotal</span>
@@ -317,7 +307,6 @@ export default async function AccountOrderDetailPage({
         />
       ) : null}
 
-      {/* Shipping address */}
       {address ? (
         <section className="rounded-lg border p-4">
           <h2 className="text-sm font-medium">

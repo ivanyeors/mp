@@ -5,12 +5,6 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
-/**
- * Slice 11: filling subtype → color override for the x-ray CSS-variable
- * pipeline (ADR 0009 guardrail 5). Shape is a code concern and is never
- * accepted here — only color is editable.
- */
-
 export async function GET() {
   const denied = await requireAdmin('configure')
   if (denied) return denied

@@ -1,8 +1,3 @@
-/**
- * Every renderer must be reachable from the registry, or it gets neither the
- * dev preview nor the contract tests — which is how a template quietly drifts.
- */
-
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -14,12 +9,9 @@ import { RMA_EMAIL_TEMPLATES } from "../rma";
 
 const EMAIL_DIR = join(process.cwd(), "lib", "email");
 
-/** Renderers that intentionally have no registry entry, with the reason. */
 const EXEMPT = new Set<string>([
-  // Generic shell wrapper, not a template.
   "renderEmail",
   "renderEmailShell",
-  // Dispatch-level helpers that delegate to a registered renderer.
   "renderOrderEmail",
   "renderRmaEmail",
 ]);

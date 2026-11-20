@@ -38,35 +38,25 @@ import {
 import { fillingLabel } from "@/lib/spatial-fillings/filling-groups";
 import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 
-// The x-ray brings @dnd-kit and the sunburst picker with it; the cut its own SVG.
 const XrayEditor = dynamic(() => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor), {
     ssr: false,
     loading: () => <Skeleton className="aspect-[664/374] w-full rounded-lg" />,
 });
-// Left, centre and right at once, each still an editor, as on Result detail.
 const XrayCrossSectionStrip = dynamic(
     () => import("@/components/spatial/xray-cross-section-strip").then((m) => m.XrayCrossSectionStrip),
     { ssr: false },
 );
 
-/**
- * A Re-adjust in progress, as the autosave keeps it (`lib/editor-drafts.ts`): the pillow it was started on
- * (`base`, its size and Placements as saved), and the size and Placements Staff had left in it.
- */
 type ReadjustDraft = { base: string; size: PillowSizeKey; placements: PillowPlacementRow[] };
 
-/** Where a customer's unsaved Re-adjust is kept: one per Customer, on this device. */
 export const readjustDraftKey = (customerId: string) => `readjust:${customerId}`;
 
-/** The saved pillow, as a draft's `base`: a draft made on another one is offered, not put back. */
 function pillowBase(size: PillowSizeKey, placements: PillowPlacement[]): string {
     return JSON.stringify({ size, placements: pillowPlacementsToRows(placements) });
 }
 
-/** One filling's change in count between the pillow Staff opened and what is in it now. */
 type CountChange = { itemId: number; label: string; was: number; now: number };
 
-/** Every filling whose count changed, by name. */
 function countChanges(before: PillowPlacement[], after: PillowPlacement[], labelOf: (id: number) => string): CountChange[] {
     const was = new Map(flattenToPackList(before).map((l) => [l.item_id, l.count]));
     const now = new Map(flattenToPackList(after).map((l) => [l.item_id, l.count]));
@@ -76,19 +66,6 @@ function countChanges(before: PillowPlacement[], after: PillowPlacement[], label
         .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/**
- * Re-adjust (ADR 0042 l): change the fillings in the pillow a Customer already
- * has, at a Re-adjustment visit. The X-ray editor opens on the pillow the card
- * draws (a link's template, an order's build, a fitting's match, or the last
- * Re-adjustment) and Save writes what Staff leave in it onto the Staff link.
- * The Customer page and their Profile then draw it as it now is. A Service:
- * no stock moves, no price or order changes.
- *
- * Autosaved (9-11-2026): until it is saved, what Staff leave in it is kept on
- * this device, and the dialog opens on it again after Back, a reload or a
- * closed app. Made on the pillow as it is still saved, it is put back by
- * itself; made before the pillow was changed, it is offered instead.
- */
 export function ReadjustDialog({
     customerId,
     pillow,
@@ -103,7 +80,6 @@ export function ReadjustDialog({
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSaved: (next: CustomerPillowView) => void;
-    /** The placeable Items, kept by the card once read so a second opening does not read them again. */
     catalog: FillingItem[] | null;
     onCatalog: (items: FillingItem[]) => void;
 }) {
@@ -111,7 +87,6 @@ export function ReadjustDialog({
     const savedSize: PillowSizeKey = pillow.size ?? "M";
     const base = useMemo(() => pillowBase(savedSize, initial), [savedSize, initial]);
     const draftKey = readjustDraftKey(customerId);
-    // The autosaved Re-adjust, read once as the dialog opens.
     const [kept, setKept] = useState(() => readDraft<ReadjustDraft>(draftKey));
     const keptFits = kept !== null && kept.data.base === base;
     const [placements, setPlacements] = useState<PillowPlacement[]>(() =>
@@ -119,13 +94,11 @@ export function ReadjustDialog({
     );
     const [size, setSize] = useState<PillowSizeKey>(() => (keptFits ? kept.data.size : savedSize));
     const [restored, setRestored] = useState<number | null>(() => (keptFits ? kept.savedAt : null));
-    // A draft made on the pillow before it was changed waits for Restore or Discard; until then nothing overwrites it.
     const offered = kept !== null && !keptFits ? kept : null;
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [catalogError, setCatalogError] = useState<string | null>(null);
 
-    // The placeable Items, read on the first opening.
     useEffect(() => {
         if (!open || catalog) return;
         let cancelled = false;
@@ -148,7 +121,6 @@ export function ReadjustDialog({
         };
     }, [open, catalog, customerId, onCatalog]);
 
-    // The picker offers the active catalog; a piece already in the pillow whose Item is no longer listed still draws.
     const items = useMemo<FillingItem[] | undefined>(() => {
         if (!catalog) return undefined;
         const known = new Set(catalog.map((i) => i.id));
@@ -167,11 +139,8 @@ export function ReadjustDialog({
     const fit = usePillowFit(placements, size, items ?? pillow.items, pillow.dimensionOverrides);
     const { itemSubtypes, itemSizes, itemDims } = useItemMaps(items ?? pillow.items, pillow.dimensionOverrides);
     const softBody = useMemo(() => softBodyFromPayload(pillow.dimensionOverrides), [pillow.dimensionOverrides]);
-    // The dived Section's cut is ringed; a pouch moved to another cut hands the ring to that Section.
     const { setCut, onDiveChange } = useCut();
     const [divedSection, setDivedSection] = useState<Section | null>(null);
-    // From md, the dived Section's controls dock in the Section editor beside the x-ray, off the art (phones keep
-    // theirs under the pillow). On the art they were 9px chips with the add picker blooming in among them.
     const [controlsSlot, setControlsSlot] = useState<HTMLElement | null>(null);
     const onXrayDive = useCallback(
         (section: Section | null) => {
@@ -236,7 +205,6 @@ export function ReadjustDialog({
                 setError(json?.error ?? "Could not save the re-adjustment.");
                 return;
             }
-            // Saved: the draft has done its job.
             autosave.discard();
             onSaved(json.pillow as CustomerPillowView);
         } catch {
@@ -250,7 +218,6 @@ export function ReadjustDialog({
         <Dialog open={open} onOpenChange={close}>
             <DialogContent
                 className="sm:max-w-6xl md:max-h-[92dvh] md:w-[calc(100%-2rem)] md:overflow-y-auto"
-                // Focus the dialog, not its first button: that may be the draft notice's Discard, one Enter from losing it.
                 onOpenAutoFocus={(e) => {
                     e.preventDefault();
                     (e.currentTarget as HTMLElement | null)?.focus({ preventScroll: true });
@@ -316,8 +283,6 @@ export function ReadjustDialog({
                     dirty && <DraftNotice kind="restored" what="re-adjustment" savedAt={restored} onDiscard={startOver} />
                 )}
 
-                {/* Phones read the insert order and the changes before the cuts, as before; from md the cuts follow
-                    the x-ray they cut, and the lists come after them. */}
                 <div className="flex flex-col gap-4">
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                         <div className="mx-auto w-full min-w-0 max-w-[52rem]">
@@ -333,9 +298,6 @@ export function ReadjustDialog({
                                 controlsSlot={controlsSlot}
                             />
                         </div>
-                        {/* lg: beside the x-ray, as tall as its content but never taller than the x-ray (absolute in
-                            its grid cell, so a long dive scrolls in the panel instead of pushing the cuts down).
-                            md: under the x-ray. */}
                         <div className="relative max-md:hidden">
                             <XraySectionDock
                                 dived={divedSection}
@@ -345,9 +307,6 @@ export function ReadjustDialog({
                         </div>
                     </div>
                     <div className="space-y-3 md:order-last">
-                        {/* Insert order, not the derived pack list (owner, 15-11-2026): a count per filling cannot say which
-                            Section a piece is in, which is what taking one out needs. Under the cuts, left, center and right
-                            line up with the cut of the same Section. */}
                         <section className="rounded-md border" data-readjust-insert-order>
                             <h3 className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm font-medium">
                                 Insert order
@@ -404,9 +363,6 @@ export function ReadjustDialog({
                     />
                 </div>
 
-                {/* From md, pinned to the bottom of the scrolling dialog so Save stays in reach under the x-ray and
-                    cut; sticky offsets sit inside the dialog's padding, so it reaches past it to the edge. A phone's
-                    drawer keeps it at the end of the scroll: three stacked buttons would cover half the drawer. */}
                 <div className="space-y-2 md:sticky md:-bottom-6 md:z-10 md:-mx-6 md:-mb-6 md:border-t md:bg-background md:px-6 md:py-4">
                     {error && <p className="text-sm text-destructive">{error}</p>}
                     {dirty && !offered && <DraftSavedHint savedAt={autosave.savedAt} className="block" />}

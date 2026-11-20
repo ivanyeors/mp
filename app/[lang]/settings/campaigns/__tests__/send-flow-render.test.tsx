@@ -3,12 +3,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { SendAllowance } from "@/lib/customer-migration/campaign-ledger";
 import type { SendingStatus } from "@/lib/email-campaigns/sender";
 
-/**
- * The Email campaigns page's send flow as it renders (PRD-campaign-send-flow
- * slices 02–04): the Sending card, the confirmation's summary, each wave's
- * numbers, and the Send card's checklist. The actions are never called here.
- */
-
 vi.mock("../actions", () => ({
   archiveCampaignAction: vi.fn(),
   checkCampaignReadiness: vi.fn(),

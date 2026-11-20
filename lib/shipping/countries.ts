@@ -1,21 +1,3 @@
-/**
- * Every country a Shipping method can list, grouped into the regions the
- * Settings picker shows. Client-safe: plain data and pure helpers.
- *
- * Per country:
- * - `city` — its main city. Easyship refuses an address without a city, and most
- *   quotes are made from a country and postal code alone (the delivery checker,
- *   the checkout before the address is finished), so those send this one.
- * - `postal` — a valid postal code in that city, used by the coverage check, which
- *   quotes with no address at all. Null when the country has no postal codes in
- *   general use: there the shopper's postal code is optional and quotes go
- *   without one.
- *
- * Comprehensively sanctioned destinations (CU, IR, KP, SY) are left out, as are
- * uninhabited territories. Whether a courier serves a country is not recorded
- * here: that is the live coverage check's answer (Settings → Shipping).
- */
-
 export type Region =
   | "southeast_asia"
   | "east_asia"
@@ -29,16 +11,13 @@ export type Region =
   | "africa";
 
 export interface Country {
-  /** ISO 3166-1 alpha-2. */
   code: string;
   name: string;
   region: Region;
   city: string;
-  /** A postal code in `city`; null when the country has none in general use. */
   postal: string | null;
 }
 
-/** Display order: the home market first. */
 export const REGIONS: { key: Region; label: string }[] = [
   { key: "southeast_asia", label: "Southeast Asia" },
   { key: "east_asia", label: "East Asia" },
@@ -317,42 +296,28 @@ export function findCountry(code: string | null | undefined): Country | undefine
   return code ? BY_CODE.get(code.trim().toUpperCase()) : undefined;
 }
 
-/** The country's name, or the code itself for one outside the catalog. */
 export function countryName(code: string): string {
   return findCountry(code)?.name ?? code.toUpperCase();
 }
 
-/** The city to quote with when the shopper has not given one; undefined outside the catalog. */
 export function quoteCity(code: string): string | undefined {
   return findCountry(code)?.city;
 }
 
-/**
- * Whether a postal code is needed to quote and ship there. A country outside the
- * catalog is assumed to have postal codes: asking for one costs a shopper a few
- * keystrokes, quoting without one costs a refused label.
- */
 export function usesPostalCode(code: string): boolean {
   const country = findCountry(code);
   return country ? country.postal !== null : true;
 }
 
-/** A postal code worth quoting: couriers price by it, and a partial one only misses the cache. */
 export function isPostalReady(postal: string, country: string): boolean {
   if (!usesPostalCode(country)) return true;
   return postal.replace(/\s+/g, "").length >= 3;
 }
 
-/** Codes in one region, in catalog order. */
 export function regionCodes(region: Region): string[] {
   return ROWS[region].map(([code]) => code);
 }
 
-/**
- * Countries as a person reads them: "Worldwide" when every catalog country is
- * there, a region's name when all of that region is, the country names otherwise.
- * Codes outside the catalog are shown as codes.
- */
 export function summarizeCountries(codes: string[]): string[] {
   const set = new Set(codes.map((c) => c.trim().toUpperCase()));
   if (COUNTRIES.every((c) => set.has(c.code))) {
@@ -367,11 +332,6 @@ export function summarizeCountries(codes: string[]): string[] {
   return [...labels, ...[...set].filter((c) => !BY_CODE.has(c))];
 }
 
-/**
- * Where the store delivers: every country an active method lists, by name, the
- * home country first. There is no second list to keep in step — adding a country
- * to a method is what offers it at checkout.
- */
 export function deliveryCountries(
   methods: { countries?: string[] | null; is_active?: boolean | null }[],
   home = "SG",

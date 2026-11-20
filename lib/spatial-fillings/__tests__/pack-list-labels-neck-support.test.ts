@@ -1,9 +1,3 @@
-/**
- * X-ray editor: pack-list remove, in-piece labels, family colors, and the
- * Cervical Neck Support — placeable and drawn as a pill. Its price is the
- * pillow's: `lib/results/__tests__/assigned-build-neck-support.test.ts`.
- */
-
 import { describe, expect, it } from "vitest";
 
 import { removeFilling } from "@/lib/configurator/staff-assist";
@@ -46,7 +40,6 @@ describe("removeFilling", () => {
       { item_id: 8, count: 1 },
       { item_id: 9, count: 1 },
     ]);
-    // Layer 0 of left/front emptied, so the deeper piece moves up to the one layer.
     expect(next.find((p) => p.itemId === 9)?.row).toBeUndefined();
   });
 
@@ -75,11 +68,9 @@ describe("family colors", () => {
   it("colors live inventory by family, not grey", () => {
     const grey = fillingVisual(null).defaultColor;
     expect(fillingVisual("6D").defaultColor).not.toBe(grey);
-    // Variants share their family's color.
     expect(fillingVisual("6D Fold").defaultColor).toBe(fillingVisual("6D").defaultColor);
     expect(fillingVisual("3D Round").defaultColor).toBe(fillingVisual("3D").defaultColor);
     expect(fillingVisual("6D+").defaultColor).not.toBe(fillingVisual("6D").defaultColor);
-    // A type outside the density families still gets its own, stable color.
     expect(fillingVisual("6F").defaultColor).not.toBe(grey);
     expect(fillingVisual("6F").defaultColor).toBe(fillingVisual("6F Long").defaultColor);
   });
@@ -122,7 +113,6 @@ describe("Cervical Neck Support", () => {
       slot,
       itemId,
     });
-    // A Filling Template has no tier yet; the Result re-checks with its own.
     expect(validatePillowPlacements([at(55, 1), at(61, 2)], kinds)).toEqual({ ok: true });
     expect(validatePillowPlacements([at(55, 1), at(61, 2)], kinds, { tier: "premium" })).toEqual({ ok: true });
     expect(validatePillowPlacements([at(70, 1)], kinds).ok).toBe(false);
@@ -151,15 +141,12 @@ describe("Cervical Neck Support", () => {
     };
     const square = { x: 0, y: 0, w: 66, h: 66 };
     expect(bbox(pouchOutline(square))).toEqual({ w: 66, h: 66 });
-    // The layout hands the pill its real footprint, so the pill fills it —
-    // the old `long / 2.2` cap would have thinned a 300 × 90 Neck support.
     const wide = bbox(pouchOutline({ x: 0, y: 0, w: 300, h: 90 }, 5, "pill"));
     expect(wide.w).toBeCloseTo(300);
     expect(wide.h).toBeCloseTo(90);
     const tall = bbox(pouchOutline({ x: 0, y: 0, w: 40, h: 120 }, 5, "pill"));
     expect(tall.h).toBeCloseTo(120);
     expect(tall.w).toBeCloseTo(40);
-    // Round ends: the rect's corners are never on the outline.
     const pts = pouchOutline({ x: 0, y: 0, w: 40, h: 120 }, 5, "pill");
     expect(pts.some(([x, y]) => Math.hypot(x, y) < 5)).toBe(false);
   });

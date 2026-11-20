@@ -26,7 +26,6 @@ describe("isListedShopProduct (CONTEXT.md, Listed)", () => {
     expect(isListedShopProduct({ status: "draft", product_type: "accessory", product_variants: [v(true)] })).toBe(false);
     expect(isListedShopProduct({ status: "active", product_type: "accessory", product_variants: [v(false)] })).toBe(false);
     expect(isListedShopProduct({ status: "active", product_type: "accessory", product_variants: [] })).toBe(false);
-    // Bought through the configurator, not the shop.
     expect(isListedShopProduct({ status: "active", product_type: "pillow", product_variants: [v(true)] })).toBe(false);
   });
 });
@@ -45,7 +44,6 @@ describe("shopCardPrice: what components/shop/product-card.tsx and an email's pr
 
   it("is the cheapest active Variant's when there are several, from that price", () => {
     expect(shopCardPrice([v(49), v(39), v(19, { is_active: false })])).toEqual({ price: 39, compareAt: null, from: true, currency: "SGD" });
-    // Sizes priced alike still read From, as the card has always said.
     expect(shopCardPrice([v(39), v(39)])).toMatchObject({ price: 39, from: true });
     expect(shopCardPrice([v(39), v(49, { is_active: false })])).toMatchObject({ price: 39, from: false });
   });
@@ -53,7 +51,6 @@ describe("shopCardPrice: what components/shop/product-card.tsx and an email's pr
   it("carries that Variant's compare-at only when it is above the price, as the card strikes it through", () => {
     expect(shopCardPrice([v(45, { compare_at_price: 59 })])).toMatchObject({ price: 45, compareAt: 59 });
     expect(shopCardPrice([v(45, { compare_at_price: 45 })])).toMatchObject({ compareAt: null });
-    // Another Variant's sale is not the card's price.
     expect(shopCardPrice([v(39), v(49, { compare_at_price: 59 })])).toMatchObject({ price: 39, compareAt: null });
   });
 

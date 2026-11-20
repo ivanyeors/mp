@@ -24,17 +24,9 @@ import {
 import { CampaignContentPreviewSchema, CampaignContentSchema, CHINESE, CONTENT_LIMITS, type CampaignContent, type EmailBlock } from "../content";
 import { CampaignDraftSchema, EMPTY_CAMPAIGN_DRAFT, mentionsPoints, variablesInEmail } from "../rules";
 
-/**
- * The 中文 version (PRD-campaign-email-editor slice 17): one layout, two sets
- * of words. Only words are kept for 中文; the layout, links, images and
- * products are the English's, read through; a word changed in English leaves
- * its block out of date until it is translated again or kept.
- */
-
 const content = CHINESE_SAMPLE_CONTENT;
 const version = chineseVersionOf(content)!;
 const block = <T extends EmailBlock["type"]>(c: CampaignContent, id: string) => c.blocks.find((b) => b.id === id) as Extract<EmailBlock, { type: T }>;
-/** The content with one English block changed. */
 const englishEdit = (c: CampaignContent, id: string, edit: (b: EmailBlock) => EmailBlock): CampaignContent => ({ ...c, blocks: c.blocks.map((b) => (b.id === id ? edit(b) : b)) });
 
 describe("the content schema holds the 中文 version", () => {
@@ -51,7 +43,6 @@ describe("the content schema holds the 中文 version", () => {
     expect(fails({ type: "text", from: "x1", paragraphs: [{ kind: "p", runs: [{ text: "看看", href: "https://evil.example" }] }] }).success).toBe(false);
     const empty = with_({ type: "buttons", from: "x1", labels: [""] });
     expect(CampaignContentSchema.safeParse(empty).success).toBe(false);
-    // The preview takes empty words, as it does in English.
     expect(CampaignContentPreviewSchema.safeParse(empty).success).toBe(true);
   });
 
@@ -93,7 +84,6 @@ describe("the 中文 email: English layout, 中文 words", () => {
       ),
     }));
     expect(runs(moved).find((r) => r.text === "保养指南")?.href).toBe("https://custom.mpillow.com/en-US/care");
-    // A new address is not a change of words: the block stays current.
     expect(chineseBlockStatus(block(moved, "intro"), chineseVersionOf(moved))).toBe("current");
   });
 
@@ -125,7 +115,6 @@ describe("what is out of date in 中文", () => {
   });
 
   it("reads a one-line field as Save keeps it: a space typed at either end is no change", () => {
-    // The editor holds the words as typed; the translate route and the send checks read them as saved, trimmed.
     const pad = (s: string) => ` ${s} `;
     const typed: CampaignContent = {
       ...content,
@@ -149,9 +138,7 @@ describe("what is out of date in 中文", () => {
       }),
     };
     expect(chineseGaps(typed)).toEqual([]);
-    // What the translate route stamps a translation with is what the editor reads it against.
     expect(CampaignContentPreviewSchema.parse(typed).blocks.map(wordsFingerprint)).toEqual(typed.blocks.map(wordsFingerprint));
-    // Kept in the editor and saved, it is current at the wave too.
     const changed = englishEdit(typed, "why", (b) => ({ ...b, text: "Why FibreCool works " }) as EmailBlock);
     const kept = keepChineseBlock(changed, "why");
     expect(chineseGaps(kept)).toEqual([]);
@@ -183,7 +170,6 @@ describe("what is out of date in 中文", () => {
 
   it("*Keep* makes a block current, a part the English gained empty for Staff to write", () => {
     const gained = englishEdit(content, "pair", () => ({ id: "pair", type: "buttons", buttons: [{ label: "Shop", target: "shop", style: "primary" }, { label: "Book", target: "book_fitting", style: "secondary" }] }));
-    // Two buttons still, but different words: out of date.
     expect(chineseGaps(gained).map((g) => g.status)).toEqual(["changed"]);
     const kept = keepChineseBlock(gained, "pair");
     expect(chineseGaps(kept)).toEqual([]);
@@ -253,11 +239,9 @@ describe("a translation put in", () => {
     const made = withChineseTranslation(english, { subject: "清凉", preheader: "", from: "x1", blocks } as ChineseTranslation);
     expect(chineseAiDrafted(made)).toEqual(Object.keys(blocks));
     expect(CampaignContentSchema.safeParse(made).success).toBe(true);
-    // An edit in 中文, then Keep, each unmark their block only.
     const edited = withChineseBlocks(made, chineseContent(made).blocks.map((b) => (b.id === "why" ? { ...b, text: "为什么选 FibreCool？" } : b)));
     expect(chineseAiDrafted(edited)).toEqual(Object.keys(blocks).filter((id) => id !== "why"));
     expect(chineseAiDrafted(keepChineseBlock(edited, "hero"))).toEqual(Object.keys(blocks).filter((id) => id !== "why" && id !== "hero"));
-    // Translated again, a block is Claude's words again; deleted in English, its mark goes with its words.
     const again = withChineseTranslation(edited, { blocks: { why: blocks.why } } as ChineseTranslation);
     expect(chineseAiDrafted(again)).toContain("why");
     const deleted = withoutGoneChinese({ ...again, blocks: again.blocks.filter((b) => b.id !== "why") });

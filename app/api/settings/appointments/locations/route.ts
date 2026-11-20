@@ -16,14 +16,12 @@ const PatchSchema = z.object({
   bookable: z.boolean(),
 });
 
-/** GET → every Location (own + partner) with its bookable flag, for the settings sheet. */
 export async function GET() {
   const denied = await requireAdmin("appointments");
   if (denied) return denied;
   return NextResponse.json({ ok: true, locations: await getLocations() });
 }
 
-/** PATCH { id, bookable } → flips one Location; refuses to switch off the last bookable one. */
 export async function PATCH(req: Request) {
   const denied = await requireAdmin("appointments");
   if (denied) return denied;

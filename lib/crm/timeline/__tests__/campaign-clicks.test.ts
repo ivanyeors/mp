@@ -1,15 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-/**
- * The Customer timeline names the campaign behind a click and behind an
- * unsubscribe (PRD-campaign-audiences slice 08): *Clicked "<campaign>"* at the
- * first counted click, and *Unsubscribed … after "<campaign>"* from its link.
- */
-
 type Row = Record<string, unknown>;
 const h = vi.hoisted(() => ({ tables: {} as Record<string, Row[]> }));
 
-/** The few query methods the timeline reads use, over fixed rows. */
 function rows(table: string) {
   let out = [...(h.tables[table] ?? [])];
   const q = {

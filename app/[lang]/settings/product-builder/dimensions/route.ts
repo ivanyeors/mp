@@ -18,14 +18,6 @@ import { PLACEABLE_ITEMS_OR } from '@/lib/spatial-fillings/filling-groups'
 
 export const runtime = 'nodejs'
 
-/**
- * X-ray pillow UX slice 12 (ADR 0019): Settings overrides for filling pouch
- * and Neck support dimensions plus the loft allowance. Pillow geometry
- * (outlines, Section widths, gusset heights) is the drawing and is never
- * accepted here — only the values that are business data are editable.
- * A row wins, no row = the code default in lib/spatial-fillings/dimensions.ts.
- */
-
 const POUCH_COLUMNS =
   'key, width_mm, length_mm, thickness_mm, min_thickness_mm, min_width_mm, orientation, flat_length_mm, flat_width_mm, updated_at'
 const NECK_COLUMNS = 'size, width_mm, length_mm, thickness_mm, min_thickness_mm, updated_at'
@@ -134,7 +126,6 @@ export async function POST(req: NextRequest) {
         { onConflict: 'key' },
       ))
   } else if (body.kind === 'neck') {
-    // The roll's footprint: width = its length, length and thickness = its diameter.
     const row = {
       size: body.size,
       width_mm: body.length_mm,
@@ -162,7 +153,6 @@ const DeleteSchema = z.union([
   z.object({ kind: z.literal('allowance') }),
 ])
 
-/** Reset one entry to its code default by deleting its row. */
 export async function DELETE(req: NextRequest) {
   const denied = await requireAdmin('configure')
   if (denied) return denied

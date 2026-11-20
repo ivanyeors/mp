@@ -6,16 +6,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/**
- * TikTok Business Messaging webhook (event type DIRECT_MESSAGE): a customer's
- * message (`im_receive_msg`) or one our account sent (`im_send_msg`).
- *
- * Signed with the app secret (`Tiktok-Signature: t=…,s=…`) and acknowledged at
- * once — TikTok retries anything that is not a 200 for up to 72 hours — then
- * stored and carded after the response. Registered by the TikTok connect
- * callback in production, or scripts/social-inbox-setup.ts.
- */
-
 export async function GET() {
   return NextResponse.json({ ok: true });
 }
@@ -35,7 +25,6 @@ export async function POST(req: Request) {
 
   after(async () => {
     try {
-      // Only the connected business account's messages; before connecting, any.
       const connected = await getTikTokTokenRow();
       const events = parseTikTokWebhook(payload, connected?.account_id ?? null);
       if (events.length === 0) return;

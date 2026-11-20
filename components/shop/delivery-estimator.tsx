@@ -29,17 +29,11 @@ import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 interface DeliveryEstimatorProps {
   locale: Locale;
-  /** Price this whole cart. Wins over `variantId` and `profile`. */
   items?: Array<{ variant_id: string; quantity: number }>;
-  /** Price this variant (one unit). Omit for a generic estimate by product type. */
   variantId?: string;
-  /** The box to estimate with when there is no variant. */
   profile?: "pillow" | "bolster" | "accessory";
-  /** Tighter layout for the product page's trust column. */
   compact?: boolean;
-  /** Leave out the free-shipping line where the page already shows progress towards it (the cart). */
   hideFreeThreshold?: boolean;
-  /** Page-builder overrides for the heading; the shop.delivery copy otherwise. */
   title?: string;
   subtitle?: string;
   className?: string;
@@ -49,12 +43,6 @@ function contentName(content: ShippingMethod["content"], slug: string, locale: L
   return content[locale]?.name ?? content["en-US"]?.name ?? content.en?.name ?? slug;
 }
 
-/**
- * "What will delivery cost me?" before the cart: country + postal code → every
- * shipping method that delivers there, with the live Easyship price and courier
- * transit time where the method is live, and the flat rate otherwise. Prices come
- * from the same quote endpoint the checkout uses.
- */
 export function DeliveryEstimator({
   locale,
   items,
@@ -70,14 +58,11 @@ export function DeliveryEstimator({
   const displayPrice = useDisplayPrice();
   const [country, setCountry] = useState("SG");
   const [postal, setPostal] = useState("");
-  // Quote what was submitted, not every keystroke: a partial postal code is a wasted courier call.
   const [submitted, setSubmitted] = useState<{ country: string; postal: string } | null>(null);
   const [freeAbove, setFreeAbove] = useState<number | null>(null);
-  // Where we deliver: every country an active shipping method lists.
   const countries = useDeliveryCountries(country);
   const postalReady = isPostalReady(postal, country);
 
-  // The free-shipping threshold for the chosen country, from the methods themselves.
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/shop/shipping?country=${country}`)

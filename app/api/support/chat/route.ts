@@ -6,17 +6,6 @@ import { chatError, openChat, rateLimited, signedInCustomer } from "@/lib/suppor
 
 export const runtime = "nodejs";
 
-/**
- * The website chat (lib/support/chat.ts).
- *
- * GET: who the page is talking to. Signed in, with their chats (adopting any
- * that carry their sign-in email); otherwise just `signedIn: false`.
- * POST: start a chat with its first message, from a verified email: the
- * session's, the code the visitor was just emailed (./code), or the chat this
- * tab started before with a code (`after`, by its token). Nothing else starts
- * one, so a transcript never goes to an address nobody checked.
- */
-
 export async function GET() {
   try {
     const customer = await signedInCustomer();
@@ -36,7 +25,6 @@ const StartSchema = z.object({
     .object({ codeId: z.string().min(1).max(64), code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code.") })
     .optional(),
   after: z.object({ id: z.string().min(1).max(64), token: z.string().min(1).max(200) }).optional(),
-  // Honeypot: real visitors never fill this; bots usually do.
   company: z.string().max(0).optional().default(""),
 });
 
@@ -56,13 +44,11 @@ function codeRefused(result: Exclude<RedeemCodeResult, { ok: true }>): NextRespo
 }
 
 export async function POST(req: Request) {
-  // Wrong codes count too; each code also allows only 5 tries.
   const limited = await rateLimited(req, "support-chat-start", 10, 10 * 60_000);
   if (limited) return limited;
 
   const parsed = StartSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return chatError(parsed.error.issues[0]?.message ?? "Invalid message.", 400);
-  // Honeypot tripped: look like a chat that never answers.
   if (parsed.data.company) return chatError("We couldn't start the chat. Please try again.", 400);
 
   const { message: body, name, verification, after } = parsed.data;

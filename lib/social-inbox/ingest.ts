@@ -20,25 +20,8 @@ import {
 } from "@/lib/social-inbox/store";
 import type { SocialEvent } from "@/lib/social-inbox/types";
 
-/**
- * Webhook events → database → Message cards in the measurements group.
- *
- * The message row is stored before anything else, keyed by the platform's
- * message id, so a redelivered webhook is a no-op and a card that failed to
- * send is retried by `sweepUncarded` (every webhook and the daily cron). The
- * card send is claimed (new → carding) so two deliveries never post two cards.
- *
- * Echoes are messages our own account sent. One we sent from Telegram is
- * matched and ignored; one sent from the platform's app (Meta Business Suite,
- * the TikTok app) is recorded and noted under the conversation's card, so the
- * group can see the customer was answered elsewhere.
- */
-
-/** A staff reply still waiting on the API response matches its echo within this window. */
 const ECHO_MATCH_MS = 2 * 60_000;
-/** Profiles are looked up once, then again after this long (people rename). */
 const PROFILE_TTL_MS = 30 * 24 * 3_600_000;
-/** A card claim older than this died mid-send and is retried. */
 const STALE_CLAIM_MS = 5 * 60_000;
 
 export type IngestSummary = {
@@ -53,7 +36,6 @@ const time = (iso: string | null | undefined) => (iso ? new Date(iso).getTime() 
 
 export async function ingestSocialEvents(events: SocialEvent[], now = new Date()): Promise<IngestSummary> {
   const summary: IngestSummary = { carded: 0, duplicates: 0, echoes: 0, unsent: 0, failed: 0 };
-  // In order: a burst from one customer is carded in the order they wrote it.
   for (const event of events) {
     try {
       if (event.kind === "message") {
@@ -96,7 +78,6 @@ async function ingestMessage(
   if (!row) return "duplicate";
 
   const patch: Partial<SocialConversationRow> = {};
-  // The reply window runs from the customer's latest message; never move it back.
   if (!(time(conversation.last_inbound_at) >= time(event.sentAt))) patch.last_inbound_at = event.sentAt;
   if (event.username && event.username !== conversation.username) patch.username = event.username;
   if (
@@ -113,11 +94,6 @@ async function ingestMessage(
   return (await cardMessage(row, { ...conversation, ...patch })) ? "carded" : "failed";
 }
 
-/**
- * Posts the card for an inbound row. A message with a photo Telegram can fetch
- * is posted as that photo, with the card as its caption; if Telegram can't
- * fetch it, the card goes out as text instead.
- */
 export async function cardMessage(row: SocialMessageRow, conversation: SocialConversationRow): Promise<boolean> {
   const claimed = await updateMessage(row.id, { status: "carding" }, "new");
   if (!claimed) return false;
@@ -158,7 +134,6 @@ async function ingestEcho(event: Extract<SocialEvent, { kind: "echo" }>, now: Da
   if (await getMessageByExternalId(event.platform, event.messageId)) return false;
   const conversation = await ensureConversation(event.platform, event.externalId);
 
-  // Our own Telegram reply whose API response hasn't been stored yet.
   const { data: pending } = await supabaseAdmin()
     .from("social_messages")
     .select(MESSAGE_COLUMNS)
@@ -198,7 +173,6 @@ async function ingestEcho(event: Extract<SocialEvent, { kind: "echo" }>, now: Da
   if (!(time(conversation.last_outbound_at) >= time(event.sentAt))) {
     await updateConversation(conversation.id, { last_outbound_at: event.sentAt });
   }
-  // Only worth a note where the group has seen the conversation.
   if (conversation.last_card_message_id) {
     const noteId = await replyInGroup(
       renderEchoNote(event.platform, event.text, event.attachments),
@@ -219,15 +193,10 @@ async function ingestUnsend(event: Extract<SocialEvent, { kind: "unsend" }>, now
   return true;
 }
 
-/**
- * Cards inbound messages that have none yet: a card send that failed, or a
- * claim that died mid-send. Oldest first, at most `max`.
- */
 export async function sweepUncarded(opts: { max?: number; now?: Date } = {}): Promise<{ retried: number; carded: number }> {
   const now = opts.now ?? new Date();
   const admin = supabaseAdmin();
 
-  // Release claims that never finished, so they are picked up below.
   await admin
     .from("social_messages")
     .update({ status: "new" })
@@ -239,7 +208,6 @@ export async function sweepUncarded(opts: { max?: number; now?: Date } = {}): Pr
     .select(MESSAGE_COLUMNS)
     .eq("direction", "inbound")
     .eq("status", "new")
-    // Leave a message its own webhook is still carding.
     .lt("created_at", new Date(now.getTime() - 60_000).toISOString())
     .order("created_at", { ascending: true })
     .limit(opts.max ?? 10);

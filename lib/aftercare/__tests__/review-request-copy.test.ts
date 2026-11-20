@@ -9,13 +9,6 @@ import { renderReviewRequestEmail, reviewRequestContactLine } from "@/lib/email/
 import { getEmailCase } from "@/lib/email/registry";
 import { AFTERCARE_REVIEW_TEMPLATE, reviewRequestTemplateParams } from "@/lib/whatsapp/aftercare-templates";
 
-/**
- * The Review request's copy (CRM slice 07), by email and on WhatsApp: the
- * review link, the unconditional "need anything else?" line, how to stop, and
- * nothing that Google's review policy or the no-offer rule forbids (README,
- * second and sixth hazards).
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 const TOKEN = "Zx81kQpL0aVb3nRt7yUe2w";
 
@@ -32,7 +25,6 @@ const email = renderReviewRequestEmail({
 const visible = (html: string) =>
   html
     .replace(/<style[\s\S]*?<\/style>/g, " ")
-    // An inline link is part of its sentence; every other tag breaks text.
     .replace(/<\/?a\b[^>]*>/g, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;|&#160;/g, " ")
@@ -48,10 +40,8 @@ const wa = reviewRequestTemplateParams({
   deliveredAt: "2026-11-03T02:00:00.000Z",
   token: TOKEN,
 });
-/** The WhatsApp message as the customer reads it: the approved body with its parameters. */
 const waText = AFTERCARE_REVIEW_TEMPLATE.text.replace(/\{\{(\d)\}\}/g, (_m, n) => wa.bodyParams[Number(n) - 1]);
 
-/** No price, no offer, no incentive, and no product but the one they bought. */
 const FORBIDDEN: Array<[string, RegExp]> = [
   ["a price", /(S?\$|SGD|USD|MYR)\s?\d|\d+(\.\d{2})?\s?(SGD|dollars)/i],
   ["a percentage", /\d\s?%/],

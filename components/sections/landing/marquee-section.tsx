@@ -14,7 +14,6 @@ export function MarqueeSection({ section, images }: MarqueeSectionProps) {
     <section className="relative py-12 md:py-16">
       {/* ponytail: w-full not w-screen — 100vw side-scrolls when a scrollbar exists */}
       <div className="relative w-full overflow-hidden">
-        {/* Phones get a 30% taller band (310 → 403) so the sleep positions read at that width. */}
         <div className="relative aspect-[1150/403] overflow-hidden border bg-card/40 backdrop-blur-sm md:aspect-[1150/310]">
           <InfiniteImageMarquee
             src={image}

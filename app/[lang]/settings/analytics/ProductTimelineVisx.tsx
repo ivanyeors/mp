@@ -36,7 +36,6 @@ type ProductTimelineVisxProps = {
 
 const palette = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"] as const;
 
-/** Series drawn on their own; the rest fold into one, so no colour is ever reused. */
 const NAMED_SERIES = palette.length - 1;
 
 const tooltipStyles: CSSProperties = {
@@ -135,8 +134,6 @@ function Chart({
     }>;
   }>();
 
-  // Points sit on each month's 1st, so the axis runs first month to last month;
-  // ending at the range's last day left an empty month after the last point.
   const xScale = useMemo(() => {
     const first = months[0] ?? startOfMonth(dateRange.from);
     const last = months[months.length - 1] ?? first;
@@ -147,7 +144,6 @@ function Chart({
     return scaleTime<number>({ domain, range: [0, innerWidth] });
   }, [months, dateRange.from, innerWidth]);
 
-  // One tick per month (thinned to fit), never several ticks inside one month.
   const monthTicks = useMemo(() => {
     const step = Math.max(1, Math.ceil(months.length / Math.max(2, Math.floor(innerWidth / 70))));
     return months.filter((_, idx) => idx % step === 0);
@@ -172,7 +168,6 @@ function Chart({
     const x = point.x - margin.left;
     const date = xScale.invert(x);
 
-    // Find nearest month bucket and show a month-level tooltip (works anywhere in the plot area).
     const nearestMonth = months.reduce<Date | null>((best, month) => {
       if (!best) return month;
       const dt = Math.abs(date.getTime() - month.getTime());
@@ -314,7 +309,6 @@ function Chart({
           />
         </Group>
 
-        {/* Monthly annotations (total across series), drawn in SVG space to avoid clipping */}
         {(() => {
           const desired = Math.max(2, Math.floor(innerWidth / 110));
           const step = Math.max(1, Math.ceil(months.length / desired));
@@ -331,7 +325,6 @@ function Chart({
                 y={y}
                 fill="var(--muted-foreground)"
                 fontSize={axisFontSize}
-                // The last month sits on the right edge; end-anchored, its total stays inside the chart.
                 textAnchor={idx === months.length - 1 && months.length > 1 ? "end" : "middle"}
                 style={{ pointerEvents: "none" }}
               >
@@ -342,7 +335,6 @@ function Chart({
         })()}
       </svg>
 
-      {/* Legend (below chart) */}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:gap-x-4 sm:text-xs">
         {products.map((product, idx) => {
           const color = product.color ?? palette[Math.min(idx, palette.length - 1)];
@@ -419,9 +411,6 @@ export function ProductTimelineVisx({
         data: product.data.filter((d) => d.date >= dateRange.from && d.date <= dateRange.to),
       }))
       .filter((product) => product.data.length > 0);
-    // Ranked by revenue over the range, whichever metric is shown, so switching
-    // Units ⇄ Revenue never repaints a series. Past four, the rest fold into one
-    // grey line, so a colour never stands for two series and the rest reads as such.
     const total = (p: ProductTimeline) => p.data.reduce((sum, d) => sum + d.revenue, 0);
     const ranked = [...inRange].sort((a, b) => total(b) - total(a) || a.name.localeCompare(b.name));
     if (ranked.length <= palette.length) {

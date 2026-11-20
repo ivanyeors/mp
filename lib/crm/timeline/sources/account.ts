@@ -4,23 +4,6 @@ import { joinBatches, readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 import { formatPoints } from "@/lib/points/value";
 
-/**
- * The Customer's account on the timeline (`customers`), from the Shopify
- * customer migration (ADR 0029):
- *
- * - imported, as a **Migrated customer** (`migrated_customers.imported_at`,
- *   migration slice 02);
- * - **Signed up**: when the current login was bound to the Customer
- *   (`customers.account_linked_at`, slice 12). For a login linked before that
- *   slice it is the login's creation, the closest fact there is; the Account
- *   card says so;
- * - **Claimed**, their first sign-in after the import (`claimed_at`, slice 05);
- * - the **Claim bonus** (PRD-loyalty-points slice 05), read from the Points
- *   ledger: its one `claim_bonus` entry, at the time it was written. For a
- *   Customer who claimed before points launched, that is the later sign-in
- *   that granted it, not the Claim.
- */
-
 type LinkedRow = { id: string; account_linked_at: string | null };
 
 type MigratedRow = { customer_id: string; created_by_import: boolean; imported_at: string; claimed_at: string | null };
@@ -70,7 +53,6 @@ export const accountAdapter: TimelineAdapter = {
           ref: { type: "migrated_customer", id: m.customer_id },
           summary: "Claimed: first sign-in since the import",
         })),
-        // At most one: points_ledger_one_claim_bonus.
         readStream<ClaimBonusRow>(
           db
             .from("points_ledger")

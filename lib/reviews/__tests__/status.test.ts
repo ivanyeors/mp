@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The Telegram tab's live Business Profile check: it must say exactly what
- * keeps Google reviews from arriving — missing env, a refused token, Google's
- * API approval still pending, no location chosen yet, no Pub/Sub — and offer
- * the GOOGLE_BUSINESS_LOCATION values to choose from.
- */
-
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 
 const { checkBusinessProfileSetup } = await import("@/lib/reviews/status");

@@ -20,14 +20,6 @@ const PatchSchema = z.object({
   slug: SlugSchema.optional(),
 });
 
-/**
- * PATCH /api/landing-sections/[id]
- * Updates a section's visible, content, or slug.
- *
- * `slug` is only editable on custom sections: built-in components branch on it to
- * pick their copy, image and CTA, and it is also the journey-analytics anchor, so
- * renaming one silently blanks the section and orphans historical exit links.
- */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -71,8 +63,6 @@ export async function PATCH(
     }
 
     if (parsed.content !== undefined) {
-      // Copy-fit and banned-claim bands (CONTEXT.md "Copy fit"). Already enforced over
-      // the i18n literals; the CMS override is the string that actually ships.
       const issues = validateSectionCopy(before.section_type, parsed.content);
       if (issues.length > 0) {
         return NextResponse.json(
@@ -87,9 +77,6 @@ export async function PATCH(
       }
     }
 
-    // Edits land in the Section draft, not on the live page. Slug is the exception:
-    // it is structural (analytics anchor, uniqueness) rather than content, and is only
-    // editable on custom sections anyway.
     const update: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
@@ -115,9 +102,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Section not found" }, { status: 404 });
     }
 
-    // Drafts count as Used (CONTEXT.md), so a pending image is still marked in the DAM.
     if (parsed.content) {
-      // The section's own image, plus any cards that carry one (a TikTok video's cover).
       const holders = [
         parsed.content,
         ...(Array.isArray(parsed.content.videos) ? (parsed.content.videos as unknown[]) : []),
@@ -152,10 +137,6 @@ export async function PATCH(
   }
 }
 
-/**
- * DELETE /api/landing-sections/[id]
- * Custom sections only — built-ins are seeded and the page expects them.
- */
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -189,8 +170,6 @@ export async function DELETE(
     );
   }
 
-  // Marked for removal by the next Publish rather than deleted now, so the deletion is
-  // reviewable in Preview mode and Discard can undo it.
   const { error } = await admin
     .from("landing_sections")
     .update({ draft_deleted: true, updated_at: new Date().toISOString() })

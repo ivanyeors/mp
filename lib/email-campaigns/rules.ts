@@ -1,19 +1,3 @@
-/**
- * Email campaigns (PRD-email-marketing): what a Campaign is, who may receive
- * it, and who a wave goes to. Pure; the reads and writes are in ./store.ts and
- * the sends in ./sender.ts.
- *
- * A Campaign is an email Staff write in the Admin Panel and send in waves to
- * one audience. Whatever the audience, only `subscribed` Customers receive it,
- * nobody whose campaign email bounced or drew a complaint, and nobody twice.
- *
- * `composedCampaignBlocker` is the rule the plan uses.
- * `marketing_campaign_blocker()` (20261021100000, with the rest period since
- * 20261031144935 and the Unengaged since 20261101081436) is the same rule in SQL,
- * which `claim_marketing_campaign_send()` re-runs at the moment of each send,
- * so the SQL decides. supabase/tests/email-marketing/campaign-rule-cases.json
- * holds the two equal.
- */
 import { z } from "zod";
 import { placeholdersIn } from "@/lib/email/copy";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
@@ -48,35 +32,22 @@ export const CAMPAIGN_AUDIENCE_LABEL: Record<CampaignAudience, string> = {
 export const CAMPAIGN_BUTTON_TARGETS = ["sign_in", "url"] as const;
 export type CampaignButtonTarget = (typeof CAMPAIGN_BUTTON_TARGETS)[number];
 
-/** The ledger's `template` for a Campaign: its sends are unique per Customer under this key. */
 export const campaignLedgerKey = (campaignId: string) => `campaign:${campaignId}`;
 
-/** A wave's label: what the ledger's check accepts. */
 export const WAVE_LABEL = /^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/;
 
-/** The most one wave holds, so a mistyped size cannot email the whole list. */
 export const MAX_WAVE_SIZE = 1000;
-/** The most addresses one test goes to. */
 export const MAX_TEST_RECIPIENTS = 3;
-/** Segments one campaign may leave out of its audience (PRD-campaign-audiences slice 06). */
 export const MAX_EXCLUDED_SEGMENTS = 3;
 
-/**
- * The **Rest period** (PRD-campaign-audiences slice 07; owner decision 2):
- * nobody gets a marketing email within `REST_DAYS` of their last one, or once
- * they have had `REST_MAX_PER_30_DAYS` in 30 days. `marketing_rest_until()`
- * (20261031144935) uses the same numbers.
- */
 export const REST_DAYS = 7;
 export const REST_MAX_PER_30_DAYS = 4;
 export const REST_WINDOW_DAYS = 30;
 
-/** The rest period in words, for the Sending card and the plan. */
 export const REST_PERIOD_TEXT = `Nobody gets a marketing email within ${REST_DAYS} days of their last one, or more than ${REST_MAX_PER_30_DAYS} in ${REST_WINDOW_DAYS} days. Points-expiry reminders count; order and aftercare email never do.`;
 
 export const CAMPAIGN_LIMITS = {
   name: 80,
-  // The 中文 version's subject and preview line take the same (slice 17).
   subject: CONTENT_LIMITS.subject,
   preheader: CONTENT_LIMITS.preheader,
   body: 10000,
@@ -84,13 +55,6 @@ export const CAMPAIGN_LIMITS = {
   buttonUrl: 500,
 } as const;
 
-/**
- * What an empty field shows, in its own `placeholder` (PRD-campaign-email-editor
- * decision 7). Hint text, never a value: it is not saved, tested or sent. The
- * editor's preview draws the subject, message and button label placeholders
- * dashed and muted where their words would go, so an empty email's layout
- * still reads.
- */
 export const CAMPAIGN_PLACEHOLDERS = {
   name: "e.g. December cooling launch",
   subject: "e.g. Sleep cooler this December",
@@ -102,14 +66,6 @@ export const CAMPAIGN_PLACEHOLDERS = {
 const text = (max: number, empty: string) =>
   z.string().trim().min(1, empty).max(max, `At most ${max} characters.`);
 
-/**
- * The draft's checks. Saving needs every word (`required`); the preview takes
- * them empty, so an empty email still shows its layout with its placeholders.
- *
- * An email is either its typed blocks (`content`, PRD-campaign-email-editor
- * slice 03), which every new campaign is, or the plain-text `body` and one
- * button of a campaign written before the editor: never both.
- */
 function draftSchema({ required }: { required: boolean }) {
   const words = (max: number, empty: string) =>
     required ? text(max, empty) : z.string().trim().max(max, `At most ${max} characters.`);
@@ -143,12 +99,10 @@ function draftSchema({ required }: { required: boolean }) {
         }),
       audience: z.enum(CAMPAIGN_AUDIENCES),
       segmentId: z.string().uuid().nullable().default(null),
-      // Slice 06 (PRD-campaign-audiences): Segments whose Customers this campaign leaves out.
       excludeSegmentIds: z
         .array(z.string().uuid())
         .max(MAX_EXCLUDED_SEGMENTS, `Leave out at most ${MAX_EXCLUDED_SEGMENTS} Segments.`)
         .default([]),
-      // Slice 12: send to the Unengaged too (a win-back). Off by default.
       includeUnengaged: z.boolean().default(false),
     })
     .superRefine((d, ctx) => {
@@ -168,13 +122,10 @@ function draftSchema({ required }: { required: boolean }) {
       if (d.body.trim() || d.button) {
         ctx.addIssue({ code: "custom", path: ["content"], message: "An email is its blocks or its message, not both." });
       }
-      // A block campaign fills its Variables in the subject and preview line too.
       for (const field of ["subject", "preheader"] as const) {
         const unknown = unknownVariableMessage(d[field] ?? "");
         if (unknown) ctx.addIssue({ code: "custom", path: [field], message: unknown });
       }
-      // Every Variable the email uses has words for a customer who has none (slice 13),
-      // in English and, when it has one, in its 中文 version (slice 17).
       if (!required) return;
       const chinese = chineseVersionOf(d.content);
       for (const key of variablesInEmail(d)) {
@@ -192,83 +143,44 @@ function draftSchema({ required }: { required: boolean }) {
     }));
 }
 
-/**
- * What the editor saves. `button` is null for none; `segmentId` only with the
- * Segment audience; `excludeSegmentIds` with any audience, at most 3, never
- * the one it is sent to. Mirrors the table's checks, so a draft that parses
- * saves.
- */
 export const CampaignDraftSchema = draftSchema({ required: true });
 
-/**
- * What the editor previews: the same checks with the words allowed empty. It
- * never saves or sends: a placeholder is never a value.
- */
 export const CampaignPreviewSchema = draftSchema({ required: false });
 
 export type CampaignDraft = z.output<typeof CampaignDraftSchema>;
 export type CampaignDraftInput = z.input<typeof CampaignDraftSchema>;
 
-/**
- * Pure — whether the Campaign promises points anywhere a customer reads it.
- * Such a Campaign goes to customers only while points are live
- * (`claimBonusOffer`, lib/points/offer.ts): an email never promises points a
- * sign-in would not grant (PRD-loyalty-points slice 05).
- */
 export function mentionsPoints(c: Pick<CampaignDraft, "subject" | "preheader" | "body" | "button" | "content">): boolean {
-  // The 中文 version's words count too (slice 17).
   return wordsMentionPoints([c.subject, c.preheader ?? "", c.body, c.button?.label ?? "", ...(c.content ? contentWords(c.content) : []), ...chineseWords(c.content)].join("\n"));
 }
 
-/**
- * Pure — some words promise points: they say "points" (积分 in the 中文
- * version, slice 17), or hold *Points balance* (PRD-campaign-email-editor
- * slice 13). What `mentionsPoints` asks of the whole email, and the checks
- * before a wave of each block (slice 11).
- */
 export function wordsMentionPoints(words: string): boolean {
   return /\bpoints?\b|积分/i.test(words) || placeholdersIn(words).some((v) => isVariableKey(v) && Boolean(campaignVariable(v).needsPoints));
 }
 
-/**
- * Pure — the Variables a block campaign's email uses, once each, in order:
- * the greeting's *First name* when it is on (slice 13: one fallback for a first
- * name, wherever it appears), then the subject's, the preview line's and the
- * blocks'. None for a campaign written before blocks.
- */
 export function variablesInEmail(c: Pick<CampaignDraft, "subject" | "preheader" | "content" | "greeting">): VariableKey[] {
   if (!c.content) return [];
   const greeting: VariableKey[] = c.greeting ? ["first_name"] : [];
-  // The 中文 version's too (slice 17): a translation keeps the English's, but Staff may write one more in it.
   const chinese = chineseWords(c.content).flatMap((w) => placeholdersIn(w).filter(isVariableKey));
   return [...new Set([...greeting, ...variablesUsed(c.content, [c.subject, c.preheader ?? ""]), ...chinese])];
 }
 
-/** A Campaign as stored. */
 export interface Campaign extends CampaignDraft {
   id: string;
   createdAt: string;
   updatedAt: string;
-  /** The first wave was planned: content and audience are fixed. */
   lockedAt: string | null;
   archivedAt: string | null;
   createdBy: string | null;
-  /** Kept sending (PRD-campaign-audiences slice 10): off unless a person turned it on after the first wave. */
   keepSending?: KeepSending;
 }
 
-/** The one table row's columns, in its order. */
 export const CAMPAIGN_COLUMNS =
   "id, name, subject, preheader, body, content, greeting, button_label, button_target, button_url, audience, segment_id, exclude_segment_ids, include_unengaged, " +
   `created_at, updated_at, locked_at, archived_at, ${KEEP_SENDING_COLUMNS}, creator:mp_staff!created_by_profile_id(name)`;
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
-/**
- * Pure — one `email_campaigns` row, or null for a malformed one. A block
- * campaign's `content` is read with the preview's checks, the shape and the
- * safety rules, so a row saved under an older limit still opens.
- */
 export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
   const id = str(row.id);
   const audience = str(row.audience);
@@ -304,7 +216,6 @@ export function campaignFromRow(row: Record<string, unknown>): Campaign | null {
   };
 }
 
-/** Pure — the table's columns for a draft. A block campaign has no body and no button columns. */
 export function campaignRowFromDraft(d: CampaignDraft) {
   return {
     name: d.name,
@@ -323,62 +234,32 @@ export function campaignRowFromDraft(d: CampaignDraft) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// The rule
-// ---------------------------------------------------------------------------
-
-/** `held_out`: kept back by the campaign's holdout, never sent it (PRD-campaign-audiences slice 11). */
 export const CAMPAIGN_SEND_STATUSES = ["pending", "sent", "failed", "bounced", "complained", "held_out"] as const;
 export type CampaignSendStatus = (typeof CAMPAIGN_SEND_STATUSES)[number];
 
-/** This Campaign's send to one Customer. */
 export interface OwnSend {
   status: CampaignSendStatus;
   wave: string;
   sentAt: string;
 }
 
-/** One Customer as a Campaign's plan sees them (`marketing_campaign_candidates`). */
 export interface CampaignCandidate {
   customerId: string;
   email: string;
   firstName: string | null;
   marketingEmail: MarketingEmailState;
-  /** A `migrated_customers` row exists. */
   migrated: boolean;
-  /** The Claim; null until then. */
   claimedAt: string | null;
-  /** Orders here and on Shopify: a buyer has at least one. */
   ordersCount: number;
-  /** The import, else the account's creation: newest first after buyers. */
   since: string;
-  /** A campaign email of theirs bounced or drew a complaint. */
   suppressed: boolean;
-  /** This Campaign's send to them, if any. */
   own: OwnSend | null;
-  /** The language they use the site in (`customers.locale`): `zh-CN` gets a campaign's 中文 version (slice 17). */
   locale: string;
-  /**
-   * When their marketing email of the last 30 days reached them, newest first
-   * (`marketing_recent`: any campaign send but a failed one, and points-expiry
-   * reminders). Absent reads as none. PRD-campaign-audiences slice 07.
-   */
   recentMarketing?: readonly string[];
-  /**
-   * 0 to 99, the same for them every time (`campaign_holdout_bucket`): under
-   * 10, a campaign's holdout keeps them back (slice 11). Absent reads as none.
-   */
   holdoutBucket?: number | null;
-  /**
-   * The overview's `unengaged` (slice 12, lib/crm/engagement.ts): clicked none
-   * of their last 6 campaigns, and Lapsed or a Lead for over 12 months. A
-   * campaign leaves them out unless it includes the Unengaged. Absent reads
-   * as engaged.
-   */
   unengaged?: boolean;
 }
 
-/** Why a Customer may not receive a Campaign now, in the order the rule checks. */
 export const CAMPAIGN_RULE_BLOCKERS = [
   "not_migrated",
   "claimed",
@@ -393,7 +274,6 @@ export const CAMPAIGN_RULE_BLOCKERS = [
 ] as const;
 export type CampaignRuleBlocker = (typeof CAMPAIGN_RULE_BLOCKERS)[number];
 
-/** What the SQL claim can answer besides the rule's own reasons. */
 export type CampaignClaimBlocker = CampaignRuleBlocker | "unknown_campaign" | "campaign_archived" | "not_found";
 
 export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", string> = {
@@ -415,12 +295,6 @@ export const CAMPAIGN_BLOCKER_TEXT: Record<CampaignClaimBlocker | "not_failed", 
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Pure — when someone with these marketing emails is next eligible, or null
- * when they are not resting at `now`: the later of their latest + 7 days and,
- * with 4 or more in the last 30 days, their 4th most recent + 30 days. The
- * twin of `marketing_rest_until()`. Unreadable times are ignored.
- */
 export function restUntil(recent: readonly string[] | undefined, now: Date = new Date()): string | null {
   const t = now.getTime();
   const times = (recent ?? [])
@@ -435,11 +309,6 @@ export function restUntil(recent: readonly string[] | undefined, now: Date = new
   return until > t ? new Date(until).toISOString() : null;
 }
 
-/**
- * Why `c` may not receive a Campaign for `audience` now, or null when they
- * may. The same checks, in the same order, as `marketing_campaign_blocker()`.
- * A Segment's membership is decided before this, when the wave is planned.
- */
 export function composedCampaignBlocker(
   audience: CampaignAudience,
   c: Pick<CampaignCandidate, "migrated" | "claimedAt" | "marketingEmail" | "suppressed" | "own" | "recentMarketing" | "unengaged">,
@@ -457,23 +326,15 @@ export function composedCampaignBlocker(
   if (c.suppressed) return "suppressed";
   if (c.marketingEmail !== "subscribed") return "not_subscribed";
   if (c.own?.status === "failed" && !retryFailed) return "failed";
-  // Slice 11: the holdout, for good, before "already sent".
   if (c.own?.status === "held_out") return "held_out";
   if (c.own && c.own.status !== "failed") return "already_sent";
-  // Slice 12: the sunset rule, unless the campaign is a win-back that includes them.
   if (c.unengaged && !includeUnengaged) return "unengaged";
-  // Slice 07: last, so a plan still says "already sent" or "unsubscribed" first.
   if (restUntil(c.recentMarketing, now)) return "resting";
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// The plan
-// ---------------------------------------------------------------------------
-
 export const isBuyer = (c: Pick<CampaignCandidate, "ordersCount">) => c.ordersCount >= 1;
 
-/** Buyers first, then the newest, then the id, so two plans order one list the same way. */
 export function compareSendOrder(a: CampaignCandidate, b: CampaignCandidate): number {
   const buyer = Number(isBuyer(b)) - Number(isBuyer(a));
   if (buyer !== 0) return buyer;
@@ -485,36 +346,19 @@ export function compareSendOrder(a: CampaignCandidate, b: CampaignCandidate): nu
 export type PlanExclusion = CampaignRuleBlocker | "not_failed";
 
 export interface CampaignPlan {
-  /** Customers in the audience before the rule. */
   considered: number;
-  /** Everyone the rule allows now, in send order. */
   eligible: number;
-  /** Of `eligible`, those with an order here or on Shopify. */
   eligibleBuyers: number;
-  /** Who this wave goes to: the first `size` of the eligible. */
   selection: CampaignCandidate[];
-  /** Why the others are left out, by reason. */
   excluded: Partial<Record<PlanExclusion, number>>;
-  /** Sends already handed to the provider for this Campaign. */
   alreadySent: number;
-  /**
-   * Of `selection`, those its holdout will keep back (slice 11): the claim
-   * records them as held out and sends them nothing. 0 with no holdout.
-   */
   heldOut: number;
-  /** This Campaign's failed sends, which a retry would send again. */
   failed: number;
-  /** Of `eligible`, and of the wave, those who read the site in Chinese (PRD-campaign-email-editor slice 17). */
   eligibleChinese: number;
   selectedChinese: number;
-  /**
-   * Of those resting (`excluded.resting`), the earliest any of them is next
-   * eligible; null with nobody resting (PRD-campaign-audiences slice 07).
-   */
   restingUntil: string | null;
 }
 
-/** Pure — a wave of `size` from every candidate. A retry selects this Campaign's failed sends only. */
 export function planCampaignWave(
   audience: CampaignAudience,
   candidates: readonly CampaignCandidate[],
@@ -557,7 +401,6 @@ export function planCampaignWave(
     selection,
     excluded,
     alreadySent,
-    // A retry sends failed sends again: the claim holds out only a new one.
     heldOut: holdout && !retryFailed ? selection.filter((c) => inHoldout(c.holdoutBucket)).length : 0,
     failed,
     eligibleChinese: eligible.filter(readsChinese).length,
@@ -566,31 +409,18 @@ export function planCampaignWave(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Leaving Segments out (PRD-campaign-audiences slice 06)
-// ---------------------------------------------------------------------------
-
-/** A Segment the campaign leaves out, resolved when the wave is planned: who it chooses now. */
 export interface SegmentExclusion {
   segmentId: string;
   name: string;
   customerIds: ReadonlySet<string>;
 }
 
-/** How many of the audience one left-out Segment took away. */
 export interface LeftOutBySegment {
   segmentId: string;
   name: string;
   count: number;
 }
 
-/**
- * Pure — the audience less everyone a left-out Segment chooses, before the
- * rule runs. It only drops: what comes out is a subset of what went in, in the
- * same order. Someone in two left-out Segments counts once, against the first
- * in the campaign's order; every left-out Segment is listed, at 0 when it took
- * nobody away.
- */
 export function excludeSegmentMembers<C extends Pick<CampaignCandidate, "customerId">>(
   candidates: readonly C[],
   exclusions: readonly SegmentExclusion[],
@@ -605,13 +435,6 @@ export function excludeSegmentMembers<C extends Pick<CampaignCandidate, "custome
   return { candidates: kept, leftOut };
 }
 
-/**
- * Pure — PRD-campaign-audiences slice 05. A Segment chosen by what this same
- * campaign did (*got it*, *clicked it*, *got it, didn't click*) holds only
- * people it has already reached, and nobody gets a campaign twice: as its
- * Audience it would never send. The words saying so, or null when it can.
- * *Didn't get it* is fine: that is who it has left to reach.
- */
 export function selfDefeatingAudience(
   campaignId: string,
   segment: { name: string; filters: { campaign: { id: string; state: string } | null } },
@@ -624,10 +447,6 @@ export function selfDefeatingAudience(
   );
 }
 
-/**
- * Pure — the next wave's label: `w1`, `w2`, … after the ones the Campaign has.
- * The daily job's Waves (`daily-…`, slice 10) are not numbered and are not counted.
- */
 export function nextWaveLabel(existing: readonly string[]): string {
   const taken = new Set(existing);
   let n = existing.filter((w) => /^w\d+$/.test(w)).length + 1;
@@ -638,11 +457,9 @@ export function nextWaveLabel(existing: readonly string[]): string {
 const isSendStatus = (v: unknown): v is CampaignSendStatus =>
   typeof v === "string" && (CAMPAIGN_SEND_STATUSES as readonly string[]).includes(v);
 
-/** The view's columns, in its order. */
 export const CANDIDATE_COLUMNS =
   "customer_id, email, first_name, locale, marketing_email, migrated, claimed_at, orders_count, since, suppressed, campaign_sends, marketing_recent, holdout_bucket";
 
-/** Pure — one `marketing_campaign_candidates` row for `campaignId`, or null for a malformed one. */
 export function candidateFromRow(row: Record<string, unknown>, campaignId: string): CampaignCandidate | null {
   if (typeof row.customer_id !== "string" || typeof row.email !== "string") return null;
   const sends = (row.campaign_sends && typeof row.campaign_sends === "object" ? row.campaign_sends : {}) as Record<
@@ -675,15 +492,6 @@ export function candidateFromRow(row: Record<string, unknown>, campaignId: strin
   };
 }
 
-/**
- * The sign-in invitation: the imported customers' invitation to the new
- * website, with the Claim bonus (PRD-loyalty-points: 1,000 points, S$10 off a
- * shop order, for signing in within 3 months of this email). It names no old
- * platform (owner, 2026-10-21). No longer where a new campaign starts
- * (PRD-campaign-email-editor decision 7): it is the Starter *New website:
- * sign in for points* (`INVITATION_STARTER`, slice 08), as blocks, the one
- * with finished words. Staff change any of it before sending.
- */
 export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   name: "New website: sign in for points",
   subject: "Our new website is here, with points waiting for you",
@@ -711,12 +519,6 @@ export const FIRST_CAMPAIGN_DRAFT: CampaignDraft = {
   includeUnengaged: false,
 };
 
-/**
- * An empty email (PRD-campaign-email-editor decision 7): every word empty and
- * on its placeholder, no blocks yet, the greeting on, and today's default
- * audience. A new campaign is written in blocks (slice 03). It does not save
- * until Staff write the email.
- */
 export const EMPTY_CAMPAIGN_DRAFT: CampaignDraft = {
   name: "",
   subject: "",
@@ -731,12 +533,6 @@ export const EMPTY_CAMPAIGN_DRAFT: CampaignDraft = {
   includeUnengaged: false,
 };
 
-/**
- * The draft a new campaign starts from: {@link EMPTY_CAMPAIGN_DRAFT}, whatever
- * the start. `?segment=<id>` from *Email this Segment* on Customers
- * (PRD-crm-retention-loop slice 02) sends it to that Segment and names it
- * after it, when the id is a live Segment that does not need review.
- */
 export function newCampaignDraft(
   segmentParam: string | string[] | undefined,
   segments: readonly { id: string; name: string; needsReview: boolean }[],

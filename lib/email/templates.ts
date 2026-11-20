@@ -18,20 +18,6 @@ import type {
   RenderedEmail,
 } from "./types";
 
-// ============================================================
-// Order lifecycle templates
-// ============================================================
-//
-// Pure functions: (OrderEmailData) -> RenderedEmail. No I/O, no provider
-// concerns — trivially unit-testable.
-//
-// All copy is escaped by the components (see the escaping contract in
-// components.ts), so nothing here calls escapeHtml directly.
-
-/**
- * Re-exported for lib/email/partner.ts, which has imported it from here since
- * before the formatter moved into format.ts.
- */
 export const formatMoney = money;
 
 function orderUrl(orderNumber: string): string {
@@ -60,7 +46,6 @@ function itemsText(data: OrderEmailData): string {
     .join("\n");
 }
 
-/** Totals rows shared by the HTML table foot and the plain-text body. */
 function totalsRows(
   data: OrderEmailData
 ): Array<{ label: string; value: string; strong?: boolean }> {
@@ -69,8 +54,6 @@ function totalsRows(
   ];
   if (data.shippingAmount > 0)
     rows.push({ label: "Shipping", value: money(data.shippingAmount, data.currency) });
-  // Points used are their own line, apart from the coupon; their dollars
-  // are inside discountAmount.
   const { discount, pointsUsed: used } = splitOrderDiscount(data.discountAmount, data.pointsSpent);
   if (discount > 0)
     rows.push({
@@ -106,7 +89,6 @@ function itemsTableHtml(data: OrderEmailData): string {
   });
 }
 
-/** A Self-collect order names the studio it is collected from, not a delivery. */
 function addressHeading(address: OrderEmailAddress): string {
   return address.collectAt ? `Collect from ${address.collectAt}` : "Shipping to";
 }
@@ -121,20 +103,11 @@ function addressBlockText(data: OrderEmailData): string {
   return `\n${addressHeading(data.shippingAddress)}:\n${formatAddressLines(data.shippingAddress).join("\n")}`;
 }
 
-// ------------------------------------------------------------
-// The words of each order email (PRD-email-templates)
-// ------------------------------------------------------------
-//
-// Every order email names the customer and the order, so every one takes
-// {customer_name} and {order_number}. The tables, amounts, addresses and
-// tracking rows are data, and stay in code.
-
 const ORDER_PLACEHOLDERS = {
   customer_name: "The customer's name, as on the order",
   order_number: "The order number, e.g. MP-10428",
 };
 
-/** Only in the points lines of the order confirmation. */
 const POINTS_PLACEHOLDERS = {
   points: "What the order earns, e.g. 300 points (points lines only)",
   amount: "What they are worth, e.g. S$3.00 (points lines only)",
@@ -255,7 +228,6 @@ type CopyOf<T extends EmailTemplateName> = EmailCopy<keyof (typeof ORDER_EMAIL_C
 
 const orderValues = (data: OrderEmailData) => ({ customer_name: data.customerName, order_number: data.orderNumber });
 
-/** Fill every field of `copy` from `values`. */
 function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
   const out = {} as EmailCopy<K>;
   for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
@@ -272,7 +244,6 @@ function orderConfirmation(
     points: earn ? formatPointsCount(earn.points) : null,
     amount: earn ? formatDollars(pointsToDollars(earn.points)) : null,
   });
-  // The points sentence, and for a guest the sign-in one, only when the order earns.
   const pointsLine = earn && t.points_earn ? [t.points_earn, earn.guest ? t.points_guest : ""].filter(Boolean).join(" ") : "";
   const url = orderUrl(data.orderNumber);
   const text = [
@@ -337,7 +308,6 @@ function deliveryDays(data: OrderEmailData): string | null {
   return `${data.minDays}–${max} days`;
 }
 
-/** Courier, delivery estimate, latest checkpoint and tracking number, whichever are known. */
 function shipmentRows(data: OrderEmailData, opts: { eta?: boolean; checkpoint?: boolean }): Row[] {
   const eta = opts.eta ? deliveryDays(data) : null;
   const rows: Array<Row | null> = [
@@ -371,7 +341,6 @@ ${infoList(rows)}`,
   return { subject: t.subject, html, text };
 }
 
-/** A courier status update: same shell as "shipped", with a status-specific message. */
 function trackingUpdate(name: Exclude<keyof typeof ORDER_EMAIL_COPY, "order_confirmation" | "payment_receipt" | "shipping" | "refund">, opts: { checkpoint?: boolean } = {}) {
   return (data: OrderEmailData, copy: EmailCopy<ShipmentCopyKey> = defaultEmailCopy(ORDER_EMAIL_COPY[name])): RenderedEmail => {
     const t = filled(copy, orderValues(data));
@@ -418,7 +387,6 @@ ${amountPanel({
   return { subject: t.subject, html, text };
 }
 
-/** Each order email's renderer. The copy is optional: without it, the default words. */
 export const ORDER_EMAIL_TEMPLATES: {
   [T in EmailTemplateName]: (data: OrderEmailData, copy?: CopyOf<T>) => RenderedEmail;
 } = {

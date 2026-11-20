@@ -2,16 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 import { roleHasPermission, type AdminRole, type Permission } from "@/lib/auth/permissions";
 
-/**
- * Admin Panel reads that answered anonymously (#173). Only settings/** calls
- * them, so each GET now needs the permission its writes already use; public
- * pages read the same data through server-side libs. Uncalled admin GETs were
- * removed instead of gated.
- */
-
 const h = vi.hoisted(() => ({
   role: null as AdminRole | null,
-  /** A role that holds exactly these keys — what a custom role will be (ADR 0023). */
   grants: null as Set<string> | null,
   from: vi.fn(),
   faqItems: vi.fn(),

@@ -4,11 +4,6 @@ import { createElement } from "react";
 import { DocArticle } from "@/components/settings/doc-article";
 import { metaTestersGuideSections } from "../meta-testers";
 
-/**
- * Documentation → Adding teammates to the Meta app: the steps are all there,
- * in order, and the Telegram tab link keeps the locale.
- */
-
 describe("Meta testers guide", () => {
   const sections = metaTestersGuideSections();
 

@@ -16,7 +16,6 @@ const DATA: RmaEmailData = {
   ],
 };
 
-// A transport that records every send, so we can assert exactly-once dispatch.
 function fakeTransport() {
   const sent: OutgoingEmail[] = [];
   const transport: EmailTransport = {
@@ -29,11 +28,6 @@ function fakeTransport() {
   return { transport, sent };
 }
 
-/**
- * Minimal in-memory stand-in for the `rma_emails` ledger. Models the two things
- * dispatch relies on: an upsert with ignoreDuplicates that returns [] on
- * conflict, and an update by id. Keyed on (rma_request_id, template).
- */
 function fakeAdmin() {
   const rows = new Map<string, { id: string; status: string }>();
   let seq = 0;
@@ -50,7 +44,6 @@ function fakeAdmin() {
           return {
             select() {
               if (rows.has(key)) {
-                // ignoreDuplicates => conflict returns no rows.
                 return Promise.resolve({
                   data: opts.ignoreDuplicates ? [] : [{ id: rows.get(key)!.id }],
                   error: null,
@@ -87,7 +80,6 @@ describe("renderRmaEmail", () => {
     expect(r.text).toContain("Memory Pillow");
     expect(r.text).toContain("Bolster x2");
     expect(r.html).toContain("Memory Pillow");
-    // resolution surfaces in the copy
     expect(r.text.toLowerCase()).toContain("refund");
   });
 
@@ -117,19 +109,13 @@ describe("renderRmaEmail", () => {
   ] as const;
 
   it("gives every template a distinct subject naming the order", () => {
-    // A shared subject made Gmail collapse a customer's whole return history
-    // into one thread, so each new update hid behind "show trimmed content".
     const subjects = LIFECYCLE.map((t) => renderRmaEmail(t, DATA).subject);
     expect(new Set(subjects).size).toBe(LIFECYCLE.length);
     for (const s of subjects) expect(s).toContain("MP-1001");
   });
 
   it("never says 'your return' twice in one sentence", () => {
-    // The old factory appended "for your return on order {n}" to a title that
-    // already said "your return", producing "your return was approved for your
-    // return on order MP-1001".
     for (const t of LIFECYCLE) {
-      // The plain text opens with the message, greeting and sentence in one line.
       const sentence = renderRmaEmail(t, DATA).text.split("\n").filter(Boolean)[0];
       expect(sentence).toMatch(/^Hi Ada Lovelace, /);
       expect(sentence.toLowerCase().match(/your return/g)?.length ?? 0).toBeLessThan(2);
@@ -137,8 +123,6 @@ describe("renderRmaEmail", () => {
   });
 
   it("keeps the HTML sentence and the plain-text sentence in step", () => {
-    // One `intro` feeds both renderings; this catches the two drifting the
-    // way the shipping email's did.
     for (const t of LIFECYCLE.slice(1)) {
       const r = renderRmaEmail(t, DATA);
       const sentence = r.text.split("\n").filter(Boolean)[0];
@@ -180,7 +164,6 @@ describe("dispatchRmaEmail idempotency", () => {
     expect(first.sent).toBe(true);
     expect(second.skipped).toBe(true);
     expect(second.sent).toBe(false);
-    // Duplicate submit/retry => still one email on the wire.
     expect(sent).toHaveLength(1);
   });
 

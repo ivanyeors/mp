@@ -13,49 +13,6 @@ import { monthsBefore } from "@/lib/crm/months";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import type { MarketingEmailState } from "@/lib/marketing-consent/state";
 
-/**
- * The Customers list's URL parameters, and how they become a query on the
- * Customer overview (`admin_customer_overview`, lib/crm/customer-overview.ts).
- *
- * One schema and one mapping for every caller (CRM slice 04):
- * `customerFiltersSchema` reads the parameters, `applyCustomerFilters` turns
- * them into the query, and `listAdminCustomers` reads its filters through both.
- * The RSC page, `GET /api/shop/customers` and CRM slice 05's Segments therefore
- * agree: a Segment stores these same parameters and reads them back through
- * the same schema, so it and the same link return the same Customers. The
- * list's client writes its URL with `customerFilterParams`, so a filtered list
- * is a link (migration slice 12).
- *
- * CRM slice 11 adds Contact status: Google linked or not, and the mobile on
- * file. *Email verified* is the Account filter: an account is bound by the
- * email they signed in with, so *Signed up* means exactly that.
- *
- * CRM slice 12 adds reviews: the Google review (linked, asked but not
- * linked, not asked), Shop reviews, and the rating, so a Segment such as
- * *"reviewed us 5★ on Google"* is one link. Review data may choose any CRM
- * list except who gets a Review request (README, sixth hazard): that job never
- * reads these filters or their columns.
- *
- * PRD-campaign-audiences slice 04 adds *Didn't buy*, *Pillow size*,
- * *Delivered* and the Stage's sub-statuses, so the retention loop's Playbook
- * audiences are links too. None of them reaches the Review request job either.
- *
- * Slice 05 adds the reach filters: *Ships to*, *Language*, *Campaign* (got
- * it, didn't, clicked, didn't click) and *Last emailed*, so *At risk · Ships
- * to Singapore · Not emailed in 30 days* is a link too. (Its *Points expire
- * within* is not built: points never expire, ADR 0030 decision 17.)
- *
- * Slice 12 adds *Engagement*: **Unengaged** (lib/crm/engagement.ts) or not,
- * the overview's `unengaged`, the column the campaign rule reads too.
- *
- * Each parameter is read on its own: an unknown value (`bought=foo`) is
- * dropped and named in `ignored`, never passed to the query.
- *
- * No typed text reaches a PostgREST `.or()` (ADR 0028 (d)): search is one
- * `ilike` on `search_text` with its wildcards escaped, typed lists go in as
- * quoted array literals, and `CustomerListQuery` has no `or` at all.
- */
-
 export const ACCOUNT_FILTERS = ["all", "signed-up", "no-account"] as const;
 export type AccountFilter = (typeof ACCOUNT_FILTERS)[number];
 
@@ -65,43 +22,23 @@ export type SourceFilter = (typeof SOURCE_FILTERS)[number];
 export const GOOGLE_FILTERS = ["all", "linked", "not-linked"] as const;
 export type GoogleFilter = (typeof GOOGLE_FILTERS)[number];
 
-/** *On file* is a valid number, *invalid* one that fails `isValidPhone`, *missing* none. */
 export const MOBILE_FILTERS = ["all", "on-file", "missing", "invalid"] as const;
 export type MobileFilter = (typeof MOBILE_FILTERS)[number];
 
-/** *Has an open follow-up* (CRM slice 06): the overview's `open_followups` above 0. */
 export const FOLLOW_UP_FILTERS = ["all", "open"] as const;
 export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
 
-/**
- * **Points** (PRD-loyalty-points slice 06): *Has points* is an available
- * balance above 0 (`points_available`, the sum of the Points ledger); *No
- * points* is none. Pending points are not a balance (CONTEXT.md).
- */
 export const POINTS_FILTERS = ["all", "has", "none"] as const;
 export type PointsFilter = (typeof POINTS_FILTERS)[number];
 
-/**
- * The Google review (CRM slice 12), each Customer in exactly one: a **Linked
- * Google review** (`linked`); asked, with none linked (`asked`); neither
- * (`not-asked`). Linking needs a Staff action, so *asked* also holds people
- * who reviewed and are not matched yet.
- */
 export const GOOGLE_REVIEW_FILTERS = ["all", "linked", "asked", "not-asked"] as const;
 export type GoogleReviewFilter = (typeof GOOGLE_REVIEW_FILTERS)[number];
 
-/** Left a **Shop review** or not (`shop_reviews_count`). */
 export const SHOP_REVIEW_FILTERS = ["all", "yes", "no"] as const;
 export type ShopReviewFilter = (typeof SHOP_REVIEW_FILTERS)[number];
 
-/**
- * The rating the Review column shows (`review_rating`): the linked Google
- * review's stars, else the shop average rounded. With *Google review: linked*
- * it is the Google rating alone.
- */
 export const RATING_FILTERS = ["5", "4-up", "3-down"] as const;
 export type RatingFilter = (typeof RATING_FILTERS)[number];
-/** *Email consent* (migration slice 07): the Customer's **Marketing consent**. */
 export const CONSENT_FILTERS = ["all", "subscribed", "not-subscribed", "unsubscribed"] as const;
 export type ConsentFilter = (typeof CONSENT_FILTERS)[number];
 
@@ -111,17 +48,6 @@ const CONSENT_STATE: Record<Exclude<ConsentFilter, "all">, MarketingEmailState> 
   unsubscribed: "unsubscribed",
 };
 
-/**
- * *Stage* (PRD-crm-retention-loop slice 03): any of these **Lifecycle
- * stages**, the overview's `lifecycle_stage`. The URL spells them with
- * hyphens (`stage=at-risk,lost`), as every other filter value.
- *
- * Slice 04 (PRD-campaign-audiences) adds the sub-statuses beside them, each
- * written after its stage (`stage=new:awaiting-delivery,at-risk:lapsed`), as
- * the overview's `lifecycle_detail` names them. A sub-status names one stage,
- * so one beside its own stage is dropped: the stage already holds it. Held in
- * funnel order, each stage followed by its sub-statuses.
- */
 export type StageFilter = LifecycleStage | LifecycleDetail;
 export const STAGE_FILTERS: readonly StageFilter[] = LIFECYCLE_STAGES.flatMap((stage) => [
   stage,
@@ -129,53 +55,30 @@ export const STAGE_FILTERS: readonly StageFilter[] = LIFECYCLE_STAGES.flatMap((s
 ]);
 const hyphens = (v: string) => v.replace(/_/g, "-");
 const isMainStage = (v: StageFilter): v is LifecycleStage => (LIFECYCLE_STAGES as readonly string[]).includes(v);
-/** A Stage filter value as the URL writes it: `at-risk`, `at-risk:lapsed`. */
 export function stageFilterParam(v: StageFilter): string {
   return isMainStage(v) ? hyphens(v) : `${hyphens(LIFECYCLE_DETAIL_STAGE[v])}:${hyphens(v)}`;
 }
 const STAGE_PARAMS = new Set(STAGE_FILTERS.map(stageFilterParam));
 
-/** How a Stage filter value reads: *At risk*, *At risk · Lapsed*. */
 export function stageFilterLabel(v: StageFilter): string {
   return isMainStage(v)
     ? LIFECYCLE_STAGE_LABEL[v]
     : `${LIFECYCLE_STAGE_LABEL[LIFECYCLE_DETAIL_STAGE[v]]} · ${LIFECYCLE_DETAIL_LABEL[v]}`;
 }
 
-/**
- * The Stage values as one canonical list: funnel order, once each, and no
- * sub-status beside its own stage.
- */
 export function normalizeStageFilter(values: readonly StageFilter[]): StageFilter[] {
   return STAGE_FILTERS.filter(
     (v) => values.includes(v) && (isMainStage(v) || !values.includes(LIFECYCLE_DETAIL_STAGE[v])),
   );
 }
 
-/** *Bought*: any of these, from the overview's `bought` (CRM slice 04). */
 export const BOUGHT_FILTERS = PURCHASE_CLASSES;
 export type BoughtFilter = PurchaseClass;
 
-/**
- * *Didn't buy* (PRD-campaign-audiences slice 04): none of these on any counted
- * Order. The complement of *Bought*, from the same `bought` column, so
- * `bought=premium&not_bought=mbolster` is one query.
- */
 export const NOT_BOUGHT_FILTERS = PURCHASE_CLASSES;
 
-/**
- * *Pillow size* (slice 04): owns a pillow of any of these sizes, from the
- * overview's `pillow_sizes`. The URL writes them lower-case (`size=m,l`).
- */
 export { PILLOW_SIZES, type PillowSize };
 
-/**
- * *Delivered* (slice 04): the latest purchase was delivered within the last N
- * days (`within:14`), or more than N days ago (`over:30`), from the overview's
- * `last_delivered_at`. Days, because Playbooks are timed in days. A Customer
- * whose latest purchase is still on its way, or with no purchase here,
- * matches neither.
- */
 export interface DeliveredFilter {
   when: "within" | "over";
   days: number;
@@ -183,30 +86,15 @@ export interface DeliveredFilter {
 export const DELIVERED_DAYS_MAX = 730;
 const DAY_MS = 86_400_000;
 
-/** *Re-adjusted*: an attended **Re-adjustment booking**, ever or never. */
 export const READJUSTED_FILTERS = ["ever", "never"] as const;
 export type ReadjustedFilter = (typeof READJUSTED_FILTERS)[number];
 
-/**
- * *Last order*: the latest **purchase** (a counted Order with a goods line,
- * `last_purchase_at`; PRD-crm-retention-loop slice 03) was paid within the
- * last N months (`within:6`), or more than N months ago (`over:12`). A
- * re-adjustment fee is not a purchase. A Shopify-era purchase is dated by the
- * Customer's latest Fitting record (ADR 0042 m); a Shopify-only buyer with no
- * fitting, like a Customer who bought nothing, matches neither.
- */
 export interface LastOrderFilter {
   when: "within" | "over";
   months: number;
 }
 export const LAST_ORDER_MONTHS_MAX = 120;
 
-/**
- * *Ships to* (PRD-campaign-audiences slice 05), from the overview's
- * `ship_country`: the latest counted Order's shipping country, else the
- * default address's. *Unknown* is its own value, never Singapore: a
- * Shopify-era buyer with no Order here and no address is one.
- */
 export const SHIPS_TO_FILTERS = ["sg", "not-sg", "unknown"] as const;
 export type ShipsToFilter = (typeof SHIPS_TO_FILTERS)[number];
 
@@ -216,7 +104,6 @@ export const SHIPS_TO_LABELS: Record<ShipsToFilter, string> = {
   unknown: "Ships to an unknown country",
 };
 
-/** *Language* (slice 05): the language they read the site and its emails in, `customers.locale`. */
 export const LANGUAGE_FILTERS = ["en", "zh-cn"] as const;
 export type LanguageFilter = (typeof LANGUAGE_FILTERS)[number];
 const LANGUAGE_LOCALE: Record<LanguageFilter, "en-US" | "zh-CN"> = { en: "en-US", "zh-cn": "zh-CN" };
@@ -226,21 +113,13 @@ export const LANGUAGE_LABELS: Record<LanguageFilter, string> = {
   "zh-cn": "Chinese",
 };
 
-/**
- * *Campaign* (slice 05): what one campaign did with them, from the overview's
- * `campaigns_sent` and `campaigns_clicked`. *Got it* is a send the provider
- * accepted, as the campaign's *Sent* counts it; *didn't click* is got it and
- * never clicked; *didn't get it* includes everyone it never reached.
- */
 export const CAMPAIGN_FILTER_STATES = ["sent", "not-sent", "clicked", "not-clicked"] as const;
 export type CampaignFilterState = (typeof CAMPAIGN_FILTER_STATES)[number];
 export interface CampaignFilter {
-  /** The campaign's id, lower-case. */
   id: string;
   state: CampaignFilterState;
 }
 
-/** How a *Campaign* filter reads, for a campaign named `name`. */
 export function campaignFilterLabel(state: CampaignFilterState, name: string): string {
   switch (state) {
     case "sent":
@@ -254,18 +133,9 @@ export function campaignFilterLabel(state: CampaignFilterState, name: string): s
   }
 }
 
-/**
- * *Last emailed* (slice 05): the latest campaign email the provider accepted
- * for them. *Within N days*; *not in the last N days*, which keeps everyone
- * never emailed; or *never*. Order, aftercare and points emails don't count.
- */
 export type EmailedFilter = { when: "within" | "over"; days: number } | { when: "never" };
 export const EMAILED_DAYS_MAX = 730;
 
-/**
- * *Engagement* (slice 12): **Unengaged**, the sunset rule, or everyone else.
- * Campaigns leave the Unengaged out unless one includes them.
- */
 export const ENGAGEMENT_FILTERS = ["engaged", "unengaged"] as const;
 export type EngagementFilter = (typeof ENGAGEMENT_FILTERS)[number];
 export const ENGAGEMENT_LABELS: Record<EngagementFilter, string> = {
@@ -289,49 +159,28 @@ export const CUSTOMER_PAGE_LIMIT_MAX = 100;
 export interface CustomerFilters {
   search: string | null;
   tags: string[];
-  /** Account status: *Signed up* (`has_account`) or *No account*. */
   account: AccountFilter;
-  /** *From Shopify* is a **Migrated customer**; *Platform* is every other Customer. */
   source: SourceFilter;
-  /** Signs in with Google (`account_providers`); *not linked* includes no account. */
   google: GoogleFilter;
-  /** The mobile on file (`has_phone`, `phone_valid`). */
   mobile: MobileFilter;
-  /** An available Points balance or none (`points_available`). */
   points: PointsFilter;
-  /** `open`: only Customers with a Follow-up not done yet. */
   followups: FollowUpFilter;
-  /** *Email consent*: `marketing_email` on the overview. */
   consent: ConsentFilter;
-  /** In any of these Lifecycle stages or sub-statuses; empty for no filter. */
   stage: StageFilter[];
-  /** Bought any of these on a counted Order; empty for no filter. */
   bought: BoughtFilter[];
-  /** Bought none of these on a counted Order; empty for no filter. */
   not_bought: BoughtFilter[];
-  /** Owns a pillow of any of these sizes; empty for no filter. */
   size: PillowSize[];
   last_order: LastOrderFilter | null;
-  /** Days since the latest purchase was delivered; null for no filter. */
   delivered: DeliveredFilter | null;
   readjusted: ReadjustedFilter | null;
-  /** `total_spent` (platform Orders) at least this; null for no filter. */
   min_spend: number | null;
-  /** Where they are (`ship_country`); null for no filter. */
   ships_to: ShipsToFilter | null;
-  /** The language they read (`locale`); null for no filter. */
   language: LanguageFilter | null;
-  /** What one campaign did with them; null for no filter. */
   campaign: CampaignFilter | null;
-  /** When a campaign last reached them; null for no filter. */
   emailed: EmailedFilter | null;
-  /** Unengaged or not (`unengaged`); null for no filter. */
   engagement: EngagementFilter | null;
-  /** The Google review (CRM slice 12). */
   google_review: GoogleReviewFilter;
-  /** Left a Shop review. */
   shop_review: ShopReviewFilter;
-  /** The review rating; null for no filter. */
   rating: RatingFilter | null;
   sort: CustomerSort;
   page: number;
@@ -369,7 +218,6 @@ export const DEFAULT_CUSTOMER_FILTERS: CustomerFilters = {
   limit: 20,
 };
 
-/** A comma-separated list (`vip,wholesale`), trimmed, blanks dropped. */
 const commaList = z.string().transform((v) =>
   v
     .split(",")
@@ -391,12 +239,9 @@ const PARAM_SCHEMAS = {
   points: z.enum(POINTS_FILTERS),
   followups: z.enum(FOLLOW_UP_FILTERS),
   consent: z.enum(CONSENT_FILTERS),
-  // As `bought`: an unknown value drops the parameter; kept in funnel order, once each.
   stage: commaList
     .pipe(z.array(z.string().refine((v) => STAGE_PARAMS.has(v))))
     .transform((v) => normalizeStageFilter(STAGE_FILTERS.filter((s) => v.includes(stageFilterParam(s))))),
-  // Any unknown value drops the whole parameter. Kept in BOUGHT_FILTERS order,
-  // once each, so the same set always writes the same URL.
   bought: commaList
     .pipe(z.array(z.enum(BOUGHT_FILTERS)))
     .transform((v) => BOUGHT_FILTERS.filter((c) => v.includes(c))),
@@ -433,7 +278,6 @@ const PARAM_SCHEMAS = {
       }),
     ),
   readjusted: z.enum(READJUSTED_FILTERS),
-  // A plain amount, at most two decimals: never an exponent or a sign.
   min_spend: z
     .string()
     .regex(/^\d{1,7}(\.\d{1,2})?$/)
@@ -441,7 +285,6 @@ const PARAM_SCHEMAS = {
     .pipe(z.number().positive()),
   ships_to: z.enum(SHIPS_TO_FILTERS),
   language: z.enum(LANGUAGE_FILTERS),
-  // `<campaign id>:<state>`; the id is written lower-case, so one campaign is one URL.
   campaign: z
     .string()
     .regex(/^[0-9a-fA-F-]{36}:[a-z-]+$/)
@@ -468,7 +311,6 @@ const PARAM_SCHEMAS = {
   rating: z.enum(RATING_FILTERS),
   sort: z.enum(CUSTOMER_SORTS),
   page: z.coerce.number().int().min(1),
-  // An oversized limit is capped, as before, rather than dropped.
   limit: z.coerce
     .number()
     .int()
@@ -476,45 +318,28 @@ const PARAM_SCHEMAS = {
     .transform((v) => Math.min(v, CUSTOMER_PAGE_LIMIT_MAX)),
 } satisfies { [K in keyof CustomerFilters]: z.ZodType<CustomerFilters[K]> };
 
-/**
- * The one schema for the Customers list's filters: each URL parameter, as the
- * string the URL holds, to the value the query uses. Every key is optional.
- * `parseCustomerFilters` reads a URL through it key by key, so one bad value
- * drops only itself. A Segment (CRM slice 05) stores the same parameters
- * (`customerFilterParams`) and is read back through this schema too.
- */
 export const customerFiltersSchema = z.object(PARAM_SCHEMAS).partial();
 
 type FilterKey = keyof typeof PARAM_SCHEMAS;
 const FILTER_KEYS = Object.keys(PARAM_SCHEMAS) as FilterKey[];
 
-/** A URL key the list's filters own. */
 export type CustomerFilterParam = FilterKey;
 
-/** Every URL key the list's filters own; any other key (`view`) is left alone. */
 export const CUSTOMER_FILTER_PARAMS: readonly FilterKey[] = FILTER_KEYS;
 
-/** The keys that only order or page the list; every other key chooses Customers. */
 const VIEW_KEYS = ["sort", "page", "limit"] as const satisfies readonly FilterKey[];
 export type CustomerFilterKey = Exclude<FilterKey, (typeof VIEW_KEYS)[number]>;
 
-/**
- * The keys that choose which Customers are listed: what the active-filter
- * summary shows, what *Clear all* resets, and what a Segment saves.
- */
 export const CUSTOMER_FILTER_KEYS = FILTER_KEYS.filter(
   (k): k is CustomerFilterKey => !(VIEW_KEYS as readonly string[]).includes(k),
 );
 
-/** The filters and the sort, without paging: what the list's client holds. */
 export type CustomerListFilters = Omit<CustomerFilters, "page" | "limit">;
 
-/** Only what chooses Customers: the summary's and a Segment's view of the filters. */
 type ChosenFilters = Pick<CustomerFilters, CustomerFilterKey>;
 
 export interface ParsedCustomerFilters {
   filters: CustomerFilters;
-  /** Parameters that were present but invalid, and so not applied. */
   ignored: FilterKey[];
 }
 
@@ -538,7 +363,6 @@ export function parseCustomerFilters(params: URLSearchParams): ParsedCustomerFil
   return { filters, ignored };
 }
 
-/** A Next.js page's `searchParams` as URLSearchParams; a repeated key keeps its first value. */
 export function searchParamsFromRecord(record: Record<string, string | string[] | undefined>): URLSearchParams {
   const out = new URLSearchParams();
   for (const [key, value] of Object.entries(record)) {
@@ -548,11 +372,6 @@ export function searchParamsFromRecord(record: Record<string, string | string[] 
   return out;
 }
 
-/**
- * The URL for `filters`: only what differs from the default, so the plain
- * list stays `/settings/customers`. Paging is left out unless asked for: the
- * list keeps its page in state.
- */
 export function customerFilterParams(
   filters: Partial<CustomerFilters>,
   { paging = false }: { paging?: boolean } = {},
@@ -592,23 +411,19 @@ export function customerFilterParams(
   return out;
 }
 
-/** The *Last emailed* value as the URL writes it: `within:14`, `over:30`, `never`. */
 export function emailedParam(v: EmailedFilter): string {
   return v.when === "never" ? "never" : `${v.when}:${v.days}`;
 }
 
-/** Whether `key` chooses fewer Customers than the default does. */
 export function isCustomerFilterActive(filters: ChosenFilters, key: CustomerFilterKey): boolean {
   const value = filters[key];
   return Array.isArray(value) ? value.length > 0 : value !== DEFAULT_CUSTOMER_FILTERS[key];
 }
 
-/** `filters` with `key` back at its default: the × on its summary chip. */
 export function clearCustomerFilter<F extends ChosenFilters>(filters: F, key: CustomerFilterKey): F {
   return { ...filters, [key]: DEFAULT_CUSTOMER_FILTERS[key] };
 }
 
-/** `filters` with every Customer-choosing key back at its default; the sort and paging stay. */
 export function clearCustomerFilters<F extends ChosenFilters>(filters: F): F {
   return CUSTOMER_FILTER_KEYS.reduce((f, key) => clearCustomerFilter(f, key), filters);
 }
@@ -632,13 +447,11 @@ export const RATING_LABELS: Record<RatingFilter, string> = {
   "3-down": "Rated 3★ and below",
 };
 
-/** How the *Points* filter's values read, in its control and its summary chip. */
 export const POINTS_LABELS: Record<Exclude<PointsFilter, "all">, string> = {
   has: "Has points",
   none: "No points",
 };
 
-/** How the *Email consent* filter's values read, in its control and its summary chip. */
 export const CONSENT_LABELS: Record<ConsentFilter, string> = {
   all: "any consent",
   subscribed: "subscribed",
@@ -648,27 +461,20 @@ export const CONSENT_LABELS: Record<ConsentFilter, string> = {
 
 const spend = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" });
 
-/**
- * What a summary label may need beyond the filters: the campaigns' names, by
- * id, for *Campaign*. A campaign not in it reads *a campaign*.
- */
 export interface CustomerFilterLabelContext {
   campaignNames?: ReadonlyMap<string, string>;
 }
 
-/** *Got “November care tips”*: a campaign's name in quotes, or *a campaign* when it is not known here. */
 function campaignName(id: string, ctx: CustomerFilterLabelContext): string {
   const name = ctx.campaignNames?.get(id);
   return name ? `“${name}”` : "a campaign";
 }
 
-/** How *Last emailed* reads, in its control and its summary chip. */
 export function emailedLabel(v: EmailedFilter): string {
   if (v.when === "never") return "Never emailed";
   return v.when === "within" ? `Emailed within ${daysLabel(v.days)}` : `Not emailed in ${daysLabel(v.days)}`;
 }
 
-/** How each filter reads in the summary above the list. */
 const FILTER_LABELS: {
   [K in CustomerFilterKey]: (value: NonNullable<CustomerFilters[K]>, ctx: CustomerFilterLabelContext) => string;
 } = {
@@ -703,18 +509,15 @@ const FILTER_LABELS: {
   rating: (v) => RATING_LABELS[v],
 };
 
-/** *14 days*, *a day*: the *Delivered* filter's span. */
 export function daysLabel(days: number): string {
   return days === 1 ? "a day" : `${days} days`;
 }
 
-/** *3 months*, *a year*: a span in months. */
 function monthsLabel(months: number): string {
   if (months % 12 === 0) return months === 12 ? "a year" : `${months / 12} years`;
   return months === 1 ? "a month" : `${months} months`;
 }
 
-/** The active filters, each with its summary label, in URL order. */
 export function describeCustomerFilters(
   filters: ChosenFilters,
   ctx: CustomerFilterLabelContext = {},
@@ -725,7 +528,6 @@ export function describeCustomerFilters(
   }));
 }
 
-/** The query methods the mapping uses: a Supabase query on the view, or a recording stub in tests. */
 export interface CustomerListQuery {
   ilike(column: string, pattern: string): this;
   overlaps(column: string, value: string): this;
@@ -742,29 +544,12 @@ export interface CustomerListQuery {
   order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): this;
 }
 
-/**
- * A Postgres text-array literal, every element quoted, for `overlaps`.
- * PostgREST hands `ov.{…}` to Postgres as it is, so an unquoted tag holding a
- * brace, a quote or a backslash would make a malformed literal (a 500).
- */
 export function pgTextArray(values: readonly string[]): string {
   return `{${values.map((v) => `"${v.replace(/["\\]/g, (ch) => `\\${ch}`)}"`).join(",")}}`;
 }
 
-// Lives in ./months so lib/crm/lifecycle-stage can count months without this module.
 export { monthsBefore };
 
-/**
- * Applies the filters and the sort to a query on `admin_customer_overview`.
- * Paging is the caller's (`range`). Pure: it only calls the query's methods,
- * and *Last order* and *Delivered* count back from `now`. *Stage* is the one
- * exception: the view computes `lifecycle_stage` with the database's own
- * `now()`, so `now` does not move it (PRD-crm-retention-loop slice 03).
- *
- * `order: false` applies the filters only and leaves the order to the caller:
- * a Segment's count needs none, and `resolveSegment` (lib/crm/segments.ts)
- * pages by `id` so a long run is stable (CRM slice 05).
- */
 export function applyCustomerFilters<Q extends CustomerListQuery>(
   query: Q,
   filters: CustomerFilters,
@@ -772,14 +557,11 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
 ): Q {
   let q = query;
 
-  // One escaped ilike on one column: `Tan, Mei`, `(test)` and `a%b` are text,
-  // never filter syntax or wildcards (ADR 0028 (d)).
   if (filters.search) q = q.ilike("search_text", `%${escapeLikePattern(filters.search)}%`);
   if (filters.tags.length) q = q.overlaps("tags", pgTextArray(filters.tags));
 
   if (filters.account !== "all") q = q.eq("has_account", filters.account === "signed-up");
   if (filters.source !== "all") q = q.eq("from_shopify", filters.source === "shopify");
-  // The ledger never takes a balance below 0, so these two split every Customer.
   if (filters.points === "has") q = q.gt("points_available", 0);
   if (filters.points === "none") q = q.lte("points_available", 0);
 
@@ -792,8 +574,6 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
 
   if (filters.followups === "open") q = q.gt("open_followups", 0);
   if (filters.consent !== "all") q = q.eq("marketing_email", CONSENT_STATE[filters.consent]);
-  // Main stages alone read the stage; with a sub-status, `lifecycle_statuses`
-  // holds both names, so it is still one overlap and never an `or`.
   if (filters.stage.length) {
     q = filters.stage.every(isMainStage)
       ? q.in("lifecycle_stage", filters.stage)
@@ -801,7 +581,6 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   }
 
   if (filters.bought.length) q = q.overlaps("bought", pgTextArray(filters.bought));
-  // `bought` is never null ('{}' for nothing), so *Didn't buy* keeps a Customer who bought nothing.
   if (filters.not_bought.length) q = q.not("bought", "ov", pgTextArray(filters.not_bought));
   if (filters.size.length) q = q.overlaps("pillow_sizes", pgTextArray(filters.size));
   if (filters.last_order) {
@@ -809,7 +588,6 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
     q = filters.last_order.when === "within" ? q.gte("last_purchase_at", cutoff) : q.lt("last_purchase_at", cutoff);
   }
   if (filters.delivered) {
-    // Whole days back from `now`, as the overview's 30 days to *Settled*.
     const cutoff = new Date(now.getTime() - filters.delivered.days * DAY_MS).toISOString();
     q = filters.delivered.when === "within" ? q.gte("last_delivered_at", cutoff) : q.lt("last_delivered_at", cutoff);
   }
@@ -817,7 +595,6 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
   if (filters.readjusted === "never") q = q.is("last_readjusted_at", null);
   if (filters.min_spend != null) q = q.gte("total_spent", filters.min_spend);
 
-  // Slice 05. A null country is never Singapore, and `<>` never lists it either.
   if (filters.ships_to === "sg") q = q.eq("ship_country", "SG");
   if (filters.ships_to === "not-sg") q = q.neq("ship_country", "SG");
   if (filters.ships_to === "unknown") q = q.is("ship_country", null);
@@ -834,14 +611,11 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
     if (e.when === "never") q = q.is("last_campaign_sent_at", null);
     else {
       const cutoff = new Date(now.getTime() - e.days * DAY_MS).toISOString();
-      // `last_emailed_at` is '-infinity' for never, so *not in N days* keeps them.
       q = e.when === "within" ? q.gte("last_campaign_sent_at", cutoff) : q.lt("last_emailed_at", cutoff);
     }
   }
-  // Slice 12: never null, so the two values split every Customer.
   if (filters.engagement) q = q.eq("unengaged", filters.engagement === "unengaged");
 
-  // CRM slice 12. Each Customer is in exactly one Google review value.
   if (filters.google_review === "linked") q = q.not("google_reviewed_at", "is", null);
   if (filters.google_review === "asked") q = q.not("review_requested_at", "is", null).is("google_reviewed_at", null);
   if (filters.google_review === "not-asked") q = q.is("review_requested_at", null).is("google_reviewed_at", null);
@@ -860,12 +634,10 @@ export function applyCustomerFilters<Q extends CustomerListQuery>(
     case "oldest":
       return q.order("created_at", { ascending: true });
     case "signed-up":
-      // Recently signed up first; Customers with no account last.
       return q
         .order("account_linked_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
     case "last-order":
-      // Latest purchase first; Customers with none here last.
       return q
         .order("last_purchase_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });

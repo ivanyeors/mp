@@ -24,19 +24,12 @@ function authorizeCron(req: Request): boolean {
   return secretMatches(`Bearer ${secret}`, req.headers.get("authorization"));
 }
 
-/** Cron secret (Vercel / curl) or a signed-in staff session (browser backfill). */
 async function authorize(req: Request): Promise<boolean> {
   if (authorizeCron(req)) return true;
   const ctx = await getAdminContext();
   return ctx != null && hasPermission(ctx, "results");
 }
 
-/**
- * Google Contacts sweep for upcoming appointments (default next 30 days, `?days=N`
- * up to 100 for a backfill). Chained daily from /api/cron/appointment-reminders —
- * Hobby stays at 2 vercel.json crons; this route is for manual ops / backfills —
- * open it in the browser as staff, or curl it with CRON_SECRET.
- */
 export async function GET(req: Request) {
   if (!(await authorize(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -21,7 +21,6 @@ const WALLED = { ...PILLOW_DIMENSIONS.M, subSectionDividers: true };
 const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
 
 describe("crossSectionSlabs", () => {
-  // Three layers left and right, one in the centre: "sides higher than center".
   const sideSleep: PillowPlacement[] = [
     ...[0, 1, 2].map((row) => at("left", "middle", row + 1, 1, row)),
     ...[0, 1, 2].map((row) => at("right", "middle", row + 1, 1, row)),
@@ -39,17 +38,16 @@ describe("crossSectionSlabs", () => {
       expect(c.maxLoftMm).toBe(fit.sections.left.maxLoftMm);
     }
     expect(cols[1].loftMm).toBeGreaterThan(crossSectionSlabs(fit, DEFAULT_CUT)[1].loftMm);
-    // Deepest plane at the bottom.
     expect(cols[1].slabs.map((s) => s.depth)).toEqual([2, 1, 0]);
   });
 
   it("never exceeds the loft line unless the column is over, and hatches compressed slabs", () => {
-    const stack = [0, 1, 2].map((row) => at("center", "middle", row + 1, 2, row)); // 180 relaxed > 140.8, 120 min ≤ 140.8
+    const stack = [0, 1, 2].map((row) => at("center", "middle", row + 1, 2, row));
     const compressed = crossSectionSlabs(fitPillow(stack, { size: "M", dims, pillow: WALLED }), DEFAULT_CUT)[1];
     expect(compressed.status).toBe("compressed");
     expect(sum(compressed.slabs.map((s) => s.heightMm))).toBeLessThanOrEqual(compressed.maxLoftMm + 0.1);
     expect(compressed.slabs.every((s) => s.hatched)).toBe(true);
-    const four = [0, 1, 2, 3].map((row) => at("center", "middle", row + 1, 2, row)); // 160 min > 140.8
+    const four = [0, 1, 2, 3].map((row) => at("center", "middle", row + 1, 2, row));
     const over = crossSectionSlabs(fitPillow(four, { size: "M", dims, pillow: WALLED }), DEFAULT_CUT)[1];
     expect(over.status).toBe("over");
     expect(sum(over.slabs.map((s) => s.heightMm))).toBeGreaterThan(over.maxLoftMm);
@@ -64,12 +62,10 @@ describe("crossSectionSlabs", () => {
     const cols = crossSectionSlabs(fit, along);
     expect(cols.map((c) => c.key)).toEqual(["front", "middle", "back"]);
     expect(cols.map((c) => c.widthMm)).toEqual([fit.settle.cellLengthMm, fit.settle.cellLengthMm, fit.settle.cellLengthMm]);
-    // True size: it keeps its thickness, and its ends over the empty neighbours do not stand it there.
     expect(cols.map((c) => c.loftMm)).toEqual([0, 45, 0]);
     const slid = crossSectionSlabs(fitPillow([{ ...at("center", "middle", 1, 1), offsetYMm: 100 }], { size: "M", dims }), along);
     expect(slid.map((c) => c.loftMm)).toEqual([0, 45, 45]);
     expect(slid[2].slabs[0].itemId).toBe(1);
-    // Walled, the same recipe is one tall column and two gaps.
     const walled = crossSectionSlabs(fitPillow([at("center", "middle", 1, 1)], { size: "M", dims, pillow: WALLED }), along);
     expect(walled.map((c) => c.loftMm)).toEqual([0, 45, 0]);
     expect(walled[0].slabs).toEqual([]);
@@ -96,11 +92,10 @@ describe("the along cut's thickness, from Settings to the drawing", () => {
   ]);
 
   it("carries each pouch's thickness at the Size, then settled, then as drawn", () => {
-    // XS: thickness scales by the side gusset, 101 / 153.
     const fit = fitPillow([at("center", "middle", 1, 1)], { size: "XS", dims: configured });
     const [slab] = alongSlabs(fit, "center");
     expect(slab.relaxedMm).toBeCloseTo(45 * (101 / 153), 0);
-    expect(slab.settledMm).toBe(slab.relaxedMm); // true size: alone in the Section it keeps its length, and its thickness
+    expect(slab.settledMm).toBe(slab.relaxedMm);
     expect(slab.heightMm).toBe(slab.settledMm);
   });
 

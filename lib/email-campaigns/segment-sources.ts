@@ -3,22 +3,9 @@ import { campaignSegmentIds, type ApprovedSegment, type LiveSegment } from "./ke
 import type { Campaign } from "./rules";
 import type { CampaignExclusionSource } from "./sender";
 
-/**
- * A campaign's Segments as a wave reads them, for a Staff Wave
- * (app/[lang]/settings/campaigns/actions.ts) and the daily job's
- * (PRD-campaign-audiences slice 10) alike, so both send to the same people.
- */
-
-/** The Segment a campaign is sent to, page by page; undefined for an audience with no Segment. */
 export const segmentAudience = (c: Pick<Campaign, "segmentId">): (() => AsyncIterable<string[]>) | undefined =>
   c.segmentId ? () => resolveSegment(c.segmentId!) : undefined;
 
-/**
- * The Segments a campaign leaves out (PRD-campaign-audiences slice 06), each
- * with its name, so a wave refused for one says which. Never widened: one that
- * is archived, needs review or is gone refuses the wave, as the Segment it is
- * sent to does.
- */
 export async function leftOutSegments(ids: readonly string[]): Promise<CampaignExclusionSource[]> {
   return Promise.all(
     ids.map(async (segmentId) => {
@@ -36,7 +23,6 @@ export async function leftOutSegments(ids: readonly string[]): Promise<CampaignE
   );
 }
 
-/** Each of the campaign's Segments as it is now; null for one that is gone. */
 export async function readLiveSegments(c: Pick<Campaign, "segmentId" | "excludeSegmentIds">): Promise<Map<string, LiveSegment | null>> {
   const ids = campaignSegmentIds(c);
   const rows = await Promise.all(ids.map((id) => getSegment(id)));
@@ -48,11 +34,6 @@ export async function readLiveSegments(c: Pick<Campaign, "segmentId" | "excludeS
   );
 }
 
-/**
- * What a person approves when they turn keep sending on or resume it: each
- * Segment's filters now. Throws for one that is gone or archived, which a
- * wave could not send to either.
- */
 export async function approveSegments(c: Pick<Campaign, "segmentId" | "excludeSegmentIds">): Promise<Record<string, ApprovedSegment>> {
   const live = await readLiveSegments(c);
   const approved: Record<string, ApprovedSegment> = {};

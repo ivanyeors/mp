@@ -10,7 +10,6 @@ export type UpsellCardProps = {
   fromPrice: number | null;
   toPrice: number | null;
   currency?: string;
-  /** Extra expectation copy (Bolster→Mpillow ~2 min). Optional. */
   expectation?: string | null;
   onUpgrade: () => void;
   onKeep: () => void;
@@ -24,7 +23,6 @@ function priceOrDash(amount: number | null, currency: string): string {
   return amount == null ? "—" : formatPrice(amount, currency);
 }
 
-/** Flow-route consent card on completed preview (reason + prices + Upgrade / Keep). */
 export function UpsellCard({
   reason,
   fromLabel,

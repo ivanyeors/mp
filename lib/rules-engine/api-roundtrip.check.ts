@@ -1,9 +1,3 @@
-/**
- * Slice 01 live round-trip: draft → publish → evaluate (same path as the API).
- * Run: npx tsx --env-file=.env.local lib/rules-engine/api-roundtrip.check.ts
- *
- * Cleans up rows it creates for flow premium-mpillow tagged in graph label.
- */
 import assert from "node:assert/strict";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { evaluateOrThrow } from "./evaluate";
@@ -26,7 +20,6 @@ const MARKER = "__slice01_roundtrip__";
 
 async function cleanup() {
   const admin = supabaseAdmin();
-  // Delete only rows whose graph JSON contains our marker label on the fallback.
   const { data } = await admin.from("rule_graphs").select("id, graph").eq("flow", FLOW);
   const ids = (data ?? [])
     .filter((r) => JSON.stringify(r.graph).includes(MARKER))
@@ -47,7 +40,6 @@ async function main() {
   assert.ok(fb);
   fb.label = MARKER;
 
-  // Save any pre-existing draft aside: if a real draft exists without marker, skip mutating it.
   const existing = await getDraft(FLOW);
   if (existing && !JSON.stringify(existing.graph).includes(MARKER)) {
     console.log(
@@ -67,7 +59,6 @@ async function main() {
   assert.equal(published.published.status, "published");
   assert.equal(published.published.version, 1);
 
-  // Published is immutable: updating the draft must not change the published row.
   const mutated = structuredClone(graph);
   const tpl = mutated.nodes.find((n) => n.id === "tpl-m");
   assert.ok(tpl?.type === "template-output");
@@ -90,7 +81,6 @@ async function main() {
   assert.equal(result.templateId, DEFAULT_TEMPLATE_IDS.M);
   assert.ok(result.trace.length > 0);
 
-  // Restore copies without mutating history
   const beforeRestore = structuredClone(latest.graph);
   const restored = await restoreToDraft(FLOW, latest.id, null);
   assert.ok(!("error" in restored));

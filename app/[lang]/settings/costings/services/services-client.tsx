@@ -30,7 +30,6 @@ import { cn } from "@/lib/utils";
 
 type Initial = { services: ServicePrices; readjustmentPolicy: ReadjustmentPolicy };
 
-/** When each fee is charged — the operator's reminder of what the number does. */
 const CHARGED_WHEN: Record<ServiceKey, string> = {
   measurement_premium: "staff measure a Premium Mpillow customer.",
   measurement_basic: "staff measure a Basic Mpillow customer. Mbolster has no measurement fee.",
@@ -43,7 +42,6 @@ type Draft = {
   freeWindowDays: string;
 };
 
-/** Phones show each card as a plain section: its fields get the full width, and no box sits around them. */
 const flatOnPhone = "max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:py-0 max-md:shadow-none";
 
 const money = (n: number | null) => (n == null ? "" : n.toFixed(2));
@@ -63,7 +61,6 @@ function toDraft(initial: Initial): Draft {
   };
 }
 
-/** "50" / "50.5" / "50.50" → 5050 cents; anything else → null. */
 function toCents(value: string): number | null {
   const trimmed = value.trim();
   if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null;
@@ -96,7 +93,6 @@ export default function ServiceFeesClient({
     [draft, saved],
   );
 
-  // Field-level validation — the route re-validates, this only keeps Save honest.
   const errors = useMemo(() => {
     const out: Record<string, string> = {};
     if (!draft) return out;

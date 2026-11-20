@@ -4,14 +4,6 @@ import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
-/**
- * GET /api/shop/orders — the Admin Panel's orders list.
- *
- * There is no POST: Staff make an Order for a Customer through
- * `POST /api/staff-orders` (ADR 0048), which prices it on the server. The
- * route that stood here took every price from the request body (against
- * ADR 0001) and nothing called it.
- */
 export async function GET(req: Request) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;

@@ -3,25 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { normalizePhone } from "@/lib/appointments/phone";
 
-/**
- * A Fitting import row with no email is matched by mobile (ADR 0042 c). The
- * browser and the server action normalise the form's number with
- * `normalizePhone`; `import_fitting_rows` compares it with each Customer's
- * stored phone through `public.phone_e164`
- * (20261101100000_customer_fittings.sql). Both must give the same E.164 for
- * every number, or a match would be missed.
- *
- * The phones are the CRM's fixture (supabase/tests/customer-crm/phone-cases.json),
- * so every branch of normalizePhone is covered once, in one list. Here each
- * is decided by the TypeScript into phone-cases.json beside this import's
- * SQL asserts; supabase/tests/fitting-import/assert-phone.sql requires
- * phone_e164 to give the same.
- *
- * Regenerate with
- *   UPDATE_SQL_CASES=1 pnpm vitest run lib/fitting-import/__tests__/phone-e164-agreement.test.ts
- * and run ./scripts/check-fitting-import-sql.sh.
- */
-
 const CRM_CASES = join(process.cwd(), "supabase/tests/customer-crm/phone-cases.json");
 const CASES_PATH = join(process.cwd(), "supabase/tests/fitting-import/phone-cases.json");
 

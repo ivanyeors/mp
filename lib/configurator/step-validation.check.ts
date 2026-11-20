@@ -1,7 +1,3 @@
-/**
- * Slice 03 self-check: hybrid CTA + field error map.
- * Run: npx tsx lib/configurator/step-validation.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,7 +11,6 @@ import {
   type FieldCheck,
 } from "./step-validation";
 
-// Sample name step (empty → disabled)
 const emptyName: FieldCheck[] = [
   { key: "name", touched: false, valid: false, message: "Enter your name" },
   { key: "gender", touched: false, valid: false, message: "Select a gender" },
@@ -23,7 +18,6 @@ const emptyName: FieldCheck[] = [
 ];
 assert.equal(hybridCtaEnabled(emptyName), false);
 
-// Partially filled → CTA enabled; submit still errors missing fields
 const partialName: FieldCheck[] = [
   { key: "name", touched: true, valid: true, message: "Enter your name" },
   { key: "gender", touched: false, valid: false, message: "Select a gender" },
@@ -35,7 +29,6 @@ assert.deepEqual(buildFieldErrorMap(partialName), {
   ageGroup: "Select an age group",
 });
 
-// Fixing a field clears that error only
 const afterGender: FieldCheck[] = [
   { key: "name", touched: true, valid: true },
   { key: "gender", touched: true, valid: true },
@@ -49,7 +42,6 @@ assert.deepEqual(
   { ageGroup: "Select an age group" },
 );
 
-// Measurement: touched but invalid (0) → CTA on, error on submit
 const badMeasure: FieldCheck[] = [
   {
     key: "shoulderLength",
@@ -68,7 +60,6 @@ assert.deepEqual(buildFieldErrorMap(badMeasure), {
 assert.equal(isNonEmptyString("  "), false);
 assert.equal(isNonEmptyString("Ada"), true);
 
-// Complete step → no errors
 const complete: FieldCheck[] = [
   { key: "name", touched: true, valid: true },
   { key: "gender", touched: true, valid: true },
@@ -76,7 +67,6 @@ const complete: FieldCheck[] = [
 ];
 assert.deepEqual(buildFieldErrorMap(complete), {});
 
-// Clients wire helper
 const ROOT = process.cwd();
 const mp = readFileSync(join(ROOT, "app/[lang]/mp-config/mp-config-client.tsx"), "utf8");
 const bolster = readFileSync(

@@ -1,7 +1,3 @@
-/**
- * Slice 05 self-check: preview reveal gate + assign hint wiring.
- * Run: npx tsx lib/rules-engine/slice-05.check.ts
- */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -16,7 +12,6 @@ import {
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 
-// --- Reveal gate ---
 assert.equal(
   shouldRevealRecommendation({ requiredInputsComplete: false }),
   false,
@@ -33,7 +28,6 @@ assert.equal(
   true,
 );
 
-// --- Why: no node ids ---
 const why = plainLanguageWhy({
   size: "M",
   trace: [
@@ -48,7 +42,6 @@ assert.match(why, /Side sleeping/);
 assert.match(why, /Size M/);
 assert.doesNotMatch(why, /sz-m|in-shoulder/);
 
-// --- Assign hint ---
 assert.equal(
   selectAssignHintSource({
     engineTemplateId: 9,
@@ -67,7 +60,6 @@ assert.equal(
   1,
 );
 
-// --- Mount / wiring ---
 for (const rel of [
   "components/rules-engine/recommendation-reveal.tsx",
   "lib/rules-engine/reveal.ts",
@@ -80,20 +72,15 @@ for (const rel of [
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 assert.match(mp, /RecommendationReveal/);
 assert.match(mp, /shouldRevealRecommendation/);
-// The trace-built "why" named only the shoulder band, not what chose the
-// template, so shoppers no longer see one; Staff keep it on the assign page.
 assert.doesNotMatch(mp, /plainLanguageWhy/, "no shopper-facing why line");
 
 const bolster = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
 assert.match(bolster, /RecommendationReveal/);
 assert.doesNotMatch(bolster, /plainLanguageWhy|recommendation\.explanation/, "no shopper-facing why line");
 
-// The results detail page is an RSC shell; the assign flow lives in the client component.
 const assignPage = read("app/[lang]/settings/results/[id]/result-detail-client.tsx");
 assert.match(assignPage, /resolveAssignHintTemplateId/);
 assert.match(assignPage, /Engine recommendation|plainLanguageWhy/);
-// #406 (de315ed2): the "Staff assist mix" banner became the editor opening on the
-// mix saved on the Result, with the hint/template only a reference.
 assert.match(assignPage, /if \(editable && hasSavedMix\) \{/);
 assert.match(assignPage, /Showing the mix saved on this result\. Save assignment confirms it; the template is only a reference\./);
 

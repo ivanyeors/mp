@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Members API on Users & permissions (slice 04): every refusal the role policy
- * makes reaches the caller as a status and a readable sentence, and every
- * change is written to the Audit Log with before/after.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -125,8 +119,6 @@ describe("PATCH /api/admin/users/[id]", () => {
     expect((await refused.json()).error).toBe("Only an Owner can change an Owner.");
     signIn("owner1");
     expect((await patch("owner2", { is_active: false })).status).toBe(200);
-    // The last-active-Owner rule itself is covered in role-policy.test.ts: through the
-    // API the actor is always an active Owner too, so it is reached only with stale rows.
   });
 
   it("refuses an Admin granting Owner, with a readable reason", async () => {
@@ -162,7 +154,6 @@ describe("PATCH /api/admin/users/[id]", () => {
 
   describe("a concurrent change between the check and the write (review finding)", () => {
     it("is not overwritten: 409 when the Member changed after it was read", async () => {
-      // Someone promotes orders1 to Admin while people1's demotion is in flight.
       const roles = h.db.admin_roles;
       let reads = 0;
       Object.defineProperty(h.db, "admin_roles", {
@@ -188,7 +179,6 @@ describe("PATCH /api/admin/users/[id]", () => {
         get: () => active,
         set: (v: boolean) => {
           active = v;
-          // owner2's own request, demoting owner1, commits at the same moment.
           if (!v) h.db.admin_users.find((m) => m.id === "owner1")!.role_id = R.admin;
         },
       });
@@ -324,7 +314,6 @@ describe("resend and revoke", () => {
   });
 
   it("does not delete an invitee who signs in while the revoke runs (review finding)", async () => {
-    // The row reads as Invited once (the check), then as bound (the delete).
     const row = h.db.admin_users.find((m) => m.id === "inv1")!;
     let reads = 0;
     Object.defineProperty(row, "auth_user_id", { get: () => (reads++ === 0 ? null : "auth-late"), configurable: true });
@@ -332,7 +321,6 @@ describe("resend and revoke", () => {
     const res = await call(DELETE, "inv1");
     expect(res.status).toBe(409);
     expect(h.db.admin_users.some((m) => m.id === "inv1")).toBe(true);
-    // Their profiles are back under them, as they were.
     expect(h.db.mp_staff.filter((p) => p.admin_user_id === "inv1").map((p) => [p.id, p.archived_at])).toEqual([
       ["p-new", null],
       ["p-used", null],

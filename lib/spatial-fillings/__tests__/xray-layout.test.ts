@@ -55,8 +55,6 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     const layout = layoutPlacements(Array.from({ length: n }, (_, i) => piece(i + 1)));
     expect(layout).toHaveLength(n);
     disjoint(layout);
-    // Across: inside their cell's column. Front ↔ back: the generic pouch's 140 mm (longer than a 110 mm cell), inside
-    // the Section (true size, 9-11-2026).
     const frame = cellFrame("center", "middle");
     const section = { x: frame.x, w: frame.w, y: cellFrame("center", "front").y, h: cellFrame("center", "back").y + frame.h - cellFrame("center", "front").y };
     for (const p of layout) {
@@ -79,7 +77,7 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
   it("adjacent pieces press against each other across a thin seam", () => {
     const layout = layoutPlacements([piece(1), piece(2)]);
     const [a, b] = [...layout].sort((p, q) => p.x - q.x);
-    expect(b.x - (a.x + a.w)).toBeLessThanOrEqual(1.5); // GAP seam, not a float
+    expect(b.x - (a.x + a.w)).toBeLessThanOrEqual(1.5);
   });
 
   it("every cell frame sits inside the view box and cells do not overlap", () => {
@@ -117,11 +115,11 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     const top = byDepth.get(0)!;
     const deep = byDepth.get(2)!;
     const frame = cellFrame("center", "middle");
-    expect(top.w).toBeGreaterThan(frame.w * 0.6); // near-full-cell layers, not split rows
-    expect(deep.y).toBe(top.y); // where the cut draws it, front ↔ back
-    expect(deep.x).toBeGreaterThan(top.x); // a hair right reads as deeper
-    expect(layout[0].depth).toBe(2); // emitted deepest-first…
-    expect(layout[layout.length - 1].depth).toBe(0); // …so the top layer paints last
+    expect(top.w).toBeGreaterThan(frame.w * 0.6);
+    expect(deep.y).toBe(top.y);
+    expect(deep.x).toBeGreaterThan(top.x);
+    expect(layout[0].depth).toBe(2);
+    expect(layout[layout.length - 1].depth).toBe(0);
   });
 
   it("side-by-side (no explicit row) is unchanged and reports depth 0", () => {
@@ -143,17 +141,13 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     const deep = layout.filter((p) => p.depth === 1);
     expect(top).toHaveLength(2);
     expect(deep).toHaveLength(1);
-    // The two top pieces sit side by side: same band, different columns.
     expect(top[0].y).toBeCloseTo(top[1].y, 5);
     expect(top[0].x).not.toBeCloseTo(top[1].x, 1);
-    // …and together they span what the single deeper piece spans alone.
     expect(top[0].w + top[1].w).toBeGreaterThan(deep[0].w * 0.9);
-    expect(deep[0].x).toBeGreaterThan(Math.min(top[0].x, top[1].x)); // the layer itself still reads deeper, across
+    expect(deep[0].x).toBeGreaterThan(Math.min(top[0].x, top[1].x));
   });
 
   it("a layer emptied out of the middle does not render as a gap", () => {
-    // Stored rows can carry a hole (layer 1 deleted); layers compact on layout,
-    // so two surviving layers overlay as 0/1 — never 0 and a two-step-deep 2.
     const holed = layoutPlacements([
       { ...piece(1), row: 0 },
       { ...piece(2), row: 2 },

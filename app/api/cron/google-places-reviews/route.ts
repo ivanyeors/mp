@@ -4,7 +4,6 @@ import { pollPlacesReviews } from "@/lib/reviews/places-poll";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Up to five new reviews, each drafted by Claude before its card goes out.
 export const maxDuration = 300;
 
 // ponytail: manual/ops only — not in vercel.json. The weekly read is chained

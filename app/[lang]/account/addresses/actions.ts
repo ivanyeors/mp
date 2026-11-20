@@ -13,7 +13,6 @@ function revalidate() {
   revalidatePath("/[lang]/account/addresses", "page");
 }
 
-/** Clears the default flag on every other address owned by the customer. */
 async function clearDefaults(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   customerId: string,
@@ -39,7 +38,6 @@ export async function createAddress(input: unknown): Promise<AddressActionResult
 
   const supabase = await createSupabaseServerClient();
 
-  // Unset any existing default first so the one-default-per-customer index holds.
   if (parsed.data.is_default) await clearDefaults(supabase, customerId);
 
   const { error } = await supabase
@@ -67,7 +65,6 @@ export async function updateAddress(
 
   if (parsed.data.is_default) await clearDefaults(supabase, customerId, id);
 
-  // RLS scopes the update to the customer's own rows; the id filter is belt-and-braces.
   const { error } = await supabase
     .from("customer_addresses")
     .update(parsed.data)
@@ -110,8 +107,6 @@ export async function deleteAddress(id: string): Promise<AddressActionResult> {
 
   if (error) return { ok: false, error: error.message };
 
-  // If the deleted address was the default, promote the most recent remaining
-  // one so the customer keeps a usable default at checkout.
   if (removed?.is_default) {
     const { data: next } = await supabase
       .from("customer_addresses")

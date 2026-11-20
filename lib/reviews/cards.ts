@@ -3,53 +3,21 @@ import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { MAX_REPLY_CHARS, replyWarnings } from "@/lib/reviews/reply-rules";
 import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
 
-/**
- * Telegram cards for reviews. Given a row, the text and buttons a card should
- * show right now (the only outside input is GOOGLE_PLACE_ID, for the Maps
- * link). Every state change re-renders the whole card, so a card never shows
- * buttons for an action that no longer applies.
- *
- * The first line names the source in capitals so nobody mistakes a public
- * Google review (we reply on Google Maps) for a website review (approve or
- * reject, and our reply shows under it on the product page). Plain text — no
- * parse_mode, nothing to escape.
- *
- * A Google review read through the Places API (`source` places) cannot be
- * answered from here — that API is read-only — so its card links to the review
- * on Google Maps and offers Mark replied instead of Post reply.
- */
-
 export const GOOGLE_CARD_HEADER = "⭐ GOOGLE MAPS REVIEW";
 export const SHOP_CARD_HEADER = "🛍 SHOP REVIEW · mpillow website";
 
-/** Telegram's hard limit for a message; a longer card is never delivered. */
 const TELEGRAM_MAX_CHARS = 4096;
 const MAX_ERROR_CHARS = 300;
 const MAX_CURRENT_REPLY_CHARS = 600;
 
 export type Card = { text: string; replyMarkup?: InlineKeyboardMarkup };
 
-/** A staff reply under a card that starts with this stays in the group: never sent, never a draft. */
 export const TEAM_NOTE_PREFIX = "//";
 const TEAM_NOTE_LINE = `Start a reply with ${TEAM_NOTE_PREFIX} for a team-only note.`;
 
-// ---------------------------------------------------------------------------
-// Callback data: rv:<source>:<action>:<id>[:<draft version>] — at most 52 bytes,
-// inside Telegram's 64. Post (and Mark replied) carries the draft version the
-// tapper was looking at, so a draft edited a moment earlier is never published
-// — or recorded as published — unseen. A shop card's Remove reply is
-// `rv:s:unreply:<id>`: it takes down whatever reply the review has.
-// ---------------------------------------------------------------------------
-
 export const REVIEW_CALLBACK_PREFIX = "rv:";
 
-/**
- * The id on every button of a preview card (lib/reviews/preview.ts). It never
- * matches a review; the Telegram handler answers a tap on it with the tapper's
- * access instead of acting.
- */
 export const PREVIEW_REVIEW_ID = "00000000-0000-4000-8000-000000000000";
-/** First line of every preview card; the real header follows on the next line. */
 export const PREVIEW_CARD_PREFIX = "🧪 PREVIEW — ";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -82,8 +50,6 @@ export function parseReviewCallback(data: string): ReviewCallback | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-
 export function starLine(rating: number | null): string {
   if (!rating) return "No star rating";
   const n = Math.max(1, Math.min(5, Math.round(rating)));
@@ -105,7 +71,6 @@ export function formatCardDate(iso: string | null | undefined): string | null {
   }).format(d);
 }
 
-/** The business's reviews on Google Maps; null until GOOGLE_PLACE_ID is set. */
 export function googleReviewsUrl(): string | null {
   const placeId = process.env.GOOGLE_PLACE_ID?.trim();
   return placeId ? `https://search.google.com/local/reviews?placeid=${encodeURIComponent(placeId)}` : null;
@@ -125,7 +90,6 @@ function reviewerLabel(row: Pick<GoogleReviewRow, "reviewer_name" | "reviewer_is
   return row.reviewer_name.trim();
 }
 
-/** A reviewer edit shows when Google's update time is well after creation. */
 function editedLine(row: GoogleReviewRow): string | null {
   if (!row.review_created_at || !row.review_updated_at) return null;
   const created = new Date(row.review_created_at).getTime();
@@ -136,7 +100,6 @@ function editedLine(row: GoogleReviewRow): string | null {
 
 const SETTLED: GoogleReviewRow["status"][] = ["posting", "posted", "skipped", "replied_elsewhere"];
 
-/** Why a settled review is back: the rating moved into another reply type. */
 function reopenedLine(row: GoogleReviewRow): string {
   const from = row.reopened_from_rating;
   const change =
@@ -147,23 +110,13 @@ function reopenedLine(row: GoogleReviewRow): string {
 }
 
 export type GoogleCardOptions = {
-  /**
-   * CRM slice 12: the Admin Panel link to confirm a suggested customer, when
-   * the review has one. The line names nobody: the Staff group is a shared
-   * chat (CRM README, third hazard).
-   */
   possibleCustomerMatch?: string | null;
 };
 
-/** The line a Google card gains when a customer may have written the review. */
 export function possibleCustomerMatchLine(url: string): string {
   return `👤 Possible customer match: confirm in the Admin Panel: ${url}`;
 }
 
-/**
- * The card for a Google review in its current state. A long review is clipped
- * harder until the whole card fits Telegram's limit, so the card always sends.
- */
 export function renderGoogleReviewCard(row: GoogleReviewRow, opts: GoogleCardOptions = {}): Card {
   let card = renderGoogleCardWithin(row, 1200, opts);
   for (const reviewChars of [600, 200]) {
@@ -180,7 +133,6 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number, opts:
     GOOGLE_CARD_HEADER,
     `${starLine(row.star_rating)} · ${reviewerLabel(row)}`,
   ];
-  // A 1–2★ review is a customer to win back, not just a reply to post.
   if (style === "service_recovery" && open) {
     lines.push("🛟 SERVICE RECOVERY — reply soon, and follow up with this customer personally if you can identify them.");
   }
@@ -220,9 +172,7 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number, opts:
       break;
   }
 
-  // new / pending / backlog: waiting on a review manager.
   if (row.source === "places") return placesOpenCard(row, lines);
-  // A reopened review usually already has a reply on Google; posting replaces it.
   const replacing = !!row.google_reply;
   if (replacing) {
     lines.push("💬 Our reply on Google now (posting replaces it):", clip(row.google_reply ?? "", MAX_CURRENT_REPLY_CHARS), "");
@@ -258,7 +208,6 @@ function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number, opts:
   return { text: lines.join("\n"), replyMarkup: { inline_keyboard: [buttons] } };
 }
 
-/** The draft lines both kinds of open card share. */
 function draftLines(row: GoogleReviewRow, style: ReturnType<typeof replyStyleFor>): string[] {
   if (!row.draft_reply) return [`✍️ No draft yet${row.draft_error ? ` — ${clip(row.draft_error, MAX_ERROR_CHARS)}` : ""}.`];
   const heading =
@@ -268,10 +217,6 @@ function draftLines(row: GoogleReviewRow, style: ReturnType<typeof replyStyleFor
   return [heading, row.draft_reply, ...replyWarnings(row.draft_reply, { style }).map((w) => `⚠️ ${w}`)];
 }
 
-/**
- * An open card for a review read through the Places API: the reply goes on
- * Google Maps by hand (the API cannot post), then Mark replied records it.
- */
 function placesOpenCard(row: GoogleReviewRow, lines: string[]): Card {
   const style = replyStyleFor(row.star_rating);
   const replacing = !!row.reopened_at && !!row.posted_reply;
@@ -300,10 +245,6 @@ function placesOpenCard(row: GoogleReviewRow, lines: string[]): Card {
   return { text: lines.join("\n"), replyMarkup: { inline_keyboard: keyboard } };
 }
 
-/**
- * A Places card closed when its row is deleted (lib/reviews/places-poll.ts):
- * no buttons, and nothing quoted from the review.
- */
 export function renderExpiredPlacesCard(row: GoogleReviewRow): string {
   const url = row.maps_uri ?? googleReviewsUrl();
   return [
@@ -315,7 +256,6 @@ export function renderExpiredPlacesCard(row: GoogleReviewRow): string {
   ].join("\n");
 }
 
-/** Reviews Google counted that the Places API's five did not include. */
 export function renderMissedReviewsNotice(count: number, placeUrl: string | null): string {
   const url = placeUrl ?? googleReviewsUrl();
   const reviews = count === 1 ? "1 new Google review" : `${count} new Google reviews`;
@@ -324,8 +264,6 @@ export function renderMissedReviewsNotice(count: number, placeUrl: string | null
     url ? `Read and answer on Google Maps: ${url}` : "Read and answer them on Google Maps.",
   ].join("\n");
 }
-
-// ---------------------------------------------------------------------------
 
 export type ShopReviewForCard = {
   id: string;
@@ -336,7 +274,6 @@ export type ShopReviewForCard = {
   status: "pending" | "approved" | "rejected";
   created_at: string | null;
   productName: string | null;
-  /** Our public reply (null: none), and who set it when. */
   store_reply: string | null;
   store_reply_at: string | null;
   store_reply_by_name: string | null;
@@ -344,15 +281,6 @@ export type ShopReviewForCard = {
 
 const SHOP_REPLY_HOW = "💬 To answer it publicly, reply to this message with our reply.";
 
-/**
- * A shop review's card. Pending: Approve / Reject. Pending or approved: a reply
- * to the card sets our public reply (shown under the review while it is
- * approved), and once there is one, Remove reply takes it down. Rejected: no
- * buttons, and nothing to answer.
- *
- * `actedBy` names who just approved or rejected it; nothing stores that, so a
- * later redraw (after a reply) says only "Approved".
- */
 export function renderShopReviewCard(review: ShopReviewForCard, actedBy?: string | null): Card {
   const lines: string[] = [SHOP_CARD_HEADER, `${starLine(review.rating)} · ${review.author_name}`];
   if (review.productName) lines.push(`Product: ${review.productName}`);

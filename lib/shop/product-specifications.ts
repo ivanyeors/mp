@@ -1,19 +1,5 @@
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
-// ============================================================
-// Product specifications
-// ============================================================
-//
-// Specifications are derived from structured product/variant data rather than a
-// placeholder. Sources, in priority order:
-//   1. `key:value` tags on the product (e.g. "material:Memory Foam",
-//      "fill:Microfiber", "care:Machine washable", "dimensions:60 x 40 cm").
-//   2. The selected variant's size/dimension option value.
-//   3. The variant's structured fields (weight, SKU) and the product type.
-//
-// Every field is optional; the UI renders only the fields that resolve, so a
-// product with sparse data degrades gracefully.
-
 export interface ProductSpecifications {
   dimensions?: string;
   materials?: string;
@@ -24,7 +10,6 @@ export interface ProductSpecifications {
   type?: string;
 }
 
-/** Spec label, ordered for display. */
 export const SPEC_FIELDS: Array<{ key: keyof ProductSpecifications; label: string }> = [
   { key: "dimensions", label: "Dimensions" },
   { key: "materials", label: "Materials" },
@@ -35,7 +20,6 @@ export const SPEC_FIELDS: Array<{ key: keyof ProductSpecifications; label: strin
   { key: "sku", label: "SKU" },
 ];
 
-/** Parse `key:value` tags into a lookup map (keys lowercased). */
 function parseTagAttributes(tags: string[] | undefined): Map<string, string> {
   const map = new Map<string, string>();
   for (const tag of tags ?? []) {
@@ -56,7 +40,6 @@ function firstTag(attrs: Map<string, string>, ...keys: string[]): string | undef
   return undefined;
 }
 
-/** Resolve a variant option value whose product option name matches `regex`. */
 function findOptionValue(
   product: Product,
   variant: ProductVariant | null,
@@ -101,7 +84,6 @@ export function buildProductSpecifications(
   return specs;
 }
 
-/** True when at least one specification field has a value. */
 export function hasSpecifications(specs: ProductSpecifications): boolean {
   return SPEC_FIELDS.some(({ key }) => Boolean(specs[key]));
 }

@@ -78,11 +78,6 @@ export const getInventoryItemDisplayLabel = (item: InventoryItemLike): string =>
 type InventoryItemLabelProps<T extends InventoryItemLike = InventoryItemLike> = {
   item: T;
   className?: string;
-  /**
-   * The list is already grouped under a category heading. On a phone the label
-   * then drops the category ("Cover Covers" reads as "Cover") and runs as text,
-   * so the size badge follows the name instead of wrapping onto a line of its own.
-   */
   groupedByCategory?: boolean;
 };
 

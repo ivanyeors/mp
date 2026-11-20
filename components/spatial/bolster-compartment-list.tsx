@@ -9,11 +9,6 @@ import { fillingItemsToSunburst } from "@/lib/spatial-fillings/filling-groups";
 import { addBolsterPiece, removeBolsterPiece } from "@/lib/configurator/staff-assist";
 import type { BolsterPlacement } from "@/lib/spatial-fillings/core";
 
-/**
- * Filling Items only — callers filter (category === "filling"). `name`/`subtype`/
- * `size` drive the family grouping (3D / 6D / 6D+); `label` is the pre-formatted
- * display name shown on the list rows.
- */
 export type BolsterListItem = {
   id: number;
   label: string;
@@ -22,14 +17,6 @@ export type BolsterListItem = {
   size: string | null;
 };
 
-/**
- * Mbolster single-compartment mix editor (ADR 0008 amendment): one ordered
- * list, add/remove, NO piece cap, never the pillow Section/sub-section grid.
- * Dumb + controlled: no data fetching; parent owns the placements value.
- * Used by Admin Result assign (Configure edits on XrayBolsterEditor). The
- * "Add piece" picker groups fillings by family via the shared SunburstMenu —
- * the same tree the pillow x-ray add-picker uses.
- */
 export function BolsterCompartmentList({
   value,
   onChange,
@@ -40,7 +27,6 @@ export function BolsterCompartmentList({
   items: BolsterListItem[];
 }) {
   const pieces = [...value].sort((a, b) => a.slot - b.slot);
-  // Phones: thicker rings + a 44px centre trigger (same preset as the pillow x-ray picker).
   const isMobile = useIsMobile();
   const label = (itemId: number) =>
     items.find((i) => i.id === itemId)?.label ?? `Item #${itemId}`;

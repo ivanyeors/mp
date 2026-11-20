@@ -13,8 +13,6 @@ import {
   aiWritingSettingsToRows,
 } from "@/lib/ai/writing-settings";
 
-/** General → AI writing (PRD-campaign-email-editor slice 16): parsing, defaults and the checks on save. */
-
 const K = AI_WRITING_SETTING_KEYS;
 const rows = (values: Partial<Record<keyof typeof K, string>>) =>
   Object.entries(values).map(([k, value]) => ({ key: K[k as keyof typeof K], value: value as string }));
@@ -89,7 +87,6 @@ describe("AiWritingSettingsSchema", () => {
 });
 
 describe("an effort the model does not accept", () => {
-  // A model that takes fewer efforts than the list's first.
   const narrow: AiModel = { id: "narrow-model", label: "Narrow model", inputPerMillionUsd: 1, outputPerMillionUsd: 5, efforts: ["low"] };
   const models = [...AI_MODELS, narrow];
 
@@ -116,7 +113,6 @@ describe("the next call", () => {
     const s = { ...AI_WRITING_DEFAULTS, effortDraft: "high" as const, effortQuick: "medium" as const };
     expect(aiWritingRequest(s, "draft")).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "high" });
     expect(aiWritingRequest(s, "translate")).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "high" });
-    // A product's description and its SEO are whole pieces of writing, as a draft is.
     expect(aiWritingRequest(s, "product_description")).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "high" });
     expect(aiWritingRequest(s, "product_seo")).toEqual({ model: DEFAULT_AI_MODEL_ID, effort: "high" });
     for (const kind of AI_WRITING_KINDS.filter((k) => k !== "draft" && k !== "translate" && !k.startsWith("product_"))) {
@@ -129,7 +125,6 @@ describe("the next call", () => {
       { bucket: "ai-writing-10min", key: "member-1", windowMs: 600_000, max: 10 },
       { bucket: "ai-writing-day", key: "member-1", windowMs: 86_400_000, max: 60 },
     ]);
-    // The owner lowers the daily limit to 30: the next call is counted against 30.
     expect(aiWritingRateLimits({ ...AI_WRITING_DEFAULTS, limitDay: 30 }, "member-1")[1]?.max).toBe(30);
   });
 });

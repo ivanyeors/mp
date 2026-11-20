@@ -25,7 +25,6 @@ import {
   SILHOUETTE_MASTER_WIDTH_MM,
 } from "../silhouette-master";
 
-// Section widths at the protector's divider seams (reference/protector-sections.json, 22-9-2026).
 const PROTECTOR_SECTIONS: Record<string, [number, number, number]> = {
   XS: [204.5, 195.0, 204.4],
   S: [203.4, 240.0, 203.5],

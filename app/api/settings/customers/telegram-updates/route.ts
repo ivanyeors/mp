@@ -17,14 +17,6 @@ import { readTelegramUpdates } from "@/lib/crm/telegram-updates-server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Customers → Settings → Telegram updates (CRM slice 14). One `site_settings`
- * key, `crm_telegram_updates`: on/off per type and the Weekly summary's day.
- *
- * Seeing it needs `customers`. Changing it needs `customers-edit` (slice 10);
- * the online Result switch also needs `results`, so someone who cannot see
- * Results cannot silence the Results queue.
- */
 export async function GET() {
   let ctx;
   try {
@@ -41,8 +33,6 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       settings,
-      // The held-Result reminder keeps its own switch in Settings → General;
-      // the card only says whether it is on, so one notice never has two switches.
       heldReminderTelegram: sla.remindTelegram,
       canEdit: hasPermission(ctx, "customers-edit"),
       canEditOnlineResult: hasPermission(ctx, "customers-edit") && hasPermission(ctx, "results"),

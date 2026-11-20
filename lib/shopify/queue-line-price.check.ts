@@ -1,6 +1,3 @@
-/**
- * Run: npx tsx lib/shopify/queue-line-price.check.ts
- */
 import assert from "node:assert/strict";
 import {
   detectPremiumVariantFromTitle,
@@ -69,7 +66,6 @@ assert.equal(
   99,
 );
 
-// Template selection wins over title heuristic
 assert.equal(
   resolveShopifyQueueLineMsrp({
     kind: "pillow",

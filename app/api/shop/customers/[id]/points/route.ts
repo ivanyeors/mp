@@ -16,16 +16,6 @@ import {
 
 export const runtime = "nodejs";
 
-/**
- * A Customer's points (PRD-loyalty-points slice 02; ADR 0030): the balance,
- * pending points by Order, the latest ledger entries, and their place on the
- * bonus milestones (slice 09). Seeing them needs `customers`.
- *
- * POST is a Staff adjustment (rule n): points up or down with a written
- * reason, refused for a partner and below zero by `adjust_points`. It needs
- * `customers-edit`, and is audited with the Staff profile.
- */
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const AdjustSchema = z
@@ -43,7 +33,6 @@ async function readView(id: string) {
     readPointsHistory(admin, id, 20),
     isPartnerCustomer(admin, id),
     readPointsSettings(admin),
-    // A failed milestone read only hides the milestone line, never the balance.
     readMilestoneStanding(admin, id).catch(() => null),
   ]);
   const milestones = standing

@@ -12,12 +12,6 @@ import {
 } from "../content";
 import { CampaignDraftSchema, EMPTY_CAMPAIGN_DRAFT } from "../rules";
 
-/**
- * The image + text block (PRD-campaign-email-editor slice 06): an image, as
- * slice 05 places one, that always says what it shows; the side it sits on;
- * a heading; a few lines of a text block's runs; and an optional button.
- */
-
 const PHOTO = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
 const one = (b: unknown) => ({ v: 1, blocks: [b], fallbacks: {} });
 const issues = (c: unknown) => CampaignContentSchema.safeParse(c).error?.issues.map((i) => [i.path.join("."), i.message]) ?? [];
@@ -40,7 +34,6 @@ describe("an image + text block", () => {
     const plain: Record<string, unknown> = split();
     delete plain.button;
     expect(CampaignContentSchema.parse(one(plain))).toEqual(one(plain));
-    // The words are a text block's runs: bold, a link, a Variable, bullets.
     const rich = split({
       paragraphs: [
         { kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: ", read the " }, { text: "care guide", href: "https://custom.mpillow.com/en-US/faq", bold: true }] },
@@ -67,7 +60,6 @@ describe("an image + text block", () => {
       ["blocks.0.button.label", "Give the button a label."],
       ["blocks.0.paragraphs", "Write the text."],
     ]);
-    // The preview draws it as it is.
     expect(CampaignContentPreviewSchema.safeParse(one(emptyBlock("split", "s"))).success).toBe(true);
   });
 
@@ -89,7 +81,6 @@ describe("an image + text block", () => {
   it("holds its words to words: no tags, only Variables in braces, the heading's limit", () => {
     const unknown = (name: string) => `{${name}} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.`;
     expect(issues(one(split({ heading: "x".repeat(121) })))).toEqual([["blocks.0.heading", "At most 120 characters."]]);
-    // Its heading takes Variables as a heading block's does (slice 13).
     expect(issues(one(split({ heading: "For {first_name}" })))).toEqual([]);
     expect(issues(one(split({ heading: "For {frist_name}" })))).toEqual([["blocks.0.heading", unknown("frist_name")]]);
     expect(issues(one(split({ paragraphs: lines("Hi {frist_name}") })))).toEqual([["blocks.0.paragraphs", unknown("frist_name")]]);

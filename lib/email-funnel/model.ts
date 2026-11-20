@@ -1,31 +1,6 @@
-/**
- * The **Email funnel** as one view (PRD-email-funnel; ADR 0054), pure: for
- * each **Lifecycle stage**, its header, the **Segments** that cut it, its
- * **Email flow** and its results, from plain facts a loader reads. No
- * database, no React; the view is plain JSON, so a server page hands it to a
- * client component as it is.
- *
- * Everything is derived, never stored (ADR 0054 (4)): a campaign belongs to
- * the stages its Segment's `stage` filter names, and a Playbook's step is set
- * up when a live campaign's Segment has the Playbook's filters, compared after
- * the Customers list's one schema (`customerFiltersSchema` →
- * `customerFilterParams`), so key order and defaults do not matter, AND the
- * campaign still carries the Playbook's name or subject (its `words`, trimmed,
- * in any case). Any other campaign to that Segment (*Add an email* on Loyal
- * opens one with exactly `stage=loyal`, the *Thank you* Playbook's filters)
- * is the marketer's own email, an ordinary campaign of the stage, and the
- * Playbook stays a suggestion. An unapproved Playbook is claimed by none.
- *
- * Results follow the campaign Results tab (lib/email-campaigns/results.ts):
- * the `sent` cohort only, by the stage each person had when sent
- * (`stage_at_send`), rates over people sent and a dash when nobody was. The
- * view holds counts, never rates: the page calls `rate`, which is null for
- * nobody, never `NaN`.
- *
- * ponytail: numbers are since each email started (PRD decision 6):
- * `email_campaign_stage_results` has no dates, so there is no period picker.
- * The upgrade is a dated results view and a `since` on `FunnelFacts`.
- */
+// ponytail: numbers are since each email started (PRD decision 6): `email_campaign_stage_results`
+// has no dates, so there is no period picker. The upgrade is a dated results view and a `since` on
+// `FunnelFacts`.
 
 import {
   customerFiltersSchema,
@@ -57,20 +32,13 @@ import {
   type StageEntry,
 } from "./programme";
 
-/** `rate(part, whole)`: null when `whole` is 0. With the Results tab's `formatRate` and `formatSgd`. */
 export { formatRate, formatSgd, rate } from "@/lib/email-campaigns/results";
-/** *Same filters as the Playbook* (`customerFiltersSchema` → `customerFilterParams`), shared with New campaign. */
 export { filtersKey } from "@/lib/crm/filters-key";
 
-// ─── Facts: what the loader reads ────────────────────────────────────────────
-
-/** A live Segment: `CustomerSegment` as `listSegments` returns it fits. */
 export type FunnelSegmentFact = Pick<CustomerSegment, "id" | "name" | "count" | "needsReview"> & {
-  /** Its stored filters, as the Customers list's URL parameters (strings). */
   params: Readonly<Record<string, string | undefined>>;
 };
 
-/** A live campaign: `CampaignListItem` as `listCampaigns` returns it fits. */
 export interface FunnelCampaignFact {
   campaign: Pick<Campaign, "id" | "name" | "subject" | "audience" | "segmentId" | "excludeSegmentIds" | "lockedAt" | "createdAt"> & {
     keepSending?: Pick<KeepSending, "on" | "dailyCap" | "pausedAt" | "pausedReason" | "holdoutAt">;
@@ -78,156 +46,101 @@ export interface FunnelCampaignFact {
   stats: Pick<CampaignStats, "handed" | "firstSentAt" | "lastSentAt">;
 }
 
-/** What an Automatic email already records: how many were sent, and its one outcome. */
 export interface AutomaticCount {
   sent: number;
-  /** What `sent` counts, so a row says its basis (*Check-ups sent, by email or WhatsApp*); *Emails sent* when left out. */
   sentLabel?: string;
   outcome: number;
-  /** Other counts it records, shown beside the outcome (*Reviews linked*, each reminder's sends). */
   also?: readonly AutomaticAlso[];
 }
 
-/** One more count an Automatic email records, in words. */
 export interface AutomaticAlso {
   label: string;
   count: number;
 }
 
-/** A part of the page whose read failed: the page says so instead of showing it empty. */
 export type FunnelPart = "summary" | "segments" | "campaigns" | "results" | "switches";
 
 export interface FunnelFacts {
-  /** Every Customer by stage now (`lifecycleSummary`); null when not read. */
   summary: LifecycleSummary | null;
-  /** Per stage, how many of its Customers are subscribed to marketing email; missing or null when not read. */
   subscribed: Readonly<Partial<Record<LifecycleStage, number | null>>>;
-  /** Live Segments (not archived). */
   segments: readonly FunnelSegmentFact[];
-  /** Live campaigns (not archived). */
   campaigns: readonly FunnelCampaignFact[];
-  /** `email_campaign_stage_results` rows for those campaigns, as the view returns them (`resultsFromRows` reads them). */
   stageResults: readonly Record<string, unknown>[];
-  /** Automatic emails' counts by programme step id; missing or null for one not read (a failed read): *not counted*. */
   automatic: Readonly<Partial<Record<string, AutomaticCount | null>>>;
-  /**
-   * The switches, true when the step can send: draft reminders
-   * (`draft_reminders_enabled`), review requests and check-ups
-   * (`reviewRequestBlock` / `checkupBlock` is null), and their timings.
-   */
   switches: Readonly<Record<FunnelSwitch, boolean>> & { checkupMonths: number; reviewRequestDays?: number };
-  /** Parts whose read failed (their facts are then empty); missing for none. */
   notRead?: readonly FunnelPart[];
 }
 
-// ─── The view ────────────────────────────────────────────────────────────────
-
-/** A campaign named on the page. */
 export interface CampaignRef {
   id: string;
   name: string;
 }
 
-/** A step's state, with the words the page shows. */
 export type StepState =
-  /** An Automatic email that sends; a Service email without a switch always is. */
   | { state: "on"; label: string }
   | { state: "off_in_settings"; label: string }
-  /** A Playbook not in `APPROVED_PLAYBOOKS`: it cannot be started. */
   | { state: "words_waiting"; label: string }
-  /** An approved Playbook with no live campaign to its Segment. */
   | { state: "not_set_up"; label: string }
-  /** A campaign whose first Wave has not been planned. */
   | { state: "draft"; label: string }
-  /** Its first Wave was planned; it does not keep sending. */
   | { state: "started"; label: string }
   | { state: "keeps_sending"; label: string; dailyCap: number }
-  /** Kept sending, paused: `reason` is the daily job's, or null when a person paused it. */
   | { state: "paused"; label: string; reason: string | null };
 
-/** A campaign in a stage's flow. */
 export interface FlowCampaign {
   id: string;
   name: string;
-  /** Its subject line, as saved (variables unfilled); empty when it has none yet. */
   subject: string;
-  /** Its own page. */
   href: string;
   state: StepState;
-  /** When its first Wave was planned; null for a draft. */
   startedAt: string | null;
-  /** Why it stays where it is (started, a Playbook's, its Segment unreadable), or null: a draft that can be dragged (slice 07). */
   lock: string | null;
 }
 
-/** A follow-up: the campaign of this stage its Segment reads, and what that campaign did with them. */
 export interface FollowUp {
   campaignId: string;
   did: CampaignFilterState;
 }
 
-/** One **Funnel step** of a stage's Email flow. */
 export interface FlowStep {
-  /** The programme step's id (`lead.draft_reminders`), or `campaign:<id>` for a campaign Staff wrote. */
   key: string;
   kind: "automatic" | "playbook" | "campaign";
   name: string;
   purpose: "service" | "marketing";
-  /** Which consent it reads, in words. */
   consent: string;
   who: string;
   when: string;
-  /** What ends it; empty when nothing but leaving the stage does. */
   stops: string;
   state: StepState;
-  /** Where it is changed: settings, Email templates, or the campaign. */
   href: string;
-  /** A Playbook *Not set up*: New campaign started from it. Null otherwise. */
   setUpHref: string | null;
-  /** An Automatic step's registry ids; empty otherwise. */
   templates: string[];
-  /** A Playbook step's Starter id; null otherwise. */
   starterId: string | null;
-  /** A Playbook: every live campaign to its Segment, oldest started first. A campaign: itself. Automatic: none. */
   campaigns: FlowCampaign[];
-  /** A campaign Staff wrote whose Segment reads another campaign of this stage; null otherwise. */
   after: FollowUp | null;
 }
 
-/** A Segment of a stage. */
 export interface FunnelSegmentView {
-  /** Null for a Playbook's Segment that is *Not created*. */
   id: string | null;
   name: string;
-  /** Its stored filters (a Not created one: the Playbook's), as URL parameters, without `search` (see `searchHidden`). */
   params: Record<string, string>;
-  /** Its filters include a search, left out of `params` so no Customer's name or email reaches the page: show a chip without its words. */
   searchHidden: boolean;
-  /** Customers it chooses now; null when not counted. */
   count: number | null;
   needsReview: boolean;
-  /** A stored filter does not parse. Flagged, like needs review: never matched to a Playbook. */
   unreadable: boolean;
   notCreated: boolean;
-  /** For a Not created one, the Playbook that names it; null otherwise. */
   starterId: string | null;
-  /** Live campaigns sent to it. */
   sendsTo: CampaignRef[];
-  /** Live campaigns that leave it out. */
   leftOutBy: CampaignRef[];
 }
 
-/** One row of a stage's results. */
 export type FunnelResultRow =
   | {
       kind: "campaign";
       campaignId: string;
       name: string;
       href: string;
-      /** *Keeps sending*, or else *one-off*. */
       keepsSending: boolean;
       audience: CampaignAudience;
-      /** The `sent` cohort's numbers for people at this stage when sent. */
       numbers: ResultNumbers;
     }
   | {
@@ -235,87 +148,58 @@ export type FunnelResultRow =
       stepId: string;
       name: string;
       href: string;
-      /** What `outcome` counts (*Opened the review link*). */
       outcomeLabel: string;
-      /** False when its count could not be read: *not counted*, never 0. */
       counted: boolean;
       sent: number | null;
-      /** What `sent` counts (*Emails sent*, *Customers asked, by email or WhatsApp*). */
       sentLabel: string;
       outcome: number | null;
-      /** Its other counts; empty when not counted. */
       also: AutomaticAlso[];
-      /** Listed under more than one stage (the Check-up reminder): its numbers are not split by stage. */
       acrossStages: boolean;
     };
 
 export interface FunnelStageTotals {
-  /** Every campaign row's numbers added up. */
   campaigns: ResultNumbers;
-  /** Every counted Automatic row's `sent` added up, except rows listed under several stages (`acrossStages`). */
   automaticSent: number;
-  /** The `sent` of counted `acrossStages` rows (the Check-up reminder): not split by stage, so shown beside the total and never added to it. */
   automaticAcrossStages: number;
-  /** Automatic rows not counted, so not in `automaticSent`. */
   automaticNotCounted: number;
 }
 
 export interface FunnelStageView {
   stage: LifecycleStage;
-  /** As the URL writes it: `?stage=at-risk`. */
   param: string;
   header: {
     label: string;
     rule: string;
-    /** Null when the counts were not read. */
     customers: number | null;
-    /** Of them, subscribed to marketing email; null when not read. */
     subscribed: number | null;
-    /** Its sub-statuses, in bar order (`LIFECYCLE_PARTS`). */
     parts: { key: LifecyclePartKey; label: string; customers: number }[];
   };
-  /** Who enters, whether the sunset rule shows, and *Lost*'s nothing-sent words. */
   entry: StageEntry;
   segments: FunnelSegmentView[];
-  /** Programme steps, then the stage's other campaigns oldest started first. Empty for *Lost*. */
   flow: FlowStep[];
   results: {
-    /** One row per email with anyone sent at this stage (an uncounted Automatic one included). */
     rows: FunnelResultRow[];
     totals: FunnelStageTotals;
-    /** *Lost* only: campaigns by how many people unsubscribed from them (every stage), most first. Null elsewhere. */
     unsubscribedFrom: (CampaignRef & { unsubscribed: number })[] | null;
   };
 }
 
 export interface FunnelView {
-  /** The five stages, in funnel order. */
   stages: FunnelStageView[];
-  /** The **Rest period**, drawn between two marketing emails. */
   restPeriod: { days: number; maxPer30Days: number; text: string };
-  /** *Bought within 30 days*. */
   resultWindowDays: number;
-  /** Parts whose read failed: the page says each could not be read. */
   notRead: FunnelPart[];
-  /** Live drafts that sit in no stage yet (`isUnplaced`), oldest made first: each can be placed in a stage's flow. */
   unplaced: FlowCampaign[];
 }
 
-// ─── Filters ─────────────────────────────────────────────────────────────────
-
-/** Whether a Stage filter's values name `stage` or one of its sub-statuses. */
 const namesStage = (values: readonly StageFilter[], stage: LifecycleStage) =>
   values.some((v) => v === stage || (v in LIFECYCLE_DETAIL_STAGE && LIFECYCLE_DETAIL_STAGE[v as keyof typeof LIFECYCLE_DETAIL_STAGE] === stage));
 
-/** A Segment, read once. */
 interface ReadSegment {
   fact: FunnelSegmentFact;
-  /** The stages its `stage` filter names. */
   stages: Set<LifecycleStage>;
-  /** Canonical filters; null when flagged (needs review or unreadable), so never matched. */
   key: string | null;
   unreadable: boolean;
-  /** Its *Campaign* filter, read. */
   campaign: { id: string; state: CampaignFilterState } | null;
 }
 
@@ -333,32 +217,21 @@ function readSegment(fact: FunnelSegmentFact): ReadSegment {
   };
 }
 
-/** The *Campaign* filter states that make a follow-up: got it, clicked it, got it and didn't click. */
 const FOLLOW_UP_STATES: ReadonlySet<CampaignFilterState> = new Set(["sent", "clicked", "not-clicked"]);
 
-/**
- * Stored filters for the page, without a search's words: a search may be a
- * Customer's name or email, and this page never names a Customer (PRD
- * hazard). Matching still reads the whole stored filters.
- */
 const shownParams = (params: Readonly<Record<string, string | undefined>>): Record<string, string> =>
   Object.fromEntries(Object.entries(params).filter((e): e is [string, string] => e[1] !== undefined && e[0] !== "search"));
 
-// ─── States ──────────────────────────────────────────────────────────────────
-
-/** Two words the same, trimmed and in any case; an empty one matches nothing. */
 const same = (a: string | null | undefined, b: string | null | undefined) => {
   const x = (a ?? "").trim().toLowerCase();
   return x !== "" && x === (b ?? "").trim().toLowerCase();
 };
 
-/** A Playbook's own name and subject (`PLAYBOOK_DRAFTS`), or null when it has none. */
 function playbookWords(starterId: string): { name: string; subject: string } | null {
   const w = PLAYBOOK_DRAFTS.find((p) => p.id === starterId)?.words;
   return w ? { name: w.name, subject: w.subject } : null;
 }
 
-/** Pure — a campaign's state: Draft → Started → Keeps sending, n a day → Paused with the reason. */
 export function campaignState(c: FunnelCampaignFact["campaign"]): StepState {
   if (!c.lockedAt) return { state: "draft", label: "Draft" };
   const k = c.keepSending;
@@ -369,7 +242,6 @@ export function campaignState(c: FunnelCampaignFact["campaign"]): StepState {
   return { state: "started", label: "Started" };
 }
 
-/** How far along a campaign is, for a Playbook with several: the step reads its furthest. */
 const PROGRESS: Record<StepState["state"], number> = {
   on: 0,
   off_in_settings: 0,
@@ -381,7 +253,6 @@ const PROGRESS: Record<StepState["state"], number> = {
   keeps_sending: 4,
 };
 
-/** Oldest started first; drafts after, oldest made first. */
 const byStart = (a: FunnelCampaignFact, b: FunnelCampaignFact) =>
   (a.campaign.lockedAt ?? "￿").localeCompare(b.campaign.lockedAt ?? "￿") ||
   a.campaign.createdAt.localeCompare(b.campaign.createdAt) ||
@@ -396,56 +267,36 @@ const plainFlowCampaign = (c: FunnelCampaignFact): Omit<FlowCampaign, "lock"> =>
   startedAt: c.campaign.lockedAt,
 });
 
-// ─── Who follows whom: one reading, for the page and for a move ──────────────
-
-/** A Segment as the reading holds it: what a move needs to know of it, never shown on the page as it is. */
 export interface ReadSegmentView {
   fact: FunnelSegmentFact;
   stages: ReadonlySet<LifecycleStage>;
-  /** Canonical filters; null when it needs review or does not parse. */
   key: string | null;
   unreadable: boolean;
   campaign: { id: string; state: CampaignFilterState } | null;
 }
 
-/**
- * The facts read once (PRD-email-funnel slices 03 and 07): each campaign's
- * Segment, the campaign it follows up (`followOf`: its Segment reads what that
- * one did, a cycle broken at its root), the stages it sits in, and the
- * Playbooks' campaigns. `buildFunnel` draws the page from it and `planMove`
- * (./move) plans a drag from it, so the two cannot disagree.
- */
 export interface FunnelReading {
-  /** Live campaigns, oldest started first. */
   campaigns: readonly FunnelCampaignFact[];
   byId: ReadonlyMap<string, FunnelCampaignFact>;
   segments: readonly ReadSegmentView[];
   segmentOf: (c: FunnelCampaignFact) => ReadSegmentView | null;
   followOf: (c: FunnelCampaignFact) => { parent: FunnelCampaignFact; did: CampaignFilterState } | null;
   stagesOf: (c: FunnelCampaignFact) => ReadonlySet<LifecycleStage>;
-  /** Per Playbook step id, the live campaigns of `stage` that are that Playbook. */
   playbookCampaigns: (stage: LifecycleStage) => Map<string, FunnelCampaignFact[]>;
-  /** Campaign ids that are a Playbook in any stage: their Segment is what makes them the Playbook. */
   playbookIds: ReadonlySet<string>;
 }
 
-/** Pure — the facts' campaigns and Segments, read once. */
 export function readFunnel(facts: Pick<FunnelFacts, "segments" | "campaigns"> & Partial<Pick<FunnelFacts, "switches">>): FunnelReading {
-  // Which Playbooks a stage has does not depend on the timings.
   const programme = funnelProgramme({ checkupMonths: facts.switches?.checkupMonths, reviewRequestDays: facts.switches?.reviewRequestDays });
   const segments = facts.segments.map(readSegment);
   const segmentById = new Map(segments.map((s) => [s.fact.id, s]));
   const campaigns = [...facts.campaigns].sort(byStart);
 
-  // A campaign's Segment, read; null for an Audience that is not a Segment, or a Segment no longer live.
   const segmentOf = (c: FunnelCampaignFact) =>
     c.campaign.audience === "segment" && c.campaign.segmentId ? (segmentById.get(c.campaign.segmentId) ?? null) : null;
 
   const byId = new Map(campaigns.map((c) => [c.campaign.id, c]));
 
-  // The live campaign `c` follows up: its Segment reads what that one did
-  // (*got it*, *clicked it*, *got it, didn't click*). *Didn't get it* is the
-  // people it never reached: an ordinary campaign, not a follow-up.
   const readsOf = (c: FunnelCampaignFact): { parent: FunnelCampaignFact; did: CampaignFilterState } | null => {
     const read = segmentOf(c)?.campaign;
     if (!read || !FOLLOW_UP_STATES.has(read.state) || read.id === c.campaign.id) return null;
@@ -453,10 +304,6 @@ export function readFunnel(facts: Pick<FunnelFacts, "segments" | "campaigns"> & 
     return parent ? { parent, did: read.state } : null;
   };
 
-  // A cycle of follow-ups (A reads B, B reads A) has no first email: the one
-  // of the cycle that started first (a draft counted as newest, ties by when
-  // made, then id) follows up nothing and is its root, in the stages its
-  // cycle's Segments name. Walked with a visited set, so it always ends.
   const cycleRoots = new Map<string, ReadonlySet<LifecycleStage>>();
   for (const c of campaigns) {
     const path: FunnelCampaignFact[] = [];
@@ -473,9 +320,6 @@ export function readFunnel(facts: Pick<FunnelFacts, "segments" | "campaigns"> & 
   }
   const followOf = (c: FunnelCampaignFact) => (cycleRoots.has(c.campaign.id) ? null : readsOf(c));
 
-  // The stages a campaign sits in: its Segment's own, or, for a follow-up
-  // whose Segment names none, the stages of the campaign it follows up. A
-  // cycle (A reads B, B reads A) ends with no stage.
   const stagesMemo = new Map<string, ReadonlySet<LifecycleStage>>();
   const stagesOf = (c: FunnelCampaignFact, seen: ReadonlySet<string> = new Set()): ReadonlySet<LifecycleStage> => {
     const memo = stagesMemo.get(c.campaign.id);
@@ -490,7 +334,6 @@ export function readFunnel(facts: Pick<FunnelFacts, "segments" | "campaigns"> & 
     return out;
   };
 
-  // Each Playbook's campaigns in a stage: those whose Segment has its filters and that still carry its name or subject.
   const playbookCampaigns = (stage: LifecycleStage) => {
     const steps = stage === "lost" ? [] : stepsOfStage(programme, stage);
     const inStage = campaigns.filter((c) => stagesOf(c).has(stage));
@@ -515,13 +358,6 @@ export function readFunnel(facts: Pick<FunnelFacts, "segments" | "campaigns"> & 
   return { campaigns, byId, segments, segmentOf, followOf, stagesOf, playbookCampaigns, playbookIds };
 }
 
-/**
- * Pure — the email `c` follows in `stage`'s flow, as the page draws it and a
- * move plans it (slice 07): only for a campaign in `stage` that is not a
- * Playbook (a Playbook's campaign starts its own sequence), and only when the
- * campaign it reads is in `stage` too. Otherwise null: it starts a sequence
- * there, or is not in that flow at all.
- */
 export function stageFollowOf(
   r: FunnelReading,
   c: FunnelCampaignFact,
@@ -532,7 +368,6 @@ export function stageFollowOf(
   return f && r.stagesOf(f.parent).has(stage) ? f : null;
 }
 
-/** Pure — the main stages a `stage` filter's value names (`at-risk:lapsed` names At risk); none when it does not parse. */
 export function stagesNamedBy(param: string | undefined): LifecycleStage[] {
   if (param === undefined) return [];
   const parsed = customerFiltersSchema.shape.stage.safeParse(param);
@@ -540,19 +375,12 @@ export function stagesNamedBy(param: string | undefined): LifecycleStage[] {
   return FUNNEL_STAGES.filter((s) => namesStage(values, s));
 }
 
-/** Pure — the live campaigns that are the Playbook `starterId` (its Segment's filters, its name or subject), in any stage. */
 export function playbookCampaignsOf(r: FunnelReading, starterId: string): FunnelCampaignFact[] {
   const step = FUNNEL_PROGRAMME_STEPS.find((p) => p.kind === "playbook" && p.starterId === starterId);
   if (!step) return [];
   return [...new Set(step.stages.flatMap((st) => r.playbookCampaigns(st).get(step.id) ?? []))];
 }
 
-/**
- * Pure — why a live campaign stays where it is, in words, or null when it can
- * be moved (PRD-email-funnel slice 07): only a draft moves; a Playbook's draft
- * keeps the Segment that makes it the Playbook; a Segment that needs review or
- * is no longer live cannot be read to keep its other filters.
- */
 export function moveLock(r: FunnelReading, c: FunnelCampaignFact): string | null {
   if (c.campaign.lockedAt) return "Started: it keeps who it goes to. Duplicate it to send a copy somewhere else.";
   if (r.playbookIds.has(c.campaign.id)) return "A Playbook's draft starts its own sequence: its Segment is what makes it the Playbook. Add emails after it.";
@@ -564,10 +392,6 @@ export function moveLock(r: FunnelReading, c: FunnelCampaignFact): string | null
   return null;
 }
 
-/**
- * Pure — a live draft that sits in no stage: no Segment (another Audience),
- * or a Segment that names no stage and reads no campaign.
- */
 export function isUnplaced(r: FunnelReading, c: FunnelCampaignFact): boolean {
   if (c.campaign.lockedAt) return false;
   if (c.campaign.audience !== "segment" || !c.campaign.segmentId) return true;
@@ -575,9 +399,6 @@ export function isUnplaced(r: FunnelReading, c: FunnelCampaignFact): boolean {
   return seg !== null && seg.key !== null && seg.stages.size === 0 && seg.campaign === null;
 }
 
-// ─── The build ───────────────────────────────────────────────────────────────
-
-/** Pure — the whole page from the facts. */
 export function buildFunnel(facts: FunnelFacts): FunnelView {
   const programme = funnelProgramme({ checkupMonths: facts.switches.checkupMonths, reviewRequestDays: facts.switches.reviewRequestDays });
   const reading = readFunnel(facts);
@@ -585,7 +406,6 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
   const ref = (c: FunnelCampaignFact): CampaignRef => ({ id: c.campaign.id, name: c.campaign.name });
   const flowCampaign = (c: FunnelCampaignFact): FlowCampaign => ({ ...plainFlowCampaign(c), lock: moveLock(reading, c) });
 
-  // Each live campaign's rows, by id.
   const rowsByCampaign = new Map<string, Record<string, unknown>[]>();
   for (const row of facts.stageResults) {
     const id = String(row.campaign_id);
@@ -634,7 +454,6 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
               }),
           ];
 
-    // Segments: every live one naming the stage, then each Playbook's that is not created.
     const listed: FunnelSegmentView[] = segments
       .filter((s) => s.stages.has(stage))
       .map((s) => ({
@@ -669,7 +488,6 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
         leftOutBy: [],
       }));
 
-    // Results: Automatic steps, then campaigns that reached people at this stage, first sent first.
     const automaticRows = steps.flatMap((s): FunnelResultRow[] => {
       if (s.kind !== "automatic" || s.outcome === null) return [];
       const count = facts.automatic[s.id];
@@ -750,7 +568,6 @@ export function buildFunnel(facts: FunnelFacts): FunnelView {
   };
 }
 
-/** A programme step as a flow step, its state from the switches or its campaigns. */
 function programmeFlowStep(s: ProgrammeStep, switches: FunnelFacts["switches"], matched: readonly FlowCampaign[]): FlowStep {
   const base = {
     key: s.id,
@@ -795,7 +612,6 @@ function programmeFlowStep(s: ProgrammeStep, switches: FunnelFacts["switches"], 
   };
 }
 
-/** Pure — a row's rates over people sent, each null when nobody was (a dash, never `NaN`). */
 export function resultRates(n: ResultNumbers): { clicked: number | null; unsubscribed: number | null; complained: number | null; bought: number | null } {
   return {
     clicked: rate(n.clicked, n.people),

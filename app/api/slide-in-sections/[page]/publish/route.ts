@@ -26,7 +26,6 @@ async function guard(params: Params["params"]) {
   return { ctx, page: page as SlideInPageKey } as const;
 }
 
-/** GET — what a publish of this sub page would ship. */
 export async function GET(_req: Request, { params }: Params) {
   const g = await guard(params);
   if ("denied" in g) return g.denied;
@@ -37,10 +36,6 @@ export async function GET(_req: Request, { params }: Params) {
   }
 }
 
-/**
- * POST — apply this sub page's drafts to the live slide-in, atomically, and write one
- * **Publish snapshot**. Other sub pages and the landing page are untouched.
- */
 export async function POST(_req: Request, { params }: Params) {
   const g = await guard(params);
   if ("denied" in g) return g.denied;
@@ -56,8 +51,6 @@ export async function POST(_req: Request, { params }: Params) {
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // The root layout serves these to every page from a cache; drop it now so the very
-    // next visitor sees the publish.
     invalidateTag(SLIDE_IN_SECTIONS_TAG);
 
     await recordAdminAction({
@@ -74,7 +67,6 @@ export async function POST(_req: Request, { params }: Params) {
   }
 }
 
-/** DELETE — discard this sub page's drafts. Published content is untouched. */
 export async function DELETE(_req: Request, { params }: Params) {
   const g = await guard(params);
   if ("denied" in g) return g.denied;

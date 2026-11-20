@@ -11,12 +11,6 @@ const sgDate = (iso: string) =>
     timeZone: "Asia/Singapore",
   });
 
-/**
- * Profile → Fitting history (ADR 0042 h): what was recorded at each of the
- * customer's own in-store fittings, in the same card Staff see on the Customer
- * page. The records come from the server already stripped of Drive files
- * (`listOwnFittings`), so no photo, preview or Drive link is shown or sent.
- */
 export function OwnFittingsCard({ fittings }: { fittings: FittingAnswersView[] }) {
   return (
     <FittingHistory

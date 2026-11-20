@@ -56,7 +56,6 @@ function Target({ hidden }: { hidden?: boolean }) {
 
 type Props = NodeProps<Node<RuleNodeData>> & { flow: RuleFlow };
 
-// Filling Template id → name, so a Template node reads "Type-3" not "69".
 export const TemplateNamesContext = createContext<Record<string, string>>({});
 
 function ruleTitle(rule: RuleNode): string {

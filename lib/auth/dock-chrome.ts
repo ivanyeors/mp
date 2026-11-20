@@ -1,5 +1,3 @@
-/** Landing Menu last-pill + Admin Panel dock path rules (pure). */
-
 export type DockSessionRole = "guest" | "customer" | "staff" | "partner";
 
 export function resolveDockSessionRole(
@@ -13,7 +11,6 @@ export function resolveDockSessionRole(
   return "guest";
 }
 
-/** Locale-stripped hrefs; callers wrap with `withLocale`. */
 export function landingAuthPill(role: DockSessionRole): {
   label: string;
   href: string;
@@ -24,7 +21,6 @@ export function landingAuthPill(role: DockSessionRole): {
   return { label: "Sign in", href: "/account/login" };
 }
 
-/** Home + Sign out dock only on Admin Panel routes (not the login redirect). */
 export function isAdminPanelDockPath(basePathname: string): boolean {
   if (
     basePathname === "/settings/login" ||

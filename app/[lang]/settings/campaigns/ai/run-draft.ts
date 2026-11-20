@@ -4,26 +4,15 @@ import { contentWords, type CampaignContent, type EmailBlock } from "@/lib/email
 import type { EditorDraft } from "../kept-draft";
 import type { AiBrief, AiDraftRun, AiDraftWhere, AiIdeas } from "./use-ai-draft";
 
-/**
- * One ✨ Generate run in the browser (PRD-campaign-email-editor slice 09):
- * POSTs the brief to /api/campaigns/ai-draft, reads its stream a line at a
- * time, and puts each event into the editor through `hooks` as it arrives:
- * each block into the email, the ideas under their fields, the stages and
- * the end into the bar. Loaded with the first draft, not with the page.
- */
-
 export const DRAFT_CUT_OFF = "The draft stopped before it finished. Try again.";
 
 export interface DraftRunHooks {
-  /** One change to the email's content, part of the run's one change in the history. */
   change: (fn: (c: CampaignContent) => CampaignContent) => void;
   update: (patch: Partial<AiDraftRun>) => void;
   ideas: (patch: Partial<AiIdeas>) => void;
-  /** The run failed: the email back as it was, and why. */
   fail: (error: string) => void;
 }
 
-/** The brief as the route takes it, with the email's own words for context where a draft sits among them. */
 export function draftRequest(
   draft: EditorDraft,
   brief: AiBrief,
@@ -44,7 +33,6 @@ export function draftRequest(
   };
 }
 
-/** POSTs the request and hands each event to `onEvent` as its line arrives; a refusal before the stream throws its words. */
 async function readDraft(request: DraftRequest, signal: AbortSignal, onEvent: (event: DraftEvent) => void): Promise<void> {
   const res = await fetch("/api/campaigns/ai-draft", {
     method: "POST",
@@ -74,7 +62,6 @@ async function readDraft(request: DraftRequest, signal: AbortSignal, onEvent: (e
   lines(true);
 }
 
-/** Runs one draft to its end: done, failed, or stopped by `signal` (Stop). */
 export async function runDraft(request: DraftRequest, where: AiDraftWhere, signal: AbortSignal, hooks: DraftRunHooks): Promise<void> {
   const drafted: EmailBlock[] = [];
   const ever = new Set<string>();

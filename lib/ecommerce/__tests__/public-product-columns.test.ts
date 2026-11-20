@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The storefront getters feed client components (ProductCard, ProductDetailClient)
- * so their selects are what reaches the browser.
- * They must list public columns instead of `product_variants(*)`, which carries
- * cost_price, Stripe/Shopify ids and inventory links.
- */
-
 const h = vi.hoisted(() => ({ selects: [] as { table: string; columns: string }[] }));
 
 vi.mock("@/lib/supabase/server", () => ({

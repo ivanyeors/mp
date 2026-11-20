@@ -40,7 +40,6 @@ type SharedDrive = { id: string; name: string };
 
 type Crumb = {
   label: string;
-  /** undefined = Shared Drives root list */
   driveId?: string;
   folderId?: string;
 };
@@ -79,7 +78,6 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImported: (assets: DriveImportedAsset[]) => void;
-  /** Lock the kind filter to images and hide it. */
   imageOnly?: boolean;
 };
 
@@ -241,7 +239,6 @@ export function SelectFromDriveDialog({
     }
   };
 
-  // Search is filtered server-side; folder listings filter here and keep folders navigable.
   const listItems = searchActive
     ? results
     : kindFilter === "all"

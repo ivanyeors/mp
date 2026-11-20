@@ -20,17 +20,9 @@ type PayoutRow = {
 
 const money = (n: number) => `$${n.toFixed(2)}`;
 
-/**
- * Partner Hub payout view (#81) — a self-contained async server component. Shows
- * the accumulated released balance (no minimum, AC5), full payout history with
- * status, and the proof-of-payment image (full transparency, AC4). Ownership is
- * enforced by scoping every query to the caller's own `partnerId`; the private
- * proof images are read through short-lived signed URLs, so a partner can only
- * ever see their own.
- */
 export async function PayoutSummary({ partnerId }: { partnerId: string }) {
   const admin = supabaseAdmin();
-  const balance = await releasedBalance(admin, partnerId); // settles due first
+  const balance = await releasedBalance(admin, partnerId);
   const { data } = await admin
     .from("partner_payouts")
     .select("id, amount, paid_on, method, reference, proof_path")

@@ -2,12 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { claudeClient, claudeConfigured, claudeCredentialSource } from "@/lib/ai/claude";
 import { claudeConfigured as reviewRepliesCheck } from "@/lib/reviews/draft-reply";
 
-/**
- * The shared credentials check (PRD-campaign-email-editor slice 16) and client
- * (slice 09), the ones review replies use: the key saved on General first,
- * then the environment's key, then the federation rule.
- */
-
 const h = vi.hoisted(() => ({
   rows: [] as { slug: string; api_key: string; is_active: boolean }[],
   readFails: false,

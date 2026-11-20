@@ -27,8 +27,6 @@ describe("bandSizes", () => {
   });
 });
 
-/** The Email funnel page's cells and words (PRD-email-funnel slice 03). */
-
 describe("resultCells", () => {
   it("renders a dash in every cell when nobody was sent, never 0% or NaN", () => {
     const cells = resultCells({ ...NO_RESULTS });
@@ -47,7 +45,6 @@ describe("resultCells", () => {
       bought: "8 (4%)",
       spent: "S$2,140",
     });
-    // Over people sent (200), not over clicks or opens.
     expect(spy).toHaveBeenCalledWith(8, 200);
     expect(spy).toHaveBeenCalledWith(30, 200);
     spy.mockRestore();
@@ -121,15 +118,11 @@ describe("flowLayout", () => {
   it("gives Move earlier and Move later the same input as the drop zones they match", () => {
     const layout = flowLayout({ flow: [step("a", "c1", null), step("b", "c2", "c1"), step("c", "c3", "c2")] });
     const [n1, n2, n3] = nodesOf((layout.items[0] as { root: FlowNode }).root);
-    // C earlier: the zone between A and B.
     expect(menuMoves(layout, "c3").earlier).toEqual(zoneMove("c3", n1, n2));
-    // A later: the zone between B and C.
     expect(menuMoves(layout, "c1").later).toEqual(zoneMove("c1", n2, n3));
-    // B earlier: in front of the sequence's first.
     expect(menuMoves(layout, "c2").earlier).toEqual({ campaignId: "c2", after: null, before: "c1" });
     expect(menuMoves(layout, "c3").later).toBeNull();
     expect(zoneWords(zoneMove("c3", n1, n2), (id) => id.toUpperCase())).toBe("After “C1”, to those who got it, then “C2”");
-    // In front of a started email the drop goes beside it.
     const locked = flowLayout({ flow: [step("a", "c1", null), step("b", "c2", "c1", "Started.")] });
     const [m1, m2] = nodesOf((locked.items[0] as { root: FlowNode }).root);
     expect(zoneMove("x", m1, m2)).toEqual({ campaignId: "x", after: { campaignId: "c1", did: "sent" }, before: null });

@@ -8,13 +8,6 @@ export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * GET /api/shop/customers/[id]/reviews — the Customer detail's Reviews card
- * (CRM slice 12): their Linked Google reviews, Shop reviews, Review request,
- * and the unlinked Google reviews suggested for them. Seeing it needs
- * `customers`; *Link*, *Not them* and *Unlink* are `customers-edit` routes
- * under /api/settings/customers/google-reviews.
- */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers");
   if (denied) return denied;

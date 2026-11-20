@@ -1,28 +1,3 @@
-// ============================================================
-// Aftercare emails (PRD customer-crm slices 07 and 08)
-// ============================================================
-//
-// Service messages about something the customer bought (ADR 0028 f). They go
-// through the transactional transport, carry no offer, no price (but the
-// check-up's own fee) and no other product, and end with the aftercare footer: how to stop them, in the
-// account or by replying (lib/aftercare/state.ts, AFTERCARE_EMAIL_FOOTER).
-//
-// The Review request keeps Google's review policy (README, sixth hazard): one
-// ask, one button, and a "need anything else?" line AFTER the button that is
-// not tied to how they feel about the purchase. Never "not happy? talk to us
-// instead", which would steer unhappy customers away from reviewing.
-//
-// The Check-up reminder (slice 08) has one price, and only one: the
-// re-adjustment fee, read from Costings at send time and passed in already
-// formatted. It says plainly that the visit is paid. It goes only to customers
-// with Marketing consent, so it is not unsolicited and carries no `<ADV>`
-// label; it is still sent like every Aftercare email, with the same footer.
-//
-// Staff can reword both (PRD-email-templates), within these rules: each field's
-// hint says what it must keep. What the rules fix stays in code: the footer, the
-// one button and its link, the contact line's place after the button, and the
-// fee, which only ever comes from Costings through {fee}.
-
 import { AFTERCARE_EMAIL_FOOTER } from "@/lib/aftercare/state";
 import { renderEmailShell } from "./base";
 import { button, divider, link, paragraph, paragraphHtml } from "./components";
@@ -38,7 +13,6 @@ const AFTERCARE_PLACEHOLDERS = {
   whatsapp_number: "Our staffed WhatsApp number, e.g. +65 8780 5311, shown as a link to WhatsApp",
 };
 
-/** One greeting per voice: with the first name we hold, or none. */
 const GREETING_FIELDS = {
   greeting: { label: "Greeting", default: "Hi {first_name},", group: "With a first name" },
   greeting_no_name: { label: "Greeting", default: "Hi,", group: "No first name on file" },
@@ -47,14 +21,12 @@ const GREETING_FIELDS = {
 const NO_OFFER_HINT = "A service message: no offer, no price and no other product.";
 const WHATSAPP_HINT = "Keep {whatsapp_number}: it becomes the link to WhatsApp.";
 
-/** Fill every field of `copy` from `values`. */
 function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
   const out = {} as EmailCopy<K>;
   for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
   return out;
 }
 
-/** A heading reused as the opening of a plain-text line: ends it with a full stop unless it has its own. */
 function asSentence(text: string): string {
   return /[.!?…]$/.test(text) ? text : `${text}.`;
 }
@@ -122,7 +94,6 @@ export const CHECKUP_EMAIL_COPY = defineEmailCopy({
   },
 });
 
-/** The shared values: the greeting's name, the order, and the staffed number. */
 function aftercareValues(p: { firstName: string | null; product: string; orderNumber: string; deliveredOn: string; supportWhatsAppDisplay: string }) {
   const name = p.firstName?.replace(/\s+/g, " ").trim();
   return {
@@ -137,7 +108,6 @@ function aftercareValues(p: { firstName: string | null; product: string; orderNu
   };
 }
 
-/** The contact line, with the WhatsApp number in it as the link. */
 function contactHtml(contact: string, p: { supportWhatsAppDisplay: string; supportWhatsAppUrl: string }): string {
   return escapeHtml(contact).replace(
     escapeHtml(p.supportWhatsAppDisplay),
@@ -147,21 +117,15 @@ function contactHtml(contact: string, p: { supportWhatsAppDisplay: string; suppo
 
 export interface ReviewRequestEmailData {
   firstName: string | null;
-  /** `reviewProductLabel`, e.g. "Premium Mpillow". */
   product: string;
   orderNumber: string;
-  /** The delivery day in Singapore, e.g. "3 Nov 2026". */
   deliveredOn: string;
-  /** Our redirect, `/r/review?t=…`, never Google's link itself, so the click is recorded. */
   reviewUrl: string;
-  /** Sign in, then the Profile, where the customer turns these emails off. */
   accountUrl: string;
-  /** The staffed sales line (lib/contact.ts), never the automated sender. */
   supportWhatsAppDisplay: string;
   supportWhatsAppUrl: string;
 }
 
-/** The line after the button, as written by default (slice 07). */
 export function reviewRequestContactLine(whatsappDisplay: string): string {
   return fillCopy(REVIEW_REQUEST_EMAIL_COPY.fields.contact.default, { whatsapp_number: whatsappDisplay });
 }
@@ -209,7 +173,6 @@ ${paragraphHtml(footerHtml, { muted: true })}`,
   return { subject: t.subject, html, text };
 }
 
-/** The footer, with its "in your account" as the link to the Profile. */
 export function aftercareFooterHtml(accountUrl: string): string {
   const at = AFTERCARE_EMAIL_FOOTER.indexOf(ACCOUNT_PHRASE);
   return at >= 0
@@ -221,23 +184,16 @@ export function aftercareFooterHtml(accountUrl: string): string {
 
 export interface CheckupEmailData {
   firstName: string | null;
-  /** Always "Premium Mpillow": the check-up covers nothing else. */
   product: string;
   orderNumber: string;
-  /** The delivery day in Singapore, e.g. "3 Nov 2025". */
   deliveredOn: string;
-  /** The re-adjustment fee from Costings, formatted, e.g. "S$30". Never a constant. */
   fee: string;
-  /** `/appointments?type=readjustment&item=<order item>`, which sends a signed-out visitor through Sign in. */
   bookingUrl: string;
-  /** Sign in, then the Profile, where the customer turns these emails off. */
   accountUrl: string;
-  /** The staffed sales line (lib/contact.ts), never the automated sender. */
   supportWhatsAppDisplay: string;
   supportWhatsAppUrl: string;
 }
 
-/** The fee line, as written by default (slice 08). */
 export function checkupFeeLine(fee: string): string {
   return fillCopy(CHECKUP_EMAIL_COPY.fields.fee_line.default, { fee });
 }
@@ -268,7 +224,6 @@ export function renderCheckupEmail(
 
   const html = renderEmailShell({
     title: t.heading,
-    // The fee line always follows, so the preview states the fee as the body does.
     preheader: `${t.preheader} ${t.fee_line}`,
     bodyHtml: `${paragraph(greeting)}
 ${paragraph(t.due)}

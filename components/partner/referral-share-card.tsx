@@ -9,12 +9,7 @@ import { QrSvg } from "@/components/ui/qr-svg";
 import { getClientPublicOrigin } from "@/lib/site-url";
 
 type Props = {
-  /** The approved partner's referral code (e.g. from ensureReferralCode). */
   code: string;
-  /**
-   * Public site origin. Pass the server-resolved `getSiteOrigin()` from the hub
-   * page for SSR-consistent output; falls back to the client origin otherwise.
-   */
   siteOrigin?: string;
 };
 
@@ -28,9 +23,7 @@ export function ReferralShareCard({ code, siteOrigin }: Props) {
       await navigator.clipboard.writeText(link);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard blocked — the link stays selectable in the input */
-    }
+    } catch {}
   };
 
   return (

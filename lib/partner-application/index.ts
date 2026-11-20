@@ -1,23 +1,9 @@
-/**
- * Partner application domain logic (Partner Hub #73). Pure — no server-only
- * imports, no DB, no I/O — so the apply form, the hub guard, and the #83 test
- * slice can all import it. Mirrors the `lib/rma/transitions.ts` state-machine
- * style (a TRANSITIONS map + a `canTransition` reader).
- */
-
 import { isValidPhone } from "@/lib/appointments/phone";
 
-/**
- * The current static agreement version (dated string). Bumping this forces
- * every approved partner through re-acceptance on next hub entry — the money
- * terms and the AHPC disclosure clause live in that agreement, so a change
- * must be re-consented (ADR 0015).
- */
 export const AGREEMENT_VERSION = "2026-07-28";
 
 export type ApplicationStatus = "pending" | "approved" | "rejected";
 
-/** Allowed status transitions. Approved/rejected are terminal (#76 owns approval). */
 const APPLICATION_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
   pending: ["approved", "rejected"],
   approved: [],
@@ -31,11 +17,6 @@ export function canTransitionApplication(
   return (APPLICATION_TRANSITIONS[from] ?? []).includes(to);
 }
 
-/**
- * Whether the applicant may withdraw their application: only while it is
- * `pending` and not yet linked to a partner row. Withdrawing deletes the
- * application, so it is not a status — to join later they apply again.
- */
 export function canWithdrawApplication(
   status: ApplicationStatus,
   partnerId: string | null | undefined,
@@ -43,11 +24,6 @@ export function canWithdrawApplication(
   return status === "pending" && !partnerId;
 }
 
-/**
- * True when an approved partner's recorded `agreed_version` no longer matches
- * the current agreement (null/missing ⇒ true), so the hub must gate them
- * through re-acceptance before rendering.
- */
 export function needsReaccept(
   agreedVersion: string | null | undefined,
   currentVersion = AGREEMENT_VERSION,
@@ -84,23 +60,12 @@ export interface ApplicationFields {
   contactMobile: string;
   businessEmail: string;
   introPlan: string;
-  /**
-   * The public write-up for their /our-partners listing ("what your practice
-   * does"). Becomes `partners.description` on approval. Absent on applications
-   * made before 2026-11-16.
-   */
   description: string;
-  /**
-   * Their logo, uploaded with the application (`partner-logos/applicants/…`).
-   * Optional. Becomes `partners.logo_url` on approval.
-   */
   logoUrl?: string | null;
 }
 
-/** Longest public write-up, the same cap as the Partner Hub profile. */
 export const DESCRIPTION_MAX = 4000;
 
-/** Ordered questionnaire fields + labels for the Staff review queue (#76). The logo is shown as an image. */
 export const APPLICATION_FIELD_LABELS: Array<[Exclude<keyof ApplicationFields, "logoUrl">, string]> = [
   ["companyName", "Company name"],
   ["uen", "ACRA UEN"],
@@ -115,13 +80,6 @@ export const APPLICATION_FIELD_LABELS: Array<[Exclude<keyof ApplicationFields, "
 
 export type ApplicationOutcome = "approved" | "rejected";
 
-/**
- * Required checks + lenient format sanity (Staff eyeball verifies — no ACRA
- * API). Returns a field→message map; `{}` means valid.
- * - UEN: SG ACRA shapes are 9–10 alphanumerics (ROB `12345678A`, ROC
- *   `201812345A`, other-agency `T09LL0001B`); we only check that envelope.
- * - Mobile: reuses the appointments phone normalizer (SG 8-digit or +65…).
- */
 export function validateApplication(
   fields: ApplicationFields,
 ): Partial<Record<keyof ApplicationFields, string>> {

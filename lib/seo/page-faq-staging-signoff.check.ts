@@ -1,9 +1,3 @@
-/**
- * Slice 09 — staging signoff proofs (Rich Results–shaped FAQPage + embeds + Settings + ledes + /faq).
- * Run: npx tsx --env-file=.env.local lib/seo/page-faq-staging-signoff.check.ts
- *
- * Optional live HTML: PAGE_FAQ_SIGNOFF_BASE_URL=http://localhost:3000
- */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -25,7 +19,6 @@ type FaqPageLd = {
   mainEntity?: unknown;
 };
 
-/** Google FAQ rich-result shape (https://developers.google.com/search/docs/appearance/structured-data/faqpage). */
 function assertGoogleFaqPageEligible(label: string, raw: unknown) {
   assert.ok(raw && typeof raw === "object", `${label}: JSON-LD object`);
   const ld = raw as FaqPageLd;
@@ -41,7 +34,6 @@ function assertGoogleFaqPageEligible(label: string, raw: unknown) {
     assert.ok(ans && typeof ans === "object", `${label}: Q${i} acceptedAnswer`);
     assert.equal(ans!["@type"], "Answer", `${label}: Q${i} Answer`);
     assert.ok(typeof ans!.text === "string" && String(ans!.text).trim().length > 0, `${label}: Q${i} text`);
-    // Schema text must be plain (no markdown leftovers)
     assert.doesNotMatch(String(ans!.text), /\*\*|\[.+\]\(.+\)/, `${label}: Q${i} markdown in schema`);
   }
 }
@@ -54,9 +46,7 @@ function extractFaqPageJsonLd(html: string): unknown {
       const list = Array.isArray(data) ? data : [data];
       const hit = list.find((x) => x && typeof x === "object" && (x as { "@type"?: string })["@type"] === "FAQPage");
       if (hit) return hit;
-    } catch {
-      /* skip bad block */
-    }
+    } catch {}
   }
   return null;
 }
@@ -72,7 +62,6 @@ function runCheck(rel: string) {
   if (r.status !== 0) {
     throw new Error(`${rel} failed:\n${out.slice(-800)}`);
   }
-  // Ignore npm noise; keep last self-check ok line
   const line =
     out
       .split("\n")
@@ -104,7 +93,6 @@ async function main() {
         console.error(`FAIL\t${id}\t${detail.slice(0, 240)}`);
       });
 
-  // --- Prior slice self-checks (Settings E2E + embeds + ledes) ---
   await mark("settings_e2e", () =>
     runCheck("components/settings/settings-faq.check.ts")
   );
@@ -124,7 +112,6 @@ async function main() {
     runCheck("lib/seo/answer-lede-coverage.check.ts")
   );
 
-  // --- Rich Results–shaped FAQPage: home + PDP ---
   await mark("rich_results_home", async () => {
     const section = await PageFaqSection({ surfaceKey: "home", locale: "en-US" });
     assert.ok(section, "home Page FAQ non-empty");
@@ -148,7 +135,6 @@ async function main() {
     assert.match(html, /data-page-faq/);
     const ld = extractFaqPageJsonLd(html);
     assertGoogleFaqPageEligible("pdp", ld);
-    // Same strip path public embeds use before JSON-LD
     const set = await getPageFaq(productSurfaceKey(product!.id), "en-US");
     assertGoogleFaqPageEligible(
       "pdp-builder",
@@ -162,7 +148,6 @@ async function main() {
     return `FAQPage eligible (${(ld as { mainEntity: unknown[] }).mainEntity.length} Qs)`;
   });
 
-  // --- Empty vs non-empty ---
   await mark("empty_vs_nonempty", async () => {
     assert.equal(PageFaqSectionView({ title: "FAQs", items: [], locale: "en-US" }), null);
     const empty = await PageFaqSection({
@@ -182,13 +167,11 @@ async function main() {
     return "empty hides; home+configs show accordion+JSON-LD";
   });
 
-  // --- Answer ledes present (content, not just wiring) ---
   await mark("ledes_content", () => {
     assert.ok(enUS.home.hero.seoAnswer.split(/\s+/).length >= 50, "home lede");
     return "home seoAnswer dense; PDP/config covered by answer_ledes check";
   });
 
-  // --- Global /faq smoke ---
   await mark("global_faq", async () => {
     const cats = await getFaqPageData("en-US");
     assert.ok(cats.length >= 1, "categories");
@@ -206,7 +189,6 @@ async function main() {
     return `${cats.length} cats / ${items.length} items FAQPage-shaped`;
   });
 
-  // --- Optional live HTML against production-like base ---
   if (BASE) {
     await mark("live_home", async () => {
       const html = await fetchHtml("/en-US");

@@ -7,8 +7,6 @@ import { handleInboxUpdate, isInboxUpdate } from '@/lib/social-inbox/telegram-ha
 import { handleChatReplyUpdate, isChatReplyCandidate } from '@/lib/support/chat-telegram'
 
 export const runtime = 'nodejs'
-// Review buttons can redraft with Claude, and a website chat reply waits for a
-// follow-up before emailing, both after the response (see below).
 export const maxDuration = 120
 
 type TelegramUpdate = {
@@ -35,10 +33,6 @@ function getEnv(name: string): string {
   return val
 }
 
-/**
- * Chats allowed to run the inventory commands. Unset means the Staff group
- * only, never everyone: the bot answers anyone who finds its username.
- */
 function parseAllowedChats(): Set<number> {
   const raw = process.env.TELEGRAM_ALLOWED_CHATS || String(MP_CONFIG_TELEGRAM_CHAT_ID)
   const ids = raw
@@ -63,7 +57,6 @@ async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: R
     cache: 'no-store',
   })
   if (!res.ok) {
-    // Best-effort logging only
     console.error('Failed to send Telegram message', await res.text())
   }
 }
@@ -104,8 +97,6 @@ function helpText(): string {
 }
 
 function normalizeTelegramCommand(cmdRaw: string): string {
-  // In group chats Telegram can send commands like "/otp@MyBotName".
-  // We only care about the base command.
   const cmd = (cmdRaw || '').trim().toLowerCase()
   if (!cmd) return ''
   const base = cmd.split('@')[0] || ''
@@ -140,7 +131,6 @@ function mapFillingSubtype(two: string, three?: string): string | null {
   const a = (two || '').trim().toLowerCase()
   const rawB = (three || '').trim()
   if (!a) return null
-  // Accept grades like 3d, 6d, 6d+
   const gradeBaseMatch = a.match(/^(\d+d)(\+)?$/)
   if (!gradeBaseMatch) return null
   const grade = (gradeBaseMatch[1].toUpperCase() + (gradeBaseMatch[2] ? '+' : '')) as '3D' | '6D' | '3D+' | '6D+'
@@ -148,11 +138,9 @@ function mapFillingSubtype(two: string, three?: string): string | null {
   const b = rawB.toUpperCase()
   if (!b) return null
 
-  // Keyword styles -> exact new names with parentheses
   if (b === 'ROUND' || b === 'RND') return `${grade} (Round)`
   if (b === 'FOLDED' || b === 'FOLD') return `${grade} (Folded)`
 
-  // Size styles -> exact new names with parentheses
   if (b === 'S') return `${grade} (S)`
   if (b === 'M') return `${grade} (M)`
   if (b === 'L') return `${grade} (L)`
@@ -168,24 +156,20 @@ function parseIdentifier(raw: string): ResolvedIdentifier | null {
   if (/^\d+$/.test(s)) return { kind: 'item-id', itemId: Number(s) }
 
   const lower = s.toLowerCase()
-  // Pillow product code: mpxs|mps|mpm|mpl|mpxl
   if (/^mp(xs|s|m|l|xl)$/.test(lower)) {
     const sizeTok = lower.replace(/^mp/, '')
     const size = mapSizeToken(sizeTok)
     if (size) return { kind: 'product', size }
   }
 
-  // Part codes
   const parts = lower.split('.')
   if (parts.length >= 2) {
     const [p1, p2, p3] = parts
-    // filling: fil.6d.l
     if (p1 === 'fil') {
       const subtype = mapFillingSubtype(p2, p3)
       if (subtype) return { kind: 'item-code', category: 'filling', subtype, size: null }
       return null
     }
-    // mp.xs.cov or mb.s.cov
     if ((p1 === 'mp' || p1 === 'mb') && p2 && p3) {
       const size = mapSizeToken(p2)
       const cat = mapCategoryToken(p3)
@@ -290,8 +274,6 @@ async function handleCommand(chatId: number, text: string) {
       await sendTelegramMessage(chatId, `${label}\nOn hand: ${onHand}`)
       return
     }
-
-    // Stock moves are Admin Panel only: the bot has no Staff session.
 
     await sendTelegramMessage(chatId, 'Unknown command. Send /help for usage.')
   } catch (err) {
@@ -432,7 +414,6 @@ async function handleCallback(update: TelegramUpdate) {
     if (data.startsWith('pcat:')) {
       const cat = data.split(':')[1]
       if (cat === 'filling') {
-        // Load available filling subtypes from DB
         const { data: subs } = await admin.from('items').select('subtype').eq('category', 'filling').not('subtype', 'is', null)
         const unique = Array.from(new Set((subs || []).map(r => String(r.subtype))))
         const rows: InlineKeyboardButton[][] = []
@@ -449,7 +430,6 @@ async function handleCallback(update: TelegramUpdate) {
         await answerCallback(cq.id)
         return
       }
-      // Sized categories
       const kb: InlineKeyboardMarkup = {
         inline_keyboard: [
           [ { text: 'XS', callback_data: `part:${cat}:XS` }, { text: 'S', callback_data: `part:${cat}:S` } ],
@@ -503,7 +483,6 @@ async function handleCallback(update: TelegramUpdate) {
       return
     }
 
-    // Unknown action: go to root
     const kb: InlineKeyboardMarkup = { inline_keyboard: [ [ { text: 'Pillows', callback_data: 'pillows' } ], [ { text: 'Bolster', callback_data: 'bolster' } ], [ { text: 'Parts', callback_data: 'parts' } ] ] }
     await editTelegramMessage(chatId, messageId, 'Select a category:', kb)
     await answerCallback(cq.id)
@@ -519,12 +498,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    // Telegram echoes the setWebhook secret in this header. Fail closed in
-    // production; open only in dev when the secret is unset.
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET
     if (secret || process.env.NODE_ENV === 'production') {
       if (!secretMatches(secret, req.headers.get('x-telegram-bot-api-secret-token'))) {
-        // A rejected delivery shows in Telegram's getWebhookInfo last_error_message.
         console.warn('Telegram webhook rejected: missing or invalid secret token header')
         return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
       }
@@ -533,29 +509,16 @@ export async function POST(req: NextRequest) {
     const allowed = parseAllowedChats()
     const update = (await req.json()) as TelegramUpdate
 
-    // Review cards (Google + shop) and /link run before the allowlist: they have
-    // their own, stricter gate — the measurements group only, and a linked
-    // operator whose role grants the action (lib/reviews/telegram-handler.ts).
-    // The work runs after the 200 so a slow Claude redraft never makes Telegram
-    // retry the update.
     if (isReviewUpdate(update)) {
       after(() => handleReviewUpdate(update))
       return NextResponse.json({ ok: true })
     }
 
-    // Replies to customer message cards (Facebook / Instagram / TikTok) go back
-    // to the customer. Same gate and timing as review cards: the measurements
-    // group, a person allowed `telegram.social-inbox-reply`, work after the 200
-    // (lib/social-inbox/telegram-handler.ts). Before the website chat's check:
-    // that one takes any reply in the group, this one only replies to a card.
     if (isInboxUpdate(update)) {
       after(() => handleInboxUpdate(update))
       return NextResponse.json({ ok: true })
     }
 
-    // A staff reply to a website chat message (lib/support/chat-telegram.ts):
-    // the measurements group only, gated there. Not a command, so nothing below
-    // would have handled it.
     if (isChatReplyCandidate(update)) {
       after(() => handleChatReplyUpdate(update))
       return NextResponse.json({ ok: true })
@@ -581,7 +544,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('Webhook error:', error)
-    // Always 200 to avoid retries, but log the error
     return NextResponse.json({ ok: true }, { status: 200 })
   }
 }

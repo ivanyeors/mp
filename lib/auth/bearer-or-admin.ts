@@ -3,10 +3,6 @@ import { requireAdmin } from "@/lib/auth/admin";
 import type { Permission } from "@/lib/auth/permissions";
 import { secretMatches } from "@/lib/auth/secret";
 
-/**
- * Automation presents `Authorization: Bearer $<envName>`; otherwise a Staff
- * session holding `permission` is required. An unset env var never opens the route.
- */
 export async function requireBearerOrAdmin(
   req: Request,
   envName: string,

@@ -1,13 +1,6 @@
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { pillowSizeKey, type PillowSizeKey } from "./match";
 
-/**
- * The pillows a Customer bought here, and whether anything says they bought
- * one at all (ADR 0042 k). Pure, so the Customer page and the Profile read one
- * rule.
- */
-
-/** A counted Order's pillow line, as `customer_purchase_lines` lists it. */
 export type PillowPurchaseLine = {
   order_id: string;
   order_item_id: string;
@@ -22,18 +15,14 @@ export type PillowOrderItem = {
   customization_snapshot: unknown;
 };
 
-/** A pillow bought here that they still have. */
 export type BoughtPillow = {
   orderId: string;
   orderItemId: string;
   paidAt: string;
   size: PillowSizeKey | null;
-  /** The Result the line was built from; null for a line from no Result. */
   resultId: string | null;
-  /** The Filling Template the build was made from at Accept; null for a custom mix. */
   templateId: number | null;
   templateName: string | null;
-  /** The build frozen on the line at Accept: empty for a line from before spatial builds, or not from a Result. */
   placements: PillowPlacementRow[];
 };
 
@@ -42,7 +31,6 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-/** One pillow cell row of a snapshot's `filling_placements`; a bolster slot row or anything malformed is null. */
 function placementRow(value: unknown): PillowPlacementRow | null {
   if (!value || typeof value !== "object") return null;
   const r = value as Record<string, unknown>;
@@ -62,16 +50,10 @@ function placementRow(value: unknown): PillowPlacementRow | null {
   };
 }
 
-/**
- * Pillow placement rows out of stored JSON: an order line's frozen build, or a
- * Re-adjustment's mix on the Staff link (ADR 0042 l). Anything that is not a
- * pillow cell row is dropped.
- */
 export function placementRows(value: unknown): PillowPlacementRow[] {
   return (Array.isArray(value) ? value : []).map(placementRow).filter((r): r is PillowPlacementRow => r !== null);
 }
 
-/** The pillow build an order line froze at Accept (`ResultOrderBuildSnapshot`), or null when it holds none. */
 export function snapshotPillowBuild(
   snapshot: unknown,
 ): { resultId: string; templateId: number | null; templateName: string | null; placements: PillowPlacementRow[] } | null {
@@ -86,11 +68,6 @@ export function snapshotPillowBuild(
   };
 }
 
-/**
- * The pillows bought here that they still have (some unit not returned),
- * latest first. A line whose Order the view counts but whose item is missing
- * is left out: nothing says what they kept.
- */
 export function boughtPillows(lines: readonly PillowPurchaseLine[], items: readonly PillowOrderItem[]): BoughtPillow[] {
   const byId = new Map(items.map((i) => [String(i.id), i]));
   return lines
@@ -118,17 +95,8 @@ export function boughtPillows(lines: readonly PillowPurchaseLine[], items: reado
     );
 }
 
-/** What says a Customer has a pillow, the strongest first. */
 export type PillowOwnership = "bought_here" | "linked" | "shopify_fitting";
 
-/**
- * Why their Profile may show their pillow (ADR 0042 k, owner 2026-11-05), or
- * null when nothing says they bought one: a pillow bought here they still
- * have, a Staff link (Staff record the pillow they have), or, from before this
- * platform, a Fitting record and at least one Shopify order. The Shopify
- * export counts orders and spend but not what was in them; a fitting with an
- * order is read as the in-store purchase it almost always was.
- */
 export function pillowOwnership(facts: {
   boughtHere: boolean;
   linked: boolean;

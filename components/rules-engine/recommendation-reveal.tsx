@@ -10,15 +10,9 @@ type Props = {
   sizeLabel: string;
   templateName: string | null;
   mixLines: MixLine[];
-  /** When false, render nothing (incomplete / unresolved route). */
   reveal: boolean;
 };
 
-/**
- * Completed-preview recommendation block (size + mix). No "why" line: the
- * trace-built one named only the shoulder band, so it is withdrawn until a
- * reason that covers the whole decision replaces it.
- */
 export function RecommendationReveal({
   sizeLabel,
   templateName,

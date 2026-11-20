@@ -13,12 +13,6 @@ import { format } from "date-fns";
 import { AnnotationMarkers, type ChartAnnotation } from "./AnnotationMarkers";
 import { MIX_SERIES, MIX_SERIES_LABELS, type MixBucket, type MixSeries } from "@/lib/analytics/channel-mix";
 
-/**
- * Categorical slots 1–5 of the dataviz reference palette, validated for both
- * modes (light: all checks pass, 3 slots < 3:1 contrast → legend + table view
- * carry identity; dark: all pass). The site's --chart-* tokens fail as a
- * categorical set (chart-4/5 ΔE 7.4), so this chart scopes its own.
- */
 export const MIX_COLOR_VARS: Record<MixSeries, string> = {
   organic_search: "var(--mix-1)",
   ai_assistant: "var(--mix-2)",
@@ -70,7 +64,6 @@ function Chart({ width, height, buckets, granularity, annotations }: Props & { w
   }, [buckets, innerHeight]);
 
   const x = (b: MixBucket) => xScale(toDate(b.start)) ?? 0;
-  // The last bucket always contains today, so its count is still growing.
   const inProgressX = buckets.length > 1 ? x(buckets[buckets.length - 2]) : null;
 
   const handleMove = (event: React.PointerEvent<SVGRectElement>) => {
@@ -109,7 +102,6 @@ function Chart({ width, height, buckets, granularity, annotations }: Props & { w
                   d={path(stack) || ""}
                   fill={MIX_COLOR_VARS[stack.key as MixSeries]}
                   fillOpacity={0.85}
-                  // Surface-coloured seam between stacked fills.
                   stroke="var(--card)"
                   strokeWidth={1.5}
                 />
@@ -155,7 +147,6 @@ function Chart({ width, height, buckets, granularity, annotations }: Props & { w
           {tooltipData === buckets[buckets.length - 1] ? (
             <div className="mb-1 text-muted-foreground">In progress: still counting</div>
           ) : null}
-          {/* Top of the stack first, matching the visual order. */}
           {[...MIX_SERIES].reverse().map((k) => (
             <div key={k} className="flex items-center justify-between gap-4">
               <span className="inline-flex items-center gap-1.5">
@@ -179,7 +170,6 @@ export function ChannelMixVisx(props: Props) {
   const height = props.height ?? 220;
   return (
     <div className={`w-full ${MIX_PALETTE_CLASS}`}>
-      {/* Legend always present for ≥ 2 series; colour is never the only carrier of identity. */}
       <ul className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
         {MIX_SERIES.map((k) => (
           <li key={k} className="inline-flex items-center gap-1.5">

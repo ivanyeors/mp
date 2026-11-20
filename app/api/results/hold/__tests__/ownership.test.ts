@@ -2,15 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
-/**
- * Re-submitting an existing Result through POST /api/results/hold (slice 05).
- *
- * The real exported POST against a small in-memory `mp_config_responses`, so the
- * assertions are about what the row looks like afterwards, not which calls ran.
- * Pricing, settings and the Rules Engine are stubbed to a payable quote; the
- * ownership gate (lib/results/access.ts) runs for real.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   requireAnyAdmin: vi.fn(),
@@ -135,7 +126,6 @@ const { POST } = await import("@/app/api/results/hold/route");
 const ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TOKEN = "11111111-1111-4111-8111-111111111111";
 
-/** A Result through hold whose Checkout was abandoned: re-submittable by its Owner. */
 const heldRow = {
   id: ID,
   status: "held",
@@ -146,10 +136,8 @@ const heldRow = {
   payment_intent_id: null,
   order_id: null,
 };
-/** The same Result once the Owner authorised a card on it. */
 const paidRow = { ...heldRow, payment_intent_id: "pi_owner" };
 
-/** Signs in an admin whose role carries exactly these permissions. */
 const signInAdmin = (perms: string[]) =>
   h.requireAnyAdmin.mockImplementation(async (wanted: string[]) =>
     wanted.some((p) => perms.includes(p))
@@ -239,7 +227,6 @@ describe("POST /api/results/hold — re-submitting an existing Result", () => {
     await post({ token: TOKEN });
     const [first, second] = h.createHoldCheckout.mock.calls.map((c) => c[0]);
     expect(second.idempotencyKey).toBe(first.idempotencyKey);
-    // Stripe rejects a reused key whose parameters differ.
     expect(second).toEqual(first);
   });
 
@@ -311,8 +298,6 @@ describe("POST /api/results/hold — re-submitting an existing Result", () => {
     expect(h.rows.get(ID)?.payment_intent_id).toBe("pi_raced");
   });
 
-  // numeric(12,2) rounds on store; the webhook compares that stored amount in
-  // cents against what Checkout charged, so both must be the same 2dp number.
   it("stores and charges the same total, rounded to cents", async () => {
     h.total = 123.456;
     await post({ token: TOKEN });

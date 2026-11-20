@@ -179,7 +179,6 @@ describe("syncGuestContact", () => {
     const create = calls.find((c) => c.url.includes("createContact"));
     expect(create?.method).toBe("POST");
     expect(create?.body).toEqual(buildCreateBody({ name: "Bob Lee", phone: "+6591112222", email: "bob@x.com" }));
-    // warm-up (empty query) precedes the phone search
     const searches = calls.filter((c) => c.url.includes("searchContacts"));
     expect(new URL(searches[0]!.url).searchParams.get("query")).toBe("");
     expect(new URL(searches[1]!.url).searchParams.get("query")).toBe("91112222");

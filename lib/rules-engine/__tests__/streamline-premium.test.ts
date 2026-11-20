@@ -3,12 +3,6 @@ import { validateForPublish } from "../validate";
 import { equivalenceInputs, outcomeDiffs, streamlinePremiumGraph } from "../streamline-premium";
 import type { RangeBand, RuleEdge, RuleGraphJson, RuleNode } from "../types";
 
-/**
- * The Premium graph's shape as published in v2 and v3 (October 2026): one Combine per size ×
- * neck length × head-to-back × neck-to-back × sleep position. Template ids per
- * size · neck length · head-to-back, for neck stack low / mid / high; stomach
- * sleepers take the stack one band lower.
- */
 const TABLE: Record<string, [string, string, string]> = {
   "XS|short|low": ["100", "101", "103"], "XS|short|high": ["100", "102", "104"],
   "XS|long|low": ["68", "69", "88"], "XS|long|high": ["68", "71", "79"],
@@ -147,7 +141,6 @@ describe("streamlinePremiumGraph", () => {
 
   it("refuses a graph where sleep position does more than shift the neck stack", () => {
     const g = cellPerCombination();
-    // Back sleepers at M · short neck · head high · stack high now differ from side sleepers.
     g.edges.find((e) => e.source === "c-M-short-high-high-back")!.target = "tpl-m-95";
     expect(() => streamlinePremiumGraph(g)).toThrow(/does more than shift the neck stack/);
   });

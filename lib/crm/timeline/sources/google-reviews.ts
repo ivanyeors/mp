@@ -4,17 +4,6 @@ import { REVIEWS_GROUP } from "@/lib/crm/timeline/groups";
 import { cappedBatch } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter, TimelineEntry } from "@/lib/crm/timeline/types";
 
-/**
- * Linked Google reviews (CRM slice 12) on the Customer timeline (`customers`),
- * under the Reviews chip. An entry appears once Staff have linked the review,
- * at the review's own date (`review_created_at`, or when we stored it), never
- * the date it was linked. Like a Shop review, its text stays off the timeline:
- * the Reviews card shows it in full. Its pill is whether we have replied.
- *
- * A Customer has a link or two at most (one review per Google account), so
- * they are read whole.
- */
-
 type LinkRow = {
   google_review_id: string;
   google_reviews: {
@@ -54,7 +43,6 @@ export const googleReviewsAdapter: TimelineAdapter = {
       ];
     });
     entries.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-    // Everything was read, so nothing older is missing: no floor.
     return cappedBatch(entries, before, null);
   },
 };

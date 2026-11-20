@@ -1,7 +1,3 @@
-/**
- * Self-check: pain-area None chip exclusivity + required answer.
- * Run: npx tsx lib/configurator/pain-areas.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

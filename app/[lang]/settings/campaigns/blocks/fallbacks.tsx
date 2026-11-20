@@ -7,15 +7,6 @@ import { typingBurst } from "@/components/block-editor/use-editor-history";
 import { CHINESE, type CampaignContent } from "@/lib/email-campaigns/content";
 import { campaignVariable, VARIABLE_MAX, type VariableFallbacks, type VariableKey } from "@/lib/email-campaigns/variables";
 
-/**
- * Each Variable's fallback words, once per campaign (PRD-campaign-email-editor
- * decision 3, slice 13): a field for every Variable the email uses, in its
- * blocks, its subject, its preview line or its greeting, prefilled with the
- * catalogue's default where it has one. Saved in `content.fallbacks`; Save
- * refuses an empty one (`CampaignDraftSchema`). A campaign with a 中文
- * version (slice 17) has its Chinese words beside each, *您* for a first
- * name until Staff change it.
- */
 export function VariableFallbacks({
     used,
     content,
@@ -25,15 +16,12 @@ export function VariableFallbacks({
     idPrefix = "c-fallback",
     chinese = null,
 }: {
-    /** `variablesInEmail`: the Variables the email uses, in order. */
     used: readonly VariableKey[];
     content: CampaignContent;
     onChange: (next: CampaignContent, burst?: string) => void;
     disabled: boolean;
     errors: Record<string, string>;
-    /** Unique to where it is shown: the palette's, or the column's on a phone. */
     idPrefix?: string;
-    /** The 中文 version's fallbacks, beside the English (slice 17); null when it has none. */
     chinese?: { fallbacks: VariableFallbacks; onChange: (next: VariableFallbacks, burst?: string) => void } | null;
 }) {
     if (!used.length) return null;
@@ -50,7 +38,6 @@ export function VariableFallbacks({
                         </Label>
                         <Input
                             id={id}
-                            // The catalogue's default until Staff change it: a missing one is the default.
                             value={content.fallbacks[key] ?? v.fallback ?? ""}
                             placeholder={v.example ? `e.g. ${v.example}` : undefined}
                             maxLength={VARIABLE_MAX}
@@ -67,7 +54,6 @@ export function VariableFallbacks({
     );
 }
 
-/** One Variable's 中文 fallback words, under its English ones. */
 function ChineseFallback({
     id,
     k,

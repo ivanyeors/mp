@@ -1,7 +1,3 @@
-/**
- * Slice 02 self-check: Discovery source catalog + validation.
- * Run: npx tsx lib/discovery-source/discovery-source.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -28,7 +24,6 @@ function read(rel: string) {
   return readFileSync(join(ROOT, rel), "utf8");
 }
 
-// --- Seed shape ---
 const seed = DEFAULT_DISCOVERY_SOURCE_CATALOG;
 assert.ok(seed.options.length >= 2, "seed has starter options");
 const seedOther = seed.options[seed.options.length - 1];
@@ -38,7 +33,6 @@ assert.equal(seedOther.active, true);
 assert.ok(seed.options.every((o) => o.labels["en-US"]));
 assert.ok(seed.options.every((o) => o.labels["zh-CN"]));
 
-// --- Empty / invalid storage → seed ---
 assert.deepEqual(
   parseDiscoverySourceCatalog(null).options.map((o) => o.id),
   seed.options.map((o) => o.id),
@@ -48,7 +42,6 @@ assert.deepEqual(
   seed.options.map((o) => o.id),
 );
 
-// --- Parse + Other always last ---
 const reordered: DiscoverySourceCatalog = {
   options: [
     {
@@ -68,7 +61,6 @@ const normalized = parseDiscoverySourceCatalog(JSON.stringify(reordered));
 assert.equal(normalized.options.at(-1)?.id, OTHER_DISCOVERY_SOURCE_ID);
 assert.equal(normalized.options[0]?.id, "instagram");
 
-// --- Archive filters active list; resolve still works ---
 const archived = archiveDiscoverySourceOption(seed, "instagram");
 assert.equal(
   archived.options.find((o) => o.id === "instagram")?.active,
@@ -86,7 +78,6 @@ assert.equal(
   "gone-forever",
 );
 
-// --- Other lock: cannot remove or archive ---
 const noOther = assertCatalogAllowsSave({
   options: seed.options.filter((o) => o.id !== OTHER_DISCOVERY_SOURCE_ID),
 });
@@ -108,7 +99,6 @@ assert.equal(
 const okSave = assertCatalogAllowsSave(archived);
 assert.equal(okSave.ok, true);
 
-// --- Roundtrip serialize ---
 const roundtrip = parseDiscoverySourceCatalog(
   serializeDiscoverySourceCatalog(archived),
 );
@@ -117,7 +107,6 @@ assert.equal(
   false,
 );
 
-// --- Validation ---
 assert.equal(
   validateDiscoverySource({ discoverySource: "" }, seed)?.field,
   "discoverySource",
@@ -159,14 +148,12 @@ assert.equal(
   null,
 );
 
-// Non-Other free text ignored for storage
 assert.equal(normalizeDiscoverySourceOther("google", "ignore me"), null);
 assert.equal(
   normalizeDiscoverySourceOther(OTHER_DISCOVERY_SOURCE_ID, "  Reddit  "),
   "Reddit",
 );
 
-// --- Setting key + API gates (file presence) ---
 assert.equal(DISCOVERY_SOURCE_SETTING_KEY, "forms_discovery_source");
 
 const migration = read(
@@ -189,7 +176,6 @@ assert.doesNotMatch(publicApi, /requireAdmin/);
 assert.equal(roleHasPermission("owner", "forms"), true);
 assert.equal(roleHasPermission("viewer", "forms"), false);
 
-// --- Glossary (slice 01 co-check so agents see the term) ---
 const context = read("CONTEXT.md");
 assert.match(context, /\*\*Discovery source\*\*:/);
 assert.match(context, /How did you hear about us/);
@@ -198,7 +184,6 @@ assert.match(context, /option-list editing only/);
 assert.match(context, /Customer preference/);
 
 async function dbRoundtrip() {
-  // Optional live persistence when env is present (same pattern as settings-faq.check).
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.SUPABASE_URL) {
     console.log("discovery-source.check.ts: ok (skipped DB — no env)");
     return;
@@ -237,7 +222,6 @@ async function dbRoundtrip() {
   );
   assert.equal(loaded.options.at(-1)?.id, OTHER_DISCOVERY_SOURCE_ID);
 
-  // Archive marker then restore prior catalog shape (drop marker)
   const cleaned: DiscoverySourceCatalog = {
     options: loaded.options.filter((o) => o.id !== markerId),
   };

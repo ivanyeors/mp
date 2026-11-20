@@ -1,6 +1,3 @@
-/**
- * Run: npx tsx lib/inventory/template-sale-lines.check.ts
- */
 import assert from "node:assert/strict";
 import { combineTemplateSaleLines } from "./template-sale-lines";
 

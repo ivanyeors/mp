@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * A Staff order's Checkout (ADR 0048). It settles through the shop branch like
- * any Order carrying `order_id`; the one difference is that a session lapsing
- * unpaid does not cancel the Order, because its Payment link opens another.
- */
-
 const ORDER = "0e0e0e0e-0000-4000-8000-000000000001";
 
 const h = vi.hoisted(() => ({

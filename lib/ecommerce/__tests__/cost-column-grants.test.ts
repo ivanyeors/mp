@@ -2,22 +2,6 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CUSTOMER_ORDER_COLUMNS, CUSTOMER_ORDER_ITEM_COLUMNS } from "@/lib/shop/customer-orders";
 
-/**
- * Tables the anon / authenticated roles can read through RLS policies hide
- * their internal columns with column-level grants:
- *
- * - product_variants and order_items: the cost columns
- *   (20260915170000_hide_variant_cost_price.sql);
- * - customers and orders: Staff notes and tags (ADR 0028 (a),
- *   20261020101000_customer_notes_and_column_grants.sql).
- *
- * Postgres only honours that if the table-level SELECT grant is revoked, and
- * then every other column has to be granted one by one — so a column added
- * later is silently unreadable until someone decides. This test makes that
- * decision explicit: every column the migrations create is either granted or on
- * the hidden list.
- */
-
 const dir = new URL("../../../supabase/migrations/", import.meta.url);
 const sql = readdirSync(dir)
   .filter((f) => f.endsWith(".sql"))
@@ -33,7 +17,6 @@ function columnsOf(table: string): Set<string> {
       .map((l) => l.trim().match(/^([a-z_0-9]+)\s/)?.[1])
       .filter((c): c is string => !!c && !["primary", "unique", "constraint", "foreign", "check"].includes(c)),
   );
-  // One statement may add several columns: `alter table orders add column a …, add column b …;`
   const alter = new RegExp(`alter table (?:public\\.)?${table}\\s([^;]*);`, "g");
   for (const [, body] of sql.matchAll(alter)) {
     for (const [, op, col] of body.matchAll(/\b(add|drop) column (?:if (?:not )?exists )?([a-z_0-9]+)/g)) {
@@ -58,13 +41,6 @@ function grantedTo(table: string, role: string): Set<string> {
 const cases = [
   { table: "product_variants", hidden: ["cost_price"], roles: ["anon", "authenticated"] },
   { table: "order_items", hidden: ["unit_cost", "total_cost"], roles: ["authenticated"] },
-  // account_linked_at / account_last_seen_at (migration slice 12) are not
-  // secret, but no customer surface reads them: Staff read them through the
-  // service role, so they stay ungranted until one does. account_providers
-  // (CRM slice 11) likewise: the Profile reads the login's own identities.
-  // marketing_email (migration slice 07) is granted, because the customer is
-  // meant to read it; its source and date are Staff-facing provenance, and are
-  // not.
   {
     table: "customers",
     hidden: [
@@ -100,8 +76,6 @@ describe.each(cases)("$table column grants", ({ table, hidden, roles }) => {
 });
 
 describe("the customer's own order reads (lib/shop/customer-orders.ts)", () => {
-  // A `*`, or a column the customer is not granted, fails the whole query with
-  // "permission denied" and /account/orders 500s.
   it("select only columns the authenticated role is granted", () => {
     const orders = grantedTo("orders", "authenticated");
     const items = grantedTo("order_items", "authenticated");

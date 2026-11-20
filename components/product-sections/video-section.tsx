@@ -12,7 +12,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 type VideoSectionProps = {
   content: VideoSectionContent;
   videoId: string;
-  /** `split`: title and description beside the video from `md` up. */
   layout?: "stacked" | "split";
   borderTop?: boolean;
 };

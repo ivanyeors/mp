@@ -13,12 +13,6 @@ import {
 } from "@/lib/marketing-consent/unsubscribe";
 import { describeConsent, marketingEmailState } from "@/lib/marketing-consent/state";
 
-/**
- * One-click unsubscribe (migration slice 07): a stateless token that never
- * expires, the two links built from it, the RFC 8058 headers, and the probe a
- * campaign sender runs before it sends anything (README, first hazard).
- */
-
 const SECRET = "test-unsubscribe-secret";
 const ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
 
@@ -118,7 +112,6 @@ describe("probeUnsubscribeRoute", () => {
     );
     expect(noSecret).toMatchObject({ ready: false, reason: expect.stringContaining("UNSUBSCRIBE_SECRET") });
 
-    // A 400 that is not ours (another app, a proxy) is not the route.
     const stranger = await probeUnsubscribeRoute("https://x.test", answer(400, { error: "bad" }) as unknown as typeof fetch);
     expect(stranger.ready).toBe(false);
 
@@ -146,7 +139,6 @@ describe("describeConsent", () => {
   });
 });
 
-// PRD-campaign-audiences slice 08: a campaign email's link names its send.
 describe("a link that names its campaign send", () => {
   const SECRET = "send-secret";
   const ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
@@ -170,9 +162,7 @@ describe("a link that names its campaign send", () => {
 
   it("names no send when s was changed or added by hand, but still unsubscribes the Customer's own link", () => {
     const signedForSend = unsubscribeToken(ID, SECRET, SEND)!;
-    // Someone else's send in place of theirs: the signature no longer covers it.
     expect(verifyUnsubscribeLink(ID, signedForSend, OTHER, SECRET)).toBeNull();
-    // An older link, with an s added: theirs, naming nothing.
     const plain = unsubscribeToken(ID, SECRET)!;
     expect(verifyUnsubscribeLink(ID, plain, SEND, SECRET)).toEqual({ customerId: ID, sendId: null });
     expect(verifyUnsubscribeLink(ID, plain, "not-a-uuid", SECRET)).toEqual({ customerId: ID, sendId: null });

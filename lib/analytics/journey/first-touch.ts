@@ -1,17 +1,3 @@
-/**
- * A person's first Visit: the Entry source they first arrived by.
- *
- * A Visit keeps its own Entry source, and a paid Order names the Visit that
- * paid (last touch). The first touch is read back from there: every Visitor
- * known to be the same person (one Customer, or one email, ADR 0007), and the
- * earliest Visit any of them made. Derived at read time, never stored, so a
- * Visitor merged later moves the answer with no backfill.
- *
- * Only as far back as the browser remembers: a shopper who first came on
- * another device, or in an app's browser, and gave no email there is a
- * different Visitor, and their first touch is the earliest Visit we can tie
- * to them.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { classifyVisit, CHANNEL_LABELS, type Channel, type VisitSourceFields } from "@/lib/analytics/ai-referrers";
 import { visitorIdsForPerson } from "./identity";
@@ -30,10 +16,6 @@ export const ENTRY_VISIT_COLUMNS =
 
 export type VisitorPerson = { id: string; email: string | null; customer_id: string | null };
 
-/**
- * Visitor id → the id of the person's group. Two Visitors are one person when
- * they share a Customer or an email, directly or through a third.
- */
 export function groupVisitorsByPerson(visitors: VisitorPerson[]): Map<string, string> {
   const parent = new Map<string, string>();
   const find = (x: string): string => {
@@ -56,7 +38,6 @@ export function groupVisitorsByPerson(visitors: VisitorPerson[]): Map<string, st
   return new Map(visitors.map((v) => [v.id, find(v.id)]));
 }
 
-/** Visitor id → the earliest Visit made by anyone in that Visitor's group. */
 export function firstVisitByVisitor(visitors: VisitorPerson[], visits: EntryVisit[]): Map<string, EntryVisit> {
   const group = groupVisitorsByPerson(visitors);
   const earliest = new Map<string, EntryVisit>();
@@ -114,10 +95,6 @@ async function visitsOf(db: SupabaseClient, visitorIds: string[]): Promise<Entry
   return out;
 }
 
-/**
- * The first Visit of the person behind each of these Visitors. Meant for the
- * Visitors who paid in a period (hundreds), not for every Visitor.
- */
 export async function loadFirstVisits(db: SupabaseClient, visitorIds: string[]): Promise<Map<string, EntryVisit>> {
   const ids = [...new Set(visitorIds)];
   if (ids.length === 0) return new Map();
@@ -130,7 +107,6 @@ export async function loadFirstVisits(db: SupabaseClient, visitorIds: string[]):
     ...(await visitorsWhere(db, "email", emails)),
   ];
   const people = [...new Map([...asked, ...siblings].map((v) => [v.id, v])).values()];
-  // A Visitor row can be missing (a Visit always has one, but be safe): it is its own person.
   for (const id of ids) if (!people.some((p) => p.id === id)) people.push({ id, email: null, customer_id: null });
 
   const visits = await visitsOf(db, people.map((p) => p.id));
@@ -138,14 +114,11 @@ export async function loadFirstVisits(db: SupabaseClient, visitorIds: string[]):
   return new Map(ids.flatMap((id) => (first.has(id) ? [[id, first.get(id)!] as const] : [])));
 }
 
-/** A Visit's origin in words, for a person to read. */
 export type EntryPoint = {
   startedAt: string;
   channel: Channel;
   channelLabel: string;
-  /** Google, Instagram, ChatGPT, … or null when nothing names one. */
   platform: string | null;
-  /** The raw Entry source, for a referral or a tag nothing recognises. */
   source: string | null;
   campaign: string | null;
   landingPath: string | null;
@@ -165,14 +138,11 @@ export function describeEntry(visit: EntryVisit): EntryPoint {
 }
 
 export type CustomerEntry = {
-  /** Null when no Visit can be tied to this Customer. */
   first: EntryPoint | null;
-  /** The Visit behind their first paid Order on this site, when it is not the first Visit. */
   firstPurchase: EntryPoint | null;
   visits: number;
 };
 
-/** How a Customer first reached the site, and the Visit their first Order came from. */
 export async function loadCustomerEntry(
   db: SupabaseClient,
   person: { customerId: string; email?: string | null },

@@ -1,19 +1,3 @@
-/**
- * Sold lines: the one set of facts every Analytics money figure is summed from.
- *
- * A platform **Order** Stripe has charged becomes one `SoldOrder`, dated when
- * Stripe took the money, with the product revenue it actually earned (after
- * discounts and refunds) and its lines, each with the COGS frozen on it at sale.
- * The order's revenue is spread over its lines by list price, so the
- * breakdowns, the timeline and the totals add up to the same numbers.
- *
- * A line with no cost is never counted as costing $0. Its revenue is reported
- * as uncosted and kept out of the margin %, and the gaps list says why, so a
- * missing cost in Costings shows up as a gap instead of as profit.
- *
- * Pure: the loader in `sales-report.ts` reads the database.
- */
-
 import type { MonthKey } from "./sg-calendar";
 import { sgMonthKey, sgMonthStart } from "./sg-calendar";
 
@@ -21,38 +5,26 @@ export type SoldLineGroup = "pillow" | "bolster" | "part" | "service" | "unmappe
 
 export type SoldLine = {
   group: SoldLineGroup;
-  /**
-   * Breakdown identity: `pillow:premium:M`, `bolster:medium`, `item:61`,
-   * `service:readjustment`, `unmapped:<title>` (a line with no inventory link).
-   */
   key: string;
   label: string;
-  /** `items.category` of a part. */
   category?: string | null;
   units: number;
-  /** List revenue: line price × quantity, before order-level adjustments. */
   gross: number;
-  /** COGS frozen at sale, net of restocked returns. `null`: the line has no cost. */
   cost: number | null;
-  /** Why `cost` is null. */
   uncostedReason?: string | null;
 };
 
 export type SoldOrder = {
-  /** When Stripe took the money: the order's latest Stripe charge, by Stripe's clock. */
   soldAt: string;
-  /** Product revenue earned: after discounts and refunds, before shipping and tax. */
   productRevenue: number;
   lines: SoldLine[];
 };
 
 export type MarginTotals = {
   revenue: number;
-  /** Revenue on lines that have a cost; the base of the margin %. */
   costedRevenue: number;
   uncostedRevenue: number;
   cogs: number;
-  /** costedRevenue − cogs. */
   grossMargin: number;
   marginPct: number | null;
   units: number;
@@ -62,7 +34,6 @@ export type SalesSummary = MarginTotals & {
   orderCount: number;
   lineCount: number;
   uncostedLineCount: number;
-  /** Share of revenue whose cost is known. */
   coveragePct: number | null;
   currency: "SGD";
 };
@@ -70,7 +41,6 @@ export type SalesSummary = MarginTotals & {
 export type BreakdownRow = MarginTotals & {
   key: string;
   label: string;
-  /** The level-0 row this one drills from; `null` on level 0. */
   parent: string | null;
 };
 
@@ -100,11 +70,6 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-/**
- * When each Order's sale was made: its latest Stripe charge, by Stripe's clock.
- * An Order paid in parts (a Balance payment, then the hold's capture) is sold
- * when Stripe holds the whole price, not at its first payment.
- */
 export function latestChargeAt(charges: Array<{ orderId: string; at: string }>): Map<string, string> {
   const out = new Map<string, string>();
   for (const c of charges) {
@@ -116,10 +81,6 @@ export function latestChargeAt(charges: Array<{ orderId: string; at: string }>):
   return out;
 }
 
-/**
- * Spread an order's earned revenue over its lines by list price. Lines that
- * listed at nothing share it equally only when the whole order did.
- */
 export function allocateOrderRevenue(order: SoldOrder): Array<SoldLine & { revenue: number }> {
   const gross = order.lines.reduce((sum, l) => sum + Math.max(0, l.gross), 0);
   const revenue = Math.max(0, order.productRevenue);
@@ -202,7 +163,6 @@ export function partCategoryLabel(category: string): string {
   );
 }
 
-/** The products view: what was sold as a finished good, then each size or length. */
 function productParent(l: SoldLine): { key: string; label: string } | null {
   if (l.group === "pillow") {
     const tier = l.key.split(":")[1] ?? "basic";
@@ -213,7 +173,6 @@ function productParent(l: SoldLine): { key: string; label: string } | null {
   return null;
 }
 
-/** The parts view: parts sold on their own by category, and services. */
 function partParent(l: SoldLine): { key: string; label: string } | null {
   if (l.group === "part") {
     const category = l.category || "other";
@@ -302,7 +261,6 @@ function gaps(lines: AllocatedLine[]): CostGap[] {
     .sort((a, b) => b.revenue - a.revenue || a.label.localeCompare(b.label));
 }
 
-/** Every money figure on Analytics → Sales, from one pass over the sold lines. */
 export function buildSalesReport(input: { orders: SoldOrder[]; months: MonthKey[] }): SalesReport {
   const lines: AllocatedLine[] = [];
   for (const order of input.orders) {

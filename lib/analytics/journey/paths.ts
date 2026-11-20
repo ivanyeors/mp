@@ -2,18 +2,12 @@ import type { Locale } from "@/lib/i18n/locales";
 import { stripLocale, withLocale } from "@/lib/i18n/routing";
 import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
 
-/**
- * Admin Panel paths must never enter the journey store — nor must Preview mode, which
- * renders the landing path's own markup inside the builder. Without this an editing
- * session would pollute the very funnel the section anchors exist to measure.
- */
 export function isAdminJourneyPath(pathname: string): boolean {
   const base = stripLocale(pathname);
   if (isPageBuilderPreviewRoute(base)) return true;
   return base === "/settings" || base.startsWith("/settings/");
 }
 
-/** Storefront hash link for an exit section (Admin lang + locale-stripped journey path). */
 export function exitSectionHref(
   locale: Locale,
   path: string,
@@ -22,12 +16,10 @@ export function exitSectionHref(
   return `${withLocale(path, locale)}#${sectionId}`;
 }
 
-/** Section child nodes are `path#sectionId`; sinks/pages are not. */
 export function isSectionChildPath(path: string): boolean {
   return path.includes("#");
 }
 
-/** Normalize storefront path for graph nodes (locale-stripped, no query/hash). */
 export function normalizeJourneyPath(raw: string): string | null {
   if (!raw || typeof raw !== "string") return null;
   let path = raw.trim();
@@ -38,7 +30,6 @@ export function normalizeJourneyPath(raw: string): string | null {
   if (h >= 0) path = path.slice(0, h);
   const base = stripLocale(path);
   if (!base || isAdminJourneyPath(base)) return null;
-  // collapse trailing slash except root
   if (base.length > 1 && base.endsWith("/")) return base.slice(0, -1);
   return base;
 }

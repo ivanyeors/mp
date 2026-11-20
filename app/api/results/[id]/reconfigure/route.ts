@@ -33,14 +33,11 @@ const PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 const ReconfigureSchema = z.object({
   assignedSize: z.enum(PILLOW_SIZES),
   assignedTier: z.enum(["basic", "premium"]),
-  /** The questionnaire answers, so a re-measure travels with the rebuild. */
   measurements: z.record(z.string(), z.unknown()).optional(),
   preferenceLines: z.array(PreferenceLineSchema).min(1),
   addonLines: z.array(AddonLineSchema).default([]),
-  /** Both or neither — a method without an address cannot be rated or taxed. */
   shippingMethodId: z.string().uuid().optional(),
   shippingAddress: ShippingAddressInputSchema.optional(),
-  /** Spatial Result snapshot. Empty means "leave the stored mix alone". */
   placements: z
     .array(
       z.object({
@@ -61,33 +58,9 @@ const ReconfigureSchema = z.object({
       }),
     )
     .default([]),
-  /** Client's still-matching template claim — re-verified here, never trusted alone. */
   fillingTemplateId: z.number().int().positive().nullable().optional(),
 });
 
-/**
- * Staff re-configuration of a live Result (see `lib/results/staff-edit.ts`).
- *
- * Takes what the configurator composed — size×tier, cover/case, add-ons,
- * shipping and the filling mix — writes it onto the Result, then reprices
- * through `loadAssignedBuild`, which is the same function Accept charges from.
- * That ordering is the point: `final_amount` is never left describing the build
- * this request replaced.
- *
- * The Authorization hold is deliberately NOT touched. A card is authorised
- * once, for one amount, and Stripe will not raise it; `planCapture` already
- * settles the difference either way — a partial capture when the rebuild came
- * out cheaper, a Balance payment top-up when it came out dearer (ADR 0016).
- *
- * Status is preserved. A `held` Result stays in the assign queue; an `assigned`
- * one stays assigned, so the customer's existing status link and its Pay button
- * keep working and simply quote the new number.
- *
- * `is_pre_order` is left alone on purpose. It is sticky for the submission by
- * ADR 0005 — restock must not clear it — and the stock check below already
- * refuses a rebuild onto an out-of-stock preference, so the flag can only ever
- * be stale in the honest direction.
- */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -158,7 +131,6 @@ export async function POST(
     return NextResponse.json({ error: shippingAddress.error }, { status: shippingAddress.status });
   }
 
-  // Same category rules as the hold submit and the customer's finish.
   const categoryById = new Map((items ?? []).map((i) => [i.id as number, String(i.category)]));
   for (const line of input.preferenceLines) {
     const cat = categoryById.get(line.item_id);
@@ -173,9 +145,6 @@ export async function POST(
     }
   }
 
-  // Filling mix. An empty array means the editor sent nothing to change, so the
-  // stored snapshot (and its template link) survives untouched — a cover swap
-  // must never silently empty a build the workshop is already packing.
   const placementRows = input.placements as PillowPlacementRow[];
   let persistedTemplateId: number | null = row.filling_template_id as number | null;
   let fingerprint: string | null | undefined;
@@ -189,13 +158,9 @@ export async function POST(
     );
     if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 });
 
-    // Divergence rule (ADR 0008): the template link survives only while the mix
-    // still exactly matches that template's current placements.
     const claimed = input.fillingTemplateId ?? null;
     const saved = rowsToPillowPlacements(placementRows);
     if (claimed == null) {
-      // Composed by hand in the editor: an Unpromoted configuration until
-      // someone promotes it into a catalog template from the Admin Panel.
       persistedTemplateId = null;
       fingerprint = fingerprintPlacements(saved);
     } else {
@@ -214,18 +179,12 @@ export async function POST(
     }
   }
 
-  // Staff may leave shipping alone (an Assisted customisation has none yet, and
-  // the customer's own finish is where it lands); only a method actually sent
-  // rewrites the stored pair.
   let shippingPatch: {
     shipping_method: string;
     shipping_address: Record<string, unknown>;
     shipping_rate: number | string | null;
   } | null = null;
   if (shippingRow && shippingAddress?.ok) {
-    // The same method to the same postal code keeps the rate the customer was
-    // quoted, so a filling change does not move their shipping; anything else
-    // is quoted again (ADR 0032).
     const unchanged =
       shippingRow.slug === row.shipping_method &&
       row.shipping_rate != null &&
@@ -262,8 +221,6 @@ export async function POST(
     ...(fingerprint !== undefined ? { filling_fingerprint: fingerprint } : {}),
   };
 
-  // Price the build as it will be stored, BEFORE writing it, so a build Costings
-  // cannot price is refused with the Result untouched rather than half-saved.
   const build = await loadAssignedBuild(
     admin,
     {
@@ -272,16 +229,12 @@ export async function POST(
       assigned_length: null,
       currency: row.currency as string | null,
       measured_by_type: row.measured_by_type as string | null,
-      // Staff re-configure the build; the discount code it was held with stays.
       coupon_terms: row.coupon_terms,
       ...rewritten,
       shipping_method: shippingPatch?.shipping_method ?? (row.shipping_method as string | null),
       shipping_address: shippingPatch?.shipping_address ?? row.shipping_address,
       shipping_rate: shippingPatch ? shippingPatch.shipping_rate : (row.shipping_rate as number | string | null),
     },
-    // The snapshot rows are written further down; quote the new mix rather than
-    // the one still on disk. Empty means the stored snapshot is unchanged, and
-    // the DB read is exactly right.
     placementRows.length > 0 ? { fillingPlacements: placementRows } : undefined,
   );
   if (!build.ok) return NextResponse.json({ error: build.error }, { status: 400 });
@@ -295,8 +248,6 @@ export async function POST(
     );
   }
 
-  // A concurrent Accept moves the row out of an editable state; the guard makes
-  // this request lose that race instead of repricing a Result mid-payment.
   const { data: updated, error: updateErr } = await admin
     .from("mp_config_responses")
     .update({ ...rewritten, final_amount: build.pricing.total })

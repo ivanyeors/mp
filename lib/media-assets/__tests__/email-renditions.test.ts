@@ -9,14 +9,6 @@ import {
   optimizeImageForWeb,
 } from "@/lib/media-assets/optimize";
 
-/**
- * Email renditions (PRD-campaign-email-editor slice 05): a WebP master from
- * the Media Library becomes a JPEG, or a PNG when it has transparency, at
- * most 1,200px wide, made once per asset and reused by every campaign and
- * every send.
- */
-
-/** A photo-like master, as the library stores it: a 2,400px WebP. */
 async function photoMaster(): Promise<Buffer> {
   const photo = await sharp({ create: { width: 2400, height: 1600, channels: 3, background: "#808080", noise: { type: "gaussian", mean: 128, sigma: 40 } } })
     .blur(2)
@@ -25,7 +17,6 @@ async function photoMaster(): Promise<Buffer> {
   return (await optimizeImageForWeb(photo)).buffer;
 }
 
-/** A cut-out: dark ink on transparency, as a logo or a product shot is. */
 async function cutoutMaster(): Promise<Buffer> {
   const ink = await sharp({ create: { width: 800, height: 400, channels: 4, background: { r: 10, g: 10, b: 10, alpha: 1 } } }).png().toBuffer();
   const png = await sharp({ create: { width: 1600, height: 800, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
@@ -71,7 +62,6 @@ const BUCKET_URL = "https://mpillow.supabase.co/storage/v1/object/public/media";
 
 type Row = Record<string, unknown>;
 
-/** The service client as ensureEmailRenditions uses it: two tables and the media bucket, in memory. */
 function fakeAdmin(assets: Row[]) {
   const renditions: Row[] = [];
   const uploads: string[] = [];
@@ -122,10 +112,8 @@ describe("ensureEmailRenditions", () => {
       return masters[url];
     };
 
-    // Two campaigns place the photo; one also places the cut-out.
     const first = await ensureEmailRenditions(db.admin, [PHOTO, PHOTO], { fetchMaster });
     const second = await ensureEmailRenditions(db.admin, [CUTOUT, PHOTO], { fetchMaster });
-    // A wave's batches, and a test send, read them again.
     for (let i = 0; i < 3; i++) await ensureEmailRenditions(db.admin, [PHOTO, CUTOUT], { fetchMaster });
 
     expect(fetched).toEqual([`${BUCKET_URL}/photo_1.webp`, `${BUCKET_URL}/cutout_1.webp`]);

@@ -2,16 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CustomerSegment } from "@/lib/crm/segment-rules";
 import type { Campaign, CampaignDraft } from "@/lib/email-campaigns/rules";
 
-/**
- * A follow-up through the page's actions (PRD-email-funnel slice 06): a
- * campaign started from `?after=<A>:<did>` is saved with the follow-up
- * Segment as its Audience, and is not refused as "a Segment chosen by what
- * the same campaign did" (PRD-campaign-audiences slice 05): the Segment reads
- * campaign A, and this is another campaign. `findWantedSegmentAction` (asked
- * after a taken name) answers the live Segment with exactly the wanted
- * filters, by id and name, and nothing of any Segment's filters.
- */
-
 const A = "7c0a1e2b-3d4f-4a5b-8c6d-9e0f1a2b3c4d";
 const B = "6b2e4d3f-8c5a-4f7b-8d9e-1a2b3c4d5e6f";
 const FOLLOW_UP = "5e000000-0000-4000-8000-0000000000f1";
@@ -22,12 +12,10 @@ const h = vi.hoisted(() => ({
   updated: [] as [string, CampaignDraft][],
   segments: [] as CustomerSegment[],
   permission: [] as string[],
-  /** The caller's permissions: an Owner unless a test says otherwise. */
   holds: ["campaigns", "customers", "customers-edit"] as string[],
   reads: 0,
 }));
 vi.mock("@/lib/auth/admin", () => ({
-  // As the real one: refuses (throws) without the permission.
   assertAdmin: vi.fn(async (permission: string) => {
     h.permission.push(permission);
     if (!h.holds.includes(permission)) throw new Error("Forbidden");
@@ -124,7 +112,6 @@ describe("a campaign started from ?after=<A>:not-clicked", () => {
     expect(await saveCampaign(null, written)).toEqual({ ok: true, id: B });
     expect(h.created[0]).toMatchObject({ audience: "segment", segmentId: FOLLOW_UP });
 
-    // Saved again as campaign B: the Segment reads A, so B can send to it.
     h.campaigns.set(B, { ...parent, ...h.created[0], id: B });
     expect(await saveCampaign(B, written)).toEqual({ ok: true, id: B });
     expect(h.updated).toHaveLength(1);
@@ -150,7 +137,6 @@ describe("findWantedSegmentAction", () => {
     expect(new Set(h.permission)).toEqual(new Set(["campaigns"]));
   });
 
-  // A caller's filters never reach the comparison: Staff with campaigns but not customers cannot ask whether a Segment searches for someone.
   it.each([[["campaigns"]], [["campaigns", "customers"]], [["campaigns", "customers", "customers-edit"]]])("is no oracle for a Segment's filters (%j)", async (holds) => {
     h.holds = holds;
     for (const probe of [

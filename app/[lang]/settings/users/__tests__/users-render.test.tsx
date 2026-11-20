@@ -2,12 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { MemberRow, RoleRow } from "@/lib/auth/members";
 
-/**
- * Smoke render of Users & permissions with realistic rows: every tab mounts
- * without throwing and shows what it was given. Interactions are covered by
- * the policy and route tests; this catches a tab that cannot render at all.
- */
-
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 const { UsersClient } = await import("../users-client");

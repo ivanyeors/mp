@@ -37,7 +37,7 @@ describe("buildVEvent", () => {
     expect(ics).toContain("DTSTART:20260727T063000Z");
     expect(ics).toContain("DTEND:20260727T073000Z");
     expect(ics).toContain("UID:appt-123@mpillow");
-    expect(ics).toContain("DTSTAMP:20260727T063000Z"); // derived from start
+    expect(ics).toContain("DTSTAMP:20260727T063000Z");
     expect(ics).toContain("VERSION:2.0");
   });
 

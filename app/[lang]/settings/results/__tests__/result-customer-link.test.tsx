@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * PRD-crm-retention-loop slice 02: the Result page resolves *Open customer*
- * on the server, only for a role holding `customers`, and a failed lookup
- * never fails the page.
- */
-
 const h = vi.hoisted(() => ({
   permissions: new Set<string>(),
   lookup: vi.fn(async (): Promise<string | null> => "c-456"),

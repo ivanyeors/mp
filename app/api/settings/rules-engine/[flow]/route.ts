@@ -20,7 +20,6 @@ const GraphSchema = z.object({
 
 type Ctx = { params: Promise<{ flow: string }> };
 
-/** GET draft for a flow (Staff, page-builder). */
 export async function GET(_req: Request, ctx: Ctx) {
   try {
     await requireAdminContext("rules-engine");
@@ -37,7 +36,6 @@ export async function GET(_req: Request, ctx: Ctx) {
   return NextResponse.json({ ok: true, draft });
 }
 
-/** PUT save draft graph JSON. */
 export async function PUT(req: Request, ctx: Ctx) {
   let authorId: string | null = null;
   try {

@@ -1,13 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { priceResult } from "@/lib/result-pricing";
 
-/**
- * `priceResult` used to own the goods rule as "composed MSRP + every preference
- * MSRP". That double-charged: a Costings row is the price of a whole configuration,
- * so adding the chosen cover and case on top billed 473 for a 360 pillow. The goods
- * rule now lives in `priceComposedBuild` (see lib/pricing/__tests__), and this owns
- * the sums: goods + Service fees + shipping + tax.
- */
 describe("priceResult", () => {
   it("adds shipping and tax to the goods subtotal", () => {
     const priced = priceResult({ goods: 155, shipping: 8, tax: 12 });
@@ -35,7 +28,6 @@ describe("priceResult", () => {
     expect(priced.subtotal).toBe(410);
     expect(priced.discount).toBe(36);
     expect(priced.total).toBe(392);
-    // A discount can never eat into Service fees, shipping or tax.
     expect(priceResult({ goods: 20, services: 50, shipping: 8, discount: 500 }).total).toBe(58);
   });
 

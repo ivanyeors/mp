@@ -5,15 +5,6 @@ import { contentWords } from "@/lib/email-campaigns/content";
 import type { EditorDraft } from "../kept-draft";
 import { IDEAS_KIND, unchanged, type IdeasField, type RefineState, type RefineStore, type RewriteOffer } from "./refine-state";
 
-/**
- * ✨ Refine's asks in the browser (PRD-campaign-email-editor slice 10): the
- * request, from the email as the editor holds it now (Staff's words, never a
- * customer's), POSTed to /api/campaigns/ai-refine, and what its answer does
- * to the editor's ✨ Refine state (refine-state.ts). Loaded with the first
- * ask, not with the page.
- */
-
-/** The email's words for ideas to be written from, as many as the route takes. */
 function emailWords(draft: EditorDraft): string[] {
   const out: string[] = [];
   let size = 0;
@@ -27,12 +18,10 @@ function emailWords(draft: EditorDraft): string[] {
   return out;
 }
 
-/** Subject line or preview line ideas for the email; `exclude` the ideas already shown. */
 export function ideasRequest(kind: IdeasKind, draft: EditorDraft, { campaignId, exclude }: { campaignId: string | null; exclude: readonly string[] }): RefineRequest {
   return { kind, campaignId, subject: draft.subject, preheader: draft.preheader, name: draft.name, words: emailWords(draft), exclude: [...exclude] };
 }
 
-/** A rewrite of `block`; `previous` the rewrites already offered for it. */
 export function rewriteRequest(
   block: RewritableBlock,
   { action, instruction, previous }: { action: RewriteAction; instruction: string; previous: readonly RewritableBlock[] },
@@ -42,7 +31,6 @@ export function rewriteRequest(
   return { kind: "rewrite", campaignId, subject: draft.subject, name: draft.name, block, action, instruction: action === "other" ? instruction : "", exclude: previous.map(rewriteWords) };
 }
 
-/** POSTs the ask; its answer, or it throws the words to show (a limit, a refusal, a failed check). */
 export async function runRefine(request: RefineRequest, signal: AbortSignal): Promise<RefineResult> {
   const res = await fetch("/api/campaigns/ai-refine", {
     method: "POST",
@@ -57,7 +45,6 @@ export async function runRefine(request: RefineRequest, signal: AbortSignal): Pr
 
 type Answer = { result: RefineResult } | { error: string } | null;
 
-/** Runs one ask as the one running now; its answer, or null when it was stopped. */
 async function ask(store: RefineStore, kind: RefineKind, request: RefineRequest): Promise<Answer> {
   const controller = new AbortController();
   store.live.current = controller;
@@ -72,7 +59,6 @@ async function ask(store: RefineStore, kind: RefineKind, request: RefineRequest)
   }
 }
 
-/** Ideas for `field`; `more` asks for others than those shown, which stay in view meanwhile. */
 export async function suggest(store: RefineStore, field: IdeasField, { more = false }: { more?: boolean } = {}): Promise<void> {
   if (store.live.current) return;
   const kind = IDEAS_KIND[field];
@@ -82,7 +68,6 @@ export async function suggest(store: RefineStore, field: IdeasField, { more = fa
   set(() => ({ status: "working", ideas: more ? (before?.ideas ?? []) : [], error: null, shown }));
   const answer = await ask(store, kind, ideasRequest(kind, store.history().value, { campaignId: store.campaignId, exclude: shown }));
   set((at) => {
-    // Dismissed meanwhile, or stopped: what was shown before stays.
     if (!at || at.status !== "working") return at;
     if (!answer) return at.ideas.length ? { ...at, status: "ready" } : null;
     if ("error" in answer) return { ...at, status: "failed", error: answer.error };
@@ -91,7 +76,6 @@ export async function suggest(store: RefineStore, field: IdeasField, { more = fa
   });
 }
 
-/** A rewrite of `block`, offered beside it once it arrives, while the block is still as it was. */
 export async function rewrite(store: RefineStore, block: RewritableBlock, action: RewriteAction, instruction = "", shown: RewritableBlock[] = []): Promise<void> {
   if (store.live.current) return;
   const asked: RewriteOffer = { blockId: block.id, action, instruction, status: "working", original: block, proposal: null, error: null, shown };
@@ -99,7 +83,6 @@ export async function rewrite(store: RefineStore, block: RewritableBlock, action
   const answer = await ask(store, "rewrite", rewriteRequest(block, { action, instruction, previous: shown }, store.history().value, { campaignId: store.campaignId }));
   store.update((s) => {
     const o = s.rewriting;
-    // Kept, replaced or gone stale meanwhile: nothing to offer.
     if (o !== asked) return s;
     if (!answer || !unchanged(store.history().value.content, block)) return { ...s, rewriting: null };
     if ("error" in answer) return { ...s, rewriting: { ...o, status: "failed", error: answer.error } };
@@ -107,7 +90,6 @@ export async function rewrite(store: RefineStore, block: RewritableBlock, action
   });
 }
 
-/** *Try again*: the same ask, for a rewrite other than those offered. */
 export async function tryAgain(store: RefineStore): Promise<void> {
   const o = store.state().rewriting;
   if (!o || o.status === "working") return;

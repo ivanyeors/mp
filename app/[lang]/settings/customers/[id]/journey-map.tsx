@@ -4,31 +4,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { JOURNEY_TONE_LABEL, type JourneyTone } from "@/lib/crm/journey/chapters";
 import { cn } from "@/lib/utils";
 
-/**
- * The journey map (PRD-customer-page-journey slice 04): each chapter a stop on
- * one line, at one of three heights, with the quiet time between stops written
- * on the axis. The last solid stop is Now; a dashed line runs on to the next
- * Follow-up due, when there is one.
- *
- * The heights come from `chapterTone` (lib/crm/journey/chapters.ts), which
- * reads stated facts only. This file draws what it is given and decides
- * nothing.
- *
- * A stop is a real button laid over the drawing, so the map works by keyboard
- * and is read out stop by stop. Wider than its card, the map scrolls inside
- * the card and opens at the Now end; the page never scrolls sideways.
- */
-
 export type MapStop = {
     id: string;
     title: string;
-    /** Under the title: a date, or a date range. */
     when: string;
     tone: JourneyTone;
     kind: "past" | "now" | "next";
-    /** A filter is on and this stop holds nothing it shows. */
     dimmed?: boolean;
-    /** Entries in the chapter, for the stop's spoken label. */
     count?: number;
 };
 
@@ -43,7 +25,6 @@ const AXIS_Y = 156;
 const MIN_COL = 88;
 const LEVELS: JourneyTone[] = ["good", "steady", "care"];
 
-/** A smooth path through the points: each segment leaves and arrives level. */
 function curve(points: ReadonlyArray<{ x: number; y: number }>): string {
     if (points.length === 0) return "";
     let d = `M ${points[0]!.x} ${points[0]!.y}`;
@@ -62,9 +43,7 @@ export function JourneyMap({
     selectedId,
     onSelect,
 }: {
-    /** Oldest first; Now after the past chapters, the next stop last. */
     stops: MapStop[];
-    /** `gaps[i]` is the quiet time between `stops[i]` and `stops[i + 1]`; null for none worth saying. */
     gaps: Array<string | null>;
     selectedId: string | null;
     onSelect: (id: string) => void;
@@ -87,7 +66,6 @@ export function JourneyMap({
     const total = col * stops.length;
     const x = (i: number) => col * i + col / 2;
 
-    // Open at the Now end: the latest chapters are what Staff came for.
     const stopCount = stops.length;
     useEffect(() => {
         const el = scroller.current;
@@ -108,7 +86,6 @@ export function JourneyMap({
                 "dark:[--j-good:var(--color-emerald-400)] dark:[--j-steady:var(--color-slate-500)] dark:[--j-care:var(--color-orange-400)]",
             )}
         >
-            {/* The three heights, named once in their own gutter, so they stay put while the map scrolls. */}
             <div aria-hidden className="relative w-24 shrink-0 max-md:hidden">
                 {LEVELS.map((tone) => (
                     <span
@@ -128,7 +105,6 @@ export function JourneyMap({
                             aria-hidden
                             width={total}
                             height={PLOT_HEIGHT}
-                            // Over the stops' buttons, so a selected stop's tint sits behind its dot.
                             className="pointer-events-none absolute top-0 left-0 z-[1]"
                         >
                             <defs>
@@ -196,7 +172,6 @@ export function JourneyMap({
                         </svg>
                     ) : null}
 
-                    {/* The quiet time between two stops, on the axis between them. */}
                     {width > 0
                         ? gaps.map((gap, i) =>
                               gap && i < stops.length - 1 ? (

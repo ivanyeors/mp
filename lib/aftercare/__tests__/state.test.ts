@@ -10,11 +10,6 @@ import {
   type PreferenceEvent,
 } from "@/lib/aftercare/state";
 
-/**
- * Aftercare preferences (CRM slice 13): the owner-approved Profile copy, the
- * open-STOP rule, and the switch's status line.
- */
-
 const event = (over: Partial<PreferenceEvent> = {}): PreferenceEvent => ({
   preference: "aftercare_whatsapp",
   toValue: false,
@@ -90,7 +85,6 @@ describe("describeSwitch", () => {
   });
 
   it("reads the day in Singapore", () => {
-    // 16:30 UTC on 2 Nov is 00:30 on 3 Nov in Singapore.
     expect(describeStopRequest("2026-11-02T16:30:00Z")).toBe("Asked to stop on WhatsApp, 3 Nov");
   });
 });

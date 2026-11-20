@@ -7,11 +7,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/settings/service-fees — the live service fees and complimentary rule,
- * read-only. Costings → Service fees is where they are edited; the Appointments
- * settings sheet shows them so whoever runs re-adjustments sees what is charged.
- */
 export async function GET() {
   const denied = await requireAnyAdmin(["costings", "appointments"]);
   if (denied) return denied;
@@ -21,8 +16,6 @@ export async function GET() {
       loadServicePrices(admin),
       loadReadjustmentPolicy(admin),
     ]);
-    // Prices only: this route serves the Appointments role too, which has no
-    // business seeing what a service costs us.
     const prices = Object.fromEntries(
       Object.entries(services).map(([k, v]) => [k, { msrp: v.msrp, currency: v.currency }]),
     );

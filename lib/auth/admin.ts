@@ -15,29 +15,19 @@ import {
   type Permission,
 } from "@/lib/auth/permissions";
 
-/** A signed-in, active Member with their role's permissions (ADR 0023). */
 export interface AdminContext {
-  /** `admin_users.id` — the Member. */
   memberId: string;
-  /** Supabase auth user id. */
   userId: string;
   email: string;
   roleId: string;
   roleKey: string;
   roleName: string;
-  /** Holds the built-in Owner role. */
   isOwner: boolean;
-  /** Holds a built-in role that grants every permission (Owner, Admin). */
   grantsAll: boolean;
   permissions: ReadonlySet<Permission>;
-  /** True when access is granted via the bootstrap allowlist. */
   isBootstrap: boolean;
 }
 
-/**
- * Settings logins that are always allowed regardless of env configuration.
- * These bootstrap an owner row on first sign-in (see {@link getAdminContext}).
- */
 const ALWAYS_ALLOWED_SETTINGS_EMAILS = ["sg@mpillow.com", "admin@mpillow.com"];
 
 function bootstrapEmails(): string[] {
@@ -55,7 +45,6 @@ type MemberRow = {
   role: RoleRow | RoleRow[] | null;
 };
 
-/** The Member and their role in one round trip. */
 const MEMBER_SELECT = "id, is_active, auth_user_id, role:admin_roles(id, key, name, grants_all, permissions)";
 
 function roleOf(row: MemberRow): RoleRow | null {
@@ -82,22 +71,6 @@ function contextFor(
   };
 }
 
-/**
- * Resolves the admin context for the current Supabase session, or null when
- * the visitor is not an authorized, active Member.
- *
- * Resolution order:
- *  1. `admin_users` row matched by auth user id.
- *  2. `admin_users` row matched by email (links the auth id on first match —
- *     this is how an Invited Member becomes Active). A row already bound to a
- *     different auth user is refused, never shared.
- *  3. First-admin bootstrap: an allowlisted email auto-provisions an Owner row.
- *
- * The role's permissions come from `admin_roles` in the same query, so a role
- * or membership change applies on the caller's next request. Memoised per
- * request with React `cache()` so the settings layout gate, an RSC page guard
- * and any server action in the same render share one lookup.
- */
 export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
   const user = await getAuthIdentity();
   if (!user?.email) return null;
@@ -120,7 +93,6 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
       .select(MEMBER_SELECT)
       .ilike("email", escapeLikePattern(email))
       .maybeSingle<MemberRow>();
-    // A matching email is not ownership once the row is bound to another user.
     if (byEmail?.auth_user_id && byEmail.auth_user_id !== user.id) return null;
     row = byEmail;
     if (row && !row.auth_user_id) {
@@ -132,7 +104,6 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
         .is("auth_user_id", null)
         .select("id")
         .maybeSingle();
-      // Another sign-in bound the row between the read and this write.
       if (!bound) return null;
     }
   }
@@ -140,12 +111,10 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
   if (row) {
     if (!row.is_active) return null;
     const role = roleOf(row);
-    // A Member without a readable role gets nothing, never a default.
     if (!role) return null;
     return contextFor(row, role, identity, false);
   }
 
-  // First-admin bootstrap: provision an Owner row for an allowlisted email.
   if (isBootstrapEmail(email, bootstrapEmails())) {
     const { data: owner } = await admin
       .from("admin_roles")
@@ -159,7 +128,6 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
       .select("id")
       .maybeSingle<{ id: string }>();
     if (!inserted) return null;
-    // Every Member has a Staff profile (ADR 0023); best-effort, never blocks sign-in.
     await createStaffProfile(null, inserted.id, defaultProfileName(email)).catch(() => null);
     return contextFor(inserted, owner, identity, true);
   }
@@ -167,13 +135,6 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
   return null;
 });
 
-/**
- * Route-handler guard. Returns a denial `NextResponse` (401/403) when the
- * caller is not an authorized staff member with `permission`, otherwise null.
- *
- *   const denied = await requireAdmin("orders");
- *   if (denied) return denied;
- */
 export async function requireAdmin(permission: Permission): Promise<NextResponse | null> {
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -183,10 +144,6 @@ export async function requireAdmin(permission: Permission): Promise<NextResponse
   return null;
 }
 
-/**
- * Route-handler guard accepting any one of several permissions. Returns a
- * denial `NextResponse` (401/403) when the caller holds none of them.
- */
 export async function requireAnyAdmin(permissions: Permission[]): Promise<NextResponse | null> {
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -196,10 +153,6 @@ export async function requireAnyAdmin(permissions: Permission[]): Promise<NextRe
   return null;
 }
 
-/**
- * Like {@link requireAdmin} but returns the admin context on success so callers
- * (e.g. audit logging) can attribute the action. Throws the denial response.
- */
 export async function requireAdminContext(permission: Permission): Promise<AdminContext> {
   const ctx = await getAdminContext();
   if (!ctx) throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -209,13 +162,6 @@ export async function requireAdminContext(permission: Permission): Promise<Admin
   return ctx;
 }
 
-/**
- * Server-action guard. Throws a plain `Error` (rather than a `NextResponse`)
- * so it surfaces cleanly through React Server Actions. Returns the admin
- * context on success for audit attribution.
- *
- *   await assertAdmin("orders");
- */
 export async function assertAdmin(permission: Permission): Promise<AdminContext> {
   const ctx = await getAdminContext();
   if (!ctx) throw new Error("Unauthorized");
@@ -223,10 +169,6 @@ export async function assertAdmin(permission: Permission): Promise<AdminContext>
   return ctx;
 }
 
-/**
- * {@link assertAdmin} for a server action shared by several pages: the caller
- * needs any one of the pages' permissions.
- */
 export async function assertAnyAdmin(permissions: Permission[]): Promise<AdminContext> {
   const ctx = await getAdminContext();
   if (!ctx) throw new Error("Unauthorized");
@@ -236,11 +178,6 @@ export async function assertAnyAdmin(permissions: Permission[]): Promise<AdminCo
   return ctx;
 }
 
-/**
- * Server-component / page guard. Redirects to Sign in when not signed in, or
- * to the Admin Panel home with `?denied=<key>` when signed in but lacking
- * `permission`, where General shows which page was refused and why.
- */
 export async function requireAdminPage(
   permission: Permission,
   locale: Locale = DEFAULT_LOCALE,

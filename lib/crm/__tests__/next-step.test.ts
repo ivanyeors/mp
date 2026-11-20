@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextStep, type NextStepFacts } from "@/lib/crm/next-step";
 
-/**
- * PRD-crm-retention-loop slice 05: the next step on a Customer, first match
- * wins, one step or none. No step asks for a review or offers a discount.
- */
-
-// 1 Nov 2026, 12:00 in Singapore.
 const NOW = new Date("2026-11-01T04:00:00Z");
 const daysAgo = (d: number) => new Date(NOW.getTime() - d * 86_400_000).toISOString();
 
@@ -36,7 +30,6 @@ describe("nextStep", () => {
   it("1. an overdue Follow-up comes first", () => {
     const s = nextStep(facts({ detail: "awaiting_delivery", overdueFollowUp: { title: "Call about the bolster", dueOn: "2026-10-28" } }), NOW);
     expect(s).toEqual({ kind: "followup_overdue", text: "Follow-up overdue: “Call about the bolster”, due 28 Oct 2026", addFollowUp: false });
-    // Due today is not overdue.
     expect(nextStep(facts({ overdueFollowUp: { title: "Today", dueOn: "2026-11-01" } }), NOW)).toBeNull();
   });
 
@@ -54,7 +47,6 @@ describe("nextStep", () => {
     expect(nextStep(facts({ lastDeliveredAt: daysAgo(20), reviewRequestedAt: null }), NOW)?.text).toBe(
       "Review request goes with the next daily run (automatic)",
     );
-    // Past the window, sent already, or switched off: not this step.
     expect(nextStep(facts({ lastDeliveredAt: daysAgo(61), reviewRequestedAt: null, ownsPremium: false }), NOW)).toBeNull();
     expect(nextStep(facts({ lastDeliveredAt: daysAgo(9), reviewRequestedAt: daysAgo(1) }), NOW)).toBeNull();
     expect(nextStep(facts({ lastDeliveredAt: daysAgo(9), reviewRequestedAt: null, reviewRequest: { enabled: false, daysAfter: 14, maxAgeDays: 60 } }), NOW)).toBeNull();

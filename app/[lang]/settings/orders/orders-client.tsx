@@ -48,8 +48,6 @@ import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { EmptyState } from "@/components/settings/empty-state";
 import { orderStatusLabel } from "@/lib/shop/order-display";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type DashboardStats = {
     total_orders: number;
     revenue: number;
@@ -62,17 +60,10 @@ type DashboardStats = {
 type OrderRow = Order & {
     items_count?: number;
     margin?: Pick<OrderMargin, "gross_margin" | "margin_pct"> | null;
-    /** Referral attribution (#74/#77): non-null on partner-sourced orders. */
     partner_id?: string | null;
     ref_code?: string | null;
 };
 
-/**
- * Server-rendered first paint. Exactly the JSON `/api/shop/orders/dashboard`
- * and `/api/shop/orders?page=1&limit=20` return, pre-fetched by the RSC page
- * wrapper. Either half is null when its server load failed, in which case the
- * client falls back to fetching it on mount.
- */
 export type OrdersInitialData = {
     dashboard: {
         ok: true;
@@ -96,8 +87,6 @@ export type OrdersInitialData = {
     } | null;
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const LIMIT = 20;
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -109,8 +98,6 @@ const ORDER_STATUSES: OrderStatus[] = [
     "cancelled",
     "refunded",
 ];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatSGD(amount: number): string {
     return formatCurrency(amount);
@@ -156,7 +143,6 @@ function formatMarginPct(pct: number | null | undefined): string {
 }
 
 
-/** Same normalisation the dashboard fetch applies, shared with the server seed. */
 function toDashboardStats(s: {
     total_orders?: number;
     revenue?: number;
@@ -177,8 +163,6 @@ function toDashboardStats(s: {
     };
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function SettingsOrdersPage({
     initialData,
 }: {
@@ -189,7 +173,6 @@ export default function SettingsOrdersPage({
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
-    // Filter state
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -201,25 +184,20 @@ export default function SettingsOrdersPage({
             ? "From date must be on or before To date."
             : null;
 
-    // Data state — seeded from the server render when available.
     const [orders, setOrders] = useState<OrderRow[]>(initialData?.list?.rows ?? []);
     const [total, setTotal] = useState(initialData?.list?.total ?? 0);
     const [loading, setLoading] = useState(!initialData?.list);
 
-    // Dashboard stats
     const [stats, setStats] = useState<DashboardStats | null>(
         initialData?.dashboard ? toDashboardStats(initialData.dashboard.stats) : null,
     );
     const [statsLoading, setStatsLoading] = useState(!initialData?.dashboard);
 
-    // The server already delivered the first page of each; skip the duplicate
-    // mount fetch, but leave every later fetch (filters, paging) untouched.
     const skipStatsFetch = useRef(Boolean(initialData?.dashboard));
     const skipOrdersFetch = useRef(Boolean(initialData?.list));
     const summaryStats = dateRangeError ? null : stats;
     const summaryStatsLoading = dateRangeError ? false : statsLoading;
 
-    // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -232,12 +210,10 @@ export default function SettingsOrdersPage({
         };
     }, [search]);
 
-    // Reset page when filters change
     useEffect(() => {
         setPage(1);
     }, [statusFilter, dateFrom, dateTo]);
 
-    // Fetch dashboard stats for the selected sales window
     useEffect(() => {
         if (skipStatsFetch.current) {
             skipStatsFetch.current = false;
@@ -264,7 +240,6 @@ export default function SettingsOrdersPage({
         };
     }, [dateFrom, dateTo, dateRangeError]);
 
-    // Fetch orders
     const fetchOrders = useCallback(async () => {
         if (dateRangeError) {
             setOrders([]);
@@ -303,7 +278,6 @@ export default function SettingsOrdersPage({
         fetchOrders();
     }, [fetchOrders]);
 
-    // Pagination helpers
     const totalPages = Math.ceil(total / LIMIT);
 
     const buildPageNumbers = (): (number | "ellipsis")[] => {
@@ -320,7 +294,6 @@ export default function SettingsOrdersPage({
 
     return (
         <div className="space-y-4 md:space-y-6">
-            {/* Header */}
             <div>
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
@@ -330,7 +303,6 @@ export default function SettingsOrdersPage({
                 </div>
             </div>
 
-            {/* Summary tiles */}
             <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 xl:grid-cols-5">
                 <StatTile
                     icon={ShoppingCart}
@@ -375,7 +347,6 @@ export default function SettingsOrdersPage({
             </div>
 
             <div className="space-y-4 md:space-y-6">
-            {/* Toolbar: search on its own row on a phone, then status, then the two dates side by side */}
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                 <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -433,7 +404,6 @@ export default function SettingsOrdersPage({
                 )}
             </div>
 
-            {/* Content */}
             {loading ? (
                 <div className="flex items-center justify-center py-12 md:py-24">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -572,7 +542,6 @@ export default function SettingsOrdersPage({
                 </>
             )}
 
-            {/* Pagination */}
             {totalPages > 1 && (
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
                     <p className="text-sm text-muted-foreground">

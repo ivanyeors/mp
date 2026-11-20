@@ -61,8 +61,6 @@ describe("transitionResult", () => {
     );
     expect(beforeAccept.ok).toBe(false);
 
-    // Accept no longer checks for a hold (ADR 0016) — `capture` carries that
-    // guard alone now, asserted below and in the dedicated case that follows.
     const acceptNoPi = transitionResult(
       { status: "assigned", filling_template_id: 1, payment_intent_id: null },
       { action: "accept" },
@@ -158,8 +156,6 @@ describe("transitionResult", () => {
     });
 
     it("expires an assigned Result whose hold has died", () => {
-      // The customer never accepted and the authorization is gone. Same ending
-      // as a held expiry: released, nothing charged.
       expect(
         transitionResult(
           { status: "assigned", filling_template_id: 1, payment_intent_id: "pi_abc" },

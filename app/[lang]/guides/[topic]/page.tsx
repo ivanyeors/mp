@@ -53,7 +53,6 @@ export default async function GuideHubPage({ params }: Props) {
       <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{guide.h1}</h1>
       <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{guide.answerLede}</p>
 
-      {/* Real customer quotes matched to this topic (slice 12). No Review JSON-LD by design. */}
       {reviews.length ? (
         <section className="mt-10">
           <h2 className="text-xl font-semibold">{zh ? "顾客怎么说" : "What customers say"}</h2>

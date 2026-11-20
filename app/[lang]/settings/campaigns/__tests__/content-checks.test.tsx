@@ -8,16 +8,6 @@ import type { ContentCheck } from "@/lib/email-campaigns/content-checks";
 import type { Campaign, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
 
-/**
- * The email's checks on the campaign page (PRD-campaign-email-editor slice
- * 11): the Send card's *The email* lists each failure with its block, and
- * pressing one takes Staff to that block, selected; *Ready to send?* lists
- * the advice as *Recommended:*; what the checks found shows beside each block
- * as saved; *Send to N people* stays off while a check holds the wave; and
- * the checks run again after each save, every link asked again on *Check
- * again*.
- */
-
 const ID = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
 const CONTENT: CampaignContent = {
   v: 1,
@@ -102,7 +92,6 @@ const openTab = async (name: string) => {
 };
 const card = (id: string) => document.querySelector<HTMLElement>(`li[data-block-id="${id}"]`)!;
 const beside = (id: string) => card(id).querySelector("[data-block-warnings]")?.textContent ?? null;
-/** The Send card's step, by its label. */
 const step = (label: string) =>
   [...document.querySelectorAll<HTMLElement>('ol[aria-label="Before you send"] > li')].find((li) => li.querySelector("span span")?.textContent === label)!;
 
@@ -126,9 +115,7 @@ describe("The email, in the Send card", () => {
     const email = await until(() => (step("The email")?.textContent?.includes(DEAD) ? step("The email") : null));
     expect(email.textContent).toContain("1 thing to fix before it can go:");
     expect(email.textContent).toContain(NO_PREVIEW);
-    // Only an issue in a block goes anywhere.
     expect([...email.querySelectorAll("button")].map((b) => b.textContent)).toEqual([DEAD]);
-    // The sending setup passes: its own step says so.
     expect(step("Every check passes").textContent).toContain("are all fine");
 
     await click(button(DEAD)!);
@@ -180,7 +167,6 @@ describe("beside each block", () => {
     mount();
     expect(await until(() => beside("cta"))).toBe("the button to old.example.com/care answered 404");
     expect(beside("title")).toBeNull();
-    // Advice about the email as a whole is not beside any block.
     expect(document.querySelector("[data-block-warnings]")?.textContent).not.toContain("preview line");
 
     typeField(document.getElementById("block-cta-button-0-label") as HTMLInputElement, "Read it now");

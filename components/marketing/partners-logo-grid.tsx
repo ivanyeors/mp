@@ -15,7 +15,6 @@ type PartnersLogoGridProps = {
   locale?: Locale;
 };
 
-/** Clinics a card lists before "Show more", so a big group doesn't stretch its row. */
 const SHOWN_PLACES = 3;
 
 const COPY: Record<
@@ -52,7 +51,6 @@ function PlaceLink({ place, directions }: { place: PartnerPlace; directions: str
   );
   if (!href) return <div className="flex gap-2 py-1.5">{body}</div>;
   return (
-    // Above the card's website link (z-10), so a tap here opens the map instead.
     <a
       href={href}
       target="_blank"
@@ -76,7 +74,6 @@ function PartnerPlaces({ places, locale }: { places: PartnerPlace[]; locale: Loc
     <div className="mt-auto w-full pt-4">
       <div className="border-t pt-3 text-left">
         {places.length > 1 ? (
-          // A div, not a <p>: marketing pages size every <p> up.
           <div className="mb-1 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {copy.count(places.length)}
           </div>
@@ -129,7 +126,6 @@ function PartnerCard({ partner, locale }: { partner: ResolvedPartner; locale: Lo
       </div>
       <h3 className="mt-4 text-base font-semibold">
         {websiteUrl ? (
-          // The link covers the whole card, as the card itself used to be the link.
           <a
             href={websiteUrl}
             target="_blank"

@@ -53,12 +53,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const admin = supabaseAdmin();
   const update: Record<string, unknown> = { ...parsed.data };
 
-  // Auto-set cancelled_at when cancelling if not provided
   if (parsed.data.status === "cancelled" && !parsed.data.cancelled_at) {
     update.cancelled_at = new Date().toISOString();
   }
 
-  // Auto-set delivered_at when marking delivered if not provided
   if (parsed.data.status === "delivered" && !parsed.data.delivered_at) {
     update.delivered_at = new Date().toISOString();
   }

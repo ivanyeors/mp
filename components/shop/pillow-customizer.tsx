@@ -35,8 +35,6 @@ import {
   CustomizationStepSummary,
 } from "@/components/shop/customization-steps";
 
-// ─── Props ────────────────────────────────────────────────
-
 interface PillowCustomizerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,16 +48,12 @@ interface PillowCustomizerProps {
   }) => void;
 }
 
-// ─── API Response Type ───────────────────────────────────
-
 interface ApplyResponse {
   ok: boolean;
   customization_id: string;
   summary: string;
   total_addon_price: number;
 }
-
-// ─── Helpers ──────────────────────────────────────────────
 
 const SLEEP_POSITIONS: {
   value: CustomerPreferences["sleep_position"];
@@ -146,18 +140,14 @@ const STEPS = [
   "Summary",
 ] as const;
 
-// ─── Component ────────────────────────────────────────────
-
 export function PillowCustomizer({
   open,
   onOpenChange,
   onAddToCart,
 }: PillowCustomizerProps) {
-  // --- Step state ---
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- Step 1: Preferences ---
   const [sleepPosition, setSleepPosition] =
     useState<CustomerPreferences["sleep_position"]>("side");
   const [bodyType, setBodyType] =
@@ -166,26 +156,22 @@ export function PillowCustomizer({
     useState<CustomerPreferences["firmness"]>("medium");
   const [notes, setNotes] = useState("");
 
-  // --- Step 2: Recommendation data ---
   const [recommendation, setRecommendation] =
     useState<RecommendationResponseData | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(
     null
   );
 
-  // --- Step 3: Component selection ---
   const [selectedCover, setSelectedCover] = useState<number | null>(null);
   const [selectedCase, setSelectedCase] = useState<number | null>(null);
   const [componentQtyOverrides, setComponentQtyOverrides] = useState<
     Map<number, number>
   >(new Map());
 
-  // --- Step 4: Upsells ---
   const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(
     new Set()
   );
 
-  // --- Derived values ---
   const currency = recommendation?.variant?.currency ?? "SGD";
   const basePrice = recommendation?.variant?.price ?? 0;
 
@@ -210,8 +196,6 @@ export function PillowCustomizer({
   );
 
   const totalPrice = basePrice + addonPrice + upsellTotal;
-
-  // --- Actions ---
 
   const handleGetRecommendation = useCallback(async () => {
     setIsLoading(true);
@@ -240,7 +224,6 @@ export function PillowCustomizer({
       setRecommendation(data);
       setSelectedTemplateId(null);
 
-      // Pre-select default cover and case
       const defaultCover = data.components.covers.find(
         (c) => c.base_quantity > 0
       );
@@ -315,7 +298,6 @@ export function PillowCustomizer({
 
       toast.success("Added to cart!");
 
-      // Reset state
       setCurrentStep(0);
       setRecommendation(null);
       setSelectedTemplateId(null);
@@ -355,8 +337,6 @@ export function PillowCustomizer({
     setCurrentStep((s) => Math.min(STEPS.length - 1, s + 1));
   }, []);
 
-  // ─── Render ───────────────────────────────────────────
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -369,7 +349,6 @@ export function PillowCustomizer({
           <SheetTitle>Customize Your Pillow</SheetTitle>
         </SheetHeader>
 
-        {/* Step indicator */}
         <div className="px-4 pb-2">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">
@@ -392,7 +371,6 @@ export function PillowCustomizer({
           </div>
         </div>
 
-        {/* Step content */}
         <div className="flex-1 px-4 pb-4 space-y-6">
           {currentStep === 0 && (
             <StepPreferences
@@ -476,8 +454,6 @@ export function PillowCustomizer({
   );
 }
 
-// ─── Step 1: Preferences ──────────────────────────────────
-
 function StepPreferences({
   sleepPosition,
   onSleepPositionChange,
@@ -503,7 +479,6 @@ function StepPreferences({
 }) {
   return (
     <div className="space-y-6">
-      {/* Sleep position */}
       <div className="space-y-3">
         <Label className="text-base font-semibold">
           How do you sleep?
@@ -546,7 +521,6 @@ function StepPreferences({
         </div>
       </div>
 
-      {/* Body type */}
       <div className="space-y-3">
         <Label className="text-base font-semibold">Body type</Label>
         <div className="flex gap-3">
@@ -569,7 +543,6 @@ function StepPreferences({
         </div>
       </div>
 
-      {/* Firmness */}
       <div className="space-y-3">
         <Label className="text-base font-semibold">Firmness preference</Label>
         <div className="flex rounded-lg border overflow-hidden">
@@ -595,7 +568,6 @@ function StepPreferences({
         </div>
       </div>
 
-      {/* Notes */}
       <div className="space-y-2">
         <Label className="text-base font-semibold">
           Additional notes{" "}
@@ -609,7 +581,6 @@ function StepPreferences({
         />
       </div>
 
-      {/* Submit */}
       <Button
         className="w-full"
         size="lg"

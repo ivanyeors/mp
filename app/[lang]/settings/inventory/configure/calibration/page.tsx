@@ -12,15 +12,8 @@ import { CalibrationSheetView } from "./calibration-sheet-view";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** The Sizes slice 10 builds from their default templates. */
 const BUILD_SIZES = ["S", "M", "L"];
 
-/**
- * Calibration sheet (X-ray pillow UX slice 10): the x-ray's predictions for
- * every bench check, read fresh from Settings on each load, so it can be
- * printed before the measurements are in and again after. Same permission as
- * the Configure › Dimensions tab, which it checks.
- */
 export default async function CalibrationPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

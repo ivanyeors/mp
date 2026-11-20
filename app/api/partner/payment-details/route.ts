@@ -10,15 +10,6 @@ import {
 
 export const runtime = "nodejs";
 
-/**
- * Partner payout details (#81). Both verbs are partner-guarded (isPartnerActive)
- * and write ONLY under the caller's own partnerId, so no partner can touch
- * another's row or private QR image.
- *
- *  - POST  (multipart `file`): upload/replace the PayNow QR into the PRIVATE
- *    bucket, store the key, and return a fresh short-lived signed URL for preview.
- *  - PATCH (json bank fields): upsert bank_name / bank_account_name / bank_account_number.
- */
 export async function POST(req: Request) {
   const ctx = await getPartnerContext();
   if (!isPartnerActive(ctx)) {

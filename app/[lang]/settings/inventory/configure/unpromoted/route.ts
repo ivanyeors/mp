@@ -21,7 +21,6 @@ import {
 
 export const runtime = 'nodejs'
 
-// Scope = template scope: (kind=pillow, key=size) or (kind=bolster, key=length).
 const ScopeSchema = z.object({ kind: z.enum(['pillow', 'bolster']), key: z.string().min(1).max(40) })
 
 const PromoteSchema = ScopeSchema.extend({
@@ -32,7 +31,6 @@ const PromoteSchema = ScopeSchema.extend({
 type Admin = ReturnType<typeof supabaseAdmin>
 type Kind = 'pillow' | 'bolster'
 
-// Bolster placements use their own schema/tables — never the pillow enums (ADR 0008).
 const TPL_TABLE: Record<Kind, string> = {
   pillow: 'filling_template_placements',
   bolster: 'bolster_template_placements',
@@ -41,10 +39,6 @@ const RESULT_TABLE: Record<Kind, string> = {
   pillow: 'result_filling_placements',
   bolster: 'result_bolster_filling_placements',
 }
-// row_index (and insert_order) ride along because Promote INSERTs these rows verbatim into
-// filling_template_placements below: without it, promoting a stacked mix
-// silently flattens every cell to side-by-side in the new catalog template.
-// Harmless on the two fingerprint reads — canonicalizePlacements drops `row`.
 const ROW_COLS: Record<Kind, string> = {
   pillow: 'section, sub_section, slot, item_id, row_index, insert_order, offset_x_mm, offset_y_mm',
   bolster: 'slot, item_id',
@@ -57,10 +51,7 @@ const toPlacements = (kind: Kind, rows: AnyRow[]) =>
     ? rowsToBolsterPlacements(rows as BolsterPlacementRow[])
     : rowsToPillowPlacements(rows as PillowPlacementRow[])
 
-/** Fingerprints of ALL filling templates in scope (active and inactive). */
 async function loadTemplateFingerprints(admin: Admin, kind: Kind, key: string): Promise<string[]> {
-  // Membership, not `key`: a mix already promoted at another size and shared in
-  // here is promoted, and must not be ranked as unpromoted a second time.
   const members = await templateIdsForKey(admin, key)
   if (!members.ok) throw new Error(members.error)
   if (!members.ids.length) return []
@@ -94,7 +85,6 @@ type ResultScopeRow = {
   suggested_length: string | null
 }
 
-/** Result → product-card scope key: assigned wins over suggested (size or length). */
 const resultScopeKey = (kind: Kind, r: ResultScopeRow) =>
   kind === 'bolster' ? (r.assigned_length ?? r.suggested_length) : (r.assigned_size ?? r.suggested_size)
 
@@ -170,7 +160,6 @@ export async function POST(req: NextRequest) {
 
   const admin = supabaseAdmin()
 
-  // A representative in-scope Result still carrying this fingerprint.
   const { data: results, error: rErr } = await admin
     .from('mp_config_responses')
     .select(RESULT_SCOPE_COLS)
@@ -195,15 +184,9 @@ export async function POST(req: NextRequest) {
       : verifyPromotedMix(rows as PillowPlacementRow[], fingerprint)
   if (!verified.ok) return NextResponse.json({ error: verified.error }, { status: 409 })
 
-  // Validate the size BEFORE the insert. `key` comes from a Result's
-  // assigned_size/assigned_length, which are free text with no check
-  // constraint, and setTemplateKeys below rejects anything non-canonical — a
-  // template inserted first would survive that rejection with zero membership,
-  // invisible to every list yet still holding its name in the unique index.
   const scopeKeys = normalizeTemplateKeys(kind, [key])
   if (!scopeKeys.ok) return NextResponse.json({ error: scopeKeys.error }, { status: 400 })
 
-  // Named active catalog Filling Template — scope-keyed, so no pillow_kind/variant (ADR 0008).
   const { data: created, error: insErr } = await admin
     .from('bom_templates')
     .insert({
@@ -220,7 +203,6 @@ export async function POST(req: NextRequest) {
     .single()
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 400 })
 
-  // A promoted mix serves the size it was used at; widening is a Configure act.
   const membership = await setTemplateKeys(admin, { templateId: created.id, kind, keys: scopeKeys.keys })
   if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 })
 

@@ -1,112 +1,42 @@
-/**
- * Soft cut (ADR 0025): the cross-section's pieces drawn as soft bodies, and
- * the case as cloth. Display only — the fit model still decides where every
- * piece goes and whether the cell closes; this decides only the shape each
- * outline takes once the pieces press on each other and on the case.
- *
- * Position-based dynamics (XPBD, many small substeps of one iteration each):
- * - a pouch is a ring of fixed-length fabric around its fill: pressure (an
- *   area constraint, compliance scaled by size so every pouch pushes alike,
- *   never below its minimum) holds the volume, surface tension smooths the
- *   skin, and a weak shape memory (linear, area-normalised, rotation-free
- *   shape matching toward the codebase's own cushion) keeps it a cushion;
- * - a Neck support is a firm roll: foam in a cover that does not stretch, so
- *   it keeps its round side view but gives a little — flattening where it
- *   rests and where it is pressed — the less the firmer it is;
- * - an Ear Comfort Pad is a firm pad the same way, with its own firmness: it
- *   remembers its rim and the sewn well in its middle, and its skin keeps
- *   that dip (surface tension smooths ripples, never the shape it was sewn);
- * - the case is cloth: never longer than sewn, drawn lightly toward a slumped
- *   copy of the sewn outline, keeping its curves and bending smoothly, and
- *   never past the sewn outline (a signed-distance limit). Its flat bottom is
- *   pinned — the pillow lies on it;
- * - contacts keep a gap between pieces (each stays countable) and a margin
- *   inside the case; a piece in a cell that cannot close may poke through.
- *
- * Deterministic: a fixed start, a fixed number of steps, no randomness and no
- * trig inside the loop, so the same recipe always settles to the same
- * picture on every device, however the steps are split. Pure + browser-safe.
- *
- * The top-down x-ray settles with the same solver (`soft-top.ts`): no gravity
- * (it falls into the screen), a case that does not move (the Section's sewn
- * walls seen from above), and each piece held loosely to where the layout put
- * it both ways. Those are options, off by default, so the cut is unchanged.
- */
-
 export type Pt = [number, number];
 
 export type SoftPiece = {
   id: string;
-  /** Where it starts, view units. */
   ring: readonly Pt[];
-  /** The relaxed cushion it remembers (same point count and order as `ring`); absent = its start. */
   rest?: readonly Pt[];
-  /** A filling pouch, a Neck support's roll, or an Ear Comfort Pad. */
   kind: "pouch" | "roll" | "pad";
-  /** The area it inflates to, view units²; absent = its rest area. */
   areaTarget?: number;
-  /** It never squeezes below this area. */
   areaMin?: number;
-  /** Its cell cannot close: it may poke through the case. */
   over?: boolean;
-  /**
-   * Placed by hand (a fine nudge): held firmly where it starts — front ↔ back,
-   * and up ↔ down where `tetherY` holds anything — so its neighbours make
-   * room instead of pushing it back.
-   */
   held?: boolean;
-  /**
-   * Where it is held on the x axis, when that is not the middle of its start ring.
-   * A firm piece starts as its outline clipped to the walls, and a curved wall
-   * clips one side more than the other, so that middle is off to the side; it
-   * is held where it was put instead (the top view, 8-11-2026). Absent: its start.
-   */
   anchorX?: number;
 };
 
 export type SolverOptions = {
-  /** Settle length: steps of 1/60 s, each split in `substeps`. */
   steps: number;
   substeps: number;
-  /** How high the empty case stands, as a share of the sewn height. */
   slump: number;
-  /** Points on the case cloth. */
   caseN: number;
-  /** Space kept between pieces, and between a piece and the case, view units. */
   gap: number;
   margin: number;
   gravity: number;
-  /** How loosely a piece is held front ↔ back to where the fit put it. */
   tether: number;
-  /** Pressure softness (scaled by the piece's size). */
   areaCompliance: number;
-  /** Share of the settle over which pouches inflate from their seed to their volume. */
   inflate: number;
-  /** Surface tension of a pouch's skin. */
   skin: number;
-  /** Pull toward the rest cushion. */
   shapeMemory: number;
-  /** The case keeps its sewn curves (Laplacian detail) and bends smoothly (points two apart). */
   caseDetail: number;
   caseBend: number;
-  /** Pull of the case toward its slumped rest. */
   casePull: number;
-  /** How far past the sewn outline the cloth may billow, view units. */
   billow: number;
-  /** Cap on a pressure move per substep, view units. */
   maxStep: number;
   fabricCompliance: number;
-  /** A Neck support's firmness, 0 … 1: how little its foam gives where it is pressed. */
   rollFirmness: number;
-  /** An Ear Comfort Pad's firmness, 0 … 1: how little it gives, and how hard it springs back to its rim and well. */
   padFirmness: number;
-  /** How loosely a piece is held up ↔ down to where it started; 0 in the cut, where gravity places it. */
   tetherY: number;
-  /** The case does not move at all (the top-down x-ray's walls); the cut's is cloth. */
   rigidCase: boolean;
 };
 
-/** The tether on a piece placed by hand: firm enough that its neighbours, on the loose tether, give way. */
 export const HELD_TETHER = 0.5;
 
 export const SOLVER_DEFAULTS: SolverOptions = {
@@ -135,9 +65,7 @@ export const SOLVER_DEFAULTS: SolverOptions = {
 };
 
 export type SettleFrame = {
-  /** The sewn case outline, view units. */
   outline: readonly Pt[];
-  /** The y the pillow lies on; case points on it are pinned. */
   baseline: number;
   width: number;
   height: number;
@@ -148,7 +76,6 @@ export type SoftSnapshot = { case: Pt[]; bodies: { id: string; ring: Pt[] }[] };
 export type SoftSettle = {
   steps: number;
   readonly stepsDone: number;
-  /** Advance up to `n` steps; true once settled. */
   step(n?: number): boolean;
   snapshot(): SoftSnapshot;
 };
@@ -173,7 +100,6 @@ export const ringLength = (P: readonly Pt[]): number => {
   return l;
 };
 
-/** A closed outline as `n` points evenly spaced along it. */
 export function resample(poly: readonly Pt[], n: number): Pt[] {
   const segs: [Pt, Pt, number][] = [];
   let total = 0;
@@ -226,7 +152,6 @@ export function distanceToPolygon(P: readonly Pt[], x: number, y: number): numbe
   return d;
 }
 
-/** The sewn outline as a signed-distance grid (negative inside), sampled bilinearly. Cached per outline. */
 const sdfCache = new Map<string, (x: number, y: number) => number>();
 function sdfFor(P: readonly Pt[], width: number, height: number, step = 3) {
   const mid = P[(P.length / 2) | 0];
@@ -266,7 +191,6 @@ type Body = {
   id: string;
   start: number;
   n: number;
-  /** Rest edge lengths, rest offsets from the rest centroid, rest Laplacian. */
   rest: Float64Array;
   qx: Float64Array;
   qy: Float64Array;
@@ -274,7 +198,6 @@ type Body = {
   ly: Float64Array;
   cx0: number;
   cy0: number;
-  /** How firmly it is held to (cx0, cy0) each way: the tether, or HELD_TETHER for a piece placed by hand. */
   tx: number;
   ty: number;
   seedArea: number;
@@ -287,17 +210,13 @@ type Body = {
   box: Float64Array;
 };
 
-/** Start a settle of `pieces` inside the case. Nothing moves until `step`. */
 export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, options: Partial<SolverOptions> = {}): SoftSettle {
   const o: SolverOptions = { ...SOLVER_DEFAULTS, ...options };
   const { steps, substeps, gap, margin, gravity, tether, tetherY, rigidCase, areaCompliance, inflate, skin, shapeMemory, caseDetail, caseBend, casePull, billow, maxStep, fabricCompliance, rollFirmness, padFirmness } = o;
-  // Foam, not air: a roll's volume gives under load (never below its floor) and it springs back to round.
   const rollGive = areaCompliance * 6 * (1 - rollFirmness);
   const rollMemory = 0.06 + 0.24 * rollFirmness;
   const rollFloor = 0.8 + 0.16 * rollFirmness;
-  // How far it may squash out of round, linearly: none at all when fully firm.
   const rollBeta = 0.85 * (1 - rollFirmness);
-  // An ear pad is firm the same way, at its own firmness, springing back to its rim and well.
   const padGive = areaCompliance * 6 * (1 - padFirmness);
   const padMemory = 0.06 + 0.24 * padFirmness;
   const padFloor = 0.8 + 0.16 * padFirmness;
@@ -305,12 +224,10 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
   const { baseline } = frame;
   const raw = resample(frame.outline, o.caseN);
   const full = signedArea(raw) < 0 ? raw.slice().reverse() : raw;
-  // Built on first use: a rigid case never reaches the seam it holds the cloth to.
   let sdfAt: ((x: number, y: number) => number) | null = null;
   const sdf = (x: number, y: number) => (sdfAt ??= sdfFor(full, frame.width, frame.height))(x, y);
   const slumped = full.map(([x, y]): Pt => [x, baseline - (baseline - y) * o.slump]);
 
-  // Every ring runs the same way round; a piece's rest ring follows its start ring.
   const rings = [
     { id: "case", kind: "case" as const, pts: full as readonly Pt[], restPts: null as readonly Pt[] | null, areaTarget: undefined as number | undefined, areaMin: 0, over: false, held: false, anchorX: undefined as number | undefined },
     ...pieces.map((p) => {
@@ -336,7 +253,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
   const PY = new Float64Array(N);
   const VX = new Float64Array(N);
   const VY = new Float64Array(N);
-  /** Inverse mass: the case's pinned bottom is 0, the cloth light, a roll heavy. */
   const W = new Float64Array(N);
   const bodies: Body[] = [];
   let off = 0;
@@ -420,7 +336,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
     }
   });
 
-  /** A distance constraint; `unilateral` only ever shortens (cloth that may go slack). */
   function dist(i: number, j: number, L: number, alpha: number, unilateral: boolean) {
     const ws = W[i] + W[j];
     if (!ws) return;
@@ -447,7 +362,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
     }
     return A / 2;
   }
-  /** Pressure: an area constraint toward `target`, each move capped so a full stack cannot explode. */
   function area(b: Body, target: number, alpha: number) {
     const A = areaOf(b);
     let den = 0;
@@ -472,7 +386,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       Y[i] += my;
     }
   }
-  /** Shape memory toward the rest cushion (squash and stretch allowed, area-normalised, no turning); held front ↔ back loosely (and up ↔ down, with `tetherY`). */
   function shape(b: Body, stiff: number, beta: number) {
     let cx = 0;
     let cy = 0;
@@ -522,7 +435,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       for (let k = 0; k < b.n; k++) Y[b.start + k] += dy;
     }
   }
-  /** Fabric under tension: each skin point eases toward its neighbours' midpoint; pressure holds the volume. */
   function smoothSkin(b: Body, w: number) {
     for (let k = 0; k < b.n; k++) {
       const i = I(b, k);
@@ -532,7 +444,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       Y[i] += ((Y[p] + Y[q]) / 2 - Y[i]) * w;
     }
   }
-  /** A sewn skin (the ear pad's): it smooths toward its own rest curvature, so ripples go and the well stays. */
   function smoothSewn(b: Body, w: number) {
     for (let k = 0; k < b.n; k++) {
       const i = I(b, k);
@@ -543,7 +454,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
     }
   }
 
-  // Contacts: every edge on a uniform grid, one sweep of the 3 × 3 cells round each point.
   const CELL = 12;
   const GW = Math.ceil(frame.width / CELL) + 2;
   const GH = Math.ceil(frame.height / CELL) + 6;
@@ -589,7 +499,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       }
     }
   }
-  // Per body: the nearest edge to the point being swept, its foot and outward normal.
   const bD = new Float64Array(NB);
   const bI = new Int32Array(NB);
   const bJ = new Int32Array(NB);
@@ -652,7 +561,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
     }
     return ins;
   }
-  /** Separate point `k` from the edge found for body `bi` along (nx, ny) by `depth`, shared by inverse mass. */
   function push(k: number, bi: number, nx: number, ny: number, depth: number) {
     depth = Math.min(depth, 4 * maxStep);
     const ei = bI[bi];
@@ -698,7 +606,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
           let s: number;
           if (bD[bj] !== Infinity) s = (X[k] - bQX[bj]) * bNX[bj] + (Y[k] - bQY[bj]) * bNY[bj];
           else if (insideBody(bodies[bj], X[k], Y[k])) {
-            // Deep inside a neighbour, beyond the grid's reach: find its nearest edge the slow way.
             nearestAll(bj, X[k], Y[k]);
             s = -Math.sqrt(bD[bj]);
           } else continue;
@@ -715,7 +622,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       }
     }
   }
-  /** The cloth never billows more than `billow` past its sewn outline. */
   function holdToSeam(i: number) {
     const d = sdf(X[i], Y[i]);
     if (d <= billow) return;
@@ -735,7 +641,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       X[i] += VX[i] * dt;
       Y[i] += VY[i] * dt;
     }
-    // The cloth: never longer than sewn, drawn lightly toward its slumped rest, keeping the outline's own curves, never past the sewn shape.
     for (let k = 0; k < shell.n; k++) dist(I(shell, k), I(shell, k + 1), shell.rest[k], 0, true);
     for (let k = 0; k < shell.n; k++) {
       const i = I(shell, k);
@@ -746,7 +651,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       const q = I(shell, k + 1);
       X[i] -= (X[i] - (X[p] + X[q]) / 2 - shell.lx[k]) * caseDetail;
       Y[i] -= (Y[i] - (Y[p] + Y[q]) / 2 - shell.ly[k]) * caseDetail;
-      // Cloth bends smoothly: no kink between points two apart that the sewn outline does not have.
       if (caseBend > 0) {
         const p2 = I(shell, k - 2);
         const q2 = I(shell, k + 2);
@@ -758,7 +662,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
     for (const b of pcs) {
       const roll = b.kind === "roll";
       const pad = b.kind === "pad";
-      // Cloth around fill: the fabric (a roll's cover too) neither stretches nor shrinks, so puffing up shortens it and squashing lengthens it.
       for (let k = 0; k < b.n; k++) dist(I(b, k), I(b, k + 1), b.rest[k], fabricCompliance, false);
       if (pad) smoothSewn(b, skin);
       else smoothSkin(b, skin);
@@ -767,7 +670,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
       shape(b, roll ? rollMemory : pad ? padMemory : shapeMemory, roll ? rollBeta : pad ? padBeta : 0.85);
     }
     collide();
-    // A full stack presses the cloth out; the seam holds it, and the pieces meet it next substep.
     for (let k = 0; k < shell.n; k++) if (W[I(shell, k)]) holdToSeam(I(shell, k));
     for (let i = 0; i < N; i++) {
       if (!W[i]) continue;
@@ -800,10 +702,6 @@ export function createSettle(pieces: readonly SoftPiece[], frame: SettleFrame, o
   };
 }
 
-/**
- * A shrink-free low-pass (Taubin λ|μ): ripples shorter than a few point
- * spacings go; contact flats, bends and volume stay. `fixed` points stay put.
- */
 export function taubin(P: readonly Pt[], passes = 6, fixed: readonly boolean[] | null = null, lambda = 0.5, mu = -0.53): Pt[] {
   const n = P.length;
   let A: Pt[] = P.map((p) => [p[0], p[1]]);
@@ -826,11 +724,6 @@ export function taubin(P: readonly Pt[], passes = 6, fixed: readonly boolean[] |
   return A;
 }
 
-/**
- * What is drawn: each outline evenly respaced (about every `spacing` view
- * units) and low-passed `passes` times; the case keeps its flat bottom and
- * its two corners, and the cloth above them is smoothed.
- */
 export function smoothSnapshot(snap: SoftSnapshot, { baseline, spacing = 5, passes = 8, casePasses = passes }: { baseline: number; spacing?: number; passes?: number; casePasses?: number }): SoftSnapshot {
   const bodies = snap.bodies.map((b) => {
     const n = Math.max(32, Math.round(ringLength(b.ring) / spacing));
@@ -843,7 +736,6 @@ export function smoothSnapshot(snap: SoftSnapshot, { baseline, spacing = 5, pass
   return { ...snap, bodies, case: taubin(C, casePasses, fixed) };
 }
 
-/** Where a label fits best: the inside point farthest from the outline (a coarse pole of inaccessibility). */
 export function labelSpot(P: readonly Pt[]): { at: Pt; r: number } {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const [x, y] of P) {

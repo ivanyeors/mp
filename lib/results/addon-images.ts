@@ -1,20 +1,10 @@
-/** Add-on card imagery: Item → primary Media Asset URL resolution. Pure — no I/O. */
-
 export type AddonItemMediaRef = {
   id: number;
   primary_media_asset_id: string | null;
-  /**
-   * The Item's (category, name) family — sizes of one accessory. A size with no
-   * image of its own shows its family's, so one photo covers XS–L.
-   */
   family?: string;
 };
 export type AddonMediaAsset = { id: string; kind: string; hosted_url: string | null };
 
-/**
- * item_id → hosted image URL from the Item's primary Media Asset (image kind
- * only), else from the lowest-id Item in its family that has one.
- */
 export function resolveAddonImageUrls(
   items: AddonItemMediaRef[],
   assets: AddonMediaAsset[],

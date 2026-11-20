@@ -17,12 +17,6 @@ import {
   type SoftBodySettings,
 } from "../soft-body-settings";
 
-/**
- * Soft cut settings (ADR 0025): one JSON site setting, read the same way by
- * every surface that draws the cut. Whatever is stored, a host gets a whole,
- * in-range settings object — never a half-parsed one.
- */
-
 const NUMBER_KEYS = Object.keys(SOFT_BODY_RANGES) as (keyof typeof SOFT_BODY_RANGES)[];
 
 const tuned: SoftBodySettings = {
@@ -223,7 +217,6 @@ describe("softBodyFromPayload", () => {
 describe("loadDimensionOverrides delivers the soft cut settings", () => {
   type Call = { table: string; column?: string; keys?: string[] };
 
-  /** A client whose site_settings holds `settings`; records each query it is asked. */
   const fakeAdmin = (settings: { key: string; value: string }[], error: string | null = null) => {
     const calls: Call[] = [];
     const client = {

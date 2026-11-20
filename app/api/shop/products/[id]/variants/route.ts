@@ -61,7 +61,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   ]);
 
   const variantData = { ...parsed.data };
-  // Price/cost/compare-at are managed by price-sync for auto-generated products; ignore client values.
   if (product?.is_auto_generated) {
     variantData.price = 0;
     variantData.cost_price = null;
@@ -78,8 +77,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       { status: isDup ? 409 : 500 }
     );
   }
-  // Auto-push to Stripe so the new variant is immediately sellable. Skipped for
-  // $0 / inactive variants (e.g. unset auto-generated rows) to avoid junk prices.
   const stripe =
     data.price > 0 && data.is_active !== false
       ? await syncProductToStripeSafe(id)

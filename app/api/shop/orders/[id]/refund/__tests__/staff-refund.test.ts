@@ -1,14 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Staff refund from the order screen: everything left, chosen lines, or a
- * typed amount, linked to Stripe. The webhook writes the ledger; these pin what
- * the route asks Stripe for and what it records.
- *
- * The shop Order: two S$50 cushions and a S$20 case, S$24 off, S$8 shipping,
- * S$104 paid.
- */
-
 const ORDER = "0b0b0b0b-0000-4000-8000-000000000001";
 const CUSHIONS = "0b0b0b0b-0000-4000-8000-0000000000a1";
 const CASE = "0b0b0b0b-0000-4000-8000-0000000000a2";
@@ -255,8 +246,6 @@ describe("staff refund — customised (Result) orders", () => {
 });
 
 describe("staff refund — an order paid on two intents", () => {
-  // A Result held at S$300 and topped up S$120 (ADR 0016): payment_reference
-  // names the hold; the ledger holds both charges.
   beforeEach(() => {
     h.order.total = 420;
     h.order.subtotal = 420;
@@ -298,7 +287,6 @@ describe("staff refund — an order paid on two intents", () => {
       amount: 300,
       error: "Refunded 300.00 SGD, but the rest didn't go through Stripe: Your card was declined.",
     });
-    // The part that went through is still on the timeline.
     expect(h.timeline.mock.calls[0][3]).toMatchObject({ stripe_refund_ids: ["re_hold"], amount: 300 });
   });
 });

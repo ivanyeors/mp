@@ -14,23 +14,12 @@ import { unsubscribeAskOrder } from "@/lib/marketing-consent/unsubscribe-reasons
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// The link carries its token: never index it, and never send it on as a referrer.
 export const metadata: Metadata = {
   title: "Unsubscribe",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
 
-/**
- * The confirm page behind every marketing email's unsubscribe link
- * (PRD-shopify-customer-migration slice 07). Opening it changes nothing: mail
- * scanners prefetch links. The one button POSTs to `/api/email/unsubscribe`,
- * which unsubscribes and sends the browser back here to say so.
- *
- * Once they are unsubscribed it asks, optionally, *Mind telling us why?*
- * (PRD-crm-retention-loop slice 11): after the unsubscribe, never before it,
- * once per unsubscribe, and never after a spam complaint.
- */
 export default async function UnsubscribePage({
   params,
   searchParams,
@@ -42,18 +31,15 @@ export default async function UnsubscribePage({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const u = typeof query.u === "string" ? query.u : null;
   const t = typeof query.t === "string" ? query.t : null;
-  // The campaign send the link names (PRD-campaign-audiences slice 08), passed on with the button.
   const s = typeof query.s === "string" ? query.s : null;
 
   let state: MarketingEmailState | "invalid" | "error" = "invalid";
   let ask = false;
   const link = verifyUnsubscribeLink(u, t, s);
   if (link) {
-    // A Customer since deleted is on no list.
     state = await readMarketingEmailState(supabaseAdmin(), link.customerId)
       .then((s) => s ?? "unsubscribed")
       .catch(() => "error" as const);
-    // The question is a nicety: a read that fails just leaves it out.
     if (state === "unsubscribed") {
       ask = (await readUnsubscribeQuestion(supabaseAdmin(), link.customerId).catch(() => null)) === "ask";
     }

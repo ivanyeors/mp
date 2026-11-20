@@ -5,11 +5,6 @@ import SettingsFaqPage from "./faq-client";
 
 export const runtime = "nodejs";
 
-/**
- * Categories and questions are read on the server (the same rows
- * `/api/faq/categories` and `/api/faq/items` return) so the page mounts with
- * both lists instead of fetching them after hydration.
- */
 export default async function FaqSettingsRoute({
   params,
 }: {

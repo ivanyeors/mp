@@ -14,13 +14,6 @@ import {
 } from "@/lib/payout-upload";
 import { sendPayoutMadeEmail } from "@/lib/email/partner";
 
-/**
- * Record a partner payout (#81). Staff-only (assertAdmin). Uploads the
- * proof-of-payment image to the PRIVATE bucket, writes an immutable payout row,
- * and flips the covered released commissions to `paid`. Corrections are a
- * negative amount (proof optional); a normal payout requires a positive amount
- * AND a proof image (AC2).
- */
 export async function recordPayoutAction(formData: FormData): Promise<void> {
   const actor = await assertAdmin("partner-commissions");
   const admin = supabaseAdmin();
@@ -78,9 +71,6 @@ export async function recordPayoutAction(formData: FormData): Promise<void> {
     },
   });
 
-  // Payout-made email (#84): only for an actual payout (positive amount — a
-  // correction is a negative row). Links the proof via a longer-lived signed URL
-  // (AC5). Idempotent on entity_id = payoutId; best-effort — never break payout.
   if (amount > 0) {
     try {
       const proofUrl = await signedImageUrl(proofPath, EMAIL_PROOF_TTL_SECONDS);

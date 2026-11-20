@@ -10,15 +10,6 @@ const ReorderSchema = z.object({
   order: z.array(z.string().uuid()).min(1),
 });
 
-/**
- * PUT /api/landing-sections/reorder
- * Accepts { order: string[] } — every section id, in the desired order.
- *
- * The order must cover the table exactly. Before slice 02 this fired one UPDATE per
- * section through `Promise.all` with no transaction, so a partial failure left
- * duplicate positions and a half-reordered page; and a partial order silently
- * collided with the untouched rows it did not mention.
- */
 export async function PUT(req: Request) {
   let ctx;
   try {
@@ -33,9 +24,6 @@ export async function PUT(req: Request) {
 
     const admin = supabaseAdmin();
 
-    // Sections staged for removal are already gone from the builder's list, so the
-    // order it sends excludes them. Counting them here rejected every reorder — with a
-    // 400 that persisted until someone published or discarded.
     const { data: existing, error: readError } = await admin
       .from("landing_sections")
       .select("*")
@@ -63,8 +51,6 @@ export async function PUT(req: Request) {
     }
 
     const now = new Date().toISOString();
-    // One statement: positions never pass through a half-applied state. The new order is
-    // a Section draft — the live page keeps its published order until Publish.
     const { error } = await admin.from("landing_sections").upsert(
       order.map((id, index) => ({ ...byId.get(id)!, draft_position: index, updated_at: now })),
       { onConflict: "id" },

@@ -6,7 +6,6 @@ export type AnswerLedeFields = {
   description?: string | null;
 };
 
-/** Resolve 60–120 word answer lede: seo_answer → seo_description → description (truncated). */
 export function resolveAnswerLede(fields: AnswerLedeFields): string | null {
   const raw =
     fields.seo_answer?.trim() ||

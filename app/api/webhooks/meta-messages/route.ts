@@ -4,18 +4,7 @@ import { metaAccountIds, parseMetaWebhook, verifyMetaChallenge, verifyMetaSignat
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Profile lookups and Telegram sends run after the response.
 export const maxDuration = 60;
-
-/**
- * Meta webhook for Facebook Messenger (`page`) and Instagram (`instagram`)
- * messages — one callback URL for both objects in the Meta app.
- *
- * GET is Meta's subscribe handshake (META_WEBHOOK_VERIFY_TOKEN). POST is
- * signed with the app secret (X-Hub-Signature-256) and acknowledged at once —
- * Meta retries anything slower — then stored and carded after the response.
- * The appointment WhatsApp webhook is separate (/api/webhooks/whatsapp).
- */
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -46,7 +35,6 @@ export async function POST(req: Request) {
     after(async () => {
       try {
         const summary = await ingestSocialEvents(events);
-        // A card that failed earlier gets another go on the next delivery.
         await sweepUncarded({ max: 3 });
         if (summary.failed) console.warn("[social-inbox] meta ingest", JSON.stringify(summary));
       } catch (error) {

@@ -36,7 +36,6 @@ const CreateShippingMethodSchema = z.object({
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  // `country` is part of the cache key: only a two-letter ISO code is accepted.
   const rawCountry = searchParams.get("country")?.trim().toUpperCase() ?? "";
   const country = /^[A-Z]{2}$/.test(rawCountry) ? rawCountry : null;
   const includeInactive = searchParams.get("include_inactive") === "1";
@@ -44,8 +43,6 @@ export async function GET(req: Request) {
   const canIncludeInactive =
     adminCtx != null && hasPermission(adminCtx, "shipping");
 
-  // Self-collect is a customisation option: the configurator asks for it, and
-  // gets the studio each one is collected from. The shop's lists never see it.
   const collect = searchParams.get("collect") === "1";
 
   try {
@@ -56,7 +53,6 @@ export async function GET(req: Request) {
     const rows = all.flatMap((m) => {
       if (!isSelfCollect(m)) return [m];
       const studio = studios.get(m.collect_location_id!);
-      // A studio without an address cannot be collected from; the hold refuses it too.
       if (!studio?.address?.trim()) return [];
       return [{ ...m, collect_location: { id: studio.id, name: studio.name, address: studio.address } }];
     });

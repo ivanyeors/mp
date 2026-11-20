@@ -3,13 +3,6 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * A new address is Singaporean unless it says otherwise (PRD-shopify-customer-
- * migration slice 03, trap 3c). 'MY' was the default in four places; the
- * database's is asserted in supabase/tests/customer-import/assert-defaults.sql,
- * and the other three are here. Existing rows keep their country.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb }));
 
 vi.mock("@/lib/auth/user", () => ({

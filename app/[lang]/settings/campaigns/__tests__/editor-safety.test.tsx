@@ -7,14 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * Editing safety on the campaign editor (PRD-campaign-email-editor slice 04,
- * decision 4): one history over the whole email, so ⌘Z and ⇧⌘Z (and the
- * header's Undo and Redo) take back any change, Clear all included; ⌘S
- * saves; leaving asks first; a crashed tab's unsaved changes are offered
- * back. And the page's two tabs: Write, and Send as it was.
- */
-
 const actions = vi.hoisted(() => ({
   archiveCampaignAction: vi.fn(),
   checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),
@@ -81,10 +73,8 @@ function mount(campaign: Campaign | null, draft: CampaignDraft) {
 const field = (id: string) => document.getElementById(id) as HTMLInputElement;
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label) ?? null;
-/** Each heading's words: one-line text inputs with Variables (slice 13). */
 const headings = () => [...document.querySelectorAll<HTMLElement>("[data-block-id] [data-block-body] [role='textbox']")].map((i) => i.textContent);
 const headingId = (i: number) => `block-${document.querySelectorAll<HTMLElement>("[data-block-id]")[i].dataset.blockId}-text`;
-/** The subject's words as they read. */
 const subject = () => wordsOf("c-subject");
 const undoToast = () => document.querySelector<HTMLButtonElement>("[data-sonner-toast] [data-action]");
 const undo = () => press("z", { ctrl: true }, document.body);
@@ -120,7 +110,7 @@ describe("one history over the whole email", () => {
     await click(button("Undo")!);
     expect(subject()).toBe("Sleep cooler this December");
     expect(button("Undo")!.disabled).toBe(true);
-    expect(button("Save changes")!.disabled).toBe(true); // back where it was saved
+    expect(button("Save changes")!.disabled).toBe(true);
 
     await click(button("Redo")!);
     redo();
@@ -154,7 +144,6 @@ describe("one history over the whole email", () => {
     mount(null, { ...newCampaignDraft(undefined, []), audience: "subscribed" });
     const audience = () => document.getElementById("c-audience")!.textContent;
     expect(audience()).toBe("Everyone subscribed to marketing email");
-    // The Start panel's Starter (slice 08).
     const choice = (label: string) =>
       [...document.querySelectorAll<HTMLButtonElement>("[aria-labelledby='c-start-title'] button")].find((b) => b.firstElementChild?.textContent === label);
     await click(await until(() => choice("A Starter")));
@@ -176,7 +165,7 @@ describe("one history over the whole email", () => {
     await click(undoToast()!);
     expect(subject()).toBe(DRAFT.subject);
     expect(headings()).toEqual(["Sleep cooler"]);
-    undo(); // the Undo itself is undone
+    undo();
     expect(subject()).toBe("Something else");
   });
 });
@@ -199,7 +188,6 @@ describe("saving and leaving", () => {
     typeField(field("c-name"), "December cooling launch");
     press("s", { ctrl: true }, document.body);
     await settle();
-    // The page for it has not opened yet (the router's replace is still on its way).
     press("s", { ctrl: true }, document.body);
     await settle();
     expect(actions.saveCampaign.mock.calls.map(([id]) => id)).toEqual([null, "new"]);

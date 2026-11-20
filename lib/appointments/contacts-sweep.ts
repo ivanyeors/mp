@@ -5,13 +5,6 @@ import type { AppointmentSettings } from "./settings";
 export const DEFAULT_CONTACT_SWEEP_DAYS = 30;
 export const MAX_CONTACT_SWEEP_DAYS = 100;
 
-/**
- * Pull every upcoming appointment (name + phone parsed from the GCal event) for
- * the next `days` days and create / update / skip its Google contact.
- *
- * Covers appointments staff type straight into Google Calendar, which never pass
- * through /api/appointments/book. Idempotent: identical contacts are skipped.
- */
 export async function sweepUpcomingContacts(
   settings: AppointmentSettings,
   opts: { days?: number; now?: Date } = {},

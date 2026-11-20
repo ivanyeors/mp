@@ -11,11 +11,6 @@ import SettingsShippingPage from "./shipping-client";
 
 export const runtime = "nodejs";
 
-/**
- * The methods come from the same `shipping-methods`-tagged read that backs
- * `/api/shop/shipping`; the page guard already proves the `shipping`
- * permission, so inactive rows are included just as `include_inactive=1` does.
- */
 export default async function ShippingSettingsRoute({
   params,
 }: {
@@ -25,14 +20,11 @@ export default async function ShippingSettingsRoute({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   await requireAdminPage("shipping", locale);
 
-  // A failed read must not look like "no shipping methods": leave `initialData`
-  // undefined so the client runs its own mount fetch and surfaces the error.
   const [rows, account, ownLocations] = await Promise.all([
     readShippingMethods(true, null).catch(() => null),
     readEasyshipConfig().catch(() => null),
     getLocations({ type: "own" }),
   ]);
-  // Where a Self-collect method can be collected: an own studio with an address.
   const studios = ownLocations
     .filter((l) => l.address?.trim())
     .map((l) => ({ id: l.id, name: l.name }));

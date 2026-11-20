@@ -21,17 +21,11 @@ import {
 import { applyAftercareSettingsPatch, parseAftercareSettings } from "@/lib/aftercare/settings";
 import { codeOf, importClosure } from "@/lib/crm/__tests__/import-closure";
 
-/**
- * The Review request's pure rules (CRM slice 07): the timing, who is a
- * candidate, and each channel's decision.
- */
-
 const DAYS = { daysAfter: 14, maxAgeDays: 60 };
-/** 10:00 SGT on a given Singapore day. */
 const sgt10 = (ymd: string) => new Date(`${ymd}T10:00:00+08:00`);
 
 describe("the timing rule, in Singapore calendar days", () => {
-  const delivered = "2026-10-01T06:00:00.000Z"; // 1 Oct, 14:00 SGT
+  const delivered = "2026-10-01T06:00:00.000Z";
 
   it("is too early before day 14", () => {
     expect(reviewRequestTiming({ deliveredAt: delivered, now: sgt10("2026-10-14"), ...DAYS })).toEqual({
@@ -45,8 +39,7 @@ describe("the timing rule, in Singapore calendar days", () => {
       due: true,
       deliveredOn: "2026-10-01",
     });
-    // Delivered late in the evening: the same calendar day counts.
-    const late = "2026-10-01T15:30:00.000Z"; // 1 Oct, 23:30 SGT
+    const late = "2026-10-01T15:30:00.000Z";
     expect(reviewRequestTiming({ deliveredAt: late, now: new Date("2026-10-15T00:00:00+08:00"), ...DAYS }).due).toBe(true);
   });
 
@@ -67,25 +60,23 @@ describe("the timing rule, in Singapore calendar days", () => {
   });
 
   it("times an in-store handover from the handover, which sets delivered_at", () => {
-    const handover = "2026-10-05T04:00:00.000Z"; // paid and handed over at once
+    const handover = "2026-10-05T04:00:00.000Z";
     expect(reviewRequestTiming({ deliveredAt: handover, now: sgt10("2026-10-18"), ...DAYS }).due).toBe(false);
     expect(reviewRequestTiming({ deliveredAt: handover, now: sgt10("2026-10-19"), ...DAYS }).due).toBe(true);
   });
 
   it("turns over at midnight SGT, not midnight UTC", () => {
-    // Delivered 2 Oct 00:30 SGT, which is still 1 Oct in UTC.
     const justAfterMidnight = "2026-10-01T16:30:00.000Z";
     expect(
       reviewRequestTiming({ deliveredAt: justAfterMidnight, now: new Date("2026-10-15T15:59:00.000Z"), ...DAYS }),
-    ).toEqual({ due: false, reason: "too_early" }); // 15 Oct 23:59 SGT
+    ).toEqual({ due: false, reason: "too_early" });
     expect(
       reviewRequestTiming({ deliveredAt: justAfterMidnight, now: new Date("2026-10-15T16:00:00.000Z"), ...DAYS }),
-    ).toEqual({ due: true, deliveredOn: "2026-10-02" }); // 16 Oct 00:00 SGT
+    ).toEqual({ due: true, deliveredOn: "2026-10-02" });
   });
 
   it("pre-filters the database on exactly the instants whose day can be due", () => {
     const w = dueWindow({ now: sgt10("2026-10-20"), ...DAYS });
-    // Due today: delivered 21 Aug (60 days) through 6 Oct (14 days), SGT.
     expect(w).toEqual({ from: "2026-08-20T16:00:00.000Z", to: "2026-10-06T16:00:00.000Z" });
     for (const at of [w.from, "2026-10-06T15:59:59.000Z"]) {
       expect(reviewRequestTiming({ deliveredAt: at, now: sgt10("2026-10-20"), ...DAYS }).due).toBe(true);
@@ -131,7 +122,6 @@ describe("settings", () => {
       error: "The Google review link must be a full https:// address.",
     });
     expect(applyAftercareSettingsPatch(current, { review_request_max_age_days: 10 }).ok).toBe(false);
-    // An empty link is allowed: it stops sending.
     const cleared = applyAftercareSettingsPatch(current, { google_review_url: "" });
     expect(cleared).toMatchObject({ ok: true, rows: [{ key: "google_review_url", value: "" }] });
   });
@@ -145,7 +135,6 @@ describe("settings", () => {
       ok: true,
       next: {
         reviewRequests: { enabled: true, daysAfter: 21, maxAgeDays: 60, googleReviewUrl: "" },
-        // The check-up's settings (CRM slice 08) are untouched, and written nowhere.
         checkups: { enabled: false, months: 12 },
       },
       rows: [
@@ -176,7 +165,7 @@ describe("who is a candidate", () => {
     const { candidates } = select([
       order({ id: "o1", delivered_at: "2026-09-01T02:00:00.000Z" }),
       order({ id: "o2", delivered_at: "2026-10-03T02:00:00.000Z" }),
-      order({ id: "o3", delivered_at: "2026-10-15T02:00:00.000Z" }), // not due yet
+      order({ id: "o3", delivered_at: "2026-10-15T02:00:00.000Z" }),
       order({ id: "o4", customer_id: "c2", delivered_at: "2026-09-10T02:00:00.000Z" }),
     ]);
     expect(candidates.map((c) => [c.customerId, c.order.id])).toEqual([
@@ -212,7 +201,6 @@ describe("who is a candidate", () => {
     for (const word of ["refund", "return", "rating", "review", "note", "tags", "rma", "dispute"]) {
       expect(REVIEW_ORDER_SELECT.toLowerCase(), word).not.toContain(word);
     }
-    // And the job reads none of those tables or columns (its code, not its comments).
     const src = ["review-request.ts", "review-request-server.ts"]
       .map((f) => readFileSync(join(process.cwd(), "lib/aftercare", f), "utf8"))
       .join("\n")
@@ -224,14 +212,6 @@ describe("who is a candidate", () => {
     expect(src).not.toMatch(/refund_request_status|returned_quantity|amount_refunded|internal_notes/);
   });
 
-  /**
-   * CRM slice 12's check (README, sixth hazard): reviews now live on every
-   * Customer, so the request must never be steered by one. Everything the job
-   * runs, followed through its imports, never reads a review table, never
-   * embeds one in a select (a PostgREST join), never calls the matching
-   * function, and never reads the Customer overview, whose review columns
-   * (`google_review_rating`, `review_rating`, …) the CRM lists use.
-   */
   it("reads no review data anywhere in the job: no join to product_reviews, google_reviews or customer_google_reviews", () => {
     const reached = importClosure(["lib/aftercare/job.ts", "lib/aftercare/review-request-server.ts"]);
     expect(reached).toEqual(expect.arrayContaining(["lib/aftercare/review-request.ts", "lib/aftercare/channels.ts"]));
@@ -252,11 +232,9 @@ describe("who is a candidate", () => {
     for (const file of reached) {
       const code = codeOf(file);
       for (const name of REVIEW_DATA) {
-        // A table read, a join embedded in a select (`table(…)`, `alias:table!inner(…)`), an rpc, or a column.
         expect(code, `${file} reads ${name}`).not.toMatch(new RegExp(`["'\`:,\\s]${name}\\b`));
       }
     }
-    // Nor does it reach the CRM's review code.
     for (const file of ["lib/crm/review-match.ts", "lib/crm/google-review-match-server.ts", "lib/crm/google-review-links.ts", "lib/crm/reviews.ts"]) {
       expect(reached).not.toContain(file);
     }

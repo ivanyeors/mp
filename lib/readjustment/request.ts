@@ -1,10 +1,3 @@
-/**
- * What both re-adjustment booking routes share (ADR 0024): who is asking, which
- * purchase they mean, and what it costs today — all decided on the server. The
- * client's id is only a pointer into the signed-in customer's own purchases, and
- * its belief that a visit is free is never trusted.
- */
-
 import { z } from "zod/v4";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -44,10 +37,6 @@ export const ReadjustmentBookingSchema = z
     guest_name: z.string().trim().min(1).max(200),
     phone: z.string().min(1),
     language_preference: z.enum(LANGUAGE_PREFERENCES).default("none"),
-    /**
-     * The marketing email box, ticked by default (ADR 0039; PRD-campaign-audiences
-     * slice 02). Absent, as from a booking tab opened before it, is unticked.
-     */
     marketing_email: z.boolean().optional(),
   })
   .refine((b) => Boolean(b.order_item_id) !== Boolean(b.unlisted), {
@@ -56,7 +45,6 @@ export const ReadjustmentBookingSchema = z
 
 export type ReadjustmentBookingBody = z.infer<typeof ReadjustmentBookingSchema>;
 
-/** The signed-in Customer, linked on the way (which also backfills guest orders by email). */
 export async function resolveSignedInCustomer(): Promise<Customer | null> {
   const user = await getAuthUser();
   if (!user?.email) return null;
@@ -67,11 +55,6 @@ export type BookingTarget =
   | { kind: "platform"; purchase: ReadjustablePurchaseView; quote: ReadjustmentQuote }
   | { kind: "unlisted"; where: UnlistedWhere; reference: string | null; quote: ReadjustmentQuote };
 
-/**
- * Resolve the body's purchase against the customer's own Orders and quote it.
- * `null` means the line is not one of theirs (or not a pillow/bolster) — a 404,
- * never a hint about whose it is.
- */
 export async function resolveBookingTarget(
   admin: SupabaseClient,
   customerId: string,
@@ -105,7 +88,6 @@ const dateLabel = (iso: string) =>
     new Date(iso),
   );
 
-/** What Staff read on the calendar event: the pillow, its order, and the fee status. */
 export function bookingNotes(
   target: BookingTarget,
   payment:
@@ -136,7 +118,6 @@ export function bookingNotes(
   return lines;
 }
 
-/** Columns describing the purchase, for a `readjustment_bookings` insert. */
 export function purchaseColumns(target: BookingTarget) {
   return target.kind === "platform"
     ? {
@@ -170,7 +151,6 @@ export type CheckedSlot = {
   endIso: string;
 };
 
-/** The slot and Location half of a booking body, checked the way the guest route checks it. */
 export async function checkSlotRequest(
   body: ReadjustmentBookingBody,
 ): Promise<{ ok: true; slot: CheckedSlot } | { ok: false; status: number; error: string }> {

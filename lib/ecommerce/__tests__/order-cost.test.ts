@@ -4,8 +4,8 @@ import { buildLinesCost, resolveOrderItemUnitCost } from "../order-cost";
 describe("buildLinesCost", () => {
   it("sums quantity × cost over every line, fillings included", () => {
     const costByItem = new Map<number, number>([
-      [101, 5], // cover
-      [10, 3], // filling
+      [101, 5],
+      [10, 3],
     ]);
     expect(buildLinesCost([{ item_id: 101, quantity: 2 }, { item_id: 10, quantity: 4 }], costByItem)).toBe(22);
   });
@@ -32,7 +32,6 @@ describe("resolveOrderItemUnitCost", () => {
   });
 
   it("costs the build the sale deducts, not the Variant's recipe-only cost_price", () => {
-    // A customised pillow: chosen cover + case, recipe protector, default fillings.
     const buildLines = [
       { item_id: 101, quantity: 2 },
       { item_id: 102, quantity: 1 },

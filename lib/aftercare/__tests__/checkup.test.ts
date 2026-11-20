@@ -21,13 +21,6 @@ import { purchaseLine } from "@/lib/crm/purchase-lines";
 import type { OrderLineRow } from "@/lib/readjustment/purchases";
 import { decideAftercareWhatsApp } from "@/lib/whatsapp/aftercare-notify";
 
-/**
- * The Check-up reminder's pure rules (CRM slice 08): timing, the skip rules,
- * coverage (Premium Mpillow only), and the consent rule on email. The job's
- * own test (checkup-job.test.ts) runs them against an in-memory database.
- */
-
-/** Wednesday 21 October 2026, 10:00 SGT: the cron's usual time. */
 const NOW = new Date("2026-10-21T02:00:00.000Z");
 
 describe("settings and the ledger key", () => {
@@ -74,7 +67,6 @@ describe("checkupTiming", () => {
       milestoneMonths: 12,
       milestoneOn: "2026-10-21",
     });
-    // A run that was missed still finds it a few days later.
     expect(timing("2025-10-15T03:00:00.000Z")).toMatchObject({ due: true, milestoneMonths: 12, milestoneOn: "2026-10-15" });
   });
 
@@ -84,9 +76,7 @@ describe("checkupTiming", () => {
   });
 
   it("counts Singapore days: delivered at 00:30 SGT on 22 Oct is not due on 21 Oct", () => {
-    // 21 Oct 16:30 UTC is 22 Oct 00:30 in Singapore.
     expect(timing("2025-10-21T16:30:00.000Z")).toEqual({ due: false, reason: "too_early" });
-    // 21 Oct 15:59 UTC is still 21 Oct in Singapore.
     expect(timing("2025-10-21T15:59:00.000Z")).toMatchObject({ due: true, deliveredOn: "2025-10-21" });
   });
 
@@ -97,7 +87,6 @@ describe("checkupTiming", () => {
 
   it("comes again each year, and only the latest milestone is due", () => {
     expect(timing("2024-10-01T03:00:00.000Z")).toMatchObject({ due: true, milestoneMonths: 24, milestoneOn: "2026-10-01" });
-    // 23 months: the 12-month milestone, not two at once.
     expect(timing("2024-11-30T03:00:00.000Z")).toMatchObject({ due: true, milestoneMonths: 12 });
     expect(timing("2025-10-01T03:00:00.000Z", NOW, 6)).toMatchObject({ due: true, milestoneMonths: 12 });
   });
@@ -107,12 +96,9 @@ describe("checkupTiming", () => {
     expect(addMonths("2024-02-29", 12)).toBe("2025-02-28");
     const feb28 = new Date("2026-02-28T02:00:00.000Z");
     expect(timing("2025-01-31T03:00:00.000Z", feb28, 13)).toMatchObject({ due: true, milestoneOn: "2026-02-28" });
-    // The database pre-filter still includes it.
     expect(Date.parse("2025-01-31T03:00:00.000Z")).toBeLessThan(Date.parse(deliveredBefore({ now: feb28, months: 13 })));
   });
 });
-
-// ─── Coverage ────────────────────────────────────────────────────────────────
 
 const PILLOWS = new Map([
   [1, { size: "M", kind: "premium" }],
@@ -138,7 +124,6 @@ const bolster = (id: string): OrderLineRow => ({
   image_url: null,
   product_variants: { option1: "Long", price_key: "product:bolster:long", products: { product_type: "bolster" } },
 });
-/** A Result order line: the build is in the snapshot (a Paired build has one per product). */
 const resultLine = (id: string, productType: "pillow" | "bolster", tier: string | null): OrderLineRow => ({
   id,
   kind: "goods",
@@ -149,7 +134,6 @@ const resultLine = (id: string, productType: "pillow" | "bolster", tier: string 
   customization_snapshot: { result_id: `r-${id}`, product_type: productType, assigned_tier: tier },
 });
 
-/** A `customer_purchase_lines` row for a line, through its TypeScript twin (the CRM 04 parity check keeps them equal). */
 const viewRow = (orderId: string, line: OrderLineRow, units = 1) => {
   const row = purchaseLine(line, PILLOWS)!;
   return { order_id: orderId, order_item_id: line.id, product_type: row.product_type, tier: row.tier, units };
@@ -191,8 +175,6 @@ describe("coverage: Premium Mpillow only", () => {
     ]);
   });
 });
-
-// ─── Candidates and skips ────────────────────────────────────────────────────
 
 const order = (id: string, customerId: string, over: Partial<CheckupOrderRow> = {}): CheckupOrderRow => ({
   id,
@@ -262,11 +244,8 @@ describe("selectCheckupCandidates", () => {
       orders,
       bookings: [
         { customer_id: "ann", status: "attended", start_at: "2026-03-01T02:00:00.000Z" },
-        // Booked and still to come: they have already booked.
         { customer_id: "ben", status: "booked", start_at: "2026-11-02T02:00:00.000Z" },
-        // Attended, but before the period began.
         { customer_id: "cat", status: "attended", start_at: "2025-10-20T02:00:00.000Z" },
-        // Neither booked nor attended.
         { customer_id: "dan", status: "cancelled", start_at: "2026-09-01T02:00:00.000Z" },
         { customer_id: "eve", status: "no_show", start_at: "2026-09-01T02:00:00.000Z" },
       ],
@@ -281,7 +260,6 @@ describe("selectCheckupCandidates", () => {
       ledger: [
         ledgerRow({ customer_id: "ann", entity_id: "o1" }),
         ledgerRow({ customer_id: "ben", entity_id: "o2", channel: "whatsapp", status: "failed", sent_at: null }),
-        // Last year's milestone does not count for this one, and was over a year ago.
         ledgerRow({ customer_id: "cat", entity_id: "o3", template: "aftercare.checkup_6m", sent_at: "2025-04-10T02:00:00.000Z" }),
       ],
     });
@@ -311,7 +289,6 @@ describe("selectCheckupCandidates", () => {
         order("b1", "ben"),
       ],
       ledger: [
-        // Ben was reminded about another Order in June.
         ledgerRow({ customer_id: "ben", entity_id: "b0", sent_at: "2026-06-01T02:00:00.000Z", created_at: "2026-06-01T02:00:00.000Z" }),
       ],
     });
@@ -342,8 +319,6 @@ describe("selectCheckupCandidates", () => {
   });
 });
 
-// ─── Channels ────────────────────────────────────────────────────────────────
-
 describe("the channels", () => {
   const allowAll = () => true;
   const email = (optedIn: boolean | null, marketingEmail: string | null, to: string | null = "ann@x.test") =>
@@ -357,9 +332,6 @@ describe("the channels", () => {
       nonProdAllowed: allowAll,
     });
 
-  // CONSENT. These two assertions are the email consent rule. If the owner
-  // drops it after counsel (the marked line in decideCheckupEmail), the first
-  // two become `{ send: true, … }` and the third stays as it is.
   it("emails only with Marketing consent, and still WhatsApps a Customer who opted in", () => {
     expect(email(true, "not_subscribed")).toEqual({ send: false, skip: "no_marketing_consent" });
     expect(email(true, "unsubscribed")).toEqual({ send: false, skip: "no_marketing_consent" });
@@ -372,7 +344,6 @@ describe("the channels", () => {
     expect(email(false, "subscribed")).toEqual({ send: false, skip: "opted_out" });
     expect(email(null, "subscribed")).toEqual({ send: true, to: "ann@x.test" });
     expect(whatsapp(false)).toEqual({ send: false, skip: "opted_out" });
-    // Email off, WhatsApp on: WhatsApp only; and the reverse.
     expect(planCheckupChannels(email(false, "subscribed"), whatsapp(true))).toMatchObject({ email: { send: false }, whatsapp: { send: true } });
     expect(planCheckupChannels(email(true, "subscribed"), whatsapp(false))).toMatchObject({ email: { send: true }, whatsapp: { send: false } });
     expect(planCheckupChannels(email(false, "subscribed"), whatsapp(false)).any).toBe(false);

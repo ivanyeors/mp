@@ -1,17 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Storefront reviews: the GET is public, so it must force approved rows and a
- * public column list whatever the caller asks for; the POST takes the Customer
- * from the session and only accepts an order_id that Customer owns and that
- * contains the product.
- *
- * The Supabase mock is a tiny in-memory table store that applies eq filters and
- * flat column lists, so "only approved, no customer_id" is observed on the
- * response rather than inferred from the query. A table missing from the store
- * errors like prod does for `reviews`.
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -59,7 +47,6 @@ vi.mock("@/lib/supabase/server", () => ({
         maybeSingle: async () => ({ ...result(), data: result().data?.[0] ?? null }),
         insert: (row: Row) => {
           h.inserted.push(row);
-          // The database assigns the id; the route reads it back for the Telegram card.
           rows = [{ id: "r-inserted", ...row }];
           return b;
         },
@@ -143,7 +130,6 @@ describe("GET /api/shop/reviews", () => {
       telegram_chat_id: -100,
       telegram_message_id: 7,
     });
-    // A reply on a pending review stays off the shop with its review.
     Object.assign(h.tables.product_reviews[1], { store_reply: "Thanks!", store_reply_at: "2026-09-02T00:00:00Z" });
     const res = await GET(new Request(`http://x/api/shop/reviews?product_id=${PRODUCT}`));
     const { rows } = await res.json();

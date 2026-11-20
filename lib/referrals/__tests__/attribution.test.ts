@@ -9,12 +9,10 @@ import {
 } from "@/lib/referrals/attribution";
 
 const DAY = 24 * 60 * 60 * 1000;
-// Fixed clock — never wall-clock (deterministic window boundaries).
 const NOW = new Date("2026-07-27T00:00:00.000Z");
 const agoIso = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
 
 describe("resolveAttribution — one Referral per Order, closer wins (ADR 0015 §1)", () => {
-  // Each channel alone resolves to itself.
   it("assist alone → assist", () => {
     expect(resolveAttribution({ assistPartnerId: "A" })).toEqual({ partnerId: "A", source: "assist" });
   });
@@ -25,7 +23,6 @@ describe("resolveAttribution — one Referral per Order, closer wins (ADR 0015 �
     expect(resolveAttribution({ linkPartnerId: "L" })).toEqual({ partnerId: "L", source: "link" });
   });
 
-  // Every precedence pairing resolves to the higher-priority channel — never split.
   it("assist > typed", () => {
     expect(resolveAttribution({ assistPartnerId: "A", typedPartnerId: "T" })).toEqual({
       partnerId: "A",
@@ -62,9 +59,6 @@ describe("resolveAttribution — one Referral per Order, closer wins (ADR 0015 �
     expect(r.partnerId).toBe("A");
     expect(["assist", "typed", "link", null]).toContain(r.source);
   });
-  // NOTE: "last-touch overwrite" of the ?ref link stamp is INTEGRATION — it lives in
-  // stampVisitorRef (lib/referrals/index.ts), which upserts the newest code. The pure
-  // resolver here only guarantees single-winner precedence on already-windowed inputs.
 });
 
 describe("isWithinReferralWindow — 30-day link window (ADR 0015 §1)", () => {
@@ -109,17 +103,17 @@ describe("referral code format", () => {
   });
 
   it("isValidReferralCodeFormat: valid 6–12 alnum (case-insensitive)", () => {
-    expect(isValidReferralCodeFormat("ABC123")).toBe(true); // 6
-    expect(isValidReferralCodeFormat("abc123")).toBe(true); // normalized to upper
-    expect(isValidReferralCodeFormat("ABCDEF123456")).toBe(true); // 12
+    expect(isValidReferralCodeFormat("ABC123")).toBe(true);
+    expect(isValidReferralCodeFormat("abc123")).toBe(true);
+    expect(isValidReferralCodeFormat("ABCDEF123456")).toBe(true);
   });
 
   it("isValidReferralCodeFormat: rejects too-short / too-long / symbols / empty / spaces", () => {
-    expect(isValidReferralCodeFormat("ABC12")).toBe(false); // 5
-    expect(isValidReferralCodeFormat("ABCDEF1234567")).toBe(false); // 13
-    expect(isValidReferralCodeFormat("ABC-12")).toBe(false); // symbol
-    expect(isValidReferralCodeFormat("")).toBe(false); // empty
-    expect(isValidReferralCodeFormat("AB C123")).toBe(false); // internal space
+    expect(isValidReferralCodeFormat("ABC12")).toBe(false);
+    expect(isValidReferralCodeFormat("ABCDEF1234567")).toBe(false);
+    expect(isValidReferralCodeFormat("ABC-12")).toBe(false);
+    expect(isValidReferralCodeFormat("")).toBe(false);
+    expect(isValidReferralCodeFormat("AB C123")).toBe(false);
   });
 });
 
@@ -135,7 +129,6 @@ describe("generateReferralCode — format only, never a fixed value", () => {
       const code = generateReferralCode(12);
       expect(code).toMatch(/^[A-Z0-9]{12}$/);
       expect(code).not.toMatch(/[01OIL]/);
-      // Every generated code must also pass the acceptance validator.
       expect(isValidReferralCodeFormat(code)).toBe(true);
     }
   });

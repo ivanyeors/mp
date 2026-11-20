@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -8,13 +7,6 @@ import type { EmailRendition } from "@/lib/media-assets/email-renditions";
 import type { CampaignContent } from "../content";
 import { EMPTY_CAMPAIGN_DRAFT, type Campaign } from "../rules";
 import { emptyWorld, fakeCampaignsClient, type FakeWorld } from "./fake-db";
-
-/**
- * Images in what a campaign sends (PRD-campaign-email-editor slice 05): the
- * test send and every batch of a wave show each image as its email
- * rendition, read once for the send, not once per recipient; an image with no
- * email copy stops the send before anyone gets an email with a hole in it.
- */
 
 const PHOTO = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
 const RENDITION: EmailRendition = {

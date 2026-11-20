@@ -1,7 +1,3 @@
-/**
- * Slice 03 wiring self-check — mount points + contracts.
- * Run: npx tsx lib/rules-engine/slice-03.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -22,10 +18,13 @@ assert.match(src(mig), /recommendation_record/);
 
 assert.match(src("app/api/shop/customize/route.ts"), /getSizeBallparkFromMeasurements/);
 assert.match(src("app/api/mp-basic/recommend/route.ts"), /recommendWithEngine/);
-// The response detail route delegates to lib/results/admin/response-detail.ts.
 assert.match(src("lib/results/admin/response-detail.ts"), /recommendWithEngine/);
 assert.match(src("app/api/results/hold/route.ts"), /recommendation_record/);
-assert.match(src("lib/rules-engine/recommend.ts"), /ponytail: bootstrap guard/);
+assert.match(
+  src("lib/rules-engine/recommend.ts"),
+  /if \(!published\) \{\s*return legacyRecommend\(flow, inputs, soldTier\);\s*\}/,
+  "bootstrap guard: with no published graph, the legacy rules answer",
+);
 assert.match(src("scripts/seed-rule-graphs.ts"), /premiumSeedGraph/);
 assert.ok(
   !src("app/[lang]/mp-maker/page.tsx").includes("recommendWithEngine"),

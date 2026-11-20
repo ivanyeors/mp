@@ -1,19 +1,9 @@
-/**
- * Re-adjustment emails (ADR 0024). The booking itself is confirmed by the Google
- * invite and WhatsApp, and a paid one gets the order receipt; this covers the
- * one case neither can say: the money is in but the slot went while they paid.
- */
-
 import { renderEmailShell } from "./base";
 import { infoList, paragraph } from "./components";
 import { defaultEmailCopy, defineEmailCopy, fillCopy, type EmailCopy } from "./copy";
 import { money } from "./format";
 import type { RenderedEmail } from "./types";
 
-/**
- * Its words (PRD-email-templates). The pillow, time, studio and amount rows
- * are data, and stay in code.
- */
 export const READJUSTMENT_RESCHEDULE_EMAIL_COPY = defineEmailCopy({
   id: "readjustment.reschedule",
   name: "Re-adjustment paid — new time needed",
@@ -38,7 +28,6 @@ export const READJUSTMENT_RESCHEDULE_EMAIL_COPY = defineEmailCopy({
   },
 });
 
-/** Fill every field of `copy` from `values`. */
 function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
   const out = {} as EmailCopy<K>;
   for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
@@ -49,7 +38,6 @@ export function renderReadjustmentRescheduleEmail(
   p: {
     guestName: string;
     productLabel: string;
-    /** The time they picked, already formatted for Singapore. */
     wanted: string;
     locationName: string;
     amount: number;
@@ -66,7 +54,6 @@ export function renderReadjustmentRescheduleEmail(
     { label: "Time you picked", value: `${p.wanted} · ${p.locationName}` },
     { label: "Paid", value: paid },
   ];
-  // The text is built from the same words and rows as the HTML, so the two cannot drift.
   const text = [t.intro, "", ...rows.map((r) => `${r.label}: ${r.value}`), "", t.next].join("\n");
   const html = renderEmailShell({
     title: t.heading,

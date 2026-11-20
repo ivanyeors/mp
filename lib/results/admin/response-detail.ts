@@ -22,7 +22,6 @@ type BomLineRow = {
   } | null;
 };
 
-/** Fulfilment facts of the linked Order, shown on the Result detail page. */
 export interface LinkedOrderDetail {
   id: string;
   order_number: string | null;
@@ -47,11 +46,6 @@ export interface MpConfigResponseDetailPayload {
   };
   order_number: string | null;
   order: LinkedOrderDetail | null;
-  /**
-   * Null when the Rules Engine cannot evaluate this Result: the published graph
-   * reads an answer the Result does not have. The Result still loads; the
-   * suggestion is advice, and Staff assign the size and tier themselves.
-   */
   suggestion: {
     recommended: { size: string; tier: string };
     product: { id: number; size: string; tier: "basic" | "premium" } | null;
@@ -60,20 +54,9 @@ export interface MpConfigResponseDetailPayload {
     graph_version_id: unknown;
     recommendation_record: unknown;
   } | null;
-  /** Engine input keys the Result lacks, when that is why `suggestion` is null. */
   suggestion_missing: string[];
 }
 
-/**
- * What an Owner (not Staff) may see of their own Result.
- *
- * Built as an allowlist, never as a delete-the-sensitive-keys pass: a column
- * added to the query later must be excluded by default rather than included by
- * default. Traced against every guest reader — the configurator reads
- * `response.is_final` and `suggestion.recommended|product`, and /mp-maker reads
- * `response.data`. Nothing guest-side reads `suggestion.bom` (our bill of
- * materials) or `suggestion.reasons` (the rules-engine graph version and trace).
- */
 export interface OwnerResultPayload {
   ok: true;
   response: {
@@ -110,11 +93,6 @@ export type MpConfigResponseDetailResult =
   | { status: 200; body: MpConfigResponseDetailPayload }
   | { status: 404 | 500; body: { error: string } };
 
-/**
- * Assembles the `/api/mp-config/responses/[id]` GET payload: the response row,
- * its linked order number and the rules-engine suggestion (product + BOM).
- * Shared by the route handler and the RSC result detail page.
- */
 export async function loadMpConfigResponseDetail(
   id: string,
 ): Promise<MpConfigResponseDetailResult> {
@@ -137,9 +115,6 @@ export async function loadMpConfigResponseDetail(
     DEFAULT_LOCALE,
   );
 
-  // The Result is terminal at capture, so the fulfilment half of the story lives on
-  // the Order. Carry it through so the detail page can show the stage without
-  // sending staff to a second surface.
   let orderNumber: string | null = null;
   let order: LinkedOrderDetail | null = null;
   if (responseRow.order_id) {
@@ -170,8 +145,6 @@ export async function loadMpConfigResponseDetail(
       : null;
   }
 
-  // A Paired build (ADR 0026): the other Result on the same hold, so Staff can
-  // move between the Mpillow and the Mbolster it carries.
   let paired_result_id: string | null = null;
   if (responseRow.paired_build_id === responseRow.id) {
     const { data: companions } = await admin
@@ -187,10 +160,6 @@ export async function loadMpConfigResponseDetail(
   const data = (responseRow.data ?? {}) as Record<string, unknown>;
   const engineResult = await recommendWithEngine("premium-mpillow", inputsFromMpConfigData(data));
 
-  // The engine refuses a Result that lacks an answer the published graph reads
-  // (a Draft Result mid-questionnaire, or one saved before those answers were
-  // kept). That costs the suggestion, never the Result: refusing the whole load
-  // left Staff unable to open it at all.
   if ("error" in engineResult) {
     return {
       status: 200,
@@ -221,7 +190,6 @@ export async function loadMpConfigResponseDetail(
     reasons.push(`Advisory tier suggestion: ${engineResult.tierSuggestion}`);
   }
 
-  // Persist recommendation record on the response (preview / suggestion).
   if (!responseRow.recommendation_record) {
     await admin
       .from("mp_config_responses")

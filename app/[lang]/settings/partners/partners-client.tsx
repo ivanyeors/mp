@@ -101,7 +101,6 @@ type PartnerForm = {
   id?: string;
   name: string;
   type: LocationType;
-  /** The main location, then a partner's other clinics (ADR 0037). */
   locations: LocationDraft[];
   logo_url: string;
   media_asset_id: string | null;
@@ -121,7 +120,6 @@ const emptyPartnerForm = (): PartnerForm => ({
   visible: true,
 });
 
-/** Merge a stored partners_page row onto the per-locale defaults. */
 function mergeWorkWithUs(
   row: PartnersPageRow | null,
 ): Record<string, WorkWithUsContent> {
@@ -136,14 +134,12 @@ function mergeWorkWithUs(
   return merged;
 }
 
-/** A route's error as text: a message, or the first zod issue's. */
 function errorText(json: { error?: unknown }, fallback: string): string {
   if (typeof json.error === "string") return json.error;
   const first = Array.isArray(json.error) ? (json.error[0] as { message?: unknown }) : null;
   return typeof first?.message === "string" ? first.message : fallback;
 }
 
-/** The `/api/partners-page` + `/api/partners` payloads the page mounts with. */
 export type PartnersInitialData = {
   page: { ok: true; row: PartnersPageRow | null };
   partners: { ok: true; partners: PartnerRow[] };
@@ -178,7 +174,6 @@ export default function PartnersSettingsPage({
   const [partners, setPartners] = useState<PartnerRow[]>(
     initialData?.partners.partners ?? [],
   );
-  // Branches are a partner's other clinics: listed under it, edited in its dialog.
   const mainRows = useMemo(() => partners.filter((p) => !p.parent_id), [partners]);
   const branchMap = useMemo(() => branchesByParent(partners), [partners]);
   const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
@@ -189,7 +184,6 @@ export default function PartnersSettingsPage({
     initialData ? (initialPageRow?.agreement_md ?? DEFAULT_AGREEMENT_MD) : "",
   );
   const [savingAgreement, setSavingAgreement] = useState(false);
-  // The server already loaded the page row and the locations; edits still reload.
   const skipFirstFetch = useRef(initialData != null);
 
   const activeContent = content[activeLocale] ?? emptyWorkWithUs();
@@ -327,7 +321,6 @@ export default function PartnersSettingsPage({
     }
 
     const isOwn = partnerForm.type === "own";
-    // An own studio is one place; only a partner lists other clinics.
     const places = locationDraftsToPayload(isOwn ? partnerForm.locations.slice(0, 1) : partnerForm.locations);
     if (!places.ok) {
       toast.error(places.error);
@@ -349,7 +342,6 @@ export default function PartnersSettingsPage({
         postal_code: places.postal_code,
         branch_name: isOwn ? null : places.branch_name,
         branches: isOwn ? [] : places.branches,
-        // Own studios never show on /our-partners, so partner-only fields are cleared.
         logo_url: isOwn ? null : partnerForm.logo_url || null,
         media_asset_id: isOwn ? null : partnerForm.media_asset_id,
         website_url: isOwn ? null : partnerForm.website_url || null,
@@ -372,7 +364,6 @@ export default function PartnersSettingsPage({
       const json = await res.json();
       if (!json.ok) {
         toast.error(errorText(json, "Couldn't save the location."));
-        // The main location may have saved before its other clinics were refused.
         if (partnerForm.id) loadData();
         return;
       }
@@ -415,7 +406,6 @@ export default function PartnersSettingsPage({
     loadData();
   };
 
-  // Only main rows are ordered here; each partner's branches keep their own order.
   const persistPartnerOrder = async (order: PartnerRow[]) => {
     setPartners([...order, ...partners.filter((p) => p.parent_id)]);
     const res = await fetch("/api/partners/reorder", {
@@ -771,7 +761,6 @@ export default function PartnersSettingsPage({
                           </Button>
                         </div>
 
-                        {/* Phones: one menu instead of five icons on two rows. Non-modal, so Edit can open the dialog. */}
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -853,7 +842,6 @@ export default function PartnersSettingsPage({
               value={agreementMd}
               onChange={(v) => setAgreementMd(v ?? "")}
               height={460}
-              // Side-by-side halves are ~170px wide on a phone; the toolbar still toggles the preview.
               preview={isMobile ? "edit" : "live"}
               commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
               extraCommands={isMobile ? MOBILE_MD_EXTRA_COMMANDS : undefined}

@@ -9,21 +9,10 @@ import { linkGoogleReview, unlinkGoogleReview } from "@/lib/crm/google-review-li
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Any UUID shape, as the other Customers routes accept. */
 const UUID = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 const LinkSchema = z.object({ customerId: UUID, how: z.enum(["suggestion", "manual"]) }).strict();
 const UnlinkSchema = z.object({ customerId: UUID }).strict();
 
-/**
- * POST /api/settings/customers/google-reviews/[reviewId]/link — `{ customerId,
- * how }`: a Staff member confirms a Google review is this Customer's, from a
- * suggestion (*Link*) or by hand (*Find customer…*). The only way a review is
- * ever linked (README, seventh hazard). Needs `customers-edit`.
- *
- * A review belongs to at most one Customer: linking it again answers 409 with
- * `current`, the link that holds it. The Audit Log names ids only, never the
- * review's text.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ reviewId: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
@@ -62,11 +51,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ reviewI
   return NextResponse.json({ ok: true, link: result.link }, { status: 201 });
 }
 
-/**
- * DELETE /api/settings/customers/google-reviews/[reviewId]/link — `{
- * customerId }`: unlinks the review from that Customer and records the pair
- * as *Not them*, so it is not suggested again. Needs `customers-edit`.
- */
 export async function DELETE(req: Request, { params }: { params: Promise<{ reviewId: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

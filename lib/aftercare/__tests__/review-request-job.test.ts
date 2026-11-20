@@ -2,14 +2,6 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { reviewFakeDb, type ReviewFakeDb } from "./review-request-fake-db";
 
-/**
- * The Review request job (CRM slice 07) against an in-memory database: who is
- * asked, on which channel, at most once per Customer across many Orders, both
- * channels and concurrent runs, and nothing at all while it is switched off.
- * The once-per-Customer guarantee comes from the primary key and the ledgers'
- * unique keys, which the fake enforces, never from timing.
- */
-
 const h = vi.hoisted(() => ({
   whatsapp: [] as Array<{ to: string; template: string; params: string[]; urlButtonParam?: string }>,
   whatsappFails: false,
@@ -30,7 +22,6 @@ const { hashReviewToken } = await import("@/lib/aftercare/review-link");
 const { setEmailTransport } = await import("@/lib/email");
 const realSources = await import("@/lib/crm/telegram-update-sources");
 
-/** Tuesday 20 October 2026, 10:00 SGT: the cron's usual time. */
 const NOW = new Date("2026-10-20T02:00:00.000Z");
 const ORIGIN = "https://custom.mpillow.test";
 const SUPPORT = "support@mpillow.test";
@@ -118,27 +109,21 @@ beforeEach(() => {
     site_settings: settings(),
     pillow_products: [{ id: 1, size: "M", kind: "premium" }],
     customers: [
-      // Email on, WhatsApp off: email only.
       { id: "ann", email: "ann@x.test", first_name: "Ann", phone: null, aftercare_email: true, aftercare_whatsapp: false },
-      // Email off, WhatsApp on: WhatsApp only.
       { id: "ben", email: "ben@x.test", first_name: "Ben", phone: "9123 4567", aftercare_email: false, aftercare_whatsapp: true },
-      // Both off: skipped and counted.
       { id: "cat", email: "cat@x.test", first_name: "Cat", phone: null, aftercare_email: false, aftercare_whatsapp: false },
-      // An open return, a refund request, a one-star shop review and an angry
-      // note: asked exactly like everyone else.
       { id: "dan", email: "dan@x.test", first_name: "Dan", phone: null, aftercare_email: true, aftercare_whatsapp: false },
-      // Paid, never marked delivered.
       { id: "eve", email: "eve@x.test", first_name: "Eve", phone: null, aftercare_email: true, aftercare_whatsapp: false },
     ],
     orders: [
       order("0001", "ann", { delivered_at: "2026-09-20T02:00:00.000Z" }),
-      order("0002", "ann", { delivered_at: "2026-10-01T02:00:00.000Z" }), // the latest that is due
-      order("0003", "ann", { delivered_at: "2026-10-15T02:00:00.000Z" }), // not due yet
+      order("0002", "ann", { delivered_at: "2026-10-01T02:00:00.000Z" }),
+      order("0003", "ann", { delivered_at: "2026-10-15T02:00:00.000Z" }),
       order("0004", "ben", { delivered_at: "2026-10-05T02:00:00.000Z" }),
       order("0005", "cat"),
       order("0006", "dan", { refund_request_status: "requested", amount_refunded: 0 }),
       order("0007", "eve", { paid_at: "2026-09-25T02:00:00.000Z", delivered_at: null }),
-      order("0008", null), // a guest: no Customer to ask
+      order("0008", null),
     ],
     customer_preference_events: [
       { customer_id: "ben", preference: "aftercare_whatsapp", to_value: true, created_at: "2026-09-01T00:00:00.000Z" },
@@ -175,7 +160,6 @@ describe("who is asked, and how", () => {
       emailSkipped: { opted_out: 2 },
       whatsappSkipped: { opted_out: 3 },
     });
-    // The message names the latest Order that is due, not the newest Order.
     const ann = emails.find((e) => e.to === "ann@order.test")!;
     expect(ann.text).toContain("Your Premium Mpillow (order MP-20261001-0002) was delivered on 1 Oct 2026.");
     expect(db.customer_review_requests!.find((r) => r.customer_id === "ann")!.order_id).toBe("0002");
@@ -193,8 +177,6 @@ describe("who is asked, and how", () => {
     const sentWa = (db.customer_whatsapp ?? []).map((r) => r.customer_id);
     expect(sentEmail).toEqual(["ann", "dan"]);
     expect(sentWa).toEqual(["ben"]);
-    // Nothing is claimed for a Customer no channel can reach, so a later
-    // switch-on can still reach them inside the window.
     expect(asked()).not.toContain("cat");
     db.customers!.find((c) => c.id === "cat")!.aftercare_email = true;
     await run();
@@ -216,7 +198,6 @@ describe("at most once per Customer", () => {
     expect(reports.reduce((n, r) => n + r.asked, 0)).toBe(3);
     expect(reports.reduce((n, r) => n + r.sent.email + r.sent.whatsapp, 0)).toBe(3);
 
-    // A later Order, due weeks later: they were asked once already.
     db.orders!.push(order("0009", "ann", { paid_at: "2026-10-20T02:00:00.000Z", delivered_at: "2026-10-21T02:00:00.000Z" }));
     const later = await run({ now: new Date("2026-11-05T02:00:00.000Z") });
     expect(later.asked).toBe(0);
@@ -225,7 +206,6 @@ describe("at most once per Customer", () => {
   });
 
   it("holds when the claim races: the run that loses it asks nobody", async () => {
-    // Another run claims Ann between this run's plan and its own claim.
     const racing = new Proxy(admin, {
       get(target, prop) {
         if (prop !== "from") return Reflect.get(target, prop);
@@ -253,7 +233,6 @@ describe("at most once per Customer", () => {
 
 describe("the link", () => {
   it("is one token for both channels, stored only as its hash; replies go to support", async () => {
-    // Ann on both channels.
     Object.assign(db.customers!.find((c) => c.id === "ann")!, { phone: "+65 9876 5432", aftercare_whatsapp: true });
     db.customer_preference_events!.push({
       customer_id: "ann",
@@ -362,7 +341,6 @@ describe("outside production", () => {
     expect(h.whatsapp).toEqual([]);
     expect(emailTo()).toEqual(["ann@order.test", "dan@order.test"]);
     expect(report.whatsappSkipped).toMatchObject({ template_unconfigured: 4 });
-    // Ben has only WhatsApp, so nothing can reach him yet.
     expect(asked()).toEqual(["ann", "dan"]);
   });
 });

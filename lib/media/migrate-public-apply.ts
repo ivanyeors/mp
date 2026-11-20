@@ -1,8 +1,3 @@
-/**
- * Apply helpers for `/public` → Media Asset migration (slice 16).
- * Kept separate from pure plan so unit tests stay I/O-free.
- */
-
 import fs from "fs/promises";
 import path from "path";
 import {
@@ -125,10 +120,8 @@ function scopePlan(
   return { ...plan, blogs, assets };
 }
 
-/** Dry-run = plan only. Apply = ingest/reuse + rewrite consumers. */
 export async function applyPublicMigration(opts?: {
   dryRun?: boolean;
-  /** Limit blog rewrites (smoke / partial). */
   blogLimit?: number;
   landingOnly?: boolean;
 }): Promise<ApplyPublicMigrationResult> {

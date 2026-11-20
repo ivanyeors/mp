@@ -16,18 +16,8 @@ import {
   sampleMigrationServiceNotice,
 } from "../__fixtures__/samples";
 
-/**
- * The three campaign emails (migration slice 08), with the Claim bonus in
- * place of the voucher (PRD-loyalty-points slice 05). Each is registered as
- * campaign mail, renders the footer's unsubscribe link, and has one button.
- * The announcement and the reminder state the bonus and its terms; the
- * service notice carries no offer, points or promotion. None names the old
- * platform or a move: the website is new (owner, 2026-10-21).
- */
-
 const ids = ["migration.announcement", "migration.announcement_no_name", "migration.reminder", "migration.service_notice"];
 
-/** The buttons in a rendered email: each is one VML roundrect for Outlook. */
 const buttons = (html: string) => (html.match(/<v:roundrect\b/g) ?? []).length;
 
 describe("registered for the preview tooling, as campaign mail", () => {

@@ -9,16 +9,6 @@ import { stageFromParam } from "./funnel-format";
 
 export const runtime = "nodejs";
 
-/**
- * Admin Panel → Email campaigns → Funnel (PRD-email-funnel slice 03; ADR
- * 0054): every email the platform sends by itself, laid along the Lifecycle
- * stages. For the stage in `?stage=` (default Lead): the Segments that cut it,
- * its Email flow and each email's results. Read-only apart from its links;
- * guarded by `campaigns`. Links to Customers show only with `customers`.
- *
- * The loader never fails the page: a part it could not read is *not counted*
- * or named on the page.
- */
 export default async function EmailFunnelPage({
     params,
     searchParams,
@@ -45,7 +35,6 @@ export default async function EmailFunnelPage({
                 view={view}
                 initialStage={stageFromParam(view, query.stage)}
                 locale={locale}
-                // Every link on the page is offered only where the role can open it (`canOpenWith`).
                 permissions={[...ctx.permissions]}
             />
         </div>

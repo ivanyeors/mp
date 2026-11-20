@@ -1,14 +1,3 @@
-/**
- * Send one reminder and move its row on — the shared tail of the daily cron and
- * the booking path (bookCalendarSlot), so both advance status, stamp message ids
- * and record failures the same way.
- *
- * On success the row advances under an optimistic lock on the status it was read
- * at, and any earlier error clears. On failure the provider's error is written
- * to the row and rethrown; the row keeps its status, so a later run can still
- * reach the guest (a `pending` row on the day gets the morning-of).
- */
-
 import { formatDateSgt, formatTimeSgt } from "./format";
 import { recordReminderError, updateReminder } from "./reminders-db";
 import { transitionReminder, type ReminderStatus } from "./state";
@@ -16,7 +5,6 @@ import { sendDayBeforeTemplate, sendMorningOfTemplate } from "./whatsapp";
 
 type ReminderTarget = {
   calendarEventId: string;
-  /** Normalized E.164. */
   phone: string;
   guestName: string;
   startsAt: string;
@@ -42,10 +30,6 @@ export async function sendOrRecord(
   }
 }
 
-/**
- * Day-before template (Confirm / Reschedule) to a `pending` row, or one moved
- * over WhatsApp to a later day (`rescheduled`) → `reminded`.
- */
 export async function sendDayBeforeReminder(
   target: ReminderTarget & { typeLabel: string; from?: ReminderStatus },
   now: Date = new Date(),
@@ -63,7 +47,6 @@ export async function sendDayBeforeReminder(
     }),
   );
 
-  // False = another worker advanced the row first; the guest still got this one.
   return updateReminder(
     target.calendarEventId,
     {
@@ -81,7 +64,6 @@ export async function sendDayBeforeReminder(
   );
 }
 
-/** Morning-of template to a silent `reminded` or never-reached `pending` row. */
 export async function sendMorningOfReminder(
   target: ReminderTarget & { venue: string; from: ReminderStatus },
   now: Date = new Date(),

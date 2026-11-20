@@ -13,15 +13,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/staff-orders — create a Staff order for a Customer (ADR 0048).
- *
- * Priced again here from the database, never from the body: the Order is
- * written from `quoteStaffOrder`, the same function the dialog's summary came
- * from. It is created `pending` with its Payment link, and the Payment request
- * is emailed unless Staff untick it. A failed email never loses the Order:
- * the answer says so, and the link can be copied or resent.
- */
 export async function POST(req: Request) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;

@@ -23,7 +23,6 @@ type ResultRow = {
   created_at: string;
 };
 
-/** Signed-in customer's Results (for the status page master–detail table). */
 export async function GET() {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

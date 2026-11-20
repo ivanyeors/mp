@@ -1,20 +1,5 @@
 import { OAuth2Client } from "google-auth-library";
 
-/**
- * Google Business Profile reviews: list, read, and reply.
- *
- * Reviews live on the legacy v4 API (mybusiness.googleapis.com/v4), which
- * Google only serves to projects approved through the Business Profile API
- * access form — until then every call fails with a 0-quota error. Places API
- * (lib/google/places-reviews.ts) is a different, read-only surface that only
- * returns Google's top five reviews and cannot reply.
- *
- * Auth is an OAuth refresh token for the Google account that manages the
- * Business Profile (sg@mpillow.com), scope `business.manage`, on the same
- * OAuth client as Calendar and Drive. One refresh token per job, as with
- * GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN — this one is GOOGLE_BUSINESS_OAUTH_REFRESH_TOKEN.
- */
-
 const V4 = "https://mybusiness.googleapis.com/v4";
 
 export const BUSINESS_MANAGE_SCOPE = "https://www.googleapis.com/auth/business.manage";
@@ -22,7 +7,6 @@ export const BUSINESS_MANAGE_SCOPE = "https://www.googleapis.com/auth/business.m
 export type GbpStarRating = "STAR_RATING_UNSPECIFIED" | "ONE" | "TWO" | "THREE" | "FOUR" | "FIVE";
 
 export type GbpReview = {
-  /** accounts/{a}/locations/{l}/reviews/{r} */
   name: string;
   reviewId?: string;
   reviewer?: { displayName?: string; profilePhotoUrl?: string; isAnonymous?: boolean };
@@ -63,10 +47,6 @@ export function starRatingToNumber(rating: string | undefined | null): number | 
   return rating && rating in STAR_VALUES ? STAR_VALUES[rating as GbpStarRating] : null;
 }
 
-/**
- * accounts/{a}/locations/{l} — the form the v4 reviews endpoints take. Ids are
- * restricted to URL-safe characters because the name is spliced into the path.
- */
 const ID = "[A-Za-z0-9_-]+";
 const LOCATION_NAME = new RegExp(`^accounts/${ID}/locations/${ID}$`);
 const REVIEW_NAME = new RegExp(`^accounts/${ID}/locations/${ID}/reviews/${ID}$`);
@@ -91,7 +71,6 @@ function env(name: string): string | null {
   return v ? v : null;
 }
 
-/** Null until every piece is set — the sync treats that as "not configured". */
 export function getBusinessProfileConfig(): BusinessProfileConfig | null {
   const location = env("GOOGLE_BUSINESS_LOCATION");
   const clientId = env("GOOGLE_OAUTH_CLIENT_ID");
@@ -117,9 +96,7 @@ function errorMessage(status: number, body: string): string {
   try {
     const json = JSON.parse(body) as { error?: { message?: string; status?: string } };
     if (json.error?.message) return json.error.message;
-  } catch {
-    /* keep raw */
-  }
+  } catch {}
   return body.slice(0, 300) || `HTTP ${status}`;
 }
 

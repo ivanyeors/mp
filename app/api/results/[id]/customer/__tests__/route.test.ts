@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AftercareFakeDb } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * Staff tie a Result to a Customer, or create one, from the Result page (ADR
- * 0051 d–g): one email, one Customer; a found Customer keeps their name; only a
- * Result with no email, or a Draft whose email Staff typed, takes a Customer's
- * email; the box is the customisation's own, and never re-subscribes anyone.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as AftercareFakeDb,
   ctx: null as null | { userId: string; email: string; permissions: Set<string> },
@@ -106,7 +99,6 @@ describe("POST /api/results/[id]/customer — link to an existing Customer", () 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, customerId: BOUGHT, created: false });
     expect(result()).toMatchObject({ customer_id: BOUGHT, customer_email: "jorge@x.test", customer_phone: "+6591234567" });
-    // Measured for someone he is with: his name stays his.
     expect(customer("jorge@x.test")).toMatchObject({ first_name: "Jorge", phone: "+6591234567" });
     expect(h.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "result.customer_link", entityId: RID }));
   });
@@ -211,7 +203,6 @@ describe("POST /api/results/[id]/customer — create", () => {
   });
 
   it("writes nothing if the Result changed since it was read", async () => {
-    // A hold that lands between the read and the write: the guarded update matches no row.
     const db = h.db;
     const responses = db.mp_config_responses!;
     let reads = 0;

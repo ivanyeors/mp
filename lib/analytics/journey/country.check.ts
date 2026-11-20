@@ -1,7 +1,3 @@
-/**
- * Slice 09 — Country: IP→ISO + multi-select color-by-country.
- * Run: npx tsx lib/analytics/journey/country.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -17,7 +13,6 @@ import { buildPageTransitions } from "./transitions";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-// --- Normalize / Unknown ---
 assert.equal(normalizeCountryCode("sg"), "SG");
 assert.equal(normalizeCountryCode("MY"), "MY");
 assert.equal(normalizeCountryCode("XX"), UNKNOWN_COUNTRY);
@@ -26,7 +21,6 @@ assert.equal(normalizeCountryCode(""), UNKNOWN_COUNTRY);
 assert.equal(normalizeCountryCode(null), UNKNOWN_COUNTRY);
 assert.equal(normalizeCountryCode("Singapore"), UNKNOWN_COUNTRY);
 
-// --- Headers only (Vercel > CF); no locale ---
 assert.equal(
   resolveCountryFromHeaders({ "x-vercel-ip-country": "MY" }),
   "MY",
@@ -48,7 +42,6 @@ assert.equal(
   "JP",
 );
 
-// --- Color-by-country edges when events carry country ---
 const edges = buildPageTransitions([
   { visitId: "a", path: "/", occurredAt: "2026-07-15T10:00:00.000Z", country: "SG" },
   { visitId: "a", path: "/shop", occurredAt: "2026-07-15T10:01:00.000Z", country: "SG" },
@@ -66,7 +59,6 @@ assert.deepEqual(
 assert.ok(legend.every((l) => l.color.startsWith("#")));
 assert.notEqual(countryColor("SG", 0), countryColor("MY", 1));
 
-// --- Ingest route: headers → country; never locale cookie ---
 const ingestRoute = readFileSync(
   join(root, "app/api/analytics/ingest/route.ts"),
   "utf8",
@@ -76,14 +68,17 @@ assert.match(ingestRoute, /req\.headers/);
 assert.doesNotMatch(ingestRoute, /cookies\(|document\.cookie|NEXT_LOCALE/);
 
 const countrySrc = readFileSync(join(root, "lib/analytics/journey/country.ts"), "utf8");
-assert.match(countrySrc, /Never from locale cookie/);
+assert.equal(
+  resolveCountryFromHeaders({ cookie: "NEXT_LOCALE=sg", "accept-language": "en-SG" }),
+  UNKNOWN_COUNTRY,
+  "never from the locale cookie or the language",
+);
 assert.doesNotMatch(countrySrc, /cookies\(|document\.cookie|NEXT_LOCALE/);
 
 const ingest = readFileSync(join(root, "lib/analytics/journey/ingest.ts"), "utf8");
 assert.match(ingest, /country/);
 assert.match(ingest, /normalizeCountryCode/);
 
-// --- UI + actions ---
 const card = readFileSync(
   join(root, "app/[lang]/settings/analytics/ProspectJourneyCard.tsx"),
   "utf8",
@@ -99,7 +94,6 @@ const actions = readFileSync(
 );
 assert.match(actions, /countries/);
 assert.match(actions, /countryLegend/);
-// Country options come from the cached facet read (Entry sources + countries).
 assert.match(actions, /readJourneyFacets/);
 
 const aggregates = readFileSync(

@@ -6,10 +6,6 @@ export type ResolvedAppointmentType = {
   label: string;
 };
 
-/**
- * Strict match: Customisation / Re-adjustment from summary + settings strings.
- * Returns null when the event is not a known Mpillow appointment (e.g. busy/OOO).
- */
 export function matchAppointmentType(
   summary: string | null | undefined,
   settings: AppointmentSettings,
@@ -32,7 +28,6 @@ export function matchAppointmentType(
       label: "Customisation",
     };
   }
-  // Loose fallbacks if settings strings drift
   if (s.includes("re-adjustment") || s.includes("readjustment")) {
     return {
       type: "readjustment",
@@ -50,10 +45,6 @@ export function matchAppointmentType(
   return null;
 }
 
-/**
- * A stored type's label and rebook link. A reminder row keeps the type, not the
- * event summary, and the event may already be gone when the guest is told.
- */
 export function appointmentTypeInfo(
   type: AppointmentType,
   settings: AppointmentSettings,
@@ -63,9 +54,6 @@ export function appointmentTypeInfo(
     : { type: "customisation", bookingUrl: settings.customisationBookingUrl, label: "Customisation" };
 }
 
-/**
- * Infer type for WhatsApp rebook flows. Unclear → customisation (fallback URL).
- */
 export function resolveAppointmentType(
   summary: string | null | undefined,
   settings: AppointmentSettings,

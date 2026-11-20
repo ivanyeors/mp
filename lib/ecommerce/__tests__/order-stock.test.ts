@@ -16,7 +16,6 @@ const ORDER = "00000000-0000-4000-8000-0000000000a1";
 const ACCESSORY_VARIANT = "00000000-0000-4000-8000-0000000000b1";
 const BOLSTER_VARIANT = "00000000-0000-4000-8000-0000000000b2";
 
-/** One accessory (Item 900) and one medium bolster, whose recipe is a cover, a case and a protector. */
 function seed(extra: Record<string, Array<Record<string, unknown>>> = {}) {
   f.resetDb({
     orders: [{ id: ORDER, status: "pending", inventory_deducted_at: null, needs_attention: false }],

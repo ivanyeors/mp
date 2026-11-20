@@ -7,18 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * The campaign editor's blocks (PRD-campaign-email-editor slices 03 and 04),
- * as Staff use them: drag a block in from the palette between two others,
- * write in it, drag it above the heading, undo; add each block type, write in
- * it, move, duplicate and delete it, and Save the blocks; a draft written
- * before blocks converts, with Undo; a campaign that has started sending
- * shows its blocks read-only.
- *
- * dnd-kit measures the screen, which jsdom has none of, so a drag is played
- * through the provider's own handlers with the events dnd-kit sends.
- */
-
 type DragHandlers = Pick<ComponentProps<typeof import("@dnd-kit/react").DragDropProvider>, "onDragOver" | "onDragEnd">;
 const dnd = vi.hoisted(() => ({ handlers: null as DragHandlers | null }));
 vi.mock("@dnd-kit/react", async (importOriginal) => {
@@ -57,7 +45,6 @@ const { CampaignEditor } = await import("../campaign-editor");
 const { CAMPAIGN_PLACEHOLDERS, newCampaignDraft } = await import("@/lib/email-campaigns/rules");
 const { CONTENT_PLACEHOLDERS } = await import("@/lib/email-campaigns/content");
 
-/** A draft written before blocks: its message and button. */
 const LEGACY: CampaignDraft = {
   name: "December cooling launch",
   subject: "Sleep cooler this December",
@@ -110,13 +97,11 @@ const field = (id: string) => document.getElementById(id) as HTMLInputElement | 
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label) ?? null;
 const cards = () => [...document.querySelectorAll<HTMLElement>("[data-block-id]")];
-/** A text input's words as they read: paragraphs a blank line apart, bullets as "- ". */
 const textOf = (box: Element) =>
   [...box.children]
     .map((c) => (c.tagName === "UL" ? [...c.querySelectorAll("li")].map((li) => `- ${li.textContent}`).join("\n") : (c.textContent ?? "")))
     .filter(Boolean)
     .join("\n\n");
-/** Each block's label and fields, as Staff read them. */
 const blocks = () =>
   cards().map((li) =>
     [
@@ -131,10 +116,8 @@ const undoToast = () => document.querySelector<HTMLButtonElement>("[data-sonner-
 const lastPreview = () => actions.previewCampaign.mock.calls.at(-1);
 const paletteItem = (label: string) => [...document.querySelectorAll<HTMLButtonElement>("ul[aria-label='Blocks'] button")].find((b) => b.textContent?.startsWith(label))!;
 
-/** *Add block* → the type, as a keyboard user does it. */
 const addBlock = (label: string) => choose(button("Add block")!, label);
 
-/** The palette's Variables tab (slice 13), opened as a pointer opens it: its chips, and the fallback words under them. */
 const openVariables = async () => {
   const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent === "Variables")!;
   await act(async () => void tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 })));
@@ -163,7 +146,6 @@ describe("the demo", () => {
     act(() => dnd.handlers!.onDragEnd!({ operation: drag, canceled: false } as never, {} as never));
     expect(kinds()).toEqual(["Heading", "Buttons", "Text"]);
     await settle();
-    // The new block is selected, focused on its label, and shows its options.
     expect(document.activeElement).toBe(cards()[1].querySelector("input"));
     expect(cards()[1].querySelector('[role="radiogroup"][aria-label="Style"]')).not.toBeNull();
     typeField(cards()[1].querySelector("input")!, "Shop the covers");
@@ -201,8 +183,8 @@ describe("a new campaign's blocks", () => {
     await settle();
     expect(heading.getText()).toBe("");
     expect(heading.view.dom.getAttribute("aria-placeholder")).toBe(CONTENT_PLACEHOLDERS.heading);
-    expect(heading.view.dom.getAttribute("aria-multiline")).toBe("false"); // one line, with Variables (slice 13)
-    expect(document.activeElement).toBe(heading.view.dom); // focus goes into the new block
+    expect(heading.view.dom.getAttribute("aria-multiline")).toBe("false");
+    expect(document.activeElement).toBe(heading.view.dom);
     typeInto(heading, "Sleep cooler this December");
 
     await addBlock("Text");
@@ -303,7 +285,6 @@ describe("a new campaign's blocks", () => {
   it("turn {first_name} typed in a text block into the Variable, and ask for its fallback words", async () => {
     mount(null, newCampaignDraft(undefined, []));
     await openVariables();
-    // The greeting is the First name Variable (slice 13): off, and nothing else uses it, there is nothing to ask.
     expect(field("c-fallback-first_name").value).toBe("there");
     await click(document.getElementById("c-greeting")!);
     await addBlock("Text");
@@ -311,7 +292,6 @@ describe("a new campaign's blocks", () => {
     const text = await richTextIn(cards()[0]);
     typeInto(text, "Hi {first_name}, our covers are back.");
     expect(cards()[0].querySelector('[data-variable="first_name"]')?.textContent).toBe("First name");
-    // Prefilled with the catalogue's default, which Staff may change.
     expect(field("c-fallback-first_name").value).toBe("there");
     typeField(field("c-fallback-first_name"), "friend");
     await settle(500);
@@ -329,7 +309,7 @@ describe("a new campaign's blocks", () => {
     await addBlock("Heading");
     await retype("c-subject", "{last_name}, sleep cooler this December");
     expect(wordsOf("c-subject")).toBe("Last name, sleep cooler this December");
-    expect(field("c-fallback-last_name").value).toBe(""); // no default: Staff write one
+    expect(field("c-fallback-last_name").value).toBe("");
     await retype("c-subject", "Sleep cooler this December");
     expect(document.getElementById("c-fallback-last_name")).toBeNull();
     await retype("c-preheader", "For you, {last_name}");
@@ -389,18 +369,17 @@ describe("the preview", () => {
     mount(saved(withBlocks()), withBlocks());
     await settle(500);
     expect(lastPreview()?.[1]).toEqual({ forceDark: false, previewAs: "customer" });
-    expect(document.body.textContent).toContain("Mpillow <hello@hello.mpillow.com>"); // From, read-only
+    expect(document.body.textContent).toContain("Mpillow <hello@hello.mpillow.com>");
     const radio = (label: string) => [...document.querySelectorAll<HTMLElement>('[role="radio"]')].find((r) => r.textContent === label)!;
     await click(radio("Dark"));
     await settle(500);
     expect(lastPreview()?.[1]).toEqual({ forceDark: true, previewAs: "customer" });
-    // Preview as (slice 13): the sample customer, or a customer with no details, whose Variables are their fallbacks.
     await click(radio("No details"));
     await settle(500);
     expect(lastPreview()?.[1]).toEqual({ forceDark: true, previewAs: "no_details" });
     const frame = await until(() => document.querySelector<HTMLIFrameElement>('iframe[title="Email preview"]'));
     expect(frame.style.colorScheme).toBe("dark");
-    expect(frame.getAttribute("sandbox")).toBe("allow-same-origin"); // no script runs in it
+    expect(frame.getAttribute("sandbox")).toBe("allow-same-origin");
     await click(radio("Mobile"));
     expect(frame.style.width).toBe("375px");
     const inbox = document.querySelector('[aria-label="How the inbox lists it"]')!;

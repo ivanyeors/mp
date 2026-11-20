@@ -1,9 +1,3 @@
-/**
- * One Order's points, as its customer and Staff see them (PRD-loyalty-points
- * slices 03 and 04): what it earns or earned, and what it spent. The order
- * detail page, the Admin order page and the order confirmation email all read
- * it here, so the three say the same thing.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPartnerCustomer, readPointsSettings } from "./server";
 import type { OrderEarn } from "./order-lines";
@@ -11,13 +5,10 @@ import type { OrderEarn } from "./order-lines";
 export { orderEarnLine, pointsUsedRow, splitOrderDiscount, type OrderEarn } from "./order-lines";
 
 export interface OrderPoints {
-  /** Points spent on the Order at checkout; 0 for none. */
   spent: number;
-  /** Null when the Order earns nothing: points off, no Customer, before launch, a partner. */
   earn: OrderEarn | null;
 }
 
-/** The columns `readOrderPoints` needs. */
 export interface OrderPointsRow {
   id: string;
   customer_id: string | null;
@@ -30,11 +21,6 @@ export interface OrderPointsRow {
 
 const int = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : 0);
 
-/**
- * The Order's points. What it spent is a fact on the Order and always read;
- * what it earns only while points are on. Throws on a failed read, so a
- * caller that must not fail catches it.
- */
 export async function readOrderPoints(admin: SupabaseClient, order: OrderPointsRow): Promise<OrderPoints> {
   const spent = int(order.points_spent ?? 0);
   if (!order.customer_id || !order.paid_at) return { spent, earn: null };
@@ -52,7 +38,6 @@ export async function readOrderPoints(admin: SupabaseClient, order: OrderPointsR
     const c = candidate.data as { points: number; release_at: string | null };
     return { spent, earn: { kind: "pending", points: int(c.points), releaseAt: c.release_at } };
   }
-  // Rule (c)'s base, as the candidates view counts it: cash paid less refunds.
   const base = Number(order.subtotal) - Number(order.discount_amount) - Number(order.amount_refunded ?? 0);
   if (Number(order.amount_refunded ?? 0) > 0 && base <= 0 && !(await isPartnerCustomer(admin, order.customer_id))) {
     return { spent, earn: { kind: "refunded" } };

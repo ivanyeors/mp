@@ -12,16 +12,6 @@ import { RichText } from "../rich-text";
 import type { BlockCatalogue, BlockFormProps, PaletteItemsTab } from "../types";
 import { typingBurst, useEditorHistory, useHistoryKeys } from "../use-editor-history";
 
-/**
- * The shared block editor (PRD-campaign-email-editor slice 04) with a page's
- * own made-up block types, as Staff use it: add from the palette by click,
- * drag in from the palette to a spot, `+` and `/`, move by drag and by the
- * block menu, duplicate and delete, and undo and redo each.
- *
- * dnd-kit measures the screen, which jsdom has none of, so a drag is played
- * through the provider's own handlers with the events dnd-kit sends.
- */
-
 type DragHandlers = Pick<ComponentProps<typeof import("@dnd-kit/react").DragDropProvider>, "onDragOver" | "onDragMove" | "onDragEnd">;
 const dnd = vi.hoisted(() => ({ handlers: null as DragHandlers | null }));
 vi.mock("@dnd-kit/react", async (importOriginal) => {
@@ -112,7 +102,6 @@ function Harness({ initial, readOnly = false, extra, layoutLocked = null }: { in
   );
 }
 
-/** What a test reaches inside the editor: its context, and dnd-kit's manager. */
 const probed: { editor: ReturnType<typeof useBlockEditor> | null; manager: ReturnType<typeof useDragDropManager> } = { editor: null, manager: null };
 function EditorProbe() {
   const editor = useBlockEditor();
@@ -152,7 +141,6 @@ const START: B[] = [
   { id: "n2", type: "note", text: "Our covers are back", tone: "plain" },
 ];
 
-/** A palette item's drag: over a card (or the column's end), then dropped. */
 function dragFromPalette(label: string, overId: string, element?: HTMLElement) {
   const palette = PALETTE[0].items.find((i) => i.label === label)!;
   const operation = {
@@ -169,12 +157,12 @@ function dragFromPalette(label: string, overId: string, element?: HTMLElement) {
 describe("adding blocks", () => {
   it("adds a palette item after the selected block with a click, empty and focused, and says so", async () => {
     mount(START);
-    expect(paletteItem("Note").tagName).toBe("BUTTON"); // Enter presses it, as a click
+    expect(paletteItem("Note").tagName).toBe("BUTTON");
     await click(paletteItem("Line"));
     expect(order()).toEqual(["note:Sleep cooler", "note:Our covers are back", "line"]);
     expect(announced()).toBe("Line added at position 3 of 3.");
     await settle();
-    expect(document.activeElement).toBe(cards()[2]); // a line has no field: its card
+    expect(document.activeElement).toBe(cards()[2]);
 
     await pointAt(cards()[0]);
     await click(paletteItem("Note"));
@@ -214,11 +202,10 @@ describe("adding blocks", () => {
     const editor = await richTextIn(cards()[0]);
     typeInto(editor, "/");
     await settle();
-    expect(seen).toEqual([{ id: "p1", type: "para", words: "" }]); // the slash is not typed
+    expect(seen).toEqual([{ id: "p1", type: "para", words: "" }]);
     const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((el) => el.textContent?.startsWith("Line"))!;
     await click(item);
     expect(order()).toEqual(["para", "line"]);
-    // In a line with words, a slash is a slash.
     typeInto(editor, "1/2");
     await settle();
     expect(seen[0]).toEqual({ id: "p1", type: "para", words: "1/2" });
@@ -247,7 +234,6 @@ describe("adding blocks", () => {
     expect(trio().title).toBe(tooBig);
     await click(trio());
     expect(seen).toHaveLength(4);
-    // Put in another way (the editor's own insert), it is refused the same, and the reason said.
     act(() => probed.editor!.insert(4, STARTERS.items[0].blocks()));
     expect(seen).toHaveLength(4);
     expect(announced()).toBe(tooBig);
@@ -275,7 +261,6 @@ describe("adding blocks", () => {
 describe("moving, duplicating and deleting", () => {
   it("moves a block by drag and by the block menu, and announces where it went", async () => {
     mount([...START, { id: "l1", type: "line" }]);
-    // dnd-kit has already projected the dragged card into its new slot: the source's index.
     act(() => dnd.handlers!.onDragEnd!({ operation: { source: { id: "l1", index: 0 }, target: { id: "l1" } }, canceled: false } as never, {} as never));
     expect(order()).toEqual(["line", "note:Sleep cooler", "note:Our covers are back"]);
     expect(announced()).toBe("Line moved to position 1 of 3.");
@@ -285,7 +270,6 @@ describe("moving, duplicating and deleting", () => {
     expect(announced()).toBe("Note moved to position 2 of 3.");
     await choose(byLabel("Actions for Line, block 1")!, "Move down");
     expect(order()).toEqual(["note:Our covers are back", "line", "note:Sleep cooler"]);
-    // A drag let go where it started changes nothing.
     act(() => dnd.handlers!.onDragEnd!({ operation: { source: { id: "l1", index: 1 }, target: { id: "l1" } }, canceled: false } as never, {} as never));
     expect(order()).toEqual(["note:Our covers are back", "line", "note:Sleep cooler"]);
   });
@@ -378,7 +362,6 @@ describe("words only: the layout locked (slice 17, a campaign's 中文 version)"
     typeField(cards()[0].querySelector("input")!, "睡得更清凉");
     expect(order()).toEqual(["note:睡得更清凉", "note:Our covers are back"]);
 
-    // Neither the palette, a drop, nor a keyboard way changes the layout.
     await click(paletteItem("Line"));
     const drop = dragFromPalette("Line", "block-editor:end");
     drop.over();

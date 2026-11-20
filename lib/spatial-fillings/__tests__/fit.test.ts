@@ -39,7 +39,6 @@ describe("fitLayer", () => {
     const drawn = layer.pieces.reduce((s, p) => s + p.acrossMm * p.widthRatio, 0) + SEAM_MM;
     expect(drawn).toBeCloseTo(240, 1);
     for (const p of layer.pieces) expect(p.acrossMm * p.widthRatio).toBeGreaterThanOrEqual(p.minAcrossMm - 1e-6);
-    // The piece with the larger compressible range gives more.
     const [a, b] = layer.pieces;
     expect(150 - a.acrossMm * a.widthRatio).toBeGreaterThan(150 - b.acrossMm * b.widthRatio);
   });
@@ -69,7 +68,7 @@ describe("fitCell", () => {
     expect(cell.loftMm).toBe(100);
     const drawn = layers.map((l, d) => l[0].dims.thicknessMm * cell.thicknessRatios[d]);
     expect(drawn.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 6);
-    expect(drawn[0]).toBeLessThan(drawn[1]); // the 20 mm range gives twice what the 10 mm ranges give
+    expect(drawn[0]).toBeLessThan(drawn[1]);
     expect(drawn[1]).toBeCloseTo(drawn[2], 6);
   });
 
@@ -81,7 +80,6 @@ describe("fitCell", () => {
   });
 
   it("the same stack can be ok at a side Section and compressed at the centre", () => {
-    // 2 × 80 = 160 mm: under the M side budget (153 × 1.1 = 168.3) and over the centre's (128 × 1.1 = 140.8).
     const stack = [[piece(1, { thicknessMm: 80, minThicknessMm: 30 })], [piece(2, { thicknessMm: 80, minThicknessMm: 30 })]];
     const m = PILLOW_DIMENSIONS.M;
     expect(fitCell("left", "middle", stack, m.sectionWidthsMm[0], m.maxLoftMm[0]).status).toBe("ok");
@@ -97,7 +95,6 @@ describe("fitCell", () => {
 describe("fitPillow", () => {
   const dims = new Map([resolved(1, { widthMm: 100, minWidthMm: 80, thicknessMm: 40, minThicknessMm: 25 }), resolved(2, { widthMm: 120, minWidthMm: 100, thicknessMm: 50, minThicknessMm: 30 })]);
   const placements: PillowPlacement[] = [at("center", "middle", 2, 2, 1), at("center", "middle", 1, 1, 0), at("left", "front", 1, 1), at("left", "front", 2, 2)];
-  // The loft arithmetic on the authored cells: a walled product, so nothing settles (settle.test.ts covers the spread).
   const WALLED = { ...PILLOW_DIMENSIONS.M, subSectionDividers: true };
 
   it("is input-order independent, byte-identical across calls, and summarises per Section", () => {
@@ -153,7 +150,6 @@ describe("wouldFit", () => {
     const full = [1, 2, 3, 4, 5].map((slot) => at("left", "front", slot, 1, 0));
     const next = applyFitChange(full, { kind: "add", cell: { section: "left", subSection: "front" }, itemId: 2, layer: null });
     expect(next[next.length - 1]).toMatchObject({ slot: 6, row: 1 });
-    // addPiece still refuses at the legacy caps before any fit is consulted.
     const capped = addPiece(
       [0, 1, 2, 3, 4].flatMap((row) => [1, 2, 3, 4, 5].map((slot) => at("left", "front", row * 5 + slot, 1, row))),
       { section: "left", subSection: "front" },
@@ -174,7 +170,6 @@ describe("fitMessage", () => {
   });
 
   it("names the Layer that cannot close, not the stack that only compresses", () => {
-    // Two Layers, the top one too wide even squeezed; the stack needs 80 mm, fully compressed 50, of 60.
     const layers = [
       [piece(1, { widthMm: 200, minWidthMm: 180, thicknessMm: 40, minThicknessMm: 25 }), piece(2, { widthMm: 200, minWidthMm: 180, thicknessMm: 40, minThicknessMm: 25 })],
       [piece(3, { thicknessMm: 40, minThicknessMm: 25 })],
@@ -182,7 +177,6 @@ describe("fitMessage", () => {
     const cell = fitCell("center", "middle", layers, 223, 60);
     expect(cell.status).toBe("over");
     expect(fitMessage(cell, "M")).toBe("center · middle layer 1: 2 pieces need 402 mm relaxed, 362 mm fully squeezed; the center Section is 223 mm wide");
-    // A stack that cannot close outranks a Layer that only squeezes.
     const tall = fitCell("center", "middle", [[piece(1, { widthMm: 130, minWidthMm: 100 }), piece(2, { widthMm: 130, minWidthMm: 100 })], [piece(3, {})]], 223, 10);
     expect(fitMessage(tall, "M")).toMatch(/^center · middle: 2 layers need/);
   });
@@ -201,17 +195,13 @@ describe("layout reads the fit", () => {
     expect(layer.status).toBe("compressed");
     const withFit = layoutPlacements(placements, { stage, dims, fit });
     const top = withFit.filter((p) => p.depth === 0).sort((p, q) => p.slot - q.slot);
-    // A compressed Layer fills its cell wall to wall (a seam between the pieces).
     const frame = cellFrame("center", "middle", stage);
     expect(top[0].w + GAP + top[1].w).toBeCloseTo(frame.w, 0);
-    // ...with the uneven squeeze the fit shared: the wider range gives more.
     const [a, b] = layer.pieces;
     expect(a.widthRatio).toBeLessThan(b.widthRatio);
     expect(top[0].w / top[1].w).toBeCloseTo((a.acrossMm * a.widthRatio) / (b.acrossMm * b.widthRatio), 2);
     expect(top[0].w).toBeCloseTo(a.widthRatio * 150 * stage.k, -1);
-    // The top Layer draws at true scale, its own length (true size: not cut to its cell): nothing foreshortens it.
     expect(top[0].h).toBeCloseTo(GENERIC_POUCH.lengthMm * stage.k, 0);
-    // Thickness ratios shrink the depth offset compared with the unfitted layout.
     const withoutFit = layoutPlacements(placements, { stage, dims });
     const deepWith = withFit.find((p) => p.depth === 1)!;
     const deepWithout = withoutFit.find((p) => p.depth === 1)!;
@@ -227,11 +217,9 @@ describe("feedback helpers (slice 04)", () => {
   const WALLED = { ...PILLOW_DIMENSIONS.M, subSectionDividers: true };
 
   it("names the columns a cell's pouch was slid into, in the message and on the cell", () => {
-    // True size: a pouch at home stands in its own cell (its ends over a neighbour's do not count) …
     const home = fitPillow([at("center", "middle", 1, 2)], { size: "M", dims });
     expect(home.cells[0].settledInto).toEqual([]);
     expect(fitMessage(home.cells[0], "M")).toBe("center · middle: fits");
-    // … one slid most of the way into the empty back stands there too.
     const slid = fitPillow([{ ...at("center", "middle", 1, 2), offsetYMm: 100 }], { size: "M", dims });
     expect(slid.cells[0].settledInto).toEqual(["back"]);
     expect(fitMessage(slid.cells[0], "M")).toBe("center · middle (settled into back): fits");
@@ -243,19 +231,16 @@ describe("feedback helpers (slice 04)", () => {
     const relaxed = fitPillow([at("left", "front", 1, 2)], { size: "M", dims, pillow: WALLED });
     expect(pieceFitStatus(relaxed, { section: "left", subSection: "front", slot: 1 }, 0)).toEqual({ status: "ok", widthRatio: 1, thicknessRatio: 1 });
     expect(pieceFitStatus(relaxed, { section: "right", subSection: "back", slot: 9 }, 0).status).toBe("ok");
-    // Two 150 mm pouches across the 223 mm left Section squeeze their width.
     const wide = fitPillow([at("left", "front", 1, 1), at("left", "front", 2, 1)], { size: "M", dims, pillow: WALLED });
     const ps = pieceFitStatus(wide, { section: "left", subSection: "front", slot: 1 }, 0);
     expect(ps.status).toBe("compressed");
     expect(ps.widthRatio).toBeLessThan(1);
     expect(ps.thicknessRatio).toBe(1);
-    // Three 80 mm planes (min 40) in the centre: 240 > 140.8, 120 ≤ 140.8 → compressed by thickness.
     const stack = [0, 1, 2].map((row) => at("center", "middle", row + 1, 1, row));
     const tall = fitPillow(stack, { size: "M", dims, pillow: WALLED });
     const ts = pieceFitStatus(tall, { section: "center", subSection: "middle", slot: 2 }, 1);
     expect(ts.status).toBe("compressed");
     expect(ts.thicknessRatio).toBeLessThan(1);
-    // Four of them cannot close even fully compressed (160 > 140.8): every piece reads over.
     const four = [0, 1, 2, 3].map((row) => at("center", "middle", row + 1, 1, row));
     const over = fitPillow(four, { size: "M", dims, pillow: WALLED });
     expect(pieceFitStatus(over, { section: "center", subSection: "middle", slot: 4 }, 3).status).toBe("over");
@@ -263,7 +248,6 @@ describe("feedback helpers (slice 04)", () => {
 
   it("overCells lists only the cells that cannot close, in cell order", () => {
     const four = [0, 1, 2, 3].map((row) => at("center", "middle", row + 1, 1, row));
-    // Four 80 mm planes (min 40) close nowhere in the centre (160 > 140.8); five fail a side (200 > 168.3).
     const mix = [...four, at("left", "front", 1, 2), ...[0, 1, 2, 3, 4].map((row) => at("left", "back", row + 1, 1, row))];
     const fit = fitPillow(mix, { size: "M", dims, pillow: WALLED });
     expect(overCells(fit).map((c) => `${c.section}/${c.subSection}`)).toEqual(["left/back", "center/middle"]);
@@ -271,10 +255,6 @@ describe("feedback helpers (slice 04)", () => {
   });
 
   it("fitAtSizes judges the same recipe per Size — and reads alike, as the pouches scale with the pillow", () => {
-    // 3 × 80 mm (min 40, at M) in a side cell: each Size scales the pouches'
-    // thickness by its gusset, as its loft budget scales, so the stack reads
-    // the same at XS, M and XL (28-9-2026: fillings are cut to the pillow).
-    // Settling cannot spread the excess away — fabric does not stretch — so it is compressed at all three.
     const stack = [0, 1, 2].map((row) => at("left", "middle", row + 1, 1, row));
     const by = fitAtSizes(stack, ["XS", "M", "xl"], { dims });
     expect(by.XS).toBe("compressed");
@@ -283,7 +263,6 @@ describe("feedback helpers (slice 04)", () => {
     const xs = fitPillow(stack, { size: "XS", dims }).cells[0];
     const m = fitPillow(stack, { size: "M", dims }).cells[0];
     expect(xs.loftMm / xs.maxLoftMm).toBeCloseTo(m.loftMm / m.maxLoftMm, 1);
-    // Walled, nothing spreads: 240 relaxed > 168.3 at M → compressed there too.
     const walled = fitAtSizes(stack, ["M"], { dims, pillow: WALLED });
     expect(walled.M).toBe("compressed");
   });

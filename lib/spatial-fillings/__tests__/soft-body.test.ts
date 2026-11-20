@@ -37,7 +37,6 @@ describe("taubin", () => {
 });
 
 describe("createSettle", () => {
-  // A box of a case, flat bottom on y = 100, with one pouch dropped in it.
   const outline = resample(rect(0, 20, 200, 80), 80);
   const frame = { outline, baseline: 100, width: 220, height: 140 };
   const pouch = { id: "p", ring: resample(rect(40, 60, 120, 30), 40), kind: "pouch" as const };
@@ -66,7 +65,6 @@ describe("createSettle", () => {
   });
 
   it("keeps a firm roll nearly round, giving a little under load — less the firmer it is", () => {
-    // A Neck support with a pouch lying on it.
     const roll = { id: "r", ring: circle(100, 74, 25, 36), kind: "roll" as const };
     const load = { id: "p", ring: resample(rect(30, 20, 140, 28), 40), kind: "pouch" as const, areaTarget: 140 * 28 * 1.2 };
     const squash = (rollFirmness: number) => {

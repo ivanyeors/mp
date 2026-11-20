@@ -1,12 +1,5 @@
 "use client";
 
-/**
- * X-ray pillow UX slice 12 (ADR 0019): the Dimensions section of Product
- * Visualize. Loft allowance, filling pouch and Neck support dimensions are
- * editable here as overrides of the code defaults — a row wins, "Use default"
- * deletes it. Pillow geometry is the drawing and is not on this page.
- */
-
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -80,7 +73,6 @@ export function DimensionsSection({ settingsPath }: { settingsPath: (path: strin
     [request, load],
   );
 
-  /** Posts each row in turn and returns the ids that saved. */
   const saveAll = useCallback(
     async (kind: "pouch" | "neck", items: { id: string; body: Body }[], noun: string) => {
       const saved: string[] = [];
@@ -298,7 +290,6 @@ function toMm(value: string): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/** The row's draft as a request body, or the reason it cannot be saved. */
 function pouchBody(key: string, d: PouchDraft): { body: Body } | { error: string } {
   const width_mm = toMm(d.width_mm);
   const length_mm = toMm(d.length_mm);
@@ -361,7 +352,6 @@ type SheetEntry = {
   measuredOn: string | null;
 };
 
-/** Edits stay local until "Save" posts every changed row; a row that fails keeps its edits. */
 function DimensionSheet({
   title,
   blurb,
@@ -443,8 +433,6 @@ function DimensionSheet({
         label={title}
         leadHead={leadHead}
         columns={columns}
-        // Phones scroll the grid sideways, so a row's status and reset ride in
-        // its pinned first column instead of two columns past the edge.
         rows={entries.map((entry) => ({
           ...entry,
           header: (

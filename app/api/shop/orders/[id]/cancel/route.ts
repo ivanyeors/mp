@@ -68,9 +68,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     });
   }
 
-  // Close the Order's Checkout first, so it cannot be paid after it is
-  // cancelled (its points come back on cancel, and the webhook would otherwise
-  // find a paid Order nobody means to fulfil).
   if (order.stripe_session_id) {
     try {
       const stripe = getStripe();

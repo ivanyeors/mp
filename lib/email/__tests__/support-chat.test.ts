@@ -6,13 +6,6 @@ import { chatTranscriptRecipients, renderChatCodeEmail, renderChatTranscriptEmai
 import { ResendTransport, buildRawMessage } from "../transport";
 import type { OutgoingEmail } from "../types";
 
-/**
- * A website chat's code goes to the visitor alone and carries nothing they
- * wrote. Its transcript goes to the customer, with the support inbox and
- * sg@mpillow.com on Cc and Reply-To the inbox and the customer. Every
- * transcript of one chat has the same subject, so they thread.
- */
-
 const TRANSCRIPT: ChatTranscript = {
   ref: "3F9A2C",
   chatId: "3f9a2c41-7d0e-4b8a-9c55-1e2f3a4b5c6d",

@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * *Keep* on a draft (PRD-campaign-email-editor slice 09): `campaigns` first,
- * like every campaign action, and its one write is the audit entry that the
- * draft was kept, citing the draft's call. It never touches the campaign.
- */
-
 const h = vi.hoisted(() => ({ permissions: new Set<string>(["campaigns"]), audit: vi.fn() }));
 
 vi.mock("@/lib/auth/admin", () => ({

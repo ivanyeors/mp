@@ -25,22 +25,11 @@ import {
   type ApplicationStatus,
 } from "@/lib/partner-application";
 
-// Staff review queue for partner applications (#76). Gated on the page's own
-// 'partner-applications' permission (ADR 0023). Server actions are
-// CSRF-safe and exempt from the settings static route-guard test.
 const PERM = "partner-applications";
 const QUEUE_PATH = "/settings/partner-applications";
 const SUPPORT_EMAIL = "sg@mpillow.com";
-/** A typo guard, far above any pool the Schedule would set. */
 const MAX_COMMISSION_POOL = 1000;
 
-/**
- * Send the outcome email through the idempotent partner ledger. The renderer
- * returns a fully shelled email, so nothing is wrapped here. Best-effort — a
- * failed send must not abort the DB transition. entity_id = the partner_users id.
- * A rejected application has no partner row, so partnerId is null there
- * (idempotency rests on the guarded reject action, which fires once).
- */
 async function sendOutcomeEmail(params: {
   admin: SupabaseClient;
   outcome: ApplicationOutcome;
@@ -77,16 +66,6 @@ async function sendOutcomeEmail(params: {
   }
 }
 
-/**
- * Approve a pending application: create/claim the partner Location row
- * (type='partner') with the Commission Pool and customer discount Staff set
- * (ADR 0034), link it, mark approved, issue the Promo Code and email the
- * applicant their Approval Notice. The listing the applicant sent (logo,
- * write-up, website) goes onto the row, and `list` publishes it on
- * /our-partners at once (ADR 0052); Staff may leave it hidden instead.
- * Idempotent: an already-linked row is a no-op (never creates a second partners
- * row).
- */
 export async function approveApplication(
   id: string,
   terms: { pool: number; customerDiscount: boolean; list?: boolean },
@@ -114,7 +93,6 @@ export async function approveApplication(
 
   const status = row.application_status as ApplicationStatus;
 
-  // Already approved + linked → nothing to do.
   if (status === "approved" && row.partner_id) return { ok: true };
   if (!canTransitionApplication(status, "approved")) {
     throw new Error(`Cannot approve an application that is ${status}.`);
@@ -125,15 +103,12 @@ export async function approveApplication(
     postal_code?: string;
   };
 
-  // The applicant's own upload only: the questionnaire is jsonb, so never
-  // trust a URL in it that isn't in their applicant folder in our storage.
   const logoUrl =
     row.auth_user_id && isStoredLogoUrl(q.logoUrl, applicantLogoFolder(row.auth_user_id as string))
       ? (q.logoUrl as string)
       : null;
   const description = typeof q.description === "string" ? q.description.trim() || null : null;
 
-  // Create the partners (Location) row unless one is already linked.
   let partnerId = row.partner_id as string | null;
   let createdPartner = false;
   if (!partnerId) {
@@ -153,7 +128,7 @@ export async function approveApplication(
         logo_url: logoUrl,
         description,
         type: "partner",
-        visible: list, // Approval publishes the listing unless Staff keep it hidden (ADR 0052).
+        visible: list,
         position: nextPosition,
         address: q.address ?? null,
         postal_code: q.postal_code ?? null,
@@ -172,8 +147,6 @@ export async function approveApplication(
     if (termsError) throw new Error(termsError.message);
   }
 
-  // Guarded on the status we read: the applicant may withdraw (delete) the
-  // application while Staff approve it, and then nothing may be approved.
   const { data: approved, error: updateError } = await admin
     .from("partner_users")
     .update({ partner_id: partnerId, application_status: "approved" })
@@ -197,8 +170,6 @@ export async function approveApplication(
     after: { application_status: "approved", partner_id: partnerId, listed: list, ...partnerTerms },
   });
 
-  // The Approval Notice states the Promo Code (agreement clause 1.1), so it is
-  // issued now rather than on the partner's first Hub visit.
   const promoCode = await ensureReferralCode(partnerId);
 
   await sendOutcomeEmail({
@@ -217,7 +188,6 @@ export async function approveApplication(
   return { ok: true };
 }
 
-/** Reject a pending application: mark rejected, email the applicant. */
 export async function rejectApplication(id: string): Promise<{ ok: true }> {
   const actor = await assertAdmin(PERM);
   const admin = supabaseAdmin();
@@ -231,7 +201,7 @@ export async function rejectApplication(id: string): Promise<{ ok: true }> {
   if (!row) throw new Error("Application not found");
 
   const status = row.application_status as ApplicationStatus;
-  if (status === "rejected") return { ok: true }; // idempotent
+  if (status === "rejected") return { ok: true };
   if (!canTransitionApplication(status, "rejected")) {
     throw new Error(`Cannot reject an application that is ${status}.`);
   }
@@ -262,7 +232,7 @@ export async function rejectApplication(id: string): Promise<{ ok: true }> {
     outcome: "rejected",
     to: row.email,
     partnerUserId: id,
-    partnerId: null, // a rejected application never creates a partners row
+    partnerId: null,
   });
   revalidatePath(QUEUE_PATH);
   return { ok: true };

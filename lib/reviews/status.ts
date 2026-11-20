@@ -3,24 +3,11 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { isLocationName } from "@/lib/google/business-profile";
 import { getPlacesPollStatus, type PlacesPollStatus } from "@/lib/reviews/places-poll";
 
-/**
- * What Users & permissions → Telegram shows about Google Maps reviews — the
- * counterpart of lib/social-inbox/status.ts for Facebook, Instagram and TikTok.
- *
- * The Business Profile half is checked live, with this deployment's env,
- * because a sync without it does nothing and says nothing: syncGoogleReviews
- * returns `skipped: "not_configured"` and no card is ever posted. Those calls
- * cost nothing (the Business Profile APIs have no per-call charge). The Places
- * half reads only google_places_polls: a billed Places read is never spent on
- * a status check. Never includes a token.
- */
-
 const ACCOUNTS = "https://mybusinessaccountmanagement.googleapis.com/v1";
 const INFO = "https://mybusinessbusinessinformation.googleapis.com/v1";
 const NOTIFY = "https://mybusinessnotifications.googleapis.com/v1";
 const V4 = "https://mybusiness.googleapis.com/v4";
 
-/** What the Business Profile sync needs (getBusinessProfileConfig), in setup order. */
 export const BUSINESS_PROFILE_ENV = [
   "GOOGLE_OAUTH_CLIENT_ID",
   "GOOGLE_OAUTH_CLIENT_SECRET",
@@ -32,26 +19,19 @@ export type BusinessProfileSetup =
   | { ok: false; error: string }
   | {
       ok: true;
-      /** GOOGLE_BUSINESS_LOCATION when it is set and well formed. */
       location: string | null;
-      /** The location's reviews on Google; null while no location is configured. */
       reviews: { total: number | null; average: number | null } | null;
-      /** Locations the token manages, offered while GOOGLE_BUSINESS_LOCATION is unset. */
       locations: { name: string; title: string | null }[];
-      /** Where Google publishes NEW_REVIEW / UPDATED_REVIEW; null when unset or unread. */
       pubsubTopic: string | null;
-      /** What still keeps reviews from arriving in real time; empty when nothing does. */
       problems: string[];
     };
 
 export type GoogleReviewsStatus = {
   businessProfile: {
     missing: string[];
-    /** The live check; null without OAuth credentials to check with. */
     setup: BusinessProfileSetup | null;
   };
   places: PlacesPollStatus;
-  /** google_reviews so far; null when the table couldn't be read. */
   stored: { total: number; waiting: number } | null;
 };
 
@@ -74,7 +54,6 @@ function clip(text: string, max = 300): string {
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 }
 
-/** Quota 0 is how Google says Business Profile API access hasn't been approved. */
 function explain(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if ((error instanceof GoogleCallError && error.status === 429) || /quota/i.test(message)) {
@@ -121,9 +100,7 @@ export async function checkBusinessProfileSetup(
       let message = text.slice(0, 300) || `HTTP ${res.status}`;
       try {
         message = (JSON.parse(text) as { error?: { message?: string } }).error?.message ?? message;
-      } catch {
-        /* keep raw */
-      }
+      } catch {}
       throw new GoogleCallError(res.status, `${res.status}: ${message}`);
     }
     return (text ? JSON.parse(text) : {}) as Json;

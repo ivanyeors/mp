@@ -8,12 +8,10 @@ import {
 } from "./limits";
 import { applicantLogoFolder, partnerLogoFolder } from "./urls";
 
-const BUCKET = "media"; // public bucket — logos are shown on /our-partners
+const BUCKET = "media";
 
-// Re-export client-safe limits so server callers can import from the module root.
 export { LOGO_MAX_BYTES, LOGO_MIN_DIMENSION, LOGO_ALLOWED_MIME, LOGO_GUIDELINES };
 
-/** A refusal the caller should surface to the user (maps to HTTP 422). */
 export class LogoRefusedError extends Error {
   constructor(message: string) {
     super(message);
@@ -21,7 +19,6 @@ export class LogoRefusedError extends Error {
   }
 }
 
-/** Format + size guard (client mirrors this via checkLogoFile). */
 export function assertLogoAllowed(fileSize: number, mimeType: string): void {
   if (!(LOGO_ALLOWED_MIME as readonly string[]).includes(mimeType)) {
     throw new LogoRefusedError("Logo must be a PNG, JPG, or WebP image.");
@@ -33,12 +30,6 @@ export function assertLogoAllowed(fileSize: number, mimeType: string): void {
   }
 }
 
-/**
- * Optimize → upload under `media/{folder}…webp` → return the PUBLIC url. Unlike
- * saveConfigUpload we insert no DB row: the caller records the url. Dimension/
- * squareness is enforced here (needs the decoded image), mirroring the
- * guideline text in {@link LOGO_GUIDELINES}.
- */
 async function saveLogoIn(
   folder: string,
   bytes: Buffer,
@@ -52,7 +43,6 @@ async function saveLogoIn(
       `Logo must be at least ${LOGO_MIN_DIMENSION}×${LOGO_MIN_DIMENSION}px.`,
     );
   }
-  // Guide toward square: reject clearly non-square (ratio worse than 1.5:1).
   const ratio = Math.max(width, height) / Math.min(width, height);
   if (ratio > 1.5) {
     throw new LogoRefusedError("Logo should be square (roughly equal width and height).");
@@ -72,7 +62,6 @@ async function saveLogoIn(
   return { url: pub.publicUrl, width, height };
 }
 
-/** A logo uploaded in Partner Hub settings, filed under the partner's own folder. */
 export function savePartnerLogo(opts: {
   partnerId: string;
   bytes: Buffer;
@@ -81,11 +70,6 @@ export function savePartnerLogo(opts: {
   return saveLogoIn(partnerLogoFolder(opts.partnerId), opts.bytes, opts.originalName);
 }
 
-/**
- * A logo uploaded with a Partner application, before any partner row exists.
- * Filed under the applicant's auth user id; approval puts the url on the new
- * partner row as it is.
- */
 export function saveApplicantLogo(opts: {
   authUserId: string;
   bytes: Buffer;
@@ -94,10 +78,6 @@ export function saveApplicantLogo(opts: {
   return saveLogoIn(applicantLogoFolder(opts.authUserId), opts.bytes, opts.originalName);
 }
 
-/**
- * Delete every logo an applicant uploaded (a withdrawn application). Best
- * effort: a leftover file is harmless, so failures are logged, not thrown.
- */
 export async function removeApplicantLogos(authUserId: string): Promise<void> {
   const folder = applicantLogoFolder(authUserId);
   try {

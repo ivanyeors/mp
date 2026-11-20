@@ -1,7 +1,3 @@
-/**
- * Slice 04 — analytics notice bar wiring.
- * Run: npx tsx components/analytics/analytics-notice-bar.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";

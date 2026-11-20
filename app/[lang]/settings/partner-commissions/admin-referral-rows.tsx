@@ -5,12 +5,6 @@ import { InfoTip } from "@/components/ui/info-tip";
 
 const money = (n: number) => `$${n.toFixed(2)}`;
 
-/**
- * Admin view of every partner's per-referral rows (#80, AC5) — the SAME rows the
- * partner hub shows, but UNMASKED (adminView) and with a Partner column. Staff
- * only: the parent page already gates with requireAdminPage("partner-commissions"); this
- * is a read-only server component, so there is no route/action to re-assert.
- */
 export async function AdminReferralRows() {
   const rows = await loadAdminReferralRows(supabaseAdmin());
   return (
@@ -23,7 +17,6 @@ export async function AdminReferralRows() {
         </InfoTip>
       </div>
       {rows.length > 0 ? (
-        // Phones: the six-column table pushes Commission, Status and Release off-screen.
         <ul className="divide-y rounded-xl border text-sm md:hidden">
           {rows.map((r) => {
             const isVoid = r.status === "void";

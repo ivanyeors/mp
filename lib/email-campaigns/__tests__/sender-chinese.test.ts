@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -13,15 +12,6 @@ import type { ChineseBlockWords, CampaignContent, EmailBlock } from "../content"
 import type { ContentCheck } from "../content-checks";
 import { campaignLedgerKey, EMPTY_CAMPAIGN_DRAFT, type Campaign } from "../rules";
 import { emptyWorld, fakeCampaignsClient, type FakeWorld } from "./fake-db";
-
-/**
- * Sending the 中文 version (PRD-campaign-email-editor slice 17, decision 11):
- * in one wave, a Customer whose `locale` is `zh-CN` gets the 中文 email and
- * everyone else the English one, one ledger row each; a campaign without a
- * 中文 version sends English to everyone, as before. A block not translated,
- * or out of date and not kept, holds the wave by name. A test goes in the
- * language Staff choose.
- */
 
 vi.mock("@/lib/media-assets/email-renditions", () => ({
   ensureEmailRenditions: vi.fn(async (_admin: unknown, ids: string[]) => {
@@ -97,7 +87,6 @@ beforeEach(() => {
     { id: DAN, email: "dan@x.test", first_name: null, marketing_email: "subscribed", locale: "zh-CN" },
   );
   world.campaigns.push({ id: CAMPAIGN, audience: "subscribed" });
-  // The cover, named in both languages as the shop names it.
   world.products = [
     {
       id: SAMPLE_COVER_PRODUCT,
@@ -146,10 +135,8 @@ describe("one wave, two languages", () => {
     expect(mei.text).toContain("您收到这封邮件，是因为您同意接收 Mpillow 的电子邮件。");
     expect(mei.text).toMatch(/取消订阅：https:\/\/custom\.mpillow\.com\/zh-CN\/unsubscribe\?/);
     expect(mei.html).toContain("取消订阅</a>");
-    // Unsubscribe and List-Unsubscribe are the reader's own, in either language.
     expect(mei.headers?.["List-Unsubscribe"]).toContain(MEI);
 
-    // No first name: the 中文 fallback, and a polite hello alone.
     const dan = to("dan@x.test");
     expect(dan.subject).toBe("您，这个十二月睡得更清凉");
     expect(dan.text).toContain("您好！");
@@ -168,7 +155,6 @@ describe("one wave, two languages", () => {
     expect(sent).toHaveLength(3);
     for (const email of sent) {
       expect(email.html).toContain('<html lang="en"');
-      // English words throughout: a Chinese name is the reader's own.
       expect(email.text.replaceAll("美玲", "")).not.toMatch(/[一-鿿]/);
     }
     expect(to("mei@x.test").subject).toBe("美玲, sleep cooler this December");
@@ -219,7 +205,6 @@ describe("a test, in the language Staff choose", () => {
     });
     const added = campaign({ ...CHINESE_SAMPLE_CONTENT, blocks: [...CHINESE_SAMPLE_CONTENT.blocks, { id: "more", type: "heading", level: 2, text: "Care" }] });
     expect(chineseTestBlocker(added)).toBe("The 中文 version isn't finished: Block 9, Heading: not translated yet.");
-    // Words out of date still go: a test is how Staff read them.
     expect(chineseTestBlocker({ ...campaign(), subject: "Sleep cooler tonight" })).toBeNull();
     expect(sent).toEqual([]);
   });
@@ -250,7 +235,6 @@ describe("the 中文 version is checked as the English is (slice 11)", () => {
     const clinical = r.readiness.checks.find((c) => c.key === "clinical") as ContentCheck;
     expect(clinical.ok).toBe(false);
     expect(clinical.issues).toEqual([expect.objectContaining({ blockId: "why", language: "zh-CN", text: expect.stringMatching(/^中文, Block 3, Heading contains "治疗"/) })]);
-    // The 中文 version is otherwise whole: its own row passes.
     expect(r.readiness.checks.find((c) => c.key === "chinese")).toMatchObject({ ok: true });
   });
 

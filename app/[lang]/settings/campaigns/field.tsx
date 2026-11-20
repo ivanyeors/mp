@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 
-/** One labelled field of the campaign editor, with its error or else its hint. */
 export function Field({ label, htmlFor, hint, error, children }: { label: string; htmlFor: string; hint?: ReactNode; error?: string; children: ReactNode }) {
     return (
         <div className="space-y-1.5">

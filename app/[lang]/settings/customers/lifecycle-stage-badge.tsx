@@ -11,12 +11,6 @@ import { UNSUBSCRIBE_REASON_LABEL, type UnsubscribeReason } from "@/lib/marketin
 import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { cn } from "@/lib/utils";
 
-/**
- * The **Lifecycle stage** as Staff see it (PRD-crm-retention-loop slice 03):
- * the word, with its rule on hover, and the sub-status underneath. The word
- * carries the meaning; the tint only helps the eye find *Loyal*, *At risk*
- * and *Lost* in a long list.
- */
 const STAGE_TINT: Record<LifecycleStage, string> = {
     lead: "text-muted-foreground",
     new: "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200",
@@ -25,7 +19,6 @@ const STAGE_TINT: Record<LifecycleStage, string> = {
     lost: "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200",
 };
 
-/** Placed by the Shopify-era count alone. */
 export const UNDATED_NOTE = "No dates yet";
 export const UNDATED_TITLE = "Placed by their Shopify-era order count: no fitting record dates their purchase.";
 
@@ -53,22 +46,14 @@ export function LifecycleStageBadge({
 type NoteFacts = Pick<CustomerOverviewRow, "lifecycle_stage" | "lifecycle_detail" | "lifecycle_undated" | "marketing_email_updated_at"> &
     Partial<Pick<CustomerOverviewRow, "unengaged">>;
 
-/** **Unengaged** (PRD-campaign-audiences slice 12): a sending choice, never a stage. */
 export const UNENGAGED_NOTE = "Unengaged";
 export const UNENGAGED_TITLE = `${UNENGAGED_RULE}. Campaigns leave them out unless one includes the Unengaged; they stay subscribed.`;
 
-/**
- * The line under the stage: when a *Lost* Customer unsubscribed, and why
- * when they said (on the Customer page, which reads it); otherwise
- * the sub-status (*Repeat purchases*, *Lapsed*, *Delivered*…), whether a
- * buyer has no dates yet, and whether they are Unengaged.
- */
 export function lifecycleNote(
     customer: NoteFacts,
     { unsubscribeReason = null }: { unsubscribeReason?: UnsubscribeReason | null } = {},
 ): string | null {
     if (customer.lifecycle_stage === "lost") {
-        // PRD-crm-retention-loop slice 11: why, when they said.
         const parts = [
             customer.marketing_email_updated_at ? `Unsubscribed ${formatAdminDateMY(customer.marketing_email_updated_at)}` : null,
             unsubscribeReason ? UNSUBSCRIBE_REASON_LABEL[unsubscribeReason] : null,
@@ -83,7 +68,6 @@ export function lifecycleNote(
     return parts.length ? parts.join(" · ") : null;
 }
 
-/** The list's Stage cell: the badge, and its note underneath. */
 export function LifecycleStageCell({ customer }: { customer: NoteFacts }) {
     const note = lifecycleNote(customer);
     const undated = customer.lifecycle_undated && customer.lifecycle_stage !== "lost";

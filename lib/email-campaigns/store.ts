@@ -1,9 +1,3 @@
-/**
- * Email campaigns: every read and write (PRD-email-marketing;
- * 20261021100000_email_campaigns.sql). The table, its views and its functions
- * are service-role only, so the Admin Panel calls these after checking the
- * `campaigns` permission. Each takes the client, so tests pass a fake.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { finishCampaignSend, readCampaignWaveStats, type CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
 import {
@@ -33,7 +27,6 @@ import { approvedSegmentsRow, KEEP_SENDING_COLUMNS, keepSendingFromRow, keptWave
 
 export { finishCampaignSend };
 
-/** One Campaign's numbers (`email_campaign_stats`). */
 export interface CampaignStats {
   handed: number;
   bounced: number;
@@ -43,23 +36,14 @@ export interface CampaignStats {
   waves: number;
   firstSentAt: string | null;
   lastSentAt: string | null;
-  /** Claim links its emails carried that were opened. */
   linkClicks: number;
-  /** Sends with a counted **Campaign click** on a site link (PRD-campaign-audiences slice 08). */
   clicked: number;
-  /** Every counted click, a person's second and third included. */
   clicks: number;
-  /** People who left from this campaign's own unsubscribe link (slice 08). */
   unsubscribed: number;
-  /** People sent it who bought within 30 days (slice 11, results.ts). */
   bought: number;
-  /** Of those, the ones who bought after their first click. */
   boughtAfterClick: number;
-  /** What they bought, in S$, net of refunds. */
   boughtTotal: number;
-  /** People sent it under 30 days ago, whose window is still open. */
   counting: number;
-  /** People its holdout kept back: never sent it (slice 11). */
   heldOut: number;
 }
 
@@ -85,7 +69,6 @@ export const NO_STATS: CampaignStats = {
 
 const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
-/** Pure — one `email_campaign_stats` row. */
 export function statsFromRow(row: Record<string, unknown>): CampaignStats {
   return {
     handed: num(row.handed),
@@ -113,7 +96,6 @@ export interface CampaignListItem {
   stats: CampaignStats;
 }
 
-/** Live Campaigns, newest first, with their numbers. Throws on a failed read. */
 export async function listCampaigns(admin: SupabaseClient): Promise<CampaignListItem[]> {
   const [campaigns, stats] = await Promise.all([
     admin.from("email_campaigns").select(CAMPAIGN_COLUMNS).is("archived_at", null).order("created_at", { ascending: false }),
@@ -130,24 +112,17 @@ export async function listCampaigns(admin: SupabaseClient): Promise<CampaignList
   });
 }
 
-/** A campaign to start from, as the Start panel lists it (PRD-campaign-email-editor slice 08). */
 export interface PastCampaign {
   id: string;
   name: string;
   subject: string;
   createdAt: string;
-  /** Its first wave was planned. */
   started: boolean;
   archived: boolean;
 }
 
-/** The most the Start panel lists: the newest. */
 export const PAST_CAMPAIGNS_LISTED = 50;
 
-/**
- * Every Campaign, archived ones included, newest first, to start a new one
- * from: only what the list shows, never its content. Throws on a failed read.
- */
 export async function listPastCampaigns(admin: SupabaseClient): Promise<PastCampaign[]> {
   const { data, error } = await admin
     .from("email_campaigns")
@@ -171,23 +146,13 @@ export async function listPastCampaigns(admin: SupabaseClient): Promise<PastCamp
   );
 }
 
-/** A campaign the Customers list's *Campaign* filter offers (PRD-campaign-audiences slice 05). */
 export interface CampaignFilterOption {
   id: string;
   name: string;
 }
 
-/** The most the *Campaign* filter lists: the latest started. */
 export const CAMPAIGN_FILTER_OPTIONS_LISTED = 100;
 
-/**
- * Every campaign that has started sending, archived ones too, the latest
- * started first: the ones *got it*, *clicked it* and the rest can be about.
- * `alsoIds` adds campaigns a link names that are not among them (a draft, an
- * older one), so its chip still reads a name. Names only, never content:
- * the Customers page reads these with `customers`, not `campaigns`. Throws on
- * a failed read.
- */
 export async function listCampaignFilterOptions(
   admin: SupabaseClient,
   alsoIds: readonly string[] = [],
@@ -214,7 +179,6 @@ export async function listCampaignFilterOptions(
   ];
 }
 
-/** One Campaign, archived or not; null when there is none. */
 export async function getCampaign(admin: SupabaseClient, id: string): Promise<Campaign | null> {
   const { data, error } = await admin.from("email_campaigns").select(CAMPAIGN_COLUMNS).eq("id", id).maybeSingle();
   if (error) throw new Error(`Could not read the campaign: ${error.message}`);
@@ -227,7 +191,6 @@ export async function getCampaignStats(admin: SupabaseClient, id: string): Promi
   return data ? statsFromRow(data as Record<string, unknown>) : NO_STATS;
 }
 
-/** Saves a new Campaign; returns its id. */
 export async function createCampaign(
   admin: SupabaseClient,
   draft: CampaignDraft,
@@ -242,22 +205,12 @@ export async function createCampaign(
   return (data as { id: string }).id;
 }
 
-/**
- * Saves a Campaign's draft. Once it is locked only the name can change, and
- * the table's trigger refuses anything else, whatever the caller sends.
- */
 export async function updateCampaign(admin: SupabaseClient, id: string, draft: CampaignDraft, locked: boolean): Promise<void> {
   const row = locked ? { name: draft.name } : campaignRowFromDraft(draft);
   const { error } = await admin.from("email_campaigns").update(row).eq("id", id).is("archived_at", null);
   if (error) throw new Error(error.message);
 }
 
-/**
- * Points a draft at a Segment (the Email funnel's arranging, PRD-email-funnel
- * slice 07): its Audience becomes that Segment and nothing else changes. Only
- * while it is a draft: false when it has started (`locked_at` set) or is
- * archived, so a move never changes a started campaign's Audience.
- */
 export async function pointDraftAt(admin: SupabaseClient, id: string, segmentId: string): Promise<boolean> {
   const { data, error } = await admin
     .from("email_campaigns")
@@ -279,7 +232,6 @@ export async function archiveCampaign(admin: SupabaseClient, id: string): Promis
   if (error) throw new Error(`Could not archive the campaign: ${error.message}`);
 }
 
-/** Fixes the content: called when the first wave is planned. */
 export async function lockCampaign(admin: SupabaseClient, id: string): Promise<void> {
   const { error } = await admin
     .from("email_campaigns")
@@ -289,11 +241,6 @@ export async function lockCampaign(admin: SupabaseClient, id: string): Promise<v
   if (error) throw new Error(`Could not lock the campaign: ${error.message}`);
 }
 
-// ---------------------------------------------------------------------------
-// Kept sending (PRD-campaign-audiences slice 10; 20261031155043_campaign_keep_sending.sql)
-// ---------------------------------------------------------------------------
-
-/** Every live campaign kept sending and not paused, oldest started first: the daily job's list. */
 export async function readKeptSendingCampaigns(admin: SupabaseClient): Promise<Campaign[]> {
   const { data, error } = await admin
     .from("email_campaigns")
@@ -309,11 +256,6 @@ export async function readKeptSendingCampaigns(admin: SupabaseClient): Promise<C
   });
 }
 
-/**
- * A person's change to keep sending: on (with the Segments' filters they
- * approve now), off, a new cap, a pause or a resume. A live campaign only;
- * returns the state as stored.
- */
 export async function saveKeepSending(
   admin: SupabaseClient,
   id: string,
@@ -336,7 +278,7 @@ export async function saveKeepSending(
             keep_sending_paused_reason: null,
             keep_sending_segments: approvedSegmentsRow(change.segments),
           }
-        : // Off ends the holdout too: only a campaign that keeps sending holds out. Its held-out rows stay.
+        :
           { keep_sending: false, keep_sending_paused_at: null, keep_sending_paused_reason: null, keep_sending_segments: null, holdout_at: null }
       : "holdout" in change
         ? { holdout_at: change.holdout ? change.at : null }
@@ -357,7 +299,6 @@ export async function saveKeepSending(
   return keepSendingFromRow(data as unknown as Record<string, unknown>);
 }
 
-/** The daily job pauses a campaign, saying why; a no-op for one a person paused or turned off meanwhile. */
 export async function pauseKeptSending(admin: SupabaseClient, id: string, reason: string, at: Date): Promise<void> {
   const { error } = await admin
     .from("email_campaigns")
@@ -368,11 +309,6 @@ export async function pauseKeptSending(admin: SupabaseClient, id: string, reason
   if (error) throw new Error(`Could not pause the campaign: ${error.message}`);
 }
 
-/**
- * How many sends one Wave of a campaign has claimed, whatever became of them:
- * the day's cap counts them all. People held out got no email and are not
- * counted (slice 11).
- */
 export async function countWaveClaims(admin: SupabaseClient, campaignId: string, wave: string): Promise<number> {
   const { count, error } = await admin
     .from("customer_campaign_sends")
@@ -384,14 +320,12 @@ export async function countWaveClaims(admin: SupabaseClient, campaignId: string,
   return count ?? 0;
 }
 
-/** One campaign's results by stage, and its holdout beside the people sent (slice 11). Throws on a failed read. */
 export async function readCampaignResults(admin: SupabaseClient, id: string): Promise<CampaignResults> {
   const { data, error } = await admin.from("email_campaign_stage_results").select("*").eq("campaign_id", id);
   if (error) throw new Error(`Could not read the campaign's results: ${error.message}`);
   return resultsFromRows((data ?? []) as Record<string, unknown>[]);
 }
 
-/** Today's kept-sending emails the provider took, across campaigns: the Sending card's line. */
 export async function readKeptToday(admin: SupabaseClient, now: Date): Promise<number> {
   const { count, error } = await admin
     .from("customer_campaign_sends")
@@ -402,9 +336,7 @@ export async function readKeptToday(admin: SupabaseClient, now: Date): Promise<n
   return count ?? 0;
 }
 
-/** PostgREST returns at most this many rows a request, so reads page. */
 const PAGE = 1000;
-/** Ids per `in (...)` filter, to keep the URL short. */
 const ID_CHUNK = 200;
 
 type CandidateQuery = ReturnType<ReturnType<SupabaseClient["from"]>["select"]>;
@@ -429,12 +361,6 @@ async function readPaged(
   }
 }
 
-/**
- * Everyone in a Campaign's audience, before the rule. The imported audience is
- * every Migrated customer; the subscribed one is every Customer; a Segment is
- * the ids `segmentIds` yields (lib/crm/segments.ts `resolveSegment`, which
- * throws for a Segment that is archived or needs review).
- */
 export async function readCampaignCandidates(
   admin: SupabaseClient,
   campaign: Pick<Campaign, "id" | "audience">,
@@ -465,11 +391,6 @@ async function readAudience(
   return out;
 }
 
-/**
- * Every Unengaged Customer (PRD-campaign-audiences slice 12): the overview's
- * `unengaged`, the column the Customers list's *Engagement* filter and the
- * claim's rule read, so the plan, the list and the send agree.
- */
 export async function readUnengagedIds(admin: SupabaseClient): Promise<Set<string>> {
   const out = new Set<string>();
   for (let from = 0; ; from += PAGE) {
@@ -486,11 +407,6 @@ export async function readUnengagedIds(admin: SupabaseClient): Promise<Set<strin
   }
 }
 
-/**
- * Each customer's latest pillow, for *Your pillow* (PRD-campaign-audiences
- * slice 09): their pillow purchase lines, the latest of them. One with no
- * pillow line here is left out, and reads the fallback.
- */
 export async function readLatestPillows(admin: SupabaseClient, customerIds: readonly string[]): Promise<Map<string, RecipientPillow>> {
   const rows: Record<string, unknown>[] = [];
   for (let i = 0; i < customerIds.length; i += ID_CHUNK) {
@@ -512,12 +428,6 @@ export async function readLatestPillows(admin: SupabaseClient, customerIds: read
   return latestPillows(rows);
 }
 
-/**
- * What the fit checks know of each planned recipient (slice 09), in the
- * order asked: the Customer overview's facts (`RECIPIENT_FACT_COLUMNS`: no
- * review, rating or note) and their latest pillow. One not in the overview
- * is left out.
- */
 export async function readRecipientFacts(admin: SupabaseClient, customerIds: readonly string[]): Promise<RecipientFacts[]> {
   const rows = new Map<string, Record<string, unknown>>();
   for (let i = 0; i < customerIds.length; i += ID_CHUNK) {
@@ -534,7 +444,6 @@ export async function readRecipientFacts(admin: SupabaseClient, customerIds: rea
   });
 }
 
-/** What buying each product makes you (slice 09), as the purchase lines classify it. Products that no longer exist are left out. */
 export async function readProductClasses(admin: SupabaseClient, productIds: readonly string[]): Promise<Record<string, BoughtClass[]>> {
   if (!productIds.length) return {};
   const { data, error } = await admin.from("products").select("id, product_type, product_variants(pillow_product_id)").in("id", [...productIds]);
@@ -550,7 +459,6 @@ export async function readProductClasses(admin: SupabaseClient, productIds: read
   return productClasses(rows, kinds);
 }
 
-/** Every wave of every campaign email, for the pause rule, and this Campaign's own. */
 export async function readWaveStats(
   admin: SupabaseClient,
   campaignId: string,
@@ -566,17 +474,14 @@ export type MarketingClaim =
       sendId: string;
       email: string;
       firstName: string | null;
-      /** For the *Last name* Variable (PRD-campaign-email-editor slice 13). */
       lastName: string | null;
       locale: string;
-      /** A Migrated customer who has not Claimed: their sign-in button is their own Claim link. */
       unclaimedMigrated: boolean;
     }
   | { claimed: false; blocker: CampaignClaimBlocker };
 
 const name = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
-/** Pure — `claim_marketing_campaign_send`'s one row. */
 export function marketingClaimFromRow(data: unknown): MarketingClaim {
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
   if (row && typeof row.send_id === "string" && typeof row.email === "string") {
@@ -594,10 +499,6 @@ export function marketingClaimFromRow(data: unknown): MarketingClaim {
   return { claimed: false, blocker: blocker as CampaignClaimBlocker };
 }
 
-/**
- * Claims one send: the rule, re-run in SQL now, then the `pending` row.
- * Returns `{ error }` when the call itself fails.
- */
 export async function claimMarketingCampaignSend(
   admin: SupabaseClient,
   p: { customerId: string; campaignId: string; wave: string; retryFailed?: boolean },

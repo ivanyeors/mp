@@ -1,11 +1,6 @@
 import type { ProductSlideSectionConfig } from "../section-config";
 import { slideImage } from "@/lib/media/slide-media";
 
-/**
- * Ambassadors learn-more slide-in (landing `ambassadors` section → "Learn how").
- * Copy: `m.slides.ambassadors`. Every image and the video the hand-built sheet showed
- * are kept here.
- */
 const SPLIT_TITLE = "text-base font-semibold tracking-normal md:text-base";
 
 export const ambassadorsSlideSections = [

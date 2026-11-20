@@ -1,7 +1,3 @@
-/**
- * Type-checked canvas ports (authoring UI). Evaluate/validate ignore these.
- * number → Range; enum-like → Match; size → Template; signal → everything else.
- */
 import type { InputValueType, RuleNode } from "./types";
 
 export type PortKind = "number" | "enum" | "signal" | "size";
@@ -39,7 +35,6 @@ export function targetPort(node: Pick<RuleNode, "type">): PortKind | null {
   }
 }
 
-/** Compatible when kinds match, or signal accepts any non-null source. */
 export function canConnect(
   source: PortKind,
   target: PortKind | null,

@@ -11,7 +11,6 @@ export const cervicalNeckSupportSlideSections = [
       sizes: "100vw",
     }),
   },
-  // Tech Neck persona weave (slice 02) — after hero, before why
   { type: "split_hero", key: "tech-neck", contentKey: "techNeck", titleAs: "h2" },
   {
     key: "why",

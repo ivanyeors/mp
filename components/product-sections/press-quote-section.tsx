@@ -10,7 +10,6 @@ type PressQuoteSectionProps = {
   borderTop?: boolean;
 };
 
-/** A large centred quote that decrypts into view, then its source. */
 export function PressQuoteSection({ content, borderTop }: PressQuoteSectionProps) {
   return (
     <ProductSlideSection borderTop={borderTop}>

@@ -26,7 +26,6 @@ async function load(id: string) {
   const { data, error } = await admin.from("readjustment_bookings").select(COLUMNS).eq("id", id).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  // The purchase's own Order, for the Staff link (order_items → orders).
   const { data: line } = data.order_item_id
     ? await admin.from("order_items").select("order_id").eq("id", data.order_item_id).maybeSingle()
     : { data: null };
@@ -41,7 +40,6 @@ async function load(id: string) {
   };
 }
 
-/** GET /api/settings/readjustments/[id] — what Staff see at the visit (ADR 0024). */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("appointments");
   if (denied) return denied;
@@ -58,14 +56,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 const ActionSchema = z.object({ action: z.enum(Object.keys(STAFF_ACTIONS) as [StaffAction, ...StaffAction[]]) });
 
-/**
- * POST /api/settings/readjustments/[id] — Staff mark the visit.
- *
- * - attended: the service was rendered; a paid booking's service Order is delivered.
- * - no_show: a complimentary visit stays used (cancel instead to give it back).
- * - cancel: the calendar event goes (Google tells the customer) and a complimentary
- *   visit is given back. A paid one is refunded, if at all, from its Order.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("appointments");
   if (denied) return denied;
@@ -97,8 +87,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         { status: 502 },
       );
     }
-    // The guest hears it on WhatsApp too, with a rebook link — unless the
-    // Calendar push already told them. Never fails the staff action.
     try {
       const row = await getReminderByEventId(eventId);
       if (row) {
@@ -120,8 +108,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .select("id");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!moved?.length) {
-    // Removing the event can itself cancel the booking (the Calendar push, or
-    // the notice above): already where this action was taking it is success.
     const { data: current } = await admin
       .from("readjustment_bookings")
       .select("status")
@@ -132,7 +118,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  // A paid visit that happened: its service Order is fulfilled.
   if (action === "attended" && before.fee_order_id && before.fee_order_status === "confirmed") {
     await admin
       .from("orders")

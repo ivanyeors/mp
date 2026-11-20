@@ -15,7 +15,6 @@ import { tiktokPostId } from "@/lib/tiktok/embed";
 
 type Video = Record<string, unknown>;
 
-/** What fits the card's three lines at phone width; longer still saves, up to the hard limit. */
 const HOOK_GUIDE_CHARS = 50;
 
 type LinkCheck =
@@ -28,8 +27,6 @@ type Content = Record<string, unknown>;
 interface TikTokVideosEditorProps {
   content: Content;
   locale: Locale;
-  /** The section editor's state setter. Every write is functional, because the link check
-   *  resolves after a network hop and must not overwrite edits made while it ran. */
   setContent: (update: (prev: Content) => Content) => void;
 }
 
@@ -37,14 +34,9 @@ function asVideos(value: unknown): Video[] {
   return Array.isArray(value) ? (value as Video[]) : [];
 }
 
-/**
- * Inspector for a TikTok videos section. Each video needs three things before it
- * saves: its TikTok link, a cover from the media library, and the button link.
- */
 export function TikTokVideosEditor({ content, locale, setContent }: TikTokVideosEditorProps) {
   const videos = asVideos(content.videos);
   const direction = content.direction === "right" ? "right" : "left";
-  /** Keyed by the link as typed, so a check follows its row through reordering. */
   const [checks, setChecks] = useState<Record<string, LinkCheck>>({});
 
   const get = (key: string) => readLocalisedField(content, key, locale);
@@ -69,7 +61,6 @@ export function TikTokVideosEditor({ content, locale, setContent }: TikTokVideos
       return next;
     });
 
-  /** Follow share links and confirm TikTok will embed the post, then store the canonical link. */
   const checkLink = async (typed: string) => {
     const value = typed.trim();
     if (value === "") return;
@@ -90,7 +81,6 @@ export function TikTokVideosEditor({ content, locale, setContent }: TikTokVideos
         return;
       }
       setChecks((c) => ({ ...c, [value]: { state: "ok", verified: body.verified }, [body.url]: { state: "ok", verified: body.verified } }));
-      // Match the row by the link it still holds: it may have moved, or been edited, meanwhile.
       if (body.url !== value) {
         write((list) => list.map((v) => (v.tiktokUrl === typed ? { ...v, tiktokUrl: body.url } : v)));
       }
@@ -230,7 +220,6 @@ export function TikTokVideosEditor({ content, locale, setContent }: TikTokVideos
                       onSelect={(s) =>
                         update(idx, (v) => {
                           const next: Video = { ...v, image: s.url, media_asset_id: s.assetId ?? null };
-                          // Library alt text is English copy.
                           if (s.alt) next.alt = writeLocalisedValue(v.alt, DEFAULT_LOCALE, s.alt);
                           return next;
                         })

@@ -17,28 +17,15 @@ const Profile = z.enum(["pillow", "bolster", "accessory"]);
 
 const QuoteSchema = z
   .object({
-    /** A cart: priced from the variants in the database, never from client prices. */
     items: z
       .array(z.object({ variant_id: z.string().uuid(), quantity: z.number().int().min(1).max(50) }))
       .max(50)
       .optional(),
-    /**
-     * No cart: one unit boxed as this product type (the landing-page estimator),
-     * or one of each (a customisation, which ships a Paired build's Mbolster in
-     * its Mpillow's shipment).
-     */
     profile: z.union([Profile, z.array(Profile).min(1).max(4)]).optional(),
     destination: QuoteDestinationSchema,
   })
   .refine((b) => (b.items?.length ?? 0) > 0 || b.profile, { message: "items or profile is required" });
 
-/**
- * Shipping options for a cart (or one product type) to an address — the live
- * courier price for live methods, base_rate for flat ones; a live method with no
- * courier quote is left out. Public: the checkout
- * page, the product page and the landing-page estimator call it. What we pay the
- * courier is never in the response.
- */
 export async function POST(req: Request) {
   if (await rateLimitExceeded({ bucket: "shipping-quote", key: clientIp(req), windowMs: 60_000, max: 40 })) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -53,7 +40,6 @@ export async function POST(req: Request) {
 
   let methods: ShippingMethod[];
   try {
-    // The shop delivers: Self-collect is a customisation option only.
     methods = ((await readShippingMethods(false, destination.country)) as ShippingMethod[]).filter(
       (m) => !isSelfCollect(m),
     );
@@ -82,7 +68,6 @@ export async function POST(req: Request) {
     lines = estimateLines([profile!].flat(), settings.estimate_declared_value, methods[0]?.currency ?? "SGD");
   }
 
-  // Priced at subtotal 0, i.e. before free_above — see `price` above.
   const { options, rates } = await quoteShippingMethods(admin, {
     methods,
     lines,

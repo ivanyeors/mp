@@ -53,7 +53,6 @@ describe("buildParcels", () => {
     )!;
     expect(parcels).toHaveLength(1);
     expect([parcels[0].length_cm, parcels[0].width_cm, parcels[0].height_cm]).toEqual([60, 25, 25]);
-    // 1.2 kg bolster + 3 × 0.2 kg covers
     expect(parcels[0].weight_kg).toBe(1.8);
     expect(parcels[0].items).toHaveLength(2);
   });
@@ -83,7 +82,6 @@ describe("buildParcels", () => {
   it("adds the box's empty weight to its contents", () => {
     const heavy = typeBoxes({ ...doc, boxes: doc.boxes.map((b) => ({ ...b, weight: 0.25 })) });
     const [p] = buildParcels([line({}), line({ product_type: "accessory", weight_grams: 200 })], heavy)!;
-    // 0.25 kg box + 1.5 kg pillow + 0.2 kg cover, one box's tare only
     expect(p.weight_kg).toBe(1.95);
   });
 

@@ -1,18 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * An unpaid Checkout gives its points back (PRD-loyalty-points slice 04;
- * ADR 0030 (j)): `checkout.session.expired` and
- * `checkout.session.async_payment_failed` call release_points for the Order.
- * The paid path calls nothing: the `spend` is already the debit.
- *
- * `release_points` is faked with its SQL contract (20261021140000): one
- * release per Order, only for a reservation, never for a paid Order. The
- * contract itself is asserted against Postgres in
- * supabase/tests/loyalty-points/assert-04-spending.sql.
- */
-
 const ORDER = "0a0a0a0a-0000-4000-8000-000000000001";
 const CUSTOMER = "0a0a0a0a-1000-4000-8000-000000000001";
 
@@ -94,7 +82,6 @@ beforeEach(() => {
         status: "pending",
         paid_at: null,
         stripe_session_id: "cs_points",
-        // Two S$50 items, S$20 of points: S$80 cash.
         subtotal: 100,
         discount_amount: 20,
         shipping_amount: 0,
@@ -149,7 +136,6 @@ describe("Stripe webhook — points reserved at checkout", () => {
     expect(order().paid_at).toBeTruthy();
     expect(h.rpc).toEqual([]);
 
-    // A late expiry or failure for the same session finds it paid.
     await deliver("checkout.session.expired", { status: "expired" });
     await deliver("checkout.session.async_payment_failed", { status: "complete" });
     expect(order().status).toBe("confirmed");

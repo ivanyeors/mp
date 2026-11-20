@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Shop checkout and the customisation contact step take one code (ADR 0033):
- * a partner's referral code or a discount code. A coupon can therefore never
- * be saved under a code a partner already holds — the shopper typing it would
- * get one and not the other.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb }));
 
 vi.mock("@/lib/supabase/server", async () => {

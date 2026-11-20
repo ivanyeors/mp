@@ -18,7 +18,6 @@ function row(keys: string[], clicks = 1, impressions = 10, position = 4): GscRow
   return { keys, clicks, impressions, ctr: clicks / impressions, position };
 }
 
-/** Like the Supabase store: a day counts as stored from a property when its total row came from it. */
 function memoryStore() {
   const rows = new Map<string, SeoMetricRow>();
   const totalsFrom = (property: string) =>
@@ -37,14 +36,12 @@ function memoryStore() {
   return { store, rows, totalsFrom };
 }
 
-/** Every day from `from` to `to`, inclusive. */
 function daysBetween(from: string, to: string): string[] {
   const out: string[] = [];
   for (let d = from; d <= to; d = addDays(d, 1)) out.push(d);
   return out;
 }
 
-/** A Search Console property with data on `days`: one row per day for each dimension. */
 function fakeGsc(days: string[], opts: { failOn?: string } = {}) {
   const requests: { startDate: string; endDate: string; dimensions: string[] }[] = [];
   const client: GscClient = {
@@ -133,7 +130,7 @@ describe("createGscClient", () => {
 
 describe("backfillWindows", () => {
   it("cuts the missing days into 30-day windows, newest first, at most `max`", () => {
-    const days = daysBetween("2026-01-01", "2026-04-30"); // 120 days
+    const days = daysBetween("2026-01-01", "2026-04-30");
     const stored = new Set(daysBetween("2026-04-01", "2026-04-30"));
     expect(backfillWindows(days, stored, 2)).toEqual([
       { startDate: "2026-03-02", endDate: "2026-03-31" },
@@ -156,7 +153,6 @@ describe("backfillWindows", () => {
 
 describe("runGscIngest", () => {
   const today = "2026-11-20";
-  // Search Console has data from 1 Jan to yesterday: 323 days.
   const gscDays = daysBetween("2026-01-01", "2026-11-19");
 
   it("loads the whole history over a few runs on its own, then only refreshes the recent days", async () => {
@@ -164,7 +160,7 @@ describe("runGscIngest", () => {
     const { client, requests } = fakeGsc(gscDays);
 
     const first = await runGscIngest(store, client, { today, property: SITE });
-    expect(first).toMatchObject({ startDate: "2026-10-21", endDate: today }); // a first slice of 30 days
+    expect(first).toMatchObject({ startDate: "2026-10-21", endDate: today });
     expect(first.backfilled).toEqual([
       { startDate: "2026-09-21", endDate: "2026-10-20" },
       { startDate: "2026-08-22", endDate: "2026-09-20" },
@@ -180,13 +176,11 @@ describe("runGscIngest", () => {
     expect(third.backfilled).toHaveLength(2);
     expect(third.missingDays).toBe(0);
 
-    // Every day, every dimension, and each day's total marked with the property.
     expect(totalsFrom(SITE).sort()).toEqual(gscDays);
     for (const dim of ["query", "page", "query_page", "country", "device"]) {
       expect([...rows.values()].filter((r) => r.dimension === dim)).toHaveLength(gscDays.length);
     }
 
-    // Complete: the next run refreshes 5 recent days with one listing request and no history window.
     requests.length = 0;
     const fourth = await runGscIngest(store, client, { today, property: SITE });
     expect(fourth).toMatchObject({ backfilled: [], missingDays: 0 });
@@ -224,6 +218,6 @@ describe("runGscIngest", () => {
       /500/,
     );
     expect([...rows.values()].some((r) => r.dimension === "query")).toBe(true);
-    expect(totalsFrom(SITE)).toEqual([]); // so the next run fetches those days again
+    expect(totalsFrom(SITE)).toEqual([]);
   });
 });

@@ -3,21 +3,6 @@ import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import type { PartnerTerms } from "@/lib/partner-terms";
 
-/**
- * The partner's terms at hold (ADR 0034, clause 7.2). The hold fixes the
- * attributed partner's commission the day the customer pays
- * (`partner_commission`), and a customer who typed the partner's code on a
- * customised premium pillow gets the pool the partner leaves off, when Staff
- * turned that on, kept as the Result's coupon terms with no coupon row behind
- * it. One code per order: a typed discount code takes the field, and no partner
- * discount stacks on it.
- *
- * Harness copied from discount-code.test.ts (premium M pillow, goods 200, flat
- * S$10 shipping), with the code resolver, partner lookup and self-referral
- * check under the test's control. Amounts are compared with the same hold run
- * without a code rather than hard-coded.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   requireAnyAdmin: vi.fn(),
@@ -184,7 +169,6 @@ const draft = {
   measured_by_staff_id: null,
 };
 
-/** Flat S$10, so the arithmetic is the discount's alone. Goods are stubbed at 200. */
 const FLAT = {
   id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
   slug: "standard",
@@ -254,7 +238,6 @@ const post = (extra: Record<string, unknown> = {}) =>
     }),
   );
 
-/** One hold from a fresh draft; returns the Result row it wrote. */
 async function hold(extra: Record<string, unknown> = {}) {
   h.rows.clear();
   h.rows.set(ID, { ...draft });
@@ -263,7 +246,6 @@ async function hold(extra: Record<string, unknown> = {}) {
   return h.rows.get(ID)!;
 }
 
-/** The same hold with no code and no partner: the full price to compare against. */
 async function fullPrice(extra: Record<string, unknown> = {}) {
   const saved = h.resolveCheckoutCode.getMockImplementation();
   h.resolveCheckoutCode.mockResolvedValue(null);
@@ -318,7 +300,6 @@ describe("POST /api/results/hold — a typed partner code", () => {
       coupon_terms: { discount_type: "fixed_amount", discount_value: 20, max_discount: null },
     });
     expect(row.authorized_amount).toBe(full - 20);
-    // Stripe is asked for the same discounted amount the Result records.
     expect(h.createHoldCheckout.mock.calls.at(-1)![0].amount).toBe(full - 20);
   });
 
@@ -383,14 +364,14 @@ describe("POST /api/results/hold — a typed partner code", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const t = terms({ pool: 50, choice: 30, nextChoice: 20, nextChoiceFrom: "2026-10-31", customerDiscount: true });
 
-    vi.setSystemTime(new Date("2026-10-30T15:30:00Z")); // 23:30, 30 Oct in Singapore
+    vi.setSystemTime(new Date("2026-10-30T15:30:00Z"));
     typedPartner(t);
     expect(await hold({ code: "ABCD2345" })).toMatchObject({
       partner_commission: 30,
       coupon_terms: { discount_type: "fixed_amount", discount_value: 20, max_discount: null },
     });
 
-    vi.setSystemTime(new Date("2026-10-30T16:30:00Z")); // 00:30, 31 Oct in Singapore
+    vi.setSystemTime(new Date("2026-10-30T16:30:00Z"));
     typedPartner(t);
     expect(await hold({ code: "ABCD2345" })).toMatchObject({
       partner_commission: 20,
@@ -420,13 +401,11 @@ describe("POST /api/results/hold — a discount code, and no partner", () => {
       partner_id: null,
       partner_commission: null,
     });
-    // 10% of goods 200.
     expect(row.authorized_amount).toBe(full - 20);
   });
 
   it("no partner discount stacks on a typed discount code, even with a partner attributed another way", async () => {
     const full = await fullPrice();
-    // The partner's assist link attributes the build; the customer typed a discount code.
     h.getPartnerByReferralCode.mockImplementation(async (code: string) =>
       code.trim().toUpperCase() === "ABCD2345" ? partner(terms({ pool: 50, choice: 30, customerDiscount: true })) : null,
     );
@@ -439,7 +418,6 @@ describe("POST /api/results/hold — a discount code, and no partner", () => {
       coupon_code: "SAVE10",
       coupon_terms: { discount_type: "percentage", discount_value: 10, max_discount: null },
     });
-    // Only the coupon's 20 comes off, not the coupon's 20 plus the partner's 20.
     expect(row.authorized_amount).toBe(full - 20);
   });
 

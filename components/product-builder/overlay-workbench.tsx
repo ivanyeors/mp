@@ -1,18 +1,5 @@
 "use client";
 
-/**
- * Product Builder overlay workbench: pick a cover/case Item on the left, see
- * its overlay rendered inside the real configurator silhouette on the right,
- * and drag/scale the fit instead of typing viewBox numbers.
- *
- * Items are grouped into families — one per (category, name), so Fibrecool
- * XS–L is one row. Selecting the family targets every size at once; a size chip
- * narrows it to that size. An overlay is a Media Asset image or a solid color.
- *
- * The stage is the same render the shopper gets — same silhouette path, same
- * `overlayFrame` math, same clip — so what is dialled in here is what ships.
- */
-
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Copy, ImageIcon, Move, Palette, RotateCcw, Search, Trash2 } from "lucide-react";
 
@@ -38,26 +25,16 @@ import {
 } from "@/lib/product-builder/overlays";
 import { cn } from "@/lib/utils";
 
-/** What a save writes to every targeted Item. */
 export type OverlayDraft = { assetId: string; fit: OverlayFit | null } | { color: string };
 
-/** Silhouette viewBox shared by the configurator previews and `overlayFrame`. */
 const VIEW_W = 664;
 const VIEW_H = 374;
-/**
- * Breathing room around the silhouette so an overlay scaled past 1x still shows
- * its frame instead of being cropped by the stage edge. Placement math stays in
- * 664x374 units; only the stage viewport is wider.
- */
 const PAD_X = 88;
 const PAD_Y = 50;
-/** Mirrors OverlayFitSchema so the stage can never dial in a rejected save. */
 const SCALE_MIN = 0.2;
 const SCALE_MAX = 3;
 const OFFSET_LIMIT = 400;
-/** Starting swatch for an item with no color yet — a neutral undyed fabric. */
 const DEFAULT_COLOR = "#d6d0c4";
-/** Swatches offered from colors already mapped elsewhere. */
 const MAX_USED_COLORS = 12;
 
 const STATE_LABEL: Record<OverlayState, string> = {
@@ -67,7 +44,6 @@ const STATE_LABEL: Record<OverlayState, string> = {
   none: "unmapped",
 };
 
-/** Inventory category → shopper-facing role (cover | case). */
 // ponytail: inline copy of toComponentRole — importing it drags supabaseAdmin into the client bundle
 function roleLabel(category: string): "cover" | "case" {
   return category === "cover" ? "cover" : "case";
@@ -75,12 +51,6 @@ function roleLabel(category: string): "cover" | "case" {
 
 export const BOLSTER_LENGTHS: readonly BolsterLength[] = ["short", "medium", "long"];
 
-/**
- * Opening capsule length for a bolster case, guessed from its inventory size.
- * Only a starting point: /mbolster-config picks the length from the shopper's
- * recommendation (`bolster_variant`), not from the case's size, so the same
- * mapping can ship against any of the three. Hence the length switcher.
- */
 function defaultBolsterLength(size: string | null): BolsterLength {
   const s = size?.trim().toUpperCase();
   if (s === "S") return "short";
@@ -88,12 +58,6 @@ function defaultBolsterLength(size: string | null): BolsterLength {
   return "medium";
 }
 
-/**
- * The silhouette this item is previewed against — the shape its own configurator
- * draws, so the fit is judged against what ships. Bolster cases use
- * `bolsterCapsulePath` (what /mbolster-config renders), never the static
- * BOLSTER_SILHOUETTE_PATH placeholder, which nothing draws.
- */
 function silhouetteFor(
   item: OverlayMappingItem,
   length: BolsterLength,
@@ -106,7 +70,6 @@ function silhouetteFor(
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
-/** Identity placement is stored as `null` (fills the silhouette) — same as before. */
 function toFit(scale: number, x: number, y: number): OverlayFit | null {
   const fit: OverlayFit = {};
   if (scale !== 1) fit.scale = scale;
@@ -130,14 +93,12 @@ export function OverlayWorkbench({
   onSave: (itemIds: number[], overlay: OverlayDraft) => void;
   onRemove: (itemIds: number[]) => void;
 }) {
-  // `itemId: null` targets every size in the family.
   const [selection, setSelection] = useState<{ family: string; itemId: number | null } | null>(
     null,
   );
   const [query, setQuery] = useState("");
 
   const families = useMemo(() => overlayFamilies(items), [items]);
-  // Selection survives a reload because it is resolved by key and id, not by index.
   const family = families.find((f) => f.key === selection?.family) ?? families[0] ?? null;
   const sizeItem = family?.items.find((i) => i.id === selection?.itemId) ?? null;
   const targets = sizeItem ? [sizeItem] : (family?.items ?? []);
@@ -152,7 +113,6 @@ export function OverlayWorkbench({
     return by;
   }, [families, query]);
 
-  // Colors already in use, so two fabrics of the same dye can match exactly.
   const usedColors = useMemo(
     () =>
       [...new Set(items.map((i) => i.mapping?.color).filter((c): c is string => !!c))].slice(
@@ -225,7 +185,6 @@ export function OverlayWorkbench({
       </aside>
 
       <OverlayStage
-        // Remount on the saved mappings so the draft resets after a save.
         key={`${family.key}:${targets
           .map((t) => `${t.id}=${overlaySignature(t.mapping)}`)
           .join(",")}`}
@@ -240,10 +199,6 @@ export function OverlayWorkbench({
   );
 }
 
-/**
- * One family in the rail: the name targets every size, the chips below target
- * one. A family of one size is just the item.
- */
 function FamilyRow({
   family,
   active,
@@ -252,7 +207,6 @@ function FamilyRow({
 }: {
   family: OverlayFamily;
   active: boolean;
-  /** The selected size when this family is active; null = all sizes. */
   selectedItemId: number | null;
   onSelect: (itemId: number | null) => void;
 }) {
@@ -344,7 +298,6 @@ function FamilyBadge({ items }: { items: OverlayMappingItem[] }) {
   );
 }
 
-/** Per-size state on a chip: image icon, the color itself, missing, or empty. */
 function StateMark({ mapping }: { mapping: OverlayMappingItem["mapping"] }) {
   const state = overlayState(mapping);
   if (state === "image") return <ImageIcon className="h-3 w-3" aria-hidden />;
@@ -387,28 +340,22 @@ function OverlayStage({
   onRemove,
 }: {
   family: OverlayFamily;
-  /** The Items a save writes to: one size, or every size in the family. */
   targets: OverlayMappingItem[];
   usedColors: string[];
   busy: boolean;
   onSave: (itemIds: number[], overlay: OverlayDraft) => void;
   onRemove: (itemIds: number[]) => void;
 }) {
-  // The size the stage previews: the first that ships an overlay, so a family
-  // with one mapped size shows that size's image ready to copy to the rest.
   const item = targets.find(overlayShips) ?? targets.find((t) => t.mapping) ?? targets[0]!;
   const mapping = item.mapping;
   const whole = targets.length > 1;
   const targetIds = targets.map((t) => t.id);
   const familyIds = family.items.map((i) => i.id);
-  // Sizes in the target that would change if this overlay were saved to all.
   const differing = whole
     ? targets.filter((t) => overlaySignature(t.mapping) !== overlaySignature(mapping))
     : [];
   const mixed = differing.length > 0;
 
-  // Derived from the item, not useId(): React's generated ids carry colons /
-  // guillemets, which are not safe inside a url(#...) fragment.
   const clipId = `overlay-clip-${item.id}`;
   const maskId = `overlay-outside-${item.id}`;
   const svgRef = useRef<SVGSVGElement>(null);
@@ -420,16 +367,12 @@ function OverlayStage({
   const [y, setY] = useState(item.mapping?.fit?.y ?? 0);
   const [hex, setHex] = useState(mapping?.color ?? DEFAULT_COLOR);
   const [length, setLength] = useState(() => defaultBolsterLength(item.size));
-  // Announcing every pointermove would be a stream of coordinates; keyboard
-  // nudges are discrete and worth hearing.
   const [dragging, setDragging] = useState(false);
 
   const isBolster = item.category === "bolster_case";
   const { d: path, label: shapeLabel } = silhouetteFor(item, length);
   const imageUrl = mapping?.hosted_url ?? null;
   const url = mode === "image" ? imageUrl : null;
-  // fetchOverlayMap skips mapping rows whose asset has no hosted_url, so the
-  // shop shows a plain silhouette. Say so rather than looking merely unmapped.
   const assetMissing = overlayState(item.mapping) === "missing";
   const fit = toFit(scale, x, y);
   const saved = item.mapping?.fit ?? null;
@@ -443,7 +386,6 @@ function OverlayStage({
   const previewColor = color ?? mapping?.color ?? DEFAULT_COLOR;
   const colorDirty = color != null && (mixed || color !== mapping?.color);
 
-  /** What the stage shows right now, as a save — null when there is nothing to save. */
   const draft: OverlayDraft | null =
     mode === "color"
       ? color
@@ -453,8 +395,6 @@ function OverlayStage({
         ? { assetId: mapping.media_asset_id, fit }
         : null;
   const dirty = mode === "color" ? colorDirty : fitDirty;
-  // One size of a multi-size family: offer to push what is on the stage to the
-  // siblings, unless they already all carry exactly this.
   const canApplyToFamily =
     !whole && family.items.length > 1 && draft != null && (dirty || overlaysDiffer(family.items));
   const mappedTargetIds = targets.filter((t) => t.mapping).map((t) => t.id);
@@ -487,8 +427,6 @@ function OverlayStage({
     const start = drag.current;
     const rect = svgRef.current?.getBoundingClientRect();
     if (!start || !rect || rect.width === 0) return;
-    // Pointer pixels → viewBox units; the stage keeps the 664×374 aspect so one
-    // ratio covers both axes.
     const k = (VIEW_W + PAD_X * 2) / rect.width;
     setX(clamp(Math.round(start.x + (e.clientX - start.px) * k), -OFFSET_LIMIT, OFFSET_LIMIT));
     setY(clamp(Math.round(start.y + (e.clientY - start.py) * k), -OFFSET_LIMIT, OFFSET_LIMIT));
@@ -499,7 +437,6 @@ function OverlayStage({
     setDragging(false);
   }, []);
 
-  /** Arrow keys nudge the fit (Shift = 10 units) — dragging cannot be the only input. */
   const onKeyDown = (e: React.KeyboardEvent<SVGSVGElement>) => {
     const step = e.shiftKey ? 10 : 1;
     const move: Record<string, [number, number]> = {
@@ -664,9 +601,6 @@ function OverlayStage({
               <clipPath id={clipId}>
                 <path d={path} />
               </clipPath>
-              {/* Everything except the silhouette, so the ghost cannot paint
-                  inside it — an asset with alpha would otherwise show ghost
-                  content the configurator never renders. */}
               <mask id={maskId}>
                 <rect
                   x={-PAD_X}
@@ -679,11 +613,9 @@ function OverlayStage({
               </mask>
             </defs>
             <path d={path} fill="none" />
-            {/* Color overlay: the configurator fills the silhouette itself. */}
             {mode === "color" && <path d={path} fill={previewColor} />}
             {url && (
               <>
-                {/* Ghost of the discarded part only — masked out of the silhouette. */}
                 <image
                   href={url}
                   mask={`url(#${maskId})`}
@@ -697,7 +629,6 @@ function OverlayStage({
                   preserveAspectRatio="xMidYMid slice"
                   {...frame}
                 />
-                {/* Where the image actually sits, including the part the clip hides. */}
                 <rect
                   {...frame}
                   fill="none"

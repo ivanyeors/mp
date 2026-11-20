@@ -1,7 +1,3 @@
-/**
- * Slice 05 self-check: Pre-order trigger + waiting i18n + CTA wiring.
- * Run: npx tsx lib/configurator/pre-order-trigger.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
@@ -12,7 +8,6 @@ import {
   preOrderWaitingCopy,
 } from "./pre-order-trigger";
 
-// --- Pure trigger ---
 assert.deepEqual(
   isPreOrder({ preferenceStocks: [0], composedBuildable: 5 }),
   { isPreOrder: true },
@@ -51,7 +46,6 @@ assert.equal(preferenceStockFor(null, [{ item_id: 1, stock_available: 0 }]), nul
 assert.equal(preferenceStockFor(1, [{ item_id: 1, stock_available: 3 }]), 3);
 assert.equal(preferenceStockFor(9, [{ item_id: 1, stock_available: 0 }]), null);
 
-// --- Waiting i18n ---
 const en = preOrderWaitingCopy("en-US");
 const zh = preOrderWaitingCopy("zh-CN");
 assert.match(en.title, /Pre-order/i);
@@ -64,7 +58,6 @@ assert.match(zh.body, /登录|登入/);
 assert.match(zh.body, /Result/);
 assert.notEqual(en.body, zh.body);
 
-// --- Configurator wiring ---
 const mp = readFileSync("app/[lang]/mp-config/mp-config-client.tsx", "utf8");
 const bolster = readFileSync(
   "app/[lang]/mbolster-config/mbolster-config-client.tsx",

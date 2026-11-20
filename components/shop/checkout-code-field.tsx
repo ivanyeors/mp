@@ -10,18 +10,10 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   status: CheckoutCodeStatus;
-  /** Money as the surrounding page writes it. */
   formatAmount: (amount: number) => string;
-  /** Status text size: the shop form uses `text-xs`, the configurator `text-sm`. */
   textClassName?: string;
 };
 
-/**
- * The one optional code at checkout (ADR 0033): a partner's referral code or a
- * discount code. Either kind says it is active once accepted; a discount, or a
- * partner's code that carries one (ADR 0034), also says what it takes off, and
- * the page's total moves with it.
- */
 export function CheckoutCodeField({
   id,
   value,

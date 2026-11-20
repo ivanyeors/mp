@@ -1,32 +1,11 @@
-/**
- * The owner's Google Form export of in-store fittings (Google Sheets → File →
- * Download → CSV, or Forms → Responses → Download), read in the browser and
- * read again on the server (ADR 0042).
- *
- * Pure: no Node or Supabase imports, so the Admin Panel page and the server
- * actions run the same code.
- *
- *  - `parseFittingFormCsv` matches the header row to the form's questions and
- *    returns each row's cells. A column it does not know is kept under its
- *    header, so a later version of the form loses nothing.
- *  - `normaliseFittingRow` turns one row into the Fitting record an import
- *    would write, or the reason it cannot be imported, and names each repair.
- *    A cell that cannot be read into its typed column is kept, as typed, in
- *    `other_answers` under its header.
- */
 import { parseCsv } from "@/lib/csv";
 import { normalizePhone } from "@/lib/appointments/phone";
 
-// ─── Columns ─────────────────────────────────────────────────────────────────
-
 type ColumnSpec = {
-  /** The question titles this column has had, compared after `headerKey`. */
   readonly headers: readonly string[];
-  /** A looser test, tried only on headers no field claimed exactly. */
   readonly loose?: RegExp;
 };
 
-/** Every question the import reads into a typed column, keyed by the raw row's field name. */
 export const FORM_COLUMNS = {
   timestamp: { headers: ["Timestamp"] },
   name: { headers: ["Name", "Full name", "Customer name"] },
@@ -62,11 +41,9 @@ export const FORM_COLUMNS = {
 export type FormField = keyof typeof FORM_COLUMNS;
 export const FORM_FIELDS = Object.keys(FORM_COLUMNS) as FormField[];
 
-/** Columns whose cells are Drive links, in the order the card shows them. */
 export const DRIVE_FIELDS = ["backPhoto", "sidePhoto", "backSleepPreview", "sideSleepPreview", "customisationForm"] as const;
 export type DriveField = (typeof DRIVE_FIELDS)[number];
 
-/** The `slot` a Drive file is stored under (`customer_fittings.drive_files`). */
 export const DRIVE_SLOTS = {
   backPhoto: "back_photo",
   sidePhoto: "side_photo",
@@ -76,34 +53,21 @@ export const DRIVE_SLOTS = {
 } as const satisfies Record<DriveField, string>;
 export type DriveSlot = (typeof DRIVE_SLOTS)[DriveField];
 
-/**
- * One data row as the file had it. `cells` holds the known columns, `other`
- * every other column under its header as the file wrote it. Empty cells are
- * left out of both. `fileRow` is where `parseFittingFormCsv` found it among
- * the file's data rows (0-based), for the page: rows are imported in
- * `importOrder`, not file order. The server never reads it.
- */
 export type FormRawRow = { cells: Partial<Record<FormField, string>>; other: Record<string, string>; fileRow?: number };
 
 export type FormHeaderCheck = {
-  /** The file can be imported: it has a Timestamp, and an Email or a Mobile column. */
   ok: boolean;
-  /** What stops it, in words for the page. */
   problems: string[];
-  /** Known questions the file lacks: a note, not an error. */
   missing: string[];
-  /** Headers kept as other answers, as the file wrote them. */
   other: string[];
 };
 
 export type ParsedFittingForm = { header: FormHeaderCheck; rows: FormRawRow[] };
 
-/** Any cell: strip a UTF-8 BOM, a leading `'` a spreadsheet adds, and the ends. */
 export function cleanCell(value: string | null | undefined): string {
   return (value ?? "").replace(/^﻿/, "").trim().replace(/^'/, "").trim();
 }
 
-/** A header as compared: lowercase, plain spaces and apostrophes, no trailing colon. */
 export function headerKey(header: string): string {
   return cleanCell(header)
     .toLowerCase()
@@ -120,7 +84,6 @@ export function parseFittingFormCsv(text: string): ParsedFittingForm {
 
   const index = new Map<FormField, number>();
   const used = new Set<number>();
-  // Exact titles first, so a loose test never takes a column another field names.
   for (const field of FORM_FIELDS) {
     const wanted = new Set(FORM_COLUMNS[field].headers.map(headerKey));
     const at = keys.findIndex((k, i) => !used.has(i) && wanted.has(k));
@@ -140,7 +103,6 @@ export function parseFittingFormCsv(text: string): ParsedFittingForm {
     }
   }
 
-  // Other columns, named as the file wrote them; a repeated title gets a number.
   const otherNames = new Map<number, string>();
   const seen = new Map<string, number>();
   header.forEach((h, i) => {
@@ -180,29 +142,14 @@ export function parseFittingFormCsv(text: string): ParsedFittingForm {
   };
 }
 
-/**
- * The order a file's rows are previewed and imported in (ADR 0042 c): every
- * row with a usable email first, then the rest, each kept in file order. One
- * person's visits are often a mix, a visit noted with only a mobile and
- * another with an email too; this way the mobile-only visit finds the
- * Customer the email creates, wherever it sits in the file.
- */
 export function importOrder(rows: readonly FormRawRow[]): FormRawRow[] {
   const withEmail = rows.filter((r) => usableEmail(r.cells.email) !== null);
   return [...withEmail, ...rows.filter((r) => usableEmail(r.cells.email) === null)];
 }
 
-// ─── Timestamps ──────────────────────────────────────────────────────────────
-
-/** Month first (Google Sheets in the US locale, the sample's) or day first. */
 export type DateOrder = "mdy" | "dmy";
 
-/**
- * Mpillow's time zone. A form timestamp carries none; Singapore has had no
- * daylight saving since 1982, so the offset is fixed.
- */
 export const FORM_UTC_OFFSET = "+08:00";
-/** No fitting predates the studio, and none is in the future. */
 export const EARLIEST_FITTING = "2015-01-01T00:00:00Z";
 
 const SLASHED = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})(?:[\sT,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap]\.?m\.?)?)?$/i;
@@ -236,16 +183,11 @@ function toIso(
   return Number.isNaN(at.getTime()) ? null : at.toISOString();
 }
 
-/** The two numbers before the year, for telling the date order from the file. */
 export function slashedParts(cell: string): [number, number] | null {
   const m = SLASHED.exec(cleanCell(cell));
   return m ? [Number(m[1]), Number(m[2])] : null;
 }
 
-/**
- * A form timestamp as an ISO instant (UTC), or null when it is not one.
- * Read as Singapore time unless it names its own offset.
- */
 export function parseFormTimestamp(cell: string | undefined, order: DateOrder): string | null {
   const s = cleanCell(cell);
   if (!s) return null;
@@ -270,13 +212,10 @@ export function parseFormTimestamp(cell: string | undefined, order: DateOrder): 
 }
 
 export type DateOrderReading = {
-  /** The order the file proves, or null when every date fits both. */
   proven: DateOrder | null;
-  /** Some dates only fit month first and others only day first. */
   conflict: boolean;
 };
 
-/** What the file's own dates say about their order. */
 export function readDateOrder(rows: readonly FormRawRow[]): DateOrderReading {
   let mdy = false;
   let dmy = false;
@@ -290,15 +229,8 @@ export function readDateOrder(rows: readonly FormRawRow[]): DateOrderReading {
   return { proven: mdy ? "mdy" : dmy ? "dmy" : null, conflict: false };
 }
 
-// ─── Normalisation ───────────────────────────────────────────────────────────
-
-/** Why a row cannot be imported at all, decided from the row alone. */
 export type RowInvalidReason = "no_timestamp" | "no_contact";
 
-/**
- * Something the import read differently from the form, or left out of a
- * typed column. Each one keeps the cell as typed in `other_answers`.
- */
 export type RowRepair =
   | "email_invalid"
   | "mobile_unusable"
@@ -309,7 +241,6 @@ export type RowRepair =
 
 export type DriveFileRef = { slot: DriveSlot; file_id: string };
 
-/** What an import writes for one row, in `customer_fittings` columns. */
 export type FittingColumns = {
   fitted_at: string;
   name_on_form: string | null;
@@ -340,11 +271,8 @@ export type FittingColumns = {
 };
 
 export type NormalisedFitting = {
-  /** The row's identity across exports (ADR 0042 d): its time and contact. */
   key: string;
-  /** Lowercased, or null when the form has no usable one. */
   email: string | null;
-  /** E.164, or null. */
   phone: string | null;
   name: string | null;
   fitting: FittingColumns;
@@ -354,33 +282,24 @@ export type NormaliseResult =
   | { ok: true; row: NormalisedFitting; repairs: RowRepair[] }
   | { ok: false; reason: RowInvalidReason };
 
-/** The same shape checkout and the Shopify import accept. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** An Email cell lowercased, or null when it is not one an import can use. */
 export function usableEmail(cell: string | undefined): string | null {
   const e = cell?.toLowerCase() ?? "";
   return e && e.length <= 254 && EMAIL_RE.test(e) ? e : null;
 }
 
-/**
- * A name as two records of one person are compared (ADR 0042 c): lowercase,
- * single spaces, no ends. `public.fitting_name_key` is the SQL twin.
- */
 export function nameKey(name: string | null | undefined): string | null {
   const k = (name ?? "").replace(/\s+/g, " ").trim().toLowerCase();
   return k || null;
 }
-/** The columns' CHECK limits (20261101100000_customer_fittings.sql). */
 const LIMITS = { name: 200, short: 40, code: 80, text: 200, notes: 5000 } as const;
 const MAX_MEASUREMENT_IN = 99;
 const MAX_SYMPTOMS = 30;
 const MAX_DRIVE_FILES = 50;
 
-/** The header a field's cell is kept under when it cannot be read. */
 const label = (field: FormField) => FORM_COLUMNS[field].headers[0];
 
-/** Inches: `18`, `2.5`, `18 in`, `18"`, `2 1/2`, `1/2`. Null when not a number in range. */
 export function parseInches(cell: string): number | null {
   const s = cell
     .toLowerCase()
@@ -396,7 +315,6 @@ export function parseInches(cell: string): number | null {
   return Math.round(n * 100) / 100;
 }
 
-/** Yes / No, as a form answers it. Null when it is neither. */
 export function parseYesNo(cell: string): boolean | null {
   const s = cell.trim().toLowerCase();
   if (["yes", "y", "true"].includes(s)) return true;
@@ -404,7 +322,6 @@ export function parseYesNo(cell: string): boolean | null {
   return null;
 }
 
-/** Drive file ids in a cell: one link, or several a multi-file question joins with commas. */
 export function driveFileIds(cell: string): string[] {
   const ids: string[] = [];
   for (const m of cell.matchAll(/(?:[?&]id=|\/d\/)([A-Za-z0-9_-]{10,})/g)) {
@@ -413,7 +330,6 @@ export function driveFileIds(cell: string): string[] {
   return ids;
 }
 
-/** A checkbox answer: Google Forms joins the ticked options with ", ". */
 export function splitAnswers(cell: string): string[] {
   const out: string[] = [];
   for (const part of cell.split(/,\s+|\n/)) {

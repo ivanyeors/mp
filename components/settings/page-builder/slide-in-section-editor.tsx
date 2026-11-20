@@ -36,7 +36,6 @@ const LOCALE_LABELS: Record<Locale, string> = { "en-US": "EN", "zh-CN": "中文"
 
 type Copy = Record<string, unknown>;
 
-/** Key-order-independent stringify, for comparing local state against a jsonb row. */
 function stableStringify(value: unknown): string {
   return JSON.stringify(value ?? {}, (_key, v) =>
     v && typeof v === "object" && !Array.isArray(v)
@@ -53,7 +52,6 @@ function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-/** Drop empty copy and media so "cleared" means "back to the default", and storage stays small. */
 function normalise(content: SlideInSectionContent): SlideInSectionContent {
   const out: SlideInSectionContent = {};
   const copy: NonNullable<SlideInSectionContent["copy"]> = {};
@@ -122,7 +120,6 @@ function move<T>(items: T[], from: number, to: number): T[] {
   return next;
 }
 
-/** "Showing the built-in …" with a button to start editing from it. */
 function SeedPrompt({ summary, onSeed, action }: { summary: string; onSeed: () => void; action: string }) {
   return (
     <div className="space-y-2 rounded-lg border border-dashed p-3">
@@ -430,13 +427,6 @@ interface SlideInSectionEditorProps {
   onDirtyChange?: (dirty: boolean) => void;
 }
 
-/**
- * The inspector for one **Slide-in section** of a sub page (or its sheet header).
- *
- * Copy is edited one language at a time and stored per language, so an English edit
- * never appears on the Chinese page; an empty field shows the built-in copy as its
- * placeholder and keeps it. Images and video are shared by both languages.
- */
 export function SlideInSectionEditor({ page, section, onSaved, onCancel, onDirtyChange }: SlideInSectionEditorProps) {
   const [content, setContent] = useState<SlideInSectionContent>(() => structuredClone(section.content ?? {}));
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);

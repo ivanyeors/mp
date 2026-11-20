@@ -18,22 +18,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Re-send the priced "final build ready" email and hand Staff the customer's
- * tokenised status URL to paste into WhatsApp.
- *
- * The price is recomputed through `priceResult()` inside `loadAssignedBuild`,
- * exactly as assign computed it — Staff never supply an amount, and this route
- * accepts no body at all.
- *
- * It then STORES that number. The email and the Result used to be able to
- * disagree: Staff re-configure a build (`/api/results/[id]/reconfigure`) or
- * Costings moves, the email quotes the fresh total, and Accept charges the
- * stale `final_amount` still on the row. Writing it here means "resend the
- * payment request" re-quotes and re-prices the same build in one action.
- * Idempotent — a second press recomputes the same total — and guarded on the
- * assigned, order-less state, so a Result mid-payment is never repriced.
- */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -71,9 +55,6 @@ export async function POST(
   const build = await loadAssignedBuild(admin, row);
   if (!build.ok) return NextResponse.json({ error: build.error }, { status: 400 });
 
-  // Re-quoting and re-pricing are one action: the number in the email is the
-  // number Accept charges. Guarded on the state the checks above saw, so a
-  // Result that accepted in between keeps the amount it is paying.
   let repriced: "unchanged" | "updated" | "skipped" = "unchanged";
   const storedFinal = row.final_amount != null ? Number(row.final_amount) : null;
   if (storedFinal == null || Math.abs(storedFinal - build.pricing.total) >= 0.005) {
@@ -126,27 +107,10 @@ export async function POST(
       tax: build.pricing.tax,
       total: build.pricing.total,
       currency: row.currency ?? "SGD",
-      // A quote with no card behind it is no hold: the whole total is due.
       authorized: row.authorized_amount != null && row.payment_intent_id ? Number(row.authorized_amount) : null,
     },
   };
 
-  // Which of two emails, on one question: has the price moved since the
-  // customer was last told?
-  //
-  // Unchanged is the ordinary case — Staff press this because the customer lost
-  // the email, or to get the link for WhatsApp — and there "Your final build is
-  // ready" is exactly right, a faithful re-send.
-  //
-  // Repriced is not a re-send. Staff have re-configured the build
-  // (`/reconfigure`), and a second copy of the same announcement carrying a
-  // different total would leave the customer with two identical subjects, two
-  // numbers and no way to tell which is current. That gets its own template,
-  // which names the change and what it does to their card.
-  //
-  // A Result still awaiting the customer's finish is never "repriced": its
-  // price is a floor, not a total, until they choose cover, case and shipping
-  // (ADR 0017), so it keeps the "choose your finish" voice whatever moved.
   const needsFinish = needsCustomerFinish(row);
   const rendered =
     repriced === "updated" && !needsFinish
@@ -173,7 +137,6 @@ export async function POST(
     emailStatus,
     statusUrl: link,
     repriced,
-    /** Which template went out, so the Admin Panel can say so honestly. */
     emailTemplate: repriced === "updated" && !needsFinish ? "updated" : "assigned",
     finalAmount: build.pricing.total,
     currency: row.currency ?? "SGD",

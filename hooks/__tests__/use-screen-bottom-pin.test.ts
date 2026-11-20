@@ -16,7 +16,6 @@ describe("screenPinOffset", () => {
   });
 
   it("moves the bar down by the stuck offset (iOS after the keyboard), rounded", () => {
-    // The recording: an iPhone Pro Max, the bar ~345px up the screen.
     expect(screenPinOffset({ offsetTop: 345.4, scale: 1 })).toBe(345);
   });
 
@@ -92,7 +91,6 @@ describe("pinToScreenBottom", () => {
     viewport.dispatchEvent(new Event("scroll"));
     expect(props.get(SCREEN_PIN_OFFSET_VAR)).toBe("120px");
 
-    // Caught on the page's own scroll too.
     viewport.offsetTop = 345;
     win.dispatchEvent(new Event("scroll"));
     expect(props.get(SCREEN_PIN_OFFSET_VAR)).toBe("345px");

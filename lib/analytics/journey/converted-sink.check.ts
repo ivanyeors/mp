@@ -1,7 +1,3 @@
-/**
- * Slice 10 — Converted sink + Include converted + last-touch attribution.
- * Run: npx tsx lib/analytics/journey/converted-sink.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -19,12 +15,10 @@ import { buildPageTransitions } from "./transitions";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-// --- Prospect cohort excludes paid Visits ---
 assert.equal(isProspectVisit(null), true);
 assert.equal(isProspectVisit(""), true);
 assert.equal(isProspectVisit("order-1"), false);
 
-// --- Last-touch Entry source on the paying Visit (story 50) ---
 assert.equal(entrySourceForConversion({ entry_source: "instagram" }), "instagram");
 assert.equal(entrySourceForConversion({ entry_source: null }), "Direct");
 assert.equal(entrySourceForConversion({ entry_source: "  " }), "Direct");
@@ -74,7 +68,6 @@ assert.equal(paid.orderValue, 299);
 assert.equal(paid.journeyDurationMs, 3_600_000);
 assert.deepEqual(paid.shortPath, ["/", "/shop", "/checkout"]);
 
-// --- Converted sink attaches from last-touch pages ---
 const { nodes: pageNodes, edges: pageEdges } = buildPageTransitions([
   { visitId: "v1", path: "/shop", occurredAt: "2026-07-15T10:00:00.000Z" },
 ]);
@@ -87,7 +80,6 @@ assert.ok(
   withConverted.edges.some((e) => e.from === "/checkout" && e.to === CONVERTED_NODE && e.count === 1),
 );
 
-// --- Detail panel aggregates entry source + value + duration + path ---
 const detail = buildConvertedSinkDetail(records.filter((r) => r.visitId === "v-pay"));
 assert.equal(detail.count, 1);
 assert.equal(detail.totalValue, 299);
@@ -95,7 +87,6 @@ assert.deepEqual(detail.byEntrySource, [{ entrySource: "instagram", count: 1, to
 assert.equal(detail.samples[0]!.journeyDurationMs, 3_600_000);
 assert.deepEqual(detail.samples[0]!.shortPath, ["/", "/shop", "/checkout"]);
 
-// --- UI + actions wire Include converted toggle (default off) ---
 const card = readFileSync(
   join(root, "app/[lang]/settings/analytics/ProspectJourneyCard.tsx"),
   "utf8",

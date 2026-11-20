@@ -54,11 +54,6 @@ const NAV_ITEMS: NavItem[] = [
 
 type AuthStatus = "checking" | "authed" | "unauth";
 
-/**
- * Pages that render without the shell and without the sign-in redirect:
- * sign-in itself, and the welcome page a Claim link opens (migration slice 06),
- * which a signed-out visitor must reach with its `?c=` intact.
- */
 const BARE_ROUTES = new Set(["/account/login", "/account/welcome"]);
 
 function isResultsRoute(basePathname: string): boolean {
@@ -125,11 +120,6 @@ function buildCrumbs(basePathname: string): Array<{ label: string; href?: string
   return crumbs;
 }
 
-/**
- * Customer account shell — same sidebar + inset pattern as settings.
- * Always requires auth, except on the bare routes below. Results guests are
- * handled by the server results layout, which omits this shell entirely.
- */
 export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
@@ -165,8 +155,6 @@ export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
     }
   }, [status, isLoginRoute]);
 
-  // Login and welcome: no shell. Stable tree — never flip between shell and bare children
-  // for the same route (that caused "Rendered more hooks" in the App Router).
   if (isLoginRoute) {
     return <>{children}</>;
   }
@@ -249,7 +237,6 @@ export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
               </Link>
             </Button>
           </header>
-          {/* pb clears the marketing dock that still shows on account routes */}
           <div className="px-4 py-6 pb-[calc(1.5rem+var(--app-dock-clearance))] sm:px-6 md:px-8 md:py-8 md:pb-28 lg:px-10 lg:py-10">
             {children}
           </div>

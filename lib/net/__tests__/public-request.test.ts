@@ -2,14 +2,6 @@ import type { LookupAddress } from "node:dns";
 import { describe, expect, it } from "vitest";
 import { isPublicAddress, NotPublicAddressError, publicHttpsUrl, publicLookup, publicRequest, type Lookup } from "../public-request";
 
-/**
- * A request to an address someone typed reaches the public internet and
- * nothing else (PRD-campaign-email-editor slice 11): https on the default
- * port, a public host, every address its name resolves to public, checked by
- * the lookup the connection itself makes. None of these tests leaves the
- * machine: every refusal happens before a socket would connect.
- */
-
 describe("isPublicAddress", () => {
   it("refuses this host, private networks, link-local, carrier NAT, documentation and reserved ranges", () => {
     for (const ip of [
@@ -73,7 +65,6 @@ describe("publicHttpsUrl", () => {
   });
 });
 
-/** A fake resolver: each name's addresses. */
 const resolver =
   (names: Record<string, string[]>): Lookup =>
   (hostname, _options, callback) => {

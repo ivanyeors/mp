@@ -67,7 +67,6 @@ function emptyLabels() {
   return { "en-US": "", "zh-CN": "" };
 }
 
-/** The `/api/settings/forms/discovery-source` payload the page mounts with. */
 export type FormsInitialData = { ok: true; catalog: DiscoverySourceCatalog };
 
 export default function FormsSettingsPage({
@@ -79,7 +78,6 @@ export default function FormsSettingsPage({
     initialData?.catalog?.options ?? [],
   );
   const [loading, setLoading] = useState(!initialData);
-  // The server already loaded the catalog; saves and rollbacks still refetch.
   const skipFirstFetch = useRef(initialData != null);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -197,7 +195,6 @@ export default function FormsSettingsPage({
   const editable = options.filter((o) => o.id !== OTHER_DISCOVERY_SOURCE_ID);
   const other = options.find((o) => o.id === OTHER_DISCOVERY_SOURCE_ID);
 
-  // Only `editable` is sortable, so "Other" keeps its always-last slot on a drop too.
   const handleDragEnd = (event: SortableDragEndEvent) => {
     const next = sortableMove(editable, event, (o) => o.id);
     if (next) void save(other ? [...next, other] : next);
@@ -351,7 +348,6 @@ export default function FormsSettingsPage({
                                 <ArchiveRestore className="h-4 w-4" />
                               )}
                             </button>
-                            {/* Phones: the whole name line opens the labels, at 44px. */}
                             <CollapsibleTrigger asChild>
                               <button
                                 type="button"

@@ -30,13 +30,6 @@ import {
   subjectsAnswer,
 } from "./ai-refine-fixtures";
 
-/**
- * ✨ Refine's call (PRD-campaign-email-editor slice 10), against a fake
- * client: the request it sends at the quick actions effort, the ideas that
- * pass the guardrails, a rewrite that keeps every link and Variable of its
- * original, the one retry, and how a refusal, a cut-off answer and Stop end it.
- */
-
 async function run(answers: FakeAnswer[], b: RefineBrief, { settings = AI_WRITING_DEFAULTS, signal }: { settings?: AiWritingSettings; signal?: AbortSignal } = {}) {
   const fake = fakeClaude(answers);
   const outcome = await runCampaignRefine(b, { client: fake.client, settings, signal });
@@ -144,7 +137,6 @@ describe("subject and preview line ideas", () => {
     expect(calls).toHaveLength(2);
     expect(userMessage(calls[1])).toMatch(/was refused, for these reasons[\s\S]*"Save 20% this December" has a percentage/);
     expect(outcome.result).toEqual({ kind: "subjects", ideas: ["The FibreCool cover is back", ...FIVE_SUBJECTS.filter((s) => s !== "The FibreCool cover is back")].slice(0, 5) });
-    // Both attempts are paid for.
     expect(outcome).toMatchObject({ attempts: 2, inputTokens: 6000 });
   });
 
@@ -234,7 +226,6 @@ describe("rewriting a block", () => {
     const warmer = rewrite({ action: "warmer", block: TITLE });
     const echo = await run([{ text: JSON.stringify({ text: TITLE.text }) }], warmer);
     expect(userMessage(echo.calls[1])).toContain("it is the same as the original");
-    // Fixing the grammar of words that need none changes nothing, and that's an answer.
     const grammar = await run([{ text: JSON.stringify({ text: "{first_name}, sleep cooler this December" }) }], rewrite({ action: "fix_grammar", block: TITLE }));
     expect(grammar.outcome).toMatchObject({ ok: true, attempts: 1 });
   });

@@ -2,12 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { summariseDropOffs, type DropOffRow } from "@/lib/analytics/drop-off/store";
 
-/**
- * PRD-crm-retention-loop slice 10: *Why people leave* on Analytics. Every
- * number is written out beside its bar, typed answers are shown to Staff,
- * and an empty window says where the question is asked.
- */
-
 vi.mock("../drop-off-actions", () => ({ getDropOffReasons: vi.fn(async () => null) }));
 const { DropOffReasonsCard } = await import("../DropOffReasonsCard");
 

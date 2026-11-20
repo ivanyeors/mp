@@ -1,16 +1,3 @@
-/**
- * What Claude may write in a campaign, checked in code as well as asked for
- * in the prompt (PRD-campaign-email-editor *AI guardrails*, slice 09), as
- * `checkReplyText` checks a review reply. Pure. Slice 10 checks its subject
- * and preview line ideas and its rewrites here, and slice 17 its translations.
- *
- * A draft may say only what the facts (lib/ai/mpillow-facts.ts) and the
- * staff member's own words say. So a price, a percentage, an offer, a code, a
- * date, a number, a guarantee or a deadline counts only when it appears word
- * for word in what Staff typed (or in the facts). Some things are never
- * Claude's to write, whatever the brief says: a link or an address, a health
- * claim, a request for a review, and Shopify.
- */
 import { MPILLOW_ABOUT, MPILLOW_FACTS } from "@/lib/ai/mpillow-facts";
 import { checkBannedClinical, checkBannedClinicalZh } from "@/lib/i18n/copy-bands";
 import type { RewritableBlock } from "./ai-refine-brief";
@@ -19,26 +6,17 @@ import { contentWords, paragraphRuns, type EmailBlock, type Run } from "./conten
 import { isVariableKey } from "./variables";
 
 export interface GuardrailContext {
-  /** Everything Staff typed for this draft: the subject, the campaign name, the brief, the picked products' names, the email's own words. */
   staffText: string;
-  /** Points are live: the email may mention them (`pointsCheck`'s rule). */
   pointsLive: boolean;
-  /**
-   * The words being rewritten or translated (slices 10 and 17), when there
-   * are some: a web or email address they hold is Staff's, so it may stay as
-   * written. Claude adds none, and a draft keeps none, whatever the brief says.
-   */
   source?: string;
 }
 
 const squash = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
-/** What a draft may repeat: Staff's words and the facts. */
 const allowedText = (ctx: GuardrailContext) => squash([ctx.staffText, MPILLOW_ABOUT, ...MPILLOW_FACTS].join("\n"));
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** `words` appear in `allowed` whole: "10" is in "a 10-year warranty", "1" is not. */
 function typedIn(allowed: string, words: string): boolean {
   const w = squash(words);
   const start = /^[\p{L}\p{N}]/u.test(w) ? "(?<![\\p{L}\\p{N}])" : "";
@@ -48,9 +26,7 @@ function typedIn(allowed: string, words: string): boolean {
 
 interface Check {
   pattern: RegExp;
-  /** Allowed when Staff typed the same words (or the facts say them). */
   unlessTyped: boolean;
-  /** A web or email address: allowed only where the words rewritten or translated hold it (`source`). */
   address?: true;
   why: (match: string) => string;
 }
@@ -60,8 +36,6 @@ const healthClaim = (m: string) => `makes a health claim ("${m}"): write about c
 const MONTHS = "january|february|march|april|june|july|august|september|october|november|december";
 const DAYS = "monday|tuesday|wednesday|thursday|friday|saturday|sunday";
 
-// Kinds of words a draft may use only when Staff did: what a translation may use only when its English does (slice 17).
-// An offer: its words, a code, a gift with a purchase, anything free (not "feel free to", not "hassle-free"), N for M, money off, a percentage in words.
 const OFFER_WORDS =
   /\b(?:discount(?:s|ed)?|on sale|sale|vouchers?|coupons?|promo(?:tion)?s?|codes?|cashback|rebates?|deals?|gifts? with|half[- ]price|half off|buy one|(?:\d+|two|three|four) for (?:\d+|one|two|three)|\d+(?:\.\d+)? off|[a-z]+(?:-[a-z]+)? per ?cent)\b|(?<!feel |-)\bfree (?!(?:to|from|time)\b)\w+/gi;
 const URGENT_WORDS =
@@ -83,7 +57,6 @@ const CHECKS: Check[] = [
   },
   { pattern: /\b\d+(?:\.\d+)?\s?(?:%|per ?cent\b)/gi, unlessTyped: true, why: (m) => `has a percentage ("${m}") nobody typed` },
   { pattern: OFFER_WORDS, unlessTyped: true, why: (m) => `offers "${m}", which nobody typed` },
-  // A code: letters and digits in one word (COOL20, Cool15, 15OFF), or capitals after "code", "use" or "enter" (SLEEPWELL).
   { pattern: /\b(?:[a-z]+\d|\d+[a-z])[a-z\d]*\b/gi, unlessTyped: true, why: (m) => `has a code ("${m}") nobody typed` },
   { pattern: /(?<=\b(?:[Cc]odes?:?|[Uu]se|[Ee]nter|[Aa]pply)\s+)[A-Z][A-Z\d]{2,}\b/g, unlessTyped: true, why: (m) => `has a code ("${m}") nobody typed` },
   { pattern: /\b\d+(?:[.,:/-]\d+)*\b/g, unlessTyped: true, why: (m) => `has a number ("${m}") nobody gave` },
@@ -95,14 +68,12 @@ const CHECKS: Check[] = [
   },
   { pattern: URGENT_WORDS, unlessTyped: true, why: (m) => `rushes the reader ("${m}"), which the brief didn't` },
   {
-    // Beside `checkBannedClinical`'s verbs: comfort, fit and sleep, never health.
     pattern:
       /\b(?:reliev(?:e|es|ed|ing)|relief|pains?|aches?|therap(?:y|ies|eutic|ist)|clinical(?:ly)?|doctor[- ]recommended|medical(?:ly)?|heal(?:s|ed|ing)?|treat(?:s|ed|ing|ment|ments)?|cur(?:e|es|ed|ing)|rehab(?:ilitation)?|prescri\w*)\b/gi,
     unlessTyped: false,
     why: healthClaim,
   },
   {
-    // Asked any way: leave us a review, your review, a quick review, review your pillow, rate us, rate your fitting.
     pattern:
       /\b(?:leave|write|post|give|drop|share)\b(?:\s+[\w']+){0,3}?\s+(?:reviews?|ratings?|stars?)\b|\b(?:rate|review) (?:us|your)\b|\b(?:your|a) (?:quick |short |honest )?(?:review|rating)\b|\b(?:google|5[- ]star|five[- ]star) reviews?\b|\breviews? on google\b/gi,
     unlessTyped: false,
@@ -113,10 +84,8 @@ const CHECKS: Check[] = [
   { pattern: /\{(?!first_name\})[^{}]*\}/g, unlessTyped: false, why: (m) => `uses ${m}: only {first_name} is Claude's to place` },
 ];
 
-/** At most this many reasons per piece of words: enough to fix, short enough to read. */
 const MAX_REASONS = 3;
 
-/** An address without what follows it in a sentence, or its https:// and www.: `mpillow.com/care` in "https://mpillow.com/care." or "mpillow.com/care。". */
 const asAddress = (m: string) =>
   m
     .replace(/[^!-~].*$/u, "")
@@ -124,19 +93,16 @@ const asAddress = (m: string) =>
     .toLowerCase()
     .replace(/^(?:https?:\/\/)?(?:www\.)?/, "");
 
-/** Every web and email address some words hold, as `asAddress` reads them. */
 function addressesIn(text: string): Set<string> {
   const out = new Set<string>();
   for (const check of CHECKS) if (check.address) for (const m of text.matchAll(check.pattern)) out.add(asAddress(m[0]));
   return out;
 }
 
-/** Pure — what is wrong with some words Claude wrote, as reasons; none when they pass. */
 export function wordsProblems(text: string, ctx: GuardrailContext): string[] {
   const allowed = allowedText(ctx);
   const kept = ctx.source ? addressesIn(ctx.source) : null;
   const out = new Set<string>();
-  // The landing page's check first; the list below adds the words it doesn't hold.
   const clinical = checkBannedClinical("The words", text);
   if (clinical) out.add(healthClaim(/"([^"]+)"/.exec(clinical)?.[1] ?? clinical));
   for (const check of CHECKS) {
@@ -153,7 +119,6 @@ export function wordsProblems(text: string, ctx: GuardrailContext): string[] {
   return [...out].slice(0, MAX_REASONS);
 }
 
-/** Pure — a subject line's problems: the words', and how it is written (no `Re:`, no capitals). */
 export function subjectProblems(subject: string, ctx: GuardrailContext): string[] {
   const out = wordsProblems(subject, ctx);
   if (/^\s*(?:re|fwd?|fw)\s*:/i.test(subject)) out.push('starts like a reply or a forward ("Re:", "Fwd:")');
@@ -162,41 +127,29 @@ export function subjectProblems(subject: string, ctx: GuardrailContext): string[
   return out.slice(0, MAX_REASONS);
 }
 
-/** Pure — one block's problems: every word a customer reads in it, its button labels included. */
 export function blockProblems(block: EmailBlock, ctx: GuardrailContext): string[] {
   return wordsProblems(contentWords({ v: 1, blocks: [block], fallbacks: {} }).join("\n"), ctx);
 }
 
-/** Pure — a preview line's problems (slice 10): the words', and repeating the subject it follows. */
 export function previewLineProblems(line: string, subject: string, ctx: GuardrailContext): string[] {
   const out = wordsProblems(line, ctx);
-  // Whole words only, punctuation aside: "Sleep cooler" is in "Sleep cooler, tonight", "hi" is not in "this".
   const words = (t: string) => ` ${squash(t.replace(/[^\p{L}\p{N}{}_]+/gu, " "))} `;
   if (words(subject).trim() && words(line).includes(words(subject))) out.push("repeats the subject instead of following it");
   return out.slice(0, MAX_REASONS);
 }
 
-/** A run's words, or a space for a Variable or for the original's own link words (Staff's: `mpillow.com/shop`). */
 function rewriteText(block: RewritableBlock, linkWords: ReadonlySet<string>): string {
   if (block.type === "heading") return block.text.replace(/\{([a-z_]+)\}/g, (m, k: string) => (isVariableKey(k) ? " " : m));
   const line = (runs: readonly Run[]) => runs.map((r) => ("var" in r ? " " : r.href && linkWords.has(squash(r.text)) ? " " : r.text)).join("");
   return block.paragraphs.map((p) => (p.kind === "p" ? line(p.runs) : p.items.map(line).join("\n"))).join("\n");
 }
 
-/** The words each address in a text block links, as they read: what a reason names it by. */
 function linkWordsOf(block: RewritableBlock): Map<string, string> {
   const out = new Map<string, string>();
   if (block.type === "text") for (const r of paragraphRuns(block.paragraphs)) if ("href" in r && r.href && !out.has(r.href)) out.set(r.href, r.text.trim());
   return out;
 }
 
-/**
- * Pure — what is wrong with Claude's rewrite of `original` (slice 10): it
- * keeps every link and every Variable of the original and adds none, and its
- * words pass the checks any words Claude writes pass. The original's own
- * link words, and any address its words hold, are Staff's, so they may stay
- * as they were.
- */
 export function rewriteProblems(original: RewritableBlock, rewrite: RewritableBlock, ctx: GuardrailContext): string[] {
   const out: string[] = [];
   const before = linkWordsOf(original);
@@ -211,18 +164,7 @@ export function rewriteProblems(original: RewritableBlock, rewrite: RewritableBl
   return out.slice(0, MAX_REASONS);
 }
 
-// ---------------------------------------------------------------------------
-// A translation (slice 17)
-// ---------------------------------------------------------------------------
-
-/**
- * What a 中文 translation may not say that its English does not, in Chinese:
- * each kind is refused unless the English has its kind too (`english`). A
- * health claim or a request for a review is refused whatever the English says,
- * and pain or an ache is a health claim, as `pains?|aches?` is in English.
- */
 const CHINESE_CHECKS: { pattern: RegExp; english?: RegExp; why: (match: string) => string }[] = [
-  // 痛 with the word it ends (酸痛, 颈痛), and 疼; never 痛快 (heartily) or 疼爱 (to love dearly).
   { pattern: /疼痛|止痛|医疗|理疗|疗愈|\p{Script=Han}?痛(?!快)|疼(?![痛爱])/gu, why: healthClaim },
   { pattern: /最后机会|限时|赶快|抓紧|售完即止|仅剩|不要错过|别错过|倒计时|即将结束|马上抢/g, english: URGENT_WORDS, why: (m) => `rushes the reader ("${m}"), which the English doesn't` },
   {
@@ -233,11 +175,6 @@ const CHINESE_CHECKS: { pattern: RegExp; english?: RegExp; why: (match: string) 
   { pattern: /积分/g, english: /\bpoints?\b/gi, why: () => "mentions points, which the English doesn't" },
 ];
 
-/**
- * The offers an English email can make, each as it reads when it is one: a
- * "100% cotton" cover or "a QR code" makes none. A code is written in
- * capitals and digits after "code".
- */
 const ENGLISH_OFFERS = {
   moneyOff:
     /\b(?:discount(?:s|ed)?|on sale|sale|promo(?:tion)?s?|deals?|half[- ]price|half off|special price|\d+(?:\.\d+)? off)\b|\b\d+(?:\.\d+)?\s?(?:%|per ?cent\b)\s?off\b|\bsave\b[^.!?\n]{0,20}?\d+(?:\.\d+)?\s?(?:%|per ?cent\b)/i,
@@ -251,11 +188,6 @@ const ENGLISH_OFFERS = {
 type EnglishOffer = keyof typeof ENGLISH_OFFERS;
 const ANY_OFFER = Object.keys(ENGLISH_OFFERS) as EnglishOffer[];
 
-/**
- * Each Chinese offer and the English offers it may translate: free shipping
- * only for free shipping, a code only for a code. The general words (a
- * discount, a sale, a special price) translate any offer the English makes.
- */
 const CHINESE_OFFERS: { pattern: RegExp; english: readonly EnglishOffer[] }[] = [
   { pattern: /免运费|免邮|包邮|免费送货/g, english: ["shipping"] },
   { pattern: /赠品/g, english: ["gift"] },
@@ -269,13 +201,10 @@ const CHINESE_OFFERS: { pattern: RegExp; english: readonly EnglishOffer[] }[] = 
 const CHINESE_DIGITS: Record<string, number> = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
 const digit = (c: string) => CHINESE_DIGITS[c] ?? Number(c);
 
-/** A price in tenths, in Chinese or in digits: 八折 is 80% of the price, 八五折 and 8.5折 85%, so 20% and 15% off. */
 const CHINESE_PRICE_TENTHS = /([一二两三四五六七八九\d])\.?([一二三四五六七八九\d])?折/g;
 
-/** The English has `off` per cent off, as digits: what an N折 translates. */
 const percentIn = (english: string, off: number) => new RegExp(`(?<![\\d.])${off}\\s?(?:%|per ?cent\\b)`, "i").test(english);
 
-/** The offers in some 中文 words the English doesn't make, as reasons. */
 function chineseOfferProblems(words: string, english: string): string[] {
   const out: string[] = [];
   const why = (m: string) => `offers "${m}", which the English doesn't`;
@@ -290,17 +219,6 @@ function chineseOfferProblems(words: string, english: string): string[] {
   return out;
 }
 
-/**
- * Pure — what is wrong with some 中文 words Claude translated from `english`
- * (slice 17), as reasons; none when they pass. The Chinese health words
- * (`checkBannedClinicalZh`, beside the landing page's list) and the kinds
- * above, each offer against the offer its English makes, then every check
- * any words Claude writes pass, with the English as what was typed: a
- * number, a price or a code counts only when the English has it, so a
- * translation adds no price or offer, and an address only where the English
- * has it. The Variables are checked apart (`translationProblems`): here they
- * read as spaces.
- */
 export function chineseWordsProblems(text: string, english: string): string[] {
   const words = text.replace(/\{([a-z_]+)\}/g, (m, k: string) => (isVariableKey(k) ? " " : m));
   const out = new Set<string>();

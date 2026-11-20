@@ -7,8 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Group } from "@visx/group";
-// The node types from visx, not "d3-hierarchy": Cluster hands its nodes out typed with visx's
-// own copy of @types/d3-hierarchy (still v1 in visx 4), which the top-level v3 types do not match.
 import { Cluster, hierarchy, type HierarchyPointLink, type HierarchyPointNode } from "@visx/hierarchy";
 import { LinkVertical } from "@visx/shape";
 
@@ -139,7 +137,6 @@ function wrapText(
   const normalized = String(text ?? "").trim();
   if (!normalized) return [""];
 
-  // Encourage line breaks on separators used in our labels.
   const tokens = normalized
     .replaceAll(" · ", "  ·  ")
     .replaceAll(" — ", "  —  ")
@@ -162,7 +159,6 @@ function wrapText(
     lines.push(current.join(" ").trim());
   }
 
-  // If we ran out of lines, append an ellipsis.
   if (lines.length > maxLines) {
     return lines.slice(0, maxLines);
   }
@@ -523,9 +519,7 @@ export function ProductConfigurationCard() {
     if (el) {
       try {
         el.releasePointerCapture(e.pointerId);
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
     dragRef.current = null;
   };
@@ -597,8 +591,6 @@ export function ProductConfigurationCard() {
       <CardContent className="space-y-3 px-4 sm:px-6">
         {error && <div className="text-sm text-destructive">{error}</div>}
 
-        {/* Phones: the zoom controls sit under the drawing, not over its node labels.
-            From md they float in its corner as before. */}
         <div className="relative">
           <div ref={ref} className="relative h-[520px] w-full overflow-hidden rounded-xl border bg-card">
             {loadingTemplates ? (

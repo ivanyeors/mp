@@ -2,12 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { parseCustomerFilters } from "@/lib/crm/customer-filters";
 
-/**
- * The mega filter as a page of its own (/settings/customers/filters): every
- * group laid out at once with its count, the index beside them, how many
- * customers match, and *Show N customers* back to the list with the filters.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers/filters",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -37,7 +31,6 @@ describe("the filters page", () => {
       expect(html).toContain(`id="filters-${id}"`);
       expect(html).toContain(`href="#filters-${id}"`);
     }
-    // Controls from every group, on one page.
     for (const control of ["Re-adjusted", "Ships to", "Email consent", "Account", "Mobile", "Points", "Rating"]) {
       expect(html).toContain(`aria-label="${control}"`);
     }
@@ -48,7 +41,6 @@ describe("the filters page", () => {
     expect(html).toContain("128 customers match");
     expect(html).toContain("Show 128 customers");
     expect(html).toContain('href="/en-US/settings/customers?stage=at-risk&amp;ships_to=sg&amp;emailed=over%3A30&amp;sort=spend"');
-    // The chips, and each group's count on the index and its section.
     expect(html).toContain("Ships to Singapore");
     expect(html).toContain("Not emailed in 30 days");
     expect(html).toContain("2 set");

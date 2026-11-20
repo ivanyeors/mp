@@ -7,28 +7,6 @@ import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { checkReplyText } from "@/lib/reviews/reply-rules";
 import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
 
-/**
- * Claude drafts a reply to a Google review. A review manager always sees the
- * draft in Telegram and decides; nothing here posts anything.
- *
- * One plain Messages API call — no tools, no agent loop. Claude Opus 5.5 always
- * thinks (adaptive); effort is the only dial and is set explicitly because its
- * default on this model is `medium`, not `high`. Server-side fallbacks are on:
- * if a safety classifier declines, the API retries on Anthropic's recommended
- * model inside the same call instead of returning a refusal.
- *
- * The reply type (thank-you / constructive / service recovery) is chosen from
- * the star rating in code (lib/reviews/reply-style.ts) and named in each
- * request; the system prompt defines what each type must do. Service recovery
- * always sends the customer to the staffed WhatsApp line (lib/contact.ts — the
- * sales number, never the automated appointment sender).
- *
- * The client and its credentials are the shared one (lib/ai/claude.ts), and
- * the facts about Mpillow the shared list (lib/ai/mpillow-facts.ts), which
- * campaign drafts state too (PRD-campaign-email-editor slice 09).
- */
-
-/** Kept in code, not on General → AI writing (PRD-campaign-email-editor decision 10); typed by the model list. */
 export const REVIEW_REPLY_MODEL: AiModelId = "claude-opus-5-5";
 
 export const REVIEW_REPLY_SYSTEM_PROMPT = `You write public replies, as the Mpillow team, to Google Maps reviews of ${MPILLOW_ABOUT}. A staff member reads every reply before it is posted.
@@ -78,11 +56,9 @@ export type ReviewForDraft = {
   comment: string | null;
   reviewerName: string | null;
   reviewerIsAnonymous: boolean;
-  /** Present when the review reopened after a rating change. */
   update?: { previousRating: number | null; previousReply: string | null } | null;
 };
 
-/** What Claude needs from a stored review, including why it reopened. */
 export function draftInputFor(row: GoogleReviewRow): ReviewForDraft {
   return {
     starRating: row.star_rating,
@@ -92,7 +68,6 @@ export function draftInputFor(row: GoogleReviewRow): ReviewForDraft {
     update: row.reopened_at
       ? {
           previousRating: row.reopened_from_rating,
-          // Places can't show us replies: what was marked replied is the only record.
           previousReply: row.source === "places" ? row.posted_reply : row.google_reply,
         }
       : null,
@@ -122,8 +97,6 @@ export function buildReviewPrompt(review: ReviewForDraft): string {
 
 export type DraftResult = { ok: true; reply: string; model: string } | { ok: false; error: string };
 
-// Shared with AI writing since PRD-campaign-email-editor slice 16; re-exported
-// so every caller here keeps its import.
 export { CLAUDE_NOT_CONFIGURED, claudeConfigured };
 
 export async function draftReviewReply(

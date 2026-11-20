@@ -3,8 +3,6 @@ import { authErrorMessage } from "../error-message";
 
 describe("authErrorMessage", () => {
   it("replaces the stringified-empty-body message that a GoTrue 500 produces", () => {
-    // The exact shape seen when auth.users.recovery_token was NULL: the client
-    // JSON.stringify'd an empty body and the form rendered a bare "{}".
     const text = authErrorMessage({ message: "{}", status: 500 });
     expect(text).not.toContain("{}");
     expect(text).toMatch(/went wrong/i);

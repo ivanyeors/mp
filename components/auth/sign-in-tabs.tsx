@@ -6,7 +6,6 @@ import { LoginForm } from "@/components/auth/login-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { SignInTab, SignUpConsent } from "@/lib/auth/sign-in-intent";
 
-/** This device's last tab, so Staff do not land on the Customer tab every time. */
 const LAST_TAB_KEY = "mp_sign_in_tab";
 
 function readLastTab(): SignInTab | null {
@@ -21,22 +20,9 @@ function readLastTab(): SignInTab | null {
 function rememberTab(tab: SignInTab) {
   try {
     window.localStorage.setItem(LAST_TAB_KEY, tab);
-  } catch {
-    // Private mode: the Customer tab stays the default.
-  }
+  } catch {}
 }
 
-/**
- * Sign in's two tabs (PRD-campaign-audiences slice 03): **Customer**, the
- * default, where signing in and signing up are one step; **Staff**, for the
- * Admin Panel only. Each tab is its own form with its own destination, so a
- * customer never lands in the Admin Panel and a Staff sign-in never makes a
- * Customer or records consent.
- *
- * The tab comes from the page (`?as=`, or Staff for an Admin Panel
- * destination). With neither, this device's last tab wins, so the team does
- * not have to switch every time.
- */
 export function SignInTabs({
   initialTab,
   tabFixed,
@@ -45,7 +31,6 @@ export function SignInTabs({
   error,
 }: {
   initialTab: SignInTab;
-  /** The URL chose the tab: the last tab used here does not override it. */
   tabFixed: boolean;
   customer: { nextPath: string; initialEmail: string; initialSent: boolean; consent?: SignUpConsent };
   staff: { nextPath: string; initialEmail: string };
@@ -57,7 +42,6 @@ export function SignInTabs({
     if (tabFixed || error) return;
     const last = readLastTab();
     if (last && last !== tab) setTab(last);
-    // Once, on mount.
   }, []);
 
   const change = (value: string) => {
@@ -68,9 +52,7 @@ export function SignInTabs({
       url.searchParams.set("as", next);
       url.searchParams.delete("error");
       window.history.replaceState(window.history.state, "", url);
-    } catch {
-      // The tab still changes.
-    }
+    } catch {}
   };
 
   const errorFor = (t: SignInTab) =>

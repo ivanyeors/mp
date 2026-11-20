@@ -11,7 +11,6 @@ export async function StoriesSection({
 }: {
   title: string;
   subtitle: string;
-  /** Preview mode reloads on every edit; the Places call is paid and cached, so skip it. */
   preview?: boolean;
 }) {
   let testimonials: Testimonial[] = [];

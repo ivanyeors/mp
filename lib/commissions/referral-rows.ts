@@ -1,14 +1,3 @@
-/**
- * Hub money & referrals data layer (#80). The per-referral ROW building is kept
- * as a near-pure function ({@link buildReferralRows}, no DB) so the dedupe/void
- * math is testable (#83); the loaders here do the supabase reads.
- *
- * ONE row per attributed ORDER (AC4 — the same order never appears twice, even a
- * multi-line shop order, and a Result that became an order shows only as its
- * order row). Masking is NOT applied here — rows carry the raw identity plus the
- * attribution source; the shared row component masks at render for the partner
- * hub and shows everything for the Admin Panel (AC5).
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   effectiveCommissionStatus,
@@ -19,7 +8,6 @@ import {
 } from "./index";
 import { settleDueCommissions } from "./ledger";
 
-/** A commission row as read from the ledger (only the fields the rows need). */
 export interface RawCommission {
   order_id: string | null;
   partner_id: string;
@@ -30,11 +18,9 @@ export interface RawCommission {
   release_at: string | null;
 }
 
-/** Per-order identity/attribution, read once for the orders behind the commissions. */
 export interface OrderInfo {
   id: string;
   email: string | null;
-  /** Human name — the shipping recipient on the order. */
   name: string | null;
   customer_id: string | null;
   paid_at: string | null;
@@ -45,31 +31,20 @@ export interface OrderInfo {
 export interface ReferralRow {
   orderId: string;
   partnerId: string;
-  partnerName?: string | null; // admin-only column
+  partnerName?: string | null;
   customerName: string | null;
   customerEmail: string | null;
-  /** 'assist' → full details; anything else ('typed'/'link'/null) → masked. */
   attributionSource: string | null;
   productLabel: string;
-  /** Sum of this order's NON-void commission (the earned amount). */
   amount: number;
-  /** Sum of this order's VOID commission (shown struck, AC6). */
   voidedAmount: number;
-  /** Effective status of the non-void portion; 'void' when the whole order is voided. */
   status: CommissionStatus;
-  /** ISO release date (delivered_at + window) or null when not yet delivered. */
   releaseAt: string | null;
   paidAt: string | null;
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/**
- * Group commissions by order into one row each. Void lines don't disappear —
- * they surface as `voidedAmount` (AC6). Release/status use the order's LIVE
- * delivered_at (an order delivered after the commission was held still dates the
- * countdown), falling back to the row's stored value.
- */
 export function buildReferralRows(
   commissions: RawCommission[],
   orders: Map<string, OrderInfo>,
@@ -78,7 +53,7 @@ export function buildReferralRows(
 ): ReferralRow[] {
   const byOrder = new Map<string, RawCommission[]>();
   for (const c of commissions) {
-    if (!c.order_id) continue; // a commission always has an order; guard anyway
+    if (!c.order_id) continue;
     const list = byOrder.get(c.order_id) ?? [];
     list.push(c);
     byOrder.set(c.order_id, list);
@@ -122,7 +97,6 @@ export function buildReferralRows(
     });
   }
 
-  // Newest first by paid date (nulls — unpaid/pending — last), release as tiebreak.
   rows.sort((a, b) => {
     const pa = a.paidAt ? Date.parse(a.paidAt) : -Infinity;
     const pb = b.paidAt ? Date.parse(b.paidAt) : -Infinity;
@@ -132,7 +106,6 @@ export function buildReferralRows(
   return rows;
 }
 
-/** Fetch the OrderInfo map for a set of order ids (name = shipping recipient). */
 async function loadOrderInfo(
   admin: SupabaseClient,
   orderIds: string[],
@@ -161,11 +134,6 @@ async function loadOrderInfo(
 const COMMISSION_ROW_COLUMNS =
   "order_id, partner_id, product_type, commission_amount, status, delivered_at, release_at";
 
-/**
- * Hub panel data for ONE partner: totals (AC1), the headline distinct-paid-customer
- * count + in-progress pipeline (AC3), and the per-order referral rows (AC2/AC4).
- * Settles due held→released first so totals reconcile with the live ledger.
- */
 export async function loadPartnerMoneyReferrals(
   admin: SupabaseClient,
   partnerId: string,
@@ -181,13 +149,11 @@ export async function loadPartnerMoneyReferrals(
   const [{ data: commissionData }, { data: paidOrders }, { count: pipelineCount }] =
     await Promise.all([
       admin.from("commissions").select(COMMISSION_ROW_COLUMNS).eq("partner_id", partnerId),
-      // Headline: distinct customers among attributed PAID orders.
       admin
         .from("orders")
         .select("customer_id, email")
         .eq("partner_id", partnerId)
         .not("paid_at", "is", null),
-      // Pipeline: attributed Results still in flight (not captured, no order yet).
       admin
         .from("mp_config_responses")
         .select("id", { count: "exact", head: true })
@@ -206,15 +172,11 @@ export async function loadPartnerMoneyReferrals(
   const distinct = new Set(
     (paidOrders ?? []).map((o) => (o.customer_id as string | null) ?? String(o.email ?? "").toLowerCase()),
   );
-  distinct.delete(""); // drop rows with neither id nor email
+  distinct.delete("");
 
   return { totals, headlineCustomers: distinct.size, pipelineCount: pipelineCount ?? 0, rows };
 }
 
-/**
- * Every partner's referral rows, UNMASKED, for the Admin Panel (AC5). Same
- * builder as the hub — the row component just renders with `adminView`.
- */
 export async function loadAdminReferralRows(admin: SupabaseClient): Promise<ReferralRow[]> {
   await settleDueCommissions(admin);
   const { data: commissionData } = await admin

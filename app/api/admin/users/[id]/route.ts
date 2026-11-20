@@ -14,11 +14,6 @@ const UpdateSchema = z
     message: "Nothing to update",
   });
 
-/**
- * Change a Member's role or active state. The role policy decides
- * (`lib/auth/role-policy.ts`): not yourself, Owner only by an Owner, at least
- * one active Owner, and never a role with pages the actor lacks.
- */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let ctx;
   try {
@@ -42,7 +37,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-/** Revoke an invite. Only while the Member is still Invited; an Active Member is deactivated instead. */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   let ctx;
   try {

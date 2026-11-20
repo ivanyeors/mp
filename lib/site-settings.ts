@@ -1,9 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/**
- * Fetch site-setting overrides for the given keys.
- * Returns a Record where only keys with stored overrides appear.
- */
 export async function getSiteSettings(
   keys: string[]
 ): Promise<Record<string, string>> {

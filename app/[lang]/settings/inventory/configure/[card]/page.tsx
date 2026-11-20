@@ -83,17 +83,6 @@ import {
   templateKeyLabel,
 } from "@/lib/filling-templates/keys";
 
-/**
- * The spatial editors load on demand.
- *
- * They are the heaviest things on this route — the x-ray drags in @dnd-kit and
- * the sunburst filling picker, the insert-order list drags in @dnd-kit again —
- * and none of them is reachable from the Product tab, which is where this page
- * opens. Importing them statically put that weight in the first load of a card
- * whether or not the operator ever touched Filling Config, and pushed the route
- * past its bundle budget. `ssr: false` because every one of them is an
- * interactive client editor with nothing to render on the server.
- */
 const XrayEditor = dynamic(
   () => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor),
   { ssr: false, loading: () => <EditorSkeleton className="aspect-[4/3]" /> },
@@ -119,7 +108,6 @@ const InsertOrderList = dynamic(
   { ssr: false, loading: () => <EditorSkeleton className="h-24" /> },
 );
 
-/** Placeholder that holds the editor's box so the card does not jump on load. */
 function EditorSkeleton({ className }: { className?: string }) {
   return (
     <div
@@ -134,14 +122,10 @@ type FillingTemplateRow = {
   name: string;
   notes: string | null;
   is_active: boolean;
-  /** Sections holding at least one Placement; pillow filling templates only. */
   sections?: string[];
-  /** Every size this template serves — the authority for scope, not `key`. */
   keys?: string[];
 };
 
-/** Ranked unpromoted mix (slices 09/13): fingerprint-grouped Result snapshots for this scope.
- * Pillow entries carry cell rows; bolster entries carry slot rows (own schema). */
 type UnpromotedEntry = {
   fingerprint: string;
   count: number;
@@ -149,10 +133,6 @@ type UnpromotedEntry = {
   packList: Array<{ item_id: number; count: number }>;
 };
 
-/**
- * A Filling Template edit in progress, as the autosave keeps it (`lib/editor-drafts.ts`): the fields Save
- * sends. One per template and one for a new template, per size or length, on this device.
- */
 type TemplateDraft = {
   name: string;
   notes: string;
@@ -161,7 +141,6 @@ type TemplateDraft = {
   rows: Array<PillowPlacementRow | BolsterPlacementRow>;
 };
 
-/** Where a size's (or length's) Filling Template drafts are kept: then the template id, or `new`. */
 const templateDraftScope = (kind: "pillow" | "bolster", key: string) => `template:${kind}:${key}:`;
 
 function templateDraftOf(
@@ -177,7 +156,6 @@ function templateDraftOf(
   };
 }
 
-/** The draft's own reading of the placements, as the editor holds them. */
 function draftPlacements(kind: "pillow" | "bolster", d: TemplateDraft) {
   return kind === "pillow"
     ? { placements: rowsToPillowPlacements(d.rows as PillowPlacementRow[]), bolsterMix: [] as BolsterPlacement[] }
@@ -269,12 +247,10 @@ const getItemBaseName = (item: Item): string => normalizeNameOrFallback(item.nam
 
 const getFillingDisplayLabel = (item: Item, fallbackSize?: string): string => {
   const variant = normalizeNameOrFallback(item.subtype ?? item.name, "filling");
-  // An unsized filling is cut to the card's size; an unsized accessory (the Ear Comfort Pad) is one size.
   const sizeLabel = item.size ?? (item.category === "filling" ? fallbackSize : undefined);
   return sizeLabel ? `${variant} ${sizeLabel}` : variant;
 };
 
-/** Desktop: template rail on the left, workbench on the right. Phones stay stacked. */
 const WORKBENCH_GRID =
   "lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[20rem_minmax(0,1fr)]";
 
@@ -283,7 +259,6 @@ const matchesTemplateSearch = (t: { name: string; notes: string | null }, query:
   return !q || t.name.toLowerCase().includes(q) || (t.notes ?? "").toLowerCase().includes(q);
 };
 
-// Placements sitting in one Section: the 2026-07-24 backfill, never laid out by a person.
 const isUnauthoredTemplate = (t: { sections?: string[] }) =>
   !!t.sections && !isSpatiallyAuthoredCoverage(t.sections);
 
@@ -305,7 +280,6 @@ const normalizeDbItemCategory = (row: DbItem): Item["category"] | null => {
   const rawSize = row.size?.trim();
   const upperSize = rawSize ? rawSize.toUpperCase() : null;
 
-  // Back-compat: older rows used `case` / `protector` and relied on size to differentiate.
   if (rawCategory === "case") {
     return upperSize === "BOLSTER" ? "bolster_case" : "pillow_case";
   }
@@ -313,7 +287,6 @@ const normalizeDbItemCategory = (row: DbItem): Item["category"] | null => {
     return upperSize === "BOLSTER" ? "bolster_protector" : "pillow_protector";
   }
 
-  // Current categories (already split).
   if (KNOWN_CATEGORIES.includes(rawCategory as Item["category"])) {
     return rawCategory as Item["category"];
   }
@@ -337,8 +310,6 @@ const normalizeDbItems = (rows: DbItem[]): Item[] =>
     .filter((row): row is Item => !!row);
 
 export default function ConfigureCardPage() {
-  // Card identity lives in the URL: `basic-M` / `premium-XL` (pillow kind-size)
-  // or `bolster-short|medium|long` (bolster length).
   const params = useParams<{ card: string }>();
   const [kindPart, keyPart] = (params.card ?? "").split("-");
   const selectedPillowKind: PillowKind | null =
@@ -357,7 +328,6 @@ export default function ConfigureCardPage() {
             ? ("Long (1.2m)" as const)
             : null
       : null;
-  // Filling Template edits left unsaved on this card, by template: Filling config opens on them.
   const pillowDrafts = useDraftKeys(templateDraftScope("pillow", selectedSize ?? ""));
   const bolsterDrafts = useDraftKeys(
     templateDraftScope("bolster", keyPart === "short" || keyPart === "long" ? keyPart : "medium"),
@@ -412,8 +382,6 @@ export default function ConfigureCardPage() {
   const [bolsterTemplateNotes, setBolsterTemplateNotes] = useState('');
   const [pillowDeleteOpen, setPillowDeleteOpen] = useState(false);
   const [bolsterDeleteOpen, setBolsterDeleteOpen] = useState(false);
-  // The tab picked; until one is, Filling config when a Filling Template edit was left unsaved on this card
-  // (Back, a reload, a closed app), where it is put back, else Product.
   const [pickedPillowTab, setPillowDrawerTab] = useState<"product" | "filling" | null>(null);
   const [pickedBolsterTab, setBolsterDrawerTab] = useState<"product" | "filling" | null>(null);
   const pillowDrawerTab = pickedPillowTab ?? (selectedSize && pillowDrafts.size > 0 ? "filling" : "product");
@@ -465,8 +433,6 @@ export default function ConfigureCardPage() {
     setDefaultFillingByBolster(nextBolsterDefaults);
     const next: BomByKind = makeEmptyBomByKind();
     type BomRow = { product_id: number; item_id: number; quantity: number | string };
-    // Index products once, and track each (kind,size) list's item positions, so
-    // the per-row product lookup and de-dupe are hash lookups rather than scans.
     const productById = new Map<number, Product>();
     for (const p of prods) {
       if (!productById.has(p.id)) productById.set(p.id, p);
@@ -478,7 +444,6 @@ export default function ConfigureCardPage() {
       const kind = product.kind as PillowKind;
       const size = product.size as Product["size"];
       if (kind !== "basic" && kind !== "premium") return;
-      // Defensive de-dupe: never allow the same item_id twice for one (kind,size).
       const itemId = Number(row.item_id);
       const quantity = Number(row.quantity);
       const listKey = `${kind}:${size}`;
@@ -501,7 +466,6 @@ export default function ConfigureCardPage() {
   }, []);
 
   useEffect(() => {
-    // Initial load + keep data fresh if inventory changes in another tab/page.
     loadAll();
     const onChanged = () => {
       loadAll();
@@ -574,8 +538,6 @@ export default function ConfigureCardPage() {
     load();
   }, [bolsterOpen, bolsterVariant, getBolsterTemplateKey, loadTemplates]);
 
-  // removed unused itemsBy
-
   const buildPayloadLines = (lines: BomLine[]) =>
     lines
       .map((line) => {
@@ -593,9 +555,7 @@ export default function ConfigureCardPage() {
         channel.postMessage('refresh');
         channel.close();
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const persistProductBom = async (
@@ -625,7 +585,6 @@ export default function ConfigureCardPage() {
   };
 
   const [cardColorOverrides, setCardColorOverrides] = useState<ColorOverrideRow[]>([]);
-  // Slice 02: Settings dimension overrides ride the same list response.
   const [cardDimensionOverrides, setCardDimensionOverrides] = useState<DimensionOverridesPayload | undefined>(undefined);
 
   const loadFillingTemplates = useCallback(async (kind: "pillow" | "bolster", key: string) => {
@@ -639,17 +598,12 @@ export default function ConfigureCardPage() {
     }
     const payload = await res.json().catch(() => null);
     const rows = (payload?.templates ?? []) as FillingTemplateRow[];
-    // Global per-subtype x-ray colours: lifted to the card so the editor has them
-    // before any template is opened (a new template would otherwise render on code
-    // defaults while the configurator shows Product Builder colours).
     if (payload?.colorOverrides) {
       setCardColorOverrides(payload.colorOverrides as ColorOverrideRow[]);
     }
     if (payload?.dimensionOverrides) {
       setCardDimensionOverrides(payload.dimensionOverrides as DimensionOverridesPayload);
     }
-    // Fold Section coverage and size membership onto each row so the call sites
-    // keep the same shape and only the badge and the scope strip know about them.
     const coverage = payload?.sectionCoverage as Record<number, string[]> | undefined;
     const membership = payload?.templateKeys as Record<number, string[]> | undefined;
     return rows.map((t) => ({
@@ -753,7 +707,6 @@ export default function ConfigureCardPage() {
         const message = payload?.error ?? "Couldn't save the bolster.";
         throw new Error(message);
       }
-      // If a bolster template is selected, keep it in sync with the edited lines.
       if (bolsterSelectedTemplateId !== '') {
         const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${bolsterSelectedTemplateId}`), {
           method: 'PUT',
@@ -785,8 +738,6 @@ export default function ConfigureCardPage() {
       if (!product) {
         throw new Error(`There's no active ${kind} pillow in size ${size}.`);
       }
-      // If the user is editing a saved template, persist the edits back into that template too.
-      // This matches the UX expectation that reloading the template reflects what was just saved.
       if (pillowSelectedTemplateId !== '') {
         const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${pillowSelectedTemplateId}`), {
           method: 'PUT',
@@ -816,7 +767,6 @@ export default function ConfigureCardPage() {
     }
   };
 
-  // Shared by the phone Select and the desktop rail: loading a template replaces the editor lines.
   const selectPillowTemplate = async (next: number | '') => {
     setPillowSelectedTemplateId(next);
     if (next === '' || !selectedPillowKind || !selectedSize) return;
@@ -850,7 +800,6 @@ export default function ConfigureCardPage() {
     }
   };
 
-  // Phones keep Save in a bar above the dock, so it stays in reach down a long BOM.
   const mobileSaveBar = Boolean(
     (selectedSize && selectedPillowKind && pillowDrawerTab === "product") ||
       (bolsterVariant && bolsterDrawerTab === "product"),
@@ -860,7 +809,6 @@ export default function ConfigureCardPage() {
 
   return (
     <div className={cn("space-y-6", mobileSaveBar && mobileStickyActionBarSpacerClassName)}>
-      {/* The shell breadcrumb already shows this path on a phone. */}
       <Breadcrumb className="max-md:hidden">
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -1496,9 +1444,7 @@ function FillingConfigPanel({
   settingsPath: (path: string) => string;
   loadFillingTemplates: (kind: "pillow" | "bolster", key: string) => Promise<FillingTemplateRow[]>;
   deleteTemplateById: (templateId: number) => Promise<void>;
-  /** Global per-subtype x-ray colours, owned by the card (not per-template). */
   colorOverrides: ColorOverrideRow[];
-  /** Settings dimension overrides, owned by the card the same way (slice 02). */
   dimensionOverrides?: DimensionOverridesPayload;
 }) {
   const [templates, setTemplates] = useState<FillingTemplateRow[]>([]);
@@ -1507,32 +1453,23 @@ function FillingConfigPanel({
   const [notes, setNotes] = useState("");
   const [active, setActive] = useState(true);
   const [lines, setLines] = useState<BomLine[]>([]);
-  // Spatial recipe: placements are the "where" truth; lines stay for the legacy notice.
-  // Pillow = 3×3 cells; bolster = single compartment slot list (own schema, no cap).
   const [placements, setPlacements] = useState<PillowPlacement[]>([]);
   const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [hadPlacements, setHadPlacements] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Unpromoted ranking + Promote (slices 09/13): Admin Panel only.
   const [unpromoted, setUnpromoted] = useState<UnpromotedEntry[]>([]);
   const [promoteTarget, setPromoteTarget] = useState<UnpromotedEntry | null>(null);
   const [promoteName, setPromoteName] = useState("");
   const [promoting, setPromoting] = useState(false);
-  // Desktop rail filters (Products toolbar idiom).
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [authoringFilter, setAuthoringFilter] = useState<"all" | "authored" | "unauthored">("all");
-  // Inline rename in the template list: the row being edited, and its in-flight PUT.
   const [renamingId, setRenamingId] = useState<number | "">("");
   const [renaming, setRenaming] = useState(false);
-  // Sizes the open template applies to. Always includes templateKey for a new one.
   const [scopeKeys, setScopeKeys] = useState<string[]>([templateKey]);
   const [forking, setForking] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
-  // Autosave (9-11-2026): the open template as it was loaded or last saved (`baseline`), so an edit that
-  // differs from it is kept on this device and the editor opens on it again after Back, a reload or a
-  // closed app. `restored` is when the edit put back was kept; the rail marks templates with one.
   const draftScope = templateDraftScope(kind, templateKey);
   const [baseline, setBaseline] = useState<{ id: number | ""; sig: string; data: TemplateDraft } | null>(null);
   const [restored, setRestored] = useState<number | null>(null);
@@ -1550,7 +1487,6 @@ function FillingConfigPanel({
     },
     [kind],
   );
-  /** `data` is what is saved for `id`: the autosave compares with it; a kept edit for `id` is put back over it. */
   const settleOn = useCallback(
     (id: number | "", data: TemplateDraft) => {
       const sig = JSON.stringify(data);
@@ -1579,7 +1515,6 @@ function FillingConfigPanel({
     settleOn("", templateDraftOf(kind, { name: "", notes: "", active: true, keys: [templateKey], placements: [], bolsterMix: [] }));
   }, [templateKey, kind, settleOn]);
 
-  // Opening the card: the template edited last and left unsaved opens again (a new one's is put back by resetEditor).
   const openLastDraft = useRef<(list: FillingTemplateRow[]) => void>(() => {});
 
   useEffect(() => {
@@ -1653,7 +1588,6 @@ function FillingConfigPanel({
       if (!res.ok) throw new Error(payload?.error ?? "Couldn't promote the mix.");
       setPromoteTarget(null);
       setPromoteName("");
-      // Promoted mixes match a template now: refresh both the picker and the ranking.
       setTemplates(await loadFillingTemplates(kind, templateKey));
       setUnpromoted(await fetchUnpromoted());
       toast.success("Promoted to a filling template");
@@ -1670,7 +1604,6 @@ function FillingConfigPanel({
       return;
     }
     setSelectedId(id);
-    // Nothing is kept while it loads: what is on screen is the last template's.
     setBaseline(null);
     setRestored(null);
     const meta = list.find((t) => t.id === id);
@@ -1690,7 +1623,6 @@ function FillingConfigPanel({
       if (served.length) setScopeKeys(served);
       type LineRow = { item_id: number | string; quantity: number | string };
       setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
-      // Per-kind spatial rows: bolster rows are slot-only (never pillow enums).
       let loadedPlacements: PillowPlacement[] = [];
       let loadedMix: BolsterPlacement[] = [];
       if (kind === "pillow") {
@@ -1704,7 +1636,6 @@ function FillingConfigPanel({
         setBolsterMix(loadedMix);
         setHadPlacements(placementRows.length > 0);
       }
-      // What is saved, for the autosave; an edit of it kept on this device goes back over it.
       settleOn(
         id,
         templateDraftOf(kind, {
@@ -1721,12 +1652,10 @@ function FillingConfigPanel({
     }
   };
 
-  // Per-kind spatial payload; the PUT route validates and stores per schema.
   const spatialRows = () =>
     kind === "pillow" ? pillowPlacementsToRows(placements) : bolsterPlacementsToRows(bolsterMix);
   const spatialCount = kind === "pillow" ? placements.length : bolsterMix.length;
 
-  // The autosave: what Save would send, kept on this device while it differs from what is saved.
   const draftData = useMemo(
     () => templateDraftOf(kind, { name, notes, active, keys: scopeKeys, placements, bolsterMix }),
     [kind, name, notes, active, scopeKeys, placements, bolsterMix],
@@ -1739,14 +1668,12 @@ function FillingConfigPanel({
     draftData,
     dirty,
   );
-  /** Back to what is saved: the kept edit goes. */
   const discardDraft = () => {
     if (!baseline) return;
     autosave.discard();
     applyDraft(baseline.data);
     setRestored(null);
   };
-  /** A list action (rename, Active) saved one field of the open template: what is saved now says so too. */
   const rebase = (id: number, patch: Partial<TemplateDraft>) =>
     setBaseline((b) => {
       if (!b || b.id !== id) return b;
@@ -1770,8 +1697,6 @@ function FillingConfigPanel({
         ...(nextName ? { name: nextName } : {}),
         notes: notes.trim() || undefined,
         is_active: active,
-        // Scope rides the same PUT as the recipe: an operator who widens a
-        // template and edits its cells in one pass gets one save, not two.
         keys: scopeKeys,
         placements: spatialRows(),
       }),
@@ -1794,16 +1719,12 @@ function FillingConfigPanel({
       toast.error(scope.error);
       return;
     }
-    // A new template must land where it was authored, or it would be saved
-    // straight out of the list the operator is looking at.
     if (selectedId === "" && !scope.keys.includes(templateKey)) {
       toast.error(`A new filling template must apply to ${templateKeyLabel(kind, templateKey)}.`);
       return;
     }
-    // Slice 04 / 09: a cell that cannot close, or a bolster that cannot fit, is a confirm, never a block (ADR 0019).
     if (kind === "pillow" && !confirmSaveWithOverCells(fit, "Save")) return;
     if (kind === "bolster" && !confirmSaveWithBolsterFit(bolsterFit, "Save")) return;
-    // What this save sends: once it lands it is what is saved, and the kept edit has done its job.
     const sent = draftData;
     const saved = (id: number) => {
       autosave.discard();
@@ -1813,11 +1734,6 @@ function FillingConfigPanel({
     setSaving(true);
     setDeleteConfirm(false);
     try {
-      // Spatial save of the OPEN template: PUT placements (plus the name, which
-      // renames it in place) — legacy flat lines stay untouched server-side as
-      // the pre-spatial record (ADR 0008). Never resolve the target by name: the
-      // typed name may belong to a different template, and writing to that one
-      // would overwrite a recipe — and its size membership — nobody opened.
       if (selectedId !== "") {
         await putTemplatePlacements(selectedId, trimmed);
         saved(selectedId);
@@ -1875,12 +1791,6 @@ function FillingConfigPanel({
     }
   };
 
-  /** Rename in place from the list. A name must be free at every size the
-   * template serves; the DB unique covers only the primary key, so the server
-   * re-checks the whole membership and answers 409 (the check below is a fast
-   * local pre-filter and only sees this size's list). Keeps the editor's name
-   * field in step when the renamed row is the open one. Order snapshots keep
-   * the name they were built with, so past Results are untouched. */
   const renameTemplate = async (id: number, nextName: string) => {
     const trimmed = nextName.trim();
     const current = templates.find((t) => t.id === id);
@@ -1923,9 +1833,6 @@ function FillingConfigPanel({
     }
   };
 
-  /** Take this size out of a shared template and give it its own copy of the
-   * recipe. Without this, sharing would be a one-way door: the moment one size
-   * needed to differ the operator would have to rebuild the mix by hand. */
   const forkForThisKey = async () => {
     if (selectedId === "") return;
     const base = name.trim() || "Filling Template";
@@ -1941,8 +1848,6 @@ function FillingConfigPanel({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // The editor's current recipe, not the stored one: the operator forks
-          // mid-edit precisely to keep these changes off the other sizes.
           body: JSON.stringify({ key: templateKey, name: copyName, placements: spatialRows() }),
         },
       );
@@ -1954,7 +1859,6 @@ function FillingConfigPanel({
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
       const createdId = payload?.template?.id as number | undefined;
-      // The edit went to the copy; the original keeps what it had saved.
       autosave.discard();
       if (createdId) await selectTemplate(createdId, list);
       toast.success(
@@ -1989,8 +1893,6 @@ function FillingConfigPanel({
 
   const deleteTemplate = async () => {
     if (selectedId === "") return;
-    // Delete is not scoped to the size on screen: it removes the recipe from
-    // every size it serves, so a shared template asks first.
     if (scopeKeys.length > 1 && !deleteConfirm) {
       setDeleteConfirm(true);
       return;
@@ -2014,27 +1916,19 @@ function FillingConfigPanel({
   const gridItems = useMemo(
     () =>
       items
-        // Neck supports and ear pads are pillow-only; a basic Result refuses one at assign.
         .filter((i) => i.category === "filling" || (kind === "pillow" && isInPillowAccessory(i)))
         .map((i) => ({
           id: i.id,
           label: getFillingDisplayLabel(i, templateKey),
-          // name/subtype/size feed the bolster picker's family grouping.
           name: i.name,
           subtype: i.subtype,
           size: i.size,
         })),
     [items, templateKey, kind],
   );
-  // Slice 04: the physical fit of the recipe at this card's Size — one object
-  // for the x-ray, the save confirm and the cross-section — and
-  // its status at every Size it is shared with, for the membership chips.
   const fit = usePillowFit(placements, templateKey, gridItems, dimensionOverrides);
   const fitBySize = useFitAtSizes(placements, scopeKeys, gridItems, dimensionOverrides);
-  // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
   const { cut, setCut, onDiveChange: onCutDive } = useCut();
-  // Desktop (lg, the workbench grid): the dived section's (or the Mbolster compartment's) controls render in
-  // the left column, off the x-ray.
   const wideWorkbench = useMediaQuery("(min-width: 1024px)");
   const [controlsSlot, setControlsSlot] = useState<HTMLElement | null>(null);
   const [divedSection, setDivedSection] = useState<string | null>(null);
@@ -2046,13 +1940,9 @@ function FillingConfigPanel({
     [onCutDive],
   );
   const { itemSubtypes: gridItemSubtypes, itemSizes: gridItemSizes, itemDims: gridItemDims } = useItemMaps(gridItems, dimensionOverrides);
-  // ADR 0025: the soft cut draws with the settings Staff saved, carried by the same payload.
   const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
-  // Slice 09: the Mbolster's fit at this card's length (a pillow card's empty mix costs nothing).
   const bolsterLength = BOLSTER_LENGTHS.find((l) => l === templateKey) ?? "medium";
   const bolsterFit = useBolsterFit(bolsterMix, bolsterLength, gridItems, dimensionOverrides);
-  // Templates whose Placements sit in one Section: the 2026-07-24 backfill's
-  // fill-cells-in-order spread, never laid out by a person (CONTEXT.md).
   const unauthoredCount = useMemo(() => templates.filter(isUnauthoredTemplate).length, [templates]);
   const visibleTemplates = templates.filter(
     (t) =>
@@ -2065,7 +1955,6 @@ function FillingConfigPanel({
     const item = itemsById.get(itemId);
     return item ? getFillingDisplayLabel(item, templateKey) : `Item #${itemId}`;
   };
-  // Compact per-cell breakdown for an unpromoted mix: "left/front: Soft, Soft".
   const cellSummary = (rows: PillowPlacementRow[]) => {
     const cells = new Map<string, number[]>();
     for (const r of rows) {
@@ -2169,7 +2058,6 @@ function FillingConfigPanel({
         serve several.
       </p>
       <div className={WORKBENCH_GRID}>
-      {/* The editor's controls, off the x-ray: the dived Section's, or the Mbolster's one compartment (no dive). */}
       <XraySectionDock
         dived={kind === "pillow" ? divedSection : "compartment"}
         onSlot={setControlsSlot}
@@ -2179,8 +2067,6 @@ function FillingConfigPanel({
       <WorkbenchHeader
         title={selectedId === "" ? "New filling template" : name.trim() || "Untitled filling template"}
         description={`${kind === "pillow" ? "Size" : "Length"} ${templateKey}, ${spatialCount} piece${spatialCount === 1 ? "" : "s"} placed${dirty ? " · unsaved" : ""}`}
-        // Save is pinned here while the shared-recipe notice scrolls away with
-        // the meta block, so the warning rides alongside the button it is about.
         warning={
           scopeKeys.length > 1
             ? `Shared. Saving rewrites ${formatTemplateKeys(kind, scopeKeys)}`
@@ -2238,8 +2124,6 @@ function FillingConfigPanel({
         disabled={saving}
         fitBySize={kind === "pillow" ? fitBySize : undefined}
         onChange={(next) => {
-          // An armed delete counts the sizes it would remove, so changing them
-          // must disarm it rather than leave a stale count on a live button.
           setDeleteConfirm(false);
           setScopeKeys(next);
         }}
@@ -2263,7 +2147,6 @@ function FillingConfigPanel({
           <Button
             variant="outline"
             onClick={() => {
-              // Clear means it: this edit is not kept as a draft.
               autosave.discard();
               resetEditor();
             }}
@@ -2319,7 +2202,6 @@ function FillingConfigPanel({
               </ul>
             </div>
           )}
-          {/* Wide screens: the pack list sits beside the editor that derives it. */}
           <div className="space-y-3 xl:grid xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-start xl:gap-4 xl:space-y-0">
           {kind === "pillow" ? (
             <Section title="Spatial recipe: click a section to dive in (up to 5 layers × 5 pieces per cell)">
@@ -2362,8 +2244,6 @@ function FillingConfigPanel({
               />
             </Section>
           ) : (
-            // Mbolster: one long compartment, no piece cap, never the 3×3 grid — edited on
-            // the same capsule x-ray the /mbolster-config staff assist uses.
             <Section title="Single compartment (ordered mix, no piece cap)">
               <XrayBolsterEditor
                 placements={bolsterMix}
@@ -2387,9 +2267,6 @@ function FillingConfigPanel({
               <XrayPackList placements={bolsterMix} onPlacementsChange={setBolsterMix} items={gridItems} />
             )}
           </Section>
-          {/* Assembly: the per-Section insert order beside the pack list it sequences, and
-              the template's notes for the nuances a sequence cannot carry. Mbolster is
-              already an ordered compartment list, so it only gets the notes. */}
           <Section title={kind === "pillow" ? "Insert order" : "Assembly notes"}>
             {kind === "pillow" && (
               <InsertOrderList placements={placements} onPlacementsChange={setPlacements} items={gridItems} />
@@ -2611,10 +2488,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/**
- * Desktop (lg+) template rail: the Products toolbar (search + Select filters)
- * stacked over a scrollable list. Phones keep the inline template Select.
- */
 function TemplateRail({
   title,
   total,
@@ -2632,7 +2505,6 @@ function TemplateRail({
   filters: ReactNode;
   action?: ReactNode;
   items: ReactNode[];
-  /** Sticky full-height column by default; a bounded box when it shares a column. */
   placement?: string;
 }) {
   return (
@@ -2656,7 +2528,6 @@ function TemplateRail({
             className="pl-9"
           />
         </div>
-        {/* Stacked: the rail is too narrow for two triggers side by side. */}
         <div className="grid gap-2">{filters}</div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -2686,9 +2557,7 @@ function TemplateRailItem({
   title: string;
   meta?: ReactNode;
   trailing?: ReactNode;
-  /** Opens the inline rename field; omit on lists that cannot be renamed. */
   onRename?: () => void;
-  /** The rename field itself, rendered in place of the row while it is open. */
   editing?: ReactNode;
 }) {
   if (editing) {
@@ -2733,7 +2602,6 @@ function TemplateRailItem({
   );
 }
 
-/** Warehouse (non-filling BOM) templates: search + sort, plus an optional scope filter. */
 function WarehouseTemplateRail({
   templates,
   selectedId,
@@ -2746,7 +2614,6 @@ function WarehouseTemplateRail({
   scopeFilter?: ReactNode;
 }) {
   const [search, setSearch] = useState("");
-  // The templates API already returns most recently updated first.
   const [sort, setSort] = useState<"recent" | "name">("recent");
   const matching = templates.filter((t) => matchesTemplateSearch(t, search));
   const visible = sort === "name" ? [...matching].sort((a, b) => a.name.localeCompare(b.name)) : matching;
@@ -2783,7 +2650,6 @@ function WarehouseTemplateRail({
   );
 }
 
-/** Desktop (lg+) workbench title bar, pinned so Save stays in reach down a long BOM. */
 function WorkbenchHeader({
   title,
   description,
@@ -2793,7 +2659,6 @@ function WorkbenchHeader({
   title: string;
   description: string;
   actions: ReactNode;
-  /** Rides with the pinned actions, for what the operator must know before using them. */
   warning?: string | null;
 }) {
   return (
@@ -2821,7 +2686,6 @@ function ConfigureTable({
 }: {
   headers: string[];
   children: React.ReactNode;
-  /** Phones: keep the first column in view while the rest scrolls sideways. */
   pinFirstColumn?: boolean;
 }) {
   return (
@@ -3001,8 +2865,6 @@ function DynamicPartSection({
         </TableRow>
       </ConfigureTable>
       </div>
-      {/* Phones: a four-column table cuts Remove and Add off at the right edge, so each
-          part is a row with its quantity and remove in reach, and the add row sits below. */}
       <div className="space-y-2 md:hidden">
         {lines.length ? (
           <ul className="divide-y rounded-xl border">
@@ -3012,7 +2874,6 @@ function DynamicPartSection({
                   <div className="truncate text-sm font-medium">{lineName(l)}</div>
                   <div className="text-xs text-muted-foreground">{renderVariant(getItem(l.item_id))}</div>
                 </div>
-                {/* The number Input fills its parent, so this wrapper sets its width. */}
                 <div className="w-20 shrink-0">{lineQty(l, `Quantity of ${lineName(l)}`)}</div>
                 <Button
                   size="icon"
@@ -3058,9 +2919,6 @@ function BolsterEditor({
     return map;
   }, [items]);
 
-  // Variant size mapping:
-  // short -> S, medium -> M, long -> L
-  // We keep a fallback to legacy BOLSTER-sized items if no S/M/L items exist yet.
   const variantSize = useMemo(() => {
     if (!variant) return null;
     if (variant.startsWith("Short")) return "S";

@@ -17,44 +17,23 @@ type ImageConfig = {
 
 export type LeftContentRightImgSectionProps = {
   className?: string;
-  /**
-   * Optional extra props for the outer <section> (e.g. id, data-*, aria-*).
-   * `className` here will be merged with `className`.
-   */
   sectionProps?: Omit<React.ComponentPropsWithoutRef<"section">, "children"> & DataAttributes;
   gridClassName?: string;
   headerClassName?: string;
-  /**
-   * Swap the two columns (text ↔ right/image) on `md` and up.
-   */
   flip?: boolean;
-  /**
-   * Optional extra props for the internal <header> (e.g. id, data-*, aria-*).
-   * `className` here will be merged with `headerClassName`.
-   */
   headerProps?: Omit<React.ComponentPropsWithoutRef<"header">, "children"> & DataAttributes;
   titleClassName?: string;
-  /**
-   * Optional extra props for the title element (e.g. id, aria-*).
-   * `className` here will be merged with `titleClassName`.
-   */
   titleProps?: Omit<React.HTMLAttributes<HTMLElement>, "children">;
   descriptionClassName?: string;
   ctaWrapperClassName?: string;
   imageWrapperClassName?: string;
 
-  /**
-   * Heading element used for the title. Defaults to `h1`.
-   */
   titleAs?: React.ElementType;
 
   title: React.ReactNode;
   description?: React.ReactNode;
   cta?: React.ReactNode;
 
-  /**
-   * Provide either `right` (fully custom node) OR `image` (standard next/image render).
-   */
   right?: React.ReactNode;
   image?: ImageConfig;
 };

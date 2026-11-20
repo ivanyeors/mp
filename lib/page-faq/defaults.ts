@@ -1,9 +1,5 @@
 import type { PageFaqDefaultSet } from "./types";
 
-/**
- * Bilingual Page FAQ starters. Product sets keyed by stable shop slug
- * (resolved to product:{uuid} at seed — see seed.ts).
- */
 export const PAGE_FAQ_DEFAULTS: PageFaqDefaultSet[] = [
   {
     surfaceKey: "home",

@@ -12,11 +12,6 @@ import OrderDetailPage, { type OrderDetailInitialData } from "./order-detail-cli
 
 export const runtime = "nodejs";
 
-/**
- * Server shell for the order detail page. The order (with items + margin), its
- * timeline and its linked mp-config responses were three post-hydration
- * fetches; they now resolve concurrently during the server render.
- */
 export default async function OrderDetailRoute({
   params,
 }: {
@@ -31,19 +26,15 @@ export default async function OrderDetailRoute({
     loadAdminOrderDetail(id),
     loadAdminOrderTimeline(id),
     loadAdminOrderMpConfigLinks(id),
-    // A Staff order's Payment link (ADR 0048); null for any other Order or a failed read.
     loadPayLinkRow(supabaseAdmin(), id).catch(() => null),
   ]);
 
   const orderBody = order.status === 200 ? (order.body as OrderDetailInitialData["order"]) : null;
-  // What the order earns (PRD-loyalty-points slice 03). A failed read only
-  // leaves the line out.
   const points = orderBody
     ? await readOrderPoints(supabaseAdmin(), orderBody.row as unknown as OrderPointsRow).catch(() => null)
     : null;
 
   const initialData: OrderDetailInitialData = {
-    // The lib types the row structurally; the client narrows it to Order.
     order: orderBody,
     pointsEarn: points?.earn ?? null,
     timeline:

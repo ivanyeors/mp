@@ -35,7 +35,6 @@ describe("togglePermission", () => {
     expect(r).toEqual({ ok: true, next: set("media"), note: null });
   });
 
-  // CRM slice 10: a role cannot keep `customers-edit` once it cannot see Customers.
   it("unticking Customers also unticks Customers: make changes, and says why", () => {
     const r = togglePermission(set("orders", "customers", "customers-edit"), "customers", false);
     expect(r).toEqual({

@@ -12,14 +12,6 @@ export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * GET /api/shop/customers/[id]/followups — the Customer's Follow-ups (CRM 06),
- * open first. Seeing them needs `customers`. Answers `{ ok, rows, today, me,
- * assignees }`: `today` is the Singapore day the states were read against,
- * `me` the profile the viewer works as (the form's default assignee), and
- * `assignees` the profiles whose Member may close one, only for a viewer who
- * may add one (`customers-edit`), else an empty list.
- */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers");
   if (denied) return denied;
@@ -42,12 +34,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 }
 
-/**
- * POST /api/shop/customers/[id]/followups — adds a follow-up `{ title, dueOn,
- * assignedToProfileId }`, created by the profile the signed-in Member works
- * as. The assignee must be a live profile whose Member holds `customers-edit`.
- * The audit entry names ids and the due date, never the title.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

@@ -10,16 +10,10 @@ import { listSlideInRows } from "@/lib/slide-in-pages/store";
 
 export const runtime = "nodejs";
 
-/** Never indexable — it renders unpublished copy. */
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/**
- * **Preview mode** for one of the landing page's sub pages (a learn-more slide-in), with
- * its Section drafts applied, embedded same-origin in the Page Builder. Same gate as the
- * landing preview: the admin context, not Next draft mode.
- */
 export default async function SlideInPreviewRoute({
   params,
 }: {

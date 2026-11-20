@@ -1,30 +1,16 @@
-/**
- * Where a held filling would land, in a pill over it (precise by default,
- * 8-11-2026): millimetres from the Section's front and the snap that put it
- * there, drawn above the pouch so a finger on a phone never covers it. Both
- * x-ray views draw it, in their own view units.
- */
-
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
-/** What a snap says on the badge and in the line under the cut. */
 export const SNAP_WORDS = { home: "home", centred: "centred", "front edge": "flush front", "back edge": "flush back" } as const;
 
-/** "85–165 mm · centred": where it lands front ↔ back, mm from the Section's front. */
 export function landingText(startMm: number, endMm: number, snap?: keyof typeof SNAP_WORDS | null): string {
   return `${Math.round(startMm)}–${Math.round(endMm)} mm${snap ? ` · ${SNAP_WORDS[snap]}` : ""}`;
 }
 
-/**
- * "12 mm right": how far a pouch stands across from where it sits un-nudged —
- * the top view's other axis, which the cut cannot show. Empty at home.
- */
 export function acrossText(mm: number): string {
   const r = Math.round(mm);
   return r === 0 ? "" : `${Math.abs(r)} mm ${r < 0 ? "left" : "right"}`;
 }
 
-/** The pill's width for `text` at `font` (view units), as `DragBadge` draws it. */
 export function badgeWidth(text: string, font: number): number {
   return text.length * font * 0.58 + font * 1.2;
 }
@@ -40,7 +26,6 @@ export function DragBadge({
   x?: number;
   y: number;
   font: number;
-  /** Keep the whole pill between these x (view units): a pouch at the pillow's edge still shows all of it. */
   within?: readonly [number, number];
 }) {
   const w = badgeWidth(text, font);

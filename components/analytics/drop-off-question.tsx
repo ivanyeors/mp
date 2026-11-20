@@ -28,11 +28,6 @@ import { cn } from "@/lib/utils";
 
 const ASKED_KEY = "mp_dropoff_asked_at";
 
-/**
- * Asked since this page loaded. The stamp in localStorage is what spaces the
- * question 30 days apart; this holds when storage is blocked, so closing the
- * card never re-arms it before the next full page load.
- */
 let askedThisLoad = false;
 
 function readAskedAt(): string | null {
@@ -46,19 +41,15 @@ function readAskedAt(): string | null {
 function writeAskedAt(iso: string) {
   try {
     localStorage.setItem(ASKED_KEY, iso);
-  } catch {
-    // Storage blocked: `askedThisLoad` still keeps it to once per page load.
-  }
+  } catch {}
 }
 
-/** A field they are typing in: never interrupt that. */
 function fieldHasFocus(): boolean {
   const el = document.activeElement as HTMLElement | null;
   if (!el) return false;
   return el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
 }
 
-/** Where and on which step the card was asked; the answer is filed there wherever they are now. */
 type Asked = { step: SiteDropOffStep; path: string };
 
 function sendAnswer(asked: Asked, reason: DropOffReason, text: string | null) {
@@ -73,23 +64,6 @@ function sendAnswer(asked: Asked, reason: DropOffReason, text: string | null) {
 
 type Phase = { kind: "ask" } | { kind: "text"; reason: DropOffReason } | { kind: "thanks"; reason: DropOffReason };
 
-/**
- * *What stopped you today?* (PRD-crm-retention-loop slice 10): one closed
- * question on the configurators and checkout, asked as a visitor moves to
- * leave, and help on the spot for the answer they give.
- *
- * Only once they have started (20 seconds and a tap, click or key), then when
- * the pointer leaves through the top of the window or after a minute with no
- * activity; never while a field has focus; once per browser per 30 days,
- * counted from when it is shown, so closing it counts. Never on other pages,
- * never in the Admin Panel (`dropOffStepForPath`) and never while Staff edit a
- * Result in the configurator. It takes no focus when it appears, and is
- * announced to screen readers instead. Nobody is asked for a name or email;
- * an answer carries the journey tracker's Visit.
- *
- * Mounted by `DropOffQuestionMount` on the pages that ask, so no other page
- * loads it.
- */
 export function DropOffQuestion() {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -105,12 +79,9 @@ export function DropOffQuestion() {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const thanksRef = useRef<HTMLHeadingElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  // An answer picked but not yet sent (it takes text). Closing or leaving
-  // sends it without the text: picking it was the answer, the text is optional.
   const pendingRef = useRef<{ asked: Asked; reason: DropOffReason } | null>(null);
   const open = asked !== null;
 
-  // Moving to another page closes the card: it asked about the page they left.
   const [seenPath, setSeenPath] = useState(pathname);
   if (seenPath !== pathname) {
     setSeenPath(pathname);
@@ -138,8 +109,6 @@ export function DropOffQuestion() {
     if (!step || open || askedThisLoad || isStaffEdit(window.location.search)) return;
     if (!mayAsk(readAskedAt(), new Date())) return;
     const enteredAt = Date.now();
-    // Started: a tap, click or key. Scrolling and hovering keep the visit
-    // active but do not start it (a scroll can be the browser restoring one).
     let started = false;
     let lastActivity = enteredAt;
     const onStart = () => {
@@ -183,8 +152,6 @@ export function DropOffQuestion() {
     };
   }, [step, open]);
 
-  // Whoever picked an answer is working in the card: keep focus with them as
-  // the button they pressed gives way to the next part.
   useEffect(() => {
     if (phase.kind === "text") textRef.current?.focus();
     if (phase.kind === "thanks") thanksRef.current?.focus();
@@ -316,7 +283,6 @@ export function DropOffQuestion() {
   );
 }
 
-/** Help on the spot for an answer. Never a discount. */
 function DropOffHelp({
   reason,
   to,

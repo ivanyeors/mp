@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hashReviewToken } from "@/lib/aftercare/review-link";
 
-/**
- * GET /r/review (CRM slice 07): every request is a 302 to the Google review
- * link, never an error page. A valid token records the click — the first one
- * stamped once, every one counted — and anything else records nothing.
- */
-
 type Row = Record<string, unknown>;
 const h = vi.hoisted(() => ({
   settings: [] as Row[],
@@ -28,7 +22,6 @@ vi.mock("@/lib/supabase/server", () => ({
         }),
       };
     },
-    // record_review_request_click, as the migration defines it.
     rpc: async (name: string, args: { p_token_hash: string }) => {
       if (name !== "record_review_request_click") return { data: null, error: { message: `no rpc ${name}` } };
       h.rpcCalls += 1;

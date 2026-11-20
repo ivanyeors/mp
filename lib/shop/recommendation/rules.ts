@@ -6,15 +6,6 @@ import type {
   FillingLine,
 } from "@/lib/types/customization";
 
-/**
- * Guaranteed, deterministic rule-based recommendation logic.
- *
- * These functions are pure: they take the customer input plus the list of
- * currently-available fillings and return a {@link CustomizationResult}. They
- * perform no I/O (no DB, no network), which makes them the trustworthy fallback
- * for the optional model endpoint and keeps them unit-testable.
- */
-
 export interface AvailableFilling {
   item_id: number;
   subtype: string;
@@ -22,15 +13,11 @@ export interface AvailableFilling {
   on_hand?: number;
 }
 
-// ─── Size Recommendation Logic ─────────────────────────────
-
 export const SIZE_MAP: Record<string, Record<string, string>> = {
   petite: { side: "S", back: "XS", stomach: "XS", mixed: "S" },
   average: { side: "M", back: "M", stomach: "S", mixed: "M" },
   large: { side: "L", back: "L", stomach: "M", mixed: "L" },
 };
-
-// ─── Firmness → Filling Logic ──────────────────────────────
 
 interface FillingSpec {
   subtypes: string[];
@@ -77,10 +64,6 @@ const FILLING_SPECS: Record<string, Record<string, FillingSpec>> = {
   },
 };
 
-/**
- * Resolve a subtype→quantity spec into concrete filling lines using the
- * fillings that are actually available. Unavailable subtypes are dropped.
- */
 export function resolveFillingLines(
   quantities: Record<string, number>,
   availableFillings: AvailableFilling[],
@@ -110,11 +93,7 @@ function buildExplanation(prefs: CustomerPreferences, size: string, firmLabel: s
   return `Based on your profile (${prefs.body_type} build, ${prefs.sleep_position} sleeper, ${firmLabel} preference), we recommend Size ${size}. ${positionExplanations[prefs.sleep_position] ?? ""}`;
 }
 
-/**
- * Size/tier ballpark for authorize-then-capture (mp-config / mbolster-config).
- * No filling lines — operator Filling Template is authoritative after review.
- * // ponytail: bootstrap/legacy only — shop ballpark uses lib/rules-engine/recommend when published
- */
+// ponytail: bootstrap/legacy only — shop ballpark uses lib/rules-engine/recommend when published
 export function recommendSizeFromPreferences(
   preferences: CustomerPreferences,
 ): CustomizationResult {
@@ -131,10 +110,7 @@ export function recommendSizeFromPreferences(
   };
 }
 
-/**
- * Measurement-based size ballpark — same as recommendSizeFromMeasurements inputs.
- * // ponytail: bootstrap/legacy + mp-maker — Premium online uses rules-engine (sold tier premium)
- */
+// ponytail: bootstrap/legacy + mp-maker — Premium online uses rules-engine (sold tier premium)
 export function recommendSizeFromMeasurements(
   input: MeasurementBasedPreferences,
 ): CustomizationResult {
@@ -166,10 +142,6 @@ export function recommendSizeFromMeasurements(
   };
 }
 
-/**
- * Simple-form recommendation: sleep position + body type + firmness.
- * Legacy mp-maker path — includes hardcoded filling lines.
- */
 export function recommendFromPreferences(
   preferences: CustomerPreferences,
   availableFillings: AvailableFilling[],
@@ -194,8 +166,6 @@ export function recommendFromPreferences(
   };
 }
 
-// ─── Measurement-Based Recommendation ──────────────────────
-
 export function shoulderToBodyType(shoulderCm: number): "petite" | "average" | "large" {
   if (shoulderCm < 38) return "petite";
   if (shoulderCm <= 44) return "average";
@@ -216,7 +186,7 @@ export function deriveFirmness(
   health: MeasurementBasedPreferences["health"],
 ): "soft" | "medium-soft" | "medium" | "medium-firm" | "firm" {
   const firmnessScale = ["soft", "medium-soft", "medium", "medium-firm", "firm"] as const;
-  let index = bedFirmness === "firm" ? 4 : bedFirmness === "medium-soft" ? 1 : 2; // default medium
+  let index = bedFirmness === "firm" ? 4 : bedFirmness === "medium-soft" ? 1 : 2;
 
   if (health.ear_discomfort_side_sleep) index = Math.max(0, index - 1);
   if (health.acid_reflux) index = Math.min(4, index + 1);
@@ -226,9 +196,6 @@ export function deriveFirmness(
   return firmnessScale[Math.max(0, Math.min(4, index))];
 }
 
-/**
- * Measurement-based recommendation derived from the in-store wizard data.
- */
 export function recommendFromMeasurements(
   input: MeasurementBasedPreferences,
   availableFillings: AvailableFilling[],
@@ -265,12 +232,7 @@ export function recommendFromMeasurements(
   };
 }
 
-// ─── Bolster Recommendation ────────────────────────────────
-
-/**
- * Bolster recommendation: height → size.
- * // ponytail: bootstrap/legacy — mbolster ballpark uses lib/rules-engine/recommend when published
- */
+// ponytail: bootstrap/legacy — mbolster ballpark uses lib/rules-engine/recommend when published
 export function recommendBolster(input: BolsterPreferences): CustomizationResult {
   const heightM = input.height_cm / 100;
   let size: string;

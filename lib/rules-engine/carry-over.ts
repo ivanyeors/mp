@@ -1,11 +1,7 @@
-/**
- * Answer carry-over between flows (slice 06). Shared catalog keys only — no invented mappings.
- */
 import type { MpConfigStep } from "@/lib/mp-config/flow-variant";
 import { catalogKeys } from "./catalog";
 import type { EngineInputs, RuleFlow } from "./types";
 
-/** Upsell card copy: Bolster → Mpillow cross-sell measuring expectation. */
 export const FLOW_ROUTE_EXPECTATION =
   "Upgrading to Mpillow takes about 2 minutes of extra measuring.";
 
@@ -35,11 +31,6 @@ const STEP_INPUT_KEYS: Record<MpConfigStep, readonly string[] | null> = {
   preview: null,
 };
 
-/**
- * Where the questionnaire saves and loads its recommendation. Its photos are
- * optional, so no carried answer completes it: a route back into the wizard
- * always ends here rather than on a preview nothing has loaded.
- */
 const SUBMIT_STEP: MpConfigStep = "photos";
 
 // ponytail: fixed pair table; upgrade path = derive from target catalog + step map
@@ -77,7 +68,6 @@ function stepComplete(step: MpConfigStep, inputs: EngineInputs): boolean {
   return keys.every((k) => inputPresent(inputs, k));
 }
 
-/** Keep only answers whose keys exist in both source and target flow catalogs. */
 export function carryOverAnswers(
   from: RuleFlow,
   to: RuleFlow,
@@ -92,7 +82,6 @@ export function carryOverAnswers(
   return out;
 }
 
-/** Ordered wizard steps still required on the target after carry-over. */
 export function missingStepsAfterCarryOver(
   from: RuleFlow,
   to: RuleFlow,

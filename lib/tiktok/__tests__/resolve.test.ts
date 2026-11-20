@@ -5,7 +5,6 @@ import { resolveTikTokLink } from "@/lib/tiktok/resolve";
 const ID = "7301234567890123456";
 const POST = `https://www.tiktok.com/@thempillow/video/${ID}`;
 
-/** A fetch that answers from a table of URL prefixes. */
 function fakeFetch(routes: Array<[string, () => Response]>): typeof fetch {
   return (async (input: RequestInfo | URL) => {
     const url = String(input);

@@ -24,9 +24,6 @@ const DeleteSchema = z.object({
   id: z.string().uuid(),
 });
 
-/* ------------------------------------------------------------------ */
-/* GET - list all api_configs                                          */
-/* ------------------------------------------------------------------ */
 export async function GET() {
   const denied = await requireAdmin("api-configs");
   if (denied) return denied;
@@ -41,9 +38,6 @@ export async function GET() {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* POST - create a new api_config                                      */
-/* ------------------------------------------------------------------ */
 export async function POST(req: Request) {
   const denied = await requireAdmin("api-configs");
   if (denied) return denied;
@@ -66,9 +60,6 @@ export async function POST(req: Request) {
   return NextResponse.json(toClientApiConfig(data as ApiConfigRow), { status: 201 });
 }
 
-/* ------------------------------------------------------------------ */
-/* PATCH - update an existing api_config                               */
-/* ------------------------------------------------------------------ */
 export async function PATCH(req: Request) {
   const denied = await requireAdmin("api-configs");
   if (denied) return denied;
@@ -96,9 +87,6 @@ export async function PATCH(req: Request) {
   return NextResponse.json(toClientApiConfig(data as ApiConfigRow));
 }
 
-/* ------------------------------------------------------------------ */
-/* DELETE - remove an api_config                                       */
-/* ------------------------------------------------------------------ */
 export async function DELETE(req: Request) {
   const denied = await requireAdmin("api-configs");
   if (denied) return denied;

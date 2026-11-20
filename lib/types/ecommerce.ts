@@ -1,17 +1,8 @@
-// ============================================================
-// E-Commerce Type Definitions
-// ============================================================
-
-// --- Status & Enum Types ---
-
 export type ProductStatus = "draft" | "active" | "archived";
 export type ProductType = "pillow" | "bolster" | "accessory" | "bundle";
 export type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded" | "partially_refunded" | "payment_failed" | "disputed";
 export type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
 export type ReviewStatus = "pending" | "approved" | "rejected";
-// CollectionType removed — collections dropped in migration 0029
-
-// --- Localized Content ---
 
 export interface LocalizedProductContent {
   title: string;
@@ -28,15 +19,11 @@ export interface LocalizedCategoryContent {
   description?: string;
 }
 
-// LocalizedCollectionContent removed — collections dropped
-
 export interface LocalizedShippingContent {
   name: string;
   description?: string;
   estimated_days?: string;
 }
-
-// --- Categories ---
 
 export interface ProductCategory {
   id: string;
@@ -52,8 +39,6 @@ export interface ProductCategory {
   children?: ProductCategory[];
 }
 
-// --- Products ---
-
 export interface Product {
   id: string;
   slug: string;
@@ -63,9 +48,7 @@ export interface Product {
   category_id: string | null;
   featured: boolean;
   tags: string[];
-  /** LIVE account. Read through `stripeProductIdOf()` — never off the row. */
   stripe_product_id: string | null;
-  /** TEST/sandbox account. */
   stripe_product_id_test?: string | null;
   stripe_payment_link: string | null;
   stripe_payment_link_id: string | null;
@@ -73,7 +56,6 @@ export interface Product {
   published_at: string | null;
   created_at: string;
   updated_at: string;
-  // Joined data (optional, populated by queries)
   variants?: ProductVariant[];
   images?: ProductImage[];
   options?: ProductOption[];
@@ -106,9 +88,7 @@ export interface ProductVariant {
   image_url: string | null;
   is_active: boolean;
   position: number;
-  /** LIVE account. Read through `stripePriceIdOf()` — never off the row. */
   stripe_price_id: string | null;
-  /** TEST/sandbox account. */
   stripe_price_id_test?: string | null;
   item_id: number | null;
   pillow_product_id: number | null;
@@ -116,7 +96,6 @@ export interface ProductVariant {
   shopify_variant_id: number | null;
   created_at: string;
   updated_at: string;
-  // Joined data
   stock_available?: number;
 }
 
@@ -126,13 +105,10 @@ export interface ProductImage {
   variant_id: string | null;
   url: string;
   alt_text: string | null;
-  /** Hybrid DAM ref; null on legacy url-only rows. */
   media_asset_id?: string | null;
   position: number;
   created_at: string;
 }
-
-// --- Customers ---
 
 export interface Customer {
   id: string;
@@ -142,42 +118,16 @@ export interface Customer {
   last_name: string | null;
   phone: string | null;
   locale: string;
-  /** Staff-only: the customer's own key is not granted it. */
   tags: string[];
-  /**
-   * Retired (ADR 0028 (a)): moved into `customer_notes`, and never written.
-   * Staff-only, like `tags`. Dropped by a later migration.
-   */
   notes: string | null;
   total_orders: number;
   total_spent: number;
   created_at: string;
   updated_at: string;
-  /**
-   * When the current login was bound to this row; null without one. Set by a
-   * trigger, never by app code (migration slice 12). Staff-only: read through
-   * the service role, not granted to the customer's own key.
-   */
   account_linked_at: string | null;
-  /**
-   * The last time they opened an account page while signed in, to the hour
-   * (`touchCustomerLastSeen`). Not the last site visit. Staff-only.
-   */
   account_last_seen_at: string | null;
-  /**
-   * The sign-in methods on the current login, sorted (`{email,google}`); empty
-   * without one (CRM slice 11). Written by `linkCustomerToAuthUser` from the
-   * signed-in user's identities, and emptied by a trigger when the login goes.
-   * Staff-only.
-   */
   account_providers: string[];
-  /**
-   * **Marketing consent** (migration slice 07). Written only by
-   * `set_marketing_email()`; the customer's own key reads the state, not its
-   * provenance.
-   */
   marketing_email?: "subscribed" | "not_subscribed" | "unsubscribed";
-  /** Staff-only: what set the state, and when. Null while `not_subscribed`. */
   marketing_email_source?: string | null;
   marketing_email_updated_at?: string | null;
   addresses?: CustomerAddress[];
@@ -200,8 +150,6 @@ export interface CustomerAddress {
   updated_at: string;
 }
 
-// --- Cart ---
-
 export interface Cart {
   id: string;
   token: string;
@@ -220,12 +168,10 @@ export interface CartItem {
   quantity: number;
   added_at: string;
   customization_id?: string | null;
-  // Joined data for display
   variant?: ProductVariant;
   product?: Product;
 }
 
-// Client-side cart item (for React context / localStorage)
 export interface CartItemClient {
   variantId: string;
   productId: string;
@@ -242,8 +188,6 @@ export interface CartItemClient {
   addonPrice?: number;
 }
 
-// --- Orders ---
-
 export interface Order {
   id: string;
   order_number: string;
@@ -255,14 +199,11 @@ export interface Order {
   subtotal: number;
   shipping_amount: number;
   tax_amount: number;
-  /** Includes the points' dollars, when points were spent. */
   discount_amount: number;
   total: number;
   amount_captured?: number;
   amount_refunded?: number;
-  /** Points spent at checkout (PRD-loyalty-points slice 04); 0 for none. */
   points_spent?: number;
-  /** Their dollars, `points_spent / 100`, also inside `discount_amount`. */
   points_discount?: number;
   shipping_address: ShippingAddress;
   billing_address: ShippingAddress | null;
@@ -270,26 +211,20 @@ export interface Order {
   coupon_id: string | null;
   coupon_code: string | null;
   notes: string | null;
-  /** Staff-only: the customer's own key is not granted it (CustomerOrder omits it). */
   internal_notes: string | null;
   payment_method: string | null;
   payment_reference: string | null;
   paid_at: string | null;
-  /** When this Order's goods left stock; null until they have. Staff-only. */
   inventory_deducted_at?: string | null;
   tracking_number: string | null;
   tracking_url: string | null;
-  /** Courier the shopper chose at checkout, or the label's courier (Easyship). Customer-visible. */
   shipping_courier?: string | null;
-  /** Latest courier status from Easyship tracking webhooks. Customer-visible. */
   shipping_tracking_status?: string | null;
-  /** Courier transit days from the label's rate (Easyship). Customer-visible. */
   shipping_min_days?: number | null;
   shipping_max_days?: number | null;
   shipped_at: string | null;
   delivered_at: string | null;
   cancelled_at: string | null;
-  /** Result-order refund request (slice 11). */
   refund_request_status?: "requested" | "approved" | "rejected" | null;
   refund_requested_at?: string | null;
   refund_request_note?: string | null;
@@ -304,16 +239,10 @@ export interface Order {
   customer?: Customer | null;
 }
 
-/**
- * An order's Easyship shipment (`order_shipments`, server-only). Kept off `orders`
- * because customers read their own orders with `select *`, and what the courier
- * costs us is not theirs to see.
- */
 export interface OrderShipment {
   order_id: string;
   courier_service_id: string | null;
   quoted_carrier_cost: number | null;
-  /** `pending:<uuid>` while a label purchase is in flight. */
   easyship_shipment_id: string | null;
   label_state: string | null;
   label_url: string | null;
@@ -323,13 +252,11 @@ export interface OrderShipment {
 }
 
 export interface OrderItemCustomizationSnapshot {
-  /** Legacy shop-cart customization (customization_configs). */
   config_lines?: import("./customization").ConfigLine[];
   filling_lines?: import("./customization").FillingLine[];
   total_addon_price?: number;
   summary?: string;
   pillow_product_id?: number;
-  /** Result authorize-then-capture path (slice 07/10). */
   result_id?: string;
   product_type?: "pillow" | "bolster";
   assigned_size?: string | null;
@@ -377,14 +304,11 @@ export interface OrderItem {
   total_cost?: number | null;
   customization_id?: string | null;
   customization_snapshot?: OrderItemCustomizationSnapshot | null;
-  /** `service` for a Service fee line (ADR 0024): never shipped, stocked or returned. */
   kind?: "goods" | "service";
-  /** Which Service a `service` line charges (`service_prices.key`). */
   service_key?: string | null;
   created_at: string;
 }
 
-/** Per-order realized margin from `order_margins` view. */
 export interface OrderMargin {
   order_id: string;
   order_number: string;
@@ -418,8 +342,6 @@ export interface ShippingAddress {
   phone?: string;
 }
 
-// --- Coupons ---
-
 export interface Coupon {
   id: string;
   code: string;
@@ -430,50 +352,39 @@ export interface Coupon {
   max_discount: number | null;
   usage_limit: number | null;
   usage_count: number;
-  /** Uses per customer account, or null for no limit (open to guests). */
   per_customer_limit: number | null;
   starts_at: string | null;
   expires_at: string | null;
   applies_to: { product_ids?: string[]; category_ids?: string[] } | null;
   is_active: boolean;
-  /** Bound to one Customer (a Welcome-back voucher), or null for a bearer code. */
   customer_id?: string | null;
   created_at: string;
   updated_at: string;
 }
 
-// --- Shipping ---
-
 export type ShippingRateSource = "flat" | "easyship";
-/** How an Easyship method picks one courier from the live rates (ADR 0020). */
 export type EasyshipStrategy = "cheapest" | "fastest" | "best_value" | "courier";
 
 export interface ShippingMethod {
   id: string;
   slug: string;
   content: Record<string, LocalizedShippingContent>;
-  /** Flat price. A live method with no courier quote is hidden, never charged this. */
   base_rate: number;
   free_above: number | null;
   currency: string;
   countries: string[];
   is_active: boolean;
   position: number;
-  /** Absent on rows read before the Easyship migration — treat as "flat". */
   rate_source?: ShippingRateSource;
   easyship_strategy?: EasyshipStrategy;
   easyship_courier_service_id?: string | null;
   markup_percent?: number;
   markup_fixed?: number;
-  /** Round the marked-up live rate up to this increment; 0 = no rounding. */
   rate_rounding?: number;
-  /** Self-collect: the studio (`partners` Location) it is collected from. Null = delivered. */
   collect_location_id?: string | null;
   created_at: string;
   updated_at: string;
 }
-
-// --- Reviews ---
 
 export interface ProductReview {
   id: string;
@@ -485,22 +396,16 @@ export interface ProductReview {
   title: string | null;
   body: string | null;
   status: ReviewStatus;
-  /** Our public reply, set from the review's Telegram card; shown under the review while it is approved. */
   store_reply: string | null;
   store_reply_at: string | null;
-  /** The Staff profile who set the reply. Never public. */
   store_reply_by_name: string | null;
-  /** The review's card in the measurements Telegram group. */
   telegram_chat_id: number | null;
   telegram_message_id: number | null;
   created_at: string;
   updated_at: string;
 }
 
-/** A review as GET /api/shop/reviews returns it to the storefront. */
 export type PublicProductReview = Pick<
   ProductReview,
   "id" | "rating" | "title" | "body" | "author_name" | "created_at" | "store_reply" | "store_reply_at"
 >;
-
-// (Wishlists removed — tables dropped in migration 0029)

@@ -71,8 +71,6 @@ function Chart({
     bottom: width < 420 ? 36 : width < 640 ? 40 : 44,
     left: clamp(estimatedLabelWidth + 16, leftMin, leftMax),
   };
-  // At phone width each row is a tap target, so the chart grows until every
-  // row is 44px (the band scale's step is innerHeight / (rows + 0.25)).
   const chartHeight =
     width < 420
       ? Math.max(height, Math.ceil(44 * (rows.length + 0.25)) + margin.top + margin.bottom)
@@ -157,7 +155,6 @@ function Chart({
             strokeOpacity={0.45}
           />
 
-          {/* Zero line */}
           <line
             x1={xScale(0)}
             x2={xScale(0)}
@@ -167,7 +164,6 @@ function Chart({
             strokeOpacity={0.9}
           />
 
-          {/* Labels; a clickable row's target is the hit strip drawn last. */}
           {wfRows.map((r) => {
             const y = yScale(r.key);
             if (y === undefined) return null;
@@ -206,7 +202,6 @@ function Chart({
             );
           })}
 
-          {/* Bars */}
           {wfRows.map((r, idx) => {
             const y = yScale(r.key);
             if (y === undefined) return null;
@@ -237,7 +232,6 @@ function Chart({
                   onMouseMove={(evt) => showRowTooltip(evt, r)}
                   onMouseLeave={() => hideTooltip()}
                 />
-                {/* Connector to next bar start */}
                 {next && yScale(next.key) !== undefined && (
                   <line
                     x1={connectorX}
@@ -268,7 +262,6 @@ function Chart({
             tickFormat={(v) => compactNumber.format(Number(v))}
           />
 
-          {/* Hover capture for empty areas */}
           <rect
             x={0}
             y={0}
@@ -296,8 +289,6 @@ function Chart({
             }}
           />
 
-          {/* A clickable row is one strip across label and bar, so the whole
-              row drills down rather than only its 13px label. */}
           {wfRows.map((r) => {
             const y = yScale(r.key);
             if (y === undefined || !isLabelClickable?.(r) || !onLabelClick) return null;
@@ -372,7 +363,6 @@ function Chart({
   );
 }
 
-/** The two total rows arrive labelled `total[YYYY-MM-DD]`; show them as a date people read. */
 function readableLabel(row: MovementRow): string {
   const m = /^(Opening|Closing) (\d{4})-(\d{2})-(\d{2})$/.exec(row.label);
   if (!m) return row.label;
@@ -393,7 +383,6 @@ export function InventoryMovementWaterfallVisx({
   const readableRows = useMemo(() => rows.map((row) => ({ ...row, label: readableLabel(row) })), [rows]);
   return (
     <div className="w-full overflow-x-auto">
-      {/* Phones draw it at the card's width (the chart has a narrow layout under 420px). */}
       <div className="md:min-w-[440px]">
         <ChartWidth>
           {({ width }) =>

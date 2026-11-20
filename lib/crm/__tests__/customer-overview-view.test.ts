@@ -2,39 +2,22 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CUSTOMER_OVERVIEW_COLUMNS } from "@/lib/crm/customer-overview";
 
-/**
- * The Customer overview is one SQL view and one TypeScript column list
- * (migration slice 12; ADR 0029 (k)). Later slices extend the view with
- * `create or replace view`, adding columns at the end, and add the same column
- * to the list. Renaming one is `alter view … rename column` before the
- * `create or replace view` in the same migration (PRD-crm-retention-loop
- * slice 03's `lifecycle_delivery` → `lifecycle_detail`). Removing a column is
- * a rebuild: `drop view` and `create view` in one migration
- * (PRD-loyalty-points slice 06), which until 2026-11-01 also recreated the
- * migration summary, the one view that read the overview. This keeps the
- * two equal, and keeps the view server-only: security_invoker, no `*`, and no
- * grant to anon or authenticated.
- */
-
 const dir = new URL("../../../supabase/migrations/", import.meta.url);
 const files = readdirSync(dir)
   .filter((f) => f.endsWith(".sql"))
   .sort()
   .map((f) => ({ name: f, sql: readFileSync(new URL(f, dir), "utf8").replace(/--.*$/gm, "") }));
 
-/** Whether `sql` drops `view` before `index`: the definition there is a rebuild, not an extension. */
 function dropsBefore(sql: string, view: string, index: number): boolean {
   const drop = new RegExp(`drop view (?:if exists )?(?:public\\.)?${view}\\b`, "i").exec(sql);
   return drop !== null && drop.index < index;
 }
 
-/** The `alter view … rename column` in `sql` before `index`, as old name → new name. */
 function renamesBefore(sql: string, view: string, index: number): Map<string, string> {
   const re = new RegExp(`alter view (?:if exists )?(?:public\\.)?${view} rename column ([a-z_0-9]+) to ([a-z_0-9]+)`, "gi");
   return new Map([...sql.matchAll(re)].filter((m) => m.index < index).map((m) => [m[1]!, m[2]!] as const));
 }
 
-/** Every definition of `view`, in migration order, with the file that holds it. */
 function definitions(view: string) {
   const re = new RegExp(`create (?:or replace )?view (?:public\\.)?${view}\\b([^;]*?)\\bas\\s+select\\s+([^;]*);`, "gi");
   return files.flatMap(({ name, sql }) =>
@@ -52,7 +35,6 @@ function definitions(view: string) {
   );
 }
 
-/** The select list: everything before the top-level `from`, not a subquery's. */
 function selectList(body: string): string {
   let depth = 0;
   for (let i = 0; i < body.length; i++) {
@@ -63,7 +45,6 @@ function selectList(body: string): string {
   throw new Error("no top-level from");
 }
 
-/** The output names of a select list: `x.col`, `expr as name`, split at top-level commas. */
 function columnNames(list: string): string[] {
   const items: string[] = [];
   let depth = 0;
@@ -104,7 +85,6 @@ describe.each(VIEWS)("$view", ({ view, columns }) => {
   });
 
   it("only ever adds columns at the end, unless the same migration renames one or drops the view first", () => {
-    // Postgres refuses `create or replace view` that drops or reorders one.
     for (let i = 1; i < defs.length; i++) {
       if (defs[i].rebuilt) continue;
       const before = columnNames(defs[i - 1].list).map((c) => defs[i].renames.get(c) ?? c);
@@ -152,11 +132,6 @@ describe.each(VIEWS)("$view", ({ view, columns }) => {
 });
 
 describe("a rebuild of the Customer overview", () => {
-  // Postgres refuses to drop a view another view reads (RESTRICT), so while
-  // the migration summary read the overview, a migration that dropped the
-  // overview had to drop the summary first and create it again after the
-  // overview, in the same file. The summary was dropped for good on
-  // 2026-11-01 (its only reader, the Migration card, had gone).
   const SUMMARY = "admin_customer_migration_summary";
   const summaryGone = files.find(
     ({ sql }) =>
@@ -186,7 +161,6 @@ describe("a rebuild of the Customer overview", () => {
     expect(summaryDrop).toBeLessThan(overviewDrop);
     expect(overviewCreate).toBeGreaterThan(overviewDrop);
     expect(summaryCreate).toBeGreaterThan(overviewCreate);
-    // RESTRICT, so a dependent this file does not know about fails the migration.
     expect(d.sql).not.toMatch(/drop view [^;]*\bcascade\b/i);
   });
 

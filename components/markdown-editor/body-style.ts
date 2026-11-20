@@ -1,13 +1,3 @@
-/**
- * How a Storefront product's body reads: one look, shared by the product
- * page's Description tab, the product editor's visual editor and ✨ Write's
- * preview, so what Staff edit is what shoppers see. Kept apart from the
- * editor so the product page carries none of TipTap.
- *
- * Its rules are the elements a body is written in (lib/markdown/product-markdown.ts),
- * plus the few a body written as Markdown may still hold (an image, code, a
- * divider), so those don't fall back to the browser's defaults.
- */
 export const PRODUCT_BODY_STYLE = [
   "break-words text-base leading-relaxed text-foreground/90",
   "[&>*+*]:mt-4",

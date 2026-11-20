@@ -20,10 +20,10 @@ describe("rma transitions", () => {
   });
 
   it("refuses illegal transitions", () => {
-    expect(canTransition("rejected", "approved")).toBe(false); // terminal
-    expect(canTransition("requested", "received")).toBe(false); // skips steps
-    expect(canTransition("approved", "refunded")).toBe(false); // not received yet
-    expect(canTransition("received", "cancelled")).toBe(false); // too late to cancel
+    expect(canTransition("rejected", "approved")).toBe(false);
+    expect(canTransition("requested", "received")).toBe(false);
+    expect(canTransition("approved", "refunded")).toBe(false);
+    expect(canTransition("received", "cancelled")).toBe(false);
     expect(canTransition("completed", "refunded")).toBe(false);
   });
 

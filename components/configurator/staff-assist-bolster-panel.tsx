@@ -18,14 +18,6 @@ import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
 type TemplateRow = { id: number; name: string };
 
-/**
- * Staff assist panel for /mbolster-config (slice 13, Staff-only). Mirrors the
- * pillow panel minus the size×tier confirm gate — the surface models length
- * from the height recommendation, so templates scope to that length
- * (length-based eligibility). Per-piece edits live on the x-ray itself —
- * no list editor here. An edited mix saves back to the catalog the same way
- * the pillow panel does (overwrite or fork), gated on inventory.
- */
 export function StaffAssistBolsterPanel({
   length,
   placements,
@@ -37,25 +29,18 @@ export function StaffAssistBolsterPanel({
   onItemsChange,
   onColorOverridesChange,
 }: {
-  /** Recommended bolster length (short | medium | long) — scopes the template picker. */
   length: string;
-  /** Live session mix, edited on the x-ray — the thing a save publishes. */
   placements: BolsterPlacement[];
   onPlacementsChange: (next: BolsterPlacement[]) => void;
   loadedTemplate: LoadedTemplate | null;
   onLoadTemplate: (loaded: LoadedTemplate | null) => void;
-  /** The engine's Filling Template for this length, marked in the picker. */
   suggestedTemplateId?: number | null;
-  /** Kept only while the mix exactly matches the loaded template (snapshot claim). */
   sessionFillingTemplateId: number | null;
-  /** Loaded filling items, surfaced for the x-ray renderer. */
   onItemsChange?: (items: FillingItem[]) => void;
-  /** Product Builder color overrides, surfaced for the x-ray CSS vars. */
   onColorOverridesChange?: (overrides: ColorOverrideRow[]) => void;
 }) {
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [items, setItems] = useState<FillingItem[]>([]);
-  // Bumped after a save so the picker refetches and lists the saved template.
   const [catalogVersion, setCatalogVersion] = useState(0);
 
   useEffect(() => {
@@ -102,8 +87,6 @@ export function StaffAssistBolsterPanel({
   };
 
   const tools: ToolSpec[] = [
-    // Length is derived from the height recommendation, not a staff pick — it
-    // shows as context because it scopes the template list below.
     {
       id: "length",
       label: "Length",

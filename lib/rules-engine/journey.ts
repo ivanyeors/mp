@@ -1,6 +1,3 @@
-/**
- * Entry → final flow journey on RecommendationRecord (slice 06).
- */
 import type { RecommendationRecord } from "./recommendation-record";
 import type { FlowRouteDecision, RuleFlow } from "./types";
 
@@ -40,7 +37,6 @@ export function withJourneyOnAccept(
   };
 }
 
-/** Hold must not proceed while an upsell/cross-sell route is unresolved. */
 export function assertPreStripeRouteResolved(
   gate: PreStripeRouteGate,
 ): { ok: true } | { ok: false; reason: string } {
@@ -53,7 +49,6 @@ export function assertPreStripeRouteResolved(
   };
 }
 
-/** After Accept + target-flow re-eval: keep entry journey + fired route, new outputs. */
 export function stampAcceptedTargetRecord(
   entry: RecommendationRecord,
   target: RecommendationRecord,

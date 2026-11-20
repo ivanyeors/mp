@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * CRM 06: a Customer's Follow-ups. Every Staff member with `customers` sees
- * them; creating, completing, reassigning and deleting need `customers-edit`.
- * The assignee is a Staff profile whose Member can close one, never a
- * view-only colleague, an archived profile or a deactivated login. Who created
- * or completed one is the profile the person works as. Audited with ids only.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -34,15 +26,15 @@ const MEI = "aaaaaaaa-0000-4000-8000-000000000001";
 const KIM = "aaaaaaaa-0000-4000-8000-000000000002";
 const MISSING = "aaaaaaaa-0000-4000-8000-0000000000ff";
 
-const STUDIO = "00000000-0000-4000-8000-0000000000b1"; // Owner, a shared login: Jess, Kai and an archived profile
-const CLERK = "00000000-0000-4000-8000-0000000000b2"; // customers-edit, one profile
-const LOOKER = "00000000-0000-4000-8000-0000000000b3"; // customers only: view-only
-const GONE = "00000000-0000-4000-8000-0000000000b4"; // customers-edit, deactivated
-const VIEWER = "00000000-0000-4000-8000-0000000000b5"; // no customers key
+const STUDIO = "00000000-0000-4000-8000-0000000000b1";
+const CLERK = "00000000-0000-4000-8000-0000000000b2";
+const LOOKER = "00000000-0000-4000-8000-0000000000b3";
+const GONE = "00000000-0000-4000-8000-0000000000b4";
+const VIEWER = "00000000-0000-4000-8000-0000000000b5";
 
 const JESS = "11111111-1111-4111-8111-000000000001";
 const KAI = "11111111-1111-4111-8111-000000000002";
-const LEFT = "11111111-1111-4111-8111-000000000003"; // archived
+const LEFT = "11111111-1111-4111-8111-000000000003";
 const WANG = "11111111-1111-4111-8111-000000000004";
 const LEE = "11111111-1111-4111-8111-000000000005";
 const GONE_P = "11111111-1111-4111-8111-000000000006";
@@ -131,7 +123,6 @@ describe("seeing a Customer's follow-ups", () => {
     expect(body.rows[2].doneBy?.name).toBe("Wang Ying");
     expect(body.me).toEqual({ id: WANG, name: "Wang Ying" });
     expect(body.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // Not Lee (view-only), not Gone (deactivated), not Ana (archived).
     expect(body.assignees).toEqual([
       { id: JESS, name: "Jess" },
       { id: KAI, name: "Kai" },
@@ -199,7 +190,6 @@ describe("adding a follow-up", () => {
     signIn(STUDIO, KAI);
     expect((await create({ ...valid, assignedToProfileId: WANG })).status).toBe(201);
     expect(h.db.customer_followups.at(-1)).toMatchObject({ created_by_profile_id: KAI, assigned_to_profile_id: WANG });
-    // Another login's profile in the cookie is ignored, never trusted.
     signIn(STUDIO, WANG);
     expect((await create(valid)).status).toBe(201);
     expect(h.db.customer_followups.at(-1)?.created_by_profile_id).toBeNull();
@@ -240,7 +230,6 @@ describe("completing a follow-up", () => {
       after: { customer_id: MEI, done_by_profile_id: WANG },
     });
     expect(JSON.stringify(h.db.admin_audit_log)).not.toContain("pillow");
-    // A second click records nothing more.
     const doneAt = row(F_OPEN)?.done_at;
     expect((await patch(F_OPEN, { done: true })).status).toBe(409);
     expect(row(F_OPEN)?.done_at).toBe(doneAt);

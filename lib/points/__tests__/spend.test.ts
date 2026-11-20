@@ -21,11 +21,8 @@ const rules = { minRedeem: 500, maxShare: 0.5 };
 
 describe("the allowance (rule i)", () => {
   it("is the smaller of the balance and half the products after the coupon, in S$1 steps", () => {
-    // Half of S$90 is S$45: the cap, under a 6,000-point balance.
     expect(pointsAllowance({ available: 6000, productsAfterCoupon: 90, ...rules })).toBe(4500);
-    // A balance of 2,130 spends 2,100: the odd 30 stay.
     expect(pointsAllowance({ available: 2130, productsAfterCoupon: 200, ...rules })).toBe(2100);
-    // Half of S$85.50 is S$42.75: whole dollars only.
     expect(pointsAllowance({ available: 10000, productsAfterCoupon: 85.5, ...rules })).toBe(4200);
   });
 
@@ -44,7 +41,6 @@ describe("the allowance (rule i)", () => {
   });
 
   it("does not lose a dollar to binary drift", () => {
-    // 0.29 × 100 is 28.999999999999996 in floating point.
     expect(pointsCapDollars(100, 0.29)).toBe(29);
     expect(pointsCapDollars(100, 0.7)).toBe(70);
   });
@@ -100,8 +96,6 @@ describe("whose points (rule h)", () => {
     expect(use(OWNER, OWNER)).toBe(true);
   });
 
-  // The account-binding table, carried over from the retired bound coupon
-  // (slice 06): the same rule, except that value with no owner is nothing.
   it.each([
     ["no owner, a guest", null, null, null, false],
     ["no owner, signed in", null, OTHER, OTHER, false],

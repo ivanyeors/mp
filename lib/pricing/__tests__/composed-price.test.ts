@@ -7,12 +7,6 @@ import {
   type PricedComponent,
 } from "@/lib/pricing/composed-price";
 
-/**
- * Fixtures are the live Costings values (prod, 2026-09-13). The point of this file
- * is that the nine premium price points come out EXACTLY, because they are hand-set
- * and do not decompose into a shared core — see the migration header.
- */
-
 const COVER_MSRP = { XS: 25, S: 26, M: 29, L: 32, XL: 35 } as const;
 const LINEN_MSRP = { XS: 65, S: 72, M: 75, L: 89, XL: 113 } as const;
 const FIBRECOOL_MSRP: Record<string, number | null> = {
@@ -27,12 +21,10 @@ const PREMIUM: Record<string, { linen: number; fibrecool: number | null }> = {
   XL: { linen: 680, fibrecool: null },
 };
 
-/** The case the premium BOM ships for each size — two are Fibrecool, three linen. */
 const PREMIUM_DEFAULT_CASE: Record<string, "linen" | "fibrecool"> = {
   XS: "fibrecool", S: "linen", M: "fibrecool", L: "linen", XL: "linen",
 };
 
-/** Every premium BOM ships TWO covers (prod, verified); basic ships one. */
 const satin = (size: keyof typeof COVER_MSRP, quantity = 2): PricedComponent => ({
   item_id: 1, msrp: COVER_MSRP[size], quantity,
 });
@@ -81,8 +73,6 @@ describe("priceComposedBuild — the nine premium price points", () => {
   }
 
   it("XL Fibrecool is refused, not sold at a discount", () => {
-    // Item 37 has no MSRP and no price row. Counting null as 0 would have priced it
-    // at 680 - 113 = 567, i.e. CHEAPER than the linen it upgrades from.
     const r = priceComposedBuild(premiumInput("XL", "fibrecool"));
     expect(r).toMatchObject({ ok: false, code: "unpriced_component" });
   });
@@ -102,9 +92,6 @@ describe("priceComposedBuild — the default build costs the shelf price", () =>
 
 describe("priceComposedBuild — only what differs moves the price", () => {
   it("a dearer cover adds its difference ONCE PER COVER THE BOM SHIPS", () => {
-    // Premium ships two covers. Charging one cover's difference undercharged by 8
-    // here, and by up to 8-ish on every size — the same substitution that shipped
-    // one cover for a two-cover product.
     const r = priceComposedBuild(premiumInput("XS", "linen", batik()));
     expect(r).toMatchObject({ ok: true, coverDelta: 16, subtotal: 356 });
   });
@@ -136,7 +123,7 @@ describe("priceComposedBuild — basic and bolster reach the same answer unkeyed
   const basicXs = {
     msrpByFamily: { [UNKEYED]: 170 },
     defaultCover: satin("XS", 1),
-    defaultCase: { ...basicXsCases[0], quantity: 1 }, // Deep Blue Linen, 65
+    defaultCase: { ...basicXsCases[0], quantity: 1 },
     caseOptions: basicXsCases,
     chosenCover: null,
     chosenCase: null,
@@ -144,7 +131,6 @@ describe("priceComposedBuild — basic and bolster reach the same answer unkeyed
   };
 
   it("the default basic build is its shelf price, not shelf + cover + case", () => {
-    // The bug this replaces charged 170 + 25 + 65 = 260 for a 170 pillow.
     expect(priceComposedBuild(basicXs)).toMatchObject({ ok: true, subtotal: 170 });
   });
 

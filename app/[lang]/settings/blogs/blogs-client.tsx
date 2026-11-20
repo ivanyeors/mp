@@ -30,7 +30,6 @@ export type BlogRow = {
     created_at: string;
 };
 
-/** The `/api/blogs` payload the list mounts with. */
 export type BlogsInitialData = { ok: true; rows: BlogRow[] };
 
 export default function SettingsBlogsPage({ initialData }: { initialData?: BlogsInitialData }) {
@@ -40,7 +39,6 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
 
     const [posts, setPosts] = useState<BlogRow[]>(initialData?.rows ?? []);
     const [loading, setLoading] = useState(!initialData);
-    // The server already loaded the first page of rows; later calls still fetch.
     const skipFirstFetch = useRef(initialData != null);
 
 
@@ -122,7 +120,6 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
                 <EmptyState>No blog posts yet.</EmptyState>
             ) : (
                 <>
-                    {/* Phones: the row opens the editor; publish and delete sit in one menu. */}
                     <MobileList>
                         {posts.map((post) => (
                             <MobileListRow

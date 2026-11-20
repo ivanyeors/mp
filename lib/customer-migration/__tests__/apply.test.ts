@@ -38,14 +38,6 @@ import {
 } from "@/lib/customer-migration/batches";
 import { AGREEMENT_EXPORT, buyer, exportCsv, FIVE_ROWS } from "./fixtures";
 
-/**
- * The browser side of the apply (slice 03), driven against an in-memory
- * stand-in for `import_shopify_customers`. The stand-in applies the plan rules
- * to the rows as they are at write time and keeps the in-order guard, as the
- * SQL function does; supabase/tests/customer-import/ proves the SQL function
- * itself against the same rules.
- */
-
 type Customer = ExistingCustomer & { email: string };
 
 function fakeDatabase() {
@@ -62,7 +54,6 @@ function fakeDatabase() {
     applied: boolean;
   };
   const batches = new Map<string, Batch>();
-  /** Every row index each batch wrote, in order: a row written twice shows here twice. */
   const written = new Map<string, number[]>();
 
   const lookup = (): ExistingLookup => ({ customersByEmail: customers, migratedShopifyIds: migratedIds });
@@ -90,7 +81,6 @@ function fakeDatabase() {
     return { id, rowsDone: 0, rowsTotal };
   };
 
-  /** `import_shopify_customers`, as far as the browser can tell. */
   const importChunk = (batchId: string, startIndex: number, rows: ImportRow[]): ApplyChunkResponse => {
     const b = batches.get(batchId)!;
     if (b.applied) return { ok: true, status: "refused", reason: "applied", rowsDone: b.rowsDone };
@@ -123,7 +113,6 @@ function fakeDatabase() {
   };
 
   const applyChunk = vi.fn<ApplyChunkFn>(async (batchId, startIndex, rows) => {
-    // What the server action does: re-read the chunk, rebuild the rows.
     const read = readApplyChunk(JSON.parse(JSON.stringify(rows)), startIndex);
     if (!read.ok) return read;
     return importChunk(batchId, read.startIndex, importRows(read.rows));
@@ -139,7 +128,6 @@ function fakeDatabase() {
     return { ok: true, status, counts, rows: { created: b.created, merged: b.merged }, newlyApplied };
   });
 
-  /** The preview's server action, against the database as it is now. */
   const preview = async (text: string) => {
     const run = await runShopifyPreview(text, async (chunk) => {
       const read = readPreviewChunk(JSON.parse(JSON.stringify(chunk)));
@@ -176,7 +164,6 @@ describe("runShopifyImport: the import does what the preview said", () => {
     expect(first.counts.skipped).toEqual(summary.skipReasons);
     expect(reconcile(first.counts)).toEqual({ complete: true, accounted: 18, reconciles: true });
 
-    // A fresh export of the same people: nothing new.
     const again = await imported(db, `${text}\n`);
     expect(again.counts).toMatchObject({ created: 0, merged: 0, alreadyImported: first.counts.created + first.counts.merged });
   });
@@ -185,7 +172,7 @@ describe("runShopifyImport: the import does what the preview said", () => {
     const db = fakeDatabase();
     const text = exportCsv([buyer(1), buyer(2)]);
     expect((await db.preview(text)).summary.outcomes).toMatchObject({ create: 2, merge: 0 });
-    db.addCustomer("buyer2@example.com", { has_account: true }); // signed in meanwhile
+    db.addCustomer("buyer2@example.com", { has_account: true });
     const result = await imported(db, text);
     expect(result.counts).toMatchObject({ created: 1, merged: 1 });
     expect([...db.customers.keys()].filter((e) => e === "buyer2@example.com")).toHaveLength(1);
@@ -194,7 +181,7 @@ describe("runShopifyImport: the import does what the preview said", () => {
   it("carries file-wide duplicates into the write path, even across chunks", async () => {
     const db = fakeDatabase();
     const rows = Array.from({ length: 150 }, (_, n) => buyer(n));
-    rows[149] = buyer(149, { Email: "BUYER0@example.com" }); // row 0's email, 149 rows later
+    rows[149] = buyer(149, { Email: "BUYER0@example.com" });
     const result = await imported(db, exportCsv(rows));
     expect(result.counts.skipped).toEqual({ duplicate_email_in_file: 2 });
     expect(db.customers.has("buyer0@example.com")).toBe(false);
@@ -224,7 +211,6 @@ describe("runShopifyImport: closing the tab, and resuming", () => {
     const db = fakeDatabase();
     const text = exportCsv(Array.from({ length: 450 }, (_, n) => buyer(n)));
     const batch = db.start(450);
-    // The tab closes during the third chunk: the request never arrives.
     let calls = 0;
     const closing: ApplyChunkFn = async (...args) => {
       if (++calls === 3) throw new Error("Failed to fetch");
@@ -234,7 +220,6 @@ describe("runShopifyImport: closing the tab, and resuming", () => {
     expect(stopped).toEqual({ kind: "stopped", rowsDone: 200, error: "Failed to fetch" });
     expect(db.finish).not.toHaveBeenCalled();
 
-    // The page reloads, lists the batch at 200 of 450, and the same file continues.
     db.applyChunk.mockClear();
     const resumed = await runShopifyImport({
       text,
@@ -258,7 +243,6 @@ describe("runShopifyImport: closing the tab, and resuming", () => {
       return res;
     };
     const stopped = await runShopifyImport({ text, batch, applyChunk: lossy, finish: db.finish });
-    // The page believes 100; the batch holds 200.
     expect(stopped).toMatchObject({ kind: "stopped", rowsDone: 100 });
     expect(db.batches.get(batch.id)!.rowsDone).toBe(200);
 
@@ -399,7 +383,6 @@ describe("readStartInput: a new batch", () => {
         exported_at: "2026-10-19",
       },
     });
-    // Singapore is ahead of UTC: tomorrow, by the server's clock, is today there.
     expect(readStartInput({ ...good, exportedAt: "2026-10-21" }, "2026-10-20").ok).toBe(true);
   });
 
@@ -513,7 +496,7 @@ describe("Import history", () => {
   });
 
   it("flags a stopped batch with every row whose counts do not reconcile", () => {
-    expect(batchMismatch(view())).toBeNull(); // still running
+    expect(batchMismatch(view())).toBeNull();
     expect(batchMismatch(view({ rows_done: 3400, created: 3200, merged: 100, already_imported: 50, skipped: { no_email: 50 } }))).toBeNull();
     expect(batchMismatch(view({ rows_done: 3400 }))).toMatchObject({ accounted: 1200, reconciles: false });
   });

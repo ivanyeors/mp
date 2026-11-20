@@ -8,16 +8,6 @@ import { CustomerFiltersPageClient } from "./filters-page-client";
 
 export const runtime = "nodejs";
 
-/**
- * The Customers list's mega filter, as a page of its own: every filter,
- * grouped, with room for each. It reads and writes the list's own URL
- * parameters, so `/settings/customers/filters?stage=at-risk` opens with that
- * filter set, and *Show N customers* goes back to `/settings/customers` with
- * whatever is set now. The browser's Back returns to the list as it was.
- *
- * The count is read here for the first paint (`listAdminCustomers`, one row),
- * then by the client as the filters change.
- */
 export default async function CustomerFiltersPage({
     params,
     searchParams,
@@ -33,8 +23,6 @@ export default async function CustomerFiltersPage({
     const { filters, ignored } = parseCustomerFilters(searchParamsFromRecord(query));
     const [count, campaigns] = await Promise.all([
         listAdminCustomers(customerFilterParams({ ...filters, page: 1, limit: 1 }, { paging: true })),
-        // The *Campaign* filter's choices (PRD-campaign-audiences slice 05), with
-        // the link's own campaign; on a failure the filter offers none.
         listCampaignFilterOptions(supabaseAdmin(), filters.campaign ? [filters.campaign.id] : []).catch(() => []),
     ]);
 

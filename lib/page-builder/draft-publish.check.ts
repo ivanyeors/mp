@@ -1,7 +1,3 @@
-/**
- * Slice 05 self-check: Section drafts, Publish, and the media walks that must see them.
- * Run: npx tsx --env-file=.env.local lib/page-builder/draft-publish.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -27,7 +23,6 @@ function row(over: Partial<LandingSectionRow> = {}): LandingSectionRow {
   };
 }
 
-// --- Draft semantics ---
 assert.equal(hasPendingDraft(row()), false, "no draft columns means no pending change");
 assert.equal(hasPendingDraft(row({ draft_position: 0 })), true, "draft_position 0 is pending, not absent");
 assert.equal(hasPendingDraft(row({ draft_visible: false })), true, "draft_visible false is pending");
@@ -50,7 +45,6 @@ assert.equal(
   "pending state reads as a draft with a count",
 );
 
-// --- Migration ---
 const migrations = readdirSync(join(ROOT, "supabase/migrations"));
 const file = migrations.find((f) => f.includes("landing_section_drafts"));
 assert.ok(file, "the draft migration exists");
@@ -72,7 +66,6 @@ assert.match(sql, /insert into public\.landing_page_publishes/, "publish writes 
 assert.match(sql, /keep_limit/, "snapshot retention is bounded");
 assert.match(sql, /revoke all on function public\.publish_landing_draft/, "publish is not callable by anon");
 
-// --- Writes go to the draft layer, not to live columns ---
 const idRoute = readCode("app/api/landing-sections/[id]/route.ts");
 assert.match(idRoute, /update\.draft_content = parsed\.content/, "PATCH writes draft content");
 assert.match(idRoute, /update\.draft_visible = parsed\.visible/, "PATCH writes draft visibility");
@@ -89,12 +82,10 @@ assert.match(publishRoute, /rpc\("discard_landing_draft"/, "discard calls the da
 assert.match(publishRoute, /landing_section\.publish/, "publish is audited");
 assert.match(publishRoute, /nothing to publish/, "publishing a clean page is refused");
 
-// --- The public page ignores drafts entirely ---
 const store = readCode("lib/landing-sections.ts");
 const getPublic = store.slice(store.indexOf("export async function getLandingSections"), store.indexOf("export async function listLandingSections"));
 assert.doesNotMatch(getPublic, /draft/, "the public read never looks at draft columns");
 
-// --- Media walks reach drafts ---
 const usages = read("lib/media/image-usages.ts");
 assert.match(usages, /landing_sections: "id, slug, content, draft_content"/, "usage scan selects draft content");
 assert.match(usages, /contains\("draft_content::text", id\)/, "usage scan matches draft references");
@@ -103,9 +94,6 @@ const replace = read("lib/media/replace.ts");
 assert.match(replace, /select\("id, content, draft_content"\)/, "replace-everywhere reads drafts");
 assert.match(replace, /draft_content: next\.draft_content/, "replace-everywhere writes drafts back");
 
-// --- Builder surfaces the draft state ---
-// #407 (8be29642) moved these into PublishBar, shared by every page the builder edits;
-// the landing page mounts it with the default "the live site".
 const client = read("app/[lang]/settings/page-builder/page-builder-client.tsx");
 assert.match(client, /<PublishBar pending=\{pending\}/, "the builder header mounts the publish bar");
 const bar = read("components/settings/page-builder/publish-bar.tsx");

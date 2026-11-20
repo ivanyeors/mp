@@ -13,18 +13,11 @@ type ExistingRow = {
   status?: string | null;
 };
 
-/** Whether first-time finalization should create a review-only held Result (no Stripe hold). */
 export function shouldCreateInstoreReviewOnly(
   existing: ExistingRow | null | undefined,
 ): boolean {
   if (existing?.payment_intent_id) return false;
   if (existing?.source === "online_purchase") return false;
-  // An Assisted customisation already has a Source that authorises its no-card
-  // submit. Treating it as an in-store finalize would overwrite that with
-  // "manual" — dropping it into measurement_residue and, later, making its Order
-  // be born `delivered`. The configurator hides its own no-purchase button in
-  // assisted mode, but the Admin Panel's send-to-Telegram action posts isFinal
-  // too, so the guard belongs here where every caller passes.
   if (existing?.source === "staff_assisted") return false;
   if (existing?.status === "assigned" || existing?.status === "captured") return false;
   return true;
@@ -42,7 +35,6 @@ export type InstoreReviewOnlyPatch = {
   recommendation_record: Record<string, unknown>;
 };
 
-/** DB patch for in-store measurement finalization — held queue, no authorization. */
 export async function buildInstoreReviewOnlyPatch(
   data: Record<string, unknown>,
 ): Promise<InstoreReviewOnlyPatch> {
@@ -52,10 +44,9 @@ export async function buildInstoreReviewOnlyPatch(
   let tier: "basic" | "premium";
 
   if ("error" in result) {
-    // Missing inputs → legacy ballpark so finalize still lands a size×tier.
     const ballpark = ballparkFromMpConfigData(data);
     size = ballpark.suggested_size;
-    tier = "premium"; // Premium flow sold tier
+    tier = "premium";
     record = {
       graphVersionId: null,
       flow: "premium-mpillow",

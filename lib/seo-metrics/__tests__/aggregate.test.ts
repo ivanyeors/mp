@@ -18,7 +18,6 @@ const day = (date: string, clicks: number, impressions: number, position: number
 
 describe("summarize", () => {
   it("recomputes CTR and impression-weighted position instead of averaging", () => {
-    // Averaging the two CTRs would give 0.3 and the two positions 6; both wrong.
     const t = summarize([day("2026-09-01", 50, 100, 2), day("2026-09-02", 10, 900, 10)]);
     expect(t.clicks).toBe(60);
     expect(t.impressions).toBe(1000);
@@ -33,9 +32,9 @@ describe("summarize", () => {
 
 describe("bucketize", () => {
   it("starts weeks on Monday", () => {
-    expect(bucketStart("2026-09-24", "week")).toBe("2026-09-21"); // Thursday → Monday
+    expect(bucketStart("2026-09-24", "week")).toBe("2026-09-21");
     expect(bucketStart("2026-09-21", "week")).toBe("2026-09-21");
-    expect(bucketStart("2026-09-27", "week")).toBe("2026-09-21"); // Sunday
+    expect(bucketStart("2026-09-27", "week")).toBe("2026-09-21");
   });
 
   it("fills empty days and flags the reporting-lag days as partial", () => {
@@ -103,10 +102,10 @@ describe("sumBuckets", () => {
       { from: "2026-08-31", to: "2026-09-27", granularity: "week", firstDate: "2026-09-09", lastDate: "2026-09-16" },
     );
     expect(out.map((b) => [b.start, b.value])).toEqual([
-      ["2026-08-31", null], // before the export starts
+      ["2026-08-31", null],
       ["2026-09-07", 5],
       ["2026-09-14", 1],
-      ["2026-09-21", null], // after it ends
+      ["2026-09-21", null],
     ]);
     expect(out.every((b) => !b.partial)).toBe(true);
   });

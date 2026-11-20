@@ -15,16 +15,8 @@ import {
     type FittingRecordView,
 } from "@/lib/fitting-import/view";
 
-/** What the page read: the records, or null when the read failed. */
 export type CustomerFittingsResult = FittingRecordView[] | null;
 
-/**
- * Fitting history on the Customer page (ADR 0042): the customer's Profile shows
- * the same card, and Staff also get the Drive photos and the contact the form
- * held. Shown only to Staff holding `customers`, and only when the Customer has
- * a fitting. Photos are previewed from Drive through the platform and never
- * copied.
- */
 export function CustomerFittingsCard({ customerId, fittings }: { customerId: string; fittings: CustomerFittingsResult | undefined }) {
     if (fittings === undefined) return null;
     if (fittings === null) {
@@ -92,7 +84,6 @@ function Photos({ customerId, fitting }: { customerId: string; fitting: FittingR
     );
 }
 
-/** A thumbnail from Drive; when Drive will not give one, a tile that opens the file in Drive. */
 function PhotoTile({
     customerId,
     fittingId,
@@ -161,7 +152,6 @@ function FullPreview({ customerId, fittingId, file }: { customerId: string; fitt
     );
 }
 
-/** The contact the form held, and how the record found this Customer. */
 function OnTheForm({ fitting: f }: { fitting: FittingRecordView }) {
     const contact = [f.nameOnForm, f.emailOnForm, f.mobileOnForm].filter(Boolean).join(" · ");
     return (

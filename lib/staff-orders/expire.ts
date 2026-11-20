@@ -1,10 +1,3 @@
-/**
- * The daily sweep (ADR 0048): a Staff order whose Payment link expired unpaid
- * is cancelled, so the orders list does not fill with orders nobody will pay.
- * Its open Checkout, if any, is closed first; one Stripe says is complete is
- * left for the webhook, which is about to confirm it. Never throws.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
@@ -12,7 +5,6 @@ import { getStripe } from "@/lib/stripe/client";
 
 export type ExpireSummary = { ok: true; cancelled: number; skipped: number } | { ok: false; error: string };
 
-/** At most this many a day; the rest wait for tomorrow. */
 const BATCH = 200;
 
 export async function expireStaffOrderLinks(admin: SupabaseClient, now: Date = new Date()): Promise<ExpireSummary> {
@@ -49,7 +41,6 @@ export async function expireStaffOrderLinks(admin: SupabaseClient, now: Date = n
           }
           if (session.status === "open") await stripe.checkout.sessions.expire(sessionId);
         } catch (err) {
-          // Could not be sure it is closed: leave it for tomorrow rather than cancel an order that may be paid.
           console.error(`[staff-order] Could not close the Checkout of ${order.id}:`, err);
           skipped++;
           continue;

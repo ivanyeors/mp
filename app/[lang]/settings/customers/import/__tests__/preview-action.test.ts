@@ -6,14 +6,8 @@ import { parseShopifyCustomersCsv } from "@/lib/customer-migration/shopify-csv";
 import { previewPayload } from "@/lib/customer-migration/preview";
 import { exportCsv, FIVE_ROWS, FIVE_ROWS_MATCHES } from "@/lib/customer-migration/__tests__/fixtures";
 
-/**
- * The preview action (slice 02): guarded by `customer-import` on every chunk,
- * reads through one SQL function, writes nothing, and answers without PII.
- */
-
 const h = vi.hoisted(() => ({
   denied: null as string | null,
-  /** Every call made on the Supabase client, by method name. */
   calls: [] as { method: string; args: unknown[] }[],
   matches: [] as unknown[],
   rpcError: null as { message: string } | null,
@@ -139,7 +133,6 @@ describe("the preview writes nothing, and the import writes only through its SQL
       .map((f) => join(libDir, f)),
   ];
 
-  /** Not to Storage, not to Media, not to Drive, not to disk, not to another server, and no auth user. */
   const neverStored = (src: string) => {
     expect(src).not.toMatch(/auth\.admin/);
     expect(src).not.toMatch(/\.storage\b|@\/lib\/(media|media-assets|google)\b/);
@@ -163,12 +156,10 @@ describe("the preview writes nothing, and the import writes only through its SQL
       "finish_shopify_import",
       "import_shopify_customers",
       "preview_shopify_import_undo",
-      // Preview and run of Subscribe imported customers (ADR 0039).
       "subscribe_migrated_customers",
       "subscribe_migrated_customers",
       "undo_shopify_import",
     ]);
-    // The preview's own body reads only.
     const preview = src.slice(src.indexOf("export async function previewShopifyImport"), src.indexOf("const UUID"));
     expect(preview).not.toMatch(/\.(insert|update|upsert|delete)\(|\.from\(/);
   });

@@ -11,13 +11,6 @@ import {
 } from "@/lib/media/image-usages";
 import { createFakeSupabase } from "./usage-fixtures";
 
-/**
- * Email campaigns in the Media Library's usage resolver
- * (PRD-campaign-email-editor slice 05): an image a campaign's blocks place is
- * Used, names the campaign, and can never be deleted past, whether the
- * campaign is a draft, sent or archived.
- */
-
 const h = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.client }));
 vi.mock("@/lib/media/slide-media", () => ({
@@ -36,9 +29,7 @@ const CAMPAIGNS = [
   { id: "c-draft", name: "December launch", content: blocks(image(HERO.id)), locked_at: null, archived_at: null },
   { id: "c-sent", name: "November news", content: blocks({ id: "t", type: "heading", level: 1, text: "Hi" }, hero(HERO.id)), locked_at: "2026-11-01", archived_at: null },
   { id: "c-archived", name: "October sale", content: blocks(image(HERO.id)), locked_at: "2026-10-01", archived_at: "2026-10-20" },
-  // Words that name the asset or its URL are words, not a placed image.
   { id: "c-words", name: "Care tips", content: blocks({ id: "t", type: "text", paragraphs: [{ kind: "p", runs: [{ text: `${HERO.id} ${HERO.hosted_url}` }] }] }), locked_at: null, archived_at: null },
-  // A campaign written before blocks has no content.
   { id: "c-legacy", name: "Sign-in invitation", content: null, body: `See ${HERO.hosted_url}`, locked_at: null, archived_at: null },
 ];
 
@@ -63,7 +54,6 @@ describe("email campaigns as a Media Library consumer", () => {
       { type: "email_campaign", label: "October sale", ref_id: "c-archived" },
     ]);
     expect(resolveUsages(OTHER, rows)).toEqual([]);
-    // The library grid's index says the same.
     expect(indexUsages([HERO, OTHER], rows).byAssetId).toEqual({ [HERO.id]: usages });
   });
 
@@ -81,7 +71,6 @@ describe("email campaigns as a Media Library consumer", () => {
     expect(usages.map((u) => u.ref_id)).toEqual(["c-draft", "c-sent", "c-archived"]);
     const read = fake.log.filter((q) => q.table === "email_campaigns");
     expect(read).toHaveLength(1);
-    // c-words names the id in its words, so the text search reads it; the matcher then drops it.
     expect(read[0].returned).toBe(4);
   });
 

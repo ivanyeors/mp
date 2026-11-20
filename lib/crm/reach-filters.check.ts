@@ -1,31 +1,3 @@
-/**
- * PRD-campaign-audiences slice 05 check: the reach filters, through
- * `applyCustomerFilters`, against the Customer overview on real Postgres.
- *
- * Run: CRM_CHECK_DATABASE_URL=postgresql://… npx tsx lib/crm/reach-filters.check.ts
- *
- * CRM_CHECK_DATABASE_URL is a Postgres connection string for a database with
- * every migration applied (see lib/crm/purchase-lines.check.ts). `psql` must
- * be on the PATH. Everything runs in one transaction that is rolled back.
- *
- * A fixture of six Customers, their Orders, addresses and campaign sends is
- * inserted. Then:
- *
- *   1. the overview's `ship_country`, `locale`, `campaigns_sent`,
- *      `campaigns_clicked` and `last_emailed_at` are what
- *      the fixture says: the latest counted Order's country beats the
- *      address, a pending Order or a country that is not two letters counts
- *      for nothing, the default address beats a later one, a bounce is a
- *      send, a failed or pending one is not, never-emailed is '-infinity';
- *   2. each filter's URL, mapped by `applyCustomerFilters` (as PostgREST reads
- *      it), lists exactly the fixture's Customers it should, *Unknown* never
- *      among Singapore or outside it, and *not emailed in 30 days* keeping the
- *      never-emailed;
- *   3. anon and authenticated still cannot read the view.
- *
- * Without CRM_CHECK_DATABASE_URL it says so and stops; the TypeScript side is
- * covered by lib/crm/__tests__/customer-filters.test.ts.
- */
 import assert from "node:assert/strict";
 import { applyCustomerFilters, parseCustomerFilters } from "@/lib/crm/customer-filters";
 import { SqlFilter, psqlJson as json, runPsql, sqlLiteral as lit } from "./__tests__/sql-check";
@@ -49,14 +21,13 @@ const cid = (n: number) => `0d050000-0000-4000-8000-${String(n).padStart(12, "0"
 const CAMPAIGN_A = "0d05ca00-0000-4000-8000-00000000000a";
 const CAMPAIGN_B = "0d05ca00-0000-4000-8000-00000000000b";
 
-/** The fixture, by Customer number. */
 const C = {
-  sgOrder: 1, // latest counted Order ships to SG; an older one to MY
-  myOrder: 2, // latest Order MY beats a default SG address; reads Chinese
-  defaultAddress: 3, // no Order; a default address ' my ' beats a later SG one
-  latestAddress: 4, // no Order; no default: the address saved last, MY
-  pendingOnly: 5, // only a pending Order to SG: Unknown
-  badCountry: 6, // a paid Order to "Singapore", not two letters: Unknown
+  sgOrder: 1,
+  myOrder: 2,
+  defaultAddress: 3,
+  latestAddress: 4,
+  pendingOnly: 5,
+  badCountry: 6,
 } as const;
 const ALL = Object.values(C);
 
@@ -101,7 +72,6 @@ function fixture(): string {
       `insert into public.customers (id, email, first_name, locale) values (${lit(cid(n))}, ${lit(`c${n}@ca05.test`)}, 'C${n}', ${lit(n === C.myOrder ? "zh-CN" : "en-US")});`,
     );
   }
-  // Where they are.
   out.push(order(C.sgOrder, "MY", { paidAt: monthsAgo(30) }));
   out.push(order(C.sgOrder, "sg", { paidAt: monthsAgo(22) }));
   out.push(order(C.myOrder, "MY", { paidAt: monthsAgo(1) }));
@@ -112,7 +82,6 @@ function fixture(): string {
   out.push(address(C.latestAddress, "MY", false, 2));
   out.push(order(C.pendingOnly, "SG", { status: "pending", paidAt: null }));
   out.push(order(C.badCountry, "Singapore"));
-  // Campaigns: A reached 1 (clicked), 2 and 3 (bounced: still a send); 4 is pending; B failed for 2.
   out.push(send(C.sgOrder, CAMPAIGN_A, "sent", 40, true));
   out.push(send(C.myOrder, CAMPAIGN_A, "sent", 10));
   out.push(send(C.defaultAddress, CAMPAIGN_A, "bounced", 5));
@@ -123,7 +92,6 @@ function fixture(): string {
 
 const inFixture = `id in (${ALL.map((n) => lit(cid(n))).join(", ")})`;
 
-/** The overview filtered by a list URL, among the fixture Customers. */
 function filterQuery(name: string, search: string): string {
   const { filters, ignored } = parseCustomerFilters(new URLSearchParams(search));
   assert.deepEqual(ignored, [], `${search}: nothing ignored`);
@@ -131,7 +99,6 @@ function filterQuery(name: string, search: string): string {
   return `select '@@${name}@@'::text || coalesce(jsonb_agg(id order by id), '[]') from public.admin_customer_overview where ${[inFixture, ...q.where].join(" and ")};`;
 }
 
-/** Each filter's URL and the fixture Customers it lists. */
 const FILTERS: { search: string; lists: number[] }[] = [
   { search: "ships_to=sg", lists: [C.sgOrder] },
   { search: "ships_to=not-sg", lists: [C.myOrder, C.defaultAddress, C.latestAddress] },
@@ -147,7 +114,6 @@ const FILTERS: { search: string; lists: number[] }[] = [
   { search: "emailed=within:14", lists: [C.myOrder, C.defaultAddress] },
   { search: "emailed=over:30", lists: [C.sgOrder, C.latestAddress, C.pendingOnly, C.badCountry] },
   { search: "emailed=never", lists: [C.latestAddress, C.pendingOnly, C.badCountry] },
-  // The PRD's demo, less the stage: Singapore and not emailed in 30 days.
   { search: "ships_to=sg&emailed=over:30", lists: [C.sgOrder] },
 ];
 
@@ -180,7 +146,6 @@ function main() {
     ].join("\n"),
   );
 
-  // 1. The columns.
   const rows = new Map(json<OverviewRow[]>(r, "rows").map((row) => [row.id, row]));
   const row = (n: number) => rows.get(cid(n))!;
   assert.equal(rows.size, ALL.length, "every fixture Customer is on the overview");
@@ -199,12 +164,10 @@ function main() {
   assert.equal(row(C.latestAddress).last_campaign_sent_at, null, "and the column a page shows stays null");
   assert.equal(Date.parse(row(C.myOrder).last_emailed_at), Date.parse(row(C.myOrder).last_campaign_sent_at!), "the same date when emailed");
 
-  // 2. The filters.
   FILTERS.forEach((f, i) => {
     assert.deepEqual(json<string[]>(r, `f${i}`), [...f.lists].sort((a, b) => a - b).map(cid), f.search);
   });
 
-  // 3. Grants.
   assert.equal(r.get("anon"), "false", "anon cannot read the overview");
   assert.equal(r.get("authenticated"), "false", "authenticated cannot read the overview");
 

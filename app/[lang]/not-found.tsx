@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { getLocaleOrDefault, withLocale } from "@/lib/i18n/routing";
 
 export default function NotFound() {
-  // Not-found gets no params; the locale is in the path. A bare "/" is a redirect.
   const homeHref = withLocale("/", getLocaleOrDefault(usePathname() ?? "/"));
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">

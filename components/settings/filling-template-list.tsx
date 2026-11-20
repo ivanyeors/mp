@@ -15,13 +15,10 @@ export type FillingTemplateListRow = {
   id: number;
   name: string;
   is_active: boolean;
-  /** Sections holding at least one Placement; pillow filling templates only. */
   sections?: string[];
-  /** Every size this template serves. */
   keys?: string[];
 };
 
-/** Advisory: the recipe's Placements were never laid out by a person (CONTEXT.md). */
 export function UnauthoredBadge({ sections, className }: { sections: string[]; className?: string }) {
   return (
     <span
@@ -40,11 +37,6 @@ export function UnauthoredBadge({ sections, className }: { sections: string[]; c
   );
 }
 
-/**
- * Inline rename field for one row of a template list. Enter or the tick commits,
- * Escape or the cross reverts. Mounted per row by the caller's editing state, so
- * the draft always starts from the row's current name.
- */
 export function TemplateNameEditor({
   value,
   busy,
@@ -103,11 +95,6 @@ export function TemplateNameEditor({
   );
 }
 
-/**
- * Phone list of the Filling Templates serving one size. Rows are renameable in
- * place, and carry the scope strip so a recipe shared in from another size is
- * recognisable before it is opened. Desktop uses the rail instead.
- */
 export function FillingTemplateTable({
   kind,
   currentKey,

@@ -130,7 +130,6 @@ const NODE_TYPE_LABELS = Object.fromEntries(
 ) as Record<RuleNode["type"], string>;
 
 type Simulation = {
-  /** simulationKey() at run time — a mismatch means the result is out of date. */
   key: string;
   result: ReturnType<typeof evaluate>;
 };
@@ -215,7 +214,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<RuleNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Dock tool card popped up above the Admin Panel dock; null = canvas only.
   const [panel, setPanel] = useState<keyof typeof PANEL_TITLES | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dropPosRef = useRef<XYPosition>({ x: 120, y: 120 });
@@ -234,8 +232,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   const nodeTypes = useMemo(() => makeNodeTypes(flow), [flow]);
   const [templateNames, setTemplateNames] = useState<Record<string, string>>({});
 
-  // Filling Templates are listed per size, so load every size in the flow once.
-  // Inactive ones are included so a node pointing at one still shows its name.
   useEffect(() => {
     const kind = flow === "mbolster" ? "bolster" : "pillow";
     const sizes = flow === "mbolster" ? BOLSTER_LENGTHS : PILLOW_SIZES;
@@ -286,7 +282,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
       setReadOnly(false);
       setPublishErrors([]);
       setSimulation(null);
-      // Seed Simulate with catalog defaults (numeric empty / first enum)
       const seed: EngineInputs = {};
       for (const def of inputCatalog(flow)) {
         if (def.valueType === "number") seed[def.key] = "";
@@ -310,8 +305,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     [nodes, edges],
   );
 
-  // The Simulate path is derived, not written into nodes: it goes stale the
-  // moment inputs or the graph change, and simulating never touches the draft.
   const simKey = useMemo(
     () => simulationKey(testInputs, nodes, edges),
     [testInputs, nodes, edges],
@@ -343,7 +336,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   }, [panel, simStale]);
   useDockActions("/settings/product-builder/rules-engine", dockTools);
 
-  // Autosave draft (debounced)
   useEffect(() => {
     if (readOnly || loading) return;
     if (skipAutosave.current) {
@@ -351,8 +343,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
       return;
     }
     const t = setTimeout(async () => {
-      // Serialise inside the timer so a burst of node/edge changes costs one
-      // rfToGraph() per debounce window rather than one per change.
       const graph = currentGraph();
       setSaveState("saving");
       try {
@@ -386,8 +376,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     ({ nodes: sel }: { nodes: Node<RuleNodeData>[] }) => {
       const id = sel[0]?.id ?? null;
       setSelectedId(id);
-      // Selecting opens the Node panel; clearing the selection closes it so an
-      // empty editor never sits on the canvas. Simulate stays open until closed.
       if (id) setPanel("node");
       else setPanel((p) => (p === "node" ? null : p));
     },
@@ -452,7 +440,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
         (box
           ? screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 3 })
           : { x: 80, y: 80 });
-      // Selected, so onSelectionChange opens the Node card for the new node.
       setNodes((ns) => [
         ...ns.map((n) => (n.selected ? { ...n, selected: false } : n)),
         { id: rule.id, type, position, data: { rule }, selected: true },
@@ -490,7 +477,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
 
   const goToFlow = (next: RuleFlow) => {
     if (next === flow) return;
-    // Client navigation keeps the app shell (and the dock's tools) mounted.
     router.push(to(`/settings/product-builder/rules-engine/${next}`));
   };
 
@@ -521,7 +507,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
       toast.error(`Publish blocked: ${localErrs.length} error(s)`);
       return;
     }
-    // Persist first so server publish validates the latest draft
     const saveRes = await fetch(apiBase(flow), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -553,7 +538,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
       setReadOnly(false);
       return;
     }
-    // The version list carries metadata only; fetch this version's graph.
     const res = await fetch(`${apiBase(flow)}/versions/${v.id}`);
     const data = await res.json();
     if (!res.ok || !data.ok || !data.version) {
@@ -613,7 +597,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     <div className="rules-engine-workbench -mx-2 -my-4 flex h-[calc(100svh-3.5rem)] flex-col sm:-mx-3 md:-mx-6 md:-my-8 lg:-mx-8 lg:-my-10">
       <div className="flex shrink-0 flex-wrap items-center gap-2 px-2 py-3 sm:px-3 md:px-6 lg:px-8">
         {/* ponytail: mp-care Menubar pattern for product / palette / version */}
-        {/* Phones: each menu is a 44px target with a pressed tint (the primitive's triggers are 28px). */}
         <Menubar className="border-none shadow-none max-md:h-11 max-md:p-0">
           <MenubarMenu>
             <MenubarTrigger aria-label="Product flow" className={MENU_TRIGGER_PHONE}>
@@ -729,7 +712,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </MenubarMenu>
         </Menubar>
 
-        {/* At rest the label only repeats the version menu's "Draft"; phones drop the repeat. */}
         <span
           className={cn(
             "text-xs",
@@ -763,7 +745,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
       </div>
 
       <div className="flex min-h-0 flex-1 border-t bg-muted/30">
-        {/* Canvas + right-click menu */}
         <div ref={canvasRef} className="relative min-h-0 min-w-0 flex-1 max-md:min-h-[60dvh]">
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -791,7 +772,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                 elementsSelectable
               >
                 <Background />
-                {/* Phones: the dock owns the bottom edge, so controls move up and the minimap goes */}
                 <Controls
                   position={isMobile ? "top-left" : "bottom-left"}
                   orientation={isMobile ? "horizontal" : "vertical"}
@@ -859,8 +839,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </ContextMenuContent>
         </ContextMenu>
 
-        {/* Dock tool card: pops up just above the dock it was opened from. Phones get
-            a full-width sheet; md+ a centred card. Both clear the measured dock. */}
         {panel ? (
           <section
             aria-label={PANEL_TITLES[panel]}
@@ -1422,14 +1400,11 @@ function roundIn(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-// Humanize catalog keys for display: shoulder_length_cm -> "Shoulder length".
-// Check: prettyKey("shoulder_length_cm") === "Shoulder length".
 function prettyKey(key: string): string {
   const s = key.replace(/_cm$/, "").replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** A label for nodes whose meaning is not their type: an OR, a template family. */
 function NodeNameField({
   rule,
   disabled,
@@ -1498,7 +1473,6 @@ function TemplatePicker({
   );
 }
 
-/** Active Filling Templates serving one size, for a Template or a size slot. */
 function TemplateSelect({
   flow,
   locale,

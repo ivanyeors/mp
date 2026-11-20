@@ -1,14 +1,3 @@
-// ============================================================
-// Email registry — every outbound template, in one list
-// ============================================================
-//
-// The registry is what makes the design system reviewable: the dev preview
-// renders from it, and lib/email/__tests__/contract.test.ts asserts the shared
-// invariants across every entry. A template that is not registered gets neither,
-// so registry-coverage.test.ts fails the build when one is missing.
-//
-// Every `render` must be PURE — no network, no DB.
-
 import { CLAIM_BONUS_EMAIL_COPY, renderClaimBonusEmail } from "./account";
 import { CHECKUP_EMAIL_COPY, REVIEW_REQUEST_EMAIL_COPY, renderCheckupEmail, renderReviewRequestEmail } from "./aftercare";
 import { DRAFT_REMINDER_EMAIL_COPY, renderDraftReminderEmail } from "./draft-reminder";
@@ -110,35 +99,15 @@ export type EmailGroup =
   | "auth";
 
 export interface EmailCase {
-  /** Stable slug — also the preview URL segment. */
   id: string;
   label: string;
   group: EmailGroup;
   audience: "customer" | "partner" | "staff";
-  /**
-   * Campaign mail (migration slice 08 onwards): rendered with an unsubscribe
-   * link and sent with `List-Unsubscribe`. Every other entry is transactional
-   * and must carry neither (`__tests__/transactional-no-unsubscribe.test.ts`).
-   */
   campaign?: true;
-  /**
-   * The email's editable words (PRD-email-templates): what Admin Panel →
-   * Email templates edits. Entries that are variants of one renderer share
-   * one spec. Absent for an email Staff do not edit there.
-   */
   copy?: EmailCopySpec;
-  /**
-   * Pure renderer bound to the shared fixtures. `copy`, when given, is the
-   * entry's `copy` spec filled in (the editor's preview); without it, the
-   * default words.
-   */
   render: (fixture: EmailFixture, copy?: EmailCopy) => RenderedEmail;
 }
 
-/**
- * A preview's copy typed as `spec`'s own fields: the entry pairs the
- * renderer with its spec, so the editor's copy is that spec's.
- */
 const copyFor = <S extends EmailCopySpec>(_spec: S, copy?: EmailCopy) =>
   copy as EmailCopy<keyof S["fields"] & string> | undefined;
 
@@ -162,7 +131,6 @@ const RMA_LABELS: Record<RmaEmailTemplateName, string> = {
   rma_refunded: "Return refunded",
 };
 
-/** The emails whose button opens the courier's tracking page when there is one, else the order. */
 const SHIPMENT_EMAILS = new Set<EmailTemplateName>([
   "shipping",
   "tracking_out_for_delivery",
@@ -171,7 +139,6 @@ const SHIPMENT_EMAILS = new Set<EmailTemplateName>([
   "tracking_exception",
 ]);
 
-/** The order emails that show totals, so the points lines. */
 const POINTS_EMAILS = new Set<EmailTemplateName>(["order_confirmation", "payment_receipt"]);
 
 const orderCases: EmailCase[] = (
@@ -186,8 +153,6 @@ const orderCases: EmailCase[] = (
     render: (f, copy) => renderOrderEmail(key, sampleOrder(f), copy),
   };
   if (POINTS_EMAILS.has(key)) {
-    // Points spent and, on the confirmation, what the order earns, for a
-    // guest: every points line and field shows (PRD-loyalty-points).
     return [
       base,
       {
@@ -199,8 +164,6 @@ const orderCases: EmailCase[] = (
     ];
   }
   if (!SHIPMENT_EMAILS.has(key)) return [base];
-  // Same renderer with no tracking link: the button opens the order instead,
-  // with its own editable label.
   return [
     base,
     {
@@ -226,7 +189,6 @@ const rmaCases: EmailCase[] = (
 export const EMAIL_REGISTRY: readonly EmailCase[] = [
   ...orderCases,
 
-  // --- Staff orders (ADR 0048): the Payment link, by email ---
   {
     id: "order.payment_request",
     label: "Payment request",
@@ -236,7 +198,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderPaymentRequestEmail(samplePaymentRequest(f), copyFor(PAYMENT_REQUEST_EMAIL_COPY, copy)),
   },
   {
-    // Same renderer: collected from a studio, nothing to deliver, no note.
     id: "order.payment_request_collect",
     label: "Payment request — collect from a studio",
     group: "order",
@@ -247,7 +208,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
   },
   ...rmaCases,
 
-  // --- Results / configurator (customer) ---
   {
     id: "results.held",
     label: "Customisation under review",
@@ -257,10 +217,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultHeldEmail(sampleResultHeld(f), copyFor(RESULT_EMAIL_COPY.held, copy)),
   },
   {
-    // Same renderer, no Authorization hold (Assisted customisation). Registered
-    // so the parameter variant gets a dev preview and the contract tests —
-    // registry-coverage only enumerates render*Email FUNCTIONS, so it would
-    // otherwise pass unnoticed.
     id: "results.held_no_hold",
     label: "Assisted submission received",
     group: "results",
@@ -269,9 +225,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultHeldEmail(sampleResultHeldNoHold(f), copyFor(RESULT_EMAIL_COPY.held, copy)),
   },
   {
-    // Same renderer, the unpaid voice: the build was finished and priced and
-    // the hold died before anyone accepted it. The sentence about whose delay
-    // it was is the one most likely to be wrong, so it gets its own preview.
     id: "results.hold_expired_unpaid",
     label: "Hold expired — build never paid for",
     group: "results",
@@ -280,7 +233,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderHoldExpiredEmail(sampleHoldExpiredUnpaid(f), copyFor(RESULT_EMAIL_COPY.hold_expired, copy)),
   },
   {
-    // Never paid for, and no link back: its own closing line.
     id: "results.hold_expired_unpaid_no_link",
     label: "Hold expired — never paid for, no link back",
     group: "results",
@@ -297,7 +249,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultDeclinedEmail(sampleResultDeclined(f), copyFor(RESULT_EMAIL_COPY.declined, copy)),
   },
   {
-    // Same renderer with no way back to the status page: the restart line and button.
     id: "results.declined_restart",
     label: "Order cancelled — start again",
     group: "results",
@@ -306,9 +257,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultDeclinedEmail({ ...sampleResultDeclined(f), accessToken: null }, copyFor(RESULT_EMAIL_COPY.declined, copy)),
   },
   {
-    // Same renderer with no hold to release (Assisted / no-card): the money
-    // sentence is the only thing that differs, and it is the sentence most
-    // likely to be wrong, so it gets its own preview.
     id: "results.declined_no_hold",
     label: "Order cancelled — no card taken",
     group: "results",
@@ -325,11 +273,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultAssignedEmail(sampleResultAssigned(f), copyFor(RESULT_EMAIL_COPY.assigned, copy)),
   },
   {
-    // Same renderer, no Authorization hold (Assisted customisation): the whole
-    // total is owed by Balance payment, so the ask is "pay", not "accept".
-    // Registered for the dev preview and contract.test.ts — registry-coverage
-    // only enumerates render*Email FUNCTIONS, so a parameter variant is invisible
-    // to it.
     id: "results.assigned_balance",
     label: "Final build ready — payment due",
     group: "results",
@@ -338,8 +281,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultAssignedEmail(sampleResultAssignedBalance(f), copyFor(RESULT_EMAIL_COPY.assigned, copy)),
   },
   {
-    // Assisted customisation sent from the questionnaire (ADR 0017): fillings
-    // built, the customer still chooses cover, case and shipping.
     id: "results.assigned_finish",
     label: "Build ready — choose your finish",
     group: "results",
@@ -348,8 +289,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultAssignedEmail(sampleResultAssignedFinish(f), copyFor(RESULT_EMAIL_COPY.assigned, copy)),
   },
   {
-    // Staff re-configured a build the customer already has, and the total grew
-    // past their Authorization hold: the balance is paid at checkout.
     id: "results.updated",
     label: "Build updated — balance due",
     group: "results",
@@ -358,7 +297,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultUpdatedEmail(sampleResultUpdated(f), copyFor(RESULT_EMAIL_COPY.updated, copy)),
   },
   {
-    // Same renderer when the total did not change: its own preview line.
     id: "results.updated_same_total",
     label: "Build updated — same total",
     group: "results",
@@ -367,9 +305,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultUpdatedEmail({ ...sampleResultUpdated(f), previousTotal: null }, copyFor(RESULT_EMAIL_COPY.updated, copy)),
   },
   {
-    // Same renderer, hold still covers the new total — nothing extra to pay.
-    // Registered for the preview and contract.test.ts: registry-coverage only
-    // enumerates render*Email FUNCTIONS, so a parameter variant is invisible to it.
     id: "results.updated_within_hold",
     label: "Build updated — hold covers it",
     group: "results",
@@ -378,7 +313,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderResultUpdatedEmail(sampleResultUpdatedWithinHold(f), copyFor(RESULT_EMAIL_COPY.updated, copy)),
   },
   {
-    // Same renderer, no Authorization hold (Assisted customisation).
     id: "results.updated_balance",
     label: "Build updated — payment due",
     group: "results",
@@ -402,10 +336,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     copy: RESULT_EMAIL_COPY.balance_due,
     render: (f, copy) => renderBalanceDueReminderEmail(sampleBalanceDueFinish(f), copyFor(RESULT_EMAIL_COPY.balance_due, copy)),
   },
-  // ADR 0050: a guest who stopped customising, 1 day, 1 week and 1 month after
-  // they last saved. Its customer_emails.template is the entry's id, with the
-  // Draft as entity. Sent like a campaign: Marketing consent only, with an
-  // Unsubscribe link.
   {
     id: "results.draft_reminder_1d",
     label: "Finish your pillow — 1 day",
@@ -434,7 +364,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderDraftReminderEmail(sampleDraftReminder(f, "1m"), copyFor(DRAFT_REMINDER_EMAIL_COPY, copy)),
   },
   {
-    // Same renderer with no name given: the greeting is the one line that changes.
     id: "results.draft_reminder_no_name",
     label: "Finish your pillow — no name",
     group: "results",
@@ -453,8 +382,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderHoldExpiredEmail(sampleHoldExpired(f), copyFor(RESULT_EMAIL_COPY.hold_expired, copy)),
   },
   {
-    // A Paired build (ADR 0026) whose Mbolster ended on its own. Never a "hold
-    // released" email: the Mpillow still needs the hold.
     id: "results.paired_mbolster_removed",
     label: "Paired build — Mbolster removed",
     group: "results",
@@ -463,8 +390,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderPairedMbolsterRemovedEmail(samplePairedMbolsterRemoved(f), copyFor(RESULT_EMAIL_COPY.paired_mbolster_removed, copy)),
   },
   {
-    // Same renderer once the Mpillow is assigned: it doubles as the Mpillow's
-    // "ready" email, which was held back while the Mbolster was being built.
     id: "results.paired_mbolster_removed_ready",
     label: "Paired build — Mbolster removed, Mpillow ready",
     group: "results",
@@ -489,9 +414,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderReadjustmentRescheduleEmail(sampleReadjustmentReschedule(f), copy),
   },
 
-  // --- Customer account: the Claim bonus (PRD-loyalty-points slice 05) ---
-  // Sent once, when a sign-in grants the bonus. The id is also its
-  // customer_emails.template (CLAIM_BONUS_EMAIL).
   {
     id: "account.claim_bonus",
     label: "Points for signing in",
@@ -506,7 +428,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "account",
     audience: "customer",
     copy: CLAIM_BONUS_EMAIL_COPY,
-    // No name to probe, so the hostile fixture probes the button's link.
     render: (f, copy) =>
       renderClaimBonusEmail(
         { ...sampleClaimBonus(f), firstName: null, ...(f === "hostile" ? { shopUrl: "javascript:alert(1)", termsUrl: "javascript:alert(2)" } : {}) },
@@ -514,11 +435,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
       ),
   },
 
-  // --- Campaign: the Shopify customer migration (slice 08) ---
-  // Campaign mail: rendered with the unsubscribe link, sent with
-  // List-Unsubscribe, through the campaign transport only. Each id is the
-  // CAMPAIGN_EMAIL_IDS entry (lib/customer-migration/campaign.ts) of its
-  // customer_campaign_sends.template.
   {
     id: "migration.announcement",
     label: "New website: account ready",
@@ -528,7 +444,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderMigrationAnnouncementEmail(sampleMigrationAnnouncement(f)),
   },
   {
-    // Same renderer, no first name: the greeting is the sentence that changes.
     id: "migration.announcement_no_name",
     label: "New website: account ready — no first name",
     group: "migration",
@@ -545,8 +460,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderMigrationReminderEmail(sampleMigrationReminder(f)),
   },
   {
-    // To customers who never agreed to marketing, once, and only if owner
-    // decision 3 says so. No offer, points or promotion.
     id: "migration.service_notice",
     label: "New website: service notice",
     group: "migration",
@@ -555,10 +468,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderMigrationServiceNoticeEmail(sampleMigrationServiceNotice(f)),
   },
 
-  // --- Campaign: written by Staff on Email campaigns (PRD-email-marketing) ---
-  // One renderer for every campaign Staff write: their subject, body and
-  // button in the shell, with the unsubscribe link. Sent through the campaign
-  // transport only, with List-Unsubscribe (lib/email-campaigns/sender.ts).
   {
     id: "campaign.composed",
     label: "Email campaign (written in the Admin Panel)",
@@ -568,8 +477,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderComposedCampaignEmail(sampleComposedCampaign(f)),
   },
   {
-    // The same campaign mail, built from typed blocks (PRD-campaign-email-editor
-    // slice 03); campaigns written before them keep campaign.composed.
     id: "campaign.blocks",
     label: "Email campaign built from blocks",
     group: "campaign",
@@ -578,10 +485,7 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderCampaignBlocksEmail(sampleCampaignBlocks(f)),
   },
 
-  // --- Aftercare (PRD customer-crm slices 07, 08) ---
   {
-    // Once per Customer, 14 days after delivery. The id is also its
-    // customer_emails.template (REVIEW_REQUEST_TEMPLATE).
     id: "aftercare.review_request",
     label: "Review request",
     group: "aftercare",
@@ -590,8 +494,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderReviewRequestEmail(sampleReviewRequest(f), copy),
   },
   {
-    // Same renderer with no first name on file: the greeting is the one line
-    // that changes.
     id: "aftercare.review_request_no_name",
     label: "Review request — no first name",
     group: "aftercare",
@@ -600,9 +502,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderReviewRequestEmail(sampleReviewRequestNoName(f), copy),
   },
   {
-    // Yearly, Premium Mpillow only, stating the fee from Costings; email needs
-    // Marketing consent. Its customer_emails.template is the milestone,
-    // `aftercare.checkup_<n>m` (checkupTemplate), with the Order as entity.
     id: "aftercare.checkup",
     label: "Check-up reminder",
     group: "aftercare",
@@ -611,7 +510,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderCheckupEmail(sampleCheckup(f), copy),
   },
   {
-    // Same renderer with no first name on file: the greeting changes.
     id: "aftercare.checkup_no_name",
     label: "Check-up reminder — no first name",
     group: "aftercare",
@@ -620,7 +518,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderCheckupEmail({ ...sampleCheckup(f), firstName: null }, copy),
   },
 
-  // --- Partner programme ---
   {
     id: "partner.referral_earned",
     label: "Commission earned",
@@ -637,7 +534,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
       ),
   },
   {
-    // The usual case: a shop order not yet delivered has no release date.
     id: "partner.referral_earned_undated",
     label: "Commission earned — order not yet delivered",
     group: "partner",
@@ -673,7 +569,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
         {
           money: f === "hostile" ? HOSTILE : money(240, "SGD"),
           paidOn: f === "hostile" ? HOSTILE : "1 August 2026",
-          // Externally-sourced signed URL landing in an href.
           proofUrl:
             f === "hostile"
               ? "javascript:alert(1)"
@@ -683,7 +578,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
       ),
   },
   {
-    // No proof of payment attached: the button opens the Partner Hub instead.
     id: "partner.payout_made_no_proof",
     label: "Payout sent — no proof attached",
     group: "partner",
@@ -710,7 +604,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
       ),
   },
 
-  // --- Partner application outcome ---
   {
     id: "application.approved",
     label: "Application approved",
@@ -728,7 +621,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f, copy) => renderApplicationOutcomeEmail("rejected", sampleApplication(f), copy),
   },
 
-  // --- Identity ---
   {
     id: "auth.backup_email_otp",
     label: "Backup email verification code",
@@ -751,7 +643,6 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
       }),
   },
 
-  // --- Support / staff ---
   {
     id: "support.chat_transcript",
     label: "Website chat transcript (support inbox and sg@ on Cc)",

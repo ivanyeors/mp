@@ -1,17 +1,7 @@
-/**
- * GA4 → DB staging + Visitor stitch (ADR 0007).
- * Hobby: chained after Shopify catch-up on /api/cron/results-sla (not a 3rd vercel cron).
- *
- * BQ creds absent → load fixture JSON:
- *   lib/analytics/journey/fixtures/ga-bq-export.json
- * Override: GA_SYNC_FIXTURE_PATH (absolute or cwd-relative).
- */
-
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** `_ga=GA1.2.123.456` → `123.456` (GA client_id / user_pseudo_id shape). */
 export function parseGaClientIdFromCookie(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const parts = raw.trim().split(".");
@@ -24,7 +14,6 @@ export function normalizeGaClientId(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const s = raw.trim();
   if (!s || s.length > 128) return null;
-  // Cookie-derived or GA4 user_pseudo_id / client_id
   if (/^\d+\.\d+$/.test(s)) return s;
   if (/^[0-9A-Za-z_.-]{8,128}$/.test(s)) return s;
   return null;
@@ -37,7 +26,6 @@ export type GaExportRow = {
   raw: Record<string, unknown>;
 };
 
-/** Accept BQ-ish export shapes (client_id | user_pseudo_id, event_name, event_timestamp|event_date). */
 export function parseGaExportRows(raw: unknown): GaExportRow[] {
   const list = Array.isArray(raw)
     ? raw
@@ -89,11 +77,6 @@ export function defaultGaFixturePath(): string {
 
 export function loadGaExportFixture(path: string = defaultGaFixturePath()): GaExportRow[] {
   try {
-    // A path chosen at run time (GA_SYNC_FIXTURE_PATH), so the build cannot
-    // know the file. Without the ignore, Turbopack copies the whole project
-    // (graphify-out, public, every source file) into the results-sla cron
-    // function, which then passes Vercel's 250 MB limit. The cron reads a
-    // fixture only when that variable is set; the check script runs locally.
     const text = readFileSync(/*turbopackIgnore: true*/ path, "utf8");
     return parseGaExportRows(JSON.parse(text) as unknown);
   } catch {
@@ -101,7 +84,6 @@ export function loadGaExportFixture(path: string = defaultGaFixturePath()): GaEx
   }
 }
 
-/** Pure stitch: match staging client_id → visitor.id where ga_client_id equals. */
 export function stitchGaRowsToVisitors(
   rows: { id: string; clientId: string; visitorId: string | null }[],
   visitors: { id: string; gaClientId: string | null }[],
@@ -127,11 +109,8 @@ export type GaSyncResult = {
   stitched: number;
 };
 
-/**
- * Load GA rows, insert staging, stitch to Visitors.
- * Rows source: opts.rows → else GA_SYNC_FIXTURE_PATH file → else empty (stitch-only).
- * ponytail: no @google-cloud/bigquery dep — wire BQ fetch when creds exist; fixture covers AC until then.
- */
+// ponytail: no @google-cloud/bigquery dep — wire BQ fetch when creds exist; fixture covers AC until
+// then.
 export async function runGaSync(
   db: SupabaseClient,
   opts?: { rows?: GaExportRow[]; fixturePath?: string },
@@ -142,7 +121,6 @@ export async function runGaSync(
     rows = opts.rows;
     source = "fixture";
   } else if (opts?.fixturePath || process.env.GA_SYNC_FIXTURE_PATH?.trim()) {
-    // Explicit path only — avoid re-inserting default fixture on every daily cron.
     rows = loadGaExportFixture(opts?.fixturePath ?? defaultGaFixturePath());
     source = "fixture";
   } else {

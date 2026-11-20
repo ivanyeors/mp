@@ -1,13 +1,5 @@
 "use client";
 
-/**
- * Derived pack list for an x-ray mix: one row per filling with its count, and a
- * remove that drops every piece of that filling from the placements. Mounted
- * next to every x-ray editor so the list staff read is the list they can edit.
- *
- * Read-only when `onPlacementsChange` is omitted, like the editor itself.
- */
-
 import { useMemo } from "react";
 import { Trash2 } from "lucide-react";
 
@@ -25,7 +17,6 @@ export function XrayPackList<T extends AnyPlacement>({
 }: {
   placements: T[];
   onPlacementsChange?: (next: T[]) => void;
-  /** The items handed to the editor; a pre-formatted `label` wins over the type label. */
   items: Array<FillingItemLike & { label?: string }>;
   className?: string;
 }) {

@@ -3,14 +3,6 @@ import { AFTERCARE_GROUP } from "@/lib/crm/timeline/groups";
 import { readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 
-/**
- * Aftercare preference changes (CRM 13) on the Customer timeline (`customers`,
- * like the Aftercare card): every row of the append-only
- * `customer_preference_events`, which `set_aftercare_preference()` writes with
- * the switch. A Staff change carries the note saying why, shown in full; the
- * opt-in wording the customer saw stays on the Aftercare card.
- */
-
 type Profile = { name: string | null };
 
 type EventRow = {

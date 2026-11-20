@@ -18,14 +18,6 @@ function num(v: unknown): number | null {
   return typeof n === "number" && Number.isFinite(n) ? n : null;
 }
 
-/**
- * Normalise an Easyship `POST /rates` response into CourierRates.
- *
- * Reads the 2024-09 shape (`rates[].courier_service.{id,name,umbrella_name}`) and
- * the 2023-01 one (`rates[].courier_id`, `courier_name`), so pinning
- * EASYSHIP_API_VERSION back a version does not silently empty every quote. A rate
- * without an id or a usable price is dropped rather than guessed at.
- */
 export function normalizeEasyshipRates(raw: unknown): CourierRate[] {
   const body = asRecord(raw);
   const list = Array.isArray(body?.rates) ? (body!.rates as unknown[]) : [];
@@ -66,11 +58,6 @@ const faster = (a: CourierRate, b: CourierRate) =>
 const betterValue = (a: CourierRate, b: CourierRate) =>
   (a.value_for_money_rank ?? 99) - (b.value_for_money_rank ?? 99) || cheaper(a, b);
 
-/**
- * The one courier an Easyship method offers. Deterministic: ties break on the
- * other dimension, then on the service id, so the page and the checkout route
- * always land on the same courier for the same rates.
- */
 export function pickRate(
   rates: CourierRate[],
   strategy: EasyshipStrategy,
@@ -88,11 +75,6 @@ export function pickRate(
   );
 }
 
-/**
- * The shopper's price for a courier cost: percent markup, then fixed markup, then
- * rounded UP to the method's increment (so 7.13 at 0.50 shows 7.50). Never
- * negative — a subsidy can bring shipping to zero, not below it.
- */
 export function priceLiveRate(
   carrierCost: number,
   method: Pick<ShippingMethod, "markup_percent" | "markup_fixed" | "rate_rounding">,
@@ -101,13 +83,11 @@ export function priceLiveRate(
   const fixed = Number(method.markup_fixed ?? 0);
   const step = Number(method.rate_rounding ?? 0);
   let price = carrierCost * (1 + pct / 100) + fixed;
-  // Strip float noise before rounding up, or 7.5000000001 becomes 8.00.
   price = Math.round(price * 100) / 100;
   if (step > 0) price = Math.ceil(Math.round((price / step) * 1e6) / 1e6) * step;
   return Math.max(0, Math.round(price * 100) / 100);
 }
 
-/** Courier transit days plus the store's handling days, for display. */
 export function deliveryWindow(
   rate: Pick<CourierRate, "min_days" | "max_days">,
   handlingDays: number,

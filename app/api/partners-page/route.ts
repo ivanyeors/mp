@@ -51,8 +51,6 @@ export async function PATCH(req: Request) {
 
     const existing = await getPartnersPageRow();
 
-    // Patch only the fields provided — the Work With Us tab sends `content`, the
-    // Agreement tab sends `agreement_md`; neither must clobber the other.
     const fields: Record<string, unknown> = {};
     if (parsed.content !== undefined) fields.content = parsed.content;
     if (parsed.agreement_md !== undefined) fields.agreement_md = parsed.agreement_md;

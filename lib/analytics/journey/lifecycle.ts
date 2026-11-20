@@ -1,11 +1,10 @@
-/** Visit inactivity timeout (ms). Gap ≥ this ends the Visit. */
 export const VISIT_INACTIVITY_MS = 30 * 60 * 1000;
 
 export type LifecycleEvent = {
   type: "page_view" | "section_view" | "heartbeat";
   path: string;
   sectionId?: string | null;
-  occurredAt: string; // ISO
+  occurredAt: string;
 };
 
 export type DropOff = {
@@ -15,10 +14,6 @@ export type DropOff = {
   endedAt: string;
 };
 
-/**
- * Given ordered events for one Visit and a "now" instant, decide if the Visit
- * should end from inactivity and compute Drop-off from the last activity.
- */
 export function resolveInactivityDropOff(
   events: LifecycleEvent[],
   nowIso: string,
@@ -35,7 +30,6 @@ export function resolveInactivityDropOff(
   const firstMs = Date.parse(sorted[0]!.occurredAt);
   const dwellMs = Math.max(0, lastMs - (Number.isFinite(firstMs) ? firstMs : lastMs));
 
-  // Last page from last page_view; section from last event that has one (prefer section_view).
   let path = last.path;
   for (let i = sorted.length - 1; i >= 0; i--) {
     if (sorted[i]!.type === "page_view") {
@@ -60,7 +54,6 @@ export function resolveInactivityDropOff(
   };
 }
 
-/** Explicit end (pagehide): Drop-off at last event, endedAt = now. */
 export function resolveExplicitDropOff(
   events: LifecycleEvent[],
   endedAtIso: string,
@@ -95,7 +88,6 @@ export function resolveExplicitDropOff(
   return { path, sectionId, dwellMs, endedAt: endedAtIso };
 }
 
-/** Client: whether session visit should be rotated given last activity timestamp. */
 export function shouldStartNewVisit(
   lastActivityIso: string | null,
   nowIso: string,

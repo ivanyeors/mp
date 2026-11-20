@@ -1,6 +1,5 @@
 "use client";
 
-// Verification playground for <SunburstMenu>. Safe to delete — not linked in nav.
 import { useState } from "react";
 import {
   Moon,

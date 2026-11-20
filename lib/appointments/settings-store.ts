@@ -6,11 +6,6 @@ import {
   type AppointmentSettings,
 } from "./settings";
 
-/**
- * Cached service-role read of the appointment keys; every writer of
- * `site_settings` invalidates the shared `site-settings` tag. The auth check
- * stays outside the cache (it reads cookies).
- */
 export const readStoredAppointmentSettings = unstable_cache(
   async (): Promise<Record<string, string>> => {
     const admin = supabaseAdmin();
@@ -28,7 +23,6 @@ export const readStoredAppointmentSettings = unstable_cache(
   { tags: ["site-settings"], revalidate: 300 },
 );
 
-/** Parsed appointment settings — the shape `/api/settings/appointments` returns. */
 export async function getAppointmentSettings(): Promise<AppointmentSettings> {
   return parseAppointmentSettings(await readStoredAppointmentSettings());
 }

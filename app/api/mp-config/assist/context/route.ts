@@ -9,12 +9,6 @@ import { loadComposedSellable } from "@/lib/results/composed-sellable";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Staff assist size×tier context (slice 04). Staff-gated: guests get 401.
- * Returns the product context the preview needs "as if the recommendation had
- * that size×tier", plus the product card's Default Filling Template placements
- * as the starting mix (template with no placements → empty mix).
- */
 export async function GET(req: NextRequest) {
   const denied = await requireAdmin("results");
   if (denied) return denied;
@@ -54,9 +48,6 @@ export async function GET(req: NextRequest) {
       .maybeSingle(),
     getAvailableComponents(product.id),
     admin.from("product_buildable").select("product_id, size, buildable"),
-    // The preview's ballpark is computed client-side from these Costings inputs.
-    // Without them a size×tier switch left the quote priced for the SIZE BEFORE
-    // it — the shelf price of one pillow against the cover and case of another.
     loadComposedSellable(admin, {
       productType: "pillow",
       size,
@@ -72,9 +63,6 @@ export async function GET(req: NextRequest) {
   let default_template: { id: number; name: string; placements: unknown[] } | null = null;
   if (product.default_filling_template_id) {
     const templateId = product.default_filling_template_id;
-    // A stored default can outlive the membership that justified it (a template
-    // rescoped or forked away from this size). Serving it anyway would propose
-    // another size's recipe for this pillow, so check before reading it.
     const served = await loadTemplateKeys(admin, [Number(templateId)]);
     if (!served.ok) return NextResponse.json({ error: served.error }, { status: 500 });
     if ((served.byId.get(Number(templateId)) ?? []).includes(size)) {
@@ -102,8 +90,6 @@ export async function GET(req: NextRequest) {
           currency: variant.currency,
         }
       : null,
-    // Same shape as /api/shop/customize, so the preview's quote reads one
-    // structure whichever route filled it in.
     pricing: composed.ok
       ? {
           msrp_by_family: composed.sellable.msrpByFamily,

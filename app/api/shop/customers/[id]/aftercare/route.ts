@@ -9,13 +9,6 @@ import { AFTERCARE_PREFERENCES, PREFERENCE_NOTE_MAX } from "@/lib/aftercare/stat
 
 export const runtime = "nodejs";
 
-/**
- * A Customer's Aftercare switches (PRD customer-crm slice 13): Staff's manual
- * switch for anyone who asks to stop by email reply, on WhatsApp or in person.
- * Seeing them and their history needs `customers`; changing one needs
- * `customers-edit` (slice 10).
- */
-
 const ChangeSchema = z
   .object({
     preference: z.enum(AFTERCARE_PREFERENCES),
@@ -23,7 +16,6 @@ const ChangeSchema = z
     note: z.string().trim().max(PREFERENCE_NOTE_MAX).optional(),
   })
   .refine((b) => !(b.preference === "aftercare_whatsapp" && b.value) || Boolean(b.note), {
-    // Meta's opt-in must come from the customer: Staff record it, they do not decide it.
     message: "Say how and when the customer agreed, and to what",
     path: ["note"],
   });

@@ -1,15 +1,3 @@
-/**
- * Money ledger: an order's net money is the sum of an append-only set of signed
- * `order_payments` rows (charge, refund, dispute outcome, fee, adjustment),
- * rather than a single `status` flag. Each Stripe-driven row carries a unique
- * `stripe_object_id`, so a re-delivered webhook is a no-op (idempotency lives in
- * the DB unique index; `recordLedgerEntry` reports whether a row was new).
- *
- * The arithmetic (`summarize`, `addEntry`, `ledgerReconciles`) is pure and
- * dependency-free so it can be unit-tested over raw numbers; the DB helpers
- * (`recordLedgerEntry`, `rollupOrderMoney`) wrap it for the webhook.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type LedgerType =
@@ -23,34 +11,23 @@ export type LedgerType =
 
 export interface LedgerEntry {
   type: LedgerType;
-  /** Signed major units (e.g. dollars): credits positive, debits negative. */
   amount: number;
-  /** Stripe object id (pi_…, re_…, dp_…); the idempotency key when present. */
   stripeObjectId?: string | null;
 }
 
 export type MoneyStatus = "paid" | "partially_refunded" | "refunded";
 
 export interface MoneyState {
-  /** Sum of charge rows. */
   amountCaptured: number;
-  /** Absolute sum of refund rows. */
   amountRefunded: number;
-  /** Net of every signed row (includes disputes/fees). */
   netPaid: number;
   status: MoneyStatus;
 }
 
-/** Round to 2 decimal places (currency), avoiding binary float drift. */
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-/**
- * Append an entry unless one with the same `stripeObjectId` already exists —
- * the in-memory mirror of the DB unique constraint, so duplicate events don't
- * double-count.
- */
 export function addEntry(entries: LedgerEntry[], entry: LedgerEntry): LedgerEntry[] {
   if (entry.stripeObjectId && entries.some((e) => e.stripeObjectId === entry.stripeObjectId)) {
     return entries;
@@ -58,7 +35,6 @@ export function addEntry(entries: LedgerEntry[], entry: LedgerEntry): LedgerEntr
   return [...entries, entry];
 }
 
-/** Derive captured/refunded/net and the money status from ledger rows. */
 export function summarize(entries: LedgerEntry[]): MoneyState {
   let captured = 0;
   let refunded = 0;
@@ -78,10 +54,6 @@ export function summarize(entries: LedgerEntry[]): MoneyState {
   return { amountCaptured: captured, amountRefunded: refunded, netPaid: net, status };
 }
 
-/**
- * Invariant the webhook guards: the net of charges and refunds equals
- * `total - amountRefunded` (i.e. what we captured matches the order total).
- */
 export function ledgerReconciles(
   total: number,
   entries: LedgerEntry[],
@@ -96,18 +68,9 @@ export function ledgerReconciles(
 interface RecordOpts extends LedgerEntry {
   currency?: string;
   metadata?: Record<string, unknown>;
-  /**
-   * When Stripe moved the money, by Stripe's clock (`lib/stripe/money-time.ts`).
-   * Omitted, it is the time the row is written, which can be days late.
-   */
   occurredAt?: string | null;
 }
 
-/**
- * Insert one ledger row, idempotently on `stripeObjectId`. Returns
- * `recorded: false` when the row already existed (duplicate Stripe event), so
- * callers can skip side effects like emails on a re-delivery.
- */
 export async function recordLedgerEntry(
   admin: SupabaseClient,
   orderId: string,
@@ -125,18 +88,12 @@ export async function recordLedgerEntry(
 
   const { error } = await admin.from("order_payments").insert(row);
   if (error) {
-    // 23505 = unique_violation: the row already exists -> idempotent no-op.
     if (error.code === "23505") return { recorded: false };
     throw new Error(`Failed to record ledger entry (${entry.type}): ${error.message}`);
   }
   return { recorded: true };
 }
 
-/**
- * Recompute an order's money rollups from its ledger and persist them. Status is
- * only moved when refunds exist, so a clean paid order keeps its fulfillment
- * status (confirmed/shipped/…) untouched.
- */
 export async function rollupOrderMoney(
   admin: SupabaseClient,
   orderId: string

@@ -53,7 +53,6 @@ import { FromShopifyCard } from "./customer-account-cards";
 import { JourneyComposer, type ComposerMode } from "./journey-composer";
 import { JourneyMap, type MapStop } from "./journey-map";
 
-/** What `GET /api/settings/customers/[id]/timeline` answers. */
 type TimelinePage = {
     entries: ShownTimelineEntry[];
     next: string | null;
@@ -61,7 +60,6 @@ type TimelinePage = {
     unavailable: string[];
 };
 
-/** An icon per kind group; a group added later shows the clock until it gets one. */
 const GROUP_ICONS: Record<string, LucideIcon> = {
     orders: ShoppingCart,
     results: Sparkles,
@@ -85,7 +83,6 @@ const TONE_DOT: Record<JourneyTone, string> = {
 const NOW_ID = "now";
 const NEXT_ID = "next";
 
-/** `no_show` → `No show`; a Paired build's `assigned · held` keeps its dot. */
 function statusLabel(status: string): string {
     const spaced = status.replace(/_/g, " ");
     return spaced.charAt(0).toUpperCase() + spaced.slice(1);
@@ -106,7 +103,6 @@ async function fetchFollowUps(customerId: string): Promise<CustomerFollowUpsData
     return (await res.json()) as CustomerFollowUpsData;
 }
 
-/** A chapter's dates: one day, or first to last. */
 function chapterWhen(chapter: JourneyChapter): string {
     const from = formatAdminDateMY(chapter.from);
     const to = formatAdminDateMY(chapter.to);
@@ -115,23 +111,6 @@ function chapterWhen(chapter: JourneyChapter): string {
 
 export type JourneyViewer = { userId: string; grantsAll: boolean };
 
-/**
- * The Journey tab (PRD-customer-page-journey slice 04; CONTEXT.md **Customer
- * timeline**): everything that happened with this Customer, told as chapters
- * on a map, with what is open now at the end of it and a composer to add to
- * it. It replaces the Order history, Notes, Follow-ups, Timeline and From
- * Shopify cards: their rows are entries here, their buttons sit on those
- * entries, and their forms are the composer's modes.
- *
- * The data is the timeline route's, unchanged: each kind group shows only to
- * Staff holding its source's permission, fifty entries a page, then *Load
- * older*. Chapters are built here from what the route returned
- * (lib/crm/journey/chapters.ts). The Follow-ups route gives the open ones for
- * Now and the rows the entries' buttons act on.
- *
- * A phone opens on the list, a wider screen on the map; the switch overrides
- * either. With fewer than three stops there is no map to draw.
- */
 export function CustomerJourney({
     customerId,
     canEdit,
@@ -148,25 +127,17 @@ export function CustomerJourney({
     onAnswerReview,
 }: {
     customerId: string;
-    /** Holds `customers-edit`: the composer, and every button on an entry. */
     canEdit: boolean;
-    /** Who is looking: decides which notes they may delete (CRM 02). */
     viewer: JourneyViewer;
-    /** The Customer's notes as the page read them; null when it could not. */
     initialNotes: CustomerNote[] | null;
-    /** What the Shopify import holds: shown on the chapter that holds the import. */
     migration: MigratedCustomerResult | undefined;
     importHistoryHref: string | null;
-    /** The page's Next step line; null with nothing due. */
     nextStepText: string | null;
-    /** The Lifecycle stage as it is today, for the Now stop; null when it could not be read. */
     stageLabel: string | null;
     composerMode: ComposerMode;
     onComposerModeChange: (mode: ComposerMode) => void;
     composerFocus: number;
-    /** Changes when something outside added to the journey ("Sent it"): read again. */
     reloadSignal: number;
-    /** Opens the Reviews tab, where a Linked Google review is answered. */
     onAnswerReview: () => void;
 }) {
     const pathname = usePathname() ?? "/";
@@ -181,17 +152,10 @@ export function CustomerJourney({
     const [followUps, setFollowUps] = useState<CustomerFollowUpsData | null>(null);
     const [notes, setNotes] = useState<CustomerNote[]>(initialNotes ?? []);
     const [filterKey, setFilterKey] = useState<string | null>(null);
-    // Null until chosen: the screen decides (list on a phone, map above it).
     const [view, setView] = useState<"map" | "list" | null>(null);
     const [selectedId, setSelectedId] = useState<string>(NOW_ID);
-    // How many pages are loaded, so a refresh knows whether its cursor is the journey's.
     const pages = useRef(0);
 
-    /**
-     * Reads the newest page again and lays it over what is loaded. The newest
-     * page is the authority for the time it covers; older entries stay as they
-     * were. Used on mount and after every change.
-     */
     const refresh = useCallback(async () => {
         try {
             const page = await fetchPage(customerId, null);
@@ -214,9 +178,7 @@ export function CustomerJourney({
     const refreshFollowUps = useCallback(async () => {
         try {
             setFollowUps(await fetchFollowUps(customerId));
-        } catch {
-            // Now simply shows nothing open; the entries still tell the story.
-        }
+        } catch {}
     }, [customerId]);
 
     useEffect(() => {
@@ -253,10 +215,8 @@ export function CustomerJourney({
         () => journeyNow(openFollowUps, followUps?.today ?? new Date().toISOString().slice(0, 10)),
         [openFollowUps, followUps?.today],
     );
-    // Follow-ups are Conversations: any other filter sets Now aside.
     const nowShown = !filter || filter.groups.includes("followups");
 
-    // The time the page was read, fixed for the visit, so gaps do not shift as it is used.
     const [nowIso] = useState(() => new Date().toISOString());
 
     const { stops, gaps } = useMemo(() => {
@@ -291,8 +251,6 @@ export function CustomerJourney({
 
     const hasMap = chapters.length >= 2;
     const selected = chapters.find((c) => c.id === selectedId) ?? null;
-
-    // ── Changes ──────────────────────────────────────────────────────────────
 
     const onFollowUpChange = (id: string, nextRow: CustomerFollowUp | null) => {
         setFollowUps((d) =>
@@ -399,7 +357,6 @@ export function CustomerJourney({
         />
     );
 
-    // Without a choice the screen decides: these classes are the choice's stand-in.
     const mapOnly = view === "map" ? "" : view === "list" ? "hidden" : "max-md:hidden";
     const listOnly = !hasMap ? "" : view === "list" ? "" : view === "map" ? "hidden" : "md:hidden";
 
@@ -453,7 +410,6 @@ export function CustomerJourney({
                                                     ? "bg-primary text-primary-foreground"
                                                     : cn(
                                                           "text-muted-foreground hover:text-foreground",
-                                                          // Before a choice, the one the screen shows reads as on.
                                                           view === null && (v === "map" ? "md:bg-muted md:text-foreground" : "max-md:bg-muted max-md:text-foreground"),
                                                       ),
                                             )}
@@ -467,7 +423,6 @@ export function CustomerJourney({
                         ) : null}
                     </div>
                     {filters.length > 1 ? (
-                        // Phones: one row of chips that scrolls sideways, edge to edge of the card.
                         <div className="flex gap-2 max-md:-mx-4 max-md:overflow-x-auto max-md:px-4 md:flex-wrap" role="group" aria-label="Show">
                             <FilterChip on={filter === null} onClick={() => setFilterKey(null)}>
                                 All
@@ -545,14 +500,12 @@ export function CustomerJourney({
 
             {status === "ready" ? (
                 <>
-                    {/* Map: the chapter the map has selected. */}
                     {hasMap ? (
                         <div className={cn("space-y-4 md:space-y-6", mapOnly)} aria-live="polite">
                             {selectedId === NOW_ID || selectedId === NEXT_ID || !selected ? nowCard : chapterCard(selected)}
                         </div>
                     ) : null}
 
-                    {/* List: Now, then every chapter, newest first, with the quiet time between. */}
                     <div className={cn("space-y-3", listOnly)}>
                         {nowShown ? nowCard : null}
                         {listed.map((chapter, i) => {
@@ -573,7 +526,6 @@ export function CustomerJourney({
                         ) : null}
                     </div>
 
-                    {/* The import's chapter is on a page not loaded, or its source failed: the facts still show. */}
                     {!shopifyShown && complete ? (
                         <FromShopifyCard migration={migration} importHistoryHref={importHistoryHref} />
                     ) : null}
@@ -633,7 +585,6 @@ function ToneLine({ tone, reason }: { tone: JourneyTone; reason: string | null }
     );
 }
 
-/** One chapter: its title, dates and height, then its entries with their links and buttons. */
 export function ChapterCard({
     chapter,
     entries,
@@ -643,12 +594,10 @@ export function ChapterCard({
     extra,
 }: {
     chapter: JourneyChapter;
-    /** The chapter's entries under the filter. */
     entries: ShownTimelineEntry[];
     filtered: boolean;
     locale: string;
     actions: (entry: ShownTimelineEntry) => ReactNode;
-    /** Under the entries: the From Shopify facts, on the chapter that holds the import. */
     extra?: ReactNode;
 }) {
     return (
@@ -669,8 +618,6 @@ export function ChapterCard({
                             const Icon = GROUP_ICONS[entry.group] ?? Clock;
                             const action = actions(entry);
                             return (
-                                // A linked entry with no buttons is one target on a phone:
-                                // its link stretches over the row (max-md:after:inset-0).
                                 <li
                                     key={entry.id}
                                     className={cn(
@@ -719,7 +666,6 @@ export function ChapterCard({
     );
 }
 
-/** What is open today: the Next step and the open Follow-ups, each with its buttons. */
 export function NowCard({
     now,
     nextStepText,
@@ -729,7 +675,6 @@ export function NowCard({
 }: {
     now: JourneyNow;
     nextStepText: string | null;
-    /** The open Follow-ups, as the route returned them. */
     followUps: CustomerFollowUp[];
     today: string | null;
     actions: (followUp: CustomerFollowUp) => ReactNode;

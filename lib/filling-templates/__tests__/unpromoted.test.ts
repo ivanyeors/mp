@@ -26,9 +26,9 @@ describe("rankUnpromoted", () => {
   const snapshots = [
     { resultId: "r1", fingerprint: fpA, scopeKey: "M" },
     { resultId: "r2", fingerprint: fpA, scopeKey: "M" },
-    { resultId: "r3", fingerprint: fpA, scopeKey: "L" }, // other size — out of scope
+    { resultId: "r3", fingerprint: fpA, scopeKey: "L" },
     { resultId: "r4", fingerprint: fpB, scopeKey: "M" },
-    { resultId: "r5", fingerprint: fpB, scopeKey: null }, // no size — out of scope
+    { resultId: "r5", fingerprint: fpB, scopeKey: null },
   ];
 
   it("counts two Results with the same diverged mix under the matching size only", () => {
@@ -59,7 +59,6 @@ describe("verifyPromotedMix (promote round-trip)", () => {
   it("accepts rows hashing to the fingerprint and returns the placement payload", () => {
     const result = verifyPromotedMix(mixA, fpA);
     expect(result).toEqual({ ok: true, placements: rowsToPillowPlacements(mixA) });
-    // Slot order never changes the mix identity.
     expect(verifyPromotedMix([...mixA].reverse(), fpA).ok).toBe(true);
   });
 
@@ -75,7 +74,6 @@ describe("verifyPromotedMix (promote round-trip)", () => {
     ];
     const before = rankUnpromoted({ snapshots, templateFingerprints: [], scope: { key: "M" } });
     expect(before.map((r) => r.fingerprint)).toEqual([fpA]);
-    // Promote copies the representative rows into a template; its fingerprint now matches.
     const promoted = fingerprintPlacements(rowsToPillowPlacements(mixA));
     const after = rankUnpromoted({
       snapshots,
@@ -90,7 +88,7 @@ describe("bolster ranking + promote (slice 13: scope key = length, own schema)",
   const bolsterRows: BolsterPlacementRow[] = [
     { slot: 1, item_id: 1 },
     { slot: 2, item_id: 1 },
-    { slot: 7, item_id: 2 }, // no cap
+    { slot: 7, item_id: 2 },
   ];
   const fp = fingerprintPlacements(rowsToBolsterPlacements(bolsterRows));
 
@@ -98,12 +96,11 @@ describe("bolster ranking + promote (slice 13: scope key = length, own schema)",
     const snapshots = [
       { resultId: "b1", fingerprint: fp, scopeKey: "long" },
       { resultId: "b2", fingerprint: fp, scopeKey: "long" },
-      { resultId: "b3", fingerprint: fp, scopeKey: "short" }, // other length — out of scope
+      { resultId: "b3", fingerprint: fp, scopeKey: "short" },
     ];
     expect(rankUnpromoted({ snapshots, templateFingerprints: [], scope: { key: "long" } })).toEqual([
       { fingerprint: fp, count: 2, representativeResultId: "b1" },
     ]);
-    // Catalog bolster template with the same mix suppresses the entry.
     expect(rankUnpromoted({ snapshots, templateFingerprints: [fp], scope: { key: "long" } })).toEqual(
       [],
     );

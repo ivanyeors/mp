@@ -6,12 +6,6 @@ import { Loader2, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-/**
- * The Pay button of a Payment link (ADR 0048). Asks the server for a Stripe
- * Checkout for this order and goes there; the amount is the Order's, never
- * the page's. A payment that landed a moment ago re-renders the page, which
- * then shows it.
- */
 export function PayButton({
   token,
   label,
@@ -38,7 +32,6 @@ export function PayButton({
         return;
       }
       if (json?.state) {
-        // Paid, expired or closed since the page was drawn: show it as it is now.
         router.refresh();
       }
       setError(typeof json?.error === "string" ? json.error : errorFallback);

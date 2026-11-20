@@ -89,7 +89,6 @@ type MpConfigResponseRow = {
   order?: LinkedOrder | null;
   payment_intent_id?: string | null;
   topup_paid_at?: string | null;
-  /** Null when no authorization hold was taken — drives the stage's stuck check. */
   authorized_amount?: number | null;
   created_at: string;
   updated_at: string;
@@ -100,17 +99,14 @@ type MpConfigResponseRow = {
   assigned_size?: string | null;
   assigned_tier?: string | null;
   customer_email?: string | null;
-  /** Balance-due chases already sent. Null on rows predating the counter. */
   payment_reminder_count?: number | null;
   payment_reminder_last_at?: string | null;
 };
 
-/** A Staff profile as `/api/staff?includeArchived=1` returns it. */
 type StaffRow = {
   id: string;
   name: string;
   memberId?: string;
-  /** Only for viewers with Users & permissions; the groups have no heading otherwise. */
   memberEmail?: string | null;
   archivedAt?: string | null;
 };
@@ -122,7 +118,6 @@ type LocationOption = {
 
 type ResultsTab = StageBucket;
 
-/** Order-linkage filter: staff need to find rows whose Order state is wrong. */
 type OrderFilter = "all" | "has_order" | "no_order" | "mismatch";
 
 const STAGE_BADGE_CLASS: Record<ResultStage, string> = {
@@ -147,14 +142,12 @@ const TAB_LABELS: Record<ResultsTab, string> = {
   closed: "Closed",
 };
 
-/** What an empty tab says. */
 function emptyText(tab: ResultsTab): string {
   if (tab === "stuck") return "Nothing is stuck. Every result is moving.";
   if (tab === "unfinished") return "No unfinished customisations. Everyone who started has sent, held or paid.";
   return `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`;
 }
 
-/** Order-status badge tone, mirroring the Orders list vocabulary. */
 const ORDER_STATUS_CLASS: Record<string, string> = {
   confirmed: "bg-indigo-100 text-indigo-800 border-indigo-200",
   processing: "bg-violet-100 text-violet-800 border-violet-200",
@@ -165,7 +158,6 @@ const ORDER_STATUS_CLASS: Record<string, string> = {
   partially_refunded: "bg-orange-100 text-orange-800 border-orange-200",
 };
 
-/** Why a row has no Order yet — a bare dash reads as a data bug, and usually isn't. */
 function noOrderReason(stage: ResultStage): string {
   switch (stage) {
     case "measurement_only":
@@ -180,7 +172,6 @@ function noOrderReason(stage: ResultStage): string {
   }
 }
 
-/** The row's source, as the queue shows and filters it (`resultSourceKey`). */
 function sourceLabel(row: MpConfigResponseRow): string {
   const source = resultSourceKey(row);
   return source === "online_purchase"
@@ -224,12 +215,6 @@ const normalizeMeasurement = (data: Partial<MeasurementData> | null | undefined)
   neckLength: safeString(data?.neckLength),
 });
 
-/**
- * Server-rendered first paint. Exactly the JSON
- * `/api/mp-config/responses?limit=200&offset=0` and `/api/staff` return,
- * pre-fetched by the RSC page wrapper. A null member means that server load
- * failed, and the client fetches it on mount as before.
- */
 export type ResultsInitialData = {
   responses: {
     ok: true;
@@ -277,8 +262,6 @@ export default function ResultsPage({
   );
   const [pageLimit] = useState<number>(200);
 
-  // The server already delivered both; skip the duplicate mount fetches. Every
-  // later load (append/paging, post-mutation refresh) is untouched.
   const skipResponsesFetch = useRef(Boolean(initialData?.responses));
   const skipStaffFetch = useRef(Boolean(initialData?.staff));
 
@@ -339,14 +322,12 @@ export default function ResultsPage({
     void loadStaff();
   }, [loadStaff]);
 
-  // Archived profiles keep labelling the Results that name them.
   const staffNameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const s of staffRows) m.set(s.id, s.archivedAt ? `${s.name} (archived)` : s.name);
     return m;
   }, [staffRows]);
 
-  // The picker offers live profiles only, grouped by the login they work under.
   const staffGroups = useMemo(() => {
     const groups = new Map<string, { label: string | null; profiles: StaffRow[] }>();
     for (const s of staffRows) {
@@ -376,7 +357,6 @@ export default function ResultsPage({
   const isMeasuredByValid = (row: MpConfigResponseRow): boolean => {
     if (row.measured_by_type === "by_user") return true;
     if (row.measured_by_type === "staff" && !!row.measured_by_staff_id) return true;
-    // If the DB columns aren't present yet / null, treat as not ready.
     return false;
   };
 
@@ -392,7 +372,6 @@ export default function ResultsPage({
 
       const prev = { type: row.measured_by_type, staffId: row.measured_by_staff_id };
 
-      // Optimistic UI update.
       setRows((p) =>
         p.map((r) =>
           r.id === row.id
@@ -419,7 +398,6 @@ export default function ResultsPage({
         const payload = await res.json().catch(() => null);
         if (!res.ok) throw new Error(payload?.error ?? "Couldn't update who measured.");
       } catch (e) {
-        // Revert on failure.
         setRows((p) =>
           p.map((r) =>
             r.id === row.id
@@ -442,7 +420,6 @@ export default function ResultsPage({
       const locationId = value === "none" ? null : value;
       const prev = row.location_id ?? null;
 
-      // Optimistic UI update.
       setRows((p) => p.map((r) => (r.id === row.id ? { ...r, location_id: locationId } : r)));
 
       try {
@@ -462,11 +439,6 @@ export default function ResultsPage({
     [],
   );
 
-  /**
-   * One stage per row, spanning the Result → Order handover. Computed once and
-   * reused by the tabs, the counts and the row badges. `now` is pinned per render
-   * so a row cannot change bucket midway through a pass.
-   */
   const staged = useMemo(() => {
     const now = new Date();
     return rows.map((row) => ({
@@ -492,7 +464,6 @@ export default function ResultsPage({
     [staged],
   );
 
-  /** Per-tab counts, so staff can see where the work is without switching tabs. */
   const bucketCounts = useMemo(() => {
     const counts = Object.fromEntries(STAGE_BUCKETS.map((b) => [b, 0])) as Record<
       ResultsTab,
@@ -526,15 +497,6 @@ export default function ResultsPage({
       .map((s) => s.row);
   }, [staged, search, tab, sourceFilter, orderFilter]);
 
-  /**
-   * Re-send the priced "ready to pay" email from the list.
-   *
-   * The same action already existed on the detail page, which meant chasing a
-   * customer cost two navigations from the one tab that exists to show who is
-   * being waited on. The route writes nothing to the Result, so pressing it
-   * twice sends a second copy and changes nothing else — no reload needed, and
-   * the local counter below is only there to tell staff it landed.
-   */
   const requestPayment = useCallback(async (row: MpConfigResponseRow) => {
     if (!row.customer_email) {
       toast.error("No customer email on file. Open the result to copy the link.");
@@ -548,9 +510,6 @@ export default function ResultsPage({
       );
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Couldn't request payment.");
-      // Three outcomes, not two. The route returns 200 with emailStatus
-      // "failed" when the transport throws, and calling that a success told
-      // staff the customer had been chased when nothing was sent.
       const emailStatus = payload?.emailStatus as
         | "sent"
         | "failed"
@@ -618,8 +577,6 @@ export default function ResultsPage({
         if (telegramStatus === "sent") toast.success("Sent to Telegram");
         else if (telegramStatus === "failed") toast.error("Saved, but couldn't send to Telegram.");
         else toast.success("Sent");
-        // No tab switch: releasing to the Telegram group is a notification, not a
-        // lifecycle move. The row keeps its stage.
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Couldn't update.");
       } finally {
@@ -678,7 +635,6 @@ export default function ResultsPage({
     });
   }, []);
 
-  // Bulk actions reuse the per-row handlers in a loop (no bulk API).
   const bulkSetLocation = useCallback(async () => {
     setBulkBusy(true);
     try {
@@ -736,12 +692,6 @@ export default function ResultsPage({
     URL.revokeObjectURL(url);
   }, [selectedRows, stageById]);
 
-  /**
-   * One kebab per row instead of a column per action. The table already
-   * scrolls sideways on a phone, and the actions staff want here — chase the
-   * customer, open the build — were otherwise only reachable from inside the
-   * detail page. The phone list shows the same menu in each row.
-   */
   const rowMenu = (row: MpConfigResponseRow, isDeleting: boolean) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -762,7 +712,6 @@ export default function ResultsPage({
           <SquareArrowOutUpRight className="h-4 w-4" />
           Open result
         </DropdownMenuItem>
-        {/* The Result page's Customer panel: link or create one (ADR 0051). */}
         <DropdownMenuItem
           onSelect={() => router.push(`${to(`/settings/results/${row.id}`)}#customer`)}
         >
@@ -775,16 +724,11 @@ export default function ResultsPage({
             row.status !== "assigned" ||
             !row.customer_email
           }
-          // Let the menu close: the toast is the feedback,
-          // and an open menu would sit on top of it on the
-          // phone screen where staff actually do this.
           onSelect={() => void requestPayment(row)}
         >
           <Send className="h-4 w-4" />
           Request payment
         </DropdownMenuItem>
-        {/* Why the item above is greyed out, rather than
-            leaving staff to guess. */}
         {row.status !== "assigned" ? (
           <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
             Only an assigned build can be paid for
@@ -881,9 +825,6 @@ export default function ResultsPage({
         </div>
       </div>
 
-      {/* Where Staff already work Results: the link produces rows in this very
-          queue, and this page is already requireAdminPage("results")-gated —
-          the same permission the mint route demands. */}
       <AssistLinkCard />
 
       <div className="flex flex-col gap-2 md:gap-3">
@@ -961,7 +902,6 @@ export default function ResultsPage({
             <div className="flex flex-col items-stretch gap-2 rounded-md border bg-muted/40 p-2 md:flex-row md:flex-wrap md:items-center">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium">{selectedRows.length} selected</span>
-                {/* The table's select-all box is not on the phone list. */}
                 <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm transition-colors active:bg-press md:hidden">
                   <Checkbox checked={allSelected} onCheckedChange={(v) => toggleAll(v === true)} />
                   Select all
@@ -1044,8 +984,6 @@ export default function ResultsPage({
                           checked={selected.has(row.id)}
                           onCheckedChange={(v) => toggleOne(row.id, v === true)}
                           aria-label={`Select ${row.customer_email || name}`}
-                          // The 44px hit area spills 14px past the box: keep it
-                          // clear of the link and 8px from the menu button.
                           className="ml-3.5 mr-[18px]"
                         />
                         {rowMenu(row, Boolean(deleting[row.id]))}

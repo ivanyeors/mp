@@ -1,7 +1,3 @@
-/**
- * Integration proof for slice 02 — run after migration + seed:
- *   npx tsx --env-file=.env.local lib/page-faq/page-faq.integration.check.ts
- */
 import assert from "node:assert/strict";
 import { getFaqCategories, getFaqItems } from "@/lib/faq";
 import { getPageFaq, isValidSurfaceKey, productSurfaceKey } from "@/lib/page-faq";

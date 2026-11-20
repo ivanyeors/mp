@@ -1,6 +1,5 @@
 import { sgtParts } from "./slots";
 
-/** "Tue 14 Jul 2026" in SGT. */
 export function formatDateSgt(iso: string): string {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return iso;
@@ -13,7 +12,6 @@ export function formatDateSgt(iso: string): string {
   return `${weekday} ${p.d} ${months[p.m - 1]} ${p.y}`;
 }
 
-/** "10:00" in SGT. */
 export function formatTimeSgt(iso: string): string {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return iso;

@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * No lookup that decides money may read `%` or `_` from the caller as a
- * wildcard (#169). The Supabase mock evaluates ILIKE/eq against seeded rows, so
- * a wildcard that would match in Postgres matches here too.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb }));
 
 vi.mock("@/lib/supabase/server", async () => {

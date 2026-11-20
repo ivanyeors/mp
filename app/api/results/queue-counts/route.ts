@@ -6,15 +6,6 @@ import { resultStage } from "@/lib/results/result-stage";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Queue counts for the Admin Panel sidebar badge: how many Results need staff
- * right now, and how many are stuck.
- *
- * Deliberately not a SQL aggregate — "stuck" is derived in `resultStage`, and
- * duplicating that logic in SQL would let the two drift. Instead this scans only
- * OPEN Results (never captured/declined/expired/cancelled) with the handful of
- * columns the derivation needs, which is a small, indexed set.
- */
 export async function GET() {
   const denied = await requireAdmin("results");
   if (denied) return denied;
@@ -30,8 +21,6 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Orders only matter for the needs_attention signal; open Results rarely have one
-  // (an order_id without capture is itself a stuck state).
   const orderIds = (rows ?? []).map((r) => r.order_id).filter(Boolean) as string[];
   const attentionByOrder = new Map<string, boolean>();
   if (orderIds.length > 0) {

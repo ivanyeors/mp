@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-// Next runs a fetch inside unstable_cache as no-store, so a Places read in that scope is
-// billed on every refresh. The fake scope below tracks it the way Next does: per async call.
 const h = await vi.hoisted(async () => {
   const { AsyncLocalStorage } = await import("node:async_hooks");
   return { scope: new AsyncLocalStorage<true>(), googleInsideCache: [] as boolean[] };

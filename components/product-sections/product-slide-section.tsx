@@ -9,7 +9,6 @@ type ProductSlideSectionProps = {
   sectionData?: Record<`data-${string}`, string>;
 };
 
-/** Standard inner padding/rhythm for product slide-in sections. */
 export function ProductSlideSection({
   children,
   className,

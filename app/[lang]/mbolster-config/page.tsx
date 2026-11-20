@@ -36,8 +36,6 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
   const { partner: partnerCode } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
-  // Staff assist gate: same Staff check as mp-config. Guests get null.
-  // Partner-assist (#78) is INDEPENDENT of staff auth — from the ?partner code.
   const [offer, faq, staffCtx, partner] = await Promise.all([
     getConfiguratorOfferRange("bolster"),
     getPageFaq("mbolster-config", locale),
@@ -45,9 +43,6 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
     partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
   ]);
 
-  // Service fees (ADR 0024): the profile at a Staff device (chosen under "Working
-  // as", or a personal login's only one) is measuring this customer, and the hold
-  // stamps the new Result `staff` — so the preview shows the fee.
   const [servicePrices, measuringProfile] = await Promise.all([
     loadServicePrices(supabaseAdmin()).catch(() => null),
     staffCtx ? actingProfile(staffCtx.memberId) : Promise.resolve(null),
@@ -64,7 +59,6 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
 
   return (
     <>
-      {/* Crawlable SEO shell; UI lives in the welcome (i) dialog */}
       <div className="sr-only">
         <ConfiguratorSeoIntro h1={intro.h1} answerLede={intro.lede} jsonLd={jsonLd} />
         <PageFaqSection surfaceKey="mbolster-config" locale={locale} />
@@ -76,7 +70,6 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
           faqTitle: faq?.title ?? null,
           faqItems: faq?.items ?? [],
         }}
-        // Same gate as /mp-config: assist edits a Result, `viewer` is read-only.
         staffAssist={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
         servicePrices={servicePrices}
         measuredByStaff={Boolean(measuringProfile)}

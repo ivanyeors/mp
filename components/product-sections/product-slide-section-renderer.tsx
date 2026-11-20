@@ -68,13 +68,7 @@ type ProductSlideSectionRendererProps = {
   commonMessages?: Record<string, unknown>;
   auxMessages?: Record<string, unknown>;
   resolveHref?: (href: string) => string;
-  /**
-   * Staff copy overrides for the current locale, by section key (**Slide-in section**).
-   * Merged over each section's i18n default; media overrides are already applied to
-   * `sections` by the caller.
-   */
   copyOverrides?: Readonly<Record<string, Record<string, unknown>>>;
-  /** Wraps each rendered section — Preview mode's selectable frame. */
   wrapSection?: (section: ProductSlideSectionConfig, node: React.ReactNode) => React.ReactNode;
 };
 
@@ -127,18 +121,12 @@ export function ProductSlideSectionRenderer({
   copyOverrides,
   wrapSection,
 }: ProductSlideSectionRendererProps) {
-  // Policy copy carries {readjustmentFee}-style placeholders; fill them with
-  // today's Costings → Service fees so the slide never quotes a stale price.
   const serviceCopy = useServiceCopy();
   const messages = React.useMemo(
     () => interpolateServiceCopyDeep(rawMessages, serviceCopy),
     [rawMessages, serviceCopy],
   );
 
-  /**
-   * A section's copy: its i18n default, with any Staff override merged over it. The
-   * override is interpolated too, so Staff can write `{readjustmentFee}` like the i18n.
-   */
   const copyOf = <T,>(section: ProductSlideSectionConfig): T => {
     const defaults = resolveSectionDefaults(messages, section);
     const override = copyOverrides?.[section.key];

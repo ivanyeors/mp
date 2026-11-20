@@ -8,7 +8,6 @@ import type { EasyshipReference } from "@/lib/easyship/schema";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** Ids the shipping-rule editor needs. Slow to fetch (300+ courier services), so cached for an hour. */
 const readReference = unstable_cache(
   async (): Promise<EasyshipReference> => {
     type Country = { id: number; alpha2: string; name: string };

@@ -1,22 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageCreateParamsBase } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 
-/**
- * A fake of the Claude client's streamed call (`beta.messages.stream`), for
- * AI writing's tests (PRD-campaign-email-editor slice 09): each call answers
- * with the next scripted answer, its text in chunks, a tick apart, so a test
- * sees what arrives as it arrives. It records every request as sent.
- */
-
 export interface FakeAnswer {
-  /** The answer's text: for structured output, its JSON. */
   text: string;
   stop_reason?: "end_turn" | "max_tokens" | "refusal";
   model?: string;
   usage?: { input_tokens: number; output_tokens: number };
-  /** Characters per streamed chunk. */
   chunk?: number;
-  /** Throws this instead of answering. */
   error?: Error;
 }
 
@@ -28,7 +18,6 @@ class FakeStream {
   currentMessage: { model: string; usage: { input_tokens: number; output_tokens: number } } | undefined;
   private readonly done: Promise<unknown>;
 
-  /** Characters handed to the listeners so far. */
   delivered = 0;
 
   constructor(
@@ -37,7 +26,6 @@ class FakeStream {
     private readonly signal?: AbortSignal,
   ) {
     this.done = this.run();
-    // A test that never awaits a stream it aborted must not see an unhandled rejection.
     this.done.catch(() => undefined);
   }
 
@@ -97,12 +85,10 @@ export function fakeClaude(answers: FakeAnswer[]) {
   return {
     client: { beta: { messages: { stream } } } as unknown as Anthropic,
     calls,
-    /** How much of the latest answer has been streamed so far, in characters. */
     delivered: () => streams.at(-1)?.delivered ?? 0,
   };
 }
 
-/** The user message of a recorded request. */
 export const userMessage = (params: MessageCreateParamsBase) => {
   const content = params.messages[0]?.content;
   return typeof content === "string" ? content : JSON.stringify(content);

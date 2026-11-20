@@ -74,20 +74,6 @@ import {
 } from "@/lib/crm/lifecycle-stage";
 import type { CampaignFilterOption } from "@/lib/email-campaigns/store";
 
-/**
- * The Customers list's filters, as one mega filter, a page of its own
- * (/settings/customers/filters, `filters/filters-page-client.tsx`): the
- * **Lifecycle stage** and its sub-statuses (PRD-crm-retention-loop slice 03,
- * PRD-campaign-audiences slice 04); purchases (CRM slice 04, campaign
- * audiences slice 04); reach: consent (migration slice 07), where they ship
- * to, the language they read, and the campaigns that reached them (campaign
- * audiences slice 05); the account, sign-in, mobile, Points (PRD-loyalty-points
- * slice 06), tags and follow-ups; and reviews (CRM slice 12). Values go
- * through the list's one schema (lib/crm/customer-filters.ts), so a control
- * can never put into the URL what a link could not.
- */
-
-/** Presets for *Last order*; a link may carry any other month count, shown as its own option. */
 const LAST_ORDER_PRESETS: LastOrderFilter[] = [
     { when: "within", months: 3 },
     { when: "within", months: 6 },
@@ -99,7 +85,6 @@ const LAST_ORDER_PRESETS: LastOrderFilter[] = [
 
 const lastOrderValue = (v: LastOrderFilter) => `${v.when}:${v.months}`;
 
-/** Presets for *Delivered*, in days, as Playbooks are timed; a link may carry any other. */
 const DELIVERED_PRESETS: DeliveredFilter[] = [
     { when: "within", days: 7 },
     { when: "within", days: 14 },
@@ -111,7 +96,6 @@ const DELIVERED_PRESETS: DeliveredFilter[] = [
 
 const deliveredValue = (v: DeliveredFilter) => `${v.when}:${v.days}`;
 
-/** Presets for *Last emailed*, in days; a link may carry any other. */
 const EMAILED_PRESETS: EmailedFilter[] = [
     { when: "within", days: 7 },
     { when: "within", days: 14 },
@@ -122,7 +106,6 @@ const EMAILED_PRESETS: EmailedFilter[] = [
     { when: "never" },
 ];
 
-/** How each *Campaign* state reads in its control, for the campaign chosen. */
 const CAMPAIGN_STATE_OPTION: Record<CampaignFilterState, string> = {
     sent: "Got it",
     "not-sent": "Didn't get it",
@@ -139,16 +122,10 @@ function lastOrderLabel(v: LastOrderFilter): string {
     return v.when === "within" ? `Within ${span}` : `Over ${span} ago`;
 }
 
-/** Applies a typed value on Enter or when the field loses focus. */
 function onEnter(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") e.currentTarget.blur();
 }
 
-/**
- * The mega filter's groups, in the order its page lists them. Every filter
- * key but `search` (the box above the list) is in exactly one group
- * (`customer-filter-groups.test.ts`).
- */
 export type CustomerFilterGroupId = "stage" | "purchases" | "reach" | "account" | "reviews";
 export const CUSTOMER_FILTER_GROUPS: readonly {
     id: CustomerFilterGroupId;
@@ -178,10 +155,8 @@ export const CUSTOMER_FILTER_GROUPS: readonly {
     { id: "reviews", label: "Reviews", blurb: "Google and shop reviews", keys: ["google_review", "shop_review", "rating"] },
 ];
 
-/** Every key the mega filter holds: all but `search`. */
 export const MEGA_FILTER_KEYS: readonly CustomerFilterKey[] = CUSTOMER_FILTER_GROUPS.flatMap((g) => g.keys);
 
-/** The list's sorts, as its Sort select offers them. */
 const SORT_LABELS: Record<CustomerSort, string> = {
     newest: "Newest first",
     oldest: "Oldest first",
@@ -192,7 +167,6 @@ const SORT_LABELS: Record<CustomerSort, string> = {
     spend: "Most spent",
 };
 
-/** The list's Sort: in its toolbar from md, and on the filters page on a phone. */
 export function CustomerSortSelect({
     value,
     onChange,
@@ -220,22 +194,14 @@ export function CustomerSortSelect({
     );
 }
 
-/** How many of a group's filters are set. */
 export function groupFilterCount(filters: CustomerListFilters, group: { keys: readonly CustomerFilterKey[] }): number {
     return group.keys.filter((k) => isCustomerFilterActive(filters, k)).length;
 }
 
-/** *Show 128 customers*, *Show 1 customer*. */
 export function showCustomersLabel(total: number): string {
     return `Show ${total.toLocaleString("en-SG")} ${total === 1 ? "customer" : "customers"}`;
 }
 
-/**
- * One group of the mega filter's controls. Every value goes through the
- * list's one schema (lib/crm/customer-filters.ts), so a control can never put
- * into the URL what a link could not. Render it inside an `@container`: its
- * grids follow the room the group is given, not the window.
- */
 export function CustomerFilterGroup({
     group,
     filters,
@@ -245,7 +211,6 @@ export function CustomerFilterGroup({
     group: CustomerFilterGroupId;
     filters: CustomerListFilters;
     onChange: (patch: Partial<CustomerListFilters>) => void;
-    /** The *Campaign* filter's choices: campaigns that have started sending, latest first. */
     campaigns?: readonly CampaignFilterOption[];
 }) {
     const id = useId();
@@ -264,13 +229,11 @@ export function CustomerFilterGroup({
             ? [...EMAILED_PRESETS, filters.emailed]
             : EMAILED_PRESETS;
 
-    // A link's campaign that is not among the choices still shows, by its id.
     const campaignOptions =
         filters.campaign && !campaigns.some((c) => c.id === filters.campaign!.id)
             ? [...campaigns, { id: filters.campaign.id, name: "A campaign not listed here" }]
             : campaigns;
 
-    // Ticking a stage takes in its sub-statuses: normalizeStageFilter drops them.
     const toggleStage = (value: StageFilter, checked: boolean) => {
         const next = checked ? [...filters.stage, value] : filters.stage.filter((s) => s !== value);
         onChange({ stage: normalizeStageFilter(next) });
@@ -319,7 +282,6 @@ export function CustomerFilterGroup({
                                             </p>
                                         </div>
                                     </div>
-                                    {/* Sub-statuses (slice 04): implied, and so locked, while their stage is ticked. */}
                                     {details.length > 0 && (
                                         <div className="ml-6 space-y-1.5 border-l pl-3">
                                             {details.map((detail) => (
@@ -490,7 +452,6 @@ export function CustomerFilterGroup({
 
                     <div className="min-w-0 space-y-2">
                         <Label htmlFor={`${id}-min-spend`}>Spent at least (SGD)</Label>
-                        {/* Keyed by the applied value, so clearing its chip clears the field. */}
                         <Input
                             key={String(filters.min_spend)}
                             id={`${id}-min-spend`}
@@ -509,7 +470,6 @@ export function CustomerFilterGroup({
                                 }
                                 const parsed = customerFiltersSchema.shape.min_spend.safeParse(text);
                                 if (!parsed.success) {
-                                    // Not an amount the list reads: put back the one applied.
                                     e.currentTarget.value = filters.min_spend == null ? "" : String(filters.min_spend);
                                 } else if (parsed.data !== filters.min_spend) {
                                     onChange({ min_spend: parsed.data ?? null });
@@ -521,12 +481,9 @@ export function CustomerFilterGroup({
                 </div>
             );
         case "reach":
-            // PRD-campaign-audiences slice 05: whether we may email them, where
-            // they are, what they read, and what we last sent them.
             return (
                 <div className="min-w-0 space-y-6">
                     <div className="grid min-w-0 gap-4 @lg:grid-cols-2 @5xl:grid-cols-4">
-                        {/* Marketing consent (migration slice 07): who a campaign may reach. */}
                         <div className="min-w-0 space-y-2">
                             <Label htmlFor={`${id}-consent`}>Email consent</Label>
                             <Select value={filters.consent} onValueChange={(v) => onChange({ consent: v as ConsentFilter })}>
@@ -693,7 +650,6 @@ export function CustomerFilterGroup({
                                     A click is a visit to the site from a link in that email.
                                 </p>
                             </div>
-                            {/* Slice 12: the sunset rule, which campaigns leave out unless one includes them. */}
                             <div className="min-w-0 space-y-2">
                                 <Label htmlFor={`${id}-engagement`}>Engagement</Label>
                                 <Select
@@ -736,7 +692,6 @@ export function CustomerFilterGroup({
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All accounts</SelectItem>
-                                {/* An account is bound by the email they signed in with (CRM 11). */}
                                 <SelectItem value="signed-up">Signed up, email verified</SelectItem>
                                 <SelectItem value="no-account">No account, email not verified</SelectItem>
                             </SelectContent>
@@ -794,7 +749,6 @@ export function CustomerFilterGroup({
                             </SelectContent>
                         </Select>
                     </div>
-                    {/* Points (PRD-loyalty-points slice 06): an available balance, or none. */}
                     <div className="min-w-0 space-y-2">
                         <Label htmlFor={`${id}-points`}>Points</Label>
                         <Select value={filters.points} onValueChange={(v) => onChange({ points: v as PointsFilter })}>
@@ -812,7 +766,6 @@ export function CustomerFilterGroup({
                 </div>
             );
         case "reviews":
-            // CRM slice 12: a Google review counts once Staff have linked it.
             return (
                 <fieldset className="min-w-0 space-y-3">
                     <legend className="sr-only">Reviews</legend>
@@ -908,22 +861,12 @@ function ignoredNote(ignored: readonly CustomerFilterParam[]): string {
     return `${n} filter${n === 1 ? "" : "s"} ignored (${ignored.join(", ")}): the link had a value the list does not know, so it was left out.`;
 }
 
-/**
- * With *Ships to* Singapore or elsewhere (PRD-campaign-audiences slice 05):
- * how many more match every other filter but have no known country, so the
- * list says whom it leaves out. Null when there are none to mention.
- */
 export function shipsToUnknownNote(filters: Pick<CustomerListFilters, "ships_to">, unknown: number | null | undefined): string | null {
     if ((filters.ships_to !== "sg" && filters.ships_to !== "not-sg") || !unknown) return null;
     const n = unknown.toLocaleString("en-SG");
     return `${n} more match${unknown === 1 ? "es" : ""} the other filters but ship${unknown === 1 ? "s" : ""} to an unknown country: no order or address of theirs names one.`;
 }
 
-/**
- * The active filters above the table, each with ×, and *Clear all*. Also the
- * note for parameters a link carried that the list could not read: they were
- * dropped, never applied.
- */
 export function CustomerFilterSummary({
     filters,
     ignored,
@@ -934,12 +877,9 @@ export function CustomerFilterSummary({
 }: {
     filters: CustomerListFilters;
     ignored: readonly CustomerFilterParam[];
-    /** Names for a *Campaign* filter's chip. */
     campaigns?: readonly CampaignFilterOption[];
-    /** With *Ships to*: how many more ship to an unknown country (`listAdminCustomers`). */
     shipsToUnknown?: number | null;
     onClear: (key: CustomerFilterKey) => void;
-    /** *Clear all* after the chips; leave it out where the page has its own. */
     onClearAll?: () => void;
 }) {
     const [noteOpen, setNoteOpen] = useState(true);

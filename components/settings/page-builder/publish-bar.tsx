@@ -24,12 +24,6 @@ export const EMPTY_PENDING: PendingSummary = {
   slugs: [],
 };
 
-/**
- * Draft state and the one action that reaches shoppers.
- *
- * Every edit lands in a Section draft; nothing is live until Publish. Discard is the
- * mirror — it clears pending edits and leaves published content untouched.
- */
 export function PublishBar({
   pending,
   onPublished,
@@ -40,9 +34,7 @@ export function PublishBar({
   pending: PendingSummary;
   onPublished: () => void;
   onDiscarded: () => void;
-  /** Publish (POST) and Discard (DELETE) for this page. Defaults to the landing page. */
   endpoint?: string;
-  /** What Publish ships to, for the confirm dialog, e.g. "the live Basic Mpillow sheet". */
   liveLabel?: string;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);

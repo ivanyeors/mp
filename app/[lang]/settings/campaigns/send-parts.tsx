@@ -4,19 +4,12 @@ import type { SendAllowance } from "@/lib/customer-migration/campaign-ledger";
 import type { PreflightCheck } from "@/lib/customer-migration/wave-sender";
 import { allowanceMeters, allowanceSummary, CHECK_LABEL } from "@/lib/email-campaigns/send-flow";
 
-/**
- * Pieces the Email campaigns pages share (PRD-campaign-send-flow): a tick or
- * a cross with words, the check list, and the send limit's meters. Status is
- * never colour alone: every icon has a label and every row has words.
- */
-
 export function StatusIcon({ ok, advisory = false }: { ok: boolean; advisory?: boolean }) {
     if (ok) return <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-label="Done" />;
     if (advisory) return <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Recommended" />;
     return <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-label="Not yet" />;
 }
 
-/** Every check, then the email's advice (PRD-campaign-email-editor slice 11), which says *Recommended:* and holds nothing. */
 export function CheckList({ checks, advice = [] }: { checks: readonly PreflightCheck[]; advice?: readonly PreflightCheck[] }) {
     const row = (c: PreflightCheck, advisory: boolean) => (
         <li key={`${advisory ? "advice" : "check"}:${c.key}`} className="flex items-start gap-2 text-sm">
@@ -30,7 +23,6 @@ export function CheckList({ checks, advice = [] }: { checks: readonly PreflightC
     return <ul className="space-y-2">{[...checks.map((c) => row(c, false)), ...advice.map((c) => row(c, true))]}</ul>;
 }
 
-/** Today and this month, as Resend counts them, with a line on what is left. */
 export function AllowanceMeters({ allowance }: { allowance: SendAllowance }) {
     return (
         <div className="space-y-3">

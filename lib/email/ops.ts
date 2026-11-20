@@ -1,15 +1,7 @@
-// ============================================================
-// Internal / staff notification emails
-// ============================================================
-//
-// Ops mail uses `audience: "staff"`, which drops the marketing footer links and
-// social row — internal notices should not look like customer marketing.
-
 import { renderEmailShell } from "./base";
 import { codeBlock, infoList, paragraph, statusPill } from "./components";
 import type { RenderedEmail } from "./types";
 
-/** A partner edited their public listing; staff can hide it in one click. */
 export function renderPartnerListingUpdatedEmail(p: {
   partnerName: string;
   hideUrl: string;
@@ -39,7 +31,6 @@ ${paragraph(
   return { subject, text, html };
 }
 
-/** A held Result has passed its SLA and still needs operator review. */
 export function renderHeldResultReminderEmail(p: {
   resultId: string;
   platformUrl: string;

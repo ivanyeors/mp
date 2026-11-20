@@ -1,29 +1,7 @@
 import type { SeoMetricRow } from "@/lib/seo-metrics/ingest-gsc";
 import { parseCsv } from "@/lib/csv";
 
-// Lifted to lib/csv.ts when the Shopify customer import became its second caller.
 export { parseCsv };
-
-/**
- * Manual imports for AI-answer reports that have no API yet (slice 07,
- * PRD-search-visibility):
- *
- *  - Google Search Console → Performance → Generative AI → Export. A set of
- *    CSVs: Chart.csv (daily impressions) plus period totals for Pages,
- *    Countries, Devices, and Filters.csv describing the period.
- *  - Bing Webmaster Tools → AI Performance → Export
- *    (…_AIPerformanceOverviewStats_….csv): daily Copilot citations and the
- *    number of distinct pages cited.
- *
- * Rows land in `seo_daily_metrics` so the charts treat them like any other
- * source. Mapping:
- *  - gsc_genai  / total: impressions = AI Overview + AI Mode impressions
- *  - bing_ai    / total: impressions = citations (an "appearance" count);
- *                        extra.cited_pages = distinct pages cited
- *  - gsc_genai  / page_period | country_period | device_period: whole-period
- *    totals with no daily breakdown, stored on the import date with
- *    extra.period, never mixed into daily rollups.
- */
 
 export type ReportKind =
   | "gsc_genai_chart"
@@ -55,7 +33,6 @@ export function detectReport(header: string[]): ReportKind | null {
   return null;
 }
 
-/** "2026-07-10" or Bing's "4/2/2026 12:00:00 AM" (US month/day) → YYYY-MM-DD. */
 export function parseReportDate(raw: string): string | null {
   const t = raw.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
@@ -82,10 +59,6 @@ const PERIOD_DIMENSION = {
   gsc_genai_devices: "device_period",
 } as const;
 
-/**
- * Parse one export file. `importDate` dates the period snapshots; `period`
- * (from Filters.csv in the same upload) labels them.
- */
 export function parseReport(text: string, opts: { importDate: string; period?: string }): ParsedReport {
   const table = parseCsv(text);
   if (!table.length) return { ok: false, error: "The file is empty." };
@@ -143,7 +116,6 @@ export function parseReport(text: string, opts: { importDate: string; period?: s
       });
     }
   }
-  // The same (date, key) twice in one file would make the upsert touch a row twice; merge them.
   const merged = new Map<string, SeoMetricRow>();
   for (const r of rows) {
     const id = `${r.date}|${r.dimension}|${r.key}`;
@@ -159,11 +131,6 @@ export function parseReport(text: string, opts: { importDate: string; period?: s
   return { ok: true, kind, rows: [...merged.values()], skipped };
 }
 
-/**
- * Bing names exports after the verified site ("www.mpillow.com_AIPerformance…csv").
- * Warn when that is not the canonical host, so a report for another property is
- * not read as this site's numbers.
- */
 export function siteMismatchWarning(fileName: string, canonicalHost: string): string | null {
   const m = fileName.toLowerCase().match(/^((?:[a-z0-9-]+\.)+[a-z]{2,})_/);
   if (!m || m[1] === canonicalHost.toLowerCase()) return null;

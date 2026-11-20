@@ -15,14 +15,6 @@ import {
   lineRow,
 } from "./purchase-lines-fixture";
 
-/**
- * The TypeScript side of CRM slice 04's purchase classes: `classifyOrderLine`
- * read the way `customer_purchase_lines` reads it, over the fixture the
- * parity check (lib/crm/purchase-lines.check.ts) also inserts into a database.
- * Here each fixture line must mean what it says; the check then requires the
- * SQL view to say the same of every line.
- */
-
 const pillowById = new Map([
   [TEST_PILLOW_IDS.premium, { size: "M", kind: "premium" }],
   [TEST_PILLOW_IDS.basic, { size: "M", kind: "basic" }],
@@ -30,7 +22,6 @@ const pillowById = new Map([
 const orderById = new Map(ORDERS.map((o) => [o.id, o]));
 const paid = (o: (typeof ORDERS)[number]) => ({ paid_at: o.paidMonthsAgo == null ? null : "2026-01-01T00:00:00Z", status: o.status });
 
-/** What the view lists for a fixture line: nothing off a counted Order, nothing for a Service line. */
 function listed(l: (typeof LINES)[number]) {
   const order = orderById.get(l.order_id)!;
   return isCountedOrder(paid(order)) ? purchaseLine(lineRow(l, TEST_PILLOW_IDS), pillowById) : null;
@@ -55,9 +46,7 @@ describe("isCountedOrder", () => {
   });
 
   it("excludes in SQL exactly the statuses purchases.ts excludes", () => {
-    // Both views write the list out; it must be NOT_A_PURCHASE, in either.
     const dir = new URL("../../../supabase/migrations/", import.meta.url);
-    // By name, not timestamp: the overview's file moves to stay the latest definition.
     const files = readdirSync(dir).filter((f) =>
       /_(customer_purchase_lines|customer_overview_crm_columns|customer_overview_purchase_filters)\.sql$/.test(f),
     );

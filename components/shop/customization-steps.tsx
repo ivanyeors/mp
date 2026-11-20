@@ -29,8 +29,6 @@ import type {
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
-// ─── Shared Types ────────────────────────────────────────────
-
 import type { ComposedPriceResult } from "@/lib/pricing/composed-price";
 import {
   customizationDelta,
@@ -61,8 +59,6 @@ export interface RecommendationResponseData {
     price: number;
     currency: string;
   } | null;
-  /** Costings inputs so the preview prices a build with the same function the money
-   *  path uses. Null when this size x tier has no usable price. */
   pricing?: CustomizationPricingInputs | null;
   components: {
     covers: ComponentOption[];
@@ -74,7 +70,6 @@ export interface RecommendationResponseData {
     id: number;
     name: string;
     lines: { item_id: number; subtype: string; quantity: number }[];
-    /** RE slice 07: spatial rows for the read-only x-ray; absent on legacy-flat templates. */
     placements?: PillowPlacementRow[];
   }[];
   available_fillings: {
@@ -84,31 +79,20 @@ export interface RecommendationResponseData {
     size?: string | null;
     on_hand: number;
   }[];
-  /** RE slice 07: filling color overrides so guest x-ray matches staff assist. */
   color_overrides?: ColorOverrideRow[];
-  /** Settings dimension overrides for the true-scale x-ray (slice 02). */
   dimension_overrides?: DimensionOverridesPayload;
-  /** Buildable units for the recommended composed sellable (size×tier or bolster length). */
   composed_buildable?: number;
   buildable_counts?: Record<string, number>;
-  /** Rules Engine recommendation record (slice 03+). */
   recommendation_record?: Record<string, unknown> | null;
   graph_version_id?: string | null;
 }
-
-// ─── Shared Constants ────────────────────────────────────────
 
 import { HARDCODED_UPSELLS } from "@/lib/shop/customize-apply-payload";
 
 export { HARDCODED_UPSELLS };
 
-// ─── Shared Utilities ────────────────────────────────────────
-
 export const formatPrice = formatCurrency;
 
-/**
- * Compute filling lines from recommendation data + optional template selection.
- */
 export function computeFillingLines(
   data: RecommendationResponseData | null,
   selectedTemplateId: number | null
@@ -133,9 +117,6 @@ export function computeFillingLines(
   return data.recommendation.filling_lines;
 }
 
-/**
- * Compute component lines from recommendation + user selections.
- */
 export function computeComponentLines(
   data: RecommendationResponseData | null,
   selectedCover: number | null,
@@ -173,9 +154,6 @@ export function computeComponentLines(
       isOther
     ) {
       const overrideQty = componentQtyOverrides.get(comp.item_id);
-      // A swapped-in cover or case is not in the BOM (base 0), but it replaces the
-      // one that is, so it ships that role's quantity — not zero, which priced and
-      // built the default instead and which the apply route refuses.
       const qty = overrideQty ?? roleBaseQuantity(comp, allComponents);
       lines.push({
         item_id: comp.item_id,
@@ -193,14 +171,6 @@ export function computeComponentLines(
   return lines;
 }
 
-/**
- * How many of this ROLE the build ships.
- *
- * A swapped-in cover or case carries `base_quantity: 0` — it is not in the BOM — so
- * measuring "extra" against its own base counted the substitution itself as an extra
- * unit and showed a whole 88 case beside a total that only moved by 23. The role's
- * quantity comes from whichever option the BOM actually ships.
- */
 export function roleBaseQuantity(
   comp: ComponentOption,
   pool: ComponentOption[]
@@ -210,13 +180,6 @@ export function roleBaseQuantity(
   return shipped?.base_quantity ?? comp.base_quantity;
 }
 
-/**
- * Quote this build against Costings, with the same function the server charges by.
- *
- * Returns null only when the server sent no pricing inputs for this size x tier —
- * `data.pricing` is null exactly when the build has no usable Costings price, and
- * the apply route refuses it too.
- */
 export function quoteCustomization(
   data: RecommendationResponseData | null,
   componentLines: ConfigLine[]
@@ -236,13 +199,6 @@ export function quoteCustomization(
   });
 }
 
-/**
- * What this build adds to (or takes off) the variant's shelf price.
- *
- * Signed, because swapping to a cheaper case is a real reduction. This used to sum
- * `quantity above BOM x full MSRP`, which read a SWAP as an extra part and quoted a
- * basic XS with a Fibrecool case at 258 where Costings says 193.
- */
 export function computeAddonPrice(
   data: RecommendationResponseData | null,
   componentLines: ConfigLine[]
@@ -252,9 +208,6 @@ export function computeAddonPrice(
   return customizationDelta(quote, data?.pricing?.shelf_price ?? null) ?? 0;
 }
 
-/**
- * Compute upsell total.
- */
 export function computeUpsellTotal(
   selectedUpsells: Set<number>,
   upsells: UpsellItem[] = HARDCODED_UPSELLS
@@ -267,8 +220,6 @@ export function computeUpsellTotal(
   }
   return total;
 }
-
-// ─── Step: Recommendation ────────────────────────────────────
 
 export interface CustomizationStepRecommendationProps {
   data: RecommendationResponseData;
@@ -295,7 +246,6 @@ export function CustomizationStepRecommendation({
 
   return (
     <div className="space-y-6">
-      {/* Recommended size - large prominent display */}
       <div className="text-center space-y-2">
         <Badge variant="secondary" className="text-xs">
           AI Recommended
@@ -313,7 +263,6 @@ export function CustomizationStepRecommendation({
         )}
       </div>
 
-      {/* Filling configuration */}
       {fillingLines.length > 0 && (
         <Card className="py-4">
           <CardContent className="space-y-3">
@@ -340,12 +289,10 @@ export function CustomizationStepRecommendation({
         </Card>
       )}
 
-      {/* Explanation */}
       <div className="rounded-lg bg-muted/50 p-4 text-sm leading-relaxed text-muted-foreground">
         {recommendation.explanation}
       </div>
 
-      {/* Alternative templates */}
       {templates.length > 0 && (
         <div className="space-y-3">
           <Label className="text-sm font-semibold">
@@ -387,7 +334,6 @@ export function CustomizationStepRecommendation({
         </div>
       )}
 
-      {/* Continue */}
       <Button className="w-full" size="lg" onClick={onContinue}>
         Continue to Customize
         <ArrowRight className="size-4" />
@@ -395,8 +341,6 @@ export function CustomizationStepRecommendation({
     </div>
   );
 }
-
-// ─── Step: Components ────────────────────────────────────────
 
 export interface CustomizationStepComponentsProps {
   components: RecommendationResponseData["components"];
@@ -411,20 +355,10 @@ export interface CustomizationStepComponentsProps {
   addonPrice: number;
   onBack: () => void;
   onContinue: () => void;
-  /**
-   * Cover + case only (no protector, packaging, or qty adjusters).
-   * Used by the authorize-then-capture purchase path.
-   */
   preferencesOnly?: boolean;
-  /** Show only the case preference picker (Mbolster). */
   caseOnly?: boolean;
-  /** Hide back/continue row when the parent owns navigation. */
   hideNav?: boolean;
   continueLabel?: string;
-  /**
-   * A switch beside "Cover Style" that draws the chosen cover on the pillow
-   * preview instead of the case. Disabled when that cover has no overlay.
-   */
   coverPreview?: {
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
@@ -438,7 +372,6 @@ function ComponentOptionButton({
   stockAvailable,
   isSelected,
   onSelect,
-  /** Hold path: stock is checked at assign/accept, so sold-out stays selectable. */
   allowSoldOut = false,
 }: {
   name: string;
@@ -503,7 +436,6 @@ export function CustomizationStepComponents({
 }: CustomizationStepComponentsProps) {
   return (
     <div className="space-y-6">
-      {/* Cover style picker */}
       {!caseOnly && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
@@ -541,7 +473,6 @@ export function CustomizationStepComponents({
         </div>
       )}
 
-      {/* Case style picker — always shown (empty state if none) so Case is never missing */}
       <div className="space-y-3">
         <Label className="text-base font-semibold">Case Style</Label>
         {components.cases.length === 0 ? (
@@ -567,7 +498,6 @@ export function CustomizationStepComponents({
 
       {!preferencesOnly && (
         <>
-          {/* Quantity adjusters for all selected components */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">Quantities</Label>
             <p className="text-xs text-muted-foreground">
@@ -595,7 +525,6 @@ export function CustomizationStepComponents({
                     ...components.protectors,
                     ...components.packaging,
                   ]);
-                  // Same default as computeComponentLines: a swap ships the role's count.
                   const currentQty = componentQtyOverrides.get(comp.item_id) ?? roleBase;
                   const extraQty = Math.max(0, currentQty - roleBase);
                   const extraCost = extraQty * comp.unit_price;
@@ -631,7 +560,6 @@ export function CustomizationStepComponents({
             </div>
           </div>
 
-          {/* Price summary bar */}
           <div className="rounded-lg bg-muted/50 p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Base price</span>
@@ -653,7 +581,6 @@ export function CustomizationStepComponents({
         </>
       )}
 
-      {/* Navigation */}
       {!hideNav && (
         <div className="flex gap-3">
           <Button variant="outline" onClick={onBack} className="flex-1">
@@ -669,8 +596,6 @@ export function CustomizationStepComponents({
     </div>
   );
 }
-
-// ─── Step: Summary & Upsells ─────────────────────────────────
 
 export interface CustomizationStepSummaryProps {
   data: RecommendationResponseData;
@@ -726,7 +651,6 @@ export function CustomizationStepSummary({
 
   return (
     <div className="space-y-6">
-      {/* Order summary card */}
       <Card className="py-4">
         <CardContent className="space-y-4">
           <h3 className="font-semibold">Order Summary</h3>
@@ -763,7 +687,6 @@ export function CustomizationStepSummary({
               <span className="font-medium">{caseName}</span>
             </div>
 
-            {/* Extra quantities */}
             {componentLines
               .filter((cl) => {
                 const pool = [
@@ -800,7 +723,6 @@ export function CustomizationStepSummary({
               })}
           </div>
 
-          {/* Price breakdown */}
           <div className="border-t pt-3 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Base price</span>
@@ -828,7 +750,6 @@ export function CustomizationStepSummary({
         </CardContent>
       </Card>
 
-      {/* Upsells */}
       {upsells.length > 0 && (
         <div className="space-y-3">
           <Label className="text-base font-semibold">
@@ -885,7 +806,6 @@ export function CustomizationStepSummary({
         </div>
       )}
 
-      {/* Total */}
       <div className="rounded-lg bg-primary/5 border-2 border-primary/20 p-4">
         <div className="flex justify-between items-center">
           <span className="font-semibold text-lg">Total</span>
@@ -895,7 +815,6 @@ export function CustomizationStepSummary({
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="flex gap-3">
         <Button variant="outline" onClick={onBack} className="flex-1">
           <ArrowLeft className="size-4" />

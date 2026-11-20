@@ -10,13 +10,6 @@ import {
   type PartnerTermsRow,
 } from "@/lib/partner-terms";
 
-/**
- * Each approved partner's terms (ADR 0034): the Commission Pool and the customer
- * discount Staff set, beside the share the partner picked in their Partner Hub and
- * any change waiting for the day after the next Payout Date. Staff-only — mounted
- * inside the admin-guarded Partner commissions page; the action re-asserts admin.
- */
-
 type Row = PartnerTermsRow & { id: string; name: string };
 
 const sgd = (n: number) => `S$${n.toFixed(2)}`;

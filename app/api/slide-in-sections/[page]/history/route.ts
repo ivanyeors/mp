@@ -10,12 +10,10 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-/** Matches the retention bound in publish_slide_in_draft. */
 const LIST_LIMIT = 50;
 
 type Params = { params: Promise<{ page: string }> };
 
-/** GET — this sub page's **Publish snapshots**, newest first, with what restoring each would change. */
 export async function GET(_req: Request, { params }: Params) {
   try {
     await requireAdminContext("page-builder");
@@ -57,10 +55,6 @@ export async function GET(_req: Request, { params }: Params) {
 
 const RestoreSchema = z.object({ snapshotId: z.string().uuid() });
 
-/**
- * POST — stage a snapshot as this sub page's draft. Never writes published state: Staff
- * review the restore in Preview mode and ship it through the normal Publish.
- */
 export async function POST(req: Request, { params }: Params) {
   let ctx;
   try {
@@ -77,8 +71,6 @@ export async function POST(req: Request, { params }: Params) {
     const { snapshotId } = RestoreSchema.parse(await req.json());
     const admin = supabaseAdmin();
 
-    // The function restores whichever page the snapshot belongs to; make sure that is
-    // the page Staff are looking at.
     const { data: snap, error: readError } = await admin
       .from("slide_in_page_publishes")
       .select("id, page")

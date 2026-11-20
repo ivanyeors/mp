@@ -1,13 +1,3 @@
-/**
- * Group flat inventory filling Items into a SunburstMenu tree, categorised by
- * filling family (ring 1 = 3D / 6D / 6D+), leaves = the variants within a family.
- * Pure — no React runtime (type-only SunburstNode import). Input typed structurally
- * so lib/ stays free of the UI FillingItem type.
- *
- * Seed data stores the type in `subtype` ("3D (S)", "6D (L)", "6D+ (Folded)") with
- * name="filling", but real inventory can carry it in `name` (or lowercase, or leave
- * subtype null) — so the density is read from whichever field has it.
- */
 import type { SunburstNode } from "@/components/ui/sunburst-menu-layout";
 
 export type FillingItemLike = {
@@ -17,63 +7,39 @@ export type FillingItemLike = {
   size: string | null;
 };
 
-/** Leading density token + an optional immediate premium "+", case-insensitive. */
 const DENSITY = /^\s*(\d+D)(\+)?/i;
 
-/**
- * A Cervical Neck Support: an Accessories Item staff may also place inside a
- * premium pillow, where it is in the pillow's MSRP like the fillings. Matched by
- * type name — inventory has no category of its own for it.
- */
 export const NECK_SUPPORT = /cervical|neck support/i;
 
 export function isNeckSupportItem(item: { category?: string | null; name: string }): boolean {
   return item.category === "accessories" && NECK_SUPPORT.test(item.name);
 }
 
-/**
- * An Ear Comfort Pad: a cushion with a sewn well for the ear, an Accessories
- * Item that is also an Add-on, and that staff may place inside a pillow as
- * they place a Neck support. Matched by name — inventory has no category of
- * its own for it.
- */
 export const EAR_PAD = /ear comfort/i;
 
 export function isEarPadItem(item: { category?: string | null; name: string }): boolean {
   return item.category === "accessories" && EAR_PAD.test(item.name);
 }
 
-/**
- * An Accessories Item the x-ray may place inside a pillow: a Neck support or
- * an Ear Comfort Pad. Premium pillows only, and charged at its own MSRP per
- * piece (fillings are part of the Costings row and add nothing).
- */
 export function isInPillowAccessory(item: { category?: string | null; name: string }): boolean {
   return isNeckSupportItem(item) || isEarPadItem(item);
 }
 
-/** PostgREST `.or()` filter for every Item the x-ray may place: fillings plus neck supports and ear pads. */
 export const PLACEABLE_ITEMS_OR =
   "category.eq.filling,and(category.eq.accessories,or(name.ilike.*cervical*,name.ilike.*neck support*,name.ilike.*ear comfort*))";
 
-/** Filling family from a descriptor like "6D+ (Folded)" or "3D-S" → 3D / 6D / 6D+. */
 export function fillingFamily(descriptor: string | null): { key: string; label: string } {
   const s = descriptor?.trim() ?? "";
   if (NECK_SUPPORT.test(s)) return { key: "neck", label: "Neck support" };
   if (EAR_PAD.test(s)) return { key: "ear", label: "Ear pad" };
   const m = s.match(DENSITY);
   if (!m) return { key: "other", label: "Other" };
-  const density = m[1].toUpperCase(); // "6D"
-  const premium = Boolean(m[2]) || s.endsWith("+"); // "6D+ (…)" or legacy "6D-L+"
+  const density = m[1].toUpperCase();
+  const premium = Boolean(m[2]) || s.endsWith("+");
   const label = premium ? `${density}+` : density;
   return { key: label.toLowerCase(), label };
 }
 
-/**
- * The type descriptor for an item: prefer whichever of subtype/name carries a
- * density. Live inventory leaves `subtype` null and names the type ("6D Fold"),
- * so anything keyed on subtype alone sees every filling as the same thing.
- */
 export function fillingDescriptor(item: Pick<FillingItemLike, "name" | "subtype">): string {
   for (const c of [item.subtype, item.name]) {
     if (c && DENSITY.test(c)) return c.trim();
@@ -81,10 +47,6 @@ export function fillingDescriptor(item: Pick<FillingItemLike, "name" | "subtype"
   return (item.name || item.subtype || "").trim();
 }
 
-/**
- * A piece's label as lines: the type, then the size when the type does not
- * already say it — ["6D Fold", "S"], ["6D (L)"]. Empty when the type is unknown.
- */
 export function fillingLabelLines(descriptor: string | null, size: string | null): string[] {
   const type = descriptor?.trim() ?? "";
   const sz = size?.trim() ?? "";
@@ -93,38 +55,28 @@ export function fillingLabelLines(descriptor: string | null, size: string | null
   return sz && !tokens.includes(sz.toUpperCase()) ? [type, sz] : [type];
 }
 
-/** Lines written inside a piece: as fillingLabelLines, with a neck support shortened to "Neck" and an ear pad to "Ear pad". */
 export function pieceLabelLines(descriptor: string | null, size: string | null): string[] {
   if (NECK_SUPPORT.test(descriptor ?? "")) return fillingLabelLines("Neck", size);
   if (EAR_PAD.test(descriptor ?? "")) return fillingLabelLines("Ear pad", size);
   return fillingLabelLines(descriptor, size);
 }
 
-/** Clean label for a placed piece, e.g. "6D (L)" or "6D Fold S" — not "filling (6D (L))". */
 export function fillingLabel(item: FillingItemLike): string {
   return fillingLabelLines(fillingDescriptor(item), item.size).join(" ") || `Item #${item.id}`;
 }
 
-/** Variant within a family: the parenthetical, else the descriptor minus its density ("" when that is all it was). */
 function variantName(descriptor: string): string {
   const paren = descriptor.match(/\(([^)]+)\)/)?.[1];
   if (paren) return paren.trim();
   return descriptor.replace(DENSITY, "").replace(/^[\s\-+]+/, "").trim();
 }
 
-/**
- * A leaf's label once its family has been picked: what tells it apart inside
- * that family, never the family again. Live inventory names the type and keeps
- * the size apart (`6D` + `L`, `6D Fold` + `S`), so under 6D the leaves read
- * `L`, `Fold S` — not `6D`, `6D (S)` (owner, 7-11-2026: save the wedge's space).
- */
 function variantLabel(item: FillingItemLike): string {
   const variant = variantName(fillingDescriptor(item));
   return fillingLabelLines(variant || null, item.size).join(" ") || item.size?.trim() || "";
 }
 
 const SIZE_ORDER = ["XS", "S", "M", "L", "XL"];
-/** Leaf order inside a family: plain sizes smallest first, then each named variant (Fold, Round…) by size. */
 function leafRank(label: string): [string, number] {
   const words = label.split(" ");
   const size = SIZE_ORDER.indexOf(words.at(-1)!.toUpperCase());
@@ -132,7 +84,6 @@ function leafRank(label: string): [string, number] {
   return [variant, size >= 0 ? size : SIZE_ORDER.length];
 }
 
-/** Sort rank: 3D < 6D < 6D+ < Neck support < Ear pad < Other. */
 function familyRank(key: string): number {
   if (key === "other") return Infinity;
   if (key === "neck") return 1000;
@@ -152,7 +103,6 @@ export function fillingItemsToSunburst(items: FillingItemLike[]): SunburstNode[]
 
   const nodes: SunburstNode[] = [];
   for (const [key, g] of [...groups].sort((a, b) => familyRank(a[0]) - familyRank(b[0]))) {
-    // Collapse literal duplicate rows (same name+subtype+size), keep the lowest id.
     const unique = new Map<string, FillingItemLike>();
     for (const item of g.items) {
       const identity = `${item.name.trim().toLowerCase()}|${item.subtype ?? ""}|${item.size ?? ""}`;
@@ -164,8 +114,6 @@ export function fillingItemsToSunburst(items: FillingItemLike[]): SunburstNode[]
     const isOther = key === "other";
     const usedLabels = new Set<string>();
     const leaves: SunburstNode[] = sorted.map((item) => {
-      // Real family → show the variant and size (S/M/L/Fold S…); Other → the item name;
-      // neck supports and ear pads differ only by size (an unsized ear pad is its name).
       let label = isOther
         ? item.name.trim()
         : key === "neck" || key === "ear"

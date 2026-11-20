@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 import { fakeSupabaseAdmin, type FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 import { customerIdForResult } from "@/lib/crm/customer-link";
 
-/**
- * PRD-crm-retention-loop slice 02: a Result's *Open customer* link finds the
- * Customer the way the storefront decides whose Result it is (by id, else by
- * email ignoring case and whitespace), and never guesses.
- */
-
 const MEI = "c0000000-0000-4000-8000-000000000001";
 const ANN = "c0000000-0000-4000-8000-000000000002";
 const GONE = "c0000000-0000-4000-8000-000000000009";
@@ -49,7 +43,6 @@ describe("customerIdForResult", () => {
     expect(await find({ customer_id: null, customer_email: "mei@example.com" }, twins)).toBeNull();
   });
 
-  // A failed read is not "no such Customer": the email could name someone else.
   it("links nothing when reading the Result's own Customer fails", async () => {
     let emailLookups = 0;
     const query = {

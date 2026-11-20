@@ -1,15 +1,3 @@
-/**
- * The Email campaigns page's send flow, in words (PRD-campaign-send-flow).
- * Pure, and safe in the browser: the page's components render what these
- * return, and the tests read them without a page.
- *
- *  - the send limit as meters and a "room again" time;
- *  - the Sending card's rows (slice 02);
- *  - the checklist before a wave, how many go now versus later, and what to
- *    do after one (slice 03);
- *  - each wave's numbers against the pause lines, and the ramp's 48 hours
- *    (slice 04).
- */
 import {
   PAUSE_BOUNCE_RATE,
   PAUSE_COMPLAINT_RATE,
@@ -24,7 +12,6 @@ import type { ContentCheck } from "./content-checks";
 const n = (v: number) => v.toLocaleString("en-SG");
 const plural = (count: number, one: string, many = `${one}s`) => `${n(count)} ${count === 1 ? one : many}`;
 
-/** Plain-language names for every check the sender runs. */
 export const CHECK_LABEL: Record<string, string> = {
   transport: "Campaign email account (Resend)",
   from: "Sending address",
@@ -37,7 +24,6 @@ export const CHECK_LABEL: Record<string, string> = {
   products: "Every product is still in the shop",
   chinese: "The 中文 version is complete",
   placeholders: "Every block is written",
-  // The email's own checks (PRD-campaign-email-editor slice 11), then its advice.
   links: "Every link answers",
   alt: "Every image has alt text",
   images: "Every image shows in every inbox",
@@ -50,7 +36,6 @@ export const CHECK_LABEL: Record<string, string> = {
   image_words: "Words beside the images",
   ai_drafted: "Drafted with AI",
   links_unchecked: "Links not checked",
-  // Who the wave goes to, against the email (PRD-campaign-audiences slice 09): advice, after a plan.
   fit_chinese: "Readers of Chinese",
   fit_fallbacks: "Who reads the fallback words",
   fit_in_store: "In-store visits",
@@ -61,12 +46,8 @@ export const CHECK_LABEL: Record<string, string> = {
   reports: "Bounce and spam reports",
 };
 
-/** Pure — one of the email's own checks (slice 11), which list their issues block by block. */
 export const isEmailCheck = (c: PreflightCheck | ContentCheck): c is ContentCheck => "issues" in c;
 
-// ─── The send limit ──────────────────────────────────────────────────────────
-
-/** When sending opens again, in words: `room again from Tue, 27 Oct, 3:40 pm`. */
 export function roomAgainText(allowance: Pick<SendAllowance, "roomAt" | "binding">): string {
   if (allowance.roomAt) return `room again from ${formatAdminWeekdayTime(allowance.roomAt)}`;
   return allowance.binding === "daily" ? "room again tomorrow" : "room again once the oldest send is 31 days old";
@@ -77,13 +58,10 @@ export interface AllowanceMeter {
   used: number;
   limit: number;
   left: number;
-  /** 0 to 100, for the bar. */
   percent: number;
-  /** `38 of 100 sent · 62 left`. */
   text: string;
 }
 
-/** The two meters: the last 24 hours and the last 31 days, as Resend counts them. */
 export function allowanceMeters(a: Pick<SendAllowance, "limits" | "used">): AllowanceMeter[] {
   const meter = (label: AllowanceMeter["label"], used: number, limit: number): AllowanceMeter => {
     const left = Math.max(0, limit - used);
@@ -99,7 +77,6 @@ export function allowanceMeters(a: Pick<SendAllowance, "limits" | "used">): Allo
   return [meter("Today", a.used.daily, a.limits.daily), meter("This month", a.used.monthly, a.limits.monthly)];
 }
 
-/** One line on what the plan leaves now. */
 export function allowanceSummary(a: SendAllowance): string {
   if (a.remaining === 0) {
     const what = a.binding === "daily" ? `Today's ${n(a.limits.daily)}` : `This month's ${n(a.limits.monthly)}`;
@@ -108,28 +85,20 @@ export function allowanceSummary(a: SendAllowance): string {
   return `${plural(a.remaining, "email")} can go now${a.binding === "monthly" ? " (this month's limit is the closer one)" : ""}.`;
 }
 
-/**
- * The wave size the page starts on: what today's room allows, and at most 50
- * for a campaign's first wave (migration slice 09's pilot).
- */
 export function defaultWaveSize(allowance: Pick<SendAllowance, "remaining"> | null, firstWave: boolean, max: number): number {
   const cap = firstWave ? 50 : max;
   if (!allowance) return Math.min(cap, firstWave ? 50 : 100);
   return Math.max(1, Math.min(cap, allowance.remaining || 1));
 }
 
-// ─── The Sending card ────────────────────────────────────────────────────────
-
 export interface SendingRow {
   key: string;
   ok: boolean;
   title: string;
   detail: string;
-  /** What to set, when it fails. */
   fix: string | null;
 }
 
-/** The Sending card's rows: what is set up, in words, and what to set when it is not. Never a key. */
 export function sendingRows(
   checks: readonly PreflightCheck[],
   sender: { from: string | null; replyTo: string | null },
@@ -182,15 +151,10 @@ export function sendingRows(
   );
 }
 
-// ─── Before a wave ───────────────────────────────────────────────────────────
-
-/** One thing *The email* lists (slice 11): something to fix, or advice, with the block it is in. */
 export interface SendStepItem {
   text: string;
-  /** The block it is in, to go to; null for the subject, the preview line or the email as a whole. */
   blockId: string | null;
   advisory: boolean;
-  /** The version it is in, when not the English (slice 17's `zh-CN`): the editor opens that language to show it. */
   language?: Locale;
 }
 
@@ -198,26 +162,16 @@ export interface SendStep {
   key: "saved" | "test" | "email" | "checks" | "room";
   label: string;
   done: boolean;
-  /** Advice only: a step that is not done does not stop the wave. */
   advisory: boolean;
   detail: string;
-  /** *The email*'s failures, each with its block, then its advice. */
   items?: SendStepItem[];
 }
 
-/**
- * The checklist above a wave. The test is advice; the rest must be done, and
- * the server holds them again when the wave starts. The email's own checks
- * (PRD-campaign-email-editor slice 11) are one step, *The email*, which lists
- * each failure with the block it is in, then the advice (*Recommended:*),
- * which never holds the wave; the sending setup's are *Every check passes*.
- */
 export function sendSteps(p: {
   dirty: boolean;
   locked: boolean;
   lastTest: { sent: number; at: string } | null;
   checks: readonly (PreflightCheck | ContentCheck)[] | null;
-  /** The email's advice, `CampaignReadiness.advice`. */
   advice?: readonly ContentCheck[] | null;
   allowance: SendAllowance | null;
   resume: boolean;
@@ -292,10 +246,6 @@ export function sendSteps(p: {
   ];
 }
 
-/**
- * Pure — how many go now and how many wait: "62 go in this wave; the other
- * 250 wait for later waves (about 3 more days at 100 a day)".
- */
 export function waitingSummary(p: {
   selected: number;
   waiting: number;
@@ -313,12 +263,6 @@ export function waitingSummary(p: {
   return `${now}; ${later}.`;
 }
 
-/**
- * Pure — who gets which language (PRD-campaign-email-editor slice 17): "214
- * of 1,830 customers read the site in Chinese and will get the 中文 version".
- * With no 中文 version, how many readers of Chinese get English; null when
- * nobody in the audience reads the site in Chinese.
- */
 export function languageSummary(p: { eligible: number; eligibleChinese: number; selected: number; selectedChinese: number; hasChinese: boolean }): string | null {
   if (!p.eligibleChinese) return null;
   const readers = `${n(p.eligibleChinese)} of ${plural(p.eligible, "customer")} ${p.eligibleChinese === 1 ? "reads" : "read"} the site in Chinese`;
@@ -327,27 +271,15 @@ export function languageSummary(p: { eligible: number; eligibleChinese: number; 
   return `${readers} and will get the 中文 version; everyone else gets English.${wave}`;
 }
 
-/**
- * Pure — the plan's line on its fit checks (PRD-campaign-audiences slice 09),
- * which *The email* lists with its advice: `count` of them.
- */
 export function fitSummary(count: number): string | null {
   if (!count) return null;
   return `Recommended: ${count === 1 ? "one thing" : `${n(count)} things`} about who it goes to, listed under The email above. None holds the wave.`;
 }
 
-// ─── After a wave ────────────────────────────────────────────────────────────
-
-/**
- * Pure — what to do once a wave has finished or stopped, from the fresh
- * allowance: retry what failed, wait for room, wait out the ramp, or send
- * the next wave.
- */
 export function nextStepAfterWave(p: {
   sent: number;
   failed: number;
   stoppedByStaff: boolean;
-  /** Eligible people not in this wave, plus any of it left unsent. */
   waiting: number;
   allowance: SendAllowance | null;
   rampUntil: string | null;
@@ -370,8 +302,6 @@ export function nextStepAfterWave(p: {
   return `${n(p.waiting)} more can get it.${room}${retry}`;
 }
 
-// ─── Each wave ───────────────────────────────────────────────────────────────
-
 export type WaveState = "ok" | "over_bounce" | "over_spam" | "not_sent";
 
 export interface WaveRow {
@@ -385,20 +315,15 @@ export interface WaveRow {
   failed: number;
   pending: number;
   state: WaveState;
-  /** The state in words. */
   stateText: string;
 }
 
 const pct = (part: number, whole: number) => (whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—");
 
-/** The pause lines, in words, for the Waves table's tip. */
 export const PAUSE_LINES_TEXT = `A wave pauses sending when more than ${PAUSE_BOUNCE_RATE * 100}% of it bounces, or more than ${PAUSE_COMPLAINT_RATE * 100}% marks it as spam.`;
 
-/** Pure — one row per wave, oldest first, judged as the pause rule judges it (`wavePause`). */
 export function waveRows(stats: readonly CampaignWaveStats[]): WaveRow[] {
   return [...stats]
-    // A wave whose every row a holdout kept back (PRD-campaign-audiences slice
-    // 11) sent nobody and claimed nothing to send: not a wave to judge.
     .filter((s) => s.handed + s.failed + s.pending > 0)
     .sort((a, b) => (Date.parse(a.lastSentAt ?? "") || Infinity) - (Date.parse(b.lastSentAt ?? "") || Infinity))
     .map((s) => {
@@ -431,13 +356,8 @@ export function waveRows(stats: readonly CampaignWaveStats[]): WaveRow[] {
     });
 }
 
-/** How long to wait after a campaign's first wave before the next (migration slice 09). */
 export const RAMP_WAIT_MS = 48 * 3600_000;
 
-/**
- * Pure — until when to wait before the next wave: 48 hours after the first
- * wave that reached anyone, while it is the only one. Null otherwise.
- */
 export function rampUntil(stats: readonly CampaignWaveStats[], nowMs: number): string | null {
   const delivered = stats.filter((s) => s.handed > 0 && s.lastSentAt);
   if (delivered.length !== 1) return null;

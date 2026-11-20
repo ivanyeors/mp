@@ -4,12 +4,6 @@ import { CampaignContentSchema, type Paragraph } from "@/lib/email-campaigns/con
 import { campaignVariables, paragraphsOf, richTextOf, TEXT_VARIABLES } from "../blocks/runs";
 import { inboxCut, senderName } from "../email-preview";
 
-/**
- * A text block's words between the shared `RichText` and the campaign's
- * content (PRD-campaign-email-editor slice 04): the same runs, with only what
- * the content can hold kept.
- */
-
 const PARAGRAPHS: Paragraph[] = [
   {
     kind: "p",
@@ -74,7 +68,6 @@ describe("words with their Variables written {name} (a heading, the subject, the
     expect(richTextFromWords("{first_name}, sleep {nickname}", TEXT_VARIABLES)).toEqual([
       { kind: "p", runs: [{ var: "first_name" }, { text: ", sleep {nickname}" }] },
     ]);
-    // An input that offers no Variables (a campaign written before blocks) keeps every {name} as words.
     expect(richTextFromWords("{first_name}", [])).toEqual([{ kind: "p", runs: [{ text: "{first_name}" }] }]);
   });
 });

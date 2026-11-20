@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -15,30 +14,9 @@ import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT, type CampaignDraft } from "
 import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
 import { STARTERS, starterDraft } from "@/lib/email-campaigns/starters";
 
-/**
- * Light and dark, by themselves (PRD-campaign-email-editor decision 2, slice
- * 15). Every email there is (the registry, every Email block, legacy
- * campaigns and the Supabase auth templates) is checked against the shell's
- * one dark list, `darkRules()`:
- *
- *   - every `mp-*` class it draws has a rule there, or is on NO_DARK_CHANGE;
- *   - every colour or fill it sets inline is replaced by a rule in dark, so
- *     no light ink is left for the client to keep;
- *   - every word reads, 4.5:1 or more against what it sits on, in dark, and
- *     in light but for one pair the site itself draws (SITE_LIGHT_PAIRS).
- *
- * A new block or component meets the same three as it lands (slices 05, 06
- * and 07): its classes join darkRules() in lib/email/base.ts, never a style
- * of its own.
- */
-
 type Rule = [selector: string, declarations: string];
 type Mode = "light" | "dark";
 
-/**
- * Classes with no dark rule, on purpose: none of them paints anything. A
- * class that sets a colour, a fill or a border belongs in darkRules().
- */
 const NO_DARK_CHANGE: Record<string, string> = {
   "mp-container": "the 600px column, made full width on a phone",
   "mp-pad": "the card's padding, made smaller on a phone",
@@ -52,7 +30,6 @@ const preview = (c: CampaignDraft) =>
 const blocks = (content: CampaignContent): CampaignDraft => ({ ...EMPTY_CAMPAIGN_DRAFT, name: "Blocks", subject: "Sleep cooler", content });
 const AUTH_DIR = join(process.cwd(), "supabase", "templates");
 
-/** Every email there is, as [name, html]. */
 const EMAILS: [name: string, html: string][] = [
   ...EMAIL_REGISTRY.flatMap((e) => (["happy", "hostile"] as const).map((f): [string, string] => [`${e.id} (${f})`, e.render(f).html])),
   ...EMAIL_BLOCK_TYPES.map((t): [string, string] => [`block: ${t}`, preview(blocks(EMAIL_BLOCK_SAMPLES[t]))]),
@@ -62,7 +39,6 @@ const EMAILS: [name: string, html: string][] = [
     "blocks: the 中文 version",
     renderCampaignPreview(blocks(CHINESE_SAMPLE_CONTENT), { origin: ORIGIN, firstName: "美玲", images: EMAIL_BLOCK_SAMPLE_IMAGES, products: CHINESE_SAMPLE_PRODUCTS, locale: "zh-CN" }).html,
   ],
-  // Each Starter as it lands, on its placeholders (slice 08).
   ...STARTERS.map((s): [string, string] => [`starter: ${s.label}`, preview(starterDraft(s))]),
   ["legacy: the sign-in invitation", preview(FIRST_CAMPAIGN_DRAFT)],
   ["legacy: every field on its placeholder", preview({ ...EMPTY_CAMPAIGN_DRAFT, content: null, button: { target: "sign_in", label: "", url: null } })],
@@ -71,21 +47,15 @@ const EMAILS: [name: string, html: string][] = [
     .map((f): [string, string] => [`supabase/templates/${f}`, readFileSync(join(AUTH_DIR, f), "utf8")]),
 ];
 
-// ---------------------------------------------------------------------------
-// The three checks
-// ---------------------------------------------------------------------------
-
 const classesIn = (html: string) => new Set([...html.matchAll(/class="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)).filter((c) => c.startsWith("mp-")));
 
 const ruledClasses = (rules: Rule[]) => new Set(rules.flatMap(([sel]) => sel.match(/\.mp-[a-z0-9-]+/g) ?? []).map((c) => c.slice(1)));
 
-/** The `mp-*` classes `html` draws that have no dark rule and are not on NO_DARK_CHANGE. */
 function unruledClasses(html: string, rules: Rule[] = darkRules()): string[] {
   const ruled = ruledClasses(rules);
   return [...classesIn(html)].filter((c) => !ruled.has(c) && !(c in NO_DARK_CHANGE));
 }
 
-/** `prop: value` pairs of a declaration list, `!important` dropped. */
 function declarations(list: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const d of list.split(";")) {
@@ -95,11 +65,9 @@ function declarations(list: string): Map<string, string> {
   return out;
 }
 
-/** A simple selector's weight: classes and attributes before element names. */
 const specificity = (selector: string) =>
   selector.split(/\s+/).reduce((n, part) => n + (part.match(/[.[]/g)?.length ?? 0) * 100 + (/^[a-z]/i.test(part) ? 1 : 0), 0);
 
-/** What the dark rules paint on `el`: each property's winning value, as a browser picks among `!important` rules. */
 function darkPaint(el: Element, rules: Rule[]): { color?: string; background?: string } {
   const best: Record<"color" | "background", { weight: number; value: string } | undefined> = { color: undefined, background: undefined };
   for (const [selector, list] of rules) {
@@ -111,20 +79,17 @@ function darkPaint(el: Element, rules: Rule[]): { color?: string; background?: s
       ["color", d.get("color")],
       ["background", d.get("background") ?? d.get("background-color")],
     ] as const) {
-      // A later rule of the same weight wins, as in the stylesheet.
       if (value && (!best[prop] || weight >= best[prop].weight)) best[prop] = { weight, value };
     }
   }
   return { color: best.color?.value, background: best.background?.value };
 }
 
-/** The colour and fill an element sets inline (its `bgcolor` too). */
 function inlinePaint(el: Element): { color?: string; background?: string } {
   const d = declarations(el.getAttribute("style") ?? "");
   return { color: d.get("color"), background: d.get("background") ?? d.get("background-color") ?? el.getAttribute("bgcolor") ?? undefined };
 }
 
-/** An element's own colour and fill in `mode`; a dark rule beats the inline style, whose declarations are not `!important`. */
 function paint(el: Element, mode: Mode, rules: Rule[]) {
   const inline = inlinePaint(el);
   if (mode === "light") return inline;
@@ -135,7 +100,6 @@ function paint(el: Element, mode: Mode, rules: Rule[]) {
 const parse = (html: string) => new DOMParser().parseFromString(html, "text/html");
 const describeEl = (el: Element) => `<${el.tagName.toLowerCase()}${el.className ? ` class="${el.className}"` : ""}>`;
 
-/** Elements whose inline colour or fill no dark rule replaces: light ink left in a dark email. */
 function unreachedInk(html: string, rules: Rule[] = darkRules()): string[] {
   const out: string[] = [];
   for (const el of parse(html).body.querySelectorAll("*")) {
@@ -156,7 +120,6 @@ function luminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-/** WCAG contrast of two `#rgb` / `#rrggbb` colours. */
 function contrast(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
@@ -165,14 +128,8 @@ function contrast(a: string, b: string): number {
 const hidden = (el: Element | null): boolean =>
   Boolean(el) && (/display:\s*none/.test(el!.getAttribute("style") ?? "") || hidden(el!.parentElement));
 
-/**
- * The one pair under 4.5:1, kept as the site draws it: small print in a
- * muted panel, light (the site's muted-foreground on muted, 4.35:1). Its dark
- * pair, DARK.mutedFg on DARK.mutedBg, reads at 5.6:1.
- */
 const SITE_LIGHT_PAIRS: ReadonlyArray<readonly [ink: string, fill: string]> = [[LIGHT.mutedFg, LIGHT.mutedBg]];
 
-/** Words in `mode` under 4.5:1 against what they sit on, or with no colour of their own. */
 function unreadableWords(html: string, mode: Mode, rules: Rule[] = darkRules()): string[] {
   const accepted = (ink: string, fill: string) => mode === "light" && SITE_LIGHT_PAIRS.some(([i, f]) => i === ink && f === fill);
   const doc = parse(html);
@@ -196,22 +153,13 @@ function unreadableWords(html: string, mode: Mode, rules: Rule[] = darkRules()):
   return out;
 }
 
-/**
- * Links whose only sign is their colour. A client that inverts colours by
- * itself (Gmail on iOS) is reached by no rule; an underline survives it. A
- * button is its fill's shape, so it needs none, and a linked image (slice 05)
- * is its picture, with no words to underline.
- */
 const bareLinks = (html: string) =>
   [...parse(html).body.querySelectorAll("a[href]:not(.mp-btn)")]
     .filter((a) => !(a.querySelector("img") && !a.textContent?.trim()))
     .filter((a) => !/text-decoration:\s*underline/.test(a.getAttribute("style") ?? ""))
     .map((a) => `"${a.textContent?.trim()}" is not underlined`);
 
-/** Each email's findings, `name: finding`, for one failure message naming them all. */
 const everywhere = (check: (html: string) => string[]) => EMAILS.flatMap(([name, html]) => [...new Set(check(html))].map((f) => `${name}: ${f}`));
-
-// ---------------------------------------------------------------------------
 
 describe("every email in light and dark (PRD-campaign-email-editor slice 15)", () => {
   it("renders every block type, legacy campaigns, every registered email and the auth templates", () => {
@@ -220,8 +168,6 @@ describe("every email in light and dark (PRD-campaign-email-editor slice 15)", (
   });
 
   it("has a dark rule for every mp-* class it draws, or the class paints nothing", () => {
-    // Add the class's rule to darkRules() in lib/email/base.ts; only a class
-    // with no colour, fill or border goes on NO_DARK_CHANGE, saying why.
     expect(everywhere(unruledClasses)).toEqual([]);
   });
 

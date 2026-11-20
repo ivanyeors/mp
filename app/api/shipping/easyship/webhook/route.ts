@@ -16,17 +16,6 @@ import { readEasyshipConfig } from "@/lib/easyship/store";
 
 export const runtime = "nodejs";
 
-/**
- * Easyship → order updates: the label is ready, the courier collected the parcel
- * (the order ships), it was delivered. Register this URL in Easyship (Connect → API
- * Integrations → Webhooks) for `shipment.label.created`, `shipment.label.failed`,
- * `shipment.tracking.status.changed` and `shipment.tracking.checkpoints.created`.
- *
- * Fails closed: without a secret (EASYSHIP_WEBHOOK_SECRET, else the one captured
- * when Settings → Easyship registered the webhook) nothing is accepted. Every write
- * is idempotent — a repeated label event changes nothing and sends no second
- * email; a repeated "Delivered" never moves `delivered_at`.
- */
 export async function POST(req: Request) {
   const secret =
     process.env.EASYSHIP_WEBHOOK_SECRET?.trim() || (await readEasyshipConfig()).sync.webhook_secret_token?.trim();
@@ -38,7 +27,6 @@ export async function POST(req: Request) {
   }
 
   const event = parseEasyshipEvent(await req.json().catch(() => null));
-  // Acknowledge what we do not handle, so Easyship does not retry it forever.
   if (!event) return NextResponse.json({ ok: true, ignored: "unrecognised event" });
 
   const admin = supabaseAdmin();
@@ -60,7 +48,6 @@ export async function POST(req: Request) {
 
   try {
     switch (event.eventType) {
-      // The label is ready to print. It does not ship the order: the courier's first scan does.
       case "shipment.label.created": {
         await applyShipmentToOrder(admin, order, {
           shipmentId: event.shipmentId,
@@ -79,11 +66,8 @@ export async function POST(req: Request) {
         });
         return NextResponse.json({ ok: true });
       }
-      // Checkpoint events carry the status too, so both run the same update and email.
       case "shipment.tracking.checkpoints.created":
       case "shipment.tracking.status.changed": {
-        // The first scan that means the courier has the parcel ships the order
-        // and sends the shipping email (ADR 0044). Once: both events of one scan race.
         const key = trackingStatusKey(event.status);
         const shipped =
           key != null && COLLECTED.has(key)
@@ -104,7 +88,6 @@ export async function POST(req: Request) {
           if (event.trackingUrl) update.tracking_url = event.trackingUrl;
           await admin.from("orders").update(update).eq("id", order.id);
         }
-        // The shipping email just said it is on its way; an "in transit" one would repeat it.
         if (!(shipped && key === "in_transit")) await emailStatus(admin, order.id as string, event);
         return NextResponse.json({ ok: true, shipped, ...(delivered === undefined ? {} : { delivered }) });
       }
@@ -113,17 +96,14 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     console.error(`[easyship/webhook] ${event.eventType} for ${event.shipmentId} failed:`, err);
-    // 500 so Easyship retries; every handler above is safe to run twice.
     return NextResponse.json({ error: "Could not apply the event" }, { status: 500 });
   }
 }
 
 const DETAIL_KEYS = new Set(["unsuccessful_delivery_attempt", "exception"]);
 
-/** Statuses only a parcel the courier has collected can reach. An exception can come before pickup. */
 const COLLECTED = new Set<TrackingStatusKey>(["in_transit", "out_for_delivery", "unsuccessful_delivery_attempt", "delivered"]);
 
-/** Emails the customer, in our template, for the statuses ticked under Couriers › Tracking. Never throws. */
 async function emailStatus(
   admin: ReturnType<typeof supabaseAdmin>,
   orderId: string,
@@ -134,13 +114,11 @@ async function emailStatus(
   try {
     const { settings } = await readEasyshipConfig();
     if (!settings?.tracking_email.allowed_statuses.includes(key)) return;
-    // Problem emails wait for the checkpoint event, which says what the problem is.
     const checkpointsOn =
       settings.webhook.enabled && settings.webhook.event_types.includes("shipment_tracking_checkpoints_created");
     if (event.eventType === "shipment.tracking.status.changed" && checkpointsOn && DETAIL_KEYS.has(key)) return;
     const { data: order } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
     if (!order || !["confirmed", "processing", "shipped", "delivered"].includes(order.status)) return;
-    // A late "out for delivery" after delivery would say it's still coming.
     if (order.delivered_at && key !== "delivered") return;
     await sendTrackingEmail(orderId, key, order, admin, event.checkpoint);
   } catch (err) {

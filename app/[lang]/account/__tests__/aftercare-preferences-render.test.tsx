@@ -1,12 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 
-/**
- * The Profile's Aftercare messages card (CRM slice 13): the email toggle's
- * label, and the WhatsApp toggle stating exactly what the customer agrees to,
- * with their own number in it.
- */
-
 vi.mock("../actions", () => ({ setMyAftercarePreference: vi.fn() }));
 
 const { AftercarePreferences } = await import("../aftercare-preferences");

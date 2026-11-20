@@ -11,8 +11,6 @@ import {
   shuffledReasons,
 } from "@/lib/analytics/drop-off/reasons";
 
-/** PRD-crm-retention-loop slice 10: where, when and what the *What stopped you today?* card asks. */
-
 const VISIT = "7a000000-0000-4000-8000-000000000001";
 
 describe("dropOffStepForPath", () => {
@@ -49,7 +47,6 @@ describe("when to ask", () => {
   it("reads exit intent as the pointer leaving through the top of the window", () => {
     expect(isExitIntent({ clientY: -2, relatedTarget: null })).toBe(true);
     expect(isExitIntent({ clientY: 0, relatedTarget: null })).toBe(true);
-    // A fast flick to the tabs last reports a few pixels inside the window.
     expect(isExitIntent({ clientY: 6, relatedTarget: null })).toBe(true);
     expect(isExitIntent({ clientY: 300, relatedTarget: null })).toBe(false);
     expect(isExitIntent({ clientY: -2, relatedTarget: {} })).toBe(false);

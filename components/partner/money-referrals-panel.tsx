@@ -11,13 +11,6 @@ import {
 
 const money = (n: number) => `$${n.toFixed(2)}`;
 
-/**
- * Hub money & referrals panel (#80) — a self-contained async server component
- * scoped to the SERVER-derived partnerId (no client-passed id → no IDOR). Shows
- * commission totals (held / released / paid / all-time), a distinct-paid-customer
- * headline with an in-progress pipeline line, and the per-referral rows with the
- * PDPA masking rule applied server-side (link/code masked, assist full).
- */
 export async function MoneyReferralsPanel({ partnerId }: { partnerId: string }) {
   const { totals, headlineCustomers, pipelineCount, rows } = await loadPartnerMoneyReferrals(
     supabaseAdmin(),
@@ -34,7 +27,6 @@ export async function MoneyReferralsPanel({ partnerId }: { partnerId: string }) 
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Totals */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Held" value={money(totals.held)} hint="in return window" />
           <Stat label="Released" value={money(totals.released)} hint="payable now" />
@@ -42,7 +34,6 @@ export async function MoneyReferralsPanel({ partnerId }: { partnerId: string }) 
           <Stat label="All-time earned" value={money(totals.allTime)} hint="excl. voided" />
         </div>
 
-        {/* Referral metrics */}
         <div className="rounded-md border p-3">
           <div className="text-2xl font-semibold tracking-tight">
             {headlineCustomers} referred customer{headlineCustomers === 1 ? "" : "s"}
@@ -57,7 +48,6 @@ export async function MoneyReferralsPanel({ partnerId }: { partnerId: string }) 
           ) : null}
         </div>
 
-        {/* Per-referral rows */}
         <div>
           <div className="mb-2 text-sm font-medium">Your referrals</div>
           <ReferralRowsTable rows={rows} emptyLabel="No attributed orders yet." />

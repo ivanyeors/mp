@@ -59,16 +59,6 @@ import { pointsLive } from "@/lib/points/settings";
 import { getWorkingAs } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/**
- * Admin Panel → Email campaigns (PRD-email-marketing).
- *
- * Every action checks `campaigns`, a key of its own that Owner and Admin hold:
- * Manager and Staff hold `customers` and must not email the whole list. The
- * rules live in lib/email-campaigns; these only check the caller, parse the
- * input and audit. No answer carries a customer's email: a wave is planned as
- * ids, and each batch answers with counts.
- */
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NOT_FOUND = { ok: false as const, error: "That campaign does not exist." };
 
@@ -92,10 +82,8 @@ async function loadCampaign(id: string): Promise<Campaign | null> {
   return getCampaign(supabaseAdmin(), id);
 }
 
-/** Who a campaign written before blocks greets in a preview or a test: the Staff member working, by first name. */
 const staffFirstName = async (memberId: string) => (await getWorkingAs(memberId))?.name.split(/\s+/)[0] ?? null;
 
-/** The audit's snapshot: what was sent and to whom, never a customer. A block campaign's blocks by type. */
 const auditSnapshot = (
   c: Pick<Campaign, "name" | "subject" | "audience" | "segmentId" | "excludeSegmentIds" | "button" | "content">,
 ) => ({
@@ -108,17 +96,11 @@ const auditSnapshot = (
   blocks: c.content ? c.content.blocks.map((b) => b.type) : null,
 });
 
-/**
- * Every image the email places has its email rendition (slice 05), made now
- * if it has none: an image that cannot have one is a field error, so a saved
- * campaign always has the copies a send shows. Null when all is well.
- */
 async function imageProblems(admin: ReturnType<typeof supabaseAdmin>, draft: CampaignDraft): Promise<Failure | null> {
   const fieldErrors = campaignImageFieldErrors(draft.content, await readCampaignImages(admin, draft.content));
   return Object.keys(fieldErrors).length ? { ok: false, error: "Check the highlighted fields.", fieldErrors } : null;
 }
 
-/** The Media Library's *Last used* for the images a save attaches; a failure there never fails the save. */
 async function touchImages(draft: CampaignDraft): Promise<void> {
   const assetIds = draft.content ? imageAssetsIn(draft.content) : [];
   if (!assetIds.length) return;
@@ -126,12 +108,6 @@ async function touchImages(draft: CampaignDraft): Promise<void> {
   await touchLastUsed({ assetIds }).catch(() => undefined);
 }
 
-/**
- * *Points balance* goes into an email only while points are live
- * (PRD-campaign-email-editor slice 13): the editor greys it, and Save refuses
- * it typed in by hand. A campaign that already says it keeps it, and the
- * points rule holds its waves until points are live again (`pointsCheck`).
- */
 async function pointsBalanceRefusal(admin: SupabaseClient, draft: CampaignDraft, before: Campaign | null): Promise<Failure | null> {
   if (!usesPointsBalance(draft) || (before && usesPointsBalance(before))) return null;
   try {
@@ -142,7 +118,6 @@ async function pointsBalanceRefusal(admin: SupabaseClient, draft: CampaignDraft,
   return { ok: false, error: `${POINTS_NOT_LIVE}, so Points balance can't go in the email. Take it out to save.` };
 }
 
-/** Saves a new campaign (no id) or a draft's changes. A campaign that has started sending only takes a new name. */
 export async function saveCampaign(
   id: string | null,
   input: CampaignDraftInput,
@@ -169,7 +144,6 @@ export async function saveCampaign(
     if (!before || before.archivedAt) return NOT_FOUND;
     const refused = await pointsBalanceRefusal(admin, parsed.draft, before);
     if (refused) return refused;
-    // A started campaign takes only a new name: its images are as they were sent.
     if (!before.lockedAt) {
       const neverSends = await audienceRefusal(id, parsed.draft.segmentId);
       if (neverSends) return { ok: false, error: "Check the highlighted fields.", fieldErrors: { segmentId: neverSends } };
@@ -192,7 +166,6 @@ export async function saveCampaign(
   }
 }
 
-/** A copy of a campaign as a new draft, to change one that has started sending. */
 export async function duplicateCampaign(id: string): Promise<{ ok: true; id: string } | Failure> {
   const ctx = await assertAdmin("campaigns");
   const source = await loadCampaign(id);
@@ -212,12 +185,6 @@ export async function duplicateCampaign(id: string): Promise<{ ok: true; id: str
   });
 }
 
-/**
- * *A past campaign*, in the Start panel of an empty email
- * (PRD-campaign-email-editor slice 08): every campaign, archived ones too,
- * newest first, by name and subject. Picking one is Duplicate, which copies
- * the email and who it goes to and nothing of its sends. Changes nothing.
- */
 export async function listPastCampaignsAction(): Promise<{ ok: true; campaigns: PastCampaign[] } | Failure> {
   await assertAdmin("campaigns");
   try {
@@ -227,7 +194,6 @@ export async function listPastCampaignsAction(): Promise<{ ok: true; campaigns: 
   }
 }
 
-/** What `findWantedSegmentAction` takes: one of New campaign's addresses, never filters. */
 const WantedAddressSchema = z.union([
   z.object({ starter: z.string().max(100) }).strict(),
   z.object({ stage: z.string().max(40) }).strict(),
@@ -235,17 +201,6 @@ const WantedAddressSchema = z.union([
 ]);
 const NOT_WANTED = { ok: false as const, error: "That is not a Segment New campaign can want." };
 
-/**
- * The live Segment a wanted Segment is, read again (PRD-email-funnel slices
- * 04 and 06): when *Create the Segment* is refused for a taken name, the
- * editor asks whether the Segment it wants exists after all (made since the
- * page loaded). It sends the address the Segment was wanted at (`?starter=`,
- * `?stage=` or `?after=`), and the server derives the wanted Segment as the
- * page does (an offered Starter, a main stage, a live campaign), so no
- * caller's filters are ever compared: Staff with `campaigns` but not
- * `customers` cannot ask whether a Segment searches for someone. Answers the
- * Segment's id and name only. Changes nothing.
- */
 export async function findWantedSegmentAction(input: WantedAddress): Promise<{ ok: true; segment: { id: string; name: string } | null } | Failure> {
   await assertAdmin("campaigns");
   const address = WantedAddressSchema.safeParse(input);
@@ -263,12 +218,6 @@ export async function findWantedSegmentAction(input: WantedAddress): Promise<{ o
   }
 }
 
-/**
- * The thumbnails of the Start panel and the palette's Starters tab (slice
- * 08): each Starter, and a blank email (`BLANK_PREVIEW`), as the real
- * renderer draws it on its placeholders for the sample customer, by id. The
- * editor asks once, when the first thumbnail shows. Changes nothing.
- */
 export async function previewStarters(): Promise<{ ok: true; previews: Record<string, string> } | Failure> {
   await assertAdmin("campaigns");
   const { origin } = campaignSenderSetup();
@@ -299,18 +248,6 @@ export async function archiveCampaignAction(id: string): Promise<{ ok: true } | 
   return { ok: true };
 }
 
-/**
- * The editor's live preview of the draft as typed. Saves nothing. An empty
- * field shows its placeholder rather than an error (PRD-campaign-email-editor
- * decision 7); Save still asks for every word. `forceDark` is the preview's
- * Dark toggle (slice 04), and `from` the sending setup's From, read-only in
- * the editor and named in its inbox row. Its products are the shop's now
- * (slice 07), as a send reads them. `previewAs` is *Preview as* (slice 13): a
- * block campaign's Variables as a sample customer's, or every fallback for a
- * customer with no details. A campaign written before blocks greets the Staff
- * member, as it did. `language` is the editor's Language (slice 17): `zh-CN`
- * shows the 中文 email, as a reader of Chinese gets it.
- */
 export async function previewCampaign(
   input: CampaignDraftInput,
   { forceDark = false, previewAs = "customer", language = DEFAULT_LOCALE }: { forceDark?: boolean; previewAs?: PreviewAs; language?: Locale } = {},
@@ -324,7 +261,6 @@ export async function previewCampaign(
       ? NO_DETAILS
       : SAMPLE_RECIPIENT
     : { firstName: await staffFirstName(ctx.memberId) };
-  // The images and products the test send shows: one missing is drawn as a hint.
   const shown = await readCampaignRenderData(supabaseAdmin(), parsed.draft.content);
   const locale = isSupportedLocale(language) ? language : DEFAULT_LOCALE;
   const rendered = renderCampaignPreview(parsed.draft, {
@@ -338,15 +274,8 @@ export async function previewCampaign(
   return { ok: true, ...rendered, from: setup.campaignFrom?.trim() || null };
 }
 
-/** A chosen image's email rendition, as the editor's image card shows it. */
 export type PlacedCampaignImage = { assetId: string; url: string; width: number; height: number; hasAlpha: boolean };
 
-/**
- * An image chosen in the editor (PRD-campaign-email-editor slice 05): its
- * email rendition, made now if it has none, so the block places an image an
- * inbox can show. The editor's card shows the rendition too. Changes no
- * campaign: the block is saved, and audited, by Save.
- */
 export async function placeCampaignImage(assetId: string): Promise<{ ok: true; image: PlacedCampaignImage } | Failure> {
   await assertAdmin("campaigns");
   if (typeof assetId !== "string" || !UUID.test(assetId)) return { ok: false, error: "That is not an image from the Media Library." };
@@ -361,15 +290,8 @@ export async function placeCampaignImage(assetId: string): Promise<{ ok: true; i
   }
 }
 
-/** The most products the picker lists for one search. */
 const PRODUCT_RESULTS = 24;
 
-/**
- * The products block's picker (PRD-campaign-email-editor slice 07): Listed
- * shop products matching `search`, through the shop's own query
- * (`getProducts`' catalog, so nothing bought through the configurator), each
- * as the email will show it. Changes nothing.
- */
 export async function findCampaignProducts(search: string): Promise<{ ok: true; products: CampaignProductCard[] } | Failure> {
   await assertAdmin("campaigns");
   try {
@@ -384,7 +306,6 @@ export async function findCampaignProducts(search: string): Promise<{ ok: true; 
   }
 }
 
-/** The products a campaign names, as its cards show them: still Listed or not, by name. Changes nothing. */
 export async function describeCampaignProducts(ids: string[]): Promise<{ ok: true; products: CampaignProductCard[] } | Failure> {
   await assertAdmin("campaigns");
   if (!Array.isArray(ids) || ids.length > 40 || !ids.every((id) => typeof id === "string" && UUID.test(id))) {
@@ -397,15 +318,6 @@ export async function describeCampaignProducts(ids: string[]): Promise<{ ok: tru
   }
 }
 
-/**
- * Every check a send must pass, for the page's status panel, the saved
- * email's own among them (PRD-campaign-email-editor slice 11): the editor
- * asks after each save, and shows what they find beside each block.
- * `fresh` is *Check again*: every link is asked again, not read from the last
- * ten minutes' answers. The blocks still marked *Drafted with AI* (slice
- * 09) are counted as advice: the saved content's marks, or `aiDrafted` when
- * passed. Changes nothing.
- */
 export async function checkCampaignReadiness(
   id?: string,
   { fresh = false, aiDrafted }: { fresh?: boolean; aiDrafted?: string[] } = {},
@@ -416,11 +328,6 @@ export async function checkCampaignReadiness(
   return campaignReadiness(campaignSenderSetup(), { campaign: campaign ?? undefined, freshLinks: fresh === true, aiDrafted: marked });
 }
 
-/**
- * Sends the saved campaign to up to three addresses, with "[Test]" in the
- * subject. Writes nothing to the ledger. `language` is the one Staff chose
- * (slice 17): `zh-CN` sends the 中文 version.
- */
 export async function sendCampaignTestAction(
   id: string,
   to: string[],
@@ -432,14 +339,12 @@ export async function sendCampaignTestAction(
   if (!Array.isArray(to) || to.length > MAX_TEST_RECIPIENTS) {
     return { ok: false, error: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
   }
-  // A block campaign's test reads as the sample customer gets it (slice 13); one written before blocks greets the Staff member.
   const recipient = campaign.content ? SAMPLE_RECIPIENT : { firstName: await staffFirstName(ctx.memberId) };
   const locale = isSupportedLocale(language) ? language : DEFAULT_LOCALE;
   const result = await sendCampaignTest(campaign, { to: to.filter((t) => typeof t === "string"), ...recipient, ...(locale === DEFAULT_LOCALE ? {} : { locale }) }, campaignSenderSetup());
   if ("refused" in result) return { ok: false, error: result.refused };
   await recordAdminAction({
     actor: { userId: ctx.userId, email: ctx.email, memberId: ctx.memberId },
-    // The send limit counts these: Resend counts a test like any send.
     action: CAMPAIGN_TEST_AUDIT_ACTION,
     entityType: "email_campaign",
     entityId: id,
@@ -454,13 +359,6 @@ export type WaveAnswer =
   | ({ ok: true; started: boolean; batchSize: number } & WavePlanResult)
   | Failure;
 
-/**
- * Who a wave of `size` would go to now, with every check. With `start`, and
- * when every check passes, it also fixes the campaign's content (the first
- * wave locks it) and returns the ids the browser then sends a batch at a time.
- * The start asks every link again (slice 11), so one that died since the last
- * check holds the wave.
- */
 export async function planCampaignWave(id: string, req: WaveRequest, start = false): Promise<WaveAnswer> {
   const ctx = await assertAdmin("campaigns");
   const campaign = await loadCampaign(id);
@@ -468,7 +366,6 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
   const setup = campaignSenderSetup();
   let result: WavePlanResult;
   try {
-    // The Segment may have changed since the campaign was saved.
     const neverSends = await audienceRefusal(id, campaign.segmentId);
     if (neverSends) return { ok: false, error: neverSends };
     result = await planWave(
@@ -508,7 +405,6 @@ export async function planCampaignWave(id: string, req: WaveRequest, start = fal
   return { ok: true, started, batchSize: BATCH_SIZE, ...result, customerIds: started ? result.customerIds : [] };
 }
 
-/** One batch of a started wave. The browser calls it until the wave's ids run out, or it says stop. */
 export async function sendCampaignBatchAction(
   id: string,
   batch: { wave: string; customerIds: string[]; retryFailed?: boolean; failuresInARow?: number },
@@ -530,10 +426,6 @@ export async function sendCampaignBatchAction(
   return { ok: true, ...result };
 }
 
-// ---------------------------------------------------------------------------
-// Kept sending (PRD-campaign-audiences slice 10)
-// ---------------------------------------------------------------------------
-
 export type KeepSendingAnswer = { ok: true; keepSending: KeepSending } | Failure;
 
 export type KeepSendingChange =
@@ -545,16 +437,6 @@ export type KeepSendingChange =
 
 const CAP_ERROR = `A day's cap is 1 to ${KEEP_SENDING_MAX_CAP}.`;
 
-/**
- * Turns keep sending on or off, changes its cap, pauses or resumes it. On, and
- * a resume, take the Segments' filters as they are now: what the person
- * approves. Only a campaign a person has sent to can keep sending, and its
- * email and Audience stay as the first wave fixed them. Audited as the person.
- *
- * The holdout (PRD-campaign-audiences slice 11) is turned on here too, once
- * the campaign keeps sending and has been sent to 500 people. Off keeps those
- * already held out from ever getting it.
- */
 export async function changeKeepSending(id: string, change: KeepSendingChange): Promise<KeepSendingAnswer> {
   const ctx = await assertAdmin("campaigns");
   const campaign = await loadCampaign(id);

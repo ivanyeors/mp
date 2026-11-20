@@ -52,8 +52,6 @@ import { EmptyState } from "@/components/settings/empty-state";
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type LocaleContent = {
     name?: string;
     description?: string;
@@ -76,14 +74,11 @@ export type ShippingMethod = {
     markup_percent?: number;
     markup_fixed?: number;
     rate_rounding?: number;
-    /** Self-collect: the studio it is collected from; null = delivered. */
     collect_location_id?: string | null;
 };
 
-/** An own studio a Self-collect method can name. */
 export type CollectStudio = { id: string; name: string };
 
-/** The Delivery select's value for "couriered to the customer". */
 const DELIVERED = "deliver";
 
 type ShippingForm = {
@@ -98,15 +93,11 @@ type ShippingForm = {
     markup_percent: string;
     markup_fixed: string;
     rate_rounding: string;
-    /** "" = delivered by courier. */
     collect_location_id: string;
-    /** Whether the saved method was Self-collect, so switching it back sends a null. */
     had_collect: boolean;
     en: LocaleContent;
     zh: LocaleContent;
 };
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const LOCALES = [
     { key: "en-US", label: "English", short: "en" },
@@ -126,8 +117,6 @@ const ROUNDING_OPTIONS = [
     { value: "0.5", label: "Up to the next 0.50" },
     { value: "1", label: "Up to the next 1.00" },
 ];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getMethodName(method: ShippingMethod): string {
     const content =
@@ -200,22 +189,18 @@ function formToPayload(form: ShippingForm): Record<string, unknown> {
         free_above: form.free_above !== "" ? parseFloat(form.free_above) : null,
         countries,
         is_active: form.is_active,
-        // Nothing is couriered on Self-collect, so it is always a flat rate.
         rate_source: form.collect_location_id ? "flat" : form.rate_source,
         easyship_strategy: form.easyship_strategy,
         easyship_courier_service_id: form.easyship_courier_service_id.trim() || null,
         markup_percent: parseFloat(form.markup_percent) || 0,
         markup_fixed: parseFloat(form.markup_fixed) || 0,
         rate_rounding: parseFloat(form.rate_rounding) || 0,
-        // Sent only when it says something, so a method saves the same as before
-        // on a database without the column.
         ...(form.collect_location_id || form.had_collect
             ? { collect_location_id: form.collect_location_id || null }
             : {}),
     };
 }
 
-/** "Live · cheapest courier · +10% +S$1.00, rounded up to 0.50" for the method card. */
 function liveRateSummary(m: ShippingMethod): string {
     const parts = [STRATEGY_LABELS[m.easyship_strategy ?? "cheapest"].toLowerCase()];
     const pct = Number(m.markup_percent ?? 0);
@@ -226,10 +211,7 @@ function liveRateSummary(m: ShippingMethod): string {
     return parts.join(", ");
 }
 
-// ─── Subcomponents ────────────────────────────────────────────────────────────
-
 function CountryBadges({ countries }: { countries: string[] }) {
-    // Whole regions read as the region ("Europe"), every country as "Worldwide".
     const labels = summarizeCountries(countries);
     const shown = labels.slice(0, 6);
     const rest = labels.length - shown.length;
@@ -249,18 +231,12 @@ function CountryBadges({ countries }: { countries: string[] }) {
     );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
-/** The `/api/shop/shipping?include_inactive=1` payload the page mounts with. */
 export type ShippingInitialData = { ok: true; rows: ShippingMethod[] };
 
-/** Courier account status for the Couriers card; `boxes` is null when the account doc could not be read. */
 export type CouriersStatus = {
     environment: "sandbox" | "production" | null;
     boxes: number | null;
-    /** Item types with no box, so no live rates. */
     unboxed: string[];
-    /** Why the saved courier settings can't be used; live methods are hidden until fixed. */
     unreadable: string | null;
     href: string;
 };
@@ -279,28 +255,23 @@ export default function SettingsShippingPage({
 }: {
     initialData?: ShippingInitialData;
     couriers: CouriersStatus;
-    /** Own Locations with an address: where a Self-collect method can be collected. */
     studios: CollectStudio[];
 }) {
     const [methods, setMethods] = useState<ShippingMethod[]>(initialData?.rows ?? []);
     const [loading, setLoading] = useState(!initialData);
-    // The server already loaded the methods; every write still refetches them.
     const skipFirstFetch = useRef(initialData != null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Sheet state
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<ShippingForm>(DEFAULT_FORM);
 
     const [coverageOpen, setCoverageOpen] = useState(false);
 
-    // Delete dialog state
     const [deleteTarget, setDeleteTarget] = useState<ShippingMethod | null>(null);
     const [deleting, setDeleting] = useState(false);
 
-    // ── Fetch ──
     const fetchMethods = useCallback(async () => {
         setLoading(true);
         try {
@@ -322,7 +293,6 @@ export default function SettingsShippingPage({
         fetchMethods();
     }, [fetchMethods]);
 
-    // ── Open sheet ──
     const openCreate = () => {
         setEditingId(null);
         setForm(DEFAULT_FORM);
@@ -337,7 +307,6 @@ export default function SettingsShippingPage({
         setSheetOpen(true);
     };
 
-    // ── Form field helpers ──
     const setField = <K extends keyof Omit<ShippingForm, "en" | "zh">>(field: K, value: ShippingForm[K]) =>
         setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -351,7 +320,6 @@ export default function SettingsShippingPage({
             [locale]: { ...prev[locale], [field]: value },
         }));
 
-    // ── Save ──
     const handleSave = async () => {
         setError(null);
         setSaving(true);
@@ -386,7 +354,6 @@ export default function SettingsShippingPage({
         }
     };
 
-    // ── Delete ──
     const handleDelete = async () => {
         if (!deleteTarget) return;
         setDeleting(true);
@@ -396,16 +363,13 @@ export default function SettingsShippingPage({
             });
             setDeleteTarget(null);
             await fetchMethods();
-        } catch {
-            // ignore
-        } finally {
+        } catch {} finally {
             setDeleting(false);
         }
     };
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">
@@ -435,7 +399,6 @@ export default function SettingsShippingPage({
                 onMethodsChanged={fetchMethods}
             />
 
-            {/* Couriers */}
             <Link href={couriers.href} className="group block">
                 <Card className="transition-colors hover:bg-accent/50 group-active:bg-press">
                     <CardContent className="flex items-center gap-3 py-4 max-md:py-0">
@@ -461,7 +424,6 @@ export default function SettingsShippingPage({
                 </Card>
             </Link>
 
-            {/* Content */}
             {loading ? (
                 <div className="flex items-center justify-center py-24">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -480,7 +442,6 @@ export default function SettingsShippingPage({
                 </EmptyState>
             ) : (
                 <div className="space-y-3">
-                    {/* Live methods are hidden when couriers can't quote, so only a flat method guarantees an option. */}
                     {!methods.some(
                         (m) => m.is_active && (m.rate_source ?? "flat") !== "easyship" && !m.collect_location_id,
                     ) && (
@@ -491,9 +452,7 @@ export default function SettingsShippingPage({
                     )}
                     {methods.map((method) => (
                         <Card key={method.id}>
-                            {/* Phones: the card's own 16px padding is enough, and Edit and Delete sit beside the details. */}
                             <CardContent className="flex flex-row items-start justify-between gap-3 py-4 max-md:py-0">
-                                {/* Info */}
                                 <div className="min-w-0 flex-1 space-y-2">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-medium">
@@ -546,7 +505,6 @@ export default function SettingsShippingPage({
                                     )}
                                 </div>
 
-                                {/* Actions */}
                                 <div className="flex shrink-0 gap-2">
                                     <Button
                                         variant="outline"
@@ -573,7 +531,6 @@ export default function SettingsShippingPage({
                 </div>
             )}
 
-            {/* ── Edit / Create Sheet ── */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
                     <SheetHeader>
@@ -582,7 +539,6 @@ export default function SettingsShippingPage({
                         </SheetTitle>
                     </SheetHeader>
 
-                    {/* The 16px inset the header has; without it the fields ran to the sheet's edges. */}
                     <div className="mt-2 space-y-6 px-4 md:mt-6">
                         {error && (
                             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -590,7 +546,6 @@ export default function SettingsShippingPage({
                             </div>
                         )}
 
-                        {/* Locale tabs */}
                         <Tabs defaultValue="en-US">
                             <TabsList className="w-full">
                                 {LOCALES.map((loc) => (
@@ -658,7 +613,6 @@ export default function SettingsShippingPage({
                             ))}
                         </Tabs>
 
-                        {/* Slug */}
                         <div className="space-y-1.5">
                             <Label htmlFor="slug">Slug</Label>
                             <Input
@@ -673,7 +627,6 @@ export default function SettingsShippingPage({
                             </p>
                         </div>
 
-                        {/* Delivery: a courier, or the customer collects from a studio */}
                         <div className="space-y-1.5">
                             <Label>Delivery</Label>
                             <Select
@@ -707,7 +660,6 @@ export default function SettingsShippingPage({
                             </p>
                         </div>
 
-                        {/* Pricing source */}
                         {!form.collect_location_id && (
                             <div className="space-y-4 rounded-lg border p-4">
                                 <div className="space-y-1.5">
@@ -809,10 +761,7 @@ export default function SettingsShippingPage({
                             </div>
                         )}
 
-                        {/* Rates */}
                         <div className="grid grid-cols-2 gap-4">
-                            {/* A live method is priced by couriers at checkout and on
-                                customisations alike (ADR 0032), so it has no flat price. */}
                             {form.rate_source !== "easyship" && (
                             <div className="space-y-1.5">
                                 <Label htmlFor="base_rate">Base rate ({CURRENCY_SYMBOL})</Label>
@@ -845,7 +794,6 @@ export default function SettingsShippingPage({
                             </div>
                         </div>
 
-                        {/* Countries */}
                         <div className="space-y-2">
                             <Label>Countries</Label>
                             <CountryPicker key={editingId ?? "new"} value={form.countries} onChange={(next) => setField("countries", next)} />
@@ -862,7 +810,6 @@ export default function SettingsShippingPage({
                             </p>
                         </div>
 
-                        {/* Active toggle */}
                         <div className="flex items-center justify-between rounded-lg border px-4 py-3">
                             <div className="space-y-0.5">
                                 <Label htmlFor="is_active" className="font-medium">
@@ -879,8 +826,6 @@ export default function SettingsShippingPage({
                             />
                         </div>
 
-                        {/* Save button. Phones pin it to the bottom of the sheet and keep the
-                            bottom-right corner free for the sheet's pinned close button. */}
                         <div className="max-md:sticky max-md:bottom-0 max-md:z-10 max-md:-mx-4 max-md:border-t max-md:bg-background/95 max-md:pt-3 max-md:pr-[4.25rem] max-md:pb-[calc(0.75rem+var(--safe-bottom))] max-md:pl-4 max-md:backdrop-blur">
                             <Button
                                 className="w-full"
@@ -899,7 +844,6 @@ export default function SettingsShippingPage({
                 </SheetContent>
             </Sheet>
 
-            {/* ── Delete confirmation dialog ── */}
             <Dialog
                 open={!!deleteTarget}
                 onOpenChange={(open) => {

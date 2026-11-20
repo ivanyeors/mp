@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -13,16 +12,9 @@ import { sendCampaignBatch, type CampaignSenderSetup } from "../sender";
 import { readKeptSendingCampaigns } from "../store";
 import { emptyWorld, fakeCampaignsClient, type FakeSend, type FakeWorld } from "./fake-db";
 
-/**
- * The daily job's kept-sending Waves (PRD-campaign-audiences slice 10), run
- * against the fake ledger through the real plan, claim and batch sender: one
- * Wave a day of at most the cap, never into the reserve, the same rule as a
- * Staff Wave, and a pause when the Audience a person approved has changed.
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 const SECRET = "campaign-test-secret";
-const NOW = new Date("2026-10-31T02:00:00Z"); // 10:00 in Singapore
+const NOW = new Date("2026-10-31T02:00:00Z");
 const TODAY = "daily-2026-10-31";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const CAMPAIGN = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
@@ -106,7 +98,6 @@ function deps(campaigns: Campaign[], over: Partial<KeptSendingDeps> = {}, s: Cam
   };
 }
 
-/** A first wave a person sent, long enough ago that its bounces are in. */
 function firstWave(campaignId: string, customerId: string, over: Partial<FakeSend> = {}): FakeSend {
   return {
     id: `f-${campaignId.slice(-1)}-${customerId.slice(-2)}`,
@@ -131,7 +122,6 @@ beforeEach(() => {
   paused = [];
   audited = [];
   lines = [];
-  // Seven subscribed people: the first had the first wave; six have joined since.
   for (let n = 1; n <= 7; n++) {
     world.customers.push({ id: id(n), email: `p${n}@x.test`, first_name: `P${n}`, marketing_email: "subscribed", created_at: `2026-0${Math.min(n, 9)}-01T00:00:00Z` });
   }
@@ -151,10 +141,8 @@ describe("one Wave a day (slice 10)", () => {
     expect(sent.map((e) => e.to)).toHaveLength(3);
     expect(sent.map((e) => e.to)).not.toContain("p1@x.test");
     expect(keptSends().map((s) => s.status)).toEqual(["sent", "sent", "sent"]);
-    // Each email carries its unsubscribe link and the send's click token, as a Staff Wave's does.
     expect(sent[0].headers?.["List-Unsubscribe"]).toBeTruthy();
     expect(audited).toEqual([{ id: CAMPAIGN, after: expect.objectContaining({ wave: TODAY, sent: 3, cap: 3, eligible: 6, held: null, paused: false }) }]);
-    // Telegram: counts, no names and no addresses.
     expect(lines).toEqual(["Kept sending: 3 emails today from 1 campaign."]);
     expect(lines.join(" ")).not.toMatch(/@|Second purchase|P\d/);
   });
@@ -169,12 +157,10 @@ describe("one Wave a day (slice 10)", () => {
     const tomorrow = await runKeptSending(deps([campaign()], {}, setup({ now: () => new Date("2026-11-01T02:00:00Z") })));
     expect(tomorrow.sent).toBe(3);
     expect(world.sends.filter((s) => s.wave === "daily-2026-11-01")).toHaveLength(3);
-    // Nobody got it twice.
     expect(new Set(sent.map((e) => e.to)).size).toBe(6);
   });
 
   it("never sends into the reserve kept for tests and Staff Waves, and stops the day there", async () => {
-    // 34 a day: 30 are kept, so 4 may go, across both campaigns.
     const s = setup({ sendLimits: { daily: 34, monthly: 3000 } });
     const run = await runKeptSending(deps([campaign({ keepSending: keep({ dailyCap: 20 }) }), campaign({ id: OTHER, keepSending: keep({ dailyCap: 20 }) })], {}, s));
     expect(run.sent).toBe(4);
@@ -184,9 +170,9 @@ describe("one Wave a day (slice 10)", () => {
   });
 
   it("leaves out whom a Staff Wave would: unsubscribed, bounced, and resting", async () => {
-    world.customers[1].marketing_email = "unsubscribed"; // p2
-    world.sends.push(firstWave(OTHER, id(3), { status: "bounced", bounced_at: "2026-10-02T00:00:00Z" })); // p3, suppressed
-    world.recentMarketing = { [id(4)]: ["2026-10-29T02:00:00Z"] }; // p4 rests: emailed 2 days ago
+    world.customers[1].marketing_email = "unsubscribed";
+    world.sends.push(firstWave(OTHER, id(3), { status: "bounced", bounced_at: "2026-10-02T00:00:00Z" }));
+    world.recentMarketing = { [id(4)]: ["2026-10-29T02:00:00Z"] };
     const run = await runKeptSending(deps([campaign({ keepSending: keep({ dailyCap: 20 }) })]));
     expect(run.campaigns[0]).toMatchObject({ eligible: 3, sent: 3 });
     expect(sent.map((e) => e.to).sort()).toEqual(["p5@x.test", "p6@x.test", "p7@x.test"]);
@@ -210,7 +196,6 @@ describe("one Wave a day (slice 10)", () => {
 });
 
 describe("the holdout (slice 11)", () => {
-  // p3's id is in the bucket under 10 (holdoutBucketOf: 7); nobody else of p2 to p7 is.
   const holding = () => campaign({ keepSending: keep({ dailyCap: 20, holdoutAt: "2026-10-30T02:00:00Z" }) });
 
   it("holds the bucket out: recorded, never sent, and not counted against the cap or Resend's room", async () => {
@@ -220,7 +205,6 @@ describe("the holdout (slice 11)", () => {
     expect(sent.map((e) => e.to)).not.toContain("p3@x.test");
     expect(keptSends().find((s) => s.customer_id === id(3))).toMatchObject({ status: "held_out", provider_message_id: null });
 
-    // A re-run the same day finds nobody left to send it to.
     const again = await runKeptSending(deps([holding()]));
     expect(again.campaigns[0]).toMatchObject({ sent: 0, eligible: 0 });
   });
@@ -240,7 +224,6 @@ describe("the holdout (slice 11)", () => {
 
 describe("what stops it (slice 10)", () => {
   it("the pause rule stops the day, and pauses nothing", async () => {
-    // The latest wave of any campaign: 1 of 1 bounced.
     world.sends.push(firstWave(OTHER, id(2), { wave: "w2", status: "bounced", bounced_at: "2026-10-30T00:00:00Z", sent_at: "2026-10-29T00:00:00Z" }));
     const run = await runKeptSending(deps([campaign(), campaign({ id: OTHER })]));
     expect(run.sent).toBe(0);
@@ -277,7 +260,6 @@ describe("what stops it (slice 10)", () => {
     expect(changed.campaigns[0]).toMatchObject({ paused: true, held: paused[0].reason });
     expect(audited[0].after).toMatchObject({ paused: true });
 
-    // As approved, it sends to the Segment's people, read as a Staff Wave reads them.
     const same = await runKeptSending(
       deps([c], {
         liveSegments: async () => new Map([[SEG, segment({ delivered: "over:60" })]]),
@@ -291,14 +273,12 @@ describe("what stops it (slice 10)", () => {
   });
 
   it("pauses a campaign whose email no longer passes its checks", async () => {
-    // It mentions points, and points are off: a person must look before it sends again.
     const c = campaign({
       content: { ...CONTENT, blocks: [...CONTENT.blocks, { id: "p", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "Spend your points on it." }] }] }] },
     });
     const run = await runKeptSending(deps([c, campaign({ id: OTHER })]));
     expect(paused).toEqual([{ id: CAMPAIGN, reason: expect.stringMatching(/^the email failed a check: .*points/i) }]);
     expect(run.campaigns[0]).toMatchObject({ sent: 0, paused: true });
-    // The day goes on for the others.
     expect(run.stoppedForDay).toBeNull();
     expect(run.campaigns[1]).toMatchObject({ campaignId: OTHER, sent: 3 });
   });

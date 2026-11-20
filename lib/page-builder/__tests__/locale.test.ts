@@ -14,10 +14,8 @@ describe("isLocaleMap", () => {
   });
 
   it("does not mistake nested content shapes for translations", () => {
-    // A why-choose card, and the neck-pains "how it feels" pair.
     expect(isLocaleMap({ label: "a", title: "b" })).toBe(false);
     expect(isLocaleMap({ label: "a", description: "b" })).toBe(false);
-    // A partial match must not count, or half the object would be dropped.
     expect(isLocaleMap({ "en-US": "Hi", description: "b" })).toBe(false);
     expect(isLocaleMap({})).toBe(false);
     expect(isLocaleMap("Hi")).toBe(false);
@@ -35,7 +33,6 @@ describe("resolveContentLocale", () => {
   it("treats a legacy bare string as English only — the bug this closes", () => {
     const content = { title: "Sleep right" };
     expect(resolveContentLocale(content, "en-US")).toEqual({ title: "Sleep right" });
-    // Key removed, so the component's `?? messages…` fallback fires.
     expect(resolveContentLocale(content, "zh-CN")).toEqual({});
   });
 

@@ -1,53 +1,18 @@
 import * as THREE from "three";
 import type { Rgb, SkyState } from "@/lib/explore/sky";
 
-/**
- * The Explore page's scene (owner, 2026-11-17): a sky that follows the
- * visitor's clock; a large sun and moon that turn on a wheel, up out of the
- * sea and down into it again; clouds in layers behind and in front of them;
- * a sea; and a grassy cliff on the right where flowers sometimes grow, with
- * wind through all of it. Kept out of React so three.js loads only when the
- * page mounts it; the page drives it through the methods below and hears
- * about a tapped flower through `onFlower`.
- *
- * The land and the clouds are painted after the owner's two reference
- * pictures. From the first, the colours: cream where the light falls,
- * lavender in the shade, yellow-greens for the grass. From the second, the
- * cliff: turf that hangs over the edge of a sheer wall of rock, the rock in
- * flat planes that meet in sharp edges, with a warm colour worked into each
- * light and a cool one into each shade; boulders made the same way on top,
- * and plants of several kinds and sizes. The shapes stay simple. Every
- * colour is written as it should appear on screen (the shaders work in sRGB
- * and skip three's colour conversion), so the scene matches the CSS fallback
- * behind it exactly.
- *
- * It is drawn in four passes, back to front, so the sun and moon can sit
- * between cloud layers: the sky and the far clouds; the sun and moon; the
- * near clouds, the sea and the land; then the wind and the rain.
- */
-
 export interface ExploreScene {
-  /** The sky's colours and where the sun and moon are. */
   setSky(sky: SkyState): void;
-  /** How many flowers grow today, and which this visitor has already picked. */
   setFlowers(count: number, picked: readonly number[]): void;
-  /**
-   * A flower was picked: it goes, and its petals drift down to the grass, lie
-   * there a moment and fade. Returns how long until the last petal has gone,
-   * in ms (0 with reduced motion, when nothing falls).
-   */
   popFlower(index: number): number;
   dispose(): void;
 }
 
 export interface ExploreSceneOptions {
-  /** No drifting, swaying or falling: a still picture that follows the clock. */
   reducedMotion: boolean;
-  /** A flower was tapped; the point is in page pixels. */
   onFlower: (index: number, at: { x: number; y: number }) => void;
 }
 
-/** A picked flower's petals: how many, how long they take to reach the grass, lie there and fade, in seconds. */
 const PETALS_PER_FLOWER = 7;
 const PETAL_FALL_MIN = 0.8;
 const PETAL_FALL_MAX = 1.1;
@@ -56,41 +21,26 @@ const PETAL_FADE = 0.35;
 
 const CAM_Y = 2.2;
 const CAM_Z = 14;
-/** The cliff stands close to the visitor, so its foot is under the bottom edge and only its top shows. */
 const CLIFF_Z = 7;
 const SEA_FAR = 230;
 export const MAX_FLOWERS = 5;
 
-/**
- * The most device pixels the scene draws while the window is still: a 13 or
- * 14 inch laptop's whole screen at full sharpness. A bigger screen (a 5K
- * display draws 14.7 million) is drawn a little softer instead, every frame
- * of the animation. ponytail: a fixed budget, not one measured from the GPU;
- * if big screens look soft, raise it or measure frame times.
- */
+// ponytail: a fixed budget, not one measured from the GPU; if big screens look soft, raise it or
+// measure frame times.
 const PIXEL_BUDGET = 6_000_000;
-/** How long after the window last changed size the scene is drawn sharp again, in ms. */
 const SETTLE_MS = 200;
 
-/**
- * Drawing pixels per CSS pixel: the screen's own density up to 2, kept under
- * PIXEL_BUDGET on a big screen (never under 1 for that), and at most 1 while
- * the window is being resized, when every frame also makes a new canvas.
- */
 export function drawingRatio(width: number, height: number, deviceRatio: number, resizing: boolean): number {
   const sharp = Math.min(deviceRatio || 1, 2, Math.max(1, Math.sqrt(PIXEL_BUDGET / (width * height))));
   return resizing ? Math.min(sharp, 1) : sharp;
 }
 
-/** The passes, back to front. */
 const BACK = 0;
 const BODIES = 1;
 const FRONT = 2;
 const OVER = 3;
 
-/** How long the sun and moon take to turn up from the sea when the page opens. */
 const RISE_SECONDS = 3.6;
-/** Where on the wheel that turn starts: just under the horizon they rise from. */
 const RISE_FROM = 202;
 
 const v3 = (c: Rgb) => new THREE.Vector3(c[0], c[1], c[2]);
@@ -99,7 +49,6 @@ const hex = (h: string) => {
   return new THREE.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
 };
 
-/** A small repeatable random: the scene looks the same on every visit. */
 function rng(seed: number) {
   let s = seed >>> 0;
   return () => {
@@ -110,14 +59,13 @@ function rng(seed: number) {
   };
 }
 
-/** The wind's gusts: waves that travel left to right. The grass shader holds the same sum. */
 function gustAt(x: number, z: number, t: number): number {
   const a = 0.5 + 0.5 * Math.sin(x * 1.5 + z * 0.7 - t * 2.3);
   const b = 0.5 + 0.5 * Math.sin(x * 0.5 - t * 1.15 + 1.7);
   return a * 0.55 + b * 0.45;
 }
 
-const NOISE = /* glsl */ `
+const NOISE = `
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
@@ -125,14 +73,14 @@ float noise(vec2 p) {
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
 }`;
 
-const SCREEN_VERT = /* glsl */ `
+const SCREEN_VERT = `
 varying vec2 vNdc;
 void main() {
   vNdc = position.xy;
   gl_Position = vec4(position.xy, 1.0, 1.0);
 }`;
 
-const SKY_FRAG = /* glsl */ `
+const SKY_FRAG = `
 precision highp float;
 varying vec2 vNdc;
 uniform vec3 uTop, uMid, uHorizon, uGlow;
@@ -166,8 +114,7 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-/** The sun and the moon: drawn after the far clouds and before the near ones. */
-const BODIES_FRAG = /* glsl */ `
+const BODIES_FRAG = `
 precision highp float;
 varying vec2 vNdc;
 uniform vec3 uSun, uGlow;
@@ -210,7 +157,7 @@ void main() {
   gl_FragColor = col;
 }`;
 
-const SEA_VERT = /* glsl */ `
+const SEA_VERT = `
 varying vec3 vWorld;
 void main() {
   vec4 w = modelMatrix * vec4(position, 1.0);
@@ -218,7 +165,7 @@ void main() {
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
 
-const SEA_FRAG = /* glsl */ `
+const SEA_FRAG = `
 precision highp float;
 varying vec3 vWorld;
 uniform vec3 uDeep, uShallow, uHorizon, uGlow, uCam;
@@ -246,12 +193,7 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-/**
- * A cloud: round shapes that melt into one another (a metaball field), cut
- * flat along the bottom, drawn on a card that faces the visitor. Flat colour,
- * with a cream band along whichever side faces the sun or moon.
- */
-const CLOUD_VERT = /* glsl */ `
+const CLOUD_VERT = `
 varying vec2 vP;
 uniform vec4 uBox; // the card in cloud units: half-width, bottom, top
 void main() {
@@ -259,7 +201,7 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 
-const CLOUD_FRAG = /* glsl */ `
+const CLOUD_FRAG = `
 precision highp float;
 varying vec2 vP;
 uniform vec3 uBalls[8];
@@ -305,14 +247,7 @@ void main() {
   gl_FragColor = vec4(mix(col, uHaze, uFade), alpha);
 }`;
 
-/**
- * The cliff's two paints: turf and rock. Each is three flat tones laid on in
- * strokes, a row at a time, with a warm colour worked into its light and a
- * cool one into its shade, the way the owner's reference pictures are
- * painted. The blades of grass use the turf's, so they are the colour of the
- * ground they grow from.
- */
-const LAND_TONE = /* glsl */ `
+const LAND_TONE = `
 uniform vec3 uLight, uBounce;
 uniform vec3 uGrassHi, uGrassMid, uGrassLo, uGrassWarm, uGrassCool;
 uniform vec3 uRockHi, uRockMid, uRockLo, uRockWarm, uRockCool, uRockDeep;
@@ -375,8 +310,7 @@ vec3 rockTone(vec3 n, vec3 p, float tone) {
   return mix(col, uBounce, 0.16 * (1.0 - smoothstep(uSeaY, uSeaY + 0.7, p.y)));
 }`;
 
-/** How far down its wall the turf hangs, at a place: a wavering line with a few longer tongues, ragged like a brush's edge. */
-const HANG = /* glsl */ `
+const HANG = `
 float hang(vec3 p, float drape) {
   float along = p.x * 1.15 + p.z * 0.8;
   return max(0.03, drape + 0.1 + 0.05 * sin(p.x * 2.3 + p.z * 1.1) + 0.04 * sin(p.z * 3.7 - p.x * 1.9 + 1.3)
@@ -384,7 +318,7 @@ float hang(vec3 p, float drape) {
        + (noise(vec2(along * 9.0, 1.7)) - 0.5) * 0.12);
 }`;
 
-const TURF_VERT = /* glsl */ `
+const TURF_VERT = `
 attribute float aDepth;
 varying vec3 vNormal;
 varying vec3 vPaint;
@@ -399,12 +333,7 @@ void main() {
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
 
-/**
- * The turf: a blanket over the top of a bluff that turns its corner and hangs
- * a little way down the wall. Its lower edge is painted, not modelled, and
- * the rock shows below it, so the two read as one piece of land.
- */
-const TURF_FRAG = /* glsl */ `
+const TURF_FRAG = `
 precision highp float;
 varying vec3 vNormal;
 varying vec3 vPaint;
@@ -424,7 +353,7 @@ void main() {
   gl_FragColor = vec4(grass * uTint, turf);
 }`;
 
-const ROCK_VERT = /* glsl */ `
+const ROCK_VERT = `
 attribute float aDepth, aTone, aShade;
 attribute vec4 aEdges, aKinds;
 varying vec3 vPaint;
@@ -445,15 +374,7 @@ void main() {
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
 
-/**
- * Rock, for the cliff's wall and the boulders on top. Every face is a flat
- * plane, lit as one, and painted across itself in strokes. Then its edges are
- * picked out as a painter of rocks does: light dragged along the edges that
- * stand proud, most of all the top ones, and dark in the joints where one
- * block sits back from the next. Each face carries how far each point is
- * from its four edges, and which kind each edge is (1 proud, -1 a joint).
- */
-const ROCK_FRAG = /* glsl */ `
+const ROCK_FRAG = `
 precision highp float;
 varying vec3 vPaint;
 varying vec3 vWorld;
@@ -489,12 +410,7 @@ void main() {
   gl_FragColor = vec4(col * uTint, 1.0);
 }`;
 
-/**
- * A blade of grass. It takes the ground's own colour where it stands, so the
- * blades grow out of the patch rather than sit on it, and lightens to its
- * tip. The wind bends it in gusts that cross the cliff.
- */
-const BLADE_VERT = /* glsl */ `
+const BLADE_VERT = `
 attribute vec3 aGround;
 varying vec3 vGround;
 varying vec3 vPaint;
@@ -523,7 +439,7 @@ void main() {
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
 
-const BLADE_FRAG = /* glsl */ `
+const BLADE_FRAG = `
 precision highp float;
 varying vec3 vGround;
 varying vec3 vPaint;
@@ -539,15 +455,14 @@ void main() {
   gl_FragColor = vec4(col * uTint, 1.0);
 }`;
 
-/** Two flat tones, for the flowers. */
-const TOON_VERT = /* glsl */ `
+const TOON_VERT = `
 varying vec3 vNormal;
 void main() {
   vNormal = normalize(transpose(inverse(mat3(modelMatrix))) * normal);
   gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
 }`;
 
-const TOON_FRAG = /* glsl */ `
+const TOON_FRAG = `
 precision highp float;
 varying vec3 vNormal;
 uniform vec3 uColor, uShade, uTint, uLight;
@@ -557,8 +472,7 @@ void main() {
   gl_FragColor = vec4(mix(uShade, uColor, t) * uTint, 1.0);
 }`;
 
-/** A line of wind: a thin ribbon along which a short bright stretch travels. */
-const WIND_VERT = /* glsl */ `
+const WIND_VERT = `
 attribute float aAlong;
 varying float vAlong;
 uniform vec2 uOrigin, uHalf;
@@ -570,7 +484,7 @@ void main() {
   gl_Position = projectionMatrix * vec4(p, 1.0);
 }`;
 
-const WIND_FRAG = /* glsl */ `
+const WIND_FRAG = `
 precision highp float;
 varying float vAlong;
 uniform vec3 uColor;
@@ -581,7 +495,7 @@ void main() {
   gl_FragColor = vec4(uColor, a * uOpacity);
 }`;
 
-const RAIN_VERT = /* glsl */ `
+const RAIN_VERT = `
 attribute float aTail;
 uniform float uTime;
 varying float vAlpha;
@@ -595,7 +509,7 @@ void main() {
   gl_Position = projectionMatrix * vec4(p, 1.0);
 }`;
 
-const RAIN_FRAG = /* glsl */ `
+const RAIN_FRAG = `
 precision highp float;
 varying float vAlpha;
 uniform vec3 uColor;
@@ -605,11 +519,6 @@ void main() { gl_FragColor = vec4(uColor, vAlpha * uOpacity); }`;
 type Uniforms = Record<string, THREE.IUniform>;
 
 const FLOWER_COLOURS = ["#ff9cc2", "#fff6f0", "#ffd45c", "#b9a6ff", "#ff9078"];
-/**
- * The flowers: where each grows on the patch, what kind it is, how tall its
- * stalk and how big it is beside the others. Tall ones stand behind short
- * ones, so none hides another.
- */
 const FLOWERS = [
   { x: -1.2, z: 0.95, kind: "cosmos", stem: 0.52, size: 1.25 },
   { x: -0.55, z: 0.7, kind: "daisy", stem: 0.44, size: 1 },
@@ -618,11 +527,6 @@ const FLOWERS = [
   { x: -1.72, z: 0.35, kind: "tulip", stem: 0.56, size: 1.05 },
 ] as const;
 
-/**
- * The boulders on the grass: where each sits, its size across, up and
- * through, how it is turned, and the number its shape is cut from. A big one
- * with smaller ones by it, as rocks lie; none where a flower grows.
- */
 const STONES = [
   { x: 0.1, z: -1.2, wide: 0.5, tall: 0.4, deep: 0.42, turn: 0.4, seed: 3 },
   { x: -0.5, z: -1.42, wide: 0.27, tall: 0.2, deep: 0.24, turn: 1.3, seed: 7 },
@@ -632,7 +536,6 @@ const STONES = [
   { x: -2.3, z: -0.95, wide: 0.18, tall: 0.12, deep: 0.16, turn: 0.8, seed: 23 },
 ] as const;
 
-/** The lines of wind: where each starts (as a share of the view), its size, and how often it blows. */
 const WIND_LINES = [
   { x: -0.95, y: 0.34, length: 6.4, wave: 0.22, curl: 0.34, every: 9.5, after: 1.2 },
   { x: -0.55, y: -0.08, length: 5.2, wave: 0.16, curl: 0, every: 12, after: 5.4 },
@@ -650,14 +553,12 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 600);
   const disposables: { dispose(): void }[] = [];
   const keep = <T extends { dispose(): void }>(x: T) => (disposables.push(x), x);
-  /** Puts an object, and everything in it, in one pass. */
   const into = <T extends THREE.Object3D>(pass: number, obj: T): T => {
     obj.traverse((o) => o.layers.set(pass));
     return obj;
   };
   const moving = !options.reducedMotion;
 
-  // Uniforms shared by every material, so one write recolours the scene.
   const shared = {
     uTime: { value: 0 },
     uTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -671,11 +572,9 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     uAspect: { value: 1 },
     uLandOrigin: { value: new THREE.Vector3() },
     uLandInv: { value: 1 },
-    /** How high the sea stands on the land, in the land's own measure. */
     uSeaY: { value: 0 },
   };
 
-  // ------------------------------------------------------------------ sky
   const skyUniforms: Uniforms = {
     uTop: { value: new THREE.Vector3() },
     uMid: { value: new THREE.Vector3() },
@@ -697,7 +596,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   sky.renderOrder = -10;
   scene.add(into(BACK, sky));
 
-  // ------------------------------------------------------------------ sun and moon
   const bodyUniforms: Uniforms = {
     uSun: { value: new THREE.Vector3() },
     uGlow: skyUniforms.uGlow!,
@@ -727,7 +625,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   bodies.frustumCulled = false;
   scene.add(into(BODIES, bodies));
 
-  // ------------------------------------------------------------------ sea
   const seaUniforms: Uniforms = {
     uDeep: { value: new THREE.Vector3() },
     uShallow: { value: new THREE.Vector3() },
@@ -749,12 +646,10 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   sea.position.set(0, 0, CAM_Z + 20 - (SEA_FAR + 40) / 2);
   scene.add(into(FRONT, sea));
 
-  // ------------------------------------------------------------------ clouds
   const card = keep(new THREE.PlaneGeometry(1, 1));
   const BOX = { half: 2.7, bottom: -0.15, top: 1.75 };
   const clouds: { mesh: THREE.Mesh; speed: number; span: number }[] = [];
   const cloudRandom = rng(7);
-  /** Round shapes for one cloud: a big one in the middle, smaller ones stepping out and down, a bump on top. */
   const cloudShapes = (wide: number) => {
     const r = cloudRandom;
     const j = (n: number) => (r() - 0.5) * n;
@@ -799,7 +694,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     );
     const mesh = new THREE.Mesh(card, material);
     mesh.scale.set(BOX.half * 2 * size, (BOX.top - BOX.bottom) * size, 1);
-    // The card's middle is above the cloud's flat base; lift it so `y` is the base.
     mesh.position.set(x, y + ((BOX.top + BOX.bottom) / 2) * size, z);
     mesh.frustumCulled = false;
     parent.add(into(pass, mesh));
@@ -808,7 +702,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   const fairClouds = new THREE.Group();
   const rainClouds = new THREE.Group();
   scene.add(fairClouds, rainClouds);
-  // Far: small, pale, behind the sun and moon.
   for (const [x, y, z, s, f] of [
     [-46, 15, -118, 4.6, 0.55],
     [4, 24, -124, 5.6, 0.5],
@@ -818,7 +711,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   ] as const) {
     addCloud(BACK, x, y, z, s, f, fairClouds);
   }
-  // Middle and near: larger, crossing in front of them.
   for (const [x, y, z, s, f] of [
     [-30, 10.5, -84, 5.4, 0.3],
     [34, 16, -80, 5.8, 0.26],
@@ -829,7 +721,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   ] as const) {
     addCloud(FRONT, x, y, z, s, f, fairClouds);
   }
-  // Rain cloud: more of it, wider, across the top.
   for (const [x, y, z, s, f] of [
     [-34, 21, -78, 6.4, 0.3],
     [20, 24, -74, 7, 0.26],
@@ -840,7 +731,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   }
   rainClouds.visible = false;
 
-  // ------------------------------------------------------------------ the cliff
   const cliff = new THREE.Group();
   scene.add(cliff);
   const landRandom = rng(11);
@@ -851,12 +741,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   };
   const up = new THREE.Vector3(0, 1, 0);
 
-  /**
-   * The land's colours, shared by the turf, the rock under it and the blades
-   * that grow from it: the reference pictures' yellow-greens with gold worked
-   * into the light and blue-green into the shade; cream and brown rock with
-   * orange in its light, and violet and dusty blue in its shade.
-   */
   const landUniforms = {
     uGrassHi: { value: hex("#cbd86a") },
     uGrassMid: { value: hex("#86b455") },
@@ -877,13 +761,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     uLandInv: shared.uLandInv,
   };
 
-  /**
-   * A bluff: a flat grassy top that ends at a sheer wall of rock. Its outline
-   * is a reach in each direction from its middle, and it is not smooth: the
-   * rock breaks along upright joints into ribs, each standing a little
-   * further out or back than the next, so the edge of the top is a run of
-   * straight pieces with corners between them, as a cliff's edge is.
-   */
   type Rib = { from: number; to: number; stand: number; lean: number };
   type Bluff = { x: number; z: number; ribs: Rib[]; reach: (rib: Rib, column: number) => number; rim: (a: number) => number; top: (x: number, z: number) => number };
   const AROUND = 64;
@@ -891,7 +768,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     const r = rng(seed);
     const ribs: Rib[] = [];
     for (let c = 0; c < AROUND; ) {
-      // Most ribs are a few columns wide; now and then a narrow one sits well back, a cleft in the face.
       const cleft = r() < 0.13;
       const wide = Math.min(AROUND - c, cleft ? 1 : 2 + Math.floor(r() * 4));
       ribs.push({ from: c, to: c + wide, stand: cleft ? -0.2 : (r() - 0.5) * 0.2, lean: cleft ? 0 : (r() - 0.5) * 0.14 });
@@ -904,9 +780,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     };
     return { x, z, ribs, reach, rim, top };
   };
-  /** How far the turf dips as it comes to the edge: a little, so the corner is a corner. */
   const ROLL = 0.04;
-  /** The ground on a bluff's top, and how far out towards its edge that is (1 at the edge). */
   const onTop = (b: Bluff, x: number, z: number) => {
     const s = Math.hypot(x - b.x, z - b.z) / b.rim(Math.atan2(z - b.z, x - b.x));
     return { y: b.top(x, z) - ROLL * ease(0.8, 1, s), s };
@@ -915,7 +789,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     const e = 0.04;
     return new THREE.Vector3(onTop(b, x - e, z).y - onTop(b, x + e, z).y, 2 * e, onTop(b, x, z - e).y - onTop(b, x, z + e).y).normalize();
   };
-  /** The edge of a bluff's top where one of its ribs meets a column line: the place, and the way out from the middle. */
   const edgeOf = (b: Bluff, rib: Rib, column: number) => {
     const a = (column / AROUND) * Math.PI * 2;
     const dx = Math.cos(a);
@@ -925,7 +798,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     return { dx, dz, x, z, y: b.top(x, z) - ROLL };
   };
 
-  /** The turf's blanket: the top, ring by ring out to its edge, then a skirt that hangs straight down the wall, standing just clear of the rock. */
   const CAP = [0, 0.3, 0.55, 0.74, 0.87, 0.95, 1];
   const SKIRT: readonly (readonly [number, number])[] = [
     [0.07, 0.03],
@@ -934,7 +806,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     [0.5, 0.035],
   ];
   const turfGeometry = (b: Bluff) => {
-    // Round the edge rib by rib: where two ribs meet there are two points, one for each, and the step between them.
     const rim = b.ribs.flatMap((rib) => Array.from({ length: rib.to - rib.from + 1 }, (_, i) => edgeOf(b, rib, rib.from + i)));
     const position: number[] = [];
     const depth: number[] = [];
@@ -971,13 +842,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     return geometry;
   };
 
-  /**
-   * Rock is gathered a flat face at a time. With each corner goes what the
-   * painter needs: how far down from the turf it is, a number of the face's
-   * own, how far it is from the face's edges (left, right, top, bottom), and
-   * which kind each of those edges is: 1 where the face stands proud of its
-   * neighbour, -1 where it sits back in a joint, 0 where nothing shows.
-   */
   type Corner = { at: THREE.Vector3; edges: readonly [number, number, number, number]; depth?: number; shade?: number };
   const FAR = [99, 99, 99, 99] as const;
   const PLAIN = [0, 0, 0, 0] as const;
@@ -989,7 +853,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     const edges: number[] = [];
     const kinds: number[] = [];
     const face = (corners: readonly Corner[], kind: readonly number[], own: number) => {
-      // Three corners make one triangle; four, two.
       for (const i of corners.length === 4 ? [0, 1, 2, 1, 3, 2] : [0, 1, 2]) {
         const c = corners[i]!;
         position.push(c.at.x, c.at.y, c.at.z);
@@ -1023,19 +886,10 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     return { face, mesh };
   };
 
-  /**
-   * A cliff's wall, built as cliffs break: each rib of the bluff goes straight
-   * down from the edge of the top, cracked across into blocks at heights of
-   * its own, so no course runs round the cliff as in a built wall. Every
-   * block's face is one flat plane, a little forward or back of the one
-   * above and tipped a little, so no two catch the light alike; the wall is
-   * sheer, and its edges are sharp.
-   */
   const wallOf = (b: Bluff, seed: number, drape: number) => {
     const r = rng(seed);
     const rock = gatherRock();
     const FOOT = -1.2;
-    // The cracks dip as they run round the cliff, all together, as strata do.
     const dip = r() * 6;
     const dipAt = (column: number) => 0.07 * Math.sin((column / AROUND) * Math.PI * 2 + dip);
     type Block = { floor: number; stand: number; lean: number; tip: number; own: number };
@@ -1043,14 +897,13 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       const columns = Array.from({ length: rib.to - rib.from + 1 }, (_, i) => rib.from + i);
       const edges = columns.map((c) => edgeOf(b, rib, c));
       const blocks: Block[] = [];
-      // Blocks are shallow near the top, where they are seen, and deeper under the sea.
       for (let y = Math.min(...edges.map((e) => e.y)) - 0.22 - r() * 0.4; y > FOOT + 0.3; y -= 0.3 + r() * 0.5 + blocks.length * 0.1) {
         const pick = r();
         blocks.push(
           blocks.length === 0
-            ? // The top block keeps under the turf.
+            ?
               { floor: y, stand: -0.025, lean: (r() - 0.5) * 0.03, tip: (r() - 0.5) * 0.03, own: r() }
-            : // Below it, most sit a little back, a few well back, a few stand out.
+            :
               { floor: y, stand: pick < 0.15 ? -0.13 : pick > 0.9 ? 0.04 : -0.02 + (r() - 0.5) * 0.09, lean: (r() - 0.5) * 0.12, tip: (r() - 0.5) * 0.09, own: r() },
         );
       }
@@ -1058,10 +911,8 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       const at = (column: number) => edges[column - rib.from]!;
       const floorAt = (k: number, column: number) => (k === blocks.length - 1 ? FOOT : blocks[k]!.floor + dipAt(column));
       const roofAt = (k: number, column: number) => (k === 0 ? at(column).y : floorAt(k - 1, column));
-      /** How far out a block's face stands from the edge above: `column` may fall between two; `down` runs 0 to 1 from its roof to its floor. */
       const standOn = (k: number, column: number, down: number) =>
         blocks[k]!.stand + blocks[k]!.lean * ((column - rib.from) / (rib.to - rib.from) - 0.5) + blocks[k]!.tip * (down - 0.5);
-      /** A point on this rib's wall, on a column line, at a height. */
       const wallAt = (column: number, y: number) => {
         const k = Math.max(0, blocks.findIndex((_, i) => y >= floorAt(i, column)));
         const stand = standOn(k, column, (roofAt(k, column) - y) / Math.max(1e-4, roofAt(k, column) - floorAt(k, column)));
@@ -1069,7 +920,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       };
       return { rib, blocks, at, floorAt, roofAt, standOn, wallAt };
     });
-    /** Which way a step between two faces shows: this one proud, this one back, or no step to speak of. */
     const step = (mine: number, other: number) => (mine - other > 0.02 ? 1 : mine - other < -0.02 ? -1 : 0);
 
     built.forEach((mine, i) => {
@@ -1083,7 +933,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       });
       blocks.forEach((block, k) => {
         const middle = (column: number) => (roofAt(k, column) + floorAt(k, column)) / 2;
-        // Against the ribs to either side, at this block's height.
         const beside = [
           step(b.reach(rib, rib.from) + standOn(k, rib.from, 0.5), before.wallAt(before.rib.to, middle(rib.from)).out),
           step(b.reach(rib, rib.to) + standOn(k, rib.to, 0.5), after.wallAt(after.rib.from, middle(rib.to)).out),
@@ -1108,7 +957,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
             ],
             block.own,
           );
-          // The ledge between this block and the one under it: a step out, or the underside of an overhang.
           if (k < blocks.length - 1) {
             rock.face(
               [
@@ -1123,8 +971,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
           }
         }
       });
-      // The joint between this rib and the one before it: the side of whichever stands further out, from the
-      // turf to the foot, in a piece for each stretch between one crack and the next on either side.
       const levels = [
         Math.min(at(rib.from).y, before.at(before.rib.to).y),
         ...blocks.map((_, k) => floorAt(k, rib.from)),
@@ -1146,14 +992,12 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     return rock.mesh(drape);
   };
 
-  /** A rounded outline with its own reach to each side, and a waver so it is not an oval. */
   const outline = (left: number, right: number, front: number, back: number, k: number) => (a: number) => {
     const c = Math.cos(a);
     const s = Math.sin(a);
     const oval = 1 / Math.hypot(c / (c < 0 ? left : right), s / (s > 0 ? front : back));
     return oval * (1 + 0.07 * Math.sin(a * 3 + k) + 0.045 * Math.sin(a * 5 + k * 2.3) + 0.025 * Math.sin(a * 9 + k * 0.7));
   };
-  /** The patch the flowers grow on. Its nose points out to sea on the left; its near edge is the cliff the visitor looks down. It rises to the right and to the back. */
   const PATCH = bluff(
     0,
     0,
@@ -1161,7 +1005,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     (x, z) => 1.78 + 0.05 * (x + 2.75) + 0.055 * (1.5 - z) + 0.04 * Math.sin(x * 1.7 + 0.4) * Math.sin(z * 1.3 + 1.1),
     29,
   );
-  /** The headland behind it, a step higher, running off to the right. */
   const RIDGE = bluff(4.2, -1.6, outline(3.75, 3.75, 2.9, 2.9, 2.1), (x, z) => 2.34 + 0.04 * (x - 0.5) + 0.05 * Math.sin(x * 1.3 + 2) * Math.sin(z * 1.1), 31);
   const land = (b: Bluff, seed: number, drape: number) => {
     const turf = keep(
@@ -1169,27 +1012,20 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         vertexShader: TURF_VERT,
         fragmentShader: TURF_FRAG,
         uniforms: { ...landUniforms, uDrape: { value: drape } },
-        // The turf's ragged lower edge is cut out of its skirt; this keeps that cut smooth.
         alphaToCoverage: true,
       }),
     );
     cliff.add(wallOf(b, seed, drape), new THREE.Mesh(turfGeometry(b), turf));
   };
   land(PATCH, 17, 0);
-  // More of the step up to the headland is turf: it is a bank, not a second cliff.
   land(RIDGE, 43, 0.12);
 
   const underRidge = (x: number, z: number) => onTop(RIDGE, x, z).s < 1.03;
-  /** The ground at a point: the headland where it stands, the patch elsewhere. */
   const ground = (x: number, z: number) => (onTop(RIDGE, x, z).s < 1 ? onTop(RIDGE, x, z).y : onTop(PATCH, x, z).y);
-  /** Nothing further right than this is ever in view. */
   const SEEN = 2.6;
 
-  // Boulders on the grass, made the way a modeller makes a rock: a block whose corners and edges are sliced
-  // off by flat cuts, until what is left is all planes that meet in sharp edges.
   {
     const rock = gatherRock();
-    /** Keep the part of a solid that lies behind a flat cut, and close the cut with a new face. */
     const slice = (faces: THREE.Vector3[][], n: THREE.Vector3, d: number) => {
       const out: THREE.Vector3[][] = [];
       const cut: THREE.Vector3[] = [];
@@ -1209,7 +1045,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         if (kept.length >= 3) out.push(kept);
       }
       if (cut.length >= 3) {
-        // Put the cut's corners in order round it.
         const mid = cut.reduce((sum, p) => sum.add(p), new THREE.Vector3()).multiplyScalar(1 / cut.length);
         const u = new THREE.Vector3().crossVectors(n, Math.abs(n.y) < 0.9 ? up : new THREE.Vector3(1, 0, 0)).normalize();
         const v = new THREE.Vector3().crossVectors(n, u);
@@ -1220,7 +1055,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     };
     for (const stone of STONES) {
       const r = rng(stone.seed);
-      // A block...
       const corner = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
       let faces: THREE.Vector3[][] = [
         [corner(1, -1, -1), corner(1, 1, -1), corner(1, 1, 1), corner(1, -1, 1)],
@@ -1230,12 +1064,10 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         [corner(-1, -1, 1), corner(1, -1, 1), corner(1, 1, 1), corner(-1, 1, 1)],
         [corner(1, -1, -1), corner(-1, -1, -1), corner(-1, 1, -1), corner(1, 1, -1)],
       ];
-      // ...with cuts taken off it from the sides and above: deep ones first for its shape, then shallow ones for its edges.
       for (let i = 0; i < 10; i += 1) {
         const n = new THREE.Vector3(r() * 2 - 1, r() * 1.3 - 0.25, r() * 2 - 1).normalize();
         faces = slice(faces, n, i < 4 ? 0.62 + r() * 0.2 : 0.84 + r() * 0.2);
       }
-      // Set it in its place, turned and tipped a little, part of it in the ground.
       const floor = ground(stone.x, stone.z);
       const set = new THREE.Matrix4().compose(
         new THREE.Vector3(stone.x, floor + stone.tall * 0.5, stone.z),
@@ -1250,11 +1082,9 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         const shade = (p: THREE.Vector3) => 1 - ease(0, 0.2, p.y - floor);
         at.forEach((a, i) => {
           const b = at[(i + 1) % at.length]!;
-          // How far the face's middle is from this edge: the corners on the edge are at nought.
           const along = b.clone().sub(a).normalize();
           const from = mid.clone().sub(a);
           const far = from.sub(along.multiplyScalar(from.dot(along))).length();
-          // Faces that look up have their edges picked out strongly, as a top edge; the rest as a side edge.
           const slot = (dist: number) => (normal.y > 0.25 ? ([99, 99, dist, 99] as const) : ([dist, 99, 99, 99] as const));
           rock.face(
             [
@@ -1271,21 +1101,16 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     cliff.add(rock.mesh(0));
   }
 
-  /** A point on a bluff's top, anywhere on it. */
   const spot = (b: Bluff, reach = 0.97) => {
     const a = landRandom() * Math.PI * 2;
     const r = b.rim(a) * Math.sqrt(landRandom()) * reach;
     return [b.x + Math.cos(a) * r, b.z + Math.sin(a) * r] as const;
   };
-  /** Not under a flower, by this much. */
   const clear = (x: number, z: number, by: number) => FLOWERS.every((f) => Math.hypot(f.x - x, f.z - z) > by);
-  /** Not under a boulder. */
   const open = (x: number, z: number) => STONES.every((s) => ((x - s.x) / s.wide) ** 2 + ((z - s.z) / s.deep) ** 2 > 0.8);
 
-  // Grass, in the ground's own colours: a short lawn, tufts of long grass, and a fringe that hangs over the cliff's edge.
   const bladeGeo = keep(new THREE.BufferGeometry());
   {
-    // A tapering blade in three steps, leaning forward a little as it rises.
     const w = 0.03;
     const ring = [
       [w, 0, 0],
@@ -1302,7 +1127,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   }
   type Blade = { at: THREE.Vector3; ground: THREE.Vector3; grow: THREE.Vector3; tall: number; wide: number };
   const sown: Blade[] = [];
-  /** A blade on a bluff's top: partly upright, partly out from the ground, so the outline is soft with grass. */
   const sow = (b: Bluff, x: number, z: number, tall: number, wide = 1, splay?: THREE.Vector3) => {
     const n = normalOn(b, x, z);
     const grow = n.clone().lerp(up, 0.55);
@@ -1313,7 +1137,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     for (let n = 0, tries = 0; n < count && tries < count * 8; tries += 1) {
       const [x, z] = spot(b);
       if (x > SEEN || !open(x, z) || (b === PATCH && underRidge(x, z))) continue;
-      // Gathered in tufts; now and then a blade twice the height of its neighbours.
       const tuft = 0.75 + 0.5 * Math.sin(x * 3.1) * Math.sin(z * 2.7);
       sow(b, x, z, between(0.09, 0.22) * tuft * (landRandom() < 0.12 ? 1.9 : 1));
       n += 1;
@@ -1321,7 +1144,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   };
   lawn(PATCH, 3600);
   lawn(RIDGE, 520);
-  // Tufts of long grass: a dozen or so blades from one root, fanning out.
   for (let n = 0, tries = 0; n < 22 && tries < 400; tries += 1) {
     const [x, z] = spot(PATCH, 0.9);
     if (x > SEEN || underRidge(x, z) || !open(x, z) || !clear(x, z, 0.4)) continue;
@@ -1335,7 +1157,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     }
     n += 1;
   }
-  // The fringe: rooted on the corner and the first of the wall, growing out over the drop.
   const fringe = (b: Bluff, count: number) => {
     for (let n = 0, tries = 0; n < count && tries < count * 8; tries += 1) {
       const a = landRandom() * Math.PI * 2;
@@ -1346,7 +1167,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       if (x > SEEN || (b === PATCH && underRidge(x, z))) continue;
       const down = between(0, 0.12);
       const stand = 0.02 + Math.min(down, 0.07) * 0.3;
-      // One in four is long and droops over the rock.
       const long = landRandom() < 0.25;
       sown.push({
         at: new THREE.Vector3(x + out.x * stand, onTop(b, x, z).y - down, z + out.z * stand),
@@ -1389,7 +1209,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   blades.frustumCulled = false;
   cliff.add(blades);
 
-  // ------------------------------------------------------------------ flowers and other plants
   const toon = (color: string, shade: THREE.Vector3) =>
     keep(
       new THREE.ShaderMaterial({
@@ -1405,9 +1224,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   const centreMat = toon("#ffc93c", hex("#f09a2e"));
   const petalMats = FLOWER_COLOURS.map((c) => toon(c, hex(c).multiplyScalar(0.82)));
 
-  // Low plants among the grass: a few broad leaves from one root, each plant its own size.
   {
-    // Seen from this low, it is mostly their undersides that show: a middle green, not a dark one.
     const leafMat = toon("#a3cf5f", hex("#58a058"));
     const leaves: THREE.Matrix4[] = [];
     const q = new THREE.Quaternion();
@@ -1420,7 +1237,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       const root = new THREE.Vector3(x, ground(x, z), z);
       for (let k = 0; k < count; k += 1) {
         const long = 0.16 * size * between(0.7, 1.15);
-        // A leaf is long along its own z; turn it round the root, then lift its far end.
         q.setFromEuler(turn.set(-between(0.35, 0.95), (k / count) * Math.PI * 2 + landRandom(), 0, "YXZ"));
         const along = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
         leaves.push(new THREE.Matrix4().compose(root.clone().addScaledVector(along, long * 0.9), q, new THREE.Vector3(long * 0.42, 0.014, long)));
@@ -1433,7 +1249,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     cliff.add(mesh);
   }
 
-  // Grass gone to seed: a thin stalk with a gold head, taller than the lawn, nodding in the wind.
   const reedMat = toon("#e9c56a", hex("#b98b48"));
   const reeds: THREE.Group[] = [];
   for (const [x, z, tall] of [
@@ -1470,7 +1285,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     root.add(stem);
     const head = new THREE.Group();
     head.position.y = spec.stem;
-    /** A ring of petals: each long along its own z, set out from the middle, its far end lifted by `cup`. */
     const ring = (count: number, reach: number, sx: number, sy: number, sz: number, cup = 0, lift = 0, parent: THREE.Object3D = head, mat: THREE.Material = petalMat) => {
       for (let p = 0; p < count; p += 1) {
         const arm = new THREE.Group();
@@ -1490,22 +1304,18 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       head.add(mesh);
     };
     if (spec.kind === "cosmos") {
-      // Five broad petals, wide open.
       ring(5, 0.13, 0.115, 0.03, 0.15);
       centre(0.07);
-      head.rotation.x = 0.95; // looks up and out at the visitor
+      head.rotation.x = 0.95;
     } else if (spec.kind === "daisy") {
-      // Many thin petals round a big eye.
       ring(9, 0.145, 0.042, 0.02, 0.125);
       centre(0.088);
       head.rotation.x = 0.95;
     } else if (spec.kind === "buttercup") {
-      // Small and cupped, close to the ground.
       ring(5, 0.07, 0.07, 0.03, 0.08, 0.4);
       centre(0.045);
       head.rotation.x = 0.75;
     } else if (spec.kind === "pom") {
-      // A round head of many small florets, on a tall stalk.
       const ball = new THREE.Mesh(petalGeo, petalMat);
       ball.scale.setScalar(0.13);
       ball.position.y = 0.09;
@@ -1520,13 +1330,11 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         head.add(floret);
       }
     } else {
-      // A tulip: a cup of upright petals, and two long leaves from the root.
       ring(5, 0.05, 0.062, 0.034, 0.125, 1.2, 0.1);
       head.rotation.x = 0.22;
       ring(2, 0.13, 0.04, 0.012, 0.19, 1.05, 0.12, root, stemMat);
     }
     if (spec.kind !== "tulip" && spec.kind !== "buttercup") {
-      // A leaf or two on the stalk.
       const leafy = new THREE.Group();
       leafy.position.y = spec.stem * 0.32;
       leafy.rotation.y = i * 2.1;
@@ -1546,13 +1354,11 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   });
   into(FRONT, cliff);
 
-  // A picked flower's petals, drifting down to the grass, then fading there.
   type Petal = {
     mesh: THREE.Mesh;
     from: THREE.Vector3;
     to: THREE.Vector3;
     size: THREE.Vector3;
-    /** Seconds to reach the grass. */
     fall: number;
     sway: number;
     phase: number;
@@ -1562,12 +1368,10 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   };
   const loose: Petal[] = [];
 
-  // ------------------------------------------------------------------ wind
   const windColor = { value: new THREE.Vector3(1, 1, 1) };
   const windHalf = { value: new THREE.Vector2(1, 1) };
   const windSize = { value: 1 };
   const windLines = WIND_LINES.map((line) => {
-    // A ribbon along a long shallow wave, with (for some) one curl in it.
     const steps = 96;
     const points: THREE.Vector2[] = [];
     for (let i = 0; i <= steps; i += 1) {
@@ -1626,7 +1430,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     return { mesh, uniforms, line };
   });
 
-  // ------------------------------------------------------------------ rain
   const DROPS = 420;
   const rainGeo = keep(new THREE.BufferGeometry());
   {
@@ -1652,19 +1455,15 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   rain.visible = false;
   scene.add(into(OVER, rain));
 
-  // ------------------------------------------------------------------ layout
   let width = 1;
   let height = 1;
-  /** Drawing pixels per CSS pixel now; 0 until the first layout. */
   let pixelRatio = 0;
   let resizing = false;
   let settleTimer = 0;
   let portrait = false;
   let skyState: SkyState | null = null;
   const probe = new THREE.Vector3();
-  /** The wheel the sun and moon turn on: its hub on the horizon, and its reach, in screen units. */
   const wheel = { x: 0.4, y: -0.2, r: 0.66 };
-  /** Where each is drawn now on the wheel, in degrees: it eases towards where the clock says. */
   const shown = { sun: 270, moon: 90, started: false, risen: 0, from: 0 };
 
   const nearest = (from: number, to: number) => from + ((((to - from) % 360) + 540) % 360) - 180;
@@ -1689,9 +1488,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     const low = 1 - Math.min(1, Math.max(0, (lightHeight - 0.15) / 0.7));
     seaUniforms.uGlitter!.value =
       lightHeight > -0.04 ? (sunUp ? (0.25 + 0.6 * low) * skyState.palette.sunStrength : 0.5 * skyState.moon.lit * skyState.palette.stars) : 0;
-    // Light the land from where the sun (or moon) is on screen.
     shared.uLight.value.set(lightAt.x * 0.9, 0.35 + Math.max(0, lightHeight) * 0.9, 0.55).normalize();
-    // A low sun looks bigger still.
     bodyUniforms.uSunR!.value = (portrait ? 0.092 : 0.14) * (1 + 0.16 * low);
     bodyUniforms.uMoonR!.value = portrait ? 0.08 : 0.12;
   };
@@ -1699,37 +1496,30 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   const layout = () => {
     const aspect = width / height;
     portrait = aspect < 0.85;
-    // The canvas is stretched to the host by CSS; only its drawing buffer is sized here.
     renderer.setDrawingBufferSize(width, height, pixelRatio);
     camera.fov = portrait ? 50 : 38;
     camera.aspect = aspect;
     const half = Math.tan((camera.fov * Math.PI) / 360);
-    // Pitch the camera up so the horizon sits below the middle, leaving the sky to the words.
     const horizonNdc = portrait ? -0.3 : -0.2;
     camera.position.set(0, CAM_Y, CAM_Z);
     camera.rotation.set(Math.atan(-horizonNdc * half), 0, 0);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
 
-    // The sky meets the sea where the sea's far edge is drawn.
     probe.set(0, 0, CAM_Z - SEA_FAR).project(camera);
     skyUniforms.uHorizonY!.value = probe.y;
     shared.uAspect.value = aspect;
     renderer.getDrawingBufferSize(shared.uRes.value);
 
-    // The wheel: as large a circle as fits between the horizon and the words, clear of the countdown.
     wheel.y = probe.y;
     if (portrait) {
       wheel.x = 0;
       wheel.r = Math.min(0.32, 0.8 * aspect);
     } else {
-      // To the right of the countdown: they rise from the sea beside it and set into it, above the headland.
       wheel.x = 0.4;
       wheel.r = Math.min(0.68, 0.42 * aspect);
     }
 
-    // The cliff keeps to the bottom right corner, whatever the shape of the screen: its grass under
-    // the horizon, a little of its rock above the bottom edge, and the sea open over all of it.
     const halfWidth = (CAM_Z - CLIFF_Z) * half * aspect;
     const scale = portrait ? 0.44 : 0.78 * Math.min(1, Math.max(0.72, aspect / 1.6));
     const sunk = portrait ? 0 : 0.35;
@@ -1739,19 +1529,11 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     shared.uLandInv.value = 1 / scale;
     shared.uSeaY.value = sunk;
 
-    // The wind lines cross the view at a fixed depth in front of the camera.
     windHalf.value.set(10 * half * aspect, 10 * half);
     windSize.value = portrait ? 0.5 : Math.min(1.15, Math.max(0.8, aspect / 1.6));
     placeBodies();
   };
 
-  /**
-   * Matches the drawing buffer to the host's size and the screen's density,
-   * and says whether it changed. Sizing a canvas empties it, so this runs at
-   * the start of a frame, which then draws: a frame is never shown empty.
-   * (A ResizeObserver hears of a new size only after that frame's drawing,
-   * just before it is shown, which is what made the scene flash on resize.)
-   */
   const fit = (): boolean => {
     const w = Math.max(1, host.clientWidth);
     const h = Math.max(1, host.clientHeight);
@@ -1769,7 +1551,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     return true;
   };
 
-  // ------------------------------------------------------------------ input
   const raycaster = new THREE.Raycaster();
   raycaster.layers.set(FRONT);
   const pointer = new THREE.Vector2();
@@ -1791,7 +1572,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   renderer.domElement.addEventListener("pointermove", onMove);
   renderer.domElement.addEventListener("click", onClick);
 
-  // ------------------------------------------------------------------ frame
   const clock = new THREE.Clock();
   let rainTarget = 0;
   let disposed = false;
@@ -1813,7 +1593,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     const t = shared.uTime.value;
     let animating = false;
 
-    // The sun and moon: turning up out of the sea when the page opens, then keeping the clock's pace.
     if (skyState) {
       const rise = moving && shown.started ? 1 - Math.min(1, (shown.risen += dt) / RISE_SECONDS) : 0;
       const back = shown.from * rise * rise * rise;
@@ -1841,7 +1620,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       }
     }
 
-    // Rain fades in and out rather than switching.
     const opacity = rainUniforms.uOpacity!.value as number;
     const nextOpacity = opacity + (rainTarget - opacity) * Math.min(1, dt * 1.5);
     rainUniforms.uOpacity!.value = Math.abs(rainTarget - nextOpacity) < 0.004 ? rainTarget : nextOpacity;
@@ -1850,17 +1628,14 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     for (const f of flowers) {
       const target = f.shown && !f.picked ? 1 : 0;
       if (f.scale !== target) {
-        // Grow with a little overshoot; go quickly.
         const k = target ? 5 : 14;
         f.scale += (target - f.scale) * Math.min(1, dt * k);
         if (Math.abs(target - f.scale) < 0.004) f.scale = target;
         animating = true;
       }
-      // Sized every frame, not only while growing, so turning to portrait or back resizes a grown one too.
       const s = target ? f.scale * (1 + 0.25 * Math.sin(f.scale * Math.PI)) : f.scale;
       f.root.scale.setScalar(s * f.size * (portrait ? 1.35 : 1));
       f.root.visible = f.scale > 0.001;
-      // The whole flower leans with the gusts that cross the grass, stem and head together.
       if (moving && f.root.visible) {
         const p = f.root.position;
         const gust = gustAt(p.x, p.z, t);
@@ -1880,8 +1655,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       const p = loose[i]!;
       const age = t - p.born;
       const u = Math.min(1, age / p.fall);
-      // Falling as a petal does: side to side and tipping over, the swing
-      // dying away as it nears the grass, where it comes to lie flat.
       const swing = Math.sin(p.phase + u * Math.PI * 3);
       const calm = 1 - u;
       p.mesh.position.set(
@@ -1921,7 +1694,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       const first = !skyState;
       skyState = sky;
       if (first) {
-        // Whichever is up tonight (or today) starts just under the horizon and turns up to its place.
         const lead = sky.sun.elevation > -6 || sky.moon.elevation < 0 ? sky.sun.wheel : sky.moon.wheel;
         shown.from = moving ? nearest(lead, RISE_FROM) - lead : 0;
         shown.sun = sky.sun.wheel + shown.from;
@@ -1937,7 +1709,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       skyUniforms.uStars!.value = p.stars;
       skyUniforms.uSunStrength!.value = p.sunStrength;
       bodyUniforms.uMoonPhase!.value = sky.moon.phase;
-      // The moon comes out with the stars; by day it is not drawn.
       bodyUniforms.uMoonShow!.value = Math.min(1, p.stars * 1.8);
       (seaUniforms.uDeep!.value as THREE.Vector3).copy(v3(p.seaDeep));
       (seaUniforms.uShallow!.value as THREE.Vector3).copy(v3(p.seaShallow));
@@ -1946,7 +1717,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       shared.uCloud.value.copy(v3(p.cloud));
       shared.uCloudShade.value.copy(v3(p.cloudShade));
       shared.uSeaLight.value.copy(v3(p.seaShallow));
-      // Wind shows as pale lines by day and fainter ones at night.
       windColor.value.copy(v3(p.cloud)).lerp(new THREE.Vector3(1, 1, 1), 0.5);
       for (const w of windLines) w.uniforms.uOpacity!.value = 0.5 - 0.22 * p.stars;
       rainTarget = sky.raining ? 0.42 : 0;
@@ -1967,7 +1737,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       f.picked = true;
       dirty = true;
       if (!moving) return 0;
-      // Where the head was, in the cliff's own space, at the size it was drawn.
       const head = cliff.worldToLocal(f.hit.getWorldPosition(new THREE.Vector3()));
       const s = f.size * (portrait ? 1.35 : 1);
       const r = rng(index * 7 + Math.floor(shared.uTime.value * 10));
@@ -1978,7 +1747,6 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         const size = new THREE.Vector3(0.075 * s, 0.02 * s, 0.1 * s);
         mesh.scale.copy(size);
         const from = head.clone().add(new THREE.Vector3((r() - 0.5) * 0.08 * s, (r() - 0.5) * 0.05 * s, (r() - 0.5) * 0.08 * s));
-        // Down onto the grass near the stalk, nudged along by the wind and never out over the edge.
         const x = from.x + 0.05 + (r() - 0.5) * 0.3 * s;
         const z = from.z - r() * 0.22 * s;
         const to = new THREE.Vector3(x, ground(x, z) + 0.05, z);

@@ -22,7 +22,6 @@ export type WorkWithUsContent = {
 export type PartnersPageRow = {
   id: string;
   content: Record<string, WorkWithUsContent>;
-  /** Owner-editable Partner Agreement markdown; null ⇒ DEFAULT_AGREEMENT_MD (#87). */
   agreement_md?: string | null;
   updated_at: string;
 };
@@ -36,15 +35,11 @@ export type PartnerRow = {
   description: string | null;
   position: number;
   visible: boolean;
-  // Location columns (ADR 0012 — additive on `partners`, no rename)
   type: "own" | "partner";
   address: string | null;
   postal_code: string | null;
-  /** Takes appointment bookings. Independent of `visible` (/our-partners only). */
   bookable: boolean;
-  /** Set on a branch: another clinic of the partner whose main row this is (ADR 0037). */
   parent_id?: string | null;
-  /** The clinic's own name ("Novena"), shown after the partner's name when set. */
   branch_name?: string | null;
   created_at: string;
   updated_at: string;
@@ -54,7 +49,6 @@ export type ResolvedPartnersPage = WorkWithUsContent & {
   updatedAt: string;
 };
 
-/** One clinic of a partner on /our-partners: the main row's or a branch's place. */
 export type PartnerPlace = {
   id: string;
   branchName: string | null;
@@ -68,16 +62,9 @@ export type ResolvedPartner = {
   logoUrl: string | null;
   websiteUrl: string | null;
   description: string | null;
-  /** The partner's clinics that have an address, main location first. */
   locations: PartnerPlace[];
 };
 
-/**
- * Placeholder Partner Agreement copy (#87). Used when partners_page.agreement_md is
- * unset. PLACEHOLDER wording — owner/lawyer edits it in Admin → Partners → Agreement.
- * Section 3 is the MANDATORY AHPC §5.7/§5.7.1 patient-disclosure clause (ADR 0015);
- * it must be retained in any final copy.
- */
 export const DEFAULT_AGREEMENT_MD = `## 1. The Partner Programme
 
 [PLACEHOLDER] This agreement governs your participation in the Mpillow Partner programme operated by Mellow Life Pte Ltd, including referral attribution, commissions, and use of Mpillow materials.

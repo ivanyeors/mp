@@ -13,7 +13,6 @@ interface ShopCtaSectionProps {
 export function ShopCtaSection({ section, locale, messages: m }: ShopCtaSectionProps) {
   const content = section.content as ShopCtaContent;
   const buttonUrl = content.buttonUrl || `/${locale}/shop`;
-  // Was a hardcoded English literal, so the zh-CN page shipped an English button (slice 03).
   const buttonLabel = content.buttonLabel || m.common.shopNow;
 
   return (

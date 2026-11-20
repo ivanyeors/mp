@@ -11,12 +11,6 @@ import { AiWritingSettingsSchema } from "@/lib/ai/writing-settings";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * General → AI writing (PRD-campaign-email-editor slice 16): the six
- * `site_settings` AI writing reads, where Claude's credentials come from, and
- * this month's use. Seeing and changing them need `api-configs`, the General
- * page's own key. The Claude API key is saved by /api/settings/claude-key.
- */
 export async function GET() {
   try {
     await requireAdminContext("api-configs");
@@ -26,7 +20,6 @@ export async function GET() {
   const admin = supabaseAdmin();
   const read = await readAiWritingSettings(admin);
   if (!read.ok) return NextResponse.json({ error: read.error }, { status: 500 });
-  // The settings still load when the month's use can't be read.
   const usage = await readAiUsageThisMonth(admin).catch((err: unknown) => {
     console.error("[ai-writing] usage read failed:", err instanceof Error ? err.message : err);
     return null;

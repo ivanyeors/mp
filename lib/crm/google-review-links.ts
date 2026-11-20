@@ -1,23 +1,3 @@
-/**
- * Linking a Google review to a Customer (PRD customer-crm slice 12, ADR 0028
- * (k)): the only writes to `customer_google_reviews` and
- * `customer_google_review_rejections`, each one SQL function
- * (20261020134000_customer_google_reviews.sql).
- *
- * Only a Staff action links a review (README, seventh hazard). These run only
- * from the Admin Panel routes under `app/api/settings/customers/google-reviews`,
- * which check `customers-edit` and write the Audit Log. The Google sync, the
- * crons and the Telegram handler never import this file;
- * lib/crm/__tests__/google-review-links-guard.test.ts fails if one does.
- *
- *  - **Link**: a review belongs to at most one Customer. Linking it again is
- *    refused, and the link that holds it is returned to show.
- *  - **Unlink**: removes the link and records the pair as rejected, so it is
- *    not suggested again.
- *  - **Not them**: records the pair as rejected. Refused for a linked pair
- *    (unlink it instead).
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CurrentGoogleReviewLink } from "@/lib/crm/reviews";
 
@@ -36,15 +16,8 @@ export type LinkResult =
   | { ok: false; reason: "already_linked"; current: CurrentGoogleReviewLink }
   | { ok: false; reason: "not_found" };
 
-/** Postgres refused a reference: the review or the Customer does not exist. */
 const isMissingReference = (e: { code?: string } | null) => e?.code === "23503";
 
-/**
- * Links `reviewId` to `customerId`, as the profile `profileId` (null on a
- * shared login where nobody chose one). One statement claims the review, so
- * of two Staff linking it at once exactly one wins and the other is shown the
- * winner.
- */
 export async function linkGoogleReview(
   admin: SupabaseClient,
   input: { reviewId: string; customerId: string; how: LinkHow; profileId: string | null },
@@ -79,7 +52,6 @@ export async function linkGoogleReview(
   };
 }
 
-/** Unlinks `reviewId` from `customerId`; false when that link does not exist. */
 export async function unlinkGoogleReview(
   admin: SupabaseClient,
   input: { reviewId: string; customerId: string; profileId: string | null },
@@ -95,7 +67,6 @@ export async function unlinkGoogleReview(
 
 export type RejectResult = "rejected" | "linked" | "not_found";
 
-/** *Not them*: never suggest `customerId` for `reviewId` again. */
 export async function rejectGoogleReviewMatch(
   admin: SupabaseClient,
   input: { reviewId: string; customerId: string; profileId: string | null },

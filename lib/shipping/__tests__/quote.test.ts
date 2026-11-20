@@ -10,7 +10,6 @@ import { DEFAULT_SHIPPING_SETTINGS } from "@/lib/shipping/settings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 import type { RatesResult, ShippableLine, ShippingSettings, TypeBoxes } from "@/lib/shipping/types";
 
-/** In-memory `shipping_rate_quotes`, enough of the query builder for the quote service. */
 function fakeAdmin() {
   const rows: Array<Record<string, unknown>> = [];
   const admin = {
@@ -56,7 +55,6 @@ const settings: ShippingSettings = {
   handling_days: 1,
 };
 
-/** The courier account doc's default sender address. */
 const sender: EasyshipAddress = {
   line_1: "1 Office Road",
   line_2: null,

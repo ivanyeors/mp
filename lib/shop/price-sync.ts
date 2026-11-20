@@ -3,7 +3,7 @@ import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 
 export type PriceSyncResult = {
   synced: number;
-  unresolvable: string[]; // variant IDs with no resolvable costing source
+  unresolvable: string[];
   stripeSync: boolean;
 };
 
@@ -18,15 +18,6 @@ type VariantRow = {
 export type PriceRow = { msrp: string | number | null; compare_at_price?: string | number | null };
 type BomLine = { item_id: number; quantity: number };
 
-// ── Pure resolution functions (testable without DB) ────────────────────────
-
-/**
- * Resolve the costing price row for a variant. Resolution order:
- *   1. price_key   → direct product_prices / item:{id} lookup (explicit override)
- *   2. pillow_product_id → product_prices WHERE kind='pillow'
- *   3. option1 in ('short','medium','long') → product_prices WHERE kind='bolster'
- *   4. item_id → item_prices (single-item / accessory products)
- */
 export function resolveVariantPriceRow(
   variant: Pick<VariantRow, "price_key" | "pillow_product_id" | "option1" | "item_id">,
   priceByKey: Map<string, PriceRow>,
@@ -44,9 +35,6 @@ export function resolveVariantPriceRow(
   return row;
 }
 
-/**
- * Resolve MSRP for a variant. See resolveVariantPriceRow for resolution order.
- */
 export function resolveVariantPrice(
   variant: Pick<VariantRow, "price_key" | "pillow_product_id" | "option1" | "item_id">,
   priceByKey: Map<string, PriceRow>,
@@ -60,10 +48,6 @@ export function resolveVariantPrice(
   return Number.isFinite(v) ? v : null;
 }
 
-/**
- * Resolve compare-at price from the same costing source as MSRP.
- * Returns null when the source has no compare-at set.
- */
 export function resolveVariantCompareAt(
   variant: Pick<VariantRow, "price_key" | "pillow_product_id" | "option1" | "item_id">,
   priceByKey: Map<string, PriceRow>,
@@ -77,20 +61,12 @@ export function resolveVariantCompareAt(
   return Number.isFinite(v) ? v : null;
 }
 
-/**
- * Resolve BOM cost for a variant. Resolution order:
- *   1. item_id (direct item link, e.g. accessories) → item_prices.cost_price
- *   2. pillow_product_id → bom_lines → sum(cost_price * quantity)
- *   3. option1 for bolster → bolster_bom_lines → sum(cost_price * quantity)
- * Returns null if any BOM component is missing a cost.
- */
 export function resolveVariantCost(
   variant: Pick<VariantRow, "item_id" | "pillow_product_id" | "option1">,
   bomByPillow: Map<number, BomLine[]>,
   bomByBolster: Map<string, BomLine[]>,
   costByItem: Map<number, number>,
 ): number | null {
-  // Direct item link (accessories / single-item)
   if (variant.item_id != null && variant.pillow_product_id == null) {
     const cost = costByItem.get(variant.item_id);
     return cost ?? null;
@@ -111,15 +87,6 @@ export function resolveVariantCost(
   return total;
 }
 
-// ── DB-backed sync ─────────────────────────────────────────────────────────
-
-/**
- * Costings, resolved into the maps `resolveVariantPrice` consumes.
- *
- * Exported so `scripts/costings-sync-prices.ts` previews exactly what the sync will
- * write instead of hand-copying this — a copy had already drifted on compare-at and
- * on which products it enumerated, while claiming to be "the same resolution".
- */
 export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdmin>) {
   const [
     { data: productPrices },
@@ -135,16 +102,9 @@ export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdm
     admin.from("items").select("id, price_family").not("price_family", "is", null),
   ]);
 
-  // A premium pillow has one price row per case fabric family. The storefront sells
-  // it as its BOM ships it, so the shelf price is the row matching the BOM's own
-  // default case — NOT whichever of the two rows happens to be read last, which is
-  // how XL came to be listed at its 1000 Fibrecool price while shipping linen.
   const familyByItem = new Map<number, string>(
     (caseItems ?? []).map((i) => [Number(i.id), String(i.price_family)]),
   );
-  // Sorted so a BOM carrying two familied lines resolves the same way every run;
-  // `bom_lines` comes back unordered, and last-write-wins over it is the same class
-  // of nondeterminism this guard exists to remove.
   const defaultFamilyByPillow = new Map<number, string>();
   for (const b of [...(bomLines ?? [])].sort((x, y) => Number(x.item_id) - Number(y.item_id))) {
     const family = familyByItem.get(Number(b.item_id));
@@ -164,16 +124,9 @@ export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdm
       p.variant != null &&
       p.variant !== (defaultFamilyByPillow.get(Number(p.product_id)) ?? null);
 
-    // `price_key` is resolved BEFORE the per-product map, so a variant pinned to a
-    // non-default family key would walk straight past the guard below and list, say,
-    // premium S at its 430 Fibrecool price while the BOM ships a 72 linen case.
     if (!isNonDefaultPillowFamily) priceByKey.set(p.key, row);
 
     if (p.kind === "pillow" && p.product_id != null) {
-      // An unkeyed row (basic) always wins; a keyed row only when it is the default.
-      // No fallback to "some other row": if the BOM's case has no family, or no row
-      // matches it, the variant reports as unresolvable rather than listing a price
-      // the configurator would refuse to honour.
       if (!isNonDefaultPillowFamily) priceByPillowProduct.set(p.product_id, row);
     }
     if (p.kind === "bolster" && p.variant) priceByBolsterVariant.set(p.variant, row);
@@ -197,13 +150,8 @@ export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdm
   };
 }
 
-/**
- * Resolve MSRP + BOM cost + compare-at from costings tables for all variants of a product,
- * write price / cost_price / compare_at_price, then push to Stripe.
- *
- * ponytail: loads full BOM + item_prices tables (small, < 500 rows).
- * Upgrade path: filter by relevant item IDs if tables grow large.
- */
+// ponytail: loads full BOM + item_prices tables (small, < 500 rows). Upgrade path: filter by
+// relevant item IDs if tables grow large.
 export async function syncVariantPricesFromCostings(productId: string): Promise<PriceSyncResult> {
   const admin = supabaseAdmin();
 
@@ -234,8 +182,6 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
     bomByBolster.set(b.variant, list);
   }
 
-  // priceByItem and the `item:{id}` keys are built by loadCostingsPriceMaps; only
-  // COGS is local to this function.
   const costByItem = new Map<number, number>();
   for (const ip of itemPrices ?? []) {
     if (ip.cost_price != null) costByItem.set(ip.item_id, parseFloat(String(ip.cost_price)));
@@ -271,14 +217,8 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
   return { synced, unresolvable, stripeSync };
 }
 
-/**
- * Sync all auto-generated products. Called from costings save so any MSRP
- * edit propagates to storefront prices immediately.
- *
- * ponytail: syncs all auto-generated products (typically 2–3); fine for this
- * table size. Upgrade path: pass affected product_price keys and resolve
- * affected products selectively.
- */
+// ponytail: syncs all auto-generated products (typically 2–3); fine for this table size. Upgrade
+// path: pass affected product_price keys and resolve affected products selectively.
 export async function syncAllAutoGeneratedProductPrices(): Promise<PriceSyncResult[]> {
   const admin = supabaseAdmin();
   const { data: products } = await admin

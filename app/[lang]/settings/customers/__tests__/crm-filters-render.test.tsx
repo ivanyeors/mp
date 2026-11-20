@@ -3,12 +3,6 @@ import { renderToString } from "react-dom/server";
 import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import { DEFAULT_CUSTOMER_FILTERS, parseCustomerFilters, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
-/**
- * The Customers list's CRM filters (CRM slice 04): the mega filter's groups, the
- * active-filter summary with *Clear all*, the *ignored* note, and the *Last
- * order* column. The list opens from a link in the state that link describes.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -17,7 +11,6 @@ vi.mock("next/navigation", () => ({
 const { CustomersClient } = await import("../customers-client");
 const { CustomerFilterGroup } = await import("../customer-filters-panel");
 
-/** One group of the mega filter, as it renders inside the open panel. */
 const groupFor = (
   group: "stage" | "purchases" | "reach" | "account" | "reviews",
   filters: Partial<CustomerListFilters>,
@@ -32,7 +25,6 @@ const groupFor = (
     />,
   );
 
-/** A list URL's filters, in one group of the mega filter. */
 const groupForUrl = (group: Parameters<typeof groupFor>[0], url: string, campaigns?: { id: string; name: string }[]) =>
   groupFor(group, parseCustomerFilters(new URLSearchParams(url)).filters, campaigns);
 
@@ -97,7 +89,6 @@ const row = (over: Partial<CustomerOverviewRow>): CustomerOverviewRow => ({
   ...over,
 });
 
-/** The list as the page renders it for `url`: its filters, and what it dropped. */
 const listFor = (url: string, rows: CustomerOverviewRow[] = [row({})]) => {
   const { filters, ignored } = parseCustomerFilters(new URLSearchParams(url));
   return renderToString(
@@ -112,7 +103,6 @@ const listFor = (url: string, rows: CustomerOverviewRow[] = [row({})]) => {
 describe("Customers list: CRM filters", () => {
   it("opens a link with its filters in the panel and the summary", () => {
     const html = listFor("bought=premium&last_order=over:12&readjusted=never");
-    // Filters opens the filters page with the same parameters; the chips say what is set.
     expect(html).toContain('href="/en-US/settings/customers/filters?bought=premium&amp;last_order=over%3A12&amp;readjusted=never"');
     const purchases = groupForUrl("purchases", "bought=premium&last_order=over:12&readjusted=never");
     expect(purchases).toContain('aria-label="Last order"');
@@ -121,7 +111,6 @@ describe("Customers list: CRM filters", () => {
     expect(html).toContain("Last order over a year ago");
     expect(html).toContain("Never re-adjusted");
     expect(html).toContain("Clear all");
-    // The panel's count: three of its filters are set.
     expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>3</);
   });
 
@@ -157,7 +146,6 @@ describe("Customers list: CRM filters", () => {
     expect(groupForUrl("account", "points=has")).toContain('aria-label="Points"');
     expect(html).toContain("Has points");
     expect(listFor("points=none")).toContain("No points");
-    // The retired voucher filter is gone from the panel.
     expect(groupForUrl("account", "points=has")).not.toMatch(/voucher/i);
   });
 
@@ -174,7 +162,6 @@ describe("Customers list: CRM filters", () => {
   });
 });
 
-// PRD-crm-retention-loop slice 03: the Lifecycle stage.
 describe("Customers list: Lifecycle stage", () => {
   it("adds a Stage column, with each stage's sub-status, a Shopify-only buyer's missing dates and when a Lost one unsubscribed", () => {
     const html = listFor("", [
@@ -191,7 +178,6 @@ describe("Customers list: Lifecycle stage", () => {
     expect(html).toContain("Repeat purchases · No dates yet");
     expect(html).toContain(">Lost<");
     expect(html).toContain("Unsubscribed 2 Sept 2026");
-    // On phones too, beside the badge in the Name cell, not only in the md+ Stage column.
     const nameCells = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]).filter((c) => c.includes("md:hidden"));
     expect(nameCells.some((c) => c.includes("Awaiting delivery"))).toBe(true);
     expect(nameCells.some((c) => c.includes("No dates yet"))).toBe(true);
@@ -210,13 +196,11 @@ describe("Customers list: Lifecycle stage", () => {
 
   it("puts each row's cells under their own headers", () => {
     const html = listFor("", [row({ lifecycle_stage: "lost", lifecycle_detail: null, purchases: 3 })]);
-    // `<th ` and `<th>`, not `<thead`.
     const headers = [...html.matchAll(/<th[\s>][^>]*>?([^<]*)</g)].map((m) => m[1]);
     const body = html.slice(html.indexOf("<tbody"));
     const cells = [...body.matchAll(/<td[^>]*>/g)].map((m) => m.index!);
     const cellOf = (at: number) => cells.filter((i) => i < at).length - 1;
     expect(cellOf(body.indexOf("ana@x.test</td>"))).toBe(headers.indexOf("Email"));
-    // The last badge: the first is the phone layout's, inside the Name cell.
     expect(cellOf(body.lastIndexOf(">Lost<"))).toBe(headers.indexOf("Stage"));
   });
 
@@ -231,9 +215,7 @@ describe("Customers list: Lifecycle stage", () => {
     expect(html).toContain("Stage: At risk or Lost");
     expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>1</);
     const stage = groupForUrl("stage", "stage=at-risk,lost");
-    // Each stage box says its rule.
     expect(stage).toContain("Unsubscribed from marketing, with no purchase or attended booking since");
-    // At risk and Lost, and At risk's Lapsed, implied by its stage and locked (slice 04).
     expect(stage.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(3);
     expect(stage).toMatch(/<button[^>]*role="checkbox"[^>]*aria-checked="true"[^>]*disabled=""[^>]*id="[^"]*-stage-lapsed"/);
   });
@@ -248,13 +230,11 @@ describe("Customers list: Lifecycle stage", () => {
     const url = "stage=at-risk:lapsed&not_bought=mbolster&size=m&delivered=over:30";
     const stage = groupForUrl("stage", url);
     expect(stage).toContain("Over 24 months");
-    // Lapsed alone in Stage; Mbolster under Didn't buy, and M, in Purchases.
     expect(stage.match(/role="checkbox" aria-checked="true"/g)?.length).toBe(1);
     expect(groupForUrl("purchases", url).match(/role="checkbox" aria-checked="true"/g)?.length).toBe(2);
   });
 });
 
-// PRD-campaign-audiences slice 05: reach.
 describe("Customers list: Reach filters", () => {
   const CAMPAIGN = "0b5c6c1e-2a7d-4c4e-9f3a-1d2e3f4a5b6c";
   const reachFor = (url: string, shipsToUnknown: number | null = null) => {
@@ -278,7 +258,6 @@ describe("Customers list: Reach filters", () => {
     for (const control of ["Email consent", "Ships to", "Language", "Last emailed", "Campaign", "What they did with the campaign"]) {
       expect(reach).toContain(`aria-label="${control}"`);
     }
-    // Points never expire (ADR 0030 decision 17), so there is nothing to filter on.
     expect(reach).not.toContain("Points expire");
     expect(html).toContain("Ships to Singapore");
     expect(html).toContain("Not emailed in 30 days");

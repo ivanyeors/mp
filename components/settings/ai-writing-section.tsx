@@ -31,16 +31,10 @@ import {
   type AiWritingSettings,
 } from "@/lib/ai/writing-settings";
 
-// PRD-campaign-email-editor slice 16: the owner sets AI writing's model and
-// limits once, here; every ✨ call reads them on the server
-// (/api/settings/ai-writing, lib/ai/settings.ts). The key is entered in the
-// Claude API key card above (claude-key-section.tsx).
-
 const tokens = (n: number) => n.toLocaleString("en-SG");
 
 const price = (m: AiModel) => `US$${m.inputPerMillionUsd} in and US$${m.outputPerMillionUsd} out per million tokens.`;
 
-/** The fields, status and read-out, without the loading. Exported for tests. */
 export function AiWritingForm({
   value,
   onChange,
@@ -105,7 +99,6 @@ export function AiWritingForm({
           min={range.min}
           max={range.max}
           value={Number.isNaN(value[field]) ? "" : value[field]}
-          // An emptied box is no number, which Save refuses, so what is typed next is the limit.
           onChange={(e) => setField(field, e.target.value === "" ? NaN : Number(e.target.value))}
         />
         <p className="text-xs text-muted-foreground">
@@ -233,7 +226,6 @@ export function AiWritingForm({
 
 type LoadedState = { configured: boolean; usage: AiUsageThisMonth | null };
 
-/** `configured`, when the page knows it, takes the place of what the section loaded, so a key saved above shows here at once. */
 export function AiWritingSection({ configured }: { configured?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AiWritingSettings>(AI_WRITING_DEFAULTS);

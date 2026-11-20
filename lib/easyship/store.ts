@@ -6,7 +6,6 @@ import { typeBoxes } from "@/lib/shipping/parcels";
 import { EasyshipSettingsSchema, type EasyshipAddress, type EasyshipSettings } from "./schema";
 import type { SyncReport } from "./sync-report";
 
-/** Desired state + sync bookkeeping live in the `easyship` row of api_configs (service-role only). */
 const SLUG = "easyship";
 
 export type EasyshipSyncState = {
@@ -16,7 +15,6 @@ export type EasyshipSyncState = {
   easyship_company_id: string | null;
 };
 
-/** `settingsError` is set when a doc is saved but fails the schema; `settings` is then null and live rates are off. */
 export type EasyshipConfig = { settings: EasyshipSettings | null; sync: EasyshipSyncState; settingsError?: string | null };
 
 type Row = { settings?: unknown; sync?: Partial<EasyshipSyncState> };
@@ -52,7 +50,6 @@ export async function readEasyshipConfig(): Promise<EasyshipConfig> {
   return parseRow(await readRow());
 }
 
-/** The doc address flagged default sender: where every quote and label ships from. Null when none. */
 export async function readSenderAddress(): Promise<EasyshipAddress | null> {
   const { settings } = await readEasyshipConfig();
   return settings?.addresses.find((a) => a.default_for.sender) ?? null;
@@ -72,7 +69,6 @@ export async function writeEasyshipConfig(patch: Partial<EasyshipConfig>): Promi
       slug: SLUG,
       name: "Easyship",
       base_url: easyshipConfig()?.baseUrl ?? "https://public-api.easyship.com/2024-09",
-      // Unpatched settings are written back raw, so a sync write never nulls an invalid doc.
       config: { settings: patch.settings ?? raw.settings ?? null, sync: next.sync },
       is_active: true,
     },
@@ -83,7 +79,6 @@ export async function writeEasyshipConfig(patch: Partial<EasyshipConfig>): Promi
   return next;
 }
 
-/** Each item type's box for quotes and labels. Cached behind `api-configs`, which every doc write invalidates. */
 export const readTypeBoxes = unstable_cache(
   async () => typeBoxes((await readEasyshipConfig()).settings),
   ["easyship-type-boxes"],

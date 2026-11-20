@@ -13,11 +13,6 @@ const base = {
   total: 30,
 };
 
-/**
- * A paid re-adjustment is an Order with only a Service fee line (ADR 0024):
- * nothing ships, so it gets the receipt and not the order confirmation's
- * delivery promises.
- */
 describe("planOrderConfirmedEmails", () => {
   it("sends only the receipt for a service-only Order", () => {
     const plans = planOrderConfirmedEmails({

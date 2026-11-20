@@ -87,7 +87,6 @@ const SPLIT_HERO_EXTRACTORS: Record<string, SplitHeroExtractor> = {
       table: requireTable(messages, "sizeTable"),
     };
   },
-  // Size Matters
   sizeMattersIntro(messages) {
     return {
       title: requireString(messages, "sectionSizeMattersTitle"),
@@ -118,7 +117,6 @@ const SPLIT_HERO_EXTRACTORS: Record<string, SplitHeroExtractor> = {
       paragraphs: requireStringArray(messages, "configurationsParagraphs"),
     };
   },
-  // Ambassadors
   ambassadorsHero(messages) {
     return {
       eyebrow: optionalString(messages, "heroLabel"),

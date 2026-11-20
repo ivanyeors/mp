@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { AftercareView } from "@/lib/aftercare/state";
 
-/**
- * The Customer page's Aftercare switches (CRM slice 13): a view-only role sees
- * both switches, their last change, the open STOP request and the history, with
- * the switches disabled.
- */
-
 const { AftercareCard } = await import("../[id]/aftercare-card");
 
 const view: AftercareView = {

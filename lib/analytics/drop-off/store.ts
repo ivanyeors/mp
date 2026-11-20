@@ -6,12 +6,6 @@ import {
   type DropOffStep,
 } from "@/lib/analytics/drop-off/reasons";
 
-/**
- * Reads and writes `drop_off_reasons` (PRD-crm-retention-loop slice 10).
- * Server-only: the table is RLS-on with no policy, read with the service role
- * from the ingest route, the decline route and the Analytics card's action.
- */
-
 export interface DropOffInsert {
   step: DropOffStep;
   reason: DropOffReason;
@@ -25,10 +19,6 @@ export interface DropOffInsert {
 const isUniqueViolation = (error: { code?: string; message?: string }) =>
   error.code === "23505" || /duplicate key|unique/i.test(error.message ?? "");
 
-/**
- * Records one answer. A second answer for the same Visit (or Result) and step
- * is a unique violation: it was already recorded, which is not an error.
- */
 export async function recordDropOffReason(
   admin: SupabaseClient,
   row: DropOffInsert,
@@ -49,19 +39,10 @@ export interface DropOffRow {
 export interface DropOffSummary {
   days: number;
   total: number;
-  /** Every reason, most answered first, with each step's share of it. */
   byReason: { reason: DropOffReason; count: number; byStep: Record<DropOffStep, number> }[];
-  /** Answers per step. */
   byStep: Record<DropOffStep, number>;
-  /**
-   * Answers per week (weeks start on Monday in Singapore), oldest first, every
-   * week in the window. The first week starts before the window and the last
-   * is still running, so either may be `partial`.
-   */
   weeks: { weekStart: string; count: number; partial: boolean }[];
-  /** The latest typed answers, newest first. */
   latestText: { step: DropOffStep; reason: DropOffReason; text: string; at: string }[];
-  /** Set when the window held more answers than were read: the newest `capped` were counted. */
   capped?: number;
 }
 
@@ -70,20 +51,16 @@ export type SummaryDays = (typeof SUMMARY_DAYS)[number];
 const LATEST_TEXT = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
-/** Singapore keeps UTC+8 all year, so a fixed offset is its wall clock. */
 const SGT_OFFSET_MS = 8 * 60 * 60 * 1000;
 
-/** Monday of the Singapore week holding `ms`, as `YYYY-MM-DD`. */
 export function weekStartOf(ms: number): string {
   const d = new Date(ms + SGT_OFFSET_MS);
   const sinceMonday = (d.getUTCDay() + 6) % 7;
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - sinceMonday)).toISOString().slice(0, 10);
 }
 
-/** The instant a `weekStartOf` week begins: Monday 00:00 in Singapore. */
 const weekStartMs = (weekStart: string) => Date.parse(`${weekStart}T00:00:00Z`) - SGT_OFFSET_MS;
 
-/** Pure: the Analytics card's numbers from the window's rows. */
 export function summariseDropOffs(rows: readonly DropOffRow[], { days, now }: { days: number; now: Date }): DropOffSummary {
   const since = now.getTime() - days * DAY_MS;
   const inWindow = rows.filter((r) => {
@@ -135,13 +112,9 @@ export function summariseDropOffs(rows: readonly DropOffRow[], { days, now }: { 
   };
 }
 
-// Supabase answers at most 1,000 rows and drops the rest without an error, so
-// the window is paged, newest first, with `id` last for a total order.
 const PAGE_ROWS = 1000;
-/** More than a year of answers at the rate a person is asked; past it, the newest are counted and the card says so. */
 export const SUMMARY_ROW_CAP = 50_000;
 
-/** The window's rows, paged, then summarised. */
 export async function readDropOffSummary(
   admin: SupabaseClient,
   { days, now = new Date(), cap = SUMMARY_ROW_CAP }: { days: number; now?: Date; cap?: number },

@@ -1,16 +1,4 @@
-/**
- * Test-only helpers for the media usage resolver.
- *
- * Not a test file (vitest only collects `*.test.ts`): it holds the seeded row
- * generator and a fake PostgREST query layer shared by the usage index and
- * single-asset equivalence suites.
- */
-
 import type { AssetRef, UsageConsumerRows } from "@/lib/media/image-usages";
-
-/* ------------------------------------------------------------------ *
- * Deterministic PRNG
- * ------------------------------------------------------------------ */
 
 export type Rng = {
   next(): number;
@@ -36,19 +24,12 @@ export function makeRng(seed: number): Rng {
   };
 }
 
-/* ------------------------------------------------------------------ *
- * Synthetic consumer rows
- * ------------------------------------------------------------------ */
-
 export type FakeRow = Record<string, unknown>;
 export type FakeTables = Record<string, FakeRow[]>;
 
 export type UsageFixture = {
-  /** Asset refs to resolve, including duplicates and null hosted_url. */
   assets: AssetRef[];
-  /** DB-shaped rows for the fake query layer. */
   tables: FakeTables;
-  /** The same rows as the matchers see them after a full scan. */
   rows: UsageConsumerRows;
 };
 
@@ -64,12 +45,6 @@ export type FixtureOptions = {
   rowsPerTable?: number;
 };
 
-/**
- * Builds a consumer set designed to exercise every matcher branch: exact URL
- * hits, media_asset_id hits, ids and URLs buried in JSON, URLs embedded in blog
- * bodies (substring, not equality), assets sharing a hosted_url, assets whose
- * URL is a prefix of another asset's URL, and rows that match nothing.
- */
 export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): UsageFixture {
   const rng = makeRng(seed);
   const assetCount = opts.assetCount ?? 40;
@@ -80,12 +55,11 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
   for (let i = 0; i < assetCount; i++) {
     const id = uuid(rng);
     let hosted: string | null = `${base}/img-${i}.webp`;
-    if (i % 11 === 0) hosted = null; // id-only asset
-    if (i % 13 === 0) hosted = `${base}/img-${i}.webp?v=2`; // superstring of a sibling URL
-    if (i % 17 === 0 && assets.length > 0) hosted = assets[0].hosted_url; // shared URL
+    if (i % 11 === 0) hosted = null;
+    if (i % 13 === 0) hosted = `${base}/img-${i}.webp?v=2`;
+    if (i % 17 === 0 && assets.length > 0) hosted = assets[0].hosted_url;
     assets.push({ id, hosted_url: hosted });
   }
-  // Duplicated ref, and a same-id/different-url ref: both must resolve as before.
   assets.push({ ...assets[1] });
   assets.push({ id: assets[2].id, hosted_url: `${base}/unreferenced.webp` });
 
@@ -94,7 +68,6 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
   const strangerUrls = [`${base}/stranger-a.webp`, `${base}/stranger-b.png`, ""];
   const strangerIds = [uuid(rng), uuid(rng)];
 
-  /** A URL that is usually, but not always, one of the indexed assets'. */
   const someUrl = (): string | null => {
     const r = rng.next();
     if (r < 0.45) return rng.pick(knownUrls);
@@ -162,7 +135,6 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
     image_url: someUrl(),
     content: blogContent(),
     media_asset_id: someId(),
-    // Columns the matchers must never need:
     author_id: `author-${i}`,
     published_at: "2026-01-01",
   }));
@@ -184,7 +156,6 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
         : `url(${someUrl() ?? ""}) center`,
     updated_at: "2026-01-01",
   }));
-  // Non-landing keys exist in the table but are excluded by the base filter.
   siteSettings.push({ key: "checkout_mode", value: rng.pick(knownUrls) });
 
   const landingSections: FakeRow[] = Array.from({ length: perTable }, (_, i) => ({
@@ -241,8 +212,6 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
     primary_media_asset_id: someId(),
   }));
 
-  // Email campaigns place images by asset id in their blocks; a URL or an id in
-  // their words is not a use, and a legacy campaign has no content at all.
   const emailCampaigns: FakeRow[] = Array.from({ length: Math.ceil(perTable / 2) }, (_, i) => ({
     id: `campaign-${seed}-${i}`,
     name: `Campaign ${i}`,
@@ -294,16 +263,11 @@ export function makeUsageFixture(seed: number, opts: FixtureOptions = {}): Usage
       (i) => i.primary_media_asset_id != null,
     ) as UsageConsumerRows["items"],
     emailCampaigns: emailCampaigns.filter((c) => c.content != null) as UsageConsumerRows["emailCampaigns"],
-    // Never scanned; present so the exclusion stays covered.
     orderItems: [{ id: "oi1", image_url: knownUrls[0] ?? null }],
   };
 
   return { assets, tables, rows };
 }
-
-/* ------------------------------------------------------------------ *
- * Fake PostgREST query layer
- * ------------------------------------------------------------------ */
 
 type Predicate = (row: FakeRow) => boolean;
 
@@ -349,7 +313,6 @@ function evaluate(row: FakeRow, column: string, op: string, value: string): bool
   }
 }
 
-/** Splits an `or=(...)` body on top-level commas, honouring quoted values. */
 function splitOrTerms(filters: string): string[] {
   const out: string[] = [];
   let cur = "";
@@ -403,7 +366,6 @@ function parseOrTerm(term: string): { column: string; op: string; value: string 
   };
 }
 
-/** Top-level column names of a select list ("items ( name )" → "items"). */
 function selectColumns(select: string): string[] {
   const out: string[] = [];
   let cur = "";
@@ -430,7 +392,6 @@ function selectColumns(select: string): string[] {
 }
 
 export type FakeSupabaseOptions = {
-  /** Simulate a PostgREST build that rejects `column::text` filters. */
   rejectCastFilters?: boolean;
 };
 

@@ -5,9 +5,7 @@ import type { PackageType, ShippingQuoteOptionView, ShippingQuoteResponse } from
 import { isPostalReady } from "@/lib/shipping/countries";
 
 export interface ShippingQuoteRequest {
-  /** A cart; priced server-side from the variants. */
   items?: Array<{ variant_id: string; quantity: number }>;
-  /** No cart: one unit boxed as this product type (the estimator), or one of each (a customisation). */
   profile?: PackageType | PackageType[];
   country: string;
   postalCode: string;
@@ -17,11 +15,9 @@ export interface ShippingQuoteRequest {
 
 export interface ShippingQuoteState {
   options: ShippingQuoteOptionView[];
-  /** False when live rates were wanted but unavailable; live methods are then left out of the options. */
   live: boolean;
   loading: boolean;
   error: string | null;
-  /** True once a quote has come back for the current request. */
   ready: boolean;
 }
 
@@ -29,14 +25,7 @@ const IDLE: ShippingQuoteState = { options: [], live: false, loading: false, err
 
 export { isPostalReady };
 
-/**
- * Live shipping options for a cart or a product type to an address. Debounced
- * while the shopper types, and a newer request always wins over a slower older
- * one. Pass null to stay idle (e.g. until there is a postal code).
- */
 export function useShippingQuote(request: ShippingQuoteRequest | null, debounceMs = 500): ShippingQuoteState {
-  // The request as a stable string: the effect re-runs when its content changes,
-  // not when the caller builds a new object with the same content.
   const key =
     request && isPostalReady(request.postalCode, request.country)
       ? JSON.stringify({
@@ -51,8 +40,6 @@ export function useShippingQuote(request: ShippingQuoteRequest | null, debounceM
         })
       : null;
 
-  // The latest answer and the request it answers. "Loading" is derived — the
-  // current request has no answer yet — so nothing is set synchronously in the effect.
   const [result, setResult] = useState<{
     key: string;
     options: ShippingQuoteOptionView[];
@@ -99,7 +86,6 @@ export function useShippingQuote(request: ShippingQuoteRequest | null, debounceM
   if (!key) return IDLE;
   const current = result?.key === key;
   return {
-    // While a new request is in flight the previous answer stays on screen.
     options: result?.options ?? [],
     live: result?.live ?? false,
     loading: !current,
@@ -122,7 +108,6 @@ const ENGLISH_WINDOW: DeliveryWindowLabels = {
   range: "{min}–{max} business days",
 };
 
-/** "2–4 business days", "1 business day", "Same day", or null when the courier gives no estimate. */
 export function formatDeliveryWindow(
   min: number | null,
   max: number | null,

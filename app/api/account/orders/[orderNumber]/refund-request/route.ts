@@ -12,7 +12,6 @@ const BodySchema = z.object({
   note: z.string().max(1000).optional(),
 });
 
-/** US18: customer requests refund only after ship/delivery (Result orders). */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ orderNumber: string }> },

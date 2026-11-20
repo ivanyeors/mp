@@ -4,7 +4,6 @@ import { dropIndex, dropTargetFromElement, planPouchDrop, pouchDropDestination }
 
 const source = { section: "left", subSection: "front", slot: 2, depth: 0 } as const;
 
-/** A minimal element: `closest` walks a chain of tagged ancestors. */
 type FakeEl = { getAttribute: (name: string) => string | null; closest: (selector: string) => FakeEl | null; parent: FakeEl | null };
 function el(attrs: Record<string, string>, parent: FakeEl | null = null): FakeEl {
   const node: FakeEl = {
@@ -30,7 +29,6 @@ describe("pouchDropDestination", () => {
       cell: { section: "center", subSection: "middle" },
       layer: null,
     });
-    // Another cell of the same Section too — the drop can cross Sections or not.
     expect(pouchDropDestination(source, { kind: "cell", section: "left", subSection: "back" })).toEqual({
       cell: { section: "left", subSection: "back" },
       layer: null,

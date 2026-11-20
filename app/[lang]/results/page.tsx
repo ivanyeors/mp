@@ -5,7 +5,6 @@ import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/** Entry point: open the latest Result status page (or empty state). */
 export default async function ResultsIndexPage({
   params,
 }: {

@@ -10,18 +10,6 @@ import {
   type FollowUpScope,
 } from "@/lib/crm/followup-rules";
 
-/**
- * Follow-ups (CONTEXT.md; ADR 0028 (e)): a dated to-do about one Customer,
- * assigned to a **Staff profile**, in `customer_followups`. Only the service
- * role can read the table, so every read and write goes through here from an
- * Admin Panel route that has already checked the caller: `customers` to see
- * them (every follow-up, everyone's), `customers-edit` to change them.
- *
- * Who created or completed one is the profile the person works as
- * (`actingProfile`), which is attribution only.
- */
-
-/** At most this many rows in one Follow-ups tab list. */
 export const FOLLOW_UP_LIST_LIMIT = 200;
 
 type ProfileRef = { id: string; name: string; archived_at?: string | null };
@@ -43,7 +31,6 @@ type FollowUpRow = {
 
 const one = <T>(v: Embedded<T> | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
-/** Each profile column has its own embed: three foreign keys to `mp_staff`. */
 const FOLLOW_UP_COLUMNS =
   "id, customer_id, title, due_on, assigned_to_profile_id, created_at, done_at, " +
   "assignee:mp_staff!assigned_to_profile_id(id, name, archived_at), " +
@@ -79,7 +66,6 @@ function toListRow(row: FollowUpRow): FollowUpListRow {
   return { ...toFollowUp(row), customerName: name || c?.email || "Customer" };
 }
 
-/** A Customer's follow-ups: open first by due date, then the done ones. */
 export async function listCustomerFollowUps(customerId: string): Promise<CustomerFollowUp[]> {
   const { data, error } = await supabaseAdmin()
     .from("customer_followups")
@@ -90,10 +76,6 @@ export async function listCustomerFollowUps(customerId: string): Promise<Custome
   return sortFollowUps(((data ?? []) as unknown as FollowUpRow[]).map(toFollowUp));
 }
 
-/**
- * A Customer's follow-ups added or done at or before `before`, newest first:
- * the Customer timeline's bounded read, one stream per dated column.
- */
 export async function listFollowUpsByTime(
   customerId: string,
   column: "created_at" | "done_at",
@@ -111,13 +93,6 @@ export async function listFollowUpsByTime(
   return ((data ?? []) as unknown as FollowUpRow[]).map(toFollowUp);
 }
 
-/**
- * One list of the Follow-ups tab, open follow-ups only, by due date:
- *
- * - `mine`: assigned to `profileId` (none without a profile);
- * - `all`: everyone's, archived assignees included, so none is ever dropped;
- * - `overdue`: everyone's that were due before `today` (Singapore).
- */
 export async function listFollowUps(input: {
   scope: FollowUpScope;
   profileId: string | null;
@@ -133,7 +108,6 @@ export async function listFollowUps(input: {
   return { rows: sortFollowUps(rows).slice(0, FOLLOW_UP_LIST_LIMIT), truncated: rows.length > FOLLOW_UP_LIST_LIMIT };
 }
 
-/** The sidebar badge for one profile: its open follow-ups due today, and overdue. */
 export async function countDueFollowUps(profileId: string, today: string): Promise<FollowUpCounts> {
   const open = () =>
     supabaseAdmin()
@@ -149,11 +123,6 @@ export async function countDueFollowUps(profileId: string, today: string): Promi
 
 type MemberRow = { id: string; is_active: boolean; role: Embedded<RoleGrant> };
 
-/**
- * Who a follow-up may be given to: live Staff profiles whose **Member** is
- * active and holds `customers-edit`, so nobody is assigned one they cannot
- * close. By name. Archived profiles and view-only logins are left out.
- */
 export async function listAssignableProfiles(): Promise<FollowUpProfile[]> {
   const admin = supabaseAdmin();
   const { data: profiles, error } = await admin
@@ -182,7 +151,6 @@ export async function listAssignableProfiles(): Promise<FollowUpProfile[]> {
   return rows.filter((p) => canClose.has(p.admin_user_id)).map((p) => ({ id: p.id, name: p.name }));
 }
 
-/** Adds a follow-up. The caller has checked the Customer exists and the assignee may close it. */
 export async function createFollowUp(
   customerId: string,
   input: FollowUpInput,
@@ -203,7 +171,6 @@ export async function createFollowUp(
   return toFollowUp(data as unknown as FollowUpRow);
 }
 
-/** One of a Customer's follow-ups, or null. */
 export async function getFollowUp(customerId: string, followUpId: string): Promise<CustomerFollowUp | null> {
   const { data, error } = await supabaseAdmin()
     .from("customer_followups")
@@ -215,10 +182,6 @@ export async function getFollowUp(customerId: string, followUpId: string): Promi
   return data ? toFollowUp(data as unknown as FollowUpRow) : null;
 }
 
-/**
- * Marks an open follow-up done by `byProfileId`. Returns it, or null when it
- * was done already (or is gone), so two clicks record one completion.
- */
 export async function completeFollowUp(
   followUpId: string,
   byProfileId: string | null,
@@ -234,7 +197,6 @@ export async function completeFollowUp(
   return row ? toFollowUp(row) : null;
 }
 
-/** Gives an open follow-up to another profile. Null when it is done or gone. */
 export async function reassignFollowUp(followUpId: string, profileId: string): Promise<CustomerFollowUp | null> {
   const { data, error } = await supabaseAdmin()
     .from("customer_followups")
@@ -247,7 +209,6 @@ export async function reassignFollowUp(followUpId: string, profileId: string): P
   return row ? toFollowUp(row) : null;
 }
 
-/** Deletes a follow-up. False when it was not there. */
 export async function deleteFollowUp(customerId: string, followUpId: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin()
     .from("customer_followups")

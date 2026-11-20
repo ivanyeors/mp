@@ -1,18 +1,12 @@
-/**
- * Slice 09 acceptance criteria — runnable proof that each requirement holds.
- * Maps 1:1 to .claude/PRD-money-flow-traceability/issues/09-realized-margin.md
- */
 import { describe, it, expect } from "vitest";
 import { resolveOrderItemUnitCost } from "../order-cost";
 import { computeOrderMargin } from "../order-margins";
 
 describe("Slice 09 acceptance criteria", () => {
   it("AC1: order line stores unit_cost/total_cost frozen at checkout (unaffected by later cost changes)", () => {
-    // Snapshot is written once at checkout; stored values do not re-read variant.cost_price.
     const atCheckout = resolveOrderItemUnitCost({ variantCostPrice: 40, quantity: 2 });
     const afterCostChange = resolveOrderItemUnitCost({ variantCostPrice: 55, quantity: 2 });
     expect(atCheckout).toEqual({ unit_cost: 40, total_cost: 80 });
-    // Persisted row keeps atCheckout values even if variant cost later becomes 55.
     expect(atCheckout).not.toEqual(afterCostChange);
   });
 
@@ -35,7 +29,7 @@ describe("Slice 09 acceptance criteria", () => {
     expect(margin.discount).toBe(20);
     expect(margin.shipping).toBe(10);
     expect(margin.tax).toBe(18);
-    expect(margin.grossMargin).toBe(130); // (200-20) - 50
+    expect(margin.grossMargin).toBe(130);
     expect(margin.marginPct).toBeCloseTo(72.22, 1);
   });
 
@@ -87,12 +81,11 @@ describe("Slice 09 acceptance criteria", () => {
     const gross_margin = orders.reduce((s, o) => s + o.grossMargin, 0);
     const cogs = orders.reduce((s, o) => s + o.cogs, 0);
     const margin_pct = gross_margin + cogs > 0 ? (gross_margin / (gross_margin + cogs)) * 100 : null;
-    expect(gross_margin).toBe(100); // 70 + 30 realized, not MSRP-on-hand
-    expect(margin_pct).toBeCloseTo(66.67, 1); // 100 / (100 + 50) product revenue basis
+    expect(gross_margin).toBe(100);
+    expect(margin_pct).toBeCloseTo(66.67, 1);
   });
 
   it("AC5: customized order COGS is the cost of the build the sale deducts", () => {
-    // Chosen cover × 3 over a recipe protector, plus the default fillings.
     const result = resolveOrderItemUnitCost({
       variantCostPrice: 45,
       quantity: 1,
@@ -107,7 +100,6 @@ describe("Slice 09 acceptance criteria", () => {
         [10, 2],
       ]),
     });
-    // 3 × 8 + 12 + 10 × 2 = 56, whatever the Variant's own cost_price says
     expect(result.unit_cost).toBe(56);
     expect(result.total_cost).toBe(56);
   });

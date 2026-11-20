@@ -12,23 +12,6 @@ const ReleaseSchema = z.object({
   session_id: z.string().startsWith("cs_").max(255),
 });
 
-/**
- * Closes the Checkout behind an unpaid shop Order when the shopper leaves the
- * on-page payment step to edit their details (ADR 0053).
- *
- * Paying on our page means the Order and its Checkout Session exist before
- * the shopper pays, and "Edit details" sends them back to a form that makes a
- * new Order. Left alone, the old one would hold its reserved points until the
- * Session lapsed within the hour, so a shopper resubmitting with points would
- * be told they had none. This expires the Session and cancels the Order now,
- * which is exactly what `checkout.session.expired` would do later; that event
- * still arrives, finds the Order cancelled, and its points release is a replay
- * that writes nothing.
- *
- * The Session id is the capability token, as on the confirmation page: only
- * the browser that opened the Checkout has it. A paid, closed or unknown
- * Session is answered `released: false` and nothing changes.
- */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = ReleaseSchema.safeParse(body);
@@ -56,9 +39,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, released: false });
   }
 
-  // Close the Session first, so it cannot be paid after its Order is
-  // cancelled. A Session Stripe already completed is paid: leave it to the
-  // webhook, which confirms the Order.
   try {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -89,8 +69,6 @@ export async function POST(req: Request) {
     ).catch((err) => console.error(`[checkout/release] Timeline event failed for ${order.id}:`, err));
   }
 
-  // Not critical: the daily sweep releases any reservation on a cancelled
-  // Order that this misses.
   const released = await releasePoints(admin, order.id);
   if (released.ok && released.released) {
     await addOrderTimelineEvent(order.id, "points_released", "Points reserved at checkout returned", {}).catch(

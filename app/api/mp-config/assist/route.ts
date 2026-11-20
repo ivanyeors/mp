@@ -19,12 +19,6 @@ import { loadTemplateKeys, setTemplateKeys, templateIdsForKey } from "@/lib/fill
 
 type Scope = { kind: "pillow" | "bolster"; key: string };
 
-/**
- * A Filling Template is scoped by product kind + size/length key, and staff
- * reach this endpoint with whichever one their surface models. Shared by GET
- * and POST so a saved mix can never land under a scope the reader would not
- * offer back.
- */
 function resolveScope(sizeParam: string, lengthParam: string): Scope | null {
   if (lengthParam) {
     return isBolsterLength(lengthParam) ? { kind: "bolster", key: lengthParam } : null;
@@ -37,16 +31,7 @@ function resolveScope(sizeParam: string, lengthParam: string): Scope | null {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Staff assist data (slices 04/13). Staff-gated: guests get 401, never template
- * or inventory data. Query modes:
- *   ?size=M         → active size-scoped pillow Filling Templates + filling Items
- *   ?length=short   → active length-scoped bolster Filling Templates + filling Items
- *   ?templateId=12  → that template's spatial placements (pillow or bolster rows)
- */
 export async function GET(req: NextRequest) {
-  // Same permission the page gate uses, so a role that cannot enter assist mode
-  // cannot reach its data by calling the endpoint directly either.
   const denied = await requireAdmin("results");
   if (denied) return denied;
 
@@ -68,12 +53,7 @@ export async function GET(req: NextRequest) {
     if (!tpl || tpl.role !== "filling" || (tpl.kind !== "pillow" && tpl.kind !== "bolster")) {
       return NextResponse.json({ error: "Filling Template not found" }, { status: 404 });
     }
-    // Bolster templates use their own schema: slot rows only, never pillow enums.
     const table = tpl.kind === "bolster" ? "bolster_template_placements" : "filling_template_placements";
-    // row_index is the x-ray stack depth: a render-path read must carry it, or a
-    // stacked template flattens to side-by-side here while the shopper preview
-    // (shop/customize, mp-basic/recommend) renders it stacked. See
-    // spatial-fillings/api-contract.check.ts for the render-path reader list.
     const cols =
       tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id,row_index,insert_order,offset_x_mm,offset_y_mm";
     const { data: placements, error: pErr } = await admin
@@ -92,7 +72,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: lengthParam ? "Invalid length" : "Invalid size" }, { status: 400 });
   }
 
-  // Membership, not `key`: assist offers every recipe that serves this size.
   const members = await templateIdsForKey(admin, scope.key);
   if (!members.ok) return NextResponse.json({ error: members.error }, { status: 500 });
   const memberIds = members.ids;
@@ -116,13 +95,10 @@ export async function GET(req: NextRequest) {
     admin
       .from("items")
       .select("id,name,subtype,size,category,item_prices(msrp)")
-      // Neck supports are pillow-only (premium; the panel hides them on basic).
       .or(scope.kind === "bolster" ? "category.eq.filling" : PLACEABLE_ITEMS_OR)
       .eq("is_active", true)
       .order("name"),
-    // Slice 11: Product Builder color overrides for the x-ray CSS-variable pipeline.
     admin.from("filling_color_overrides").select("subtype,color"),
-    // Slice 02/12: Settings dimension overrides for the true-scale x-ray.
     loadDimensionOverrides(admin),
   ]);
   if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
@@ -132,8 +108,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     templates: templates ?? [],
-    // Flattened MSRP: a placed Ear Comfort Pad is charged, and the staff preview
-    // quotes the same number the hold authorises.
     items: (items ?? []).map(({ item_prices, ...item }) => ({
       ...item,
       msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
@@ -143,10 +117,6 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// Shape gate only; the spatial-fillings lib does the semantic validation per
-// kind. Mirrors the Admin Panel's PUT schema — row_index is the piece's LAYER
-// (0 = top/front) and its bound derives from MAX_LAYERS_PER_CELL so it cannot
-// drift from validatePillowPlacements or the DB's `row_index between 0 and 4`.
 const PlacementRowSchema = z.object({
   section: z.string().default(""),
   sub_section: z.string().default(""),
@@ -167,28 +137,16 @@ const PlacementRowSchema = z.object({
 const SaveSchema = z
   .object({
     mode: z.enum(["overwrite", "new"]),
-    /** Required for mode=overwrite: the catalog template to replace in place. */
     templateId: z.number().int().positive().optional(),
-    /** Required for mode=new: the catalog name, unique within (kind, key). */
     name: z.string().trim().min(1).max(120).optional(),
     size: z.string().optional(),
     length: z.string().optional(),
-    // An empty mix is never a save — it would publish (or blank) an empty template.
     placements: z.array(PlacementRowSchema).min(1),
   })
   .refine((v) => (v.mode === "overwrite" ? v.templateId !== undefined : v.name !== undefined), {
     message: "mode=overwrite requires templateId; mode=new requires name",
   });
 
-/**
- * Save the staff-edited session mix back to the Filling Template catalog
- * (pillow or bolster), either replacing the loaded template's placements or
- * creating a new size/length-scoped one.
- *
- * Gated on `inventory` rather than the GET's plain staff check: reading
- * templates into one session is not the same act as writing the catalog every
- * future session loads from.
- */
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin("inventory");
   if (denied) return denied;
@@ -209,9 +167,6 @@ export async function POST(req: NextRequest) {
   const admin = supabaseAdmin();
   const isBolster = scope.kind === "bolster";
 
-  // Same gate the Admin Panel applies: fillings only, and within the per-cell
-  // layer/piece caps. A mix the x-ray let staff build can still be invalid here
-  // if an item was retired mid-session.
   const cats = await lookupPlacementKinds(
     admin,
     rows.map((r) => r.item_id),
@@ -235,11 +190,6 @@ export async function POST(req: NextRequest) {
     if (!tpl || tpl.role !== "filling") {
       return NextResponse.json({ error: "Filling Template not found" }, { status: 404 });
     }
-    // Without this a Size M mix could be written onto a Size L template, which
-    // the size-scoped reader would then hand to the wrong product card. A shared
-    // template passes when this size is one it serves — and overwriting it
-    // changes the recipe for every other size too, which is why assist only
-    // reaches templates the operator already picked from this size's list.
     const tplKeys = await loadTemplateKeys(admin, [Number(tpl.id)]);
     if (!tplKeys.ok) return NextResponse.json({ error: tplKeys.error }, { status: 500 });
     const served = tplKeys.byId.get(Number(tpl.id)) ?? [tpl.key];
@@ -260,7 +210,6 @@ export async function POST(req: NextRequest) {
       .insert({
         kind: scope.kind,
         key: scope.key,
-        // Filling Templates carry no tier and no variant — only sizes (ADR 0003).
         pillow_kind: null,
         pillow_variant: null,
         name,
@@ -269,7 +218,6 @@ export async function POST(req: NextRequest) {
       })
       .select("id,name")
       .single();
-    // unique (kind, key, name) — surface the clash instead of a raw 500.
     if (insErr?.code === "23505") {
       return NextResponse.json(
         { error: `A Filling Template named “${name}” already exists for ${scope.key}` },
@@ -277,8 +225,6 @@ export async function POST(req: NextRequest) {
       );
     }
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
-    // A template born here serves the size it was authored at; an operator
-    // widens it from Configure, never from assist.
     const membership = await setTemplateKeys(admin, {
       templateId: created.id,
       kind: scope.kind,
@@ -289,8 +235,6 @@ export async function POST(req: NextRequest) {
     name = created.name;
   }
 
-  // Placements are the "where" truth; legacy bom_template_lines stay untouched
-  // as the pack-list fallback for templates without placements (ADR 0008).
   const table = isBolster ? "bolster_template_placements" : "filling_template_placements";
   const payload = rows.map((r) =>
     isBolster

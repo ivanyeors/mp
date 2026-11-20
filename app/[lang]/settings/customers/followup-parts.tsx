@@ -15,13 +15,6 @@ import {
     type FollowUpProfile,
 } from "@/lib/crm/followup-rules";
 
-/**
- * The pieces the Customer page's Journey and the Customers page's
- * Follow-ups tab share (CRM slice 06): the due label, the assignee with its
- * *Assignee archived* chip, and the *Done*, *Reassign* and delete actions.
- * The actions render only for `customers-edit`; the routes refuse without it.
- */
-
 async function readError(res: Response, fallback: string): Promise<string> {
     const payload = await res.json().catch(() => null);
     return typeof payload?.error === "string" ? payload.error : fallback;
@@ -30,7 +23,6 @@ async function readError(res: Response, fallback: string): Promise<string> {
 const followUpUrl = (f: Pick<CustomerFollowUp, "customerId" | "id">) =>
     `/api/shop/customers/${f.customerId}/followups/${f.id}`;
 
-/** PATCHes a follow-up and returns it as the route answers. Throws with the route's message. */
 export async function patchFollowUp(
     f: Pick<CustomerFollowUp, "customerId" | "id">,
     body: { done: true } | { assignedToProfileId: string },
@@ -52,12 +44,10 @@ export async function deleteFollowUpRequest(f: Pick<CustomerFollowUp, "customerI
     announceFollowUpsChanged();
 }
 
-/** Tells the sidebar badge to re-read (`FOLLOW_UPS_CHANGED_EVENT`). */
 export function announceFollowUpsChanged() {
     window.dispatchEvent(new Event(FOLLOW_UPS_CHANGED_EVENT));
 }
 
-/** *Due 23 Oct 2026*, *Due today* (amber) or *Overdue · due 1 Oct 2026* (red). */
 export function FollowUpDue({ followUp, today }: { followUp: CustomerFollowUp; today: string }) {
     const state = followUpState(followUp, today);
     const tone =
@@ -69,7 +59,6 @@ export function FollowUpDue({ followUp, today }: { followUp: CustomerFollowUp; t
     return <span className={`text-xs ${tone}`}>{describeDue(followUp, today)}</span>;
 }
 
-/** The assignee's name, with *Assignee archived* when the profile was archived. */
 export function FollowUpAssignee({ followUp }: { followUp: CustomerFollowUp }) {
     return (
         <span className="inline-flex flex-wrap items-center gap-1.5 text-xs">
@@ -83,7 +72,6 @@ export function FollowUpAssignee({ followUp }: { followUp: CustomerFollowUp }) {
     );
 }
 
-/** *Done 20 Oct 2026 by Jess*. */
 export function FollowUpDoneBy({ followUp }: { followUp: CustomerFollowUp }) {
     if (!followUp.doneAt) return null;
     return (
@@ -93,11 +81,6 @@ export function FollowUpDoneBy({ followUp }: { followUp: CustomerFollowUp }) {
     );
 }
 
-/**
- * *Done* and *Reassign* (and, on the Customer detail, delete) for an open
- * follow-up. `onChange` gets the follow-up as the route returned it, or null
- * once it is deleted.
- */
 export function FollowUpActions({
     followUp,
     assignees,
@@ -105,7 +88,6 @@ export function FollowUpActions({
     allowDelete = false,
 }: {
     followUp: CustomerFollowUp;
-    /** Who it may be given to: profiles whose Member can close one. */
     assignees: FollowUpProfile[];
     onChange: (next: CustomerFollowUp | null) => void;
     allowDelete?: boolean;

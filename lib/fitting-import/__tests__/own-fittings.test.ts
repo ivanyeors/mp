@@ -3,12 +3,6 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 import { toOwnFittingView } from "../own-view";
 import type { FittingRecordView } from "../view";
 
-/**
- * ADR 0042 h: the customer sees their own Fitting records on their Profile,
- * every answer and none of the Drive files. Every name, number and Drive id
- * here is made up.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb }));
 vi.mock("@/lib/supabase/server", async () => {
   const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");

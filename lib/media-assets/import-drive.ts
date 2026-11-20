@@ -85,7 +85,6 @@ export type ImportDriveDeps = {
 };
 
 async function defaultDeps(): Promise<ImportDriveDeps> {
-  // Dynamic import avoids circular load with the media-assets barrel.
   const registry = await import("@/lib/media-assets");
   return {
     resolveUrl,
@@ -108,7 +107,6 @@ function kindFromMime(mimeType: string): "image" | "video" | "pdf" | null {
   return null;
 }
 
-/** Import a Drive file as a Media Asset (image hosted; video/PDF link-only). */
 export async function importFromDrive(
   opts: { url?: string; fileId?: string; name?: string; createdBy?: string | null },
   deps?: ImportDriveDeps,
@@ -150,7 +148,6 @@ export async function importFromDrive(
     return { asset, existing: false };
   }
 
-  // Video/PDF: link-only Asset; optional durable preview thumb (never the full file).
   let previewUrl: string | null = null;
   const thumbBytes = await d.downloadThumbnail(file.thumbnailLink);
   if (thumbBytes) {
@@ -177,10 +174,6 @@ export async function importFromDrive(
   return { asset, existing: false };
 }
 
-/**
- * Re-download an image Asset from Drive, re-optimize, upsert same storage path
- * (public URL stays stable so existing attachments keep working).
- */
 export async function reimportImageFromDrive(
   assetId: string,
   deps?: ImportDriveDeps,

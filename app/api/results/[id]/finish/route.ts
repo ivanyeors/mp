@@ -26,17 +26,6 @@ const FinishSchema = z.object({
   shippingAddress: ShippingAddressInputSchema,
 });
 
-/**
- * The customer's finish for an Assisted customisation (ADR 0017).
- *
- * Staff have assigned the fillings; the Result is `assigned` with no cover,
- * case or shipping. This writes the customer's picks and reprices through
- * `loadAssignedBuild` — the same Costings-derived price accept charges — so
- * the stored `final_amount` is the number the Balance payment asks for.
- *
- * Money never moves here. The client calls the existing accept next, which
- * opens the Balance payment Checkout.
- */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -60,16 +49,11 @@ export async function POST(
   if (loadErr) return NextResponse.json({ error: loadErr.message }, { status: 500 });
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Owner (token or signed-in match) or Staff with `results` (not a viewer). No
-  // draftOnly: this row is `assigned` by design, and needsCustomerFinish below is
-  // what bounds the write.
   const access = await requireResultAccess(row, input.token ?? null, {
     staffPermissions: ["results"],
   });
   if (!access.ok) return access.response;
 
-  // Once finished, the address is set and this closes itself. A second finish
-  // would silently reprice a build the customer may already be paying for.
   if (row.status !== "assigned" || !needsCustomerFinish(row)) {
     return NextResponse.json(
       { error: "This build has already been finished" },
@@ -107,7 +91,6 @@ export async function POST(
     return NextResponse.json({ error: shippingAddress.error }, { status: shippingAddress.status });
   }
 
-  // Same category rules as the hold submit.
   const categoryById = new Map((items ?? []).map((i) => [i.id as number, String(i.category)]));
   for (const line of input.preferenceLines) {
     const cat = categoryById.get(line.item_id);
@@ -122,7 +105,6 @@ export async function POST(
     }
   }
 
-  // The live rate the customer was just shown, kept for accept (ADR 0032).
   const quoted = await quoteResultShipping(admin, {
     method: shippingRow as ShippingMethod,
     parcelTypes: resultParcelTypes(row),
@@ -154,7 +136,6 @@ export async function POST(
     );
   }
 
-  // Guarded on the unfinished state so two tabs cannot both write a finish.
   const { data: updated, error: updateErr } = await admin
     .from("mp_config_responses")
     .update({ ...finished, final_amount: build.pricing.total })

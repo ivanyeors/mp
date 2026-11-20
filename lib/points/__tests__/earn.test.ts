@@ -4,13 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { clawbackPointsForRefund, pointsForOrder, runPointsEarn, runPointsMilestones } from "../earn";
 
-/**
- * Earning (PRD-loyalty-points slice 03; ADR 0030 c, m). The release and the
- * clawback themselves are asserted in SQL
- * (supabase/tests/loyalty-points/assert-03-earning.sql); this holds the pure
- * rule to the same arithmetic, and the two writers to never throwing.
- */
-
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021130000_points_earning.sql"), "utf8");
 
 describe("pointsForOrder (rule c)", () => {

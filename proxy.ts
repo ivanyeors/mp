@@ -19,8 +19,6 @@ import { refreshSupabaseSession } from "@/lib/supabase/middleware";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const CURRENCY_COOKIE = "mp_currency";
-// Retired shared-OTP admin session cookie (#39). Cleared on next navigation so
-// any previously-issued shared session cannot linger in browsers.
 const LEGACY_SETTINGS_SESSION_COOKIE = "mp_settings_session";
 
 function clearLegacySettingsSession(request: NextRequest, response: NextResponse) {
@@ -33,15 +31,12 @@ function detectCurrencyFromAcceptLanguage(headerValue: string): string | null {
   const lowered = headerValue.toLowerCase();
   if (lowered.includes("zh")) return "CNY";
   if (lowered.includes("ms") || lowered.includes("my")) return "MYR";
-  // Default to SGD for en and all other languages — no cookie needed
   return null;
 }
 
 function pickLocaleFromAcceptLanguage(headerValue: string | null): Locale {
   if (!headerValue) return DEFAULT_LOCALE;
 
-  // Very small matcher for our supported locales (en-US, zh-CN).
-  // Example: "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7"
   const lowered = headerValue.toLowerCase();
   if (lowered.includes("zh")) return "zh-CN";
   if (lowered.includes("en")) return "en-US";
@@ -62,22 +57,9 @@ function blogGoneResponse(locale: Locale): NextResponse {
   return new NextResponse(html, { status: 410, headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
-/**
- * Other names of this site, each sent to the canonical host (the one in
- * NEXT_PUBLIC_SITE_URL), so the move to www.mpillow.com is that one setting and
- * a redeploy (ADR 0029). www.mpillow.com is never sent away: on the day its DNS
- * moves here first, and for the minutes before the redeploy it simply serves
- * the site, instead of answering with a 301 to custom.mpillow.com that
- * browsers would keep.
- *
- * The API never moves: Stripe, Meta, TikTok, Resend and the crons keep calling
- * custom.mpillow.com/api. Nor does /auth, which the matcher skips, so a sign-in
- * link finishes on the host that sent it. A preview or localhost stays put.
- */
 const MOVED_HOSTS: ReadonlySet<string> = new Set(["mpillow.com", "custom.mpillow.com", "work.mpillow.com"]);
 const OUR_HOSTS: ReadonlySet<string> = new Set([...MOVED_HOSTS, "www.mpillow.com"]);
 
-/** The canonical host, only when it is one of ours: a missing or stray setting moves nobody. */
 function canonicalOrigin(): URL | null {
   try {
     const url = new URL(getSiteOrigin());
@@ -87,10 +69,6 @@ function canonicalOrigin(): URL | null {
   }
 }
 
-/**
- * A redirect browsers check again within the hour. A cutover rolled back on the
- * day must not leave anyone on a cached 301 to an address that is Shopify again.
- */
 function redirectFor(url: URL, status: number): NextResponse {
   const res = NextResponse.redirect(url, status);
   res.headers.set("Cache-Control", "max-age=3600");
@@ -100,8 +78,6 @@ function redirectFor(url: URL, status: number): NextResponse {
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
-  // API: refuse a cookie-authenticated write from another origin, and nothing
-  // else — no crawler counting, host redirect or locale work (lib/auth/cross-site.ts).
   if (pathname === "/api" || pathname.startsWith("/api/")) {
     if (isCrossSiteWrite(request, pathname)) {
       return NextResponse.json({ error: "Cross-site request refused" }, { status: 403 });
@@ -109,33 +85,22 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.next();
   }
 
-  // AI crawler hits (PRD-search-visibility slice 04). Before the static-file
-  // skip so /llms.txt and /robots.txt count; recorded after the response via
-  // waitUntil, so a slow or failing write never delays or breaks the request.
   const crawler = classifyCrawler(request.headers.get("user-agent"));
   if (crawler && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     event.waitUntil(recordCrawlerHit(supabaseAdmin(), crawler, pathname));
   }
 
-  // Host and old-store addresses, before the static-file skip (a Shopify feed or
-  // sitemap has a dot) and before the locale redirect, or it 307s first.
   const host = (request.headers.get("host") ?? request.nextUrl.host).split(":")[0].toLowerCase();
   const canonical = canonicalOrigin();
   const ours = canonical !== null && OUR_HOSTS.has(host);
   const origin = ours ? canonical.origin : request.nextUrl.origin;
 
-  // The old Shopify store's addresses, in one hop from any of our hosts.
   const legacy = shopifyRedirect(pathname);
   if (legacy?.status === 410) return new NextResponse("Gone", { status: 410 });
   if (legacy) {
     return redirectFor(shopifyRedirectUrl(legacy.to, origin, request.nextUrl.searchParams), legacy.status);
   }
 
-  // Until the launch, someone arriving at the home page of mpillow.com or
-  // www.mpillow.com is shown Explore: every time when signed out, once per
-  // browser session when signed in; a click on the site itself is not
-  // (lib/routing/explore-entry.ts). Before the host redirect, so the bare domain
-  // gets there in one hop. Never cached: it ends at the launch.
   const cookieLang = request.cookies.get(LOCALE_COOKIE_NAME)?.value ?? "";
   const explorePath = exploreEntryPath({
     host,
@@ -149,30 +114,22 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     signedIn: hasSignInCookie(request.cookies.getAll().map((c) => c.name)),
   });
   if (explorePath) {
-    // www stays www (it is never sent away); the bare domain goes to the canonical host.
     const exploreOrigin = ours && host !== "www.mpillow.com" ? canonical.origin : request.nextUrl.origin;
     const res = NextResponse.redirect(new URL(explorePath + request.nextUrl.search, exploreOrigin), 307);
     res.headers.set("Cache-Control", "no-store");
     return res;
   }
 
-  // Another name of this site: the same address on the canonical host. A write
-  // (a stale tab's form) keeps its method.
   if (ours && MOVED_HOSTS.has(host) && host !== canonical.hostname) {
     const dest = new URL(pathname + request.nextUrl.search, canonical.origin);
     return redirectFor(dest, request.method === "GET" || request.method === "HEAD" ? 301 : 308);
   }
 
-  // Skip Next internals, auth callback, dev tooling, and direct file requests.
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/auth") ||
-    // Exact segment, not a prefix — a future /developers page must still get
-    // normal locale handling.
     pathname === "/dev" ||
     pathname.startsWith("/dev/") ||
-    // Short redirects (app/r): the review link is one hop to Google, with no
-    // locale bounce or cookie (CRM slice 07).
     pathname.startsWith("/r/") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
@@ -181,12 +138,6 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.next();
   }
 
-  // A campaign email's link (PRD-campaign-audiences slice 08): take the click
-  // token off before anything renders, so it never reaches analytics, a
-  // shared link or a screenshot, and count the click after the response. Only
-  // a person's GET counts: a HEAD, or a known crawler, is redirected and not
-  // counted, and the SQL skips a click within 10 seconds of the send. The
-  // token is never logged and identifies nobody.
   const clicked = stripClickToken(request.nextUrl);
   if (clicked) {
     if (request.method === "GET" && !crawler && process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -200,7 +151,6 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
   const pathLocale = getLocaleFromPathname(pathname);
 
-  // If the URL already has a locale, keep it and ensure cookie matches.
   if (pathLocale) {
     // ponytail: proxy redirects beat stale static caches for moved settings routes
     if (pathname.endsWith("/settings/inventory/shopify")) {
@@ -219,7 +169,6 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
       return NextResponse.redirect(url, 308);
     }
 
-    // Consolidated blog posts (content-audit.md): merged → the post that absorbed them, retired → 410.
     const blogSlug = pathname.match(/^\/[^/]+\/blog\/([^/]+)\/?$/)?.[1];
     const fate = blogSlug ? blogSlugFate(safeDecode(blogSlug)) : null;
     if (fate?.kind === "merged") {
@@ -231,9 +180,6 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
     const res = NextResponse.next();
     clearLegacySettingsSession(request, res);
-    // Explore shown: a signed-in arrival goes to the home page for the rest of
-    // this browser session (lib/routing/explore-entry.ts). No maxAge, so a
-    // session cookie.
     if (
       !request.cookies.get(EXPLORE_SEEN_COOKIE) &&
       showsExplore({
@@ -256,11 +202,10 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     if (existing !== pathLocale) {
       res.cookies.set(LOCALE_COOKIE_NAME, pathLocale, {
         path: "/",
-        maxAge: 60 * 60 * 24 * 365, // 1 year
+        maxAge: 60 * 60 * 24 * 365,
         sameSite: "lax",
       });
     }
-    // Auto-set currency cookie based on locale if not already set
     if (!request.cookies.get(CURRENCY_COOKIE)?.value) {
       const acceptLang = request.headers.get("accept-language") ?? "";
       const detectedCurrency = detectCurrencyFromAcceptLanguage(acceptLang);
@@ -272,7 +217,6 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
         });
       }
     }
-    // Refresh the Supabase auth session (rotates cookies onto the response).
     await refreshSupabaseSession(request, res);
     return res;
   }

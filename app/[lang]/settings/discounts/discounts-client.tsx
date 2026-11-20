@@ -23,8 +23,6 @@ import { PointsSettingsCard } from "./points-settings-card";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { EmptyState } from "@/components/settings/empty-state";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export type Coupon = {
     id: string;
     code: string;
@@ -39,7 +37,6 @@ export type Coupon = {
     created_at: string;
 };
 
-/** Exactly the JSON `GET /api/shop/coupons?limit=100` returns. */
 export type CouponsListResponse = {
     ok: true;
     rows: Coupon[];
@@ -51,8 +48,6 @@ export type CouponsListResponse = {
 export type DiscountsInitialData = {
     coupons: CouponsListResponse;
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatValue(coupon: Coupon): string {
     if (coupon.discount_type === "percentage") return `${coupon.discount_value}%`;
@@ -96,8 +91,6 @@ function formatDateRange(starts_at: string | null, expires_at: string | null): s
     return "No expiry";
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function DiscountsClient({
     initialData,
 }: {
@@ -112,7 +105,6 @@ export function DiscountsClient({
     const [total, setTotal] = useState(initialData?.coupons.total ?? 0);
     const [loading, setLoading] = useState(!initialData);
 
-    // The RSC page already fetched this list — skip the mount fetch once.
     const hydratedFromServer = useRef(Boolean(initialData));
 
     const fetchCoupons = useCallback(async () => {
@@ -140,7 +132,6 @@ export function DiscountsClient({
 
     return (
         <div className="flex flex-col gap-6">
-            {/* Header */}
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">Discounts</h1>
@@ -156,12 +147,10 @@ export function DiscountsClient({
                 </Button>
             </div>
 
-            {/* Phones show the codes first: the Points form is ~2,400px tall. */}
             <div className="max-md:order-last">
                 <PointsSettingsCard />
             </div>
 
-            {/* Content */}
             {loading ? (
                 <div className="flex items-center justify-center py-24">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -227,7 +216,6 @@ export function DiscountsClient({
                                             router.push(to(`/settings/discounts/${coupon.id}`))
                                         }
                                     >
-                                        {/* Code */}
                                         <TableCell className="px-4 py-3">
                                             <div className="space-y-1">
                                                 <span className="font-medium tracking-wide">
@@ -239,31 +227,26 @@ export function DiscountsClient({
                                             </div>
                                         </TableCell>
 
-                                        {/* Type */}
                                         <TableCell className="px-4">
                                             <Badge variant={typeBadgeVariant(coupon.discount_type)}>
                                                 {typeBadgeLabel(coupon.discount_type)}
                                             </Badge>
                                         </TableCell>
 
-                                        {/* Value */}
                                         <TableCell className="px-4 text-sm font-medium">
                                             {formatValue(coupon)}
                                         </TableCell>
 
-                                        {/* Usage */}
                                         <TableCell className="px-4 hidden sm:table-cell text-sm text-muted-foreground">
                                             {coupon.usage_limit === null
                                                 ? `${coupon.usage_count} / Unlimited`
                                                 : `${coupon.usage_count} / ${coupon.usage_limit}`}
                                         </TableCell>
 
-                                        {/* Status */}
                                         <TableCell className="px-4 hidden md:table-cell">
                                             <Badge variant={status.variant}>{status.label}</Badge>
                                         </TableCell>
 
-                                        {/* Valid dates — formatted in the viewer's timezone, which the server render cannot know. */}
                                         <TableCell
                                             className="px-4 hidden lg:table-cell text-sm text-muted-foreground"
                                             suppressHydrationWarning

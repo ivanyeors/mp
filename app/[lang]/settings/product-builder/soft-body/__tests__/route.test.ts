@@ -8,12 +8,6 @@ import {
   type SoftBodySettings,
 } from "@/lib/spatial-fillings/soft-body-settings";
 
-/**
- * Settings → Soft body (ADR 0025): the route reads, saves and resets the one
- * site setting every cut draws with — validated against the sliders' ranges,
- * cache expired and audited on each change, Configure's key on every method.
- */
-
 type Row = { key: string; value: string; updated_at: string | null };
 
 const h = vi.hoisted(() => ({

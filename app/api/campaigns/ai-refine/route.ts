@@ -11,24 +11,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// A quick action answers in seconds; this is the ceiling, not the plan.
 export const maxDuration = 120;
 
-/**
- * ✨ Refine (PRD-campaign-email-editor slice 10): subject line ideas,
- * preview line ideas, or one heading or text block rewritten, for an email
- * Staff wrote. A route, as ✨ Generate's is, so the editor can stop an ask it
- * no longer wants (the request's signal ends Claude's call too).
- *
- * In order: the `campaigns` permission; the request; the AI writing settings,
- * read now; the credentials; the per-Staff limits, which this ask counts
- * against at a weight of one, as a draft does; then the call. It reads
- * whether points are live, and never a customer. It writes one thing, the
- * audit entry (`email_campaign.ai_subjects`, `ai_preview_lines` or
- * `ai_rewrite`, with the model that served it and its tokens, never the
- * words): no campaign, no `content`, no send. What it returns fills a field
- * or is offered beside a block, and only Staff choose it.
- */
 export async function POST(req: Request) {
   let ctx;
   try {

@@ -1,15 +1,3 @@
-/**
- * Google Merchant Center product feed (PRD-search-visibility slice 13).
- *
- * One item per active Variant of every active Storefront product, pillows and
- * bolsters included: a "price range" is expressed as one item per size, grouped
- * by item_group_id, each at its own price. The price is the Variant's price,
- * which is the Costings projection (lib/shop/price-sync.ts) — the feed never
- * computes a price of its own. Each item links to the product page with
- * `?variant=<id>`, which preselects that size so the landing page shows the
- * same price the listing does (Merchant Center rejects mismatches).
- */
-
 export type FeedVariant = {
   id: string;
   sku: string | null;
@@ -80,7 +68,6 @@ const TYPE_LABELS: Record<string, string> = {
   bundle: "Bundles",
 };
 
-/** Plain text for the feed: no HTML/markdown markup, no tabs or newlines (TSV). */
 export function plainText(s: string, max: number): string {
   const t = s
     .replace(/<[^>]+>/g, " ")
@@ -142,7 +129,6 @@ export function buildFeedItems(
           .slice(0, 10)
           .join(","),
         availability: variantAvailable(v) ? "in_stock" : "out_of_stock",
-        // Google's convention: price is the regular price, sale_price the current one.
         price: money(onSale ? v.compare_at_price! : v.price, v.currency),
         sale_price: onSale ? money(v.price, v.currency) : "",
         brand: opts.brand ?? "Mpillow",

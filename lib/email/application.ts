@@ -1,15 +1,3 @@
-// ============================================================
-// Partner application outcome emails
-// ============================================================
-//
-// These live here rather than in lib/partner-application/index.ts because that
-// module is deliberately import-pure — the apply form and the agreement page are
-// client components, so pulling the email design system in there would ship it
-// to the browser.
-//
-// Returns a FULLY SHELLED email. The caller sends it as-is; wrapping it again
-// would nest one <html> document inside another.
-
 import { renderEmailShell } from "./base";
 import { infoList, link, paragraph, paragraphHtml, statusPill } from "./components";
 import {
@@ -25,14 +13,9 @@ import { escapeHtml } from "./html";
 import type { ApplicationOutcome } from "@/lib/partner-application";
 import type { RenderedEmail } from "./types";
 
-/**
- * The facts the agreement's Approval Notice states (clause 1.1): the Promo Code
- * and Territory, plus the Commission Pool Staff set at approval (ADR 0034).
- */
 export type ApprovalNotice = {
   promoCode: string | null;
   territory: string;
-  /** S$ per Qualifying Sale. */
   commissionPool: number;
 };
 
@@ -46,14 +29,6 @@ function noticeRows(notice: ApprovalNotice | undefined): Array<{ label: string; 
     { label: "Commission Pool", value: `${money(notice.commissionPool, "SGD")} per qualifying sale` },
   ];
 }
-
-// ------------------------------------------------------------
-// The words of each outcome (PRD-email-templates)
-// ------------------------------------------------------------
-//
-// One renderer serves both outcomes, but Staff edit each as its own email, so
-// each has its own spec. The support address is data: {support_email} is the
-// mailto link in the HTML, and the address itself in the plain text.
 
 const APPLICATION_PLACEHOLDERS = {
   support_email: "Our support address, e.g. sg@mpillow.com. In the email it is a link that starts a message to us.",
@@ -104,20 +79,17 @@ export const APPLICATION_EMAIL_COPY = {
 
 type CopyOf<T extends ApplicationOutcome> = EmailCopy<keyof (typeof APPLICATION_EMAIL_COPY)[T]["fields"] & string>;
 
-/** Fill every field of `copy` from `values`. */
 function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
   const out = {} as EmailCopy<K>;
   for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
   return out;
 }
 
-/** An unfilled field as HTML: escaped, with each {support_email} as the mailto link. */
 function withSupportLink(text: string, opts: Opts): string {
   const supportLink = link({ href: `mailto:${opts.supportEmail}`, label: opts.supportEmail });
   return text.split("{support_email}").map(escapeHtml).join(supportLink);
 }
 
-/** The sign-off, as the last lines of a plain-text body; none when Staff removed it. */
 const signoffText = (signoff: string) => (signoff ? ["", signoff] : []);
 
 function approved(opts: Opts, copy: CopyOf<"approved"> = defaultEmailCopy(APPLICATION_EMAIL_COPY.approved)): RenderedEmail {
@@ -170,10 +142,6 @@ ${t.signoff ? paragraph(t.signoff, { muted: true }) : ""}`,
   };
 }
 
-/**
- * The outcome's email. `copy` is that outcome's words
- * (`APPLICATION_EMAIL_COPY[outcome]`); without it, the default words.
- */
 export function renderApplicationOutcomeEmail(
   outcome: ApplicationOutcome,
   opts: Opts,

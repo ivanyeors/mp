@@ -6,12 +6,6 @@ import { isPendingShipmentId, loadOrderShipment } from "@/lib/shipping/order-shi
 
 export const runtime = "nodejs";
 
-/**
- * The order's shipping label. A hosted label URL (from the purchase or the
- * `shipment.label.created` webhook) is a redirect; otherwise the label is read
- * from Easyship and served as PDF. A multi-parcel label arrives as one document
- * per parcel: `?page=1` is the second.
- */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;

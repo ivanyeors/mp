@@ -49,7 +49,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const admin = supabaseAdmin();
 
-  // Verify the customer exists
   const { error: customerError } = await admin
     .from("customers")
     .select("id")
@@ -58,7 +57,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (customerError) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
-  // If this address should be default, unset all existing defaults first
   if (parsed.data.is_default) {
     const { error: unsetError } = await admin
       .from("customer_addresses")

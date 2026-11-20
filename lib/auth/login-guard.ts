@@ -1,11 +1,3 @@
-/**
- * Who may change the people under a login (Staff profiles and their Telegram
- * links). The same rule as changing the Member itself (role-policy.ts): only an
- * Owner touches what hangs off an Owner's login, and anyone who is not Owner or
- * Admin only touches logins whose role is within their own pages — otherwise
- * archiving, moving or relinking a profile would reach access they could never
- * have granted.
- */
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { permissionEntry, permissionsForRoleRow, type Permission } from "@/lib/auth/permissions";
 import type { PolicyActor } from "@/lib/auth/role-policy";
@@ -23,7 +15,6 @@ export async function loginRefusal(actor: PolicyActor, memberId: string): Promis
     .eq("id", member.role_id)
     .maybeSingle();
   if (roleError) throw new Error(roleError.message);
-  // An unreadable role is refused to everyone but Owner/Admin.
   if (!role) return actor.grantsAll ? null : { ok: false, status: 403, error: "That login's role can't be read." };
 
   if (role.key === "owner" && !actor.isOwner) {

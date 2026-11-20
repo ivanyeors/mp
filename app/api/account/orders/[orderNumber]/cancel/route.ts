@@ -6,7 +6,6 @@ import { customerCancelDeniedReason } from "@/lib/results/post-delivery-refund";
 
 export const runtime = "nodejs";
 
-/** US17: customers cannot cancel after Accept (always denied for Result orders). */
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ orderNumber: string }> },

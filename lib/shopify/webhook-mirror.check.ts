@@ -1,12 +1,3 @@
-/**
- * Run: npx tsx lib/shopify/webhook-mirror.check.ts
- *
- * Proves webhook mirror wiring without live Shopify:
- * - paid path invokes upsert (via bestEffort → ingest)
- * - refund path invokes apply
- * - mirror failure does not throw (the webhook still answers 200)
- * - route takes no stock: the Shopify sales queue is gone
- */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -67,12 +58,10 @@ function mockAdmin(recorder: Call[], opts?: { failUpsert?: boolean }) {
 }
 
 async function main() {
-  // --- classify ---
   assert.equal(isShopifyRefundPayload({ id: 55, order_id: 900104 }), true)
   assert.equal(isShopifyRefundPayload({ id: 1, line_items: [] }), false)
   assert.equal(isShopifyRefundPayload(null), false)
 
-  // --- paid path invokes upsert ---
   {
     const calls: Call[] = []
     const admin = mockAdmin(calls) as never
@@ -95,7 +84,6 @@ async function main() {
     assert.ok(calls.some((c) => c.table === 'shopify_order_lines' && c.op === 'upsert'))
   }
 
-  // --- mirror failure swallowed (queue-safe) ---
   {
     const calls: Call[] = []
     const admin = mockAdmin(calls, { failUpsert: true }) as never
@@ -113,7 +101,6 @@ async function main() {
     if (!result.ok) assert.match(result.error, /forced upsert failure/)
   }
 
-  // --- refund path invokes apply ---
   {
     const calls: Call[] = []
     const admin = {
@@ -173,7 +160,6 @@ async function main() {
     assert.ok(calls.some((c) => c.table === 'shopify_orders' && c.op === 'update'))
   }
 
-  // --- refund failure swallowed ---
   {
     const admin = {
       from() {
@@ -184,7 +170,6 @@ async function main() {
     assert.equal(result.ok, false)
   }
 
-  // --- route wiring: paid → upsert helper; refund → apply; no stock, no queue ---
   {
     const route = readFileSync(join(process.cwd(), 'app/api/shopify/webhook/route.ts'), 'utf8')
     assert.match(route, /bestEffortUpsertOrderMirror/)

@@ -9,13 +9,6 @@ import {
 } from "@/lib/telegram/link-codes";
 import { isTelegramAction, type TelegramAction } from "@/lib/telegram/roles";
 
-/**
- * Telegram links (`telegram_operators`, ADR 0023): a Staff profile's bound
- * Telegram account and the Telegram actions granted to it. Users &
- * permissions → Telegram manages them; the Telegram webhook authorises taps
- * and redeems link codes. `link_code_hash` never leaves this module.
- */
-
 export type TelegramLinkRow = {
   id: string;
   staff_profile_id: string;
@@ -53,11 +46,6 @@ export async function getTelegramLink(id: string): Promise<TelegramLinkRow | nul
   return data ? toRow(data) : null;
 }
 
-/**
- * Link a Staff profile to Telegram: the row with its granted actions and a
- * first link code. The code is returned once. `display_name` is the legacy
- * column (slice 11), stamped with the profile name.
- */
 export async function createTelegramLink(input: {
   staffProfileId: string;
   profileName: string;
@@ -70,7 +58,6 @@ export async function createTelegramLink(input: {
     .insert({
       staff_profile_id: input.staffProfileId,
       display_name: input.profileName.slice(0, 80),
-      // Legacy column; the trigger re-derives it from actions.
       role: "none",
       actions: input.actions,
       created_by: input.createdBy,
@@ -97,10 +84,6 @@ export async function updateTelegramLink(
   return data ? toRow(data) : null;
 }
 
-/**
- * A fresh code replaces any earlier one. A linked person stays linked until the
- * new code is redeemed — that is how someone moves to a new Telegram account.
- */
 export async function issueTelegramLinkCode(
   id: string,
 ): Promise<{ row: TelegramLinkRow; linkCode: string } | null> {
@@ -148,23 +131,13 @@ export type TelegramDenial =
 type LinkAccess =
   | {
       ok: true;
-      /** The Staff profile's name: who the card says acted. */
       name: string;
-      /** What this person can do right now: the link's actions their role also grants. */
       actions: TelegramAction[];
       roleName: string;
-      /** Everything the login's role grants. */
       granted: ReadonlySet<string>;
     }
   | { ok: false; reason: TelegramDenial; roleName?: string };
 
-/**
- * What a link can do right now. Link → Staff profile → Member → role: nothing
- * unless the link is on, the profile is not archived and the Member is active
- * and has signed in (an Invited login has not accepted yet); then the link's
- * actions the role grants. Any failed read refuses. The database stamps the
- * legacy `role` column with the same rule (20261004130000_telegram_links.sql).
- */
 async function linkAccess(link: TelegramLinkRow): Promise<LinkAccess> {
   if (!link.is_active) return { ok: false, reason: "inactive" };
   const admin = supabaseAdmin();
@@ -205,18 +178,11 @@ export type TelegramAuthResult =
   | {
       ok: true;
       link: TelegramLinkRow;
-      /** The Staff profile's name: who the card says acted. */
       name: string;
-      /** What this person can do right now: the link's actions their role also grants. */
       actions: TelegramAction[];
     }
   | { ok: false; reason: TelegramDenial; roleName?: string };
 
-/**
- * May this Telegram user take `action`? Allowed only when the link can do
- * anything at all (see `linkAccess`), the role grants the action (or grants
- * everything) AND the link lists it. Never falls through to allowed.
- */
 export async function authorizeTelegramAction(
   telegramUserId: number,
   action: TelegramAction,
@@ -241,7 +207,6 @@ export type RedeemResult =
       ok: true;
       link: TelegramLinkRow;
       name: string;
-      /** What the person can do now; empty with `denial` when the link is bound but can do nothing yet. */
       actions: TelegramAction[];
       denial?: TelegramDenial;
     }
@@ -252,11 +217,6 @@ async function profileName(staffProfileId: string): Promise<string | null> {
   return (data?.name as string | undefined) ?? null;
 }
 
-/**
- * `/link CODE` from Telegram. Single use: the code hash is cleared in the same
- * update that binds the sender, guarded on the hash still matching, so two
- * people racing the same code cannot both win.
- */
 export async function redeemTelegramLinkCode(
   rawCode: string,
   from: { id: number; username?: string | null },
@@ -275,7 +235,6 @@ export async function redeemTelegramLinkCode(
   }
   if (!link.is_active) return { ok: false, reason: "inactive" };
 
-  // telegram_user_id is unique: one Telegram account speaks as one person.
   const { data: other } = await admin
     .from("telegram_operators")
     .select("id,staff_profile_id")

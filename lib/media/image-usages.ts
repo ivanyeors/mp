@@ -1,13 +1,3 @@
-/**
- * Usage resolver (slice 10): where a Media Asset is attached.
- * Matches hosted_url and media_asset_id. Does not scan order_items.
- *
- * Email campaigns (PRD-campaign-email-editor slice 05) place images by Media
- * Asset id in their `content`; any campaign counts, draft, sent or archived,
- * and its use can never be deleted past (`usageBlocksDeletion`): a sent email
- * shows the image for good.
- */
-
 import { getSlideMediaMap, SLIDE_PUBLIC_PATHS } from "@/lib/media/slide-media";
 
 export type ImageUsageEntry = {
@@ -30,11 +20,6 @@ export type ImageUsageEntry = {
   ref_id: string;
 };
 
-/**
- * Pure — a use that no "Delete anyway" can override: an email campaign's.
- * A campaign that has sent shows the image from its email rendition for good,
- * and one that has not may yet.
- */
 export function usageBlocksDeletion(entry: Pick<ImageUsageEntry, "type">): boolean {
   return entry.type === "email_campaign";
 }
@@ -51,10 +36,6 @@ export type UsageConsumerRows = {
   }>;
   settings?: Array<{ key: string; value: string }>;
   landingSections?: Array<{ id: string; slug: string; content: unknown }>;
-  /**
-   * The landing page's sub pages (CONTEXT.md — **Slide-in section**). Draft content is
-   * matched too: an image only a pending draft uses still counts as Used.
-   */
   slideInSections?: Array<{ id: string; page: string; slug: string; content: unknown; draft_content?: unknown }>;
   productImages?: Array<{
     id: string;
@@ -64,7 +45,6 @@ export type UsageConsumerRows = {
   }>;
   variants?: Array<{
     id: string;
-    /** Not read by any matcher (the label is derived from `id`); not selected. */
     product_id?: string;
     image_url: string | null;
     media_asset_id?: string | null;
@@ -82,40 +62,30 @@ export type UsageConsumerRows = {
     media_asset_id?: string | null;
   }>;
   partnersPages?: Array<{ id: string; content: unknown }>;
-  /** Slide configs + ambassadors (slice 17 resolved map). */
   slideMedia?: Array<{
     publicPath: string;
     src: string;
     assetId: string;
     consumer?: string;
   }>;
-  /** Product Builder cover/case overlays (slice 10). */
   itemOverlays?: Array<{
     item_id: number;
     media_asset_id: string;
     item_name?: string | null;
   }>;
-  /** Item primary media (slice 12 add-on card images). */
   items?: Array<{
     id: number;
     name: string;
     primary_media_asset_id: string | null;
   }>;
-  /** Email campaigns with blocks: their images by asset id (campaign email editor slice 05). */
   emailCampaigns?: Array<{
     id: string;
     name: string;
     content: unknown;
   }>;
-  /** Intentionally unused — order snapshots must never count as usage. */
   orderItems?: Array<{ id: string; image_url: string | null }>;
 };
 
-/**
- * "Basic Mpillow · hero" — the sub page, then the section. Spelled from the page key
- * rather than the slide-in registry, which would pull every slide config (and its
- * media map) into this module.
- */
 function slideInUsageLabel(section: { page: string; slug: string }): string {
   const page = section.page.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   return `${page} · ${section.slug}`;
@@ -150,7 +120,6 @@ function refsMatch(
   return false;
 }
 
-/** Deep-walk JSON for exact URL string or media_asset_id field. */
 export function jsonRefsAsset(value: unknown, asset: AssetRef): boolean {
   if (value == null) return false;
   if (typeof value === "string") {
@@ -170,11 +139,6 @@ export function jsonRefsAsset(value: unknown, asset: AssetRef): boolean {
   return false;
 }
 
-/**
- * The Media Assets a campaign's blocks place: each block's `image.asset`
- * (lib/email-campaigns/content.ts). Read from the row as stored, so a row
- * that no longer parses still counts what it names.
- */
 export function campaignImageAssetIds(content: unknown): string[] {
   const blocks = content && typeof content === "object" ? (content as { blocks?: unknown }).blocks : null;
   if (!Array.isArray(blocks)) return [];
@@ -200,10 +164,6 @@ function dedupe(entries: ImageUsageEntry[]): ImageUsageEntry[] {
   return out;
 }
 
-/**
- * Pure resolver against fixture/consumer rows.
- * orderItems in rows are ignored on purpose (AC: exclude order snapshots).
- */
 export function resolveUsages(
   asset: AssetRef,
   rows: UsageConsumerRows,
@@ -216,7 +176,6 @@ export function resolveUsages(
     if (refsMatch(asset, { url: blog.image_url, assetId: blog.media_asset_id })) {
       usages.push({ type: "blog_featured", label, ref_id: blog.id });
     }
-    // Inline: body/content refs only (not the featured image_url field alone)
     const content = blog.content as Record<string, { body?: string }> | null;
     let inline = false;
     if (content) {
@@ -226,9 +185,6 @@ export function resolveUsages(
           inline = true;
           break;
         }
-        // Guard the empty-id shape (`listImageUsages(url)`): `"".includes("")`
-        // is true, which used to mark every blog post as an inline usage and
-        // made the delete precheck 409 whenever any post existed.
         if (asset.id && body.includes(asset.id)) {
           inline = true;
           break;
@@ -246,7 +202,6 @@ export function resolveUsages(
   for (const setting of rows.settings ?? []) {
     if (!setting.key.startsWith("landing_")) continue;
 
-    // Dual-write companion: landing_*_asset_id → same slot ref_id as URL key
     if (setting.key.endsWith("_asset_id")) {
       const baseKey = setting.key.slice(0, -"_asset_id".length);
       if (setting.value === asset.id) {
@@ -377,35 +332,10 @@ export function resolveUsages(
   return dedupe(usages);
 }
 
-/* ------------------------------------------------------------------ *
- * Inverted index
- *
- * `resolveUsages` answers "does this row reference this asset?" and the old
- * `indexUsages` asked it once per (asset, row) pair — O(assets × rows), with a
- * full deep walk of every JSON blob per asset. The inverted build below walks
- * each consumer row exactly once, extracts the asset keys it references, and
- * accumulates them into Map<assetKey, Usage[]>, so answering per asset is a
- * lookup. Detection logic is unchanged: every branch here mirrors the matching
- * rule of the corresponding branch in `resolveUsages`, and rows are visited in
- * the same order, so per-asset ordering (and dedupe) come out identical.
- * ------------------------------------------------------------------ */
-
-/**
- * Aho-Corasick multi-pattern substring matcher.
- *
- * Several matchers ask "which of these N asset URLs/ids occur inside this
- * string" (blog bodies, landing slot values, JSON string leaves). Answering it
- * with N independent `String.includes` calls is what made the old scan
- * quadratic; one automaton answers all N in a single pass over the text.
- *
- * Patterns are indexed by code point, so `search` must iterate the text the
- * same way. Empty patterns are not supported — callers guard on truthiness.
- */
 class SubstringMatcher {
   private readonly next: Array<Map<string, number>> = [new Map()];
   private readonly fail: number[] = [0];
   private readonly out: number[][] = [[]];
-  /** Nearest proper suffix node that has output, or -1. */
   private readonly dict: number[] = [-1];
   private readonly patternIds = new Map<string, number>();
   private built = false;
@@ -414,7 +344,6 @@ class SubstringMatcher {
     return this.patternIds.size;
   }
 
-  /** Returns a stable id for `pattern`; identical patterns share one id. */
   add(pattern: string): number {
     const existing = this.patternIds.get(pattern);
     if (existing !== undefined) return existing;
@@ -460,7 +389,6 @@ class SubstringMatcher {
     this.built = true;
   }
 
-  /** Calls `hit` for every pattern id occurring anywhere in `text`. */
   search(text: string, hit: (patternId: number) => void): void {
     if (this.patternIds.size === 0 || text.length === 0) return;
     this.build();
@@ -475,7 +403,6 @@ class SubstringMatcher {
   }
 }
 
-/** Identity of an AssetRef: two refs with the same id but different hosted_url resolve differently. */
 type AssetKey = string;
 
 function assetKeyOf(asset: AssetRef): AssetKey {
@@ -483,14 +410,10 @@ function assetKeyOf(asset: AssetRef): AssetKey {
 }
 
 type AssetIndex = {
-  /** asset.id → keys (exact id matches). */
   byId: Map<string, AssetKey[]>;
-  /** asset.hosted_url → keys (exact URL matches). */
   byUrl: Map<string, AssetKey[]>;
   matcher: SubstringMatcher;
-  /** pattern id → keys of assets whose hosted_url is that pattern. */
   urlOwners: Map<number, AssetKey[]>;
-  /** pattern id → keys of assets whose id is that pattern. */
   idOwners: Map<number, AssetKey[]>;
 };
 
@@ -506,12 +429,6 @@ function pushOwner(map: Map<number, AssetKey[]>, patternId: number, key: AssetKe
   else map.set(patternId, [key]);
 }
 
-/**
- * Assets with an empty id are degenerate for the inverted build: `resolveUsages`
- * does `body.includes(asset.id)`, which is true for every string when the id is
- * "" (the `listImageUsages(url)` shape). They fall back to the direct scan so the
- * result stays bit-for-bit identical.
- */
 function isDegenerateAsset(asset: AssetRef): boolean {
   return !asset.id;
 }
@@ -555,19 +472,16 @@ function addAll(out: Set<AssetKey>, keys: AssetKey[] | undefined): void {
   for (const k of keys) out.add(k);
 }
 
-/** Assets whose id is exactly `value` (mirrors `refsMatch`'s assetId branch). */
 function addExactId(index: AssetIndex, value: string | null | undefined, out: Set<AssetKey>): void {
   if (!value) return;
   addAll(out, index.byId.get(value));
 }
 
-/** Assets whose hosted_url is exactly `value` (mirrors `refsMatch`'s url branch). */
 function addExactUrl(index: AssetIndex, value: string | null | undefined, out: Set<AssetKey>): void {
   if (!value) return;
   addAll(out, index.byUrl.get(value));
 }
 
-/** Assets whose hosted_url (and optionally id) occurs anywhere inside `text`. */
 function addSubstringMatches(
   index: AssetIndex,
   text: string,
@@ -581,13 +495,9 @@ function addSubstringMatches(
   });
 }
 
-/** Inverted `jsonRefsAsset`: every asset the blob references, in one walk. */
 function collectJsonRefKeys(value: unknown, index: AssetIndex, out: Set<AssetKey>): void {
   if (value == null) return;
   if (typeof value === "string") {
-    // Same three branches as jsonRefsAsset: hosted_url equality, id equality,
-    // hosted_url substring. (jsonRefsAsset's `obj.media_asset_id` fast path is
-    // subsumed: that field's value is also visited as a string leaf below.)
     addExactUrl(index, value, out);
     addExactId(index, value, out);
     addSubstringMatches(index, value, out, false);
@@ -604,7 +514,6 @@ function collectJsonRefKeys(value: unknown, index: AssetIndex, out: Set<AssetKey
   }
 }
 
-/** Index usages by hosted URL and by asset id (for library grid). */
 export function indexUsages(
   assets: AssetRef[],
   rows: UsageConsumerRows,
@@ -612,8 +521,6 @@ export function indexUsages(
   const { index, degenerate } = buildAssetIndex(assets);
   const acc = new Map<AssetKey, ImageUsageEntry[]>();
 
-  // One entry object is shared by every asset that matched the same row; the
-  // old code already shared list references between byUrl and byAssetId.
   const emit = (keys: Set<AssetKey>, entry: () => ImageUsageEntry): void => {
     if (keys.size === 0) return;
     const value = entry();
@@ -635,7 +542,6 @@ export function indexUsages(
     addExactUrl(index, blog.image_url, featured);
     emit(featured, () => ({ type: "blog_featured", label: titleOf(), ref_id: blog.id }));
 
-    // Inline: body/content refs only (not the featured image_url field alone)
     const inline = new Set<AssetKey>();
     const content = blog.content as Record<string, { body?: string }> | null;
     if (content) {
@@ -656,7 +562,6 @@ export function indexUsages(
   for (const setting of rows.settings ?? []) {
     if (!setting.key.startsWith("landing_")) continue;
 
-    // Dual-write companion: landing_*_asset_id → same slot ref_id as URL key
     if (setting.key.endsWith("_asset_id")) {
       const baseKey = setting.key.slice(0, -"_asset_id".length);
       const keys = new Set<AssetKey>();
@@ -782,10 +687,6 @@ export function indexUsages(
   return { byUrl, byAssetId };
 }
 
-/* ------------------------------------------------------------------ *
- * Consumer row fetching
- * ------------------------------------------------------------------ */
-
 export type ConsumerTable =
   | "blog_posts"
   | "site_settings"
@@ -800,29 +701,18 @@ export type ConsumerTable =
   | "items"
   | "email_campaigns";
 
-/**
- * Exactly the columns the matchers read: row ids/labels, the URL and asset-id
- * columns `refsMatch` compares, and the JSON columns `jsonRefsAsset` walks.
- * Both the full scan and the per-asset scan use these, so a rejected predicate
- * falls back to the same (narrow) select.
- */
 const CONSUMER_SELECT: Record<ConsumerTable, string> = {
-  // slug + content: label; image_url + media_asset_id: featured; content: inline
   blog_posts: "id, slug, image_url, content, media_asset_id",
   site_settings: "key, value",
-  // draft_content included so an image referenced only by a pending Section draft
-  // still reports as Used — CONTEXT.md is explicit that drafts count.
   landing_sections: "id, slug, content, draft_content",
   slide_in_sections: "id, page, slug, content, draft_content",
   product_images: "id, product_id, url, media_asset_id",
-  // product_id was selected but never read — the label is `Variant ${id}`.
   product_variants: "id, image_url",
   categories: "id, slug, image_url, media_asset_id",
   partners: "id, name, logo_url, media_asset_id",
   partners_page: "id, content",
   item_overlay_mappings: "item_id, media_asset_id, items ( name )",
   items: "id, name, primary_media_asset_id",
-  // name: label; content: the blocks' images by asset id.
   email_campaigns: "id, name, content",
 };
 
@@ -834,32 +724,18 @@ const equals = (column: string, value: string): UsagePredicateTerm => ({
   value,
 });
 
-/** `ilike` is only ever a *superset* of the JS matcher, which reruns exactly. */
 const contains = (column: string, value: string): UsagePredicateTerm => ({
   column,
   op: "ilike",
   value: `%${value}%`,
 });
 
-/**
- * OR-combined predicate for one consumer table when resolving a single asset.
- *
- * - non-empty array → push it into the query
- * - `[]`            → not expressible, the table must be scanned in full
- * - `null`          → the table cannot match this asset at all, skip the query
- *
- * Every returned predicate is a superset of the JS matcher for that table (the
- * matcher still runs over the reduced rows), so the result equals a full scan.
- */
 export function usagePredicateTerms(
   table: ConsumerTable,
   asset: AssetRef,
 ): UsagePredicateTerm[] | null {
   const id = asset.id;
   const url = asset.hosted_url ?? "";
-  // An empty asset id makes `body.includes(asset.id)` and `value === asset.id`
-  // true for every row (the `listImageUsages(url)` shape), so tables reached by
-  // those rules cannot be narrowed at all.
   const byId = id.length > 0;
 
   switch (table) {
@@ -906,7 +782,6 @@ export function usagePredicateTerms(
       return terms.length > 0 ? terms : null;
     }
     case "product_variants":
-      // media_asset_id is not selected for variants, so only the URL can match.
       return url ? [equals("image_url", url)] : null;
     case "categories": {
       const terms: UsagePredicateTerm[] = [];
@@ -925,12 +800,10 @@ export function usagePredicateTerms(
     case "items":
       return byId ? [equals("primary_media_asset_id", id)] : null;
     case "email_campaigns":
-      // A campaign names its images by id only, so a URL alone cannot match one.
       return byId ? [contains("content::text", id)] : null;
   }
 }
 
-/** PostgREST `or=()` values only need quoting for the list separators. */
 function orTermValue(value: string): string {
   if (!/[,()"\\]/.test(value) && value.trim() === value) return value;
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -974,8 +847,6 @@ async function scanConsumer(
     } catch (err) {
       failure = err;
     }
-    // PostgREST may reject a pushed-down predicate — most plausibly the
-    // `content::text` cast. Correctness wins: rerun the same select unfiltered.
     console.warn(
       `[image-usages] usage predicate rejected for ${table}, falling back to full scan`,
       failure,
@@ -992,10 +863,6 @@ type OverlayRow = {
   items: { name: string | null } | { name: string | null }[] | null;
 };
 
-/**
- * All consumer rows (`asset === null`), or only the rows that can possibly
- * reference `asset`. Both shapes feed the same matchers.
- */
 async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageConsumerRows> {
   const { supabaseAdmin } = await import("@/lib/supabase/server");
   const admin = supabaseAdmin();
@@ -1059,7 +926,6 @@ async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageCo
         t,
       ),
     ),
-    // Every campaign with blocks, archived ones too: a sent email keeps its images.
     scanConsumer("email_campaigns", asset, (t) =>
       applyTerms(admin.from("email_campaigns").select(CONSUMER_SELECT.email_campaigns).not("content", "is", null), t),
     ),
@@ -1088,12 +954,10 @@ async function fetchConsumerRows(asset: AssetRef | null = null): Promise<UsageCo
   };
 }
 
-/** Only the consumer rows that can reference `asset` (predicate pushdown). */
 export async function fetchConsumerRowsForAsset(asset: AssetRef): Promise<UsageConsumerRows> {
   return fetchConsumerRows(asset);
 }
 
-/** Where a hosted image URL is attached (legacy + expanded scanners). */
 export async function listImageUsages(url: string): Promise<ImageUsageEntry[]> {
   return listAssetUsages({ id: "", hosted_url: url });
 }
@@ -1108,19 +972,12 @@ function slideMediaRowsFromMap(): UsageConsumerRows["slideMedia"] {
   }));
 }
 
-/**
- * Full Asset usage (URL + id matching).
- *
- * Only fetches rows that can reference this asset; the matcher below is the
- * same one the full scan runs, so the answer is identical.
- */
 export async function listAssetUsages(asset: AssetRef): Promise<ImageUsageEntry[]> {
   const rows = await fetchConsumerRowsForAsset(asset);
   rows.slideMedia = slideMediaRowsFromMap();
   return resolveUsages(asset, rows);
 }
 
-/** URL → usages map for Media library grid (all Assets with hosted_url). */
 export async function buildUsageMap(
   assets: AssetRef[],
 ): Promise<Record<string, ImageUsageEntry[]>> {

@@ -1,28 +1,15 @@
-// ============================================================
-// Email templates: what Admin Panel → Email templates reads and writes
-// ============================================================
-//
-// PRD-email-templates. The editable emails are the registry entries that
-// carry a copy spec (lib/email/registry.ts); entries that are variants of one
-// email share its spec, and are its previews. Saving writes one
-// `email_template_copy` row; resetting deletes it. The caller has checked the
-// `email-templates` permission.
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { defaultEmailCopy, editedFields, resolveEmailCopy, type EmailCopy, type EmailCopySpec } from "./copy";
 import { clearEmailCopyCache } from "./copy-store";
 import { EMAIL_GROUP_LABELS, EMAIL_REGISTRY, type EmailCase, type EmailGroup } from "./registry";
 
-/** One editable email: its spec, and the registry entries that preview it. */
 export interface EditableEmail {
   spec: EmailCopySpec;
   group: EmailGroup;
   audience: EmailCase["audience"];
-  /** Its versions, as the registry names them; the first is the main one. */
   variants: { id: string; label: string }[];
 }
 
-/** Every editable email, in the registry's order. */
 export function editableEmails(): EditableEmail[] {
   const out = new Map<string, EditableEmail>();
   for (const c of EMAIL_REGISTRY) {
@@ -40,7 +27,6 @@ export function editableEmail(id: string): EditableEmail | null {
 
 export const groupLabel = (g: EmailGroup) => EMAIL_GROUP_LABELS[g];
 
-/** The registry entry for one of an email's versions; the main one when `variantId` is not its own. */
 export function variantCase(email: EditableEmail, variantId?: string | null): EmailCase {
   const id = email.variants.some((v) => v.id === variantId) ? variantId : email.variants[0].id;
   return EMAIL_REGISTRY.find((c) => c.id === id)!;
@@ -48,7 +34,6 @@ export function variantCase(email: EditableEmail, variantId?: string | null): Em
 
 export interface SavedCopy {
   copy: EmailCopy;
-  /** Fields that differ from the default. */
   edited: string[];
   updatedAt: string | null;
   updatedBy: string | null;
@@ -64,7 +49,6 @@ function savedFrom(spec: EmailCopySpec, row: Row | undefined): SavedCopy {
   return { copy, edited: editedFields(spec, copy), updatedAt: row?.updated_at ?? null, updatedBy: editor?.name ?? null };
 }
 
-/** Every editable email's saved words. Throws on a failed read. */
 export async function readAllSavedCopy(admin: SupabaseClient): Promise<Map<string, SavedCopy>> {
   const { data, error } = await admin.from("email_template_copy").select(COLUMNS);
   if (error) throw new Error(`Could not read the email templates: ${error.message}`);
@@ -72,17 +56,12 @@ export async function readAllSavedCopy(admin: SupabaseClient): Promise<Map<strin
   return new Map(editableEmails().map((e) => [e.spec.id, savedFrom(e.spec, rows.get(e.spec.id))] as const));
 }
 
-/** One email's saved words. Throws on a failed read. */
 export async function readSavedCopy(admin: SupabaseClient, spec: EmailCopySpec): Promise<SavedCopy> {
   const { data, error } = await admin.from("email_template_copy").select(COLUMNS).eq("template_id", spec.id).maybeSingle();
   if (error) throw new Error(`Could not read the email: ${error.message}`);
   return savedFrom(spec, (data ?? undefined) as Row | undefined);
 }
 
-/**
- * Saves an email's words, already validated. Wording equal to the default in
- * every field deletes the row instead, so "edited" always means different.
- */
 export async function writeCopy(
   admin: SupabaseClient,
   spec: EmailCopySpec,
@@ -97,7 +76,6 @@ export async function writeCopy(
   clearEmailCopyCache(spec.id);
 }
 
-/** Back to the default words. */
 export async function resetCopy(admin: SupabaseClient, spec: EmailCopySpec): Promise<void> {
   const { error } = await admin.from("email_template_copy").delete().eq("template_id", spec.id);
   if (error) throw new Error(`Could not reset the email: ${error.message}`);

@@ -24,7 +24,7 @@ describe("GET /api/appointments/ics", () => {
     expect(res.headers.get("content-disposition")).toContain("appointment.ics");
     const body = await res.text();
     expect(body).toContain("BEGIN:VEVENT");
-    expect(body).toContain("DTSTART:20260727T063000Z"); // 14:30 SGT → 06:30 UTC
+    expect(body).toContain("DTSTART:20260727T063000Z");
   });
 
   it("accepts Z-suffixed datetimes (the format slots.ts emits)", () => {

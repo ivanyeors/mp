@@ -2,7 +2,6 @@
 
 import { Check, UserCheck } from "lucide-react";
 
-/** Add-on option as served by /api/results/addons (image from the Item's primary Media Asset). */
 export type AddonOption = {
   item_id: number;
   name: string;
@@ -11,10 +10,6 @@ export type AddonOption = {
   image_url?: string | null;
 };
 
-/**
- * Right-rail add-on option. Image card when the Item has a primary Media Asset,
- * otherwise the original text row. Selection state lives in the parent.
- */
 export function AddonOptionButton({
   addon,
   selected,
@@ -50,10 +45,6 @@ export function AddonOptionButton({
   );
 }
 
-/**
- * Selected add-on images under the product silhouette.
- * Stacked on mobile, horizontal row on desktop (lg matches the configurator grid).
- */
 export function SelectedAddonPreviews({
   addons,
   selectedIds,
@@ -78,12 +69,6 @@ export function SelectedAddonPreviews({
   );
 }
 
-/**
- * Shown once a shopper picks an add-on: every add-on is the pillow advisor's
- * call, made against the shopper's measurements before the build is made.
- * `chargedAfterReview` adds the money half only where it holds — a build paid
- * after Staff have reviewed it, never a finish link paid on the spot.
- */
 export function AddonReviewNotice({ chargedAfterReview }: { chargedAfterReview: boolean }) {
   return (
     <div role="note" className="flex gap-2.5 rounded-lg bg-muted/50 p-3 text-sm">
