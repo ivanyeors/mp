@@ -23,7 +23,7 @@ assert.match(pageSrc, /withJsonLd=\{false\}/);
 const clientSrc = read("app/[lang]/shop/[slug]/product-detail-client.tsx");
 assert.match(clientSrc, /pageFaq\?:/);
 assert.match(clientSrc, /\{pageFaq\}/);
-const belowFold = clientSrc.match(/\{\/\* Below fold \*\/\}[\s\S]*?\{relatedProducts/)?.[0] ?? "";
+const belowFold = clientSrc.match(/<Tabs ref=\{detailTabsRef\}[\s\S]*?\{relatedProducts/)?.[0] ?? "";
 assert.match(belowFold, /<\/Tabs>/);
 assert.match(belowFold, /\{pageFaq\}/);
 assert.ok(

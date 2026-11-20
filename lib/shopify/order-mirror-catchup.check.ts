@@ -41,8 +41,9 @@ async function main() {
   const slaGet = slaSrc.indexOf('export async function GET')
   const slaLastWork = slaSrc.indexOf('summary.reminded += 1', slaGet)
   const slaCatchup = slaSrc.indexOf('catchup = await runShopifyOrderMirrorCatchup()', slaGet)
+  const slaGetEnd = slaSrc.indexOf('\n}\n', slaGet)
   assert.ok(
-    slaGet >= 0 && slaLastWork > slaGet && slaCatchup > slaLastWork,
+    slaGet >= 0 && slaLastWork > slaGet && slaCatchup > slaLastWork && slaCatchup < slaGetEnd,
     'catch-up runs in the same GET request, after the SLA work (not a third cron)',
   )
 

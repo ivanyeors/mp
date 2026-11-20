@@ -1,7 +1,7 @@
 # 09 — Remove the comments the ban counted
 
 **Type:** AFK
-**Status:** **built** (2026-11-20). Proven by the before/after comparison in requirement 2, run by the worker and again by the orchestrating session on the merged tree; the `reviewer` subagent's second check on the money paths is recorded in the pull request
+**Status:** **built** (2026-11-20). Proven by the before/after comparison in requirement 2, run by the worker and again by the orchestrating session on the merged tree; the `reviewer` subagent's second check found the money paths comment-only and one live check still anchored on a comment, since fixed
 **Blocked by:** 02, 03
 
 ## Goal
@@ -57,17 +57,28 @@ reasons stay in git history, the ADRs, the PRDs and `CONTEXT.md`.
   (`lib/results/access.ts`, `lib/spatial-fillings/visuals.ts`).
 - 45 `ponytail:` notes sat inside a longer comment that began with other
   text, so the rule reported them. Each is kept as its own comment of at
-  most four lines, in the note's own words.
+  most four lines, in the note's own words; five were reworded to stand
+  alone.
 - A block that held only a comment is now `{}` (89 blocks). TypeScript prints
   such a block on one line, so 57 files' emitted JavaScript differs in that
   whitespace alone; the other 2,217 stripped files emit byte-identical
   JavaScript, and all have the same syntax tree.
-- Six checks passed because a comment held the text they searched for
-  (`pdp-mobile`, `xray-dive`, `country`, `slice-03`, `order-mirror-catchup`,
-  `color-overrides`). Each now reads the code and fails on a planted wrong
+- Seven checks leaned on a comment. Six passed because a comment held the
+  text they searched for (`pdp-mobile`, `xray-dive`, `country`, `slice-03`,
+  `order-mirror-catchup`, `color-overrides`); `pdp-page-faq`, a live check
+  that `pnpm checks` skips, anchored on a JSX comment and was found by the
+  second check. Each now reads the code and fails on a planted wrong
   version. `pdp-mobile.check.ts` asserted a pinch-zoom the gallery dropped
   long ago; it now asserts there is no touch-action there, and strips
   comments before it looks.
+- Lost with the comments, beyond the reasons themselves: the `@deprecated`
+  tag on `DEFERRED_PUBLIC_PATHS` (`lib/media/migrate-public.ts`), and each
+  live check's "Run:" line, now stated once in `scripts/checks.mjs`.
+- Second check (`reviewer` subagent, 2026-11-20): the 225 money-path files
+  are comment-only. It read the proof, the codemod and all 88 lines added
+  in money paths. It also named two `catch {}` blocks in
+  `lib/stripe/sync.ts` that hide every error; they were there before and
+  are in `docs/known-issues.md`.
 - `docs/data-flows/inventory.md` lost one sentence that pointed at a deleted
   file header.
 - The codemod and the proof are not in the repository. To get a comment back,

@@ -22,7 +22,9 @@ const TSX = path.join(ROOT, "node_modules/.bin/tsx");
 
 // These read a real Supabase project or fetch a running site, so they fail
 // anywhere without `.env.local`. Run them with --live after a migration or
-// seed, the way their headers describe. answer-lede-coverage also WRITES
+// seed, or one at a time with the environment loaded:
+//   npx tsx --env-file=.env.local <path to the check>
+// answer-lede-coverage also WRITES
 // `products.content` (it fills in missing seo_answer), and home-page-faq
 // inserts and deletes `landing_sections` rows: point --live at the database
 // you mean. explore-resize drives Chromium against the preview app

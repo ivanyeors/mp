@@ -89,3 +89,29 @@ share in cents, floor them, then hand the cents still owed to the lines with the
 largest remainders, so the shares sum exactly to `total − shipping`. A partial
 selection reads its lines' allotted cents. Then set the tolerance in
 `refunds.property.test.ts` to zero.
+
+## Stripe sync hides every error when it retires an old Price or payment link
+
+**Where:** `lib/stripe/sync.ts` → `syncVariantPrice` (the `catch {}` after the old
+Price is archived) and `createPaymentLink` (the `catch {}` after the old link is
+deactivated)
+**Status:** open, found 2026-11-20 by the second check on the comment removal, by
+reading; not reproduced against Stripe. Awaiting the owner's decision
+
+Both blocks were written to step over one expected case ("price not found", "link
+already inactive") but catch everything:
+
+1. **Old Price left active.** The `try` covers `prices.retrieve`, the nickname update
+   and the archive. If the archive fails on a rate limit or a network error, the code
+   goes on to create the new Price. The old one stays active in Stripe at the old
+   amount, and nothing is logged.
+2. **Old payment link left live.** If deactivating the old link fails for any reason,
+   the new link is created and overwrites `stripe_payment_link_id`. The old link still
+   takes payment at its old price and no row points at it.
+
+`syncProductToStripe` in the same file already does this properly: it steps over
+`resource_missing` only and rethrows the rest.
+
+**If you fix it:** narrow both blocks the same way (step over `resource_missing` for
+the Price, an already-inactive link for the link; rethrow anything else), with a test
+for each that fails when the catch is widened again.
