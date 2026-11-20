@@ -67,10 +67,10 @@ afterEach(() => {
 });
 
 /** Every value each render saw, first render first. */
-function probe(read: () => boolean) {
+function probe(useValue: () => boolean) {
   const seen: boolean[] = [];
   function Probe() {
-    const value = read();
+    const value = useValue();
     seen.push(value);
     return <span>{String(value)}</span>;
   }
@@ -78,20 +78,20 @@ function probe(read: () => boolean) {
 }
 
 const hooks = [
-  { name: "useMediaQuery", query: "(min-width: 1024px)", read: () => useMediaQuery("(min-width: 1024px)") },
-  { name: "useIsMobile", query: PHONE, read: () => useIsMobile() },
+  { name: "useMediaQuery", query: "(min-width: 1024px)", useValue: () => useMediaQuery("(min-width: 1024px)") },
+  { name: "useIsMobile", query: PHONE, useValue: () => useIsMobile() },
 ];
 
-describe.each(hooks)("$name", ({ query, read }) => {
+describe.each(hooks)("$name", ({ query, useValue }) => {
   it("is false on the server, whatever the screen", () => {
     screen.set(query, true);
-    const { Probe } = probe(read);
+    const { Probe } = probe(useValue);
     expect(renderToString(<Probe />)).toBe("<span>false</span>");
   });
 
   it("hydrates as false, with no mismatch, then takes the screen's value", () => {
     screen.set(query, true);
-    const { Probe, seen } = probe(read);
+    const { Probe, seen } = probe(useValue);
     host = document.createElement("div");
     host.innerHTML = renderToString(<Probe />);
     document.body.append(host);
@@ -111,7 +111,7 @@ describe.each(hooks)("$name", ({ query, read }) => {
 
   it("is the screen's value on the first render of a client navigation", () => {
     screen.set(query, true);
-    const { Probe, seen } = probe(read);
+    const { Probe, seen } = probe(useValue);
     host = document.createElement("div");
     document.body.append(host);
     act(() => {
@@ -127,7 +127,7 @@ describe.each(hooks)("$name", ({ query, read }) => {
     // boundary, so the browser renders that boundary fresh instead of
     // hydrating it (the appointments calendar relies on this).
     screen.set(query, true);
-    const { Probe, seen } = probe(read);
+    const { Probe, seen } = probe(useValue);
     function ServerOnlyBailout(): never {
       throw new Error("bail out to client rendering");
     }
@@ -154,7 +154,7 @@ describe.each(hooks)("$name", ({ query, read }) => {
   });
 
   it("follows a change event", () => {
-    const { Probe } = probe(read);
+    const { Probe } = probe(useValue);
     host = document.createElement("div");
     document.body.append(host);
     act(() => {
@@ -169,7 +169,7 @@ describe.each(hooks)("$name", ({ query, read }) => {
   });
 
   it("stops listening on unmount", () => {
-    const { Probe } = probe(read);
+    const { Probe } = probe(useValue);
     host = document.createElement("div");
     document.body.append(host);
     act(() => {
