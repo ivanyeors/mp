@@ -1,0 +1,108 @@
+name: bombadil
+
+# Bombadil (https://github.com/antithesishq/bombadil) clicks, types and scrolls
+# through the app at random and fails on the first uncaught exception,
+# unhandled promise rejection, console error or HTTP 4xx/5xx response.
+#
+# On request only, never on a push or pull request: it runs for minutes and
+# what it finds is a lead to look into, not a gate. Start it from Actions →
+# bombadil → Run workflow (pick the branch), or:
+#
+#   gh workflow run bombadil.yml --ref <branch> -f as=owner -f time-limit=10m
+#
+# It runs scripts/bombadil/run, which explores the preview skill's app: the
+# real `next dev` on the chosen branch, a stand-in Supabase on made-up data,
+# and no real keys, so random clicking cannot place an order, send an email
+# or reach Stripe. The same script runs locally or in a Claude session.
+#
+# A failed run means Bombadil found something. The job summary says what; the
+# `bombadil` artifact holds the trace, the screen it stopped on, and the
+# dev server's log. To step through the trace:
+#
+#   bombadil browser inspect trace.bin
+
+on:
+  workflow_dispatch:
+    inputs:
+      as:
+        description: Signed in as the fixture Owner (Admin Panel), or a signed-out visitor (storefront)
+        type: choice
+        options: [owner, visitor]
+        default: owner
+      time-limit:
+        description: How long to explore, e.g. 30s, 10m, 1h (the job stops at 90 minutes)
+        type: string
+        default: 10m
+      start:
+        description: Page to start on, e.g. /en-US/settings/orders (blank starts on /en-US/settings as owner, /en-US as visitor)
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  explore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # As in ci.yml: corepack pins pnpm from package.json, and must be on
+      # before setup-node resolves `pnpm` for its cache.
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Chrome comes with the runner image; Bombadil finds it on its own.
+      # Inputs go through env, not ${{ }} in the script, so no input can
+      # inject shell.
+      - name: Explore
+        env:
+          AS: ${{ inputs.as }}
+          TIME_LIMIT: ${{ inputs.time-limit }}
+          START: ${{ inputs.start }}
+        run: |
+          args=(--as "$AS" --time-limit "$TIME_LIMIT" --out bombadil-out)
+          if [ -n "$START" ]; then args+=(--start "$START"); fi
+          scripts/bombadil/run "${args[@]}"
+
+      - name: Summary
+        if: always()
+        env:
+          AS: ${{ inputs.as }}
+          TIME_LIMIT: ${{ inputs.time-limit }}
+        run: |
+          log=bombadil-out/run.log
+          {
+            echo "### Bombadil: $AS, $TIME_LIMIT"
+            if [ ! -f "$log" ]; then
+              echo "Bombadil did not start; the Explore step's log says why."
+            elif grep -q "was violated" "$log"; then
+              echo '```'
+              sed -n '/was violated:/,/^Test finished/p' "$log"
+              echo '```'
+              echo "The \`bombadil\` artifact has the trace (\`bombadil browser inspect trace.bin\`), the screen it stopped on, and the dev server's log."
+            else
+              echo "No property was violated in $TIME_LIMIT."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: bombadil
+          path: bombadil-out
+          if-no-files-found: ignore
+          retention-days: 14
