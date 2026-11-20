@@ -30,6 +30,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ReadjustmentPanel } from "@/components/settings/readjustment-panel";
 import {
   Collapsible,
@@ -81,8 +82,6 @@ type Props = {
 };
 
 const PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin];
-
-const MOBILE_BREAKPOINT_QUERY = "(max-width: 767px)";
 
 type ViewId = "timeGridDay" | "timeGridThreeDay" | "timeGridWeek" | "dayGridMonth";
 
@@ -295,25 +294,6 @@ function renderEventContent(arg: EventContentArg) {
   );
 }
 
-/**
- * Synchronous mobile flag. This component is loaded with `ssr: false`, so the
- * first render already runs in the browser and can pick the right initial view
- * instead of mounting the desktop week grid and swapping a frame later.
- */
-function useSyncIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window === "undefined" ? false : window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
-  );
-  useEffect(() => {
-    const mql = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
-    const onChange = () => setIsMobile(mql.matches);
-    onChange();
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-  return isMobile;
-}
-
 function LegendSwatch({ className }: { className: string }) {
   return <span className={cn("inline-block size-2.5 shrink-0 rounded-sm", className)} />;
 }
@@ -324,7 +304,10 @@ export function AppointmentsCalendar({
   onAvailabilityChange,
   onOpenSettings,
 }: Props) {
-  const isMobile = useSyncIsMobile();
+  // This component is loaded with `ssr: false`, so it is never hydrated and
+  // useIsMobile has the screen's value on the first render: the initial view
+  // and legend are right without mounting the desktop week grid first.
+  const isMobile = useIsMobile();
   const calendarRef = useRef<FullCalendar>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;

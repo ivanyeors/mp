@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, Suspense } from "react";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -120,6 +120,37 @@ describe.each(hooks)("$name", ({ query, read }) => {
     });
     expect(seen[0]).toBe(true);
     expect(seen.every(Boolean)).toBe(true);
+  });
+
+  it("is the screen's value on the first render inside a server-skipped (`ssr: false`) boundary", async () => {
+    // next/dynamic's `ssr: false` throws on the server inside a Suspense
+    // boundary, so the browser renders that boundary fresh instead of
+    // hydrating it (the appointments calendar relies on this).
+    screen.set(query, true);
+    const { Probe, seen } = probe(read);
+    function ServerOnlyBailout(): never {
+      throw new Error("bail out to client rendering");
+    }
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    host = document.createElement("div");
+    host.innerHTML = renderToString(
+      <Suspense fallback={<i>loading</i>}>
+        <ServerOnlyBailout />
+      </Suspense>,
+    );
+    document.body.append(host);
+    await act(async () => {
+      root = hydrateRoot(
+        host!,
+        <Suspense fallback={<i>loading</i>}>
+          <Probe />
+        </Suspense>,
+        { onRecoverableError: () => undefined },
+      );
+    });
+    errors.mockRestore();
+    expect(host.textContent).toBe("true");
+    expect(seen[0]).toBe(true);
   });
 
   it("follows a change event", () => {
