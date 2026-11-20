@@ -1,10 +1,10 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { parseAgainst, totalsByRule } from "./lint-baseline.mjs";
+import { formatBaseline, mergeBaselines, parseAgainst, totalsByRule } from "./lint-baseline.mjs";
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "lint-baseline.mjs");
 const repo = path.resolve(path.dirname(script), "..");
@@ -34,6 +34,92 @@ describe("parseAgainst", () => {
     expect(parseAgainst(["--against", "HEAD~1"])).toBe("HEAD~1");
     expect(parseAgainst(["--against=HEAD~1"])).toBe("HEAD~1");
     expect(parseAgainst(["--against", "--other"])).toBe("origin/main");
+  });
+});
+
+describe("mergeBaselines", () => {
+  const c = (count: number) => ({ count });
+  const base = {
+    "lib/both.ts": { r: c(5) },
+    "lib/ours-fixed.ts": { r: c(3) },
+    "lib/theirs-moved.ts": { r: c(4) },
+  };
+  const ours = {
+    "lib/both.ts": { r: c(4) },
+    "lib/theirs-moved.ts": { r: c(4) },
+    "lib/ours-new.ts": { r: c(2) },
+    "lib/new-both.ts": { r: c(6) },
+  };
+  const theirs = {
+    "lib/both.ts": { r: c(2) },
+    "lib/ours-fixed.ts": { r: c(3) },
+    "lib/moved-here.ts": { r: c(4) },
+    "lib/new-both.ts": { r: c(1) },
+  };
+
+  it("keeps the lower count on both sides, drops what either side removed, keeps one side's new entries", () => {
+    expect(mergeBaselines(base, ours, theirs)).toEqual({
+      "lib/both.ts": { r: c(2) },
+      "lib/ours-new.ts": { r: c(2) },
+      "lib/moved-here.ts": { r: c(4) },
+      "lib/new-both.ts": { r: c(1) },
+    });
+  });
+
+  it("never yields a count above what either side holds", () => {
+    const merged = mergeBaselines(base, ours, theirs);
+    for (const [file, rules] of Object.entries(merged))
+      for (const [rule, { count }] of Object.entries(rules)) {
+        const sides = [ours, theirs].map((s) => (s as Record<string, Record<string, { count: number }>>)[file]?.[rule]?.count).filter((n) => n !== undefined);
+        expect(count).toBeLessThanOrEqual(Math.max(...(sides as number[])));
+        expect(count).toBe(Math.min(...(sides as number[])));
+      }
+  });
+
+  it("is symmetric", () => {
+    expect(mergeBaselines(base, ours, theirs)).toEqual(mergeBaselines(base, theirs, ours));
+  });
+});
+
+describe("--resolve", () => {
+  const gitIn = (dir: string, ...args: string[]) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const resolveIn = (dir: string) => spawnSync("node", [script, "--resolve"], { cwd: dir, encoding: "utf8" });
+  const write = (dir: string, b: object) => writeFileSync(path.join(dir, "eslint-suppressions.json"), formatBaseline(b));
+
+  it("settles a real merge conflict in ESLint's format, without staging it", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "lint-baseline-merge-"));
+    gitIn(dir, "init", "-q", "-b", "main");
+    gitIn(dir, "config", "user.email", "t@example.com");
+    gitIn(dir, "config", "user.name", "t");
+    write(dir, { "lib/a.ts": { r: { count: 5 } }, "lib/b.ts": { r: { count: 3 } } });
+    gitIn(dir, "add", ".");
+    gitIn(dir, "commit", "-q", "-m", "base");
+    gitIn(dir, "checkout", "-q", "-b", "side");
+    write(dir, { "lib/a.ts": { r: { count: 2 } }, "lib/b.ts": { r: { count: 3 } } });
+    gitIn(dir, "commit", "-q", "-am", "side lowers a");
+    gitIn(dir, "checkout", "-q", "main");
+    write(dir, { "lib/a.ts": { r: { count: 4 } }, "lib/c.ts": { r: { count: 1 } } });
+    gitIn(dir, "commit", "-q", "-am", "main lowers a, fixes b, adds c");
+    expect(() => gitIn(dir, "merge", "-q", "side")).toThrow();
+    expect(readFileSync(path.join(dir, "eslint-suppressions.json"), "utf8")).toContain("<<<<<<<");
+
+    const r = resolveIn(dir);
+    expect(r.status).toBe(0);
+    expect(readFileSync(path.join(dir, "eslint-suppressions.json"), "utf8")).toBe(
+      formatBaseline({ "lib/a.ts": { r: { count: 2 } }, "lib/c.ts": { r: { count: 1 } } }),
+    );
+    expect(gitIn(dir, "ls-files", "-u")).not.toBe("");
+  });
+
+  it("outside a conflict says so, changes nothing and exits 1", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "lint-baseline-merge-"));
+    gitIn(dir, "init", "-q");
+    write(dir, { "lib/a.ts": { r: { count: 5 } } });
+    const before = readFileSync(path.join(dir, "eslint-suppressions.json"), "utf8");
+    const r = resolveIn(dir);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toContain("not in a merge conflict");
+    expect(readFileSync(path.join(dir, "eslint-suppressions.json"), "utf8")).toBe(before);
   });
 });
 

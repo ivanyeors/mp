@@ -1,7 +1,7 @@
 # 03 — Hooks and guard use the baseline
 
 **Type:** AFK
-**Status:** in review (2026-11-20): two `reviewer` rounds returned findings, a third build round is under way
+**Status:** **built** (2026-11-20), reviewed by the `reviewer` subagent twice, with a third review of the last round still running at this commit; requirement 2's move rule was replaced, see "As built, after review"
 **Blocked by:** 01, 02
 
 ## Goal
@@ -94,3 +94,64 @@ Read first: `../agent-rails-prd.md` (decision 2), `.claude/hooks/verify.mjs`,
   counts both fell leave both counts lowered and the JSON valid.
 - `pnpm test .claude/hooks` passes, and `pnpm lint` exits 0 on the whole
   repository (about two minutes).
+
+## As built, after review
+
+Two reviews found that the move rule in requirement 2 lost entries (a second
+move, a move back, a prune between a move and the hook, a file that does not
+parse) and that the first repair, restoring from the merge base under a
+per-rule total, let cleanup in one file pay for new violations in another.
+What `verify.mjs` does instead:
+
+- **The rule.** A file on disk with no entry in the working baseline gets
+  what HEAD's committed baseline holds for the file git says it was at HEAD:
+  the same path, or the path it was renamed from since HEAD
+  (`git diff -M -B HEAD` on a scratch copy of the index; the real index is
+  never touched). A file that is new since HEAD gets nothing. An entry that
+  is there is never touched, except that it leaves the old path with its
+  file. The same run's prune then lowers a restored entry to what the file
+  has.
+- **So the ratchet is per commit.** A count that was lowered and committed
+  with the baseline does not come back. Before the commit, removing a
+  violation and adding another is within the count, which ESLint could never
+  tell apart anyway.
+- **One allowance, one file.** When the hook gives a file the entry of a
+  different path it records the claim (`claims.json` in the checkout's git
+  directory). While the claim stands, that HEAD path's allowance goes to no
+  other file, the file re-created at the old path included. A claim ends
+  with its file, with its entry, or when the move is committed with the
+  baseline.
+- **A file that does not parse** keeps the entry it had before the run. If
+  ESLint does not finish, the whole baseline is put back as it was before
+  the run.
+- **`task` and `stop`** lint first and fail at once on a lint failure, record
+  a pass or a counted failure only when the tree at the end is the tree that
+  was checked, and never exit without saying why.
+- **`edit`** lints the file in its own checkout, so a worker in a worktree is
+  linted by that worktree's config and baseline.
+- **A merge conflict in the baseline.** Claude can neither edit the file nor
+  take one side, so `node scripts/lint-baseline.mjs --resolve` merges the
+  three index stages (the lower count where both sides have one; gone where
+  either side removed it) and the hook names that command.
+- **The guard** blocks `--suppress-all` and `--suppress-rule` on any simple
+  command that runs ESLint, wherever the program sits (`xargs -n 50 …`,
+  `find -exec`, `bash -lc`, a continuation line, `corepack pnpm lint`), and
+  `gh variable` writes with options before the action.
+
+Known limits, also in the header of `verify.mjs`:
+
+- A move committed without the baseline's change, in a clone whose working
+  baseline is then HEAD's, is not healed. CI is red on that commit.
+- If the claims file is deleted by hand, a small or much-edited file
+  re-created at a moved file's old path can get the allowance twice. The
+  totals check in `scripts/pr-risk.mjs` is what sees it.
+- When a move and a new file at the old path both happen before the first
+  hook run and the files are under 400 bytes, git cannot tell them apart:
+  the old path keeps its entry and the moved file gets none, which fails
+  closed.
+- `task` and `stop` judge the project directory. A worker's shell-made
+  changes in its own worktree are linted when its branch is merged, not by
+  the worker's own `task` run.
+- The guard parses commands; it does not stop a script written to edit the
+  baseline. The pull request gate (a grown total waits for the owner) is
+  the backstop.

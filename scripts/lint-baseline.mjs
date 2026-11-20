@@ -7,13 +7,24 @@
 //   node scripts/lint-baseline.mjs --against          and the change against origin/main
 //   node scripts/lint-baseline.mjs --against <ref>    ... against <ref> (or --against=<ref>)
 //
+//   node scripts/lint-baseline.mjs --resolve          settle a merge conflict in the file
+//
 // A ref that exists but has no baseline file counts as zero, and says so; a
-// ref that does not exist is named as such, not read as zero. It only
-// reports: every outcome, problems included, exits 0, so nothing gates on it
-// by accident; slice 03's hooks do the gating.
+// ref that does not exist is named as such, not read as zero. Reporting
+// exits 0 on every outcome, problems included, so nothing gates on it by
+// accident; slice 03's hooks do the gating.
+//
+// --resolve is the one mode that writes. After a merge leaves conflict
+// markers in the baseline, Claude can neither edit the file (settings.json
+// denies it) nor take one side (guard.mjs blocks checkout over changes), and
+// every hook run would fail. It reads the three index stages of the file and
+// writes their merge in ESLint's format, never a count above what either
+// side holds (see mergeBaselines). It does not stage the file. Outside a
+// conflict it says so, changes nothing and exits 1.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const FILE = "eslint-suppressions.json";
@@ -82,7 +93,74 @@ function readWorkingTree() {
   }
 }
 
+/**
+ * The merge of two baselines that share `base`, per path and rule: on both
+ * sides, the lower count; in the base and gone from either side, gone (that
+ * side fixed it, or moved or deleted the file); not in the base and on one
+ * side only, kept (that side's new file or its owner-approved raise); not in
+ * the base and on both, the lower. No count ends above both sides'.
+ */
+export function mergeBaselines(base, ours, theirs) {
+  const merged = {};
+  for (const file of new Set([...Object.keys(ours ?? {}), ...Object.keys(theirs ?? {})])) {
+    const rules = new Set([...Object.keys(ours?.[file] ?? {}), ...Object.keys(theirs?.[file] ?? {})]);
+    for (const rule of rules) {
+      const o = ours?.[file]?.[rule]?.count;
+      const t = theirs?.[file]?.[rule]?.count;
+      const inBase = base?.[file]?.[rule] !== undefined;
+      let count;
+      if (o !== undefined && t !== undefined) count = Math.min(o, t);
+      else if (inBase) continue;
+      else count = o ?? t;
+      (merged[file] ??= {})[rule] = { count };
+    }
+  }
+  return merged;
+}
+
+// ESLint's own format: keys sorted at every level, two-space indent, no
+// trailing newline (as .claude/hooks/verify.mjs writes it too).
+const sortKeys = (v) =>
+  v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])])) : v;
+export const formatBaseline = (b) => JSON.stringify(sortKeys(b), null, 2);
+
+function resolve() {
+  let root;
+  try {
+    root = git(["rev-parse", "--show-toplevel"]).trim();
+  } catch {
+    console.log("lint-baseline: not inside a git repository");
+    return 1;
+  }
+  const unmerged = (() => {
+    try {
+      return git(["-C", root, "ls-files", "-u", "--", FILE]).trim();
+    } catch {
+      return "";
+    }
+  })();
+  if (!unmerged) {
+    console.log(`lint-baseline: ${FILE} is not in a merge conflict; nothing changed`);
+    return 1;
+  }
+  const stage = (n) => {
+    try {
+      return JSON.parse(git(["-C", root, "show", `:${n}:${FILE}`]));
+    } catch {
+      return {};
+    }
+  };
+  const merged = mergeBaselines(stage(1), stage(2), stage(3));
+  writeFileSync(path.join(root, FILE), formatBaseline(merged));
+  console.log(`lint-baseline: wrote the merged ${FILE} (${Object.keys(merged).length} files). Check it, then \`git add ${FILE}\`.`);
+  return 0;
+}
+
 function main(argv) {
+  if (argv.includes("--resolve")) {
+    process.exitCode = resolve();
+    return;
+  }
   const current = readWorkingTree();
   if (current.problem) return console.log(`lint-baseline: ${current.problem}`);
 
