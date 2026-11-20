@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Bombadil (https://github.com/antithesishq/bombadil) clicks, types and scrolls
+# through the app at random for a set time, and fails on an uncaught exception,
+# an unhandled promise rejection, a console error or an HTTP 4xx/5xx response.
+#
+# It runs against the preview skill's app: the real `next dev` on this branch,
+# a stand-in Supabase on made-up data, and every real key withheld
+# (.claude/skills/preview/SKILL.md). Random clicking there cannot place an
+# order, send an email or reach Stripe. Never point it at a deployed site.
+#
+#   scripts/bombadil/run [--as owner|visitor] [--time-limit 5m] [--start PATH] [--out DIR]
+#
+#   --as          owner (default): signed in as the fixture Owner, starting on
+#                 /en-US/settings. visitor: signed out, starting on /en-US.
+#   --time-limit  how long to explore: 30s, 5m, 1h (default 5m)
+#   --start       the page to start on, e.g. /en-US/settings/orders
+#   --out         where the trace, log and screenshot go
+#                 (default .preview/bombadil/<time>)
+#
+# Stops at the first violation. Exits 0 when the time ran out with none, 2 when
+# a property was violated (Bombadil's code), anything else when setup failed.
+# Open a trace with: bombadil browser inspect <DIR>/trace.bin
+#
+# Run by .github/workflows/bombadil.yml, on request only.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo="$(cd "$here/../.." && pwd)"
+preview="$repo/.claude/skills/preview/preview"
+app_url="http://localhost:${PREVIEW_PORT:-3100}"
+db_url="http://127.0.0.1:${PREVIEW_SUPABASE_PORT:-54329}"
+
+as=owner
+limit=5m
+start=""
+out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --as) as="$2"; shift 2 ;;
+    --time-limit) limit="$2"; shift 2 ;;
+    --start) start="$2"; shift 2 ;;
+    --out) out="$2"; shift 2 ;;
+    *) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 64 ;;
+  esac
+done
+case "$as" in
+  owner) start="${start:-/en-US/settings}" ;;
+  visitor) start="${start:-/en-US}" ;;
+  *) echo "--as must be owner or visitor, not '$as'." >&2; exit 64 ;;
+esac
+case "$start" in /*) ;; *) echo "--start must be a path on the app, like /en-US/settings." >&2; exit 64 ;; esac
+out="${out:-$repo/.preview/bombadil/$(date -u +%Y%m%dT%H%M%SZ)}"
+mkdir -p "$out"
+
+# The pinned release binary, checked against the digest of the copy downloaded
+# when this version was pinned. To upgrade, change the version and both digests.
+version=0.8.0
+case "$(uname -s)-$(uname -m)" in
+  Linux-x86_64) asset=bombadil-x86_64-linux sha=d9d1d2832cb23c874744a4f20526d2064ce8571c31f8ecd01ddf8e1c44da4814 ;;
+  Darwin-arm64) asset=bombadil-aarch64-darwin sha=2ea26a68ac9b5296a8828ff138fb17a3343f7e8cf50647e9d1a81074505f995c ;;
+  *) echo "Bombadil $version has no release binary for $(uname -s) $(uname -m)." >&2; exit 1 ;;
+esac
+bin="$repo/.preview/bin/bombadil-$version"
+if [ ! -x "$bin" ]; then
+  mkdir -p "$(dirname "$bin")"
+  curl -fsSL --retry 3 -o "$bin.download" "https://github.com/antithesishq/bombadil/releases/download/v$version/$asset"
+  got="$( (sha256sum "$bin.download" 2>/dev/null || shasum -a 256 "$bin.download") | cut -d' ' -f1)"
+  if [ "$got" != "$sha" ]; then
+    rm -f "$bin.download"
+    echo "The downloaded $asset has digest $got, not the pinned $sha. Not running it." >&2
+    exit 1
+  fi
+  chmod +x "$bin.download"
+  mv "$bin.download" "$bin"
+fi
+
+# Fresh fixtures for every run, so writes from an earlier run don't carry over.
+"$preview" start
+
+cookies=()
+if [ "$as" = owner ]; then
+  # The same session cookie the preview skill's screenshots sign in with
+  # (.claude/skills/preview/lib/shoot.mjs): @supabase/ssr's
+  # sb-<first label of the Supabase host>-auth-token, chunked past 3180.
+  while IFS= read -r cookie; do cookies+=(--cookie "$cookie"); done < <(
+    curl -fsS "$db_url/__preview/session" | DB_URL="$db_url" node -e '
+      const session = require("fs").readFileSync(0, "utf8");
+      const key = `sb-${new URL(process.env.DB_URL).hostname.split(".")[0]}-auth-token`;
+      const value = `base64-${Buffer.from(session).toString("base64url")}`;
+      const chunks = value.length <= 3180 ? [[key, value]] : value.match(/.{1,3180}/g).map((v, i) => [`${key}.${i}`, v]);
+      for (const [name, v] of chunks) console.log(`${name}=${v}`);
+    '
+  )
+  [ ${#cookies[@]} -gt 0 ] || { echo "No Owner session from the stand-in Supabase." >&2; exit 1; }
+fi
+
+echo "Bombadil $version: $as, $limit, from $app_url$start. Output: $out"
+status=0
+# RUST_LOG: Bombadil warns on every script it could not instrument for coverage
+# (dozens per page under next dev), which buries the result.
+# --no-sandbox: Chrome's sandbox needs user namespaces that CI runners and
+# containers often refuse; the page is our own app on localhost.
+RUST_LOG="${RUST_LOG:-error}" "$bin" browser test \
+  --headless --no-sandbox --exit-on-violation \
+  --time-limit "$limit" \
+  ${cookies[@]+"${cookies[@]}"} \
+  --output-path "$out/trace.bin" --output-path-overwrite \
+  "$app_url$start" "$here/spec.ts" 2>&1 | tee "$out/run.log" || status=$? # pipefail: Bombadil's code
+
+# The screen it ended on: on a violation, the state that broke the property.
+if [ -s "$out/trace.bin" ]; then
+  states="$("$bin" trace "$out/trace.bin" --json | wc -l | tr -d ' ')"
+  if [ "$states" -gt 0 ]; then
+    "$bin" trace "$out/trace.bin" --state "$((states - 1))" --screenshots "$out" >/dev/null || true
+  fi
+fi
+cp "$repo/.preview/next.log" "$out/next.log" 2>/dev/null || true
+
+exit "$status"
