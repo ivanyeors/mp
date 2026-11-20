@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { Upload, Loader2, ImageIcon, Check, Search, HardDrive } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -65,8 +65,13 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
   const [driveOpen, setDriveOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
+  // Only the latest load writes, and it keeps what was uploaded while it ran.
+  const loadId = useRef(0);
+  const uploadedSinceLoad = useRef<PickerAsset[]>([]);
 
   const loadAssets = useCallback(async () => {
+    const id = ++loadId.current;
+    uploadedSinceLoad.current = [];
     setLoading(true);
     try {
       // ponytail: load all kinds when picker allows; imageOnly still requests kind=image
@@ -79,14 +84,14 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
       const assetsData = await assetsRes.json();
       const usageData = await usageRes.json();
       const foldersData = await foldersRes.json();
+      if (id !== loadId.current) return;
 
       if (!assetsRes.ok || !assetsData.ok) {
         toast.error(getApiErrorMessage(assetsData.error, "Failed to load assets"));
         return;
       }
 
-      setAssets(
-        (
+      const loaded: PickerAsset[] = (
           assetsData.assets as Array<{
             id: string;
             name: string;
@@ -108,8 +113,9 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
             folder_id: a.folder_id ?? null,
             kind: a.kind ?? "image",
             tags: Array.isArray(a.tags) ? a.tags : [],
-          })),
-      );
+          }));
+      const loadedIds = new Set(loaded.map((a) => a.id));
+      setAssets([...uploadedSinceLoad.current.filter((a) => !loadedIds.has(a.id)), ...loaded]);
 
       if (foldersData.ok && Array.isArray(foldersData.folders)) {
         setFolders(
@@ -124,23 +130,25 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
         setUsageByUrl(usageData.usages);
       }
     } catch (error) {
+      if (id !== loadId.current) return;
       console.error("Failed to load assets", error);
       toast.error("Failed to load media assets");
     } finally {
-      setLoading(false);
+      if (id === loadId.current) setLoading(false);
     }
   }, [imageOnly]);
 
-  useEffect(() => {
-    if (open) {
-      loadAssets();
-      setSearchQuery("");
-      setFilterMode("all");
-      setFolderFilter("all");
-      setKindFilter(imageOnly ? "image" : "all");
-      setTagFilter("all");
-    }
-  }, [open, loadAssets, imageOnly]);
+  // Each open starts from the full library with no search or filters.
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) return;
+    void loadAssets();
+    setSearchQuery("");
+    setFilterMode("all");
+    setFolderFilter("all");
+    setKindFilter(imageOnly ? "image" : "all");
+    setTagFilter("all");
+  };
 
   const uploadFile = async (file: File) => {
     setUploading(true);
@@ -150,36 +158,34 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
     try {
       const res = await fetch("/api/media", { method: "POST", body: formData });
       const data = await res.json();
-      if (data.ok && data.asset?.hosted_url) {
-        setAssets((prev) => [
-          {
-            id: data.asset.id,
-            name: data.asset.name,
-            url: data.asset.hosted_url,
-            alt: data.asset.alt_text ?? null,
-            created_at: data.asset.created_at,
-            folder_id: data.asset.folder_id ?? null,
-            kind: data.asset.kind ?? "image",
-            tags: Array.isArray(data.asset.tags) ? data.asset.tags : [],
-          },
-          ...prev,
-        ]);
-        toast.success("Image uploaded");
-      } else if (data.ok && data.file) {
-        // Fallback shape from /api/media
-        setAssets((prev) => [
-          {
-            id: data.file.id,
-            name: data.file.name,
-            url: data.file.url,
-            alt: null,
-            created_at: new Date().toISOString(),
-            folder_id: null,
-            kind: "image",
-            tags: [],
-          },
-          ...prev,
-        ]);
+      const added: PickerAsset | null =
+        data.ok && data.asset?.hosted_url
+          ? {
+              id: data.asset.id,
+              name: data.asset.name,
+              url: data.asset.hosted_url,
+              alt: data.asset.alt_text ?? null,
+              created_at: data.asset.created_at,
+              folder_id: data.asset.folder_id ?? null,
+              kind: data.asset.kind ?? "image",
+              tags: Array.isArray(data.asset.tags) ? data.asset.tags : [],
+            }
+          : data.ok && data.file
+            ? // Fallback shape from /api/media
+              {
+                id: data.file.id,
+                name: data.file.name,
+                url: data.file.url,
+                alt: null,
+                created_at: new Date().toISOString(),
+                folder_id: null,
+                kind: "image",
+                tags: [],
+              }
+            : null;
+      if (added) {
+        uploadedSinceLoad.current.push(added);
+        setAssets((prev) => [added, ...prev]);
         toast.success("Image uploaded");
       } else {
         toast.error(getApiErrorMessage(data.error, "Upload failed"));
@@ -284,7 +290,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           {children || (
             <Button variant="outline" type="button">
