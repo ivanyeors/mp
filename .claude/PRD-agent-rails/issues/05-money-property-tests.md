@@ -1,6 +1,7 @@
 # 05 — Property tests on money lifecycles
 
 **Type:** AFK
+**Status:** **built** (2026-11-20), reviewed by the `reviewer` subagent
 **Blocked by:** none
 
 ## Goal

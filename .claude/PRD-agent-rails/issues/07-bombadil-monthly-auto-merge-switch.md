@@ -1,6 +1,7 @@
 # 07 — Bombadil monthly, and auto-merge for code behind a switch
 
 **Type:** AFK
+**Status:** **built** (2026-11-20), reviewed by the `reviewer` subagent
 **Blocked by:** none
 
 Read first: `../agent-rails-prd.md` (decisions 9, 10), every file in

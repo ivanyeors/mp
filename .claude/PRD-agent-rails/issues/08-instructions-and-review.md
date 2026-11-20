@@ -1,6 +1,7 @@
 # 08 — Instructions, reviewer prompts and the pull request template
 
 **Type:** AFK
+**Status:** **built** (2026-11-20), checked by the orchestrating session, not by the `reviewer` subagent
 **Blocked by:** 01–07
 
 ## Goal

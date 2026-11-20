@@ -56,6 +56,17 @@ nobody asked for, and deletion over addition. A deliberate shortcut gets a
 never extends to validation at trust boundaries, error handling that prevents
 data loss, security or accessibility.
 
+Lint holds these rules, since a rule in prose is one an agent can miss. Product
+code has no comments but that `ponytail:` one (a reason goes in a name, a type
+or a test), no React effects outside `hooks/` and `components/ui/`, and no
+Shopify import outside Shopify's own folders. No rule is a warning and inline
+`eslint-disable` does nothing. What already broke a rule is counted in
+`eslint-suppressions.json`, which only goes down and which Claude cannot add to.
+
+**A correction becomes a check**: when the owner or a reviewer corrects an
+agent, the fix lands as a lint rule, test, check or hook in the same pull
+request. A new line in this file is the last resort.
+
 ## Done means checked
 
 Before starting, say what done looks like and split the work into tasks that
@@ -68,7 +79,8 @@ run, a screenshot) because nobody watched it run.
   you name).
 - Hooks in `.claude/settings.json` run the checks for you: eslint on each file
   you edit, the related tests and checks when you complete a task, and again
-  when you stop. A failure sends you back to fix it.
+  when you stop. A failure sends you back to fix it. A cloud session installs
+  its own dependencies at start; a check that cannot run says so, never passes.
 - After any change a person can see (a page, component, layout, style, chart,
   copy or empty state), use the **preview** skill. It runs the real app on
   made-up sample data, signs in as an Owner, and screenshots each page at
@@ -79,7 +91,8 @@ run, a screenshot) because nobody watched it run.
   ```
 
   Read every screenshot, fix what looks wrong, and send them to the user with
-  `SendUserFile`, saying the figures are sample data. Details:
+  `SendUserFile`, saying the figures are sample data. `preview map <words>`
+  finds a page by the name a person uses and prints its route. Details:
   `.claude/skills/preview/SKILL.md`.
 
 ## Pull requests and review
@@ -90,9 +103,14 @@ automatic Claude review from a fresh session
 opens a pull request watches it, so failing checks and review comments come
 back to it to fix. How much the owner reviews depends on risk:
 
-- **Docs and copy only** (Markdown, `docs/`, `.claude/PRD-*`, UI copy and
-  translation strings): may auto-merge once checks pass.
-- **Everything else**: the owner reviews before merge.
+- **Docs and copy only** (Markdown other than `CLAUDE.md`, `docs/`,
+  `.claude/PRD-*`, UI copy and translation strings): may auto-merge once
+  checks pass.
+- **Everything else**: the owner reviews before merge, unless the owner has set
+  the repository variable `AUTO_MERGE_CODE` to `on`: then it merges itself once
+  checks pass and Claude review is clean for its head. Money, `supabase/`,
+  sign-in, the rails and a grown lint baseline still wait for the owner: the
+  exact list is `ownerReasons` in `scripts/pr-risk.mjs`.
 - **Payments and money** (Stripe, PayNow, checkout, refunds, payment links,
   their webhooks, Costings and prices; the paths in `.claude/rules/money.md`):
   also gets a second, independent check before the owner merges. Run the

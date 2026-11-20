@@ -1,6 +1,7 @@
 # 03 — Hooks and guard use the baseline
 
 **Type:** AFK
+**Status:** in review (2026-11-20): two `reviewer` rounds returned findings, a third build round is under way
 **Blocked by:** 01, 02
 
 ## Goal

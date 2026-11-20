@@ -1,6 +1,7 @@
 # 06 — `preview map`: every page by the name a person uses
 
 **Type:** AFK
+**Status:** **built** (2026-11-20), checked by the orchestrating session, not by the `reviewer` subagent
 **Blocked by:** none
 
 ## Goal

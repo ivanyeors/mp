@@ -1,6 +1,7 @@
 # 04 — Client code cannot reach the service-role client
 
 **Type:** AFK
+**Status:** **built** (2026-11-20), reviewed by the `reviewer` subagent
 **Blocked by:** none
 
 ## Goal

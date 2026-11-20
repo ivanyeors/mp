@@ -1,6 +1,7 @@
 # 02 — Lint rails: no warnings, no inline disables, a baseline that only goes down
 
 **Type:** AFK
+**Status:** **built** (2026-11-20), reviewed by the `reviewer` subagent
 **Blocked by:** none
 
 ## Goal

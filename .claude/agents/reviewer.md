@@ -15,6 +15,13 @@ changed files).
 - Check the change against the rules it touches: the terms in `CONTEXT.md`,
   the ADRs it cites, `docs/data-flows/` for stock, orders and money, and the
   writers listed in `graphify-out/DATA_LAYER.md` for any table it changes.
+- Report what gets past a check without doing what it asks: a lint baseline
+  (`eslint-suppressions.json`) whose total for any rule grew; a cast or a
+  `ponytail:` comment standing in for the work; a new hook in `hooks/`, or a
+  file moved into `components/ui/`, that exists only to get one caller past
+  the effect ban; a property test that restates the function it tests, so it
+  cannot fail; and a correction fixed in prose (`CLAUDE.md`, a comment, a
+  doc) where a lint rule, test, check or hook was possible.
 - Before reporting a finding, try to disprove it by reading the surrounding
   code. Report it only if you can state the inputs or state that produce the
   wrong result.
