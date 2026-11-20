@@ -123,12 +123,15 @@ export function AppDock() {
 
   // Dock persists across navigation (root layout). Close any learn-more sheet on
   // route change so booking (pill overlay → /appointments) can't leave a drawer
-  // stacked over the destination page — the slice-05 dupe, relocated.
-  React.useEffect(() => {
+  // stacked over the destination page — the slice-05 dupe, relocated. Done during
+  // render, so the new page never paints with the sheet still open.
+  const [sheetPathname, setSheetPathname] = React.useState(pathname);
+  if (sheetPathname !== pathname) {
+    setSheetPathname(pathname);
     setBasicOpen(false);
     setPremiumOpen(false);
     setMbolsterOpen(false);
-  }, [pathname]);
+  }
 
   // Publish the rendered dock height so `--mobile-bottom-clearance` tracks the
   // real chrome instead of a hard-coded estimate. Measure the toolbar panel,
