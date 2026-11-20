@@ -1,7 +1,7 @@
 # 09 — Remove the comments the ban counted
 
 **Type:** AFK
-**Status:** building (2026-11-20)
+**Status:** **built** (2026-11-20). Proven by the before/after comparison in requirement 2, run by the worker and again by the orchestrating session on the merged tree; the `reviewer` subagent's second check on the money paths is recorded in the pull request
 **Blocked by:** 02, 03
 
 ## Goal
@@ -47,3 +47,28 @@ reasons stay in git history, the ADRs, the PRDs and `CONTEXT.md`.
   nothing.
 - `pnpm lint`, the typecheck, `pnpm checks` and `pnpm test` pass on the whole
   repository.
+
+## As built
+
+- 43,583 comment lines removed from 2,280 files. The baseline's
+  `mp/no-comment` total went from 43,570 to 4, and the whole baseline from
+  44,403 to 837.
+- Left, and still counted: two `ponytail:` comments longer than four lines
+  (`lib/results/access.ts`, `lib/spatial-fillings/visuals.ts`).
+- 45 `ponytail:` notes sat inside a longer comment that began with other
+  text, so the rule reported them. Each is kept as its own comment of at
+  most four lines, in the note's own words.
+- A block that held only a comment is now `{}` (89 blocks). TypeScript prints
+  such a block on one line, so 57 files' emitted JavaScript differs in that
+  whitespace alone; the other 2,217 stripped files emit byte-identical
+  JavaScript, and all have the same syntax tree.
+- Six checks passed because a comment held the text they searched for
+  (`pdp-mobile`, `xray-dive`, `country`, `slice-03`, `order-mirror-catchup`,
+  `color-overrides`). Each now reads the code and fails on a planted wrong
+  version. `pdp-mobile.check.ts` asserted a pinch-zoom the gallery dropped
+  long ago; it now asserts there is no touch-action there, and strips
+  comments before it looks.
+- `docs/data-flows/inventory.md` lost one sentence that pointed at a deleted
+  file header.
+- The codemod and the proof are not in the repository. To get a comment back,
+  read the file at the commit before this one on `main`.
