@@ -16,8 +16,18 @@
 // failed attempts on the same state, so a failure the change didn't cause
 // can't hold a session forever; the user is told instead.
 //
-// Without node_modules (a fresh clone, a cloud session before install) every
-// mode does nothing.
+// Without node_modules (a fresh clone, a cloud session whose install failed)
+// the checks cannot run, and that is never a silent pass. A session that
+// changed no code file still costs nothing. Otherwise task and stop exit 2 and
+// say to install, under the same three-attempts rule, so a machine that cannot
+// install tells the user the checks did not run instead of holding the
+// session; edit says so once per session rather than on every edit. Once a
+// machine has given up for want of node_modules, a new state is not blocked
+// again: stop tells the user once for it and lets the session finish.
+// "Changed" is the branch against origin/main, so a clone with no
+// node_modules on a branch that already differs from main is told to install
+// even if this session changed nothing; that is deliberate, because the
+// alternative is a silent pass.
 
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -42,7 +52,17 @@ const ROOT = (() => {
   }
 })();
 const bin = (name) => path.join(ROOT, "node_modules/.bin", name);
-if (!existsSync(bin("eslint")) || !existsSync(bin("vitest"))) process.exit(0);
+const hasDeps = existsSync(bin("eslint")) && existsSync(bin("vitest"));
+const INSTALL = "pnpm install --frozen-lockfile";
+const NO_DEPS = `The checks have not run: this clone has no node_modules. Run \`${INSTALL}\`, then carry on.`;
+
+const stateDir = path.join(tmpdir(), "mp-claude-verify");
+// edit lints without any state, so an unwritable temp directory must not
+// stop it; task and stop fail loudly further down if it really is unusable.
+try {
+  mkdirSync(stateDir, { recursive: true });
+} catch {}
+const stateFile = path.join(stateDir, `${createHash("sha1").update(ROOT).digest("hex").slice(0, 12)}.json`);
 
 const CODE = /\.(ts|tsx|mts|js|jsx|mjs)$/;
 const tail = (s, n = 40) => s.split("\n").filter((l) => l.trim()).slice(-n).join("\n");
@@ -63,6 +83,15 @@ if (mode === "edit") {
   if (!file || !CODE.test(file) || !existsSync(file)) process.exit(0);
   const rel = path.relative(ROOT, file);
   if (rel.startsWith("..") || rel.startsWith("node_modules")) process.exit(0);
+  if (!hasDeps) {
+    // Once per session: the stop run repeats it until the install happens.
+    const told = `${stateFile}.nodeps-${createHash("sha1").update(String(input.session_id ?? "")).digest("hex").slice(0, 12)}`;
+    if (existsSync(told)) process.exit(0);
+    try {
+      writeFileSync(told, "");
+    } catch {}
+    fail(NO_DEPS);
+  }
   const r = run(bin("eslint"), ["--quiet", "--no-warn-ignored", file]);
   if (!r.ok) fail(`eslint found errors in ${rel}. Fix them before moving on:\n${tail(r.out)}`);
   process.exit(0);
@@ -102,10 +131,6 @@ const fingerprint = createHash("sha1")
   )
   .digest("hex");
 
-const stateDir = path.join(tmpdir(), "mp-claude-verify");
-mkdirSync(stateDir, { recursive: true });
-const stateFile = path.join(stateDir, `${createHash("sha1").update(ROOT).digest("hex").slice(0, 12)}.json`);
-
 // One run at a time per clone. Two tasks completed together would otherwise
 // run the same tests twice at once, and timing-sensitive tests then fail for
 // no reason. A second run waits, then usually finds the first one's verdict.
@@ -142,18 +167,36 @@ try {
 const save = () => writeFileSync(stateFile, JSON.stringify(state));
 
 if (state.passed === fingerprint) process.exit(0);
+// Attempts that failed for want of node_modules say nothing about the code,
+// so once they are installed the same state is judged afresh.
+if (state.noDeps && hasDeps) state = {};
+// A machine that has already given up for want of node_modules cannot do
+// better on the next state, so that state starts given up: stop tells the user
+// once for it, and nothing is blocked.
+if (!hasDeps && state.noDeps && (state.attempts ?? 0) >= 3 && state.failed !== fingerprint) {
+  state = { failed: fingerprint, attempts: 3, noDeps: true };
+  save();
+}
 if (state.failed === fingerprint && (state.attempts ?? 0) >= 3) {
   if (mode === "stop" && !state.told) {
     state.told = true;
     save();
     process.stdout.write(
       JSON.stringify({
-        systemMessage:
-          "Tests or checks for the changed files still fail after three attempts. The session stopped anyway; see the last failure above.",
+        systemMessage: state.noDeps
+          ? `The tests and checks for the changed files did not run: this clone has no node_modules and three attempts did not change that. Run \`${INSTALL}\` and the checks.`
+          : "Tests or checks for the changed files still fail after three attempts. The session stopped anyway; see the last failure above.",
       }),
     );
   }
   process.exit(0);
+}
+
+const attempts = state.failed === fingerprint ? (state.attempts ?? 0) + 1 : 1;
+if (!hasDeps) {
+  state = { failed: fingerprint, attempts, noDeps: true };
+  save();
+  fail(NO_DEPS);
 }
 
 const failures = [];
@@ -168,7 +211,7 @@ if (failures.length === 0) {
   process.exit(0);
 }
 
-state = { failed: fingerprint, attempts: state.failed === fingerprint ? (state.attempts ?? 0) + 1 : 1 };
+state = { failed: fingerprint, attempts };
 save();
 fail(
   `${mode === "stop" ? "Before finishing" : "Before this task is done"}: the tests or checks for the files you changed fail. ` +
