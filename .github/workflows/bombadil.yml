@@ -37,9 +37,6 @@ on:
         description: Page to start on, e.g. /en-US/settings/orders (blank starts on /en-US/settings as owner, /en-US as visitor)
         type: string
         default: ""
-  # TEMPORARY: proves the workflow on a real runner before merge; reverted next commit.
-  push:
-    branches: [claude/sleepy-dijkstra-souy2l]
 
 permissions:
   contents: read
@@ -73,8 +70,8 @@ jobs:
       # inject shell.
       - name: Explore
         env:
-          AS: ${{ inputs.as || 'owner' }}
-          TIME_LIMIT: ${{ inputs.time-limit || '2m' }}
+          AS: ${{ inputs.as }}
+          TIME_LIMIT: ${{ inputs.time-limit }}
           START: ${{ inputs.start }}
         run: |
           args=(--as "$AS" --time-limit "$TIME_LIMIT" --out bombadil-out)
@@ -84,8 +81,8 @@ jobs:
       - name: Summary
         if: always()
         env:
-          AS: ${{ inputs.as || 'owner' }}
-          TIME_LIMIT: ${{ inputs.time-limit || '2m' }}
+          AS: ${{ inputs.as }}
+          TIME_LIMIT: ${{ inputs.time-limit }}
         run: |
           log=bombadil-out/run.log
           {
