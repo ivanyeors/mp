@@ -25,10 +25,12 @@ const TSX = path.join(ROOT, "node_modules/.bin/tsx");
 // seed, the way their headers describe. answer-lede-coverage also WRITES
 // `products.content` (it fills in missing seo_answer), and home-page-faq
 // inserts and deletes `landing_sections` rows: point --live at the database
-// you mean.
+// you mean. explore-resize drives Chromium against the preview app
+// (`.claude/skills/preview/preview start`), or EXPLORE_URL.
 const LIVE = new Set([
   "app/[lang]/mp-config/configurator-page-faq.check.ts",
   "app/[lang]/shop/[slug]/pdp-page-faq.check.ts",
+  "components/explore/explore-resize.check.ts",
   "components/page-faq/page-faq-section.check.ts",
   "components/sections/landing/home-page-faq.check.ts",
   "components/settings/settings-faq.check.ts",

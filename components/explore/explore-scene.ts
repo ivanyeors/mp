@@ -61,6 +61,27 @@ const CLIFF_Z = 7;
 const SEA_FAR = 230;
 export const MAX_FLOWERS = 5;
 
+/**
+ * The most device pixels the scene draws while the window is still: a 13 or
+ * 14 inch laptop's whole screen at full sharpness. A bigger screen (a 5K
+ * display draws 14.7 million) is drawn a little softer instead, every frame
+ * of the animation. ponytail: a fixed budget, not one measured from the GPU;
+ * if big screens look soft, raise it or measure frame times.
+ */
+const PIXEL_BUDGET = 6_000_000;
+/** How long after the window last changed size the scene is drawn sharp again, in ms. */
+const SETTLE_MS = 200;
+
+/**
+ * Drawing pixels per CSS pixel: the screen's own density up to 2, kept under
+ * PIXEL_BUDGET on a big screen (never under 1 for that), and at most 1 while
+ * the window is being resized, when every frame also makes a new canvas.
+ */
+export function drawingRatio(width: number, height: number, deviceRatio: number, resizing: boolean): number {
+  const sharp = Math.min(deviceRatio || 1, 2, Math.max(1, Math.sqrt(PIXEL_BUDGET / (width * height))));
+  return resizing ? Math.min(sharp, 1) : sharp;
+}
+
 /** The passes, back to front. */
 const BACK = 0;
 const BODIES = 1;
@@ -621,7 +642,6 @@ const WIND_LINES = [
 
 export function createExploreScene(host: HTMLElement, options: ExploreSceneOptions): ExploreScene {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "low-power" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.autoClear = false;
   renderer.domElement.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation";
   host.appendChild(renderer.domElement);
@@ -1635,6 +1655,10 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   // ------------------------------------------------------------------ layout
   let width = 1;
   let height = 1;
+  /** Drawing pixels per CSS pixel now; 0 until the first layout. */
+  let pixelRatio = 0;
+  let resizing = false;
+  let settleTimer = 0;
   let portrait = false;
   let skyState: SkyState | null = null;
   const probe = new THREE.Vector3();
@@ -1673,11 +1697,10 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
   };
 
   const layout = () => {
-    width = Math.max(1, host.clientWidth);
-    height = Math.max(1, host.clientHeight);
     const aspect = width / height;
     portrait = aspect < 0.85;
-    renderer.setSize(width, height, false);
+    // The canvas is stretched to the host by CSS; only its drawing buffer is sized here.
+    renderer.setDrawingBufferSize(width, height, pixelRatio);
     camera.fov = portrait ? 50 : 38;
     camera.aspect = aspect;
     const half = Math.tan((camera.fov * Math.PI) / 360);
@@ -1722,6 +1745,30 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     placeBodies();
   };
 
+  /**
+   * Matches the drawing buffer to the host's size and the screen's density,
+   * and says whether it changed. Sizing a canvas empties it, so this runs at
+   * the start of a frame, which then draws: a frame is never shown empty.
+   * (A ResizeObserver hears of a new size only after that frame's drawing,
+   * just before it is shown, which is what made the scene flash on resize.)
+   */
+  const fit = (): boolean => {
+    const w = Math.max(1, host.clientWidth);
+    const h = Math.max(1, host.clientHeight);
+    if (pixelRatio > 0 && (w !== width || h !== height)) {
+      resizing = true;
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => (resizing = false), SETTLE_MS);
+    }
+    const ratio = drawingRatio(w, h, window.devicePixelRatio, resizing);
+    if (w === width && h === height && ratio === pixelRatio) return false;
+    width = w;
+    height = h;
+    pixelRatio = ratio;
+    layout();
+    return true;
+  };
+
   // ------------------------------------------------------------------ input
   const raycaster = new THREE.Raycaster();
   raycaster.layers.set(FRONT);
@@ -1760,6 +1807,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
 
   const frame = () => {
     if (disposed) return;
+    if (fit()) dirty = true;
     const dt = Math.min(0.05, clock.getDelta());
     if (moving) shared.uTime.value += dt;
     const t = shared.uTime.value;
@@ -1806,11 +1854,12 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
         const k = target ? 5 : 14;
         f.scale += (target - f.scale) * Math.min(1, dt * k);
         if (Math.abs(target - f.scale) < 0.004) f.scale = target;
-        const s = target ? f.scale * (1 + 0.25 * Math.sin(f.scale * Math.PI)) : f.scale;
-        f.root.scale.setScalar(s * f.size * (portrait ? 1.35 : 1));
-        f.root.visible = f.scale > 0.001;
         animating = true;
       }
+      // Sized every frame, not only while growing, so turning to portrait or back resizes a grown one too.
+      const s = target ? f.scale * (1 + 0.25 * Math.sin(f.scale * Math.PI)) : f.scale;
+      f.root.scale.setScalar(s * f.size * (portrait ? 1.35 : 1));
+      f.root.visible = f.scale > 0.001;
       // The whole flower leans with the gusts that cross the grass, stem and head together.
       if (moving && f.root.visible) {
         const p = f.root.position;
@@ -1865,12 +1914,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
     }
   };
   document.addEventListener("visibilitychange", onVisibility);
-  const resizeObserver = new ResizeObserver(() => {
-    layout();
-    dirty = true;
-  });
-  resizeObserver.observe(host);
-  layout();
+  fit();
 
   return {
     setSky(sky) {
@@ -1961,7 +2005,7 @@ export function createExploreScene(host: HTMLElement, options: ExploreSceneOptio
       disposed = true;
       renderer.setAnimationLoop(null);
       document.removeEventListener("visibilitychange", onVisibility);
-      resizeObserver.disconnect();
+      window.clearTimeout(settleTimer);
       renderer.domElement.removeEventListener("pointermove", onMove);
       renderer.domElement.removeEventListener("click", onClick);
       for (const d of disposables) d.dispose();
