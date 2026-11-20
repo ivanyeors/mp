@@ -134,6 +134,10 @@ const eslintConfig = defineConfig([
     // Agent sessions check out git worktrees here (gitignored, and skipped by
     // vitest.config.ts); each is a full copy of the repo, not code of its own.
     ".claude/worktrees/**",
+    // A standalone Node CLI vendored from Scino/fstack; the Next.js rules
+    // misfire on it. Its own tsconfig checks it:
+    //   tsc -p .claude/skills/statechart/scripts/tsconfig.json
+    ".claude/skills/statechart/scripts/**",
   ]),
 ]);
 
