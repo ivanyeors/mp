@@ -105,8 +105,11 @@ Vercel builds every merge to `main` as a production deployment but leaves it
 project (owner, 2026-11-20). mpillow.com keeps serving the previous build until
 the staged one is promoted (Vercel dashboard, Deployments, Promote). The staged
 build runs on production environment variables, so it reads the live database
-and live Stripe. Its URL needs a Vercel sign-in. Say "staged", not "live", after
-a merge, and promote only when the owner asks.
+and live Stripe. **stage.mpillow.com** shows the newest staged build
+(`.github/workflows/stage-alias.yml` moves it after each build) and, like the
+build's own URL, needs a Vercel sign-in. Never add stage.mpillow.com under the
+project's Domains: that makes it public. Say "staged", not "live", after a
+merge, and promote only when the owner asks.
 
 ## Large work: one orchestrator
 
