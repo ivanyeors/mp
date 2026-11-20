@@ -54,7 +54,7 @@ beforeEach(() => {
     addListener: () => undefined,
     removeListener: () => undefined,
     dispatchEvent: () => false,
-  })) as typeof window.matchMedia;
+  })) as unknown as typeof window.matchMedia;
 });
 
 let root: Root | null = null;
