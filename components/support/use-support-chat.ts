@@ -187,10 +187,14 @@ export function useSupportChat() {
     if (!chatId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
+    // A poll is waiting: it schedules the next one itself, so the tab coming
+    // back must not start a second loop beside it.
+    let inFlight = false;
     const tick = async () => {
       const current = activeRef.current;
       if (!current || current.chat.id !== chatId) return;
       const settled = current.messages.filter((m) => !m.pending && !m.failed).length;
+      inFlight = true;
       try {
         const res = await call<{ chat: ChatView; messages?: ChatMessageView[]; unchanged?: boolean }>(
           `/api/support/chat/${chatId}?have=${settled}`,
@@ -205,13 +209,14 @@ export function useSupportChat() {
       } catch {
         // A missed poll is retried on the next tick.
       }
+      inFlight = false;
       if (!stopped) {
         timer = setTimeout(tick, document.visibilityState === "visible" ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
       }
     };
     timer = setTimeout(tick, POLL_VISIBLE_MS);
     const onVisible = () => {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible" || inFlight) return;
       if (timer) clearTimeout(timer);
       void tick();
     };

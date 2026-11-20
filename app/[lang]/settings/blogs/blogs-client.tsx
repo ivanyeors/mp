@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus, Trash2, Pencil, Eye, EyeOff, Loader2, MoreHorizontal } from "lucide-react";
@@ -40,25 +41,27 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
 
     const [posts, setPosts] = useState<BlogRow[]>(initialData?.rows ?? []);
     const [loading, setLoading] = useState(!initialData);
-    // The server already loaded the first page of rows; later calls still fetch.
-    const skipFirstFetch = useRef(initialData != null);
-
-
     const fetchPosts = useCallback(async () => {
         setLoading(true);
-        const res = await fetch("/api/blogs");
-        const json = await res.json();
-        setPosts(json.rows ?? []);
-        setLoading(false);
+        try {
+            const res = await fetch("/api/blogs");
+            const json = await res.json();
+            setPosts(json.rows ?? []);
+        } catch {
+            toast.error("Couldn't load blog posts.");
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
+    // The server already loaded the rows; fetch only when it could not.
+    // Later calls (publish, delete) still fetch.
     useEffect(() => {
-        if (skipFirstFetch.current) {
-            skipFirstFetch.current = false;
-            return;
-        }
-        fetchPosts();
-    }, [fetchPosts]);
+        if (initialData) return;
+        // fetchPosts() sets `loading`, which already starts true without initialData.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchPosts();
+    }, [initialData, fetchPosts]);
 
     const toggleStatus = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === "published" ? "unpublished" : "published";
