@@ -9,7 +9,9 @@ import { useIsMobile } from "../use-mobile";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const PHONE = "(max-width: 767px)";
+// The exact string `useIsMobile` asks for. It has to cover a 767.5px-wide
+// window (a zoomed desktop), where Tailwind's `max-md:` styles still apply.
+const PHONE = "(max-width: 767.98px)";
 
 /**
  * A screen whose media queries the test sets. `useIsMobile` has read
@@ -81,6 +83,36 @@ const hooks = [
   { name: "useMediaQuery", query: "(min-width: 1024px)", useValue: () => useMediaQuery("(min-width: 1024px)") },
   { name: "useIsMobile", query: PHONE, useValue: () => useIsMobile() },
 ];
+
+describe("useMediaQuery with a query that changes", () => {
+  it("listens to the new query and stops listening to the old one", () => {
+    const WIDE = "(min-width: 1024px)";
+    const TALL = "(min-height: 800px)";
+    screen.set(WIDE, true);
+    screen.set(TALL, false);
+    function Probe({ query }: { query: string }) {
+      return <span>{String(useMediaQuery(query))}</span>;
+    }
+    host = document.createElement("div");
+    document.body.append(host);
+    act(() => {
+      root = createRoot(host!);
+      root.render(<Probe query={WIDE} />);
+    });
+    expect(host.textContent).toBe("true");
+
+    act(() => root!.render(<Probe query={TALL} />));
+    expect(host.textContent).toBe("false");
+    expect(screen.listeners.get(WIDE)?.size ?? 0).toBe(0);
+    expect(screen.listeners.get(TALL)?.size).toBe(1);
+
+    act(() => screen.change(TALL, true));
+    expect(host.textContent).toBe("true");
+    // The old query changing no longer reaches the component.
+    act(() => screen.change(WIDE, false));
+    expect(host.textContent).toBe("true");
+  });
+});
 
 describe.each(hooks)("$name", ({ query, useValue }) => {
   it("is false on the server, whatever the screen", () => {
