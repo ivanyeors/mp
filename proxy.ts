@@ -10,6 +10,7 @@ import {
   EXPLORE_SEEN_COOKIE,
   exploreEntryPath,
   exploreSeenCookieDomain,
+  hasSignInCookie,
   showsExplore,
 } from "@/lib/routing/explore-entry";
 import { shopifyRedirect, shopifyRedirectUrl } from "@/lib/shopify-redirects";
@@ -131,7 +132,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   }
 
   // Until the launch, someone arriving at the home page of mpillow.com or
-  // www.mpillow.com is shown Explore; a click on the site itself is not
+  // www.mpillow.com is shown Explore: every time when signed out, once per
+  // browser session when signed in; a click on the site itself is not
   // (lib/routing/explore-entry.ts). Before the host redirect, so the bare domain
   // gets there in one hop. Never cached: it ends at the launch.
   const cookieLang = request.cookies.get(LOCALE_COOKIE_NAME)?.value ?? "";
@@ -144,6 +146,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     locale: isSupportedLocale(cookieLang) ? cookieLang : pickLocaleFromAcceptLanguage(request.headers.get("accept-language")),
     nowMs: Date.now(),
     seen: request.cookies.get(EXPLORE_SEEN_COOKIE)?.value === "1",
+    signedIn: hasSignInCookie(request.cookies.getAll().map((c) => c.name)),
   });
   if (explorePath) {
     // www stays www (it is never sent away); the bare domain goes to the canonical host.
@@ -228,8 +231,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
     const res = NextResponse.next();
     clearLegacySettingsSession(request, res);
-    // Explore shown: arrivals go to the home page for the rest of this browser
-    // session (lib/routing/explore-entry.ts). No maxAge, so a session cookie.
+    // Explore shown: a signed-in arrival goes to the home page for the rest of
+    // this browser session (lib/routing/explore-entry.ts). No maxAge, so a
+    // session cookie.
     if (
       !request.cookies.get(EXPLORE_SEEN_COOKIE) &&
       showsExplore({

@@ -4,14 +4,16 @@ import {
   exploreEntryPath,
   exploreSeenCookieDomain,
   fromThisSite,
+  hasSignInCookie,
   homePathLocale,
   showsExplore,
 } from "@/lib/routing/explore-entry";
 
 /**
  * The way in to Explore until the launch (owner, 2026-11-17): an arrival at
- * the home page of mpillow.com or www.mpillow.com is shown /explore; a click
- * on the site itself is not, and from the launch nobody is.
+ * the home page of mpillow.com or www.mpillow.com is shown /explore (every
+ * time when signed out, once per browser session when signed in); a click on
+ * the site itself is not, and from the launch nobody is.
  */
 
 vi.mock("@/lib/supabase/middleware", () => ({ refreshSupabaseSession: vi.fn(async () => undefined) }));
@@ -30,6 +32,7 @@ const base = {
   locale: "en-US" as const,
   nowMs: BEFORE,
   seen: false,
+  signedIn: false,
 };
 
 describe("exploreEntryPath", () => {
@@ -71,9 +74,15 @@ describe("exploreEntryPath", () => {
     expect(exploreEntryPath({ ...base, method: "HEAD" })).toBe("/en-US/explore");
   });
 
-  it("sends each browser session once: not again after Explore was shown", () => {
-    expect(exploreEntryPath({ ...base, seen: true })).toBeNull();
-    expect(exploreEntryPath({ ...base, pathname: "/en-US", seen: true })).toBeNull();
+  it("sends a signed-out visitor every time, even after Explore was shown", () => {
+    expect(exploreEntryPath({ ...base, seen: true })).toBe("/en-US/explore");
+    expect(exploreEntryPath({ ...base, pathname: "/en-US", seen: true })).toBe("/en-US/explore");
+  });
+
+  it("sends a signed-in visitor once per browser session", () => {
+    expect(exploreEntryPath({ ...base, signedIn: true })).toBe("/en-US/explore");
+    expect(exploreEntryPath({ ...base, signedIn: true, seen: true })).toBeNull();
+    expect(exploreEntryPath({ ...base, pathname: "/en-US", signedIn: true, seen: true })).toBeNull();
   });
 
   it("stops at the launch", () => {
@@ -106,6 +115,19 @@ describe("showsExplore and exploreSeenCookieDomain", () => {
     expect(exploreSeenCookieDomain("notmpillow.com")).toBeUndefined();
     expect(exploreSeenCookieDomain("mp-inv-git-x.vercel.app")).toBeUndefined();
     expect(exploreSeenCookieDomain("localhost")).toBeUndefined();
+  });
+});
+
+describe("hasSignInCookie", () => {
+  it("knows a Supabase sign-in cookie, whole or in chunks", () => {
+    expect(hasSignInCookie(["mp_lang", "sb-abcd1234-auth-token"])).toBe(true);
+    expect(hasSignInCookie(["sb-abcd1234-auth-token.0", "sb-abcd1234-auth-token.1"])).toBe(true);
+  });
+
+  it("does not count a sign-in in progress, or no cookie at all", () => {
+    expect(hasSignInCookie(["sb-abcd1234-auth-token-code-verifier"])).toBe(false);
+    expect(hasSignInCookie(["mp_lang", "mp_explore_seen"])).toBe(false);
+    expect(hasSignInCookie([])).toBe(false);
   });
 });
 
@@ -193,13 +215,23 @@ describe("in the proxy", () => {
     expect(again.headers.get("set-cookie") ?? "").not.toMatch(/mp_explore_seen/);
   });
 
-  it("sends a returning arrival in the same session to the home page", async () => {
+  it("sends a signed-out arrival to Explore again, though this session has seen it", async () => {
     at(BEFORE);
-    const www = await hit("https://www.mpillow.com/", "https://www.mpillow.com", { cookie: "mp_explore_seen=1" });
+    const cookie = "mp_explore_seen=1; mp_lang=en-US";
+    const www = await hit("https://www.mpillow.com/", "https://www.mpillow.com", { cookie, "sec-fetch-site": "none" });
+    expect(www.headers.get("location")).toBe("https://www.mpillow.com/en-US/explore");
+    const bare = await hit("https://mpillow.com/", "https://www.mpillow.com", { cookie, "sec-fetch-site": "none" });
+    expect(bare.headers.get("location")).toBe("https://www.mpillow.com/en-US/explore");
+  });
+
+  it("sends a signed-in arrival in the same session to the home page", async () => {
+    at(BEFORE);
+    const cookie = "mp_explore_seen=1; sb-abcd1234-auth-token=base64-x";
+    const www = await hit("https://www.mpillow.com/", "https://www.mpillow.com", { cookie });
     expect(www.headers.get("location")).toBe("https://www.mpillow.com/en-US");
-    const typed = await hit("https://www.mpillow.com/en-US", "https://www.mpillow.com", { cookie: "mp_explore_seen=1", "sec-fetch-site": "none" });
+    const typed = await hit("https://www.mpillow.com/en-US", "https://www.mpillow.com", { cookie, "sec-fetch-site": "none" });
     expect(typed.status).toBe(200);
-    const bare = await hit("https://mpillow.com/", "https://www.mpillow.com", { cookie: "mp_explore_seen=1" });
+    const bare = await hit("https://mpillow.com/", "https://www.mpillow.com", { cookie });
     expect(bare.headers.get("location")).toBe("https://www.mpillow.com/");
   });
 
