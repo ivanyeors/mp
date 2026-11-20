@@ -22,11 +22,15 @@ In that project, go to **APIs & Services → Library** and enable:
 1. Cloud console → IAM & Admin → **Service accounts → Create**
    - Name `mp-search-metrics`. Grant **no** project roles; access comes from GSC/GA4, not IAM.
    - Open it → **Keys → Add key → JSON**. A file downloads; treat it like a password.
-2. Search Console → property for `custom.mpillow.com` → Settings → **Users and permissions → Add user**
-   - Email: the service account's `…@….iam.gserviceaccount.com`
+2. Search Console → the **`mpillow.com` domain property** → Settings → **Users and permissions → Add user**
+   - Email: the service account's `…@….iam.gserviceaccount.com` (it is already listed under the
+     `custom.mpillow.com` property's Users and permissions, which it read until 20 Nov 2026)
    - Permission: **Restricted** (read-only)
+   - Use the domain property, not a URL-prefix one: it covers www (the Shopify site until the
+     cutover), the bare domain and custom., so the history and the new site are one series.
+     Its DNS verification is the `google-site-verification` TXT on the apex in Vercel DNS.
 3. Note the property id exactly as GSC shows it in the property picker:
-   - Domain property → `sc-domain:mpillow.com`
+   - Domain property → `sc-domain:mpillow.com` (the one in use)
    - URL-prefix property → `https://custom.mpillow.com/` (trailing slash included)
 4. Vercel → Settings → Environment Variables → **Production** (and `.env.local` for the backfill):
    ```
@@ -36,11 +40,17 @@ In that project, go to **APIs & Services → Library** and enable:
    ```
    Paste `private_key` from the JSON as-is; the literal `\n` escapes are converted in code.
 5. Apply the migration: `pnpm db:push` (adds `seo_daily_metrics`)
-6. Load history: `npm run seo:gsc-backfill` (16 months, one month per request batch, safe to re-run)
+6. History loads by itself: each daily run fills in the days the property has that are not
+   stored yet, about four months per run, so the 16 months are in after about four days. The
+   cron response shows progress as `gscIngest.backfilled` and `gscIngest.missingDays` (0 when
+   complete). To load it all at once instead: `npm run seo:gsc-backfill`.
 7. Redeploy. The daily `results-sla` cron now includes `gscIngest` in its JSON response. Check it once:
    `curl -H "Authorization: Bearer $CRON_SECRET" https://custom.mpillow.com/api/cron/results-sla`
 
    Expect `gscIngest.rows.total > 0`. A `403` in `gscIngest.error` means step 2 is missing or the site URL does not match the property id exactly.
+
+   Switching to another property later needs only the env change: days stored from the old
+   property count as missing for the new one, so the import reloads them.
 
 Later, for slice 08: add the same service-account email in GA4 → Admin → Property access management → **Viewer**.
 
