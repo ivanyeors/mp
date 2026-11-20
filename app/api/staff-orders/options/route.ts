@@ -9,11 +9,6 @@ export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * GET /api/staff-orders/options?customer_id= — what the Create order dialog
- * offers (ADR 0048): products with price and stock, Services at their Costings
- * price, delivery methods, studios and the Customer's saved addresses.
- */
 export async function GET(req: Request) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;

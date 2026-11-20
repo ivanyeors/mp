@@ -19,7 +19,7 @@ describe("buildChannelMix", () => {
     v("2026-09-23", null),
     v("2026-09-24", "l.instagram.com"),
     v("2026-09-24", "honeycombers.com"),
-    v("2026-09-21", "www.google.com"), // Monday before `from`: chart only
+    v("2026-09-21", "www.google.com"),
   ];
   const mix = buildChannelMix({
     visits,
@@ -45,7 +45,6 @@ describe("buildChannelMix", () => {
       configuratorVisits: 2,
       orders: 1,
       revenue: 189,
-      // No first Visit given: the Visit that paid is its own first touch.
       firstOrders: 1,
       firstRevenue: 189,
     });
@@ -76,7 +75,6 @@ describe("buildChannelMix", () => {
 });
 
 describe("buildChannelMix platforms and first touch", () => {
-  // Found us on TikTok, came back through a Google ad and paid.
   const tiktok = { ...v("2026-08-30", null), entry_app: "tiktok" };
   const paidGoogle = { ...v("2026-09-23", "www.google.com", "o9"), entry_click_id_kind: "gclid" };
   const organic = v("2026-09-23", "www.google.com");
@@ -102,7 +100,6 @@ describe("buildChannelMix platforms and first touch", () => {
 
   it("counts an Order for the Visit that paid, and again for the shopper's first Visit", () => {
     expect(row("Google", "paid")).toMatchObject({ orders: 1, revenue: 250, firstOrders: 0, firstRevenue: 0 });
-    // TikTok sent no Visit in the range, but the Order it started is in it.
     expect(row("TikTok", "social")).toMatchObject({ visits: 0, orders: 0, firstOrders: 1, firstRevenue: 250 });
     const funnel = (channel: string) => mix.funnel.find((r) => r.channel === channel)!;
     expect(funnel("paid")).toMatchObject({ orders: 1, firstOrders: 0 });
@@ -117,7 +114,7 @@ describe("buildChannelMix platforms and first touch", () => {
 
 describe("singaporeDate", () => {
   it("files visits by Singapore calendar day", () => {
-    expect(singaporeDate("2026-09-22T17:30:00Z")).toBe("2026-09-23"); // 01:30 SGT
-    expect(singaporeDate("2026-09-22T15:59:00Z")).toBe("2026-09-22"); // 23:59 SGT
+    expect(singaporeDate("2026-09-22T17:30:00Z")).toBe("2026-09-23");
+    expect(singaporeDate("2026-09-22T15:59:00Z")).toBe("2026-09-22");
   });
 });

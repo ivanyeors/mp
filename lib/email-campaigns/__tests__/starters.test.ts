@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -34,23 +33,13 @@ import {
 import { SAMPLE_RECIPIENT, variableValues } from "../variables";
 import type { FoundSegments } from "../wanted-segment";
 
-/**
- * Starters (PRD-campaign-email-editor slice 08, decision 8): ready-made
- * layouts made of the same Email blocks, in code. Every one renders through
- * the real renderer and passes the schema; the layouts' words are only
- * placeholders, with no photo, price, offer or review request of their own;
- * the sign-in invitation is the one with finished words, and its audience.
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 
-/** Ids that count up, so two calls are told apart. */
 const counter = () => {
   let n = 0;
   return () => `b${++n}`;
 };
 
-/** As a send renders it: no placeholders, every Variable a sample customer's. */
 const sent = (content: CampaignContent) =>
   renderCampaignBlocksEmail({
     subject: "",
@@ -62,11 +51,9 @@ const sent = (content: CampaignContent) =>
     unsubscribeUrl: `${ORIGIN}/unsubscribe`,
   });
 
-/** A price, a percentage, a discount or a code, an offer, or a review or rating asked for. */
 const OFFER = /S?\$\s?\d|\d+\s?%|\bdiscount|\b\d+\s?(?:%\s)?off\b|\bpromo|\bcoupon|\bcode\b|\bfree\b|\bsale\b|\bdeal\b/i;
 const REVIEW = /\breview|\brating|\brate us|\bstars?\b|\bfeedback\b/i;
 
-/** Each block's words, as a new block of its type starts them. */
 const wordsOf = (b: EmailBlock) => contentWords({ v: 1, blocks: [b], fallbacks: {} });
 
 describe("every Starter", () => {
@@ -97,7 +84,6 @@ describe("every Starter", () => {
     expect(ids).not.toContain(BLANK_PREVIEW);
     expect(starterById("care_tips")?.label).toBe("Care tips");
     expect(starterById("nope")).toBeNull();
-    // The CRM's Playbooks join after the invitation, their words approved (PRD-crm-retention-loop slice 07, 2026-11-01).
     expect(PLAYBOOK_STARTERS.map((s) => s.label)).toEqual(["Second purchase", "Thank you", "We miss you", "Welcome back"]);
   });
 
@@ -130,7 +116,6 @@ describe("the layouts", () => {
   it("hold the blocks the slice names, in order", () => {
     expect(Object.fromEntries(LAYOUT_STARTERS.map((s) => [s.label, blocksOf(s)]))).toEqual({
       "Product launch": ["hero", "heading2", "text", "products", "buttons:shop"],
-      // The tips are a text block: an empty bullet list holds no words to keep.
       "Care tips": ["heading1", "text", "split", "text", "buttons:shop"],
       "Event or fitting day": ["hero", "text", "buttons:book_fitting"],
       "A short note": ["heading1", "text", "buttons:shop"],
@@ -139,7 +124,6 @@ describe("the layouts", () => {
 
   it("have only placeholders for words: each block's words are a new block's of its type", () => {
     for (const s of LAYOUT_STARTERS) {
-      // A hero or an image + text without its own button has a word fewer to write.
       for (const b of s.blocks()) expect(wordsOf(b).filter(Boolean), `${s.label}: ${b.type}`).toEqual(wordsOf(emptyBlock(b.type)).filter(Boolean));
       const content = starterContent(s);
       expect(contentWords(content).filter(Boolean)).toEqual(content.blocks.some((b) => b.type === "products") ? ["Shop now"] : []);
@@ -205,7 +189,6 @@ describe("the sign-in invitation", () => {
 });
 
 describe("starting an email from a Starter", () => {
-  // What the server found: the Segment with filters stage=new (lib/email-campaigns/wanted-segment.ts).
   const NEW_ID = "5e000000-0000-4000-8000-000000000001";
   const SEGMENTS: FoundSegments = { "stage=new": NEW_ID };
   const empty = { ...EMPTY_CAMPAIGN_WORDS, greeting: false, audience: "subscribed" as const, segmentId: "" };
@@ -241,7 +224,6 @@ describe("starting an email from a Starter", () => {
     expect(starterAudience(playbook, SEGMENTS)).toEqual({ audience: "segment", segmentId: NEW_ID });
     expect(starterAudience(playbook, {})).toEqual({ audience: "segment", segmentId: "" });
     expect(starterAudience(LAYOUT_STARTERS[0], SEGMENTS)).toEqual({});
-    // A win-back reaches the Unengaged too (PRD-campaign-audiences slice 12).
     const winBack: Starter = { ...playbook, audience: { audience: "segment", segment: "New", filters: "stage=new", includeUnengaged: true } };
     expect(starterAudience(winBack, SEGMENTS)).toEqual({ audience: "segment", segmentId: NEW_ID, includeUnengaged: true });
   });

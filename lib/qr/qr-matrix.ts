@@ -1,20 +1,7 @@
-/**
- * Minimal byte-mode QR encoder — pure, zero-dependency. Renders a scannable QR
- * of the referral link for the partner share card without adding an npm dep or
- * hitting an external QR service (CSP / offline requirement).
- *
- * Scope (ponytail): EC level L, single data block, versions 1–5, auto-selected.
- * That caps the payload at ~106 bytes; a referral URL is ~40 bytes, so this is
- * ample and it lets us skip block interleaving AND version-info modules (v<7) —
- * the two most bug-prone parts of a QR encoder.
- * ponytail: extend VERSIONS + add block interleaving only if a >106-byte
- * payload is ever needed here.
- *
- * Correctness is pinned by qr-matrix.check.ts (GF round-trip, RS divisibility,
- * known format string, finder patterns). Run: npx tsx lib/qr/qr-matrix.check.ts
- */
+// ponytail: EC level L, single data block, versions 1–5, which caps the payload at ~106 bytes (a
+// referral URL is ~40). Extend VERSIONS + add block interleaving only if a >106-byte payload is
+// ever needed here.
 
-// EC level L. `align` = center of the single alignment pattern (0 = none, v1).
 type VersionSpec = { dataCodewords: number; ecCodewords: number; align: number };
 const VERSIONS: (VersionSpec | null)[] = [
   null,
@@ -26,7 +13,6 @@ const VERSIONS: (VersionSpec | null)[] = [
 ];
 const MAX_VERSION = 5;
 
-// --- GF(256), primitive polynomial 0x11d ---
 const EXP = new Uint8Array(512);
 const LOG = new Uint8Array(256);
 {
@@ -51,14 +37,12 @@ function polyMul(a: number[], b: number[]): number[] {
   return out;
 }
 
-/** Reed-Solomon generator polynomial of degree `n` (product of (x - α^i)). */
 export function rsGenerator(n: number): number[] {
   let gen = [1];
   for (let i = 0; i < n; i++) gen = polyMul(gen, [1, EXP[i]]);
   return gen;
 }
 
-/** RS error-correction codewords (remainder of data·x^ecLen ÷ generator). */
 export function rsEncode(data: number[], ecLen: number): number[] {
   const gen = rsGenerator(ecLen);
   const res = data.concat(new Array(ecLen).fill(0));
@@ -70,7 +54,6 @@ export function rsEncode(data: number[], ecLen: number): number[] {
   return res.slice(data.length);
 }
 
-/** BCH(15,5) format information for a 5-bit payload (EC level bits << 3 | mask). */
 export function formatInfo(data5: number): number {
   let d = data5 << 10;
   const g = 0x537;
@@ -81,7 +64,6 @@ const EC_LEVEL_L = 0b01;
 
 function chooseVersion(byteLen: number): number {
   for (let v = 1; v <= MAX_VERSION; v++) {
-    // byte mode overhead = 4 (mode) + 8 (count) bits = 1.5 codewords → +2 bytes.
     if (byteLen + 2 <= VERSIONS[v]!.dataCodewords) return v;
   }
   throw new Error(`Payload too long for QR v${MAX_VERSION} (${byteLen} bytes)`);
@@ -92,11 +74,11 @@ function encodeDataCodewords(bytes: Uint8Array, spec: VersionSpec): number[] {
   const put = (val: number, len: number) => {
     for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1);
   };
-  put(0b0100, 4); // byte mode
-  put(bytes.length, 8); // char count (byte mode, v1–9 = 8 bits)
+  put(0b0100, 4);
+  put(bytes.length, 8);
   for (const b of bytes) put(b, 8);
   const capacityBits = spec.dataCodewords * 8;
-  put(0, Math.min(4, capacityBits - bits.length)); // terminator
+  put(0, Math.min(4, capacityBits - bits.length));
   while (bits.length % 8 !== 0) bits.push(0);
 
   const cw: number[] = [];
@@ -126,9 +108,9 @@ function formatCells(size: number): { r: number; c: number; bit: number }[] {
   const cells: { r: number; c: number; bit: number }[] = [];
   for (let i = 0; i < 15; i++) {
     const vr = i < 6 ? i : i < 8 ? i + 1 : size - 15 + i;
-    cells.push({ r: vr, c: 8, bit: i }); // vertical copy (col 8)
+    cells.push({ r: vr, c: 8, bit: i });
     const hc = i < 8 ? size - 1 - i : i < 9 ? 7 : 15 - 1 - i;
-    cells.push({ r: 8, c: hc, bit: i }); // horizontal copy (row 8)
+    cells.push({ r: 8, c: hc, bit: i });
   }
   return cells;
 }
@@ -187,7 +169,6 @@ function penalty(m: boolean[][]): number {
   return score;
 }
 
-/** Build a QR module matrix (true = dark) for `text`. Auto-selects version/mask. */
 export function qrMatrix(text: string): boolean[][] {
   const bytes = new TextEncoder().encode(text);
   const version = chooseVersion(bytes.length);
@@ -205,7 +186,6 @@ export function qrMatrix(text: string): boolean[][] {
     reserved[r][c] = true;
   };
 
-  // Finder patterns + separators (3 corners).
   const placeFinder = (row: number, col: number) => {
     for (let r = -1; r <= 7; r++)
       for (let c = -1; c <= 7; c++) {
@@ -222,13 +202,11 @@ export function qrMatrix(text: string): boolean[][] {
   placeFinder(0, size - 7);
   placeFinder(size - 7, 0);
 
-  // Timing patterns.
   for (let i = 8; i < size - 8; i++) {
     if (modules[6][i] === null) setF(6, i, i % 2 === 0);
     if (modules[i][6] === null) setF(i, 6, i % 2 === 0);
   }
 
-  // Single alignment pattern (v2–5); its (align,align) center never overlaps a finder.
   if (spec.align) {
     const a = spec.align;
     for (let r = -2; r <= 2; r++)
@@ -236,14 +214,11 @@ export function qrMatrix(text: string): boolean[][] {
         setF(a + r, a + c, Math.max(Math.abs(r), Math.abs(c)) !== 1);
   }
 
-  // Dark module.
   setF(size - 8, 8, true);
 
-  // Reserve the format-info cells before data placement.
   const cells = formatCells(size);
   for (const { r, c } of cells) reserved[r][c] = true;
 
-  // Map data + EC codeword bits in the standard upward/downward zigzag.
   const data = encodeDataCodewords(bytes, spec);
   const codewords = data.concat(rsEncode(data, spec.ecCodewords));
   const bitStream: number[] = [];
@@ -252,7 +227,7 @@ export function qrMatrix(text: string): boolean[][] {
   let idx = 0;
   let upward = true;
   for (let col = size - 1; col > 0; col -= 2) {
-    if (col === 6) col--; // skip vertical timing column
+    if (col === 6) col--;
     for (let i = 0; i < size; i++) {
       const row = upward ? size - 1 - i : i;
       for (let dc = 0; dc < 2; dc++) {
@@ -267,7 +242,6 @@ export function qrMatrix(text: string): boolean[][] {
 
   const base: boolean[][] = modules.map((row) => row.map((v) => v === true));
 
-  // Try all 8 masks, pick lowest penalty.
   let best: boolean[][] | null = null;
   let bestScore = Infinity;
   for (let mask = 0; mask < 8; mask++) {

@@ -35,15 +35,7 @@ export type PreviewContactValues = {
   discoverySource: string;
   discoverySourceOther: string;
   notes: string;
-  /**
-   * The one optional code (ADR 0033): a partner's referral code (attribution,
-   * #74) or a discount code. Never blocks moving on; the hold resolves it again.
-   */
   code: string;
-  /**
-   * The marketing email box, ticked by default (ADR 0039; PRD-campaign-audiences
-   * slice 02). Never required; the hold records it for the email above.
-   */
   marketingEmail: boolean;
 };
 
@@ -54,14 +46,11 @@ type Props = {
   onChange: (patch: Partial<PreviewContactValues>) => void;
   fieldErrors: Record<string, string>;
   locale: Locale;
-  /** The build the code would go on, as priced on this page; `{ flow: "none" }` before a price exists. */
   codeContext: CheckoutCodeContext | null;
-  /** The code's status, for the page's totals: a discount moves the price. */
   onCodeStatus: (status: CheckoutCodeStatus) => void;
   formatAmount: (amount: number) => string;
 };
 
-/** Field checks for authorize / Save without purchasing. */
 export function previewContactFieldChecks(
   values: Omit<PreviewContactValues, "marketingEmail">,
 ): FieldCheck[] {
@@ -107,8 +96,6 @@ export function PreviewContactFields({
   const [options, setOptions] = useState<Option[]>([]);
   const showOther = values.discoverySource === OTHER_DISCOVERY_SOURCE_ID;
 
-  // Checked as the shopper types and as the build's price changes (ADR 0033);
-  // the page's totals read the answer, so a discount moves the price at once.
   const codeStatus = useCheckoutCode(values.code, codeContext, values.email);
   useEffect(() => {
     onCodeStatus(codeStatus);
@@ -131,9 +118,7 @@ export function PreviewContactFields({
               }))
             : [],
         );
-      } catch {
-        /* visitor still sees empty select; authorize will fail server-side */
-      }
+      } catch {}
     })();
     return () => {
       cancelled = true;
@@ -158,7 +143,6 @@ export function PreviewContactFields({
           {fieldErrors.email ? (
             <p className="text-sm text-destructive">{fieldErrors.email}</p>
           ) : null}
-          {/* Ticked by default (owner, 2026-10-31). Unticked changes nothing. */}
           <label className="flex items-start gap-2 pt-1 text-sm text-muted-foreground">
             <Checkbox
               id="hold-marketing-email"

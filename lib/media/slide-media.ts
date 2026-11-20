@@ -1,8 +1,3 @@
-/**
- * Slice 17 — product slide + ambassadors gallery media → Media Assets.
- * See docs/adr/0004-slide-config-asset-adoption.md.
- */
-
 import type { ImageMediaConfig } from "@/lib/product-slide-sections/types";
 import resolved from "@/lib/media/slide-media-resolved.json";
 
@@ -18,7 +13,6 @@ function normalizePublicPath(publicPath: string): string {
   return p;
 }
 
-/** Public paths used by slide configs + ambassadors (adopt inventory). */
 export const SLIDE_PUBLIC_PATHS: Array<{ publicPath: string; consumer: string }> = [
   { publicPath: "/images/landing/ambassadors-1.jpg", consumer: "ambassadors" },
   { publicPath: "/images/landing/ambassadors-2.png", consumer: "ambassadors" },
@@ -52,7 +46,6 @@ export const SLIDE_PUBLIC_PATHS: Array<{ publicPath: string; consumer: string }>
   { publicPath: "/round-flat-head-comp.png", consumer: "cervical" },
   { publicPath: "/cns-insert.png", consumer: "cervical" },
   { publicPath: "/cns-contact-point.png", consumer: "cervical" },
-  // Landing overlaps still referenced in slide configs (reuse tagged Assets)
   { publicPath: "/m-pillow-417953-web.webp", consumer: "premium+landing" },
   { publicPath: "/mpillow-cervical-neck.webp", consumer: "premium+landing" },
   { publicPath: "/basic-mpillow.webp", consumer: "basic+landing" },
@@ -61,7 +54,6 @@ export const SLIDE_PUBLIC_PATHS: Array<{ publicPath: string; consumer: string }>
 
 export type SlideMediaMap = Record<string, SlideMediaResolved>;
 
-/** Committed map written by slide migrate apply. Empty → `/public` fallback. */
 export function getSlideMediaMap(): SlideMediaMap {
   return resolved as SlideMediaMap;
 }
@@ -73,10 +65,7 @@ export function resolveSlideMedia(publicPath: string): SlideMediaResolved | null
   return hit;
 }
 
-/**
- * Config helper: hosted Asset when map populated, else `/public` fallback.
- * ponytail: map is commit-time; live replace needs site_settings (ADR 0004).
- */
+// ponytail: map is commit-time; live replace needs site_settings (ADR 0004).
 export function slideImage(
   publicPath: string,
   props: Omit<ImageMediaConfig, "src" | "assetId">,
@@ -102,7 +91,6 @@ export type SlideMigrationPlan = {
   assets: PlannedSlideAsset[];
 };
 
-/** Pure plan: ingest/reuse/skip for each slide public path. */
 export function planSlideMigration(input: {
   paths?: Array<{ publicPath: string; consumer: string }>;
   existingByTag: Map<string, { id: string; hosted_url: string; tags: string[] }>;

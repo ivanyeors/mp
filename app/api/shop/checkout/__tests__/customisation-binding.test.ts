@@ -1,15 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * A customised checkout line is bound to its build (#170).
- *
- * Real checkout handler, real pricing (`quoteCustomization` → `priceCustomizedBuild`
- * → `priceComposedBuild`), real component stock check and real Stripe line
- * construction. Only I/O is faked: the
- * Supabase tables, the Costings loader and the Stripe client, so the assertions read
- * the exact `line_items` Stripe would have been sent.
- */
-
 const h = vi.hoisted(() => ({
   tables: {} as Record<string, unknown>,
   inserts: [] as Array<{ table: string; row: unknown }>,
@@ -22,8 +12,6 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined })
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from(table: string) {
-      // `in` / `eq` filter list tables on columns the rows carry; single-row tables
-      // (plain objects) are returned as they are.
       const filters: Array<(row: Record<string, unknown>) => boolean> = [];
       const filter = (col: string, ok: (v: unknown) => boolean) => {
         filters.push((row) => !(col in row) || ok(row[col]));
@@ -92,7 +80,6 @@ vi.mock("@/lib/ecommerce/tax", async (orig) => ({
 vi.mock("@/lib/stripe/client", () => ({
   getStripe: () => ({ checkout: { sessions: { create: h.sessionsCreate } } }),
 }));
-// Live (Easyship) shipping is priced by the quote service, faked here; flat methods never call it.
 vi.mock("@/lib/shipping/quote", () => ({ quoteShippingMethods: h.quoteShippingMethods }));
 vi.mock("@/lib/shipping/settings", () => ({ readShippingSettings: async () => ({}) }));
 
@@ -177,7 +164,6 @@ const item = (id: number, category: string, name: string, over: Record<string, u
   ...over,
 });
 
-/** The catalogue as the database knows it. 7 is a real cover, just not offered at XS. */
 const items = [
   item(1, "cover", "Satin Cover"),
   item(42, "pillow_case", "Linen Case"),
@@ -197,7 +183,6 @@ const packagingBom = [
   { item_id: 23, quantity: 1, category: "packaging" },
 ];
 
-/** Basic XS from Costings: row 170, satin cover 25, linen case 65; Fibrecool case 88. */
 const basicXs = {
   bomLines: [
     { item_id: 1, quantity: 1, category: "cover" },
@@ -217,7 +202,6 @@ const basicXs = {
   currency: "SGD",
 };
 
-/** Premium XS: two satin covers, ships Fibrecool; rows linen 340 / fibrecool 360. */
 const premiumXs = {
   ...basicXs,
   bomLines: [
@@ -231,7 +215,6 @@ const premiumXs = {
   defaultCase: { item_id: 32, msrp: 88, family: "fibrecool", quantity: 1 },
 };
 
-/** Mbolster per length, with the case cut for it: short 200 (case 25), long 230 (case 37). */
 const bolster = (length: string) => {
   const [caseId, caseMsrp, msrp] = length === "short" ? [64, 25, 200] : [86, 37, 230];
   return {
@@ -261,7 +244,6 @@ const bomRows = (product_id: number, lines: Array<{ item_id: number; quantity: n
 
 let pillowSellable: typeof basicXs = basicXs;
 
-/** Satin cover + Fibrecool case: 170 + (88 − 65) = 193. */
 const fibrecoolLines = [
   { item_id: 1, category: "cover", name: "Satin", quantity: 1, is_addon: false, price_delta: 0 },
   { item_id: 32, category: "case", name: "Fibrecool", quantity: 1, is_addon: false, price_delta: 0 },
@@ -385,7 +367,6 @@ describe("POST /api/shop/checkout — a customised line is bound to its build", 
   });
 
   it("uses the catalog Price only when the recomputed build costs the shelf price", async () => {
-    // Default build, but the snapshot claims an upgrade: still the catalog Price.
     h.tables.customization_configs = [
       pillowConfig({
         config_lines: [
@@ -402,7 +383,6 @@ describe("POST /api/shop/checkout — a customised line is bound to its build", 
 
   it("binds a bolster customisation to its product and prices its length from Costings", async () => {
     h.tables.customization_configs = [bolsterConfig("long")];
-    // A stale shelf price on the Variant: the charge still comes from Costings.
     h.tables.product_variants = variants.map((v) => (v.id === BOLSTER_VARIANT ? { ...v, price: 90 } : v));
     const res = await post([{ variant_id: BOLSTER_VARIANT, quantity: 1, customization_id: CONFIG }]);
     expect(res.status).toBe(200);
@@ -461,7 +441,6 @@ describe("POST /api/shop/checkout — live Easyship shipping", () => {
       shipping_amount: 7.5,
       shipping_courier: "Ninja Van Standard",
     });
-    // What the courier costs us stays off `orders`, which customers can read.
     expect(ordersInserted()[0].row).not.toHaveProperty("shipping_carrier_cost");
     expect(h.inserts.find((i) => i.table === "order_shipments")?.row).toEqual({
       order_id: "order-1",
@@ -531,7 +510,6 @@ const apply = (body: Record<string, unknown>) =>
     }),
   );
 
-/** Premium-looking names on a 1-dollar "cover" and a 1-dollar spray posing as the case. */
 const cheapRoleLines = [
   { item_id: 7, category: "cover", name: "Satin Cover", quantity: 1, is_addon: false, price_delta: 0 },
   { item_id: 8, category: "case", name: "Linen Case", quantity: 1, is_addon: false, price_delta: 0 },
@@ -580,7 +558,6 @@ describe("what is priced is what is built", () => {
     const res = await apply({
       component_quantities: [
         { ...fibrecoolLines[0], name: "Anything" },
-        // The Fibrecool case sent as a "protector" used to price as an 88 add-on.
         { ...fibrecoolLines[1], category: "protector", name: "Free upgrade" },
       ],
       filling_lines: [{ item_id: 5, subtype: "made-up", name: "Gold", quantity: 2 }],
@@ -675,11 +652,6 @@ function recommend(body: Record<string, unknown>) {
   );
 }
 
-/**
- * The storefront's own path, end to end: the recommend response, the REAL
- * `computeComponentLines` the configurator posts, the preview price, the cart line
- * (variant price + apply's add-on) and what Stripe is finally asked for.
- */
 async function honestRoundTrip(
   productType: "pillow" | "bolster",
   pick: { cover?: number; case?: number } = {},

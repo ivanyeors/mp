@@ -1,11 +1,3 @@
-/**
- * What an AI writing call needs to know of its campaign
- * (PRD-campaign-email-editor slices 09, 10 and 17), read on the server before
- * Claude is asked: that the email can still change, since a started
- * campaign's is fixed and nothing writes into it, Claude included; and
- * whether points are live (`pointsCheck`'s rule), so Claude may mention them.
- * It reads no customer. Server-only.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { claimBonusOffer } from "@/lib/points/offer";
 import { readPointsSettings } from "@/lib/points/server";

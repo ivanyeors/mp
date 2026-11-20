@@ -33,27 +33,6 @@ import {
     type SegmentParams,
 } from "@/lib/crm/segment-rules";
 
-/**
- * The Segments row above the Customers list (CRM slice 05): every live
- * Segment as a chip with its live count, shared by every Staff member with
- * `customers`. Choosing one writes its filters into the list and the URL, so a
- * Segment is just a named link (and opens as one in a new tab).
- *
- * With `customers-edit`: *Save as Segment* when a filter is active; with a
- * Segment chosen and the filters changed, *Update {name}* or *Save as new*;
- * *Rename* and *Archive* in each chip's menu. The routes refuse without it.
- *
- * With `campaigns`: *Email this Segment* in the same menu opens a new campaign
- * already sent to it (PRD-crm-retention-loop slice 02). Not on a Segment that
- * needs review, which counts nobody until it is updated. The chosen Segment,
- * as saved, also shows it as a button beside the chips, and saving one offers
- * it in the toast (PRD-campaign-audiences, owner decision 5): filter, save,
- * email, without opening a menu.
- *
- * A Segment that *needs review* (a filter it was saved with is no longer one
- * the list knows) shows no count: it counts no Customers until it is updated.
- */
-
 const SEGMENTS_URL = "/api/settings/customers/segments";
 
 async function readError(res: Response, fallback: string): Promise<string> {
@@ -67,7 +46,6 @@ async function fetchSegments(): Promise<CustomerSegment[]> {
     return ((await res.json()) as { rows: CustomerSegment[] }).rows;
 }
 
-/** A plain click applies the Segment in place; a modified one opens its link as usual. */
 const plainClick = (e: MouseEvent) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 
 type NameDialog = { mode: "create" } | { mode: "rename"; segment: CustomerSegment };
@@ -82,21 +60,13 @@ export function SegmentsRow({
     onChoose,
     onSelect,
 }: {
-    /** Read by the page; undefined when it could not be, and the row fetches them. */
     initialSegments?: CustomerSegment[];
-    /** `customers-edit`. */
     canEdit: boolean;
-    /** The new campaign page, when the role holds `campaigns`; undefined hides *Email this Segment*. */
     newCampaignPath?: string;
-    /** The list's filters now, as a Segment would save them. */
     params: SegmentParams;
-    /** The Segment chosen on this list, if any. */
     activeId: string | null;
-    /** The Customers list's path, for each chip's link. */
     listPath: string;
-    /** Puts a Segment's filters on the list and marks it chosen. */
     onChoose: (segment: CustomerSegment) => void;
-    /** Marks a Segment chosen (after saving one) or none, without changing the filters. */
     onSelect: (id: string | null) => void;
 }) {
     const router = useRouter();
@@ -108,7 +78,6 @@ export function SegmentsRow({
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    /** Re-reads every Segment and its count. */
     const reload = useCallback(async () => {
         try {
             setSegments(await fetchSegments());
@@ -118,7 +87,6 @@ export function SegmentsRow({
         }
     }, []);
 
-    // The page could not read them: fetch once on mount.
     useEffect(() => {
         if (initialSegments) return;
         let cancelled = false;
@@ -133,8 +101,6 @@ export function SegmentsRow({
 
     const list = segments ?? [];
     const filtered = Object.keys(params).length > 0;
-    // The chosen Segment while the list has filters (or it needs review, which
-    // may leave none), else one whose filters the list shows (a Segment's link).
     const chosen = activeId ? list.find((s) => s.id === activeId) : undefined;
     const active =
         (chosen && (filtered || chosen.needsReview) ? chosen : undefined) ??
@@ -143,7 +109,6 @@ export function SegmentsRow({
     const changed = active !== null && !sameSegmentFilters(active.params, params);
     const offerUpdate = canEdit && filtered && active !== null && (changed || active.needsReview);
     const offerSave = canEdit && filtered && active === null;
-    // The list shows the chosen Segment as saved: its campaign is one click away.
     const emailActive = active && !changed ? segmentCampaignHref(newCampaignPath, active) : null;
 
     if (!list.length && !offerSave && !loadFailed) return null;
@@ -154,10 +119,6 @@ export function SegmentsRow({
         setError(null);
     };
 
-    /**
-     * Sends one change; on success re-reads every count. Answers the saved
-     * Segment (none for an archive), or the route's message.
-     */
     const send = async (
         url: string,
         method: "POST" | "PATCH",
@@ -225,9 +186,6 @@ export function SegmentsRow({
     return (
         <section aria-label="Segments" className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-                {/* Phones: the chips scroll sideways in one row, edge to edge, so a
-                    long list of Segments doesn't push the Customers below the fold;
-                    the save buttons wrap under it. From md it is the one wrapping row. */}
                 <div className="flex items-center gap-2 max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:overflow-x-auto max-md:px-3 md:contents">
                     <span className="inline-flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
                         <Bookmark className="h-3.5 w-3.5" />

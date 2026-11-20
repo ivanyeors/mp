@@ -2,17 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { CustomerFollowUp, CustomerFollowUpsData, FollowUpListData } from "@/lib/crm/followup-rules";
 
-/**
- * Follow-ups in the Admin Panel (CRM slice 06). Without `customers-edit` the
- * Customer page and the tab show every open follow-up, assignee and due date,
- * with no form and no *Done*, *Reassign* or delete. An archived assignee's
- * open follow-up carries the *Assignee archived* chip.
- *
- * On the Customer page they live in the Journey (PRD-customer-page-journey
- * slice 04): the open ones on Now, the form in the composer, and each one's
- * buttons on its entry. A done one is an entry in its chapter.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers",
 }));
@@ -49,7 +38,6 @@ const rows = [
 const data = (canEdit: boolean): CustomerFollowUpsData => ({ rows, today: "2026-10-21", me: JESS, assignees: canEdit ? [JESS, KAI] : [] });
 const open = rows.filter((r) => !r.doneAt);
 
-/** Now, as the Journey draws it: the open follow-ups, with their buttons for those who may. */
 const nowCard = (canEdit: boolean) =>
   renderToString(
     <NowCard
@@ -61,7 +49,6 @@ const nowCard = (canEdit: boolean) =>
     />,
   );
 
-/** The composer on its Follow-up mode. */
 const form = () =>
   renderToString(
     <CustomerShortcutsProvider customerId="c1" email="mei@example.test" phone={null} canLog onLogged={() => {}}>
@@ -93,7 +80,6 @@ const tab = (canEdit: boolean, data: Partial<FollowUpListData> = {}) =>
     />,
   );
 
-/** Each change control, as it appears in the markup. */
 const FORM_CONTROLS = ['aria-label="New follow-up"', 'id="followup-due"', 'aria-label="Assign to"', "Add follow-up"];
 const ROW_CONTROLS = [">Done<", "Reassign", 'aria-label="Delete follow-up"'];
 const TAB_CONTROLS = [">Done<", "Reassign", ">Actions<"];

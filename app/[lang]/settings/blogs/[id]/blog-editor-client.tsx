@@ -27,8 +27,6 @@ const MDEditor = dynamic(
     { ssr: false }
 );
 
-// The preview parses raw HTML; strip anything that could run script in the
-// Admin Panel (public posts never render raw HTML at all).
 const PREVIEW_OPTIONS = { rehypePlugins: [rehypeStripUnsafeHtml] };
 
 type LocaleContent = {
@@ -47,7 +45,6 @@ const emptyContent = (): LocaleContent => ({
     seo_keywords: [],
 });
 
-/** Merge a stored `content` map onto empty defaults for every locale. */
 const mergeContent = (
     raw?: Record<string, Partial<LocaleContent>> | null,
 ): Record<string, LocaleContent> => {
@@ -58,7 +55,6 @@ const mergeContent = (
     return merged;
 };
 
-/** The `blog_posts` row `/api/blogs/[id]` returns. */
 export type BlogEditorRow = {
     slug: string;
     status: string;
@@ -69,7 +65,6 @@ export type BlogEditorRow = {
     content?: Record<string, Partial<LocaleContent>> | null;
 };
 
-/** The `/api/blogs/[id]` payload the editor mounts with (absent for a new post). */
 export type BlogEditorInitialData = { ok: true; row: BlogEditorRow };
 
 export default function BlogEditorPage({
@@ -92,10 +87,8 @@ export default function BlogEditorPage({
 
     const [loading, setLoading] = useState(!isNew && !initialData);
     const [saving, setSaving] = useState(false);
-    // The server already loaded the post; only later saves refetch it.
     const skipFirstFetch = useRef(initialData != null);
 
-    // Form state
     const [slug, setSlug] = useState(initialRow?.slug ?? "");
     const [status, setStatus] = useState<string>(initialRow?.status ?? "draft");
     const [author, setAuthor] = useState(initialRow?.author ?? "Mpillow");
@@ -108,7 +101,6 @@ export default function BlogEditorPage({
         mergeContent(initialRow?.content),
     );
 
-    // Language toggle
     const [activeLocale, setActiveLocale] = useState<Locale>("en-US");
     const activeContent = content[activeLocale] ?? emptyContent();
 
@@ -123,7 +115,6 @@ export default function BlogEditorPage({
         }));
     };
 
-    // Auto-generate slug from title
     const generateSlug = (title: string) =>
         title
             .toLowerCase()
@@ -132,7 +123,6 @@ export default function BlogEditorPage({
             .replace(/-+/g, "-")
             .slice(0, 200);
 
-    // Load existing post
     const loadPost = useCallback(async () => {
         if (!postId) return;
         setLoading(true);
@@ -146,7 +136,6 @@ export default function BlogEditorPage({
             setImageUrl(row.image_url ?? "");
             setImageAssetId(row.media_asset_id ?? null);
             setLabels(row.labels ?? []);
-            // Merge existing content with empty defaults
             setContent(mergeContent(row.content));
         }
         setLoading(false);
@@ -200,7 +189,6 @@ export default function BlogEditorPage({
         }
     };
 
-    // Phones: the header cluster moves into the bottom dock, within thumb reach.
     useMobileDockActions([
         { id: "save", title: saving ? "Saving…" : "Save", icon: Save, onClick: () => void handleSave() },
         { id: "publish", title: "Save and publish", icon: Eye, onClick: () => void handleSave("published") },
@@ -216,10 +204,8 @@ export default function BlogEditorPage({
 
     return (
         <div className="space-y-6 max-w-4xl">
-            {/* Header */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                    {/* The shell breadcrumb already links back on a phone. */}
                     <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0 max-md:hidden">
                         <Link href={to("/settings/blogs")} aria-label="Back to Blogs">
                             <ArrowLeft className="h-4 w-4" />
@@ -249,7 +235,6 @@ export default function BlogEditorPage({
                 </PageActions>
             </div>
 
-            {/* Language Toggle */}
             <div className="flex items-center gap-1 rounded-lg border p-1 w-fit">
                 {SUPPORTED_LOCALES.map((loc) => (
                     <button
@@ -266,9 +251,7 @@ export default function BlogEditorPage({
                 ))}
             </div>
 
-            {/* Form Fields */}
             <div className="space-y-5">
-                {/* Slug */}
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium">Slug</label>
                     <input
@@ -289,7 +272,6 @@ export default function BlogEditorPage({
                     )}
                 </div>
 
-                {/* Title */}
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium">Title ({activeLocale})</label>
                     <input
@@ -301,7 +283,6 @@ export default function BlogEditorPage({
                     />
                 </div>
 
-                {/* Sub-header */}
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium">Sub-header ({activeLocale})</label>
                     <input
@@ -313,7 +294,6 @@ export default function BlogEditorPage({
                     />
                 </div>
 
-                {/* SEO Description */}
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium">SEO description ({activeLocale})</label>
                     <textarea
@@ -335,7 +315,6 @@ export default function BlogEditorPage({
                     </p>
                 </div>
 
-                {/* SEO Keywords */}
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium">SEO keywords ({activeLocale})</label>
                     <input
@@ -353,7 +332,6 @@ export default function BlogEditorPage({
                     <p className="text-xs text-muted-foreground">Comma-separated list</p>
                 </div>
 
-                {/* Body (Rich Text / Markdown) */}
                 <div className="space-y-1.5" data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}>
                     <label className="text-sm font-medium">Body ({activeLocale})</label>
                     <MDEditor
@@ -371,7 +349,6 @@ export default function BlogEditorPage({
 
                 <hr />
 
-                {/* Shared fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium">Author</label>
@@ -398,7 +375,6 @@ export default function BlogEditorPage({
 
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium">Hero image URL</label>
-                    {/* Wraps at 360px, where Browse Media would otherwise be cut. */}
                     <div className="flex flex-wrap gap-2">
                         <input
                             type="text"

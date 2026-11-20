@@ -16,7 +16,6 @@ export type Item = {
   alteration_of_item_id: number | null;
 };
 
-/** The active Items the panel mounts with (same rows the browser query loads). */
 export type ShopifyInitialData = Item[];
 
 export default function ShopifyAdminPage({
@@ -27,7 +26,6 @@ export default function ShopifyAdminPage({
   const [items, setItems] = useState<Item[]>(initialData ?? []);
   const [loading, setLoading] = useState(!initialData);
   const [syncingShopify, setSyncingShopify] = useState(false);
-  // The server already loaded the items; the browser query stays for refreshes.
   const skipFirstFetch = useRef(initialData != null);
 
   const load = useCallback(async () => {

@@ -2,11 +2,6 @@ import { describe, expect, it } from "vitest";
 import { segmentCampaignHref, segmentHref } from "@/lib/crm/segment-rules";
 import { CampaignDraftSchema, EMPTY_CAMPAIGN_DRAFT, newCampaignDraft } from "@/lib/email-campaigns/rules";
 
-/**
- * PRD-crm-retention-loop slice 02: a Segment hands off to a new campaign, and
- * a campaign's Segment hands back to its Customers list.
- */
-
 const LIVE = { id: "5e000000-0000-4000-8000-000000000001", name: "Premium, lapsed", needsReview: false };
 const REVIEW = { id: "5e000000-0000-4000-8000-000000000002", name: "Old region", needsReview: true };
 
@@ -40,7 +35,6 @@ describe("newCampaignDraft", () => {
       subject: "",
       preheader: null,
       body: "",
-      // Written in blocks, none yet (PRD-campaign-email-editor slice 03).
       content: { v: 1, blocks: [], fallbacks: {} },
       greeting: true,
       button: null,
@@ -49,7 +43,6 @@ describe("newCampaignDraft", () => {
       excludeSegmentIds: [],
       includeUnengaged: false,
     });
-    // Blank on purpose: it does not save until Staff write the email.
     expect(CampaignDraftSchema.safeParse(draft).success).toBe(false);
     const written = { ...draft, subject: "Hello", content: { ...draft.content!, blocks: [{ id: "h", type: "heading" as const, level: 1 as const, text: "Hi" }] } };
     expect(CampaignDraftSchema.safeParse(written).success).toBe(true);

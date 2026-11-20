@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * CRM 06: the Customers page's Follow-ups tab (Mine, All, Overdue) and the
- * sidebar badge. *Mine* and the badge are the profile the person works as;
- * *All* and *Overdue* are everyone's, for every Staff member with `customers`.
- * *Overdue* is due before today in Singapore, so the clock is pinned either
- * side of midnight SGT.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -33,17 +25,16 @@ const countsRoute = await import("../followup-counts/route");
 const MEI = "aaaaaaaa-0000-4000-8000-000000000001";
 const KIM = "aaaaaaaa-0000-4000-8000-000000000002";
 
-const STUDIO = "00000000-0000-4000-8000-0000000000b1"; // shared login: Jess, Kai, archived Ana
-const CLERK = "00000000-0000-4000-8000-0000000000b2"; // personal login: Wang Ying
-const LOOKER = "00000000-0000-4000-8000-0000000000b3"; // customers only
-const VIEWER = "00000000-0000-4000-8000-0000000000b5"; // no customers key
+const STUDIO = "00000000-0000-4000-8000-0000000000b1";
+const CLERK = "00000000-0000-4000-8000-0000000000b2";
+const LOOKER = "00000000-0000-4000-8000-0000000000b3";
+const VIEWER = "00000000-0000-4000-8000-0000000000b5";
 
-const JESS = "11111111-1111-4111-8111-000000000001"; // profile A
-const KAI = "11111111-1111-4111-8111-000000000002"; // profile B
-const LEFT = "11111111-1111-4111-8111-000000000003"; // archived
+const JESS = "11111111-1111-4111-8111-000000000001";
+const KAI = "11111111-1111-4111-8111-000000000002";
+const LEFT = "11111111-1111-4111-8111-000000000003";
 const WANG = "11111111-1111-4111-8111-000000000004";
 
-/** 23:59:59 on Wednesday 21 October in Singapore; still the 21st in UTC an hour later. */
 const LAST_SECOND_OF_21 = new Date("2026-10-21T15:59:59Z");
 const MIDNIGHT_INTO_22 = new Date("2026-10-21T16:00:00Z");
 
@@ -147,7 +138,6 @@ describe("Mine and the badge follow the profile you work as", () => {
     const body = await scope("mine");
     expect(body.me).toEqual({ id: WANG, name: "Wang Ying" });
     expect(body.rows.map((r) => r.id)).toEqual(["w-tomorrow"]);
-    // Due tomorrow: nothing on the badge yet.
     expect(await badge()).toEqual({ ok: true, profile: { id: WANG, name: "Wang Ying" }, counts: { dueToday: 0, overdue: 0 } });
   });
 
@@ -174,9 +164,7 @@ describe("All", () => {
     ]);
     expect(body.rows[0].assignee).toEqual({ id: LEFT, name: "Ana", archived: true });
     expect(body.rows[0].customerName).toBe("Mei Tan");
-    // A Customer with no name is shown by email.
     expect(body.rows[1].customerName).toBe("kim@x.test");
-    // Nobody to reassign to without customers-edit.
     expect(body.assignees).toEqual([]);
   });
 
@@ -203,7 +191,6 @@ describe("Overdue is due before today in Singapore", () => {
 
     signIn(STUDIO, JESS);
     expect((await badge()).counts).toEqual({ dueToday: 0, overdue: 2 });
-    // Wang Ying's follow-up for the 22nd is now due today.
     signIn(CLERK);
     expect((await badge()).counts).toEqual({ dueToday: 1, overdue: 0 });
   });

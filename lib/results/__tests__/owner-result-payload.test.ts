@@ -4,7 +4,6 @@ import {
   type MpConfigResponseDetailPayload,
 } from "@/lib/results/admin/response-detail";
 
-/** Everything the Staff payload carries, so the projection has something to drop. */
 const full = {
   ok: true,
   response: {
@@ -75,8 +74,6 @@ describe("toOwnerResultPayload", () => {
     },
   );
 
-  // The property that makes an allowlist worth having: a column added to the
-  // query later is excluded by default rather than included by default.
   it("excludes a field nobody has thought of yet", () => {
     const withNewColumn = {
       ...full,

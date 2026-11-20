@@ -8,10 +8,6 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Public: active Discovery source options for configurator preview.
- * GET /api/discovery-source?locale=en-US
- */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const localeParam = searchParams.get("locale") ?? DEFAULT_LOCALE;

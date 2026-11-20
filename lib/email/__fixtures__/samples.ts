@@ -1,13 +1,3 @@
-// ============================================================
-// Sample data for the email registry
-// ============================================================
-//
-// One set of fixtures shared by the dev preview and the tests, so what you look
-// at is exactly what the contract tests assert against.
-//
-// "hostile" fills every free-text field with HOSTILE, which is how
-// escaping.test.ts proves no template interpolates raw user input.
-
 import type { CampaignBlockImages, CampaignBlockProducts, CampaignBlocksEmailData } from "../campaign-blocks";
 import { keepChineseAiDrafted, linesFingerprint, withChineseTranslation, wordsFingerprint, type BlockWords } from "@/lib/email-campaigns/chinese-version";
 import type { CampaignContent, ChineseBlockWords, EmailBlock, EmailBlockType } from "@/lib/email-campaigns/content";
@@ -17,10 +7,8 @@ import type { ChatTranscript } from "../support-chat";
 
 export type EmailFixture = "happy" | "hostile";
 
-/** Injection probe: script tag, event handler, quotes and an ampersand. */
 export const HOSTILE = `<img src=x onerror=alert(1)>"'&</script>`;
 
-/** Pick between the realistic value and the injection probe. */
 export function pick(fixture: EmailFixture, happy: string): string {
   return fixture === "hostile" ? HOSTILE : happy;
 }
@@ -64,7 +52,6 @@ export function sampleOrder(fixture: EmailFixture = "happy"): OrderEmailData {
   };
 }
 
-/** The same order with 2,000 points (S$20) spent beside a S$20 coupon, earning 1,233 points, for a guest. */
 export function sampleOrderWithPoints(fixture: EmailFixture = "happy"): OrderEmailData {
   return { ...sampleOrder(fixture), pointsSpent: 2000, pointsEarn: { points: 1233, guest: true } };
 }
@@ -100,10 +87,6 @@ export function sampleResultHeld(fixture: EmailFixture = "happy") {
   };
 }
 
-/**
- * Assisted customisation: the customer submitted with no card, so there is no
- * Authorization hold and no authorized amount to show.
- */
 export function sampleResultHeldNoHold(fixture: EmailFixture = "happy") {
   return { ...sampleResultHeld(fixture), amount: null };
 }
@@ -117,8 +100,6 @@ export function sampleResultAssigned(fixture: EmailFixture = "happy") {
     size: pick(fixture, "M"),
     tier: pick(fixture, "premium"),
     length: null,
-    // These come from admin-editable item names — the exact field that used to
-    // be interpolated into HTML unescaped.
     fillingSummary: [
       pick(fixture, "6D Small ×5 (centre / middle)"),
       pick(fixture, "Latex Shred ×2 (left / front)"),
@@ -136,19 +117,11 @@ export function sampleResultAssigned(fixture: EmailFixture = "happy") {
   };
 }
 
-/**
- * Assisted customisation: no Authorization hold, so the whole total is owed by
- * Balance payment. Spread from the hold fixture so the two cannot drift.
- */
 export function sampleResultAssignedBalance(fixture: EmailFixture = "happy") {
   const base = sampleResultAssigned(fixture);
   return { ...base, pricing: { ...base.pricing, authorized: null } };
 }
 
-/**
- * Assisted customisation sent from the questionnaire (ADR 0017): fillings are
- * built, cover/case/shipping not chosen yet, so the price is a floor.
- */
 export function sampleResultAssignedFinish(fixture: EmailFixture = "happy") {
   const base = sampleResultAssignedBalance(fixture);
   return {
@@ -160,24 +133,16 @@ export function sampleResultAssignedFinish(fixture: EmailFixture = "happy") {
   };
 }
 
-/**
- * Staff re-configured an assigned build and the price grew past the hold, so
- * the customer owes a Balance payment at checkout. Spread from the assigned
- * fixture so the shared spec rows cannot drift between the two templates.
- */
 export function sampleResultUpdated(fixture: EmailFixture = "happy") {
   const base = sampleResultAssigned(fixture);
   return {
     ...base,
     preferences: [pick(fixture, "Satin Cover"), pick(fixture, "Fibrecool Case")],
-    // Rows that add up: these previews get read, and a totals table that does
-    // not reconcile is the first thing a reviewer stops on.
     pricing: { ...base.pricing, subtotal: 434, shipping: 12, tax: 32.12, total: 478.12 },
     previousTotal: base.pricing.total,
   };
 }
 
-/** Same change, but the hold still covers it — nothing extra to pay. */
 export function sampleResultUpdatedWithinHold(fixture: EmailFixture = "happy") {
   const base = sampleResultUpdated(fixture);
   return {
@@ -186,7 +151,6 @@ export function sampleResultUpdatedWithinHold(fixture: EmailFixture = "happy") {
   };
 }
 
-/** Assisted customisation: no hold, so the whole new total is owed. */
 export function sampleResultUpdatedBalance(fixture: EmailFixture = "happy") {
   const base = sampleResultUpdated(fixture);
   return { ...base, pricing: { ...base.pricing, authorized: null } };
@@ -212,7 +176,6 @@ export function sampleBalanceDue(fixture: EmailFixture = "happy") {
   };
 }
 
-/** A Staff order's Payment request (ADR 0048): an accessory, a service, delivered. */
 export function samplePaymentRequest(fixture: EmailFixture = "happy") {
   return {
     firstName: pick(fixture, "Ada"),
@@ -235,7 +198,6 @@ export function samplePaymentRequest(fixture: EmailFixture = "happy") {
   };
 }
 
-/** The same request collected from a studio, with no note. */
 export function samplePaymentRequestCollect(fixture: EmailFixture = "happy") {
   return {
     ...samplePaymentRequest(fixture),
@@ -264,12 +226,10 @@ export function sampleBalanceDueFinish(fixture: EmailFixture = "happy") {
   return { ...sampleBalanceDue(fixture), needsFinish: true };
 }
 
-/** The build was priced and the hold died unpaid — the other expiry voice. */
 export function sampleHoldExpiredUnpaid(fixture: EmailFixture = "happy") {
   return { ...sampleHoldExpired(fixture), reason: "unpaid" as const };
 }
 
-/** A Paired build's Mbolster ended on its own while the Mpillow is still being built. */
 export function samplePairedMbolsterRemoved(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,
@@ -281,7 +241,6 @@ export function samplePairedMbolsterRemoved(fixture: EmailFixture = "happy") {
   };
 }
 
-/** The same, once the Mpillow is assigned: this email is its "ready" email. */
 export function samplePairedMbolsterRemovedReady(fixture: EmailFixture = "happy") {
   return { ...samplePairedMbolsterRemoved(fixture), anchorReady: true, amount: 428 };
 }
@@ -297,7 +256,6 @@ export function sampleResultDeclined(fixture: EmailFixture = "happy") {
   };
 }
 
-/** Assisted / no-card decline: nothing to release, so the money line changes. */
 export function sampleResultDeclinedNoHold(fixture: EmailFixture = "happy") {
   return { ...sampleResultDeclined(fixture), releasedAmount: null };
 }
@@ -356,19 +314,15 @@ export function sampleHeldReminder(fixture: EmailFixture = "happy") {
 export function sampleApplication(fixture: EmailFixture = "happy") {
   return {
     partnerSignInUrl: `${ORIGIN}/partner`,
-    // The support address lands in a mailto: href and in link text.
     supportEmail: pick(fixture, "sg@mpillow.com"),
-    // The Approval Notice facts; the decline email ignores them.
     notice: { promoCode: pick(fixture, "BRIGHT8K2"), territory: pick(fixture, "Singapore"), commissionPool: 50 },
   };
 }
 
-/** PRD-loyalty-points slice 05: the Claim bonus, 1,000 points. */
 export function sampleClaimBonus(fixture: EmailFixture = "happy") {
   return { firstName: pick(fixture, "Wei Ling"), points: 1000, shopUrl: `${ORIGIN}/en-US/shop`, termsUrl: `${ORIGIN}/en-US/points` };
 }
 
-/** CRM slice 07: the Review request, 14 days after delivery. */
 export function sampleReviewRequest(fixture: EmailFixture = "happy") {
   return {
     firstName: pick(fixture, "Wei Ling"),
@@ -382,15 +336,10 @@ export function sampleReviewRequest(fixture: EmailFixture = "happy") {
   };
 }
 
-/** The same email for a customer with no first name on file. */
 export function sampleReviewRequestNoName(fixture: EmailFixture = "happy") {
   return { ...sampleReviewRequest(fixture), firstName: null };
 }
 
-/**
- * CRM slice 08: the yearly Check-up reminder for a Premium Mpillow. The fee is
- * Costings' seeded S$30; the job reads the live one at send time.
- */
 export function sampleCheckup(fixture: EmailFixture = "happy") {
   return {
     firstName: pick(fixture, "Wei Ling"),
@@ -405,9 +354,6 @@ export function sampleCheckup(fixture: EmailFixture = "happy") {
   };
 }
 
-// ADR 0050: the reminder to a guest who stopped customising. The continue link
-// carries a made-up Draft id and access token; the unsubscribe page is the
-// campaign one below, since the reminder is sent like a campaign.
 export function sampleDraftReminder(fixture: EmailFixture = "happy", step: "1d" | "1w" | "1m" = "1d") {
   return {
     step,
@@ -420,15 +366,11 @@ export function sampleDraftReminder(fixture: EmailFixture = "happy", step: "1d" 
   };
 }
 
-// Migration slice 08: the campaign emails. Each link is what the wave sender
-// builds for one Customer (a Claim link with the campaign's UTMs, and the
-// unsubscribe confirm page); the tokens here are made up.
 const CAMPAIGN_CUSTOMER = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const sampleUnsubscribeUrl = `${ORIGIN}/en-US/unsubscribe?u=${CAMPAIGN_CUSTOMER}&t=Qm9vbGVhbi1zZWNyZXQtcHJldmlldy10b2tlbg`;
 const sampleClaimUrl = (template: string) =>
   `${ORIGIN}/en-US/account/welcome?c=k3V9xQe2LmP0aRt7yUb4wZc8nDf1hJg6sKo5vXi2qEw&utm_source=new_website&utm_medium=email&utm_campaign=${template}`;
 
-/** The Claim bonus as the wave sender states it (claimBonusOffer). */
 function sampleCampaignBonus(fixture: EmailFixture) {
   return { points: pick(fixture, "1,000 points"), amount: pick(fixture, "S$10"), months: 3 };
 }
@@ -444,7 +386,6 @@ export function sampleMigrationAnnouncement(fixture: EmailFixture = "happy") {
   };
 }
 
-/** A customer with no first name: the greeting is the sentence that changes. */
 export function sampleMigrationAnnouncementNoName(fixture: EmailFixture = "happy") {
   return { ...sampleMigrationAnnouncement(fixture), firstName: null };
 }
@@ -473,7 +414,6 @@ export function sampleMigrationServiceNotice(fixture: EmailFixture = "happy") {
   };
 }
 
-/** A campaign Staff wrote (PRD-email-marketing): a heading, a bullet list, a link, and the sign-in button. */
 export function sampleComposedCampaign(fixture: EmailFixture = "happy") {
   return {
     firstName: pick(fixture, "Wei Ling"),
@@ -494,18 +434,8 @@ export function sampleComposedCampaign(fixture: EmailFixture = "happy") {
   };
 }
 
-/**
- * Words with every character escaping must handle, and no tag: the content
- * schema refuses a tag in a block's words, so HOSTILE itself cannot get there.
- */
 export const WORDS_PROBE = `"Quotes" & <3 'apostrophes'`;
 
-/**
- * A campaign built from blocks (PRD-campaign-email-editor slice 03): a title,
- * a text block with bold, a link and the first name, bullets, two buttons side
- * by side, a divider and a spacer. Each button's link is what the sender
- * resolves for one Customer.
- */
 export function sampleCampaignBlocksContent(fixture: EmailFixture = "happy"): CampaignContent {
   return {
     v: 1,
@@ -563,14 +493,9 @@ export function sampleCampaignBlocks(fixture: EmailFixture = "happy"): CampaignB
 
 const blockEmail = (...blocks: EmailBlock[]): CampaignContent => ({ v: 1, blocks, fallbacks: { first_name: "there" } });
 
-/** The Media Assets EMAIL_BLOCK_SAMPLES place: a photo, and a cut-out with transparency. */
 export const SAMPLE_PHOTO_ASSET = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
 export const SAMPLE_CUTOUT_ASSET = "8a2d3c4b-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 
-/**
- * Their email renditions, as the sender reads them (slice 05): a 1,200px
- * JPEG of the photo, and a PNG of the cut-out, which sits on the light plate.
- */
 export const EMAIL_BLOCK_SAMPLE_IMAGES: CampaignBlockImages = {
   [SAMPLE_PHOTO_ASSET]: {
     url: `https://mpillow.supabase.co/storage/v1/object/public/media/email/${SAMPLE_PHOTO_ASSET}.jpg`,
@@ -586,17 +511,10 @@ export const EMAIL_BLOCK_SAMPLE_IMAGES: CampaignBlockImages = {
   },
 };
 
-/** The Storefront products EMAIL_BLOCK_SAMPLES shows (slice 07). */
 export const SAMPLE_COVER_PRODUCT = "3b7e1f2a-9c4d-4a6b-8e1f-5d2c3b4a6e7f";
 export const SAMPLE_NECK_PRODUCT = "7c2a4e6b-1d3f-4b8a-9e2c-6f4d5a3b2c1e";
 export const SAMPLE_CASE_PRODUCT = "9e4b6d8a-2f1c-4e3a-8b7d-1c2e3f4a5b6d";
 
-/**
- * Those products as the sender reads them from the shop at render: a cover
- * whose sizes differ in price (a *from* price, a photo), a neck support on
- * sale (its compare-at struck through, a cut-out on the light plate), and a
- * bolster case with one Variant and no photo.
- */
 export const EMAIL_BLOCK_SAMPLE_PRODUCTS: CampaignBlockProducts = {
   [SAMPLE_COVER_PRODUCT]: {
     title: "FibreCool Cover",
@@ -629,12 +547,6 @@ export const EMAIL_BLOCK_SAMPLE_PRODUCTS: CampaignBlockProducts = {
 
 const words = (id: string, text: string): EmailBlock => ({ id, type: "text", paragraphs: [{ kind: "p", runs: [{ text }] }] });
 
-/**
- * One email per Email block type, showing every option the block has
- * (PRD-campaign-email-editor slice 15): what the dark-mode coverage test and
- * the per-block light and dark snapshots render. Keyed by every block type,
- * so a new type does not compile until it has its email here.
- */
 export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
   heading: blockEmail(
     { id: "title", type: "heading", level: 1, text: "Sleep cooler this December" },
@@ -704,7 +616,6 @@ export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
     words("intro", "Cool to the touch, all night."),
     { id: "second", type: "hero", image: { asset: SAMPLE_CUTOUT_ASSET, alt: "The Mpillow Premium, from the side" }, heading: "Made to your measure" },
   ),
-  // The image on the left with a button, then on the right (a cut-out, on its plate) with none.
   split: blockEmail(
     {
       id: "left",
@@ -732,7 +643,6 @@ export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
       ],
     },
   ),
-  // Three side by side, two one per row with their own label, and a button to one product's page.
   products: blockEmail(
     {
       id: "grid",
@@ -760,13 +670,6 @@ export const EMAIL_BLOCK_SAMPLES: Record<EmailBlockType, CampaignContent> = {
   ),
 };
 
-/**
- * A campaign with a 中文 version (PRD-campaign-email-editor slice 17): every
- * block type with words, in English, and each block's words in Chinese made
- * from them, a link and a Variable kept in place. The renderer's 中文
- * snapshots, the sender's mixed-language test and the editor's 中文 tests
- * all read it.
- */
 export const CHINESE_SAMPLE_LINES = {
   subject: "{first_name}, sleep cooler this December",
   preheader: "Our FibreCool covers are back, in every size.",
@@ -824,7 +727,6 @@ const CHINESE_SAMPLE_ENGLISH: CampaignContent = blockEmail(
   },
 );
 
-/** Each block's 中文 words, without their fingerprints: what a translation of CHINESE_SAMPLE_ENGLISH holds. */
 export const CHINESE_SAMPLE_WORDS: Record<string, BlockWords> = {
   hero: { type: "hero", alt: "铺好的床上的白色 FibreCool 枕套", heading: "这个十二月，睡得更清凉", line: "我们最清凉的枕套回来了，各种尺寸都有。", buttonLabel: "选购枕套" },
   intro: {
@@ -844,7 +746,6 @@ export const CHINESE_SAMPLE_WORDS: Record<string, BlockWords> = {
   pair: { type: "buttons", labels: ["定制您的 Mpillow", "阅读保养指南"] },
 };
 
-/** CHINESE_SAMPLE_ENGLISH with its 中文 version, every block current, read and kept by a person. */
 export const CHINESE_SAMPLE_CONTENT: CampaignContent = keepChineseAiDrafted(
   withChineseTranslation(CHINESE_SAMPLE_ENGLISH, {
     subject: CHINESE_SAMPLE_LINES.chineseSubject,
@@ -860,7 +761,6 @@ export const CHINESE_SAMPLE_CONTENT: CampaignContent = keepChineseAiDrafted(
   }),
 );
 
-/** The cover as the 中文 shop names it: what a reader of Chinese sees in CHINESE_SAMPLE_CONTENT's products block. */
 export const CHINESE_SAMPLE_PRODUCTS: CampaignBlockProducts = {
   [SAMPLE_COVER_PRODUCT]: { ...EMAIL_BLOCK_SAMPLE_PRODUCTS[SAMPLE_COVER_PRODUCT], title: "FibreCool 凉感枕套" },
 };

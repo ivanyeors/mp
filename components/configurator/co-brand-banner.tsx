@@ -1,12 +1,6 @@
 import Image from "next/image";
 import { LOGO_SRC } from "@/lib/brand-logo";
 
-/**
- * Co-brand finish-panel banner for a partner-assisted run (#78): the partner's
- * uploaded logo beside the Mpillow logo, "[Partner] × Mpillow", and the
- * partner's description. Rendered ONLY when a partner context is present, so
- * guest/staff flows are pixel-unchanged.
- */
 export function CoBrandBanner({
   partner,
 }: {

@@ -1,26 +1,6 @@
 import { isValidPhone, normalizePhone } from "@/lib/appointments/phone";
 import { STAFF_MAILBOX, STAFF_MAIL_CC } from "@/lib/contact";
 
-/**
- * The Customer page's Email and WhatsApp buttons (PRD-customer-page-journey
- * slice 02): the link that opens a message to the customer in the app Staff
- * already use. Pure, so the same code builds the link, the copy text and the
- * tests.
- *
- * Nothing here sends anything. A link opens Gmail or WhatsApp with the
- * message filled in, and the Staff member presses send there.
- *
- * | Device   | Email                                   | WhatsApp                |
- * |----------|-----------------------------------------|-------------------------|
- * | computer | Gmail compose, in the Staff mailbox     | WhatsApp Web, the chat  |
- * | iphone   | the Gmail app, then `mailto:` if absent | wa.me (opens the app)   |
- * | android  | `mailto:` (the default mail app)        | wa.me (opens the app)   |
- *
- * WhatsApp documents `wa.me`. Google documents neither Gmail link: both have
- * worked for years and both can change, which is why Copy sits beside every
- * button.
- */
-
 export type ContactDevice = "computer" | "iphone" | "android";
 
 export const CONTACT_DEVICE_NAMES: Record<ContactDevice, string> = {
@@ -29,10 +9,6 @@ export const CONTACT_DEVICE_NAMES: Record<ContactDevice, string> = {
   android: "an Android phone",
 };
 
-/**
- * Which links this browser gets. An iPad asks for the desktop site and calls
- * itself a Mac, so a Mac with a touch screen is read as iOS.
- */
 export function contactDevice(userAgent: string, maxTouchPoints = 0): ContactDevice {
   if (/Android/i.test(userAgent)) return "android";
   if (/iPhone|iPad|iPod/i.test(userAgent)) return "iphone";
@@ -40,14 +16,8 @@ export function contactDevice(userAgent: string, maxTouchPoints = 0): ContactDev
   return "computer";
 }
 
-/**
- * A link carries its text in the address. Browsers and apps differ on how long
- * an address may be; 1,800 characters of text has room to spare in all of
- * them once it is percent-encoded. Copy always has the whole text.
- */
 export const LINK_TEXT_MAX = 1800;
 
-/** The text a link carries: whole when it fits, else cut at a word with an ellipsis. */
 export function linkText(text: string | null | undefined, max = LINK_TEXT_MAX): string {
   const t = (text ?? "").trim();
   if (t.length <= max) return t;
@@ -58,7 +28,6 @@ export function linkText(text: string | null | undefined, max = LINK_TEXT_MAX): 
 
 const enc = encodeURIComponent;
 
-/** `a=1&b=2` of the pairs with a value; the order given is the order written. */
 function query(pairs: Array<[string, string | null | undefined]>): string {
   return pairs
     .filter((p): p is [string, string] => Boolean(p[1]))
@@ -70,15 +39,12 @@ export type EmailMessage = { to: string; subject?: string | null; body?: string 
 
 export type EmailLink = {
   href: string;
-  /** Tried when `href` did not leave the page: an iPhone without the Gmail app. */
   fallback: string | null;
-  /** What opens, for the line under the button. */
   opens: string;
 };
 
 export type StaffMailFrom = { mailbox: string; cc: string };
 
-/** `mailto:` with the Cc, for the phone's own mail app. */
 function mailto(message: EmailMessage, cc: string): string {
   const q = query([
     ["cc", cc],
@@ -88,7 +54,6 @@ function mailto(message: EmailMessage, cc: string): string {
   return `mailto:${enc(message.to.trim())}${q ? `?${q}` : ""}`;
 }
 
-/** The Email button's link on `device`, from the Staff mailbox with the Cc. */
 export function emailLink(
   message: EmailMessage,
   device: ContactDevice,
@@ -133,11 +98,6 @@ export function emailLink(
   };
 }
 
-/**
- * The number as WhatsApp's links want it: digits only, with the country code
- * and no `+`. Null for a number that is missing or does not pass
- * `isValidPhone`, so no button is drawn for one WhatsApp would refuse.
- */
 export function whatsappDigits(phone: string | null | undefined): string | null {
   if (!phone?.trim() || !isValidPhone(phone)) return null;
   const e164 = normalizePhone(phone);
@@ -146,7 +106,6 @@ export function whatsappDigits(phone: string | null | undefined): string | null 
 
 export type WhatsAppLink = { href: string; opens: string };
 
-/** The WhatsApp button's link on `device`; null without a valid number. */
 export function whatsappLink(
   phone: string | null | undefined,
   text: string | null | undefined,
@@ -168,7 +127,6 @@ export function whatsappLink(
   };
 }
 
-/** `tel:` for the Call button; null without a valid number. */
 export function telLink(phone: string | null | undefined): string | null {
   if (!phone?.trim() || !isValidPhone(phone)) return null;
   const e164 = normalizePhone(phone);
@@ -177,11 +135,6 @@ export function telLink(phone: string | null | undefined): string | null {
 
 export type SentChannel = "email" | "whatsapp";
 
-/**
- * The Customer note "Sent it" saves (PRD decision: a note, so it needs no
- * table of its own). Says what was done and keeps the words, cut to fit a
- * note.
- */
 export function sentNote(
   channel: SentChannel,
   message: { subject?: string | null; body?: string | null },

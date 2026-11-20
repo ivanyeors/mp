@@ -14,7 +14,6 @@ import { fillingMixMode } from "@/lib/results/filling-mix";
 
 const PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 
-/** The subset of the response row the assignment panel derives its state from. */
 export interface AssignSeedRow {
   status?: string | null;
   order_id?: string | null;
@@ -29,32 +28,15 @@ export interface AssignSeedRow {
   filling_fingerprint?: unknown;
 }
 
-/**
- * True when the result is assignable — the same `canAssign` gate the client
- * uses before it loads the assignment preview.
- */
 export function canAssignResult(row: AssignSeedRow | null | undefined): boolean {
   return row?.status === "held";
 }
 
-/**
- * True when the page mounts the filling mix as an editor: the assignable
- * `held` Result, and a Draft Result Staff lay out ahead of the customer
- * (`lib/results/filling-mix.ts`). Both need the template list and the Items.
- */
 export function canEditFillingMix(row: AssignSeedRow | null | undefined): boolean {
   if (!row) return false;
   return fillingMixMode({ status: row.status, order_id: row.order_id, product_type: row.product_type }) !== "view";
 }
 
-/**
- * Reproduces the assign-panel state the client derives on first render
- * (size/tier/length fall back suggested → engine recommendation) and turns it
- * into the `/api/results/assign/prep` request it would have fired. Returns
- * null when that first render would not request a preview at all, or when the
- * derived key is not a valid composed-sellable key — the client then loads it
- * itself, unchanged.
- */
 function resolveAssignPrepRequest(
   row: AssignSeedRow,
   recommended: { size: string; tier: string } | null,
@@ -108,11 +90,6 @@ function resolveAssignPrepRequest(
   };
 }
 
-/**
- * The assignment preview the result detail page would fetch on mount, or null
- * when it would not fetch one (or the load failed) — in which case the client
- * falls back to its own fetch.
- */
 export async function loadResultAssignPrep(
   row: AssignSeedRow,
   recommended: { size: string; tier: string } | null,
@@ -135,11 +112,6 @@ export interface FillingItemOption {
   size: string | null;
 }
 
-/**
- * Filling items for the spatial editor. Service-role equivalent of the browser
- * query the detail page runs against `items`; the client keeps its own copy for
- * refreshes.
- */
 export async function loadFillingItems(): Promise<FillingItemOption[]> {
   const admin = supabaseAdmin();
   const { data } = await admin
@@ -152,7 +124,6 @@ export async function loadFillingItems(): Promise<FillingItemOption[]> {
   return (data ?? []).map((i) => ({
     id: Number(i.id),
     label: fillingLabel(i),
-    // name/subtype/size feed the bolster picker's family grouping.
     name: i.name,
     subtype: i.subtype ?? null,
     size: i.size ?? null,

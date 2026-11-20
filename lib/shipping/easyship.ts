@@ -7,15 +7,6 @@ import type { EasyshipAddress } from "@/lib/easyship/schema";
 import { quoteCity } from "@/lib/shipping/countries";
 import { destinationState } from "@/lib/shipping/states";
 
-/**
- * Easyship Public API client (https://developers.easyship.com).
- *
- * The token is an environment variable, never a database row. Easyship issues
- * sandbox tokens prefixed `sand_` and production tokens prefixed `prod_`; the
- * prefix picks the host, so a sandbox token can never buy a real label.
- * EASYSHIP_API_BASE_URL overrides the host (for a proxy or a mock server).
- */
-
 export const DEFAULT_EASYSHIP_API_VERSION = "2024-09";
 const PRODUCTION_HOST = "https://public-api.easyship.com";
 const SANDBOX_HOST = "https://public-api-sandbox.easyship.com";
@@ -49,7 +40,6 @@ export class EasyshipError extends Error {
   }
 }
 
-/** Easyship errors arrive as `{ error: { message, details } }`; flatten them for a person. */
 function errorMessage(body: unknown, status: number): string {
   const b = body as { error?: { message?: unknown; details?: unknown } | string; message?: unknown } | null;
   const e = b?.error;
@@ -103,10 +93,6 @@ export async function easyshipRequest<T = unknown>(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Request bodies
-// ---------------------------------------------------------------------------
-
 function clean<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined && v !== null && v !== ""),
@@ -128,22 +114,10 @@ export function originAddressBody(origin: EasyshipAddress) {
   });
 }
 
-/**
- * Easyship refuses an address without a city ("destination_address.city can't be
- * blank"), but most quotes are made from a country and postal code alone: the
- * delivery checker, the checkout before the address is finished, Settings' test.
- * Couriers zone rates by postal code (which is why `quoteCacheKey` leaves the city
- * out), so those quotes send the country's main city from the country catalog. A
- * country outside it sends none, Easyship refuses it, and live methods are hidden.
- */
 function destinationCity(destination: Pick<ShippingDestination, "country" | "city">): string | undefined {
   return destination.city?.trim() || quoteCity(destination.country);
 }
 
-/**
- * A label (`contact` given) carries the shopper's state or the one their postal
- * code is in; only a quote falls back to the main city's (`destinationState`).
- */
 export function destinationAddressBody(
   destination: ShippingDestination,
   contact?: { name?: string | null; email?: string | null; phone?: string | null },
@@ -173,7 +147,6 @@ export function parcelsBody(parcels: Parcel[], settings: ShippingSettings, origi
         actual_weight: i.weight_kg,
         declared_currency: i.currency,
         declared_customs_value: i.declared_value,
-        // An HS code classifies the goods for customs; the category is the fallback.
         hs_code: settings.hs_code || undefined,
         category: settings.hs_code ? undefined : settings.item_category,
         origin_country_alpha2: originCountry,
@@ -240,10 +213,6 @@ export function shipmentRequestBody(input: {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Calls
-// ---------------------------------------------------------------------------
-
 export function requestRates(config: EasyshipConfig, body: unknown, fetchImpl?: typeof fetch) {
   return easyshipRequest(config, "/rates", { method: "POST", body, timeoutMs: RATES_TIMEOUT_MS }, fetchImpl);
 }
@@ -257,11 +226,6 @@ export function createShipment(config: EasyshipConfig, body: unknown, fetchImpl?
   );
 }
 
-/**
- * Cancel a shipment whose label has been requested, while the parcel is not yet
- * in transit. Easyship voids the label and refunds the courier fee to the account.
- * A 422 means it can no longer be cancelled (the courier has it, or it is too old).
- */
 export function cancelShipment(config: EasyshipConfig, shipmentId: string, fetchImpl?: typeof fetch) {
   return easyshipRequest(
     config,
@@ -280,24 +244,17 @@ export function getShipment(config: EasyshipConfig, shipmentId: string, fetchImp
   );
 }
 
-// ---------------------------------------------------------------------------
-// Shipment parsing
-// ---------------------------------------------------------------------------
-
 export interface ParsedShipment {
   shipmentId: string;
   labelState: string | null;
   trackingNumber: string | null;
   trackingUrl: string | null;
-  /** A hosted label, when Easyship returns one. */
   labelUrl: string | null;
-  /** The label as base64 PDF pages, when Easyship returns the document inline. */
   labelBase64: string[];
   courierName: string | null;
   courierServiceId: string | null;
   totalCharge: number | null;
   currency: string | null;
-  /** Courier transit days from the label's rate. */
   minDays: number | null;
   maxDays: number | null;
 }
@@ -306,12 +263,6 @@ type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : null);
 const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 
-/**
- * Read what fulfilment needs out of a shipment response (`{ shipment: {...} }` or
- * the bare object). Tolerant by design: label documents and tracking moved
- * between API versions, and a field Easyship has not filled yet (an async label)
- * reads as null rather than throwing.
- */
 export function parseShipment(raw: unknown): ParsedShipment | null {
   const root = obj(raw);
   const s = obj(root?.shipment) ?? root;

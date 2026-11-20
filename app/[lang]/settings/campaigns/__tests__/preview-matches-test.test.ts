@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -7,13 +6,6 @@ import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { CampaignDraftInput } from "@/lib/email-campaigns/rules";
 import { emptyWorld, fakeCampaignsClient } from "@/lib/email-campaigns/__tests__/fake-db";
-
-/**
- * The editor's preview is the email the test send delivers
- * (PRD-campaign-email-editor slice 04): the same renderer and the same HTML,
- * but for the unsubscribe link, which in the preview unsubscribes nobody. And
- * the preview's Dark toggle reaches the renderer through the action.
- */
 
 const h = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 vi.mock("@/lib/email-campaigns/sender", async (importOriginal) => {
@@ -77,7 +69,6 @@ beforeEach(() => {
   h.calls = [];
 });
 
-/** The test send of `draft`, through the same transport and headers as a wave. */
 async function testSend(draft: ReturnType<typeof CampaignPreviewSchema.parse>, admin: SupabaseClient = fakeCampaignsClient(emptyWorld()) as unknown as SupabaseClient) {
   const sent: OutgoingEmail[] = [];
   const transport: EmailTransport = {
@@ -102,7 +93,6 @@ async function testSend(draft: ReturnType<typeof CampaignPreviewSchema.parse>, a
   return sent;
 }
 
-// The test's own unsubscribe link (signed for nobody) against the preview's, which has none.
 const unsigned = (s: string) => s.replace(/\/en-US\/unsubscribe\?[^"\s]*/g, "/en-US/unsubscribe");
 
 describe("the preview and the test send", () => {
@@ -115,7 +105,7 @@ describe("the preview and the test send", () => {
     expect(unsigned(sent[0].html)).toBe(preview.html);
     expect(unsigned(sent[0].text)).toBe(preview.text);
     expect(preview.html).toContain("Hello Ivan, our <strong>FibreCool</strong> covers are back.");
-    expect(preview.html).not.toContain("dashed"); // every word written: no placeholder drawn
+    expect(preview.html).not.toContain("dashed");
   });
 
   it("show the same products, each as the shop sells it at that moment (slice 07)", async () => {
@@ -148,12 +138,10 @@ describe("the preview and the test send", () => {
 describe("previewCampaign", () => {
   it("hands the Dark toggle to the renderer, and names the sending setup's From", async () => {
     const light = await previewCampaign(INPUT);
-    // A block campaign previews as the sample customer (slice 13), as its test send reads.
     expect(h.calls.at(-1)?.[1]).toMatchObject({ forceDark: false, firstName: "Mei Ling", lastName: "Tan", pointsBalance: 1250 });
     expect(light).toMatchObject({ ok: true, subject: "Mei Ling, sleep cooler", from: "Mpillow <hello@hello.mpillow.com>" });
     const dark = await previewCampaign(INPUT, { forceDark: true });
     expect(h.calls.at(-1)?.[1]).toMatchObject({ forceDark: true });
-    // Dark is the shell's own dark rules applied (slice 15); Light is the email as sent.
     expect(light.ok && light.html).not.toContain(`id="${FORCED_DARK_STYLE_ID}"`);
     expect(dark.ok && dark.html).toContain(`id="${FORCED_DARK_STYLE_ID}"`);
   });

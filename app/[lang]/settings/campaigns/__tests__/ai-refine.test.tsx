@@ -9,16 +9,6 @@ import type { RefineRequest, RefineResult } from "@/lib/email-campaigns/ai-refin
 import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * ✨ Refine in the campaign editor (PRD-campaign-email-editor slice 10,
- * decision 9): subject and preview line ideas under their fields, each a
- * button that fills the field; *✨ Rewrite* on a heading or text block, its
- * rewrite shown in the block beside the original struck through, with
- * Replace (one change, which Undo takes back), Try again and Keep mine
- * (nothing changes). Every control has a name and is a real button. Nothing
- * saves or sends.
- */
-
 const actions = vi.hoisted(() => ({
   archiveCampaignAction: vi.fn(),
   checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),
@@ -94,7 +84,6 @@ const SHORTER: RefineResult = {
   },
 };
 
-/** The route's answers, in order; each request is kept. */
 let answers: { status?: number; body: unknown }[] = [];
 const requests: RefineRequest[] = [];
 const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -119,7 +108,6 @@ function mount(draft: CampaignDraft = DRAFT, ai: AiWritingAvailability = ON) {
   );
 }
 
-/** A button by its name: its words, or its aria-label. */
 const named = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.getAttribute("aria-label") === label || (!b.hasAttribute("aria-label") && b.textContent?.trim() === label)) ?? null;
 const ideaButtons = (field: "subject" | "preheader") => [...(document.querySelector(`[aria-labelledby='c-${field}-ideas-label']`)?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
@@ -129,7 +117,6 @@ const saved = () => named("Save changes")!.disabled;
 const rewriteButton = (block: string) => until(() => named(`Rewrite with Claude: ${block}`));
 const offer = () => document.querySelector<HTMLElement>("[aria-labelledby='block-words-offer-label']");
 
-/** Opens ✨ Rewrite on the text block and picks `choice`. */
 async function rewriteWith(choice: string) {
   await click(await rewriteButton("Text, block 2 of 2"));
   await click(await until(() => named(choice)));
@@ -161,7 +148,6 @@ describe("subject line ideas", () => {
     expect(requests[0].kind === "subjects" && requests[0].words).toEqual(["Sleep cooler this December", "Hi {first_name}, warm nights are back, and so is the FibreCool cover. Book a fitting"]);
     const shown = ideasShown("subject");
     expect(shown).toHaveLength(5);
-    // Counted as the field counts: a Variable as the sample customer's words.
     expect(shown[0].textContent).toBe(`{first_name}, sleep cooler this December${"Mei Ling, sleep cooler this December".length}`);
     expect(shown[4].textContent).toMatch(/, may be cut off on phones$/);
     expect(shown[1].textContent).not.toMatch(/cut off/);
@@ -233,7 +219,6 @@ describe("✨ Rewrite a block", () => {
     const shown = await until(() => offer());
     expect(shown.querySelector("del")?.textContent).toContain("warm nights are back, and so is the FibreCool cover.");
     expect(shown.querySelector("ins")?.textContent).toContain("the FibreCool cover is back.");
-    // The link and the Variable are kept: the chip and the linked words read in the rewrite.
     expect(shown.querySelector("ins")?.textContent).toContain("First name");
     expect(shown.querySelector("ins")?.textContent).toContain("Book a fitting");
     expect(document.activeElement).toBe(named("Replace"));

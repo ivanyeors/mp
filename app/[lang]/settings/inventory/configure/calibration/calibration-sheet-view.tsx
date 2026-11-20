@@ -6,13 +6,6 @@ import type { CalibrationSheet } from "@/lib/spatial-fillings/calibration";
 import type { CatalogSource } from "@/lib/spatial-fillings/dimension-overrides";
 import { PILLOW_SIZES } from "@/lib/spatial-fillings/dimensions";
 
-/**
- * The calibration sheet (slice 10), printable: each check's x-ray prediction
- * beside an empty cell for the ruler reading. Pure render — the page loads
- * the Settings registry and the default templates and hands the sheet in.
- */
-
-/** An empty cell to write the bench reading in, on screen and on paper. */
 function Blank() {
   return <TableCell className="min-w-20 border-b border-dashed border-foreground/30" aria-label="Measured" />;
 }
@@ -32,11 +25,6 @@ function Section({ title, hint, children }: { title: string; hint: ReactNode; ch
   );
 }
 
-/**
- * On a phone each table keeps a readable width and scrolls sideways inside its
- * section, instead of squeezing its columns to one word per line. Print and
- * desktop are wide enough already.
- */
 const phoneMinWidth = {
   budgets: "max-md:min-w-[34rem] max-md:[&_th]:whitespace-nowrap",
   templates: "max-md:[&_th]:whitespace-nowrap",
@@ -48,12 +36,6 @@ const phoneMinWidth = {
 
 const layerCount = (n: number | null) => (n === null ? "–" : String(n));
 
-/**
- * Print only the sheet: the Settings shell (sidebar, dock) has no print
- * styles, so in print everything that is neither the sheet, inside it nor an
- * ancestor of it is display: none (visibility loses to the shell's floating
- * controls' inline styles). This style tag exists only while the page is mounted.
- */
 const PRINT_ONLY_SHEET = `@media print {
   body *:not([data-calibration-sheet]):not([data-calibration-sheet] *):not(:has([data-calibration-sheet])) { display: none !important; }
   @page { size: A4 landscape; margin: 12mm; }

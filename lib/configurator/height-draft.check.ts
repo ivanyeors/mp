@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { displayHeight, heightInchesRoundTrip, normalizeHeightDraft } from "./height-draft";
 import { CM_PER_INCH, roundCm } from "@/lib/rules-engine/units";
 
-assert.equal(normalizeHeightDraft("m", "1."), null); // incomplete draft
+assert.equal(normalizeHeightDraft("m", "1."), null);
 assert.equal(normalizeHeightDraft("m", "1.68"), "168");
 assert.equal(normalizeHeightDraft("cm", "168.5"), "168.5");
 assert.equal(normalizeHeightDraft("in", "66"), String(Math.round(66 * CM_PER_INCH * 10) / 10));

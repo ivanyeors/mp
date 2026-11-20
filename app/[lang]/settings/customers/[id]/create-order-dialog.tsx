@@ -33,14 +33,6 @@ import {
     type StaffOrderQuoteView,
 } from "@/lib/staff-orders/shared";
 
-/**
- * Create order (ADR 0048): Staff build a Staff order for this Customer —
- * products at the shop's price, Services at their Costings price — and the
- * customer pays it through its Payment link. Nothing typed here is a price:
- * the summary is the server's quote, re-read on every change, and the create
- * route prices it again before writing the Order.
- */
-
 type Line =
     | { kind: "goods"; id: string; quantity: number }
     | { kind: "service"; id: ServiceKey; quantity: number };
@@ -94,9 +86,7 @@ export function CreateOrderDialog({
     customerId: string;
     customerName: string;
     customerEmail: string;
-    /** `/settings/orders/<id>` with the locale, for "View order". */
     ordersHref: (orderId: string) => string;
-    /** The order list on the Customer page refreshes. */
     onCreated: () => void;
 }) {
     const [options, setOptions] = useState<StaffOrderOptions | null>(null);
@@ -123,17 +113,14 @@ export function CreateOrderDialog({
     const [internalNote, setInternalNote] = useState("");
     const [sendEmail, setSendEmail] = useState(true);
 
-    // The server's answer for one draft, keyed by the draft it priced.
     const [priced, setPriced] = useState<{ key: string; quote: StaffOrderQuoteView | null; error: string | null } | null>(
         null,
     );
-    // A refusal from the create route, for the draft it refused.
     const [createError, setCreateError] = useState<{ key: string; error: string } | null>(null);
     const [creating, setCreating] = useState(false);
     const [created, setCreated] = useState<Created | null>(null);
     const [copied, setCopied] = useState(false);
 
-    // Load what can be sold the first time the dialog opens.
     useEffect(() => {
         if (!open || options) return;
         let cancelled = false;
@@ -169,7 +156,6 @@ export function CreateOrderDialog({
     );
 
     const hasGoods = lines.some((l) => l.kind === "goods");
-    // Nothing ships in a service-only order: it is done at a studio.
     const effectiveDelivery = hasGoods ? deliveryKind : "studio";
 
     const draft: StaffOrderDraft | null = useMemo(() => {
@@ -207,8 +193,6 @@ export function CreateOrderDialog({
         };
     }, [lines, effectiveDelivery, studioId, methodId, address, code, note, internalNote, customerId]);
 
-    // Price the draft on the server, debounced; a late answer for an older draft is dropped.
-    // Notes do not change the price, so they do not re-quote.
     const priceKey = useMemo(
         () => (draft ? JSON.stringify({ ...draft, note: undefined, internal_note: undefined }) : null),
         [draft],
@@ -238,7 +222,6 @@ export function CreateOrderDialog({
         return () => clearTimeout(timer);
     }, [priceKey]);
 
-    // Current: the answer for this very draft. Shown: the latest answer, dimmed while re-pricing.
     const current = priced && priced.key === priceKey ? priced : null;
     const quote = current?.quote ?? null;
     const quoteError = (createError && createError.key === priceKey ? createError.error : null) ?? current?.error ?? null;
@@ -295,7 +278,6 @@ export function CreateOrderDialog({
     const close = (next: boolean) => {
         if (!next) {
             if (created) reset();
-            // Reload products next time: stock and prices move.
             setOptions(null);
             setOptionsError(null);
         }
@@ -337,9 +319,7 @@ export function CreateOrderDialog({
             await navigator.clipboard.writeText(text);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch {
-            /* clipboard blocked — the link stays selectable in the input */
-        }
+        } catch {}
     };
 
     const quotedLine = (line: Line) =>
@@ -378,7 +358,6 @@ export function CreateOrderDialog({
                             </div>
                         ) : (
                             <div className="min-w-0 space-y-5">
-                                {/* ── Add: products and services ── */}
                                 <section className="space-y-2" aria-labelledby="add-products">
                                     <Label id="add-products" htmlFor="product-search">
                                         Products
@@ -407,7 +386,6 @@ export function CreateOrderDialog({
                                                 const name = `${p.title}${p.variantTitle ? ` ${p.variantTitle}` : ""}`;
                                                 return (
                                                     <li key={p.variantId}>
-                                                        {/* The whole row adds it: a bigger target than the button alone. */}
                                                         <button
                                                             type="button"
                                                             className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
@@ -476,7 +454,6 @@ export function CreateOrderDialog({
                                     )}
                                 </section>
 
-                                {/* ── In this order ── */}
                                 <section className="space-y-2" aria-labelledby="order-lines">
                                     <p id="order-lines" className="text-sm font-medium">
                                         In this order
@@ -557,7 +534,6 @@ export function CreateOrderDialog({
                                     )}
                                 </section>
 
-                                {/* ── Where it goes ── */}
                                 <section className="space-y-3" aria-labelledby="delivery">
                                     <p id="delivery" className="text-sm font-medium">
                                         Where it goes
@@ -682,7 +658,6 @@ export function CreateOrderDialog({
                                     )}
                                 </section>
 
-                                {/* ── Discount code and notes ── */}
                                 <section className="space-y-3">
                                     <div className="space-y-1.5">
                                         <Label htmlFor="staff-order-code">Discount code (optional)</Label>
@@ -744,7 +719,6 @@ export function CreateOrderDialog({
                                     </div>
                                 </section>
 
-                                {/* ── Summary: the server's quote ── */}
                                 <section
                                     className="space-y-1.5 rounded-md bg-muted/50 p-3 text-sm"
                                     aria-live="polite"
@@ -794,7 +768,6 @@ export function CreateOrderDialog({
     );
 }
 
-/** The server's quote; dimmed while a newer draft is being priced. */
 function QuoteSummary({ quote, stale }: { quote: StaffOrderQuoteView; stale: boolean }) {
     return (
         <dl className={`space-y-1 ${stale ? "opacity-60" : ""}`}>

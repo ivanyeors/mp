@@ -11,17 +11,6 @@ import type { ImageMediaConfig } from "@/lib/product-slide-sections/types";
 
 import { copyFieldsFor, mediaFieldsFor, type CopyField, type SubField } from "./fields";
 
-/**
- * A **Slide-in section**'s Staff override (`slide_in_sections.content`).
- *
- * Copy is held per locale as a whole record, not as a locale map on every leaf the way
- * Landing sections do it: slide-in copy is mostly lists and cards, and a list of
- * per-string locale maps cannot say "Chinese has three paragraphs, English four". A
- * locale with nothing stored falls back to its i18n default, so an English edit never
- * shows on the Chinese page.
- *
- * Media is shared by both locales, as the code config's media is today.
- */
 export interface SlideInSectionContent {
   copy?: Partial<Record<Locale, Record<string, unknown>>>;
   media?: Record<string, unknown>;
@@ -30,13 +19,11 @@ export interface SlideInSectionContent {
 export interface MediaOverride {
   src: string;
   alt?: string;
-  /** Set when picked from the Media library, so its Used count stays right. */
   assetId?: string | null;
 }
 
 export const HEADER_SLUG = "header";
 
-/** YouTube ids are 11 characters today; allow a little slack, never a URL. */
 export const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{6,20}$/;
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -49,16 +36,6 @@ function nonEmptyString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
-// --- Defaults -------------------------------------------------------------------
-
-/**
- * The copy a section shows with no override, in the shape its copy fields name.
- *
- * Most templates are exactly `resolveSlideContent`; three also read header strings the
- * renderer used to fetch separately, folded in here so they are editable the same way.
- * Throws, like the resolver, when the i18n a config names is missing — that is a code
- * bug the renderer should surface, not something to paper over.
- */
 export function resolveSectionDefaults(
   messages: Record<string, unknown>,
   section: ProductSlideSectionConfig,
@@ -93,12 +70,9 @@ export function resolveSectionDefaults(
   }
 }
 
-/** The sheet header's default copy. */
 export function headerDefaults(messages: Record<string, unknown>): Record<string, unknown> {
   return { title: messages.title, description: messages.description };
 }
-
-// --- Copy -----------------------------------------------------------------------
 
 function mergeRecord(
   fallback: Record<string, unknown>,
@@ -132,8 +106,6 @@ function applyField(field: CopyField, fallback: unknown, override: unknown): unk
     case "cards": {
       if (!Array.isArray(override)) return fallback;
       const defaults = Array.isArray(fallback) ? (fallback as unknown[]) : [];
-      // Fixed-count cards are paired with media by position, so the template's count
-      // stands whatever was stored.
       const count = field.fixedCount ? defaults.length : override.length;
       const cards: Record<string, unknown>[] = [];
       for (let i = 0; i < count; i += 1) {
@@ -150,11 +122,6 @@ function applyField(field: CopyField, fallback: unknown, override: unknown): unk
   }
 }
 
-/**
- * Copy as it renders: each editable field's override where Staff wrote one, the default
- * everywhere else. Blank strings and empty lists count as "no override", so clearing a
- * field brings the default back.
- */
 export function applyCopyOverride(
   sectionType: string,
   defaults: Record<string, unknown>,
@@ -170,15 +137,12 @@ export function applyCopyOverride(
   return out;
 }
 
-/** The stored copy override for one locale. */
 export function copyOverrideFor(
   content: SlideInSectionContent | null | undefined,
   locale: Locale,
 ): Record<string, unknown> {
   return asRecord(content?.copy?.[locale]);
 }
-
-// --- Media ----------------------------------------------------------------------
 
 function mergeImage(fallback: ImageMediaConfig | undefined, override: unknown): ImageMediaConfig | undefined {
   const source = asRecord(override);
@@ -192,11 +156,6 @@ function mergeImage(fallback: ImageMediaConfig | undefined, override: unknown): 
   };
 }
 
-/**
- * The config with Staff's image and video replacements applied. Positions are the
- * template's: a list override replaces images slot by slot and never adds slots, so a
- * carousel can never end up with more images than cards, or fewer.
- */
 export function applyMediaOverride<T extends ProductSlideSectionConfig>(section: T, media: unknown): T {
   const source = asRecord(media);
   if (Object.keys(source).length === 0) return section;
@@ -218,7 +177,6 @@ export function applyMediaOverride<T extends ProductSlideSectionConfig>(section:
   return next as T;
 }
 
-/** Every image URL and asset id an override references, for the Media library's Used count. */
 export function mediaReferences(content: SlideInSectionContent | null | undefined): {
   urls: string[];
   assetIds: string[];

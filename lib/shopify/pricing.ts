@@ -53,7 +53,6 @@ function toMoneyString(v: number | string | null | undefined): string | null {
 function detectPremiumVariantFromTitle(title: string | null): 'linen' | 'fibrecool' {
   const t = String(title || '').toLowerCase()
   if (t.includes('fibrecool')) return 'fibrecool'
-  // default (most premium variants are linen colors)
   return 'linen'
 }
 
@@ -106,7 +105,6 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
     pillowProductIdByKindSize.set(`${k}:${size}`, Number(p.id))
   })
 
-  // Map variantId -> variant title from active Shopify products (to detect premium linen vs fibrecool).
   const shopifyVariantTitleById = new Map<string, string>()
   for (const p of activeProducts ?? []) {
     for (const v of p.variants ?? []) {
@@ -124,20 +122,16 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
     const variantId = String(m.shopify_variant_id)
     const ov = overrideByVariantId.get(variantId) ?? null
 
-    // User preference: manage only active Shopify SKUs.
     if (activeVariantIds.size && !activeVariantIds.has(variantId)) {
       skipped_inactive += 1
       continue
     }
 
-    // Compute desired price if not overridden.
     let desiredPrice: string | null | undefined = undefined
     let desiredCompareAt: string | null | undefined = undefined
     let desiredSku: string | null | undefined = undefined
 
     if (ov) {
-      // UX: "Price" is managed from Costings (product_prices/item_prices) as the single source of truth.
-      // Keep SKU as an editable override (compare-at is managed from Costings).
       if (ov.sku !== undefined) desiredSku = ov.sku ? String(ov.sku) : null
     }
 
@@ -156,8 +150,6 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
             const premiumVariant = detectPremiumVariantFromTitle(title)
             const variantKey = `product:pillow:${pillowProductId}:${premiumVariant}`
             const baseKey = `product:pillow:${pillowProductId}`
-            // Back-compat: some installs may not have per-variant `product_prices` rows yet.
-            // Fall back to the base pillow key if the per-variant key is missing.
             desiredPrice = toMoneyString(
               productPriceByKey.get(variantKey)?.msrp ?? productPriceByKey.get(baseKey)?.msrp ?? null,
             )
@@ -171,7 +163,6 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
       }
     }
 
-    // Compare-at: sourced from Costings tables; if not set there, fall back to legacy per-variant override.
     if (desiredCompareAt === undefined) {
       if (m.kind === 'part' && m.item_id) {
         desiredCompareAt = toMoneyString(itemPriceByItemId.get(Number(m.item_id))?.compare_at_price ?? null)
@@ -219,7 +210,6 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
     }
 
     try {
-      // Shopify REST rate limit: keep this under ~2 req/sec to avoid 429.
       await sleep(650)
       await shopifyUpdateVariant({ variantId, ...patch })
       updated += 1

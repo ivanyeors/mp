@@ -1,8 +1,3 @@
-/**
- * Hobby-safe Shopify order-mirror catch-up.
- * Chained after results-SLA (same request) — not a third vercel.json cron.
- */
-
 import {
   advanceShopifySyncCursor,
   getShopifySyncState,
@@ -18,9 +13,7 @@ import {
 import { supabaseAdmin } from '@/lib/supabase/server'
 
 export type CatchupBudget = {
-  /** Max Admin API pages this invoke. */
   maxPages?: number
-  /** Soft wall-clock budget (ms); checked before each page. */
   maxMs?: number
   pageSize?: number
 }
@@ -63,10 +56,6 @@ function toOrderLike(o: ShopifyOrderLite) {
   }
 }
 
-/**
- * Pull one budgeted burst: backfill (since_id / page_info) then reconcile (updated_at_min).
- * Advances cursor after every successful page so partial progress survives timeout.
- */
 export async function runShopifyOrderMirrorCatchup(
   opts?: CatchupBudget & {
     fetchPage?: FetchPage
@@ -139,13 +128,11 @@ export async function runShopifyOrderMirrorCatchup(
           { now },
         )
       } else if (page.orders.length >= pageSize) {
-        // Full page, no Link next — keep walking via since_id watermark.
         state = await advance(
           { since_id: maxId, cursor_token: null, phase: 'backfill' },
           { now },
         )
       } else {
-        // History exhausted → reconcile from here on.
         state = await advance(
           {
             since_id: maxId,
@@ -159,7 +146,6 @@ export async function runShopifyOrderMirrorCatchup(
         break
       }
     } else {
-      // reconcile
       if (page.nextPageInfo) {
         state = await advance(
           { since_id: maxId, cursor_token: page.nextPageInfo, phase: 'reconcile' },

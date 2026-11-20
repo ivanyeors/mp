@@ -1,18 +1,3 @@
-/**
- * Per-Size stage geometry for the x-ray (X-ray pillow UX slice 02, ADR 0019).
- *
- * The stage is a fixed 664×374 box on every surface; the pillow Size sets one
- * scale, `k = XRAY_VIEW.width / widthMm`, so the silhouette always fills the
- * stage's width and every pouch is drawn at `mm × k`. The silhouette is the
- * registry outline (the M master scaled to the Size, no neck tab) with the
- * notched FRONT edge at the top; the three Section columns sit at the
- * protector's divider seams; the three sub-section rows are thirds of the
- * body length. The nine cell regions are cut from that straight grid: the two
- * column dividers are the protector's seams, the only straight edges the
- * pillow has (ADR 0009 guardrail 1 allows a designed divider). Pure +
- * browser-safe; one geometry per Size, computed once.
- */
-
 import { SECTIONS, SUB_SECTIONS, type Section, type SubSection } from "./core";
 import { PILLOW_DIMENSIONS, type PillowDimensions, type PillowSize } from "./dimensions";
 
@@ -23,45 +8,26 @@ export type CellKey = `${Section}/${SubSection}`;
 
 export type StageGeometry = {
   size: PillowSize;
-  /** View units per millimetre. */
   k: number;
-  /** Top of the silhouette in view units (the pillow is centred vertically). */
   offsetY: number;
-  /** The silhouette as a closed polygon path, view units. */
   silhouettePath: string;
-  /** The same silhouette as sampled points, for pouch-conform geometry. */
   silhouettePolygon: Pt[];
-  /** Section column boundaries: `[0, left|center, center|right, width]`. */
   colX: readonly [number, number, number, number];
-  /** Sub-section row boundaries: front, middle, back — thirds of the body. */
   rowY: readonly [number, number, number, number];
-  /** Nine cell boundary paths — `clipPath` regions. */
   cellClipPaths: Record<CellKey, string>;
-  /** The same nine regions as polygons. */
   cellPolygons: Record<CellKey, Pt[]>;
-  /** Three full-height Section regions for hover highlight / dive hit areas. */
   sectionHitPaths: Record<Section, string>;
-  /** The same three regions as polygons: what a settled pouch conforms against (slice 11). */
   sectionPolygons: Record<Section, Pt[]>;
 };
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const poly = (pts: Pt[]) => `M${pts.map(([x, y]) => `${x} ${y}`).join(" L")} Z`;
 
-// --- Straight 3×3 grid -------------------------------------------------------
-// The two vertical dividers ARE the protector's seams (Ivan, 26-9-2026: follow
-// the seam dividers, nothing wavy); the horizontal boundaries are authoring
-// guides with no wall behind them. The outer frame extends past the silhouette
-// so only interior dividers ever show; adjacent cells share identical sampled
-// edge points (STEPS per edge, so the conform pass has vertices to pull), so
-// regions tile exactly.
-
 const STEPS = 6;
 
 function buildGrid(XS: number[], YS: number[]) {
   const corner = (i: number, j: number): Pt => [r1(XS[i]), r1(YS[j])];
 
-  /** Interior samples along vertical divider i between rows j0→j1 (corners excluded). */
   function vEdge(i: number, j0: number, j1: number): Pt[] {
     const pts: Pt[] = [];
     for (let s = 1; s < STEPS; s++) {
@@ -71,7 +37,6 @@ function buildGrid(XS: number[], YS: number[]) {
     return pts;
   }
 
-  /** Interior samples along horizontal divider j between columns i0→i1 (corners excluded). */
   function hEdge(j: number, i0: number, i1: number): Pt[] {
     const pts: Pt[] = [];
     for (let s = 1; s < STEPS; s++) {
@@ -137,7 +102,6 @@ function buildGrid(XS: number[], YS: number[]) {
   return { cellClipPaths, cellPolygons, sectionHitPaths, sectionPolygons };
 }
 
-/** The registry outline in view units: x across, y down, front edge at the top. */
 function silhouettePolygon(dims: PillowDimensions, k: number, offsetY: number): Pt[] {
   return dims.outline.map(([x, y]) => [r1(x * k), r1(offsetY + (dims.lengthMm - y) * k)]);
 }
@@ -169,7 +133,6 @@ function build(size: PillowSize): StageGeometry {
 
 const cache = new Map<PillowSize, StageGeometry>();
 
-/** The stage for a Size, computed once and shared by every surface. */
 export function stageGeometry(size: PillowSize): StageGeometry {
   let stage = cache.get(size);
   if (!stage) {

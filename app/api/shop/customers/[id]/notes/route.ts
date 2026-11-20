@@ -9,7 +9,6 @@ export const runtime = "nodejs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** GET /api/shop/customers/[id]/notes — the Customer's notes, newest first. */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers");
   if (denied) return denied;
@@ -24,10 +23,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 }
 
-/**
- * POST /api/shop/customers/[id]/notes — adds a note as the signed-in Member and
- * the profile they work as. The audit entry names the note, never its text.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

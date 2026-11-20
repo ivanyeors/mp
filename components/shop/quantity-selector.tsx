@@ -67,7 +67,6 @@ export function QuantitySelector({
         className={cn(
           "h-9 w-12 bg-transparent text-center text-sm max-md:text-base font-medium",
           "focus:outline-none",
-          // Hide browser spinners
           "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         )}
       />

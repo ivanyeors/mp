@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * A Result whose answers the published rule graph cannot evaluate (a Draft
- * mid-questionnaire, or one saved before the sleep answers were kept) must
- * still load: the suggestion is advice, the Result is the record. It used to
- * come back as a 422, and the detail page showed "Couldn't find or load this
- * result" with no way in.
- */
-
 const h = vi.hoisted(() => ({
   responseRow: null as Record<string, unknown> | null,
   update: vi.fn(),

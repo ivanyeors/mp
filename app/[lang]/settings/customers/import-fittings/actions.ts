@@ -23,22 +23,6 @@ import {
 } from "@/lib/fitting-import/apply";
 import { readUndoCounts, type UndoCounts } from "@/lib/fitting-import/batches";
 
-/**
- * Customers → Import fittings (ADR 0042).
- *
- * Every action checks `customer-import`, as the Shopify import does: the
- * import creates Customers, and Manager and Staff hold `customers`. The
- * browser sends rows, a chunk at a time; the file itself is never uploaded or
- * stored. Rows are re-read here from their raw cells, and the browser's own
- * reading is not trusted. No answer carries a customer's PII: the browser
- * already holds the rows, and looks each one up by its index.
- *
- * Writes go through SQL functions only, each one transaction, executable by
- * the service role alone (20261101100000_customer_fittings.sql). The one
- * insert here is the batch itself.
- */
-
-/** Preview one chunk against live rows. Reads only: each row's outcome, never its contents. */
 export async function previewFittingImport(rows: IndexedRawRow[], order: DateOrder): Promise<PreviewChunkResponse> {
   await assertAdmin("customer-import");
 
@@ -67,12 +51,6 @@ export type StartImportResponse =
   | { ok: true; batch: { id: string; rowsDone: number; rowsTotal: number } }
   | { ok: false; error: string };
 
-/**
- * Record a new batch: the file's name and SHA-256, its row count and date
- * order, with who ran it. A file that already has a batch that is not undone
- * cannot start another: an applied one is not imported twice, and a stopped
- * one is continued instead.
- */
 export async function startFittingImport(input: StartImportInput): Promise<StartImportResponse> {
   const ctx = await assertAdmin("customer-import");
 
@@ -92,12 +70,6 @@ export async function startFittingImport(input: StartImportInput): Promise<Start
   return { ok: true, batch: { id: data.id as string, rowsDone: data.rows_done as number, rowsTotal: data.rows_total as number } };
 }
 
-/**
- * Write one chunk of up to 100 rows, in file order from `startIndex`. Each
- * row is read with the batch's own date order, never the browser's. The SQL
- * function re-decides every row, adds the outcomes to the batch, and refuses
- * a chunk that does not start at the batch's `rows_done`.
- */
 export async function applyFittingImportChunk(
   batchId: string,
   startIndex: number,
@@ -127,7 +99,6 @@ export async function applyFittingImportChunk(
   return readImportResult(data);
 }
 
-/** Counts only, never a customer's email or name, nor the file's name. */
 const auditCounts = (c: BatchCounts, fittingRecords: number) => ({
   rows_total: c.rowsTotal,
   fitting_records: fittingRecords,
@@ -139,11 +110,6 @@ const auditCounts = (c: BatchCounts, fittingRecords: number) => ({
   skipped_by_reason: c.skipped,
 });
 
-/**
- * Reconcile the batch and, when every row is accounted for, mark it applied
- * and record `fitting_import.apply`. A batch that does not reconcile stays
- * unapplied.
- */
 export async function finishFittingImport(batchId: string): Promise<FinishResponse> {
   const ctx = await assertAdmin("customer-import");
   if (typeof batchId !== "string" || !UUID.test(batchId)) return NO_BATCH;
@@ -165,7 +131,6 @@ export async function finishFittingImport(batchId: string): Promise<FinishRespon
 
 export type UndoResponse = { ok: true; counts: UndoCounts } | { ok: false; error: string };
 
-/** What undoing the batch would remove and keep. Writes nothing. */
 export async function previewFittingImportUndo(batchId: string): Promise<UndoResponse> {
   await assertAdmin("customer-import");
   if (typeof batchId !== "string" || !UUID.test(batchId)) return NO_BATCH;
@@ -176,11 +141,6 @@ export async function previewFittingImportUndo(batchId: string): Promise<UndoRes
   return { ok: true, counts };
 }
 
-/**
- * Undo the batch, after the operator typed UNDO: remove its Fitting records
- * and the Customers it created that nobody has signed in to or referenced
- * since, and record `fitting_import.undo` with the counts.
- */
 export async function undoFittingImport(batchId: string, confirmation: string): Promise<UndoResponse> {
   const ctx = await assertAdmin("customer-import");
   if (typeof batchId !== "string" || !UUID.test(batchId)) return NO_BATCH;

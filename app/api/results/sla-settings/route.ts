@@ -16,7 +16,6 @@ import {
 } from "@/lib/sla-reminders";
 import { DRAFT_REMINDERS_ENABLED_KEY, parseDraftRemindersEnabled } from "@/lib/draft-reminders";
 
-/** Every group lives in `site_settings`; one read and one write serves them. */
 const ALL_KEYS = [...SLA_SETTING_KEYS, ...PAYMENT_REMINDER_SETTING_KEYS, DRAFT_REMINDERS_ENABLED_KEY];
 
 export const runtime = "nodejs";
@@ -30,29 +29,17 @@ const PutSchema = z.object({
   opsEmail: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
   authExpiryBufferHours: z.number().int().min(1).max(72).optional(),
   authHoldEnabled: z.boolean().optional(),
-  /**
-   * Customer payment reminders. Nested rather than flattened so the two
-   * cadences stay visibly distinct — they were one setting until now, and the
-   * whole point of the split is that staff can see which is which.
-   */
   paymentReminders: z
     .object({
       enabled: z.boolean().optional(),
-      // 0 is allowed: "chase on the next tick after assignment".
       firstDelayDays: z.number().int().min(0).max(60).optional(),
       intervalDays: z.number().int().min(1).max(60).optional(),
-      // 0 is allowed: "never chase", without flipping the switch off.
       maxReminders: z.number().int().min(0).max(10).optional(),
     })
     .optional(),
-  /** Reminders to a guest who stopped customising (ADR 0050). Their schedule is fixed. */
   draftReminders: z.object({ enabled: z.boolean().optional() }).optional(),
 });
 
-/**
- * Cached service-role read of the SLA keys; shares the `site-settings` tag that
- * every `site_settings` writer invalidates. Auth stays outside the cache.
- */
 const readStoredSlaSettings = unstable_cache(
   async (): Promise<Record<string, string>> => {
     const admin = supabaseAdmin();
@@ -130,8 +117,6 @@ export async function PUT(req: Request) {
           : input.opsEmail,
   };
 
-  // Undefined fields fall through to the stored value, so a client that knows
-  // only about the SLA half cannot blank the reminder half by omitting it.
   const currentReminders = parsePaymentReminderSettings(stored);
   const nextReminders = {
     ...currentReminders,

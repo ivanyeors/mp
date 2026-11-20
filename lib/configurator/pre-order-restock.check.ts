@@ -1,7 +1,3 @@
-/**
- * Slice 07 self-check: Pre-order restock selection + idempotency + wiring.
- * Run: npx tsx lib/configurator/pre-order-restock.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -38,7 +34,6 @@ function row(
   };
 }
 
-// --- Selection: held/assigned Pre-order only ---
 const selected = selectRestockNotifyCandidates([
   row({ id: "held-ok" }),
   row({ id: "assigned-ok", status: "assigned" }),
@@ -58,7 +53,6 @@ assert.deepEqual(
 assert.ok(RESTOCK_NOTIFY_STATUSES.includes("held"));
 assert.ok(RESTOCK_NOTIFY_STATUSES.includes("assigned"));
 
-// --- Idempotency: second pass empty when marker set ---
 assert.equal(
   selectRestockNotifyCandidates([
     row({
@@ -70,7 +64,6 @@ assert.equal(
   "marker excludes re-send",
 );
 
-// --- Stock recovered gate (trigger would clear) ---
 assert.equal(
   stockRecoveredForResult({ preferenceStocks: [10], composedBuildable: 2 }),
   true,
@@ -87,13 +80,11 @@ assert.equal(
   "buildable still 0 → skip",
 );
 
-// Soft low-stock alone is not Pre-order → recovered
 assert.equal(
   stockRecoveredForResult({ preferenceStocks: [3], composedBuildable: 5 }),
   true,
 );
 
-// --- Email copy ---
 const copy = restockEmailCopy({
   origin: "https://example.com",
   resultId: "r1",
@@ -108,7 +99,6 @@ assert.match(copy.html, /Sign in/i);
 assert.match(copy.html, /Result/);
 assert.match(copy.text, /account\/login/);
 
-// --- Slice 05 live trigger still flips CTA ---
 assert.equal(holdCtaLabel(isPreOrder({ preferenceStocks: [0], composedBuildable: 1 }).isPreOrder), "Pre-order");
 assert.equal(holdCtaLabel(isPreOrder({ preferenceStocks: [5], composedBuildable: 2 }).isPreOrder), "Proceed");
 
@@ -116,14 +106,12 @@ const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 assert.match(mp, /isPreOrder/);
 assert.match(mp, /holdCtaLabel/);
 
-// --- Migration ---
 const migration = read(
   "supabase/migrations/20260715200000_pre_order_restock_notified_at.sql",
 );
 assert.match(migration, /pre_order_restock_notified_at\s+timestamptz/i);
 assert.match(migration, /mp_config_responses/);
 
-// --- Module + cron wiring ---
 const mod = read("lib/configurator/pre-order-restock.ts");
 assert.match(mod, /runPreOrderRestockNotices/);
 assert.match(mod, /selectRestockNotifyCandidates/);
@@ -141,7 +129,6 @@ assert.doesNotMatch(cronRoute, /Staff|staff.*button|manual send/i);
 const sla = read("app/api/cron/results-sla/route.ts");
 assert.match(sla, /runPreOrderRestockNotices/);
 
-// No Staff UI send button for restock
 assert.doesNotMatch(
   read("app/[lang]/settings/results/[id]/page.tsx"),
   /restock.*email|sendRestock|pre.?order.?restock/i,

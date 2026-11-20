@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * `listAdminCustomers` reads its filters through lib/crm/customer-filters.ts
- * (CRM slice 04), so the RSC page and `GET /api/shop/customers` make the same
- * query: one escaped ilike for search, never an `or`, and a dropped value never
- * sent.
- */
-
 const h = vi.hoisted(() => ({ calls: [] as unknown[][], table: "" }));
 
 vi.mock("@/lib/supabase/server", () => {
@@ -21,7 +14,6 @@ vi.mock("@/lib/supabase/server", () => {
     h.calls.push(["range", ...args]);
     return Promise.resolve({ data: [], error: null, count: 0 });
   };
-  // A head count is awaited as it is (the *Ships to* Unknown count, slice 05).
   builder.then = (resolve: unknown) => {
     h.calls.push(["then"]);
     return Promise.resolve({ count: 4, error: null }).then(resolve as (v: unknown) => unknown);
@@ -46,7 +38,6 @@ beforeEach(() => {
 describe("listAdminCustomers", () => {
   it("reads the Customer overview with one escaped ilike for a search", async () => {
     const result = await listAdminCustomers(new URLSearchParams("search=Tan, Mei&page=2&limit=10"));
-    // No *Ships to* filter, so no count of the Unknown.
     expect(result).toEqual({ ok: true, rows: [], total: 0, page: 2, limit: 10, shipsToUnknown: null });
     expect(h.table).toBe("admin_customer_overview");
     expect(h.calls.filter(([m]) => m === "or")).toEqual([]);
@@ -66,7 +57,6 @@ describe("listAdminCustomers", () => {
     expect(result).toMatchObject({ ok: true, shipsToUnknown: 4 });
     expect(h.calls).toContainEqual(["eq", "ship_country", "SG"]);
     expect(h.calls).toContainEqual(["select", "id", { count: "exact", head: true }]);
-    // The count keeps every other filter and swaps Singapore for Unknown.
     const head = h.calls.findIndex((c) => c[0] === "select" && c[1] === "id");
     const countCalls = h.calls.slice(head);
     expect(countCalls).toContainEqual(["in", "lifecycle_stage", ["at_risk"]]);

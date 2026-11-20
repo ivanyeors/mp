@@ -1,7 +1,3 @@
-/**
- * Slice 01 self-check: template API placements wiring (PUT/GET contract).
- * Run: npx tsx lib/spatial-fillings/api-contract.check.ts
- */
 import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -25,7 +21,6 @@ const categories = new Map([
   [9, "packaging"],
 ]);
 
-// --- PUT payload → mapping + validation (the exact path the route runs) ---
 const payload = [
   { section: "left", sub_section: "front", slot: 1, item_id: 1 },
   { section: "left", sub_section: "front", slot: 2, item_id: 1 },
@@ -55,7 +50,6 @@ assert.deepEqual(
   "bolster payload has no slot cap",
 );
 
-// --- GET derived pack list: placements win, flat lines are the legacy fallback ---
 assert.deepEqual(
   derivePackList(payload, [{ item_id: 9, quantity: 4 }]),
   [
@@ -70,14 +64,12 @@ assert.deepEqual(
   "packList falls back to bom_template_lines without placements",
 );
 
-// --- Fingerprint stability on API-shaped rows ---
 assert.equal(
   fingerprintPlacements(rowsToPillowPlacements(payload)),
   fingerprintPlacements(rowsToPillowPlacements([...payload].reverse())),
   "fingerprint stable across payload ordering",
 );
 
-// --- Route wiring: detail route uses the lib, both tables, and the role guard ---
 const route = readFileSync(
   "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
   "utf8",
@@ -99,10 +91,6 @@ for (const needle of [
 assert.ok(route.includes("tpl.role !== 'filling'"), "PUT rejects placements on warehouse templates");
 assert.ok(route.includes("rejectFillingLines"), "warehouse lines path (ADR 0003) untouched");
 
-// --- Layer bound: request schema must not be tighter than the validator ---
-// The route's zod bound sat at the retired two-value top/bottom lane while the DB
-// constraint and validatePillowPlacements both moved to the full 0..4 layer range,
-// so the API silently refused any stack deeper than layer 1.
 for (const depth of [0, MAX_LAYERS_PER_CELL - 1]) {
   assert.deepEqual(
     validatePillowPlacements(
@@ -126,26 +114,13 @@ assert.equal(
   "validator still rejects a layer past the per-cell layer cap",
 );
 
-// --- Colour overrides reach the Admin Panel from the server ---
-// filling_color_overrides is service-role-only under RLS; a browser query returns
-// nothing and the x-ray silently falls back to code defaults, so the Admin Panel
-// would colour pouches differently from the configurator.
 assert.ok(
   route.includes("filling_color_overrides") && route.includes("colorOverrides"),
   "template GET ships colour overrides for the x-ray CSS-variable pipeline",
 );
 
-// --- Every pillow Placement column list must carry row_index (x-ray stack depth) ---
-//
-// Enumerated, not hardcoded: an earlier version of this check listed the five
-// routes it knew about, which is exactly how it certified `configure/unpromoted`
-// as safe while that route was SELECTing without row_index and INSERTing the rows
-// back into filling_template_placements — silently flattening every stacked cell
-// on Promote. So: discover every file touching a pillow placement table, and make
-// omission opt-out with a written reason rather than opt-in.
 const PILLOW_PLACEMENT_TABLES = ["filling_template_placements", "result_filling_placements"];
 
-/** Files that may omit row_index, each with the reason depth cannot affect them. */
 const DEPTH_IRRELEVANT: Record<string, string> = {
   "app/api/results/hold/route.ts":
     "template rows feed placementsExactMatch only; canonicalizePlacements drops row",
@@ -169,11 +144,6 @@ for (const path of trackedFiles) {
   if (path.endsWith(".check.ts") || path.includes("__tests__")) continue;
   const src = readFileSync(path, "utf8");
   if (!PILLOW_PLACEMENT_TABLES.some((t) => src.includes(t))) continue;
-  // Column lists live inline in .select() or hoisted into a `cols` / ROW_COLS
-  // constant, so match the literal rather than the call site. A column list is
-  // exactly comma-separated identifiers — matching that shape (instead of "any
-  // quoted run containing sub_section") keeps zod shapes and TS type annotations
-  // out, and stops the match spanning newlines between two unrelated quotes.
   const columnLists = (
     src.match(/(['"`])\s*[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*\s*\1/g) ?? []
   ).filter((lit) => /\bsub_section\b/.test(lit));
@@ -193,8 +163,6 @@ for (const path of trackedFiles) {
       `${path} must select row_index: pillow Placement rows carry x-ray stack depth. ` +
         `If depth genuinely cannot affect this reader, add it to DEPTH_IRRELEVANT with a reason. (found: ${cols})`,
     );
-    // Slice 08: the fine offsets ride with the depth — every reader that draws
-    // or copies a stacked cell must also carry where each pouch sits in it.
     assert.ok(
       cols.includes("offset_x_mm") && cols.includes("offset_y_mm"),
       `${path} must select offset_x_mm and offset_y_mm beside row_index: a pouch's fine position ` +
@@ -204,8 +172,6 @@ for (const path of trackedFiles) {
 }
 assert.ok(scanned >= 6, `expected to scan the known pillow placement readers, scanned ${scanned}`);
 
-// Write paths must accept every depth the DB constraint allows. Promote and the
-// hold/assign schemas are separate code from the Configure PUT and drifted apart.
 for (const path of [
   "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
   "app/api/results/[id]/assign/route.ts",
@@ -220,8 +186,6 @@ for (const path of [
       `per-cell piece cap, which is five layers' worth of pieces`,
   );
   for (const bound of bounds) {
-    // Directly, or via a named constant derived from it — never a literal number,
-    // which is how this bound sat at the retired top/bottom lane for two months.
     assert.ok(
       !/\.max\(\s*\d/.test(bound),
       `${path} must not hardcode its row_index bound (found: ${bound})`,
@@ -229,8 +193,6 @@ for (const path of [
   }
 }
 
-// The fine offsets (slice 08): every write path shape-gates both, from the one
-// constant the DB check mirrors.
 for (const path of [
   "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
   "app/[lang]/settings/inventory/configure/templates/[templateId]/fork/route.ts",
@@ -255,7 +217,6 @@ assert.equal(
   "the DB offset bound is MAX_OFFSET_MM",
 );
 
-// Offsets are visual: the fingerprint and exact match ignore them.
 {
   const plain = rowsToPillowPlacements(payload);
   const nudged = plain.map((p, i) => (i === 0 ? { ...p, offsetXMm: -40, offsetYMm: 12 } : p));

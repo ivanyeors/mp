@@ -20,21 +20,6 @@ import {
   updateMessage,
 } from "@/lib/social-inbox/store";
 
-/**
- * The inbox half of the Telegram bot: a reply to a customer's Message card (or
- * to the bot's "Sent" / "Answered in" notes under it) is sent to that customer
- * on the platform they wrote from.
- *
- * - Only in the measurements group, only from a linked Staff profile whose
- *   Telegram link and login's role both grant Answer customer messages
- *   (`telegram.social-inbox-reply`, Users & permissions → Telegram and → Roles).
- * - A reply that starts with `//` is a team note and is never sent.
- * - Anyone else who replies is told it was NOT sent — a silent no would leave
- *   them thinking the customer got their answer.
- * - The reply window is checked before sending; past it, the platform would
- *   refuse, so we say where to answer instead.
- */
-
 type TelegramUser = { id: number; username?: string; first_name?: string; last_name?: string };
 
 export type InboxTelegramUpdate = {
@@ -48,18 +33,15 @@ export type InboxTelegramUpdate = {
   };
 };
 
-/** Does this update belong to the inbox? Cheap: no I/O. Commands stay with the inventory bot. */
 export function isInboxUpdate(update: InboxTelegramUpdate): boolean {
   const message = update.message;
   const replied = message?.reply_to_message;
   if (!message || !replied || message.chat.id !== MP_CONFIG_TELEGRAM_CHAT_ID) return false;
-  // A `//` team note is not a command: claimed here, so the inventory bot never answers it.
   const text = message.text?.trim() ?? "";
   if (text.startsWith("/") && !text.startsWith(TEAM_NOTE_PREFIX)) return false;
   return isInboxBotText(replied.text ?? replied.caption);
 }
 
-/** Why a reply was not sent: always says so, since a silent no reads as answered. */
 function deniedMessage(reason: TelegramDenial, user: TelegramUser, roleName?: string): string {
   switch (reason) {
     case "inactive":
@@ -93,8 +75,6 @@ async function handleReply(message: NonNullable<InboxTelegramUpdate["message"]>,
   if (text.startsWith(TEAM_NOTE_PREFIX)) return;
   const say = (reply: string) => replyInGroup(reply, message.message_id);
 
-  // A preview card (Users & permissions → Telegram → Send preview): show what a
-  // reply would do, and the replier's access. Nothing is sent.
   const previewPlatform = inboxPreviewPlatform(replied.text ?? replied.caption);
   if (previewPlatform) {
     const auth = await authorize(from);
@@ -149,7 +129,6 @@ async function handleReply(message: NonNullable<InboxTelegramUpdate["message"]>,
     telegram_chat_id: message.chat.id,
     telegram_source_message_id: message.message_id,
   });
-  // Telegram delivered this update twice; the first one is sending it.
   if (!outbound) return;
 
   const result = await sendToCustomer(conversation, text, window.tag);
@@ -162,7 +141,6 @@ async function handleReply(message: NonNullable<InboxTelegramUpdate["message"]>,
   try {
     await updateMessage(outbound.id, { status: "sent", error: null, external_message_id: result.messageId }, "sending");
   } catch {
-    // The echo was stored first under the same id; the send itself succeeded.
     await updateMessage(outbound.id, { status: "sent", error: null }, "sending");
   }
   await updateConversation(conversation.id, { last_outbound_at: now.toISOString() });
@@ -176,7 +154,6 @@ async function handleReply(message: NonNullable<InboxTelegramUpdate["message"]>,
   if (noteId) await updateMessage(outbound.id, { telegram_message_id: noteId });
 }
 
-/** Does the work for an update `isInboxUpdate` accepted. Never throws. */
 export async function handleInboxUpdate(update: InboxTelegramUpdate, now = new Date()): Promise<void> {
   const message = update.message;
   if (!message) return;

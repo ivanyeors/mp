@@ -15,7 +15,6 @@ export type ConvertedOrderRow = { paid_at: string; total: number };
 export type ConvertedRecord = {
   visitId: string;
   lastPath: string;
-  /** Last-touch Entry source on the paying Visit (story 50). */
   entrySource: string;
   journeyDurationMs: number;
   orderValue: number;
@@ -36,7 +35,6 @@ export type ConvertedSinkDetail = {
   }[];
 };
 
-/** Prospect cohort = Visits not linked to a paid Order. */
 export function isProspectVisit(convertedOrderId: string | null | undefined): boolean {
   return convertedOrderId == null || convertedOrderId === "";
 }
@@ -51,7 +49,6 @@ export function lastPagePath(events: PageViewEvent[]): string | null {
   return null;
 }
 
-/** Collapse consecutive same-path refreshes into a short path sample. */
 export function collapsePath(events: PageViewEvent[]): string[] {
   const sorted = [...events].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
   const out: string[] = [];
@@ -62,7 +59,6 @@ export function collapsePath(events: PageViewEvent[]): string[] {
   return out;
 }
 
-/** Last-touch Entry source credit on the paying Visit. */
 export function entrySourceForConversion(visit: { entry_source: string | null }): string {
   const s = visit.entry_source?.trim();
   return s || "Direct";
@@ -105,7 +101,6 @@ export function collectConvertedFeeds(records: ConvertedRecord[]): ConvertedFeed
     .sort((a, b) => b.count - a.count || a.lastPath.localeCompare(b.lastPath));
 }
 
-/** Add muted Converted sink + edges from last-touch pages. */
 export function attachConvertedSink(
   graph: { nodes: JourneyNode[]; edges: JourneyEdge[] },
   feeds: ConvertedFeed[],

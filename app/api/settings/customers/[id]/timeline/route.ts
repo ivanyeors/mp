@@ -9,22 +9,6 @@ export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * GET /api/settings/customers/[id]/timeline?before=…&kinds=…&limit=…
- *
- * One page of the Customer timeline (CRM slice 03, ADR 0028 (b)), newest first.
- * Seeing it needs `customers`; each source then needs its own permission
- * (`orders`, `results`, `appointments`, `returns`), and a source the viewer
- * does not hold is never read.
- *
- * - `before`: the `next` cursor of the previous page.
- * - `kinds`: kind groups to show, comma-separated (`orders,notes`); absent, all
- *   the viewer may see. Unknown groups are ignored.
- * - `limit`: entries per page, at most 50.
- *
- * Answers `{ ok, entries, next, groups, unavailable }`: `groups` are the chips
- * this viewer may see, `unavailable` the groups that failed to load this time.
- */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("customers");
   if (denied) return denied;

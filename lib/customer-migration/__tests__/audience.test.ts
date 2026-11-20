@@ -8,13 +8,6 @@ import {
   type CampaignCandidate,
 } from "@/lib/customer-migration/audience";
 
-/**
- * `selectCampaignAudience` (migration slice 08): one query, then a pure plan.
- * Buyers first, then the most recent import; `--buyers-only` drops those who
- * never bought; a wave holds at most `limit`; a retry takes only the wave's
- * failures. The rule itself is campaign.test.ts's.
- */
-
 const NOW = new Date("2026-10-21T04:00:00Z");
 
 function candidate(id: string, over: Partial<CampaignCandidate> = {}): CampaignCandidate {
@@ -90,7 +83,6 @@ describe("planCampaignAudience", () => {
     expect(plan.room).toBe(0);
     expect(plan.selection).toEqual([]);
     expect(plan.eligible.map((c) => c.customerId)).toEqual(["c-new-buyer", "d-old-subscriber"]);
-    // The next wave takes the next ones.
     expect(planCampaignAudience("migration_announcement", after, { wave: "w2", limit: 2 }, NOW).selection.map((c) => c.customerId)).toEqual([
       "c-new-buyer",
       "d-old-subscriber",

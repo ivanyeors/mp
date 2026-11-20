@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * Buying an order's label: the chosen courier, one label per order however many
- * clicks, and a failed purchase leaves the order free to retry. Easyship is a
- * fake fetch; Supabase is a one-row-per-table fake.
- */
-
 const h = vi.hoisted(() => ({
   tables: {} as Record<string, Record<string, unknown> | null>,
   timeline: [] as Array<Record<string, unknown>>,
@@ -160,8 +154,6 @@ describe("buyOrderLabel", () => {
       carrier_cost: 6.42,
       courier_service_id: "cs_ninja",
     });
-    // Tracking is kept (customers see it only once shipped); the status, shipped_at
-    // and the shipping email wait for the courier's first scan (ADR 0044).
     expect(h.tables.orders).toMatchObject({ status: "confirmed", shipped_at: null, tracking_number: "NV123" });
     expect(h.sendShippingEmail).not.toHaveBeenCalled();
     expect(h.timeline.map((t) => t.event_type)).toEqual(["shipment_created"]);
@@ -228,7 +220,6 @@ const rate = (id: string, total: number, max: number, currency = "SGD") => ({
   value_for_money_rank: null,
 });
 
-// J&T is the cheapest and slowest; DHL the dearest and fastest.
 const today = [rate("cs_jnt", 5.2, 14), rate("cs_ninja", 6.4, 4), rate("cs_dhl", 21, 2)];
 const live = (over: Record<string, unknown> = {}) => ({
   rate_source: "easyship" as const,
@@ -282,7 +273,6 @@ describe("preselectCourier: the label follows the customer's choice", () => {
 });
 
 describe("loadOrderShippingMethod", () => {
-  /** Rows per table, filtered by `eq`; enough for the two lookups. */
   function rowsAdmin(tables: Record<string, Array<Record<string, unknown>>>) {
     return {
       from(table: string) {

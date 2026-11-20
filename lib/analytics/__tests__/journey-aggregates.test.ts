@@ -8,12 +8,6 @@ import {
 } from "@/lib/analytics/journey/aggregates";
 import { DROP_OFF_NODE } from "@/lib/analytics/journey/drop-off-sink";
 
-/**
- * Enough PostgREST over HTTP for the journey loader, so the real supabase-js
- * builds every request. `.in()` lists land in the URL; past Node's 16 KB header
- * limit the Prospect journey card died with "TypeError: fetch failed". And like
- * Supabase, no answer holds more than 1,000 rows — the rest are dropped silently.
- */
 type Row = Record<string, string | null>;
 const tables: Record<string, Row[]> = { analytics_visits: [], analytics_events: [], orders: [] };
 const urlLengths: number[] = [];
@@ -67,7 +61,6 @@ beforeAll(async () => {
     tables.analytics_visits!.push(visit(id, at));
   }
 
-  // A bot Visit: more section views than one answer holds.
   const bot = crypto.randomUUID();
   const botAt = (min: number) => new Date(t0 - 3_600_000 + min * 60_000).toISOString();
   tables.analytics_visits!.push(visit(bot, botAt));
@@ -76,8 +69,6 @@ beforeAll(async () => {
     tables.analytics_events!.push(event(bot, "section_view", "/bot", k % 2 ? "b" : "a", at));
   }
 
-  // Two section views in the same millisecond, stored hero then reviews. Their
-  // ids sort the other way, so only the stored order gives hero → reviews.
   const tied = crypto.randomUUID();
   const tiedAt = (min: number) => new Date(t0 - 7_200_000 + min * 60_000).toISOString();
   tables.analytics_visits!.push(visit(tied, tiedAt));
@@ -86,8 +77,6 @@ beforeAll(async () => {
     { ...event(tied, "section_view", "/tied", "reviews", tiedAt(1)), id: "00000000-0000-4000-8000-000000000000" },
   );
 
-  // Large header limit: the Supabase gateway accepts long URLs, so only the
-  // client-side limit is under test.
   server = createServer({ maxHeaderSize: 1 << 20 }, (req, res) => {
     urlLengths.push(req.url!.length);
     const u = new URL(req.url!, "http://x");
@@ -96,7 +85,6 @@ beforeAll(async () => {
       if (["select", "limit", "offset", "order"].includes(col)) continue;
       rows = rows.filter((r) => matches(r, col, raw));
     }
-    // Stable, like a heap scan: rows that tie come back in stored order.
     const keys = (u.searchParams.get("order") ?? "").split(",").filter(Boolean);
     rows.sort((a, b) => {
       for (const k of keys) {
@@ -125,7 +113,6 @@ it("keeps every request URL bounded however many Visits are in range", async () 
   const graph = await loadPageTransitionsFromDb(db(), range);
 
   expect(Math.max(...urlLengths)).toBeLessThan(9_000);
-  // Every Visit still counted — chunking drops nothing.
   expect(graph.nodes.find((n) => n.path === DROP_OFF_NODE)?.views).toBe(1002);
   expect(graph.edges.find((e) => e.from === "/" && e.to === "/shop")?.count).toBe(1000);
 });

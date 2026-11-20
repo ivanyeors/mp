@@ -9,23 +9,10 @@ import { BLANK_PREVIEW } from "@/lib/email-campaigns/starters";
 import { cn } from "@/lib/utils";
 import { StarterThumbnail } from "./starter-thumbnail";
 
-/**
- * The Start panel (PRD-campaign-email-editor slice 08): what an empty email
- * offers, on *New campaign* and after Clear all, in place of the empty
- * column. Four ways to start, as cards: **Blank**, **✨ Write with AI**
- * (slice 09), **a Starter**, or **a past campaign**. A Starter lands as
- * ordinary blocks, with its words and audience when it has them, as one
- * change that Undo removes; a past campaign is Duplicate. Typing in the
- * email, or dropping a block in, ends it, and Blank puts it away until the
- * next Clear all.
- */
-
-// Loaded when it first shows, not with the panel.
 const PastCampaigns = lazy(() => import("./past-campaigns").then((m) => ({ default: m.PastCampaigns })));
 
 type Open = "starter" | "past" | null;
 
-/** One way to start: its picture over its name, the whole card one button (the picture beside it: a frame can't go in a button). */
 function Choice({
     label,
     description,
@@ -40,7 +27,6 @@ function Choice({
     picture: ReactNode;
     onClick: () => void;
     disabledReason?: string | null;
-    /** For a card that opens a list below the cards. */
     expanded?: boolean;
     controls?: string;
 }) {
@@ -73,7 +59,6 @@ function Choice({
     );
 }
 
-/** A card's picture when it has no one email to show: its icon, in a thumbnail's shape. */
 const IconPicture = ({ icon: Icon }: { icon: ComponentType<{ className?: string }> }) => (
     <div className="flex aspect-[3/4] w-full items-center justify-center rounded-sm border bg-muted/50">
         <Icon className="h-8 w-8 text-muted-foreground" />
@@ -87,15 +72,10 @@ export function StartPanel({
     onPastCampaign,
     busy = false,
 }: {
-    /** Each Starter as it starts an email: its `apply` brings its words and audience with its blocks. */
     starters: readonly PaletteItem<EmailBlock>[];
-    /** *Blank*: the panel is put away, the email left empty. */
     onBlank: () => void;
-    /** *✨ Write with AI* (slice 09): opens Generate's brief, or says why it can't yet; null while AI writing is off, which shows no ✨. */
     ai: { disabledReason: string | null; onClick: () => void } | null;
-    /** A past campaign picked: a copy of it as a new draft (Duplicate). */
     onPastCampaign: (id: string) => void;
-    /** A copy is being made. */
     busy?: boolean;
 }) {
     const ctx = useBlockEditor();

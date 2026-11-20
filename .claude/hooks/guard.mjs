@@ -16,6 +16,11 @@
 //     changes are allowed (owner, 2026-11-17).
 //   - scripts that reach real people or live money: the customer migration
 //     send, live-Stripe runs, and the WhatsApp scripts that send or register
+//   - the owner's calls (agent-rails PRD): adding to the lint baseline
+//     (`eslint --suppress-all` or `--suppress-rule`, however eslint is run),
+//     and the auto-merge switch and its gates (`gh variable set/delete`, and
+//     `gh api` writes to Actions variables or commit statuses). These can be
+//     undone, but an agent that can do them can wave its own work through.
 //
 // Exit 2 blocks the call and hands the reason to Claude. Input it can't parse
 // as JSON is let through. If the guard itself crashes or times out, the call
@@ -35,7 +40,8 @@ import { pathToFileURL } from "node:url";
  * raw text.)
  */
 export function stripHeredocs(cmd) {
-  const re = /<<(-?)\s*(['"]?)([A-Za-z_][\w-]*)\2/;
+  // `<<` but not a here-string `<<<`, whose word is not a delimiter.
+  const re = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][\w-]*)\2/;
   let out = "";
   let rest = cmd;
   for (let guard = 0; guard < 50; guard++) {
@@ -77,7 +83,10 @@ function closeOf(cmd, start, backtick) {
  * Split a shell command into simple commands, each a list of words with quotes
  * removed. Rough by design: it errs towards finding a command, never towards
  * hiding one. `$(...)` and backticks, quoted or not, become commands of their
- * own; so do subshells.
+ * own; so do subshells. As the shell does: a backslash-LF outside single
+ * quotes joins the lines (an escaped backslash before it does not, nor does a
+ * backslash-CR), and a `#` that starts a word outside quotes begins a comment
+ * to the end of the line, where a trailing backslash continues nothing.
  */
 export function parseShell(cmd) {
   const commands = [];
@@ -113,6 +122,7 @@ export function parseShell(cmd) {
     }
     if (quote === '"') {
       if (c === '"') quote = null;
+      else if (c === "\\" && cmd[i + 1] === "\n") i++;
       else if (c === "\\" && i + 1 < cmd.length) word += cmd[++i];
       else word += c;
       continue;
@@ -120,9 +130,13 @@ export function parseShell(cmd) {
     if (c === "'" || c === '"') {
       quote = c;
       inWord = true;
+    } else if (c === "\\" && cmd[i + 1] === "\n") {
+      i++;
     } else if (c === "\\" && i + 1 < cmd.length) {
       word += cmd[++i];
       inWord = true;
+    } else if (c === "#" && !inWord) {
+      while (i + 1 < cmd.length && cmd[i + 1] !== "\n") i++;
     } else if (/\s/.test(c) && c !== "\n") {
       endWord();
     } else if (";&|\n()".includes(c)) {
@@ -136,14 +150,36 @@ export function parseShell(cmd) {
   return commands;
 }
 
-const WRAPPERS = new Set(["sudo", "command", "nohup", "exec", "time", "builtin"]);
+const WRAPPERS = new Set(["sudo", "command", "nohup", "exec", "time", "builtin", "corepack"]);
+// Shell keywords that can start a simple command as the parser splits it:
+// `for f in x; do git push -f; done` gives `do git push -f`, and
+// `if ! pnpm lint; then` gives `if ! pnpm lint`.
+const KEYWORDS = new Set(["do", "then", "else", "elif", "if", "while", "until", "!", "{"]);
+// GNU xargs 4.9 (checked by running it): the short options that take the
+// next word as their value when nothing is attached, also as the last letter
+// of a cluster (`-0n 1`), and the long options that do when written without
+// `=`. -e, -i, -l, --eof, --replace and --max-lines take only an attached
+// value: the word after them is the program.
+const XARGS_SHORT_VALUE = new Set(["a", "d", "E", "I", "L", "n", "P", "s"]);
+const XARGS_LONG_VALUE = new Set(["--arg-file", "--delimiter", "--max-args", "--max-procs", "--max-chars", "--process-slot-var"]);
 
-/** Drop leading VAR=value words and wrappers like `timeout 5` or `env -i`. */
+/** How many words xargs's option `word` uses: 2 when its value is the next word. */
+function xargsOptionWords(word) {
+  if (word.startsWith("--")) return XARGS_LONG_VALUE.has(word) ? 2 : 1;
+  for (let i = 1; i < word.length; i++) {
+    if (XARGS_SHORT_VALUE.has(word[i])) return i === word.length - 1 ? 2 : 1;
+    // An optional value is attached or absent; the rest of the cluster is it.
+    if ("eil".includes(word[i])) return 1;
+  }
+  return 1;
+}
+
+/** Drop leading VAR=value words, shell keywords and wrappers like `timeout 5` or `env -i`. */
 export function stripPrefix(words) {
   let w = [...words];
   for (let guard = 0; guard < 20 && w.length; guard++) {
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(w[0])) w = w.slice(1);
-    else if (WRAPPERS.has(w[0])) w = w.slice(1);
+    else if (WRAPPERS.has(w[0]) || KEYWORDS.has(w[0])) w = w.slice(1);
     else if (w[0] === "env") {
       w = w.slice(1);
       while (w.length && (w[0].startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(w[0]))) w = w.slice(1);
@@ -154,13 +190,19 @@ export function stripPrefix(words) {
       if (/^\d/.test(w[0])) w = w.slice(1);
     } else if (w[0] === "xargs") {
       w = w.slice(1);
-      while (w.length && w[0].startsWith("-")) w = w.slice(1);
+      while (w.length && w[0].startsWith("-") && w[0] !== "--") w = w.slice(xargsOptionWords(w[0]));
+      if (w[0] === "--") w = w.slice(1);
     } else break;
   }
   return w;
 }
 
-/** Every simple command in `cmd`, following `sh -c` and `eval` one level down at a time. */
+/**
+ * Every simple command in `cmd`, following `sh -c`, `npx -c` and `eval` one
+ * level down at a time. Here-documents are stripped before anything else
+ * (a continuation inside a body continues nothing); parseShell joins
+ * continuation lines.
+ */
 export function commandsIn(cmd, depth = 0) {
   const out = [];
   for (const raw of parseShell(stripHeredocs(cmd))) {
@@ -169,8 +211,16 @@ export function commandsIn(cmd, depth = 0) {
     out.push(w);
     const prog = path.basename(w[0]);
     if (depth < 3 && ["sh", "bash", "zsh", "dash"].includes(prog)) {
-      const i = w.indexOf("-c");
+      // `-c`, or a cluster holding it: `bash -lc '…'`, `sh -ec '…'`.
+      const i = w.findIndex((a, k) => k > 0 && /^-[A-Za-z]*c[A-Za-z]*$/.test(a));
       if (i !== -1 && w[i + 1]) out.push(...commandsIn(w[i + 1], depth + 1));
+    }
+    // `npx -c '…'` / `npm exec -c '…'` run their argument as a shell command.
+    if (depth < 3 && (prog === "npx" || (prog === "npm" && w[1] === "exec"))) {
+      const i = w.findIndex((a) => a === "-c" || a === "--call");
+      if (i !== -1 && w[i + 1]) out.push(...commandsIn(w[i + 1], depth + 1));
+      const eq = w.find((a) => a.startsWith("--call="));
+      if (eq) out.push(...commandsIn(eq.slice(7), depth + 1));
     }
     if (depth < 3 && prog === "eval") out.push(...commandsIn(w.slice(1).join(" "), depth + 1));
   }
@@ -301,7 +351,7 @@ function gitVerdict({ dir, sub, args }, sys) {
 
 // ------------------------------------------------------------- commands ----
 
-const RUNNERS = new Set(["node", "npx", "tsx", "pnpm", "npm", "yarn", "bun", "bunx", "deno"]);
+const RUNNERS = new Set(["node", "npx", "pnpx", "tsx", "pnpm", "npm", "yarn", "bun", "bunx", "deno"]);
 const WHATSAPP_SENDS = /whatsapp-(test|preview|langprobe|wait-and-test|register|create-templates)\b/;
 const LIVE_STRIPE_SCRIPTS = /costings-sync-prices|costings:sync|stripe-sync-all|stripe:sync-all/;
 
@@ -328,6 +378,87 @@ function pendingMigrationsVerdict(dir, sys) {
   return null;
 }
 
+// ---------------------------------------------------------------- rails ----
+
+const BASELINE_REASON =
+  "raising the lint baseline (eslint-suppressions.json) is the owner's call. Fix the violation, or tell the user which rule and why it cannot be fixed. --prune-suppressions is allowed.";
+const SCRIPT_RUNNERS = new Set(["pnpm", "npm", "yarn", "bun"]);
+
+/** pnpm, npm, yarn or bun, by path or with a version (`pnpm@9`). */
+const isScriptRunner = (word) => SCRIPT_RUNNERS.has(path.basename(word).split("@")[0]);
+
+const isEslint = (word) => {
+  const b = path.basename(word);
+  return b === "eslint" || b === "eslint.js" || b.startsWith("eslint@");
+};
+
+/**
+ * A simple command that runs ESLint and adds to the baseline, wherever in it
+ * the program sits: some word is an ESLint run (a path ending in eslint or
+ * eslint.js, `eslint@<version>`, `--run=lint`, or `lint` after a script
+ * runner, pnpm, npm, yarn or bun with or without `@<version>`, or `node
+ * --run`, at any position), and a later word starts with
+ * --suppress-all or --suppress-rule (`--suppress-all>/dev/null` included). So
+ * `find . -exec npx eslint --suppress-all {} +`, `npx pnpm lint
+ * --suppress-all` and `function f { eslint --suppress-all; }` are caught; a
+ * quoted string that mentions both is one word and is not, and neither is
+ * `grep -- --suppress-all node_modules/eslint` (the flag comes first).
+ */
+function eslintVerdict(w) {
+  let at = -1;
+  for (let i = 0; i < w.length && at < 0; i++) {
+    if (isEslint(w[i])) at = i;
+    else if (w[i] === "--run=lint") at = i;
+    else if (w[i] === "lint" && w.slice(0, i).some((a) => isScriptRunner(a) || a === "--run")) at = i;
+  }
+  if (at < 0) return null;
+  return w.slice(at + 1).some((a) => a.startsWith("--suppress-all") || a.startsWith("--suppress-rule")) ? BASELINE_REASON : null;
+}
+
+const SWITCH_REASON =
+  "the auto-merge switch (the AUTO_MERGE_CODE repository variable) and the commit statuses it waits for are the owner's. Say what you meant to do instead.";
+// `gh api` options that take a value, so the value is not read as the endpoint.
+const GH_API_VALUE_OPTS = new Set(["-H", "--header", "-q", "--jq", "-t", "--template", "--hostname", "--cache", "-p", "--preview"]);
+const GH_API_BODY_OPTS = new Set(["-f", "-F", "--field", "--raw-field", "--input"]);
+
+// `gh variable` options that take a value: `gh variable -R o/r set X` must
+// not read `o/r` as the action.
+const GH_VARIABLE_VALUE_OPTS = new Set(["-R", "--repo", "-e", "--env", "-o", "--org", "-b", "--body", "-f", "--env-file", "-v", "--visibility", "-r", "--repos", "-q", "--jq", "-t", "--template", "--json"]);
+
+function ghVerdict(w) {
+  const args = w.slice(1);
+  const positional = args.filter((a) => !a.startsWith("-"));
+  if (positional[0] === "variable") {
+    const rest = args.slice(args.indexOf("variable") + 1);
+    for (let i = 0; i < rest.length; i++) {
+      if (GH_VARIABLE_VALUE_OPTS.has(rest[i])) i++;
+      else if (!rest[i].startsWith("-")) return ["set", "delete", "remove"].includes(rest[i]) ? SWITCH_REASON : null;
+    }
+    return null;
+  }
+  if (positional[0] !== "api") return null;
+  let method = null;
+  let body = false;
+  let endpoint = null;
+  for (let i = args.indexOf("api") + 1; i < args.length; i++) {
+    const a = args[i];
+    if (a === "-X" || a === "--method") method = args[++i];
+    else if (a.startsWith("--method=")) method = a.slice(9);
+    else if (/^-X./.test(a)) method = a.slice(2);
+    else if (GH_API_BODY_OPTS.has(a)) {
+      body = true;
+      i++;
+    } else if (/^(--field|--raw-field|--input)=/.test(a) || /^-[fF]./.test(a)) body = true;
+    else if (GH_API_VALUE_OPTS.has(a)) i++;
+    else if (!a.startsWith("-") && endpoint === null) endpoint = a;
+  }
+  // gh api sends GET unless told otherwise, and POST once it has a body.
+  const verb = String(method ?? (body ? "POST" : "GET")).toUpperCase();
+  if (verb === "GET" || verb === "HEAD" || !endpoint) return null;
+  if (/(^|\/)variables(\/|$)/.test(endpoint) || /(^|\/)statuses(\/|$)/.test(endpoint)) return SWITCH_REASON;
+  return null;
+}
+
 /** The reason to block a Bash command, or null. */
 export function bashVerdict(command, cwd, sys) {
   const cmds = commandsIn(command);
@@ -337,6 +468,8 @@ export function bashVerdict(command, cwd, sys) {
       const why = gitVerdict(parseGit(w, cwd), sys);
       if (why) return why;
     }
+    const rails = eslintVerdict(w) ?? (prog === "gh" ? ghVerdict(w) : null);
+    if (rails) return rails;
     if (runsScript(w)) {
       const args = w.slice(1).join(" ");
       if (/customer-migration-send/.test(args))

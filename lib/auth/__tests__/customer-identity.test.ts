@@ -8,10 +8,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 const AUTH_ID = "auth-user-1";
 
-/**
- * Records the order→customer backfill query chain so we can assert exactly how
- * guest orders are matched without touching a real database.
- */
 function fakeAdmin(matchedOrderIds: string[]) {
   const calls = {
     table: "",
@@ -111,9 +107,7 @@ describe("associateGuestOrdersToCustomer", () => {
     expect(linked).toBe(2);
     expect(calls.table).toBe("orders");
     expect(calls.update).toEqual({ customer_id: "cust-1" });
-    // Idempotency: never re-link an order that already has a customer.
     expect(calls.isFilter).toEqual([["customer_id", null]]);
-    // Email is normalized to lowercase and wildcard-escaped for an exact match.
     expect(calls.ilikeFilter).toEqual([["email", "john\\_doe@x.com"]]);
   });
 

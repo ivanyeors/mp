@@ -9,13 +9,6 @@ import {
 } from "../customer-emails";
 import type { EmailTransport, OutgoingEmail } from "../types";
 
-/**
- * The customer_emails ledger helpers. The claim's atomicity and retry rule live
- * in SQL (claim_customer_email) and are asserted against real Postgres in
- * supabase/tests/customer-migration/assert-05-claim.sql. These pin what the
- * helpers send to the database and how they read it back.
- */
-
 type Rpc = { data: unknown; error: { message: string } | null };
 
 function fakeAdmin(rpc: Rpc | (() => Rpc)) {

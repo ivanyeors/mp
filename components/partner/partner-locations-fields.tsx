@@ -7,11 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { BranchInput } from "@/lib/locations/branches";
 
-/**
- * One clinic as edited: the first is the partner's main location (its own
- * `partners` row), the rest are branches (ADR 0037). `id` is a branch's row id;
- * the main location and a newly added clinic have none.
- */
 export type LocationDraft = {
   key: string;
   id?: string;
@@ -34,7 +29,6 @@ export function emptyLocationDraft(): LocationDraft {
   return { key: newKey(), branch_name: "", address: "", postal_code: "" };
 }
 
-/** The main row's place, then its branches', as the editor holds them. */
 export function toLocationDrafts(main: PlaceRow, branches: PlaceRow[] = []): LocationDraft[] {
   const draft = (row: PlaceRow, id?: string): LocationDraft => ({
     key: id ?? "main",
@@ -46,11 +40,6 @@ export function toLocationDrafts(main: PlaceRow, branches: PlaceRow[] = []): Loc
   return [draft(main), ...branches.map((b) => draft(b, b.id))];
 }
 
-/**
- * What a save sends: the main location's fields and the branches. An added
- * clinic left completely blank is dropped; one with a name or postal code but
- * no address is an error, since a clinic nobody can find is no use.
- */
 export function locationDraftsToPayload(
   drafts: LocationDraft[],
 ):
@@ -88,11 +77,6 @@ export function locationDraftsToPayload(
   };
 }
 
-/**
- * Edits a partner's clinics. With one clinic it is just an address and postal
- * code, as before; "Add another location" adds more, and then each clinic gets
- * a name field so patients can tell them apart.
- */
 export function PartnerLocationsFields({
   value,
   onChange,
@@ -155,7 +139,6 @@ export function PartnerLocationsFields({
               </div>
             ) : null}
             {showNames ? (
-              // Name and postal code share a row; the address gets the full width.
               <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
                 <div className="space-y-1.5">
                   <Label htmlFor={`${id}-name`}>Location name</Label>

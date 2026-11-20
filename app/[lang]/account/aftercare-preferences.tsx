@@ -18,18 +18,9 @@ import { setMyAftercarePreference } from "./actions";
 type Props = {
   email: boolean;
   whatsapp: boolean;
-  /** `customers.phone` as stored, which may be missing or not a mobile. */
   phone: string | null;
 };
 
-/**
- * The Profile's Aftercare messages card (PRD customer-crm slice 13): the only
- * place a customer turns aftercare off, or WhatsApp on, themselves.
- *
- * The WhatsApp toggle shows exactly what they agree to, with their number in
- * it, and that text is what the server stores as the evidence. With no valid
- * mobile on file, turning it on asks for the number first.
- */
 export function AftercarePreferences({ email: initialEmail, whatsapp: initialWhatsapp, phone: initialPhone }: Props) {
   const [email, setEmail] = useState(initialEmail);
   const [whatsapp, setWhatsapp] = useState(initialWhatsapp);
@@ -41,7 +32,6 @@ export function AftercarePreferences({ email: initialEmail, whatsapp: initialWha
 
   const onFile = normalizePhone(phone);
   const typed = normalizePhone(mobile);
-  // The number the wording names: the one on file, else the one being typed.
   const wordingNumber = onFile ?? (askMobile ? typed : null);
 
   const save = (preference: AftercarePreference, value: boolean, withMobile?: string) => {
@@ -63,7 +53,6 @@ export function AftercarePreferences({ email: initialEmail, whatsapp: initialWha
 
   const toggleWhatsapp = (next: boolean) => {
     if (next && !onFile) {
-      // A mobile first; nothing is saved until they confirm it.
       setError(null);
       setAskMobile(true);
       return;

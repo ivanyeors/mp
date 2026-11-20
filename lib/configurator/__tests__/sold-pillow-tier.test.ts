@@ -37,7 +37,6 @@ describe("the Mpillow page sells one tier", () => {
     expect(hold).toMatch(/^[\s\S]{0,800}const tier = soldTier;/);
     expect(client).toMatch(/suggested_tier: soldTier,/);
     expect(client).toMatch(/build: \{ product_type: "pillow", size: String\(size\), tier: soldTier \}/);
-    // The page's tier alone is only for an Assisted submit, which has no Staff.
     expect(client.match(/const tier = soldAsPremium/g)?.length ?? 0).toBe(1);
   });
 });

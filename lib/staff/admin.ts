@@ -7,13 +7,6 @@ import { isPermission, permissionEntry } from "@/lib/auth/permissions";
 
 export { defaultProfileName } from "@/lib/staff/profile-name";
 
-/**
- * Staff profiles (`mp_staff`, ADR 0023): the named people who work under a
- * Member (login). A Result is "measured by" a profile; a Telegram link
- * belongs to one. Profiles are archived, never deleted, so attribution on
- * old Results survives. Every write is audited as `staff_profile.*`.
- */
-
 export type StaffProfile = {
   id: string;
   name: string;
@@ -49,11 +42,6 @@ function toProfile(row: DbProfile): StaffProfile {
   };
 }
 
-/**
- * Staff profiles with the email of the login each works under, by name.
- * Archived profiles are left out unless asked for (Results still needs them
- * to label old rows). Throws on a Supabase error.
- */
 export async function listStaffProfiles({ includeArchived = false } = {}): Promise<StaffProfile[]> {
   let query = supabaseAdmin().from("mp_staff").select(PROFILE_COLUMNS);
   if (!includeArchived) query = query.is("archived_at", null);
@@ -62,10 +50,6 @@ export async function listStaffProfiles({ includeArchived = false } = {}): Promi
   return ((data ?? []) as DbProfile[]).map(toProfile);
 }
 
-/**
- * What a reader without `users` sees: names and grouping, not the login
- * emails behind them (the Results picker needs no more).
- */
 export function withoutLoginEmails(profiles: StaffProfile[]): StaffProfile[] {
   return profiles.map((p) => ({ ...p, memberEmail: null }));
 }
@@ -84,11 +68,10 @@ const isUnique = (message: string) => /duplicate key|unique/i.test(message);
 
 async function loadProfile(id: string): Promise<StaffProfile | null> {
   const { data, error } = await supabaseAdmin().from("mp_staff").select(PROFILE_COLUMNS).eq("id", id).maybeSingle<DbProfile>();
-  if (error && error.code !== "22P02") throw new Error(error.message); // 22P02: not a uuid → not found
+  if (error && error.code !== "22P02") throw new Error(error.message);
   return data ? toProfile(data) : null;
 }
 
-/** An active profile under `memberId` already has this name (the unique index is the backstop). */
 async function nameTaken(memberId: string, name: string, exceptId?: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin()
     .from("mp_staff")
@@ -112,10 +95,6 @@ const snapshot = (p: StaffProfile) => ({
   archived: p.archivedAt != null,
 });
 
-/**
- * Create a profile under a Member. `actor` null is a system write (first
- * profile for a bootstrap Owner), still audited.
- */
 export async function createStaffProfile(
   actor: AdminContext | null,
   memberId: string,
@@ -156,7 +135,6 @@ type ProfileChange =
   | { kind: "archive" }
   | { kind: "restore" };
 
-/** Rename, move to another login, archive or restore a profile. */
 export async function updateStaffProfile(
   actor: AdminContext,
   id: string,
@@ -164,7 +142,6 @@ export async function updateStaffProfile(
 ): Promise<ProfileWriteResult> {
   const before = await loadProfile(id);
   if (!before) return { ok: false, status: 404, error: "Profile not found." };
-  // The same rule as changing the login itself (lib/auth/login-guard.ts).
   const here = await loginRefusal(actor, before.memberId);
   if (here) return here;
 
@@ -181,8 +158,6 @@ export async function updateStaffProfile(
       if (!(await memberExists(change.memberId))) return { ok: false, status: 404, error: "That login no longer exists." };
       const there = await loginRefusal(actor, change.memberId);
       if (there) return there;
-      // Its Telegram link moves with it, and the new login's role may allow
-      // actions the old one did not: only someone holding them may do that.
       const beyond = await linkActionsBeyond(actor, id);
       if (beyond.length) {
         return {
@@ -217,9 +192,6 @@ export async function updateStaffProfile(
     throw new Error(error.message);
   }
   const after = toProfile(data);
-  // The person bound to this profile's Telegram belonged to the old login (an
-  // offboarded Member, say): they must not act under the new one. The link and
-  // its actions stay; whoever works it now gets a fresh code.
   const telegramUnlinked = change.kind === "move" && (await unbindTelegram(id));
   await recordAdminAction({
     actor,
@@ -232,10 +204,6 @@ export async function updateStaffProfile(
   return { ok: true, profile: after };
 }
 
-/**
- * Clear the Telegram account bound to a profile's link, and any pending code
- * (it was handed to someone under the old login). True when anything was cleared.
- */
 async function unbindTelegram(profileId: string): Promise<boolean> {
   const admin = supabaseAdmin();
   const { data: link, error: readError } = await admin
@@ -259,7 +227,6 @@ async function unbindTelegram(profileId: string): Promise<boolean> {
   return true;
 }
 
-/** Telegram actions on a profile's link that the actor does not hold (none for Owner / Admin). */
 async function linkActionsBeyond(actor: AdminContext, profileId: string): Promise<string[]> {
   if (actor.grantsAll) return [];
   const { data, error } = await supabaseAdmin()
@@ -272,11 +239,6 @@ async function linkActionsBeyond(actor: AdminContext, profileId: string): Promis
   return actions.filter((a) => !actor.permissions.has(a)).map((a) => permissionEntry(a).label);
 }
 
-/**
- * Whether a profile may be newly picked as a Result's "measured by": it
- * exists and is not archived. Rows that already name an archived profile
- * keep it; only a change to it is checked.
- */
 export async function isPickableStaffProfile(id: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin().from("mp_staff").select("id, archived_at").eq("id", id).maybeSingle();
   if (error || !data) return false;

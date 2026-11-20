@@ -22,11 +22,8 @@ export const dynamic = "force-dynamic";
 
 const ParamsSchema = z.object({ id: z.string().uuid() });
 
-/** Shape gate, as the assign and hold routes; `validatePillowPlacements` does the rest. */
 const BodySchema = z.object({
-  /** The tier the mix is drawn for: a neck support or an ear pad is premium only. */
   tier: z.enum(["basic", "premium"]),
-  /** The template the mix started from — kept on the Result only while the mix still matches it exactly. */
   fillingTemplateId: z.number().int().positive().nullable().optional(),
   placements: z.array(
     z.object({
@@ -42,11 +39,6 @@ const BodySchema = z.object({
   ),
 });
 
-/**
- * The Result's own Filling configuration for the Result detail page: the saved
- * snapshot, the Items it places, and the colour and dimension overrides the
- * x-ray draws with. Staff-only — the snapshot is our recipe.
- */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("results");
   if (denied) return denied;
@@ -67,16 +59,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   return NextResponse.json({ ok: true, ...loaded.mix });
 }
 
-/**
- * Save a filling mix onto a **Draft Result**, ahead of the customer submitting
- * (`lib/results/filling-mix.ts`). Writes the snapshot and nothing else: the
- * status stays empty, no price is set, no one is emailed. The hold keeps it
- * when the customer submits, and Save assignment confirms it after.
- *
- * An empty mix clears the snapshot. The template id is kept only when the
- * server confirms the mix still matches that template's catalog placements,
- * exactly as at hold — the client's claim alone is never trusted.
- */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("results");
   if (denied) return denied;
@@ -120,8 +102,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   const snapshot = buildFillingSnapshot({ placements, claimedTemplateId, templatePlacements });
 
-  // Check-and-set on the draft state read above: a customer who submits in the
-  // meantime wins, and the mix they would have carried is refused, not half-written.
   const { data: updated, error: updErr } = await admin
     .from("mp_config_responses")
     .update({ filling_fingerprint: snapshot.fingerprint, filling_template_id: snapshot.fillingTemplateId })
@@ -137,8 +117,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     );
   }
 
-  // Replace-insert copy rows, as hold and assign do (ADR 0008): no link to the
-  // template's rows, so a later catalog edit never changes this Result.
   const { error: delErr } = await admin.from("result_filling_placements").delete().eq("result_id", id);
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
   if (snapshot.rows.length) {

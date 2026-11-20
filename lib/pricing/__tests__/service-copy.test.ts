@@ -44,9 +44,6 @@ describe("service copy (ADR 0024)", () => {
 });
 
 describe("no hard-coded service fees in policy copy", () => {
-  // The numbers come from Costings → Service fees. A literal here is a price that
-  // goes stale the day an operator changes it — which is how the copy came to
-  // contradict itself ("$30 within 60 days" vs "free within 60 days").
   const files = [
     "lib/i18n/messages/en-US.ts",
     "lib/i18n/messages/zh-CN.ts",

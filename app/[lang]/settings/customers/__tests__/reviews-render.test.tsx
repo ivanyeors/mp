@@ -4,12 +4,6 @@ import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import { DEFAULT_CUSTOMER_FILTERS, parseCustomerFilters, type CustomerListFilters } from "@/lib/crm/customer-filters";
 import type { CustomerReviewsData } from "@/lib/crm/reviews";
 
-/**
- * Reviews on every Customer (CRM slice 12), as Staff see them: the Review
- * column and filters on the list, the Reviews tab, and the Reviews card on the
- * Customer detail, with its buttons only for `customers-edit`.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -18,7 +12,6 @@ vi.mock("next/navigation", () => ({
 const { CustomersClient } = await import("../customers-client");
 const { CustomerFilterGroup } = await import("../customer-filters-panel");
 
-/** One group of the mega filter, as it renders inside the open panel. */
 const groupFor = (
   group: "stage" | "purchases" | "reach" | "account" | "reviews",
   filters: Partial<CustomerListFilters>,
@@ -221,7 +214,6 @@ describe("the Reviews card", () => {
   });
 });
 
-// PRD-customer-page-journey slice 03: answer a Linked Google review from here.
 describe("answering a Linked Google review", () => {
   const waiting = (answer: Partial<CustomerReviewsData["google"][number]["answer"]> = {}): CustomerReviewsData => ({
     ...DATA,
@@ -256,7 +248,6 @@ describe("answering a Linked Google review", () => {
     expect(html).toContain("Open this review on Google");
     expect(html).toContain('href="https://maps.google.com/review/abc"');
     expect(html).toContain('target="_blank"');
-    // The draft the Telegram card holds is not shown, copied or marked before the press.
     expect(html).not.toContain("Jane, I am sorry.");
     for (const control of ["Copy reply", "Mark replied", "Generate again", "<textarea"]) expect(html, control).not.toContain(control);
   });

@@ -64,7 +64,6 @@ export type { ImportDriveResult } from "./import-drive";
 export class MediaAssetInUseError extends Error {
   constructor(
     public readonly usages: ImageUsageEntry[],
-    /** False when a use is past "Delete anyway": an email campaign's (`usageBlocksDeletion`). */
     public readonly deletable = true,
   ) {
     super("Asset is in use");
@@ -76,9 +75,6 @@ function admin() {
   return supabaseAdmin();
 }
 
-/** Default ceiling applied when a caller of {@link listMediaAssets} passes no limit. */
-// The media gallery has no paging yet, so this is a safety ceiling rather
-// than a page size; raise it before the library approaches it.
 const DEFAULT_MEDIA_ASSET_LIST_LIMIT = 5000;
 
 export async function listMediaAssets(opts?: {
@@ -99,7 +95,6 @@ export async function listMediaAssets(opts?: {
   if (opts?.unfiled) q = q.is("folder_id", null);
   else if (opts?.folder_id) q = q.eq("folder_id", opts.folder_id);
   if (opts?.tag?.trim()) q = q.contains("tags", [opts.tag.trim().toLowerCase()]);
-  // Ceiling for callers that pass no limit, so the library is never unbounded.
   q = q.limit(opts?.limit && opts.limit > 0 ? opts.limit : DEFAULT_MEDIA_ASSET_LIST_LIMIT);
 
   const { data, error } = await q;
@@ -229,7 +224,6 @@ export async function deleteMediaAsset(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-/** Patch hosted-file metadata after re-import (internal). */
 export async function patchMediaAssetHosted(
   id: string,
   patch: {
@@ -251,19 +245,6 @@ export async function patchMediaAssetHosted(
   return data as MediaAsset;
 }
 
-/**
- * Delete Asset (+ hosted storage object). Blocks with usages unless force;
- * an email campaign's use blocks even then (PRD-campaign-email-editor slice
- * 05), since a sent email shows the image for good. Video/PDF preview thumbs
- * in the bucket are removed when hosted_url is set.
- *
- * Its email rendition's file stays in the bucket (its row goes with the
- * Asset's): a sent email points at it for good, and a product's photo is sent
- * with no campaign naming the Asset, so nothing here knows it went out.
- *
- * The row goes before the file: the database refuses the row of an image a
- * campaign uses, and then the file must still be there.
- */
 export async function deleteMediaAssetGuarded(
   id: string,
   opts?: { force?: boolean },
@@ -286,7 +267,6 @@ export async function deleteMediaAssetGuarded(
   }
 }
 
-/** Mark Assets as last-used when a consumer attaches/saves them. */
 export async function touchLastUsed(opts: {
   urls?: string[];
   assetIds?: string[];
@@ -314,7 +294,6 @@ export async function touchLastUsed(opts: {
   }
 }
 
-/** Register existing `media` bucket objects as image Assets. Idempotent on hosted_url. */
 export async function backfillMediaAssetsFromBucket(): Promise<{
   inserted: number;
   skipped: number;

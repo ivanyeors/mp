@@ -17,7 +17,6 @@ export default async function EasyshipSettingsRoute({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   await requireAdminPage("shipping", locale);
 
-  // A failed read must not look like "nothing saved": the client then shows the error path.
   const cfg = await readEasyshipConfig().catch(() => null);
   const initial = cfg
     ? {

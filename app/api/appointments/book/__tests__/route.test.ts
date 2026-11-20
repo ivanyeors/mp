@@ -3,8 +3,6 @@ import { POST } from "@/app/api/appointments/book/route";
 
 const h = vi.hoisted(() => ({ bookCalendarSlot: vi.fn(async () => ({ eventId: "evt-1", contact: "created" })) }));
 
-// The bookable guard runs right after the location lookup, before any
-// supabase / calendar I/O, so only the location lookup needs stubbing for it.
 vi.mock("@/lib/locations", () => ({
   getLocation: vi.fn(async (id: string) =>
     id === "loc-off"
@@ -22,7 +20,6 @@ vi.mock("@/lib/locations", () => ({
         : null,
   ),
 }));
-// A booking that gets through: no rate limit hit, default settings, any slot offerable.
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     rpc: async () => ({ data: false, error: null }),
@@ -38,8 +35,6 @@ vi.mock("@/lib/appointments/book-slot", () => ({
   bookCalendarSlot: h.bookCalendarSlot,
 }));
 
-// email is now required: zod parse runs before any I/O, so a bad/missing email
-// short-circuits to 400 without touching supabase/calendar/location.
 function post(body: unknown): Promise<Response> {
   return POST(
     new Request("http://test/api/appointments/book", {

@@ -126,7 +126,6 @@ type AddInventoryEntry = {
   msrp: string;
 };
 type Group = { key: string; title: string; items: Item[] };
-/** Each Item's Costings prices, and the sellable families with their Products state. Null until loaded. */
 type CostingState = { prices: Record<number, CostingPrices>; families: InventoryFamily[] };
 const NO_PRICES: CostingPrices = { costCents: null, msrpCents: null };
 
@@ -221,7 +220,6 @@ export default function InventoryPage() {
     const nextProducts = (productsData ?? []) as Product[];
     setProducts(nextProducts);
 
-    // Altered fillings hold their own stock (converted from the base on receive).
     const getEffectiveOnHand = (itemId: number) => Number(nextBalances[Number(itemId)] ?? 0);
 
     type BomRow = { product_id: number | string; item_id: number | string; quantity: number | string };
@@ -261,7 +259,6 @@ export default function InventoryPage() {
     setBuildable(nextBuildable);
     setPremiumBuildable(nextPremiumBuildable);
 
-    // Keep bolster buildable in sync with the configured bolster lines too.
     type BolsterRow = { variant: "short" | "medium" | "long"; item_id: number | string; quantity: number | string };
     const grouped: Record<"short" | "medium" | "long", Array<{ item_id: number; quantity: number }>> = {
       short: [],
@@ -277,7 +274,6 @@ export default function InventoryPage() {
       if (!Number.isFinite(qty) || qty <= 0) return;
       grouped[v].push({ item_id: itemId, quantity: qty });
     });
-    // Back-compat: if bolster lines aren't in DB yet, fall back to the cached editor state.
     if (typeof window !== "undefined") {
       (["short", "medium", "long"] as const).forEach((v) => {
         if (grouped[v].length > 0) return;
@@ -286,9 +282,7 @@ export default function InventoryPage() {
           if (!raw) return;
           const parsed = JSON.parse(raw) as Array<{ item_id: number; quantity: number }>;
           if (Array.isArray(parsed) && parsed.length) grouped[v] = parsed;
-        } catch {
-          // ignore
-        }
+        } catch {}
       });
     }
     setBolsterLinesByVariant(grouped);
@@ -305,18 +299,13 @@ export default function InventoryPage() {
         channel.postMessage('refresh');
         channel.close();
       }
-    } catch {
-      // ignore broadcast failures in unsupported browsers
-    }
+    } catch {}
   }, []);
 
-  // Background refreshes are coalesced: a burst of realtime/broadcast events
-  // results in one silent reload rather than one `load()` per event.
   const scheduleSilentReload = useDebouncedCallback(() => {
     load({ silent: true });
   }, REALTIME_RELOAD_DEBOUNCE_MS);
 
-  // Listen for inventory changes broadcast from other pages (e.g. Configure).
   useEffect(() => {
     const onChanged = () => { scheduleSilentReload(); };
     if (typeof window !== 'undefined') {
@@ -468,7 +457,6 @@ export default function InventoryPage() {
     }
   };
 
-  /** After the Add drawer: one toast, with the way to Costings when the new items still need prices. */
   const handleItemsCreated = (created: Array<{ id: number; draft: AddInventoryDraft }>) => {
     const unpriced = created.filter(({ draft }) =>
       needsCosting(draft.category, {
@@ -492,7 +480,6 @@ export default function InventoryPage() {
 
   const pricesOf = useCallback((itemId: number) => costing?.prices[itemId] ?? NO_PRICES, [costing]);
 
-  // Prices are saved on the Costings page, often in another tab: pick them up on return.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") void getInventoryCostingState().then(setCosting).catch(() => {});
@@ -507,8 +494,6 @@ export default function InventoryPage() {
     const channel = supabaseClient
       .channel('inventory-items')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => {
-        // Intentional: background refreshes from other staff's edits should
-        // not flash the table's loading state (previously they did).
         scheduleSilentReload();
       })
       .subscribe();
@@ -618,7 +603,6 @@ export default function InventoryPage() {
       toast.message('Out of stock');
       return;
     }
-    // New flow: open drawer to choose template then add to cart
     if (String(size).includes('Bolster')) {
       const s = String(size);
       const v = s.includes('Short') ? 'short' : s.includes('Long') ? 'long' : 'medium';
@@ -651,8 +635,6 @@ export default function InventoryPage() {
     });
   };
 
-  // One id per cart: re-selling the same cart after a timeout or a double click
-  // is refused by the ledger instead of deducting twice. A changed cart is a new sale.
   const [selling, setSelling] = useState(false);
   const saleIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -723,10 +705,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
     },
     [notifyInventoryChange],
   );
-
-  // removed old inline custom pillow sell
-
-  // removed old inline custom bolster sell
 
   const sellCustomPillowFromDrawer = async () => {
     const qty = parseInt((customPillowQty || '0'), 10);
@@ -812,7 +790,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
     cart.pillows.reduce((sum, line) => sum + Number(line.quantity ?? 0), 0) +
     Object.values(cart.parts).reduce((a, b) => a + b, 0);
 
-  // Phones: the header cluster moves into the bottom dock, within thumb reach.
   useMobileDockActions([
     { id: "refresh", title: "Refresh", icon: RotateCw, onClick: () => void load() },
     { id: "add", title: "Add inventory", icon: Plus, onClick: () => setAddDrawerOpen(true) },
@@ -897,7 +874,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         </div>
       </section>
 
-      {/* Bolster variants */}
       <section className="space-y-2">
         <ComposedSectionHeading
           label="Select bolsters"
@@ -931,7 +907,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select parts</div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
-          {/* Custom parts card */}
           <div
             className="rounded border p-3 hover:bg-muted/40 active:bg-press transition cursor-pointer flex flex-col gap-3"
             onClick={() => { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); }}
@@ -984,7 +959,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         </div>
       </section>
 
-      {/* Cart Drawer */}
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader>
@@ -1041,7 +1015,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         </SheetContent>
       </Sheet>
 
-      {/* Sell With Template Drawer */}
       <Sheet open={sellDrawerOpen} onOpenChange={setSellDrawerOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader>
@@ -1219,7 +1192,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         onPushed={() => { void getInventoryCostingState().then(setCosting).catch(() => {}); }}
       />
 
-      {/* Part Drawer */}
       <PartDrawer
         open={partDrawerOpen}
         onOpenChange={setPartDrawerOpen}
@@ -1239,7 +1211,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         onPush={setPushFamily}
       />
 
-      {/* Custom Pillow Drawer */}
       <CustomPillowDrawer
         open={customPillowDrawerOpen}
         onOpenChange={setCustomPillowDrawerOpen}
@@ -1255,7 +1226,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         onAdd={addCustomPillowToCart}
       />
 
-      {/* Custom Bolster Drawer */}
       <CustomBolsterDrawer
         open={customBolsterDrawerOpen}
         onOpenChange={setCustomBolsterDrawerOpen}
@@ -1277,9 +1247,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 function AddInventoryDrawer({ open, onOpenChange, onCreate, onCreated, items }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Creates one item and resolves to its id. */
   onCreate: (draft: AddInventoryDraft) => Promise<number>;
-  /** Once every entry is saved, so the page can say so in one toast. */
   onCreated: (created: Array<{ id: number; draft: AddInventoryDraft }>) => void;
   items: Item[];
 }) {
@@ -1998,319 +1966,6 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, onCreated, items }: 
   );
 }
 
-/* (moved) Shopify Link is now a full page at /settings/inventory/shopify
-function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  items: Item[];
-  onSynced: () => Promise<void>;
-}) {
-  type AdminRow = {
-    shopifyVariantId: number;
-    kind: "pillow" | "bolster" | "part";
-    pillowSize: string | null;
-    pillowKind: string | null;
-    bolsterVariant: string | null;
-    item: { id: number; category: string; name: string; size: string | null; subtype: string | null } | null;
-    notes: string | null;
-    override: { sku: string | null; price: string | number | null; compare_at_price: string | number | null; currency: string | null } | null;
-  };
-
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<AdminRow[]>([]);
-  const [filter, setFilter] = useState("");
-
-  const [linkItemId, setLinkItemId] = useState<string>("");
-  const [linkVariantId, setLinkVariantId] = useState<string>("");
-  const [linking, setLinking] = useState(false);
-
-  const [draftByVariantId, setDraftByVariantId] = useState<Record<number, { sku: string; price: string; compareAt: string }>>({});
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await listShopifyAdminState();
-      if (!res?.ok) throw new Error("Couldn't load Shopify admin state.");
-      const next = (res.rows ?? []) as AdminRow[];
-      setRows(next);
-      setDraftByVariantId(() => {
-        const out: Record<number, { sku: string; price: string; compareAt: string }> = {};
-        next.forEach((r) => {
-          out[r.shopifyVariantId] = {
-            sku: r.override?.sku ?? "",
-            price: r.override?.price === null || r.override?.price === undefined ? "" : String(r.override?.price),
-            compareAt:
-              r.override?.compare_at_price === null || r.override?.compare_at_price === undefined
-                ? ""
-                : String(r.override?.compare_at_price),
-          };
-        });
-        return out;
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't load Shopify admin state.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    refresh();
-  }, [open, refresh]);
-
-  const visible = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => {
-      const parts = [
-        String(r.shopifyVariantId),
-        r.kind,
-        r.pillowKind ?? "",
-        r.pillowSize ?? "",
-        r.bolsterVariant ?? "",
-        r.item?.category ?? "",
-        r.item?.name ?? "",
-        r.item?.size ?? "",
-        r.item?.subtype ?? "",
-        r.override?.sku ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      return parts.includes(q);
-    });
-  }, [rows, filter]);
-
-  const itemOptions = useMemo(() => {
-    const sorted = [...items].sort((a, b) => getInventoryItemDisplayLabel(a).localeCompare(getInventoryItemDisplayLabel(b)));
-    return sorted.map((it) => ({ id: it.id, label: getInventoryItemDisplayLabel(it) }));
-  }, [items]);
-
-  const parseMoney = (raw: string): number | null | undefined => {
-    const t = raw.trim();
-    if (t === "") return undefined;
-    const n = Number.parseFloat(t);
-    if (!Number.isFinite(n) || n < 0) return null;
-    return n;
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-3xl">
-        <SheetHeader>
-          <SheetTitle>Shopify Link</SheetTitle>
-          <SheetDescription>
-            Manage Shopify variant mappings and per-variant overrides (SKU/price/compare-at). Then press “Sync Shopify”.
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="mt-4 space-y-6">
-          <div className="flex items-center gap-2">
-            <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by variantId, SKU, item name…" />
-            <Button variant="secondary" onClick={refresh} disabled={loading}>
-              {loading ? "Loading…" : "Refresh"}
-            </Button>
-          </div>
-
-          <div className="rounded-md border p-3 space-y-3">
-            <div className="text-sm font-medium">Link a part item to a Shopify variant</div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">Inventory item</div>
-                <Select value={linkItemId} onValueChange={setLinkItemId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select item…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {itemOptions.map((opt) => (
-                      <SelectItem key={opt.id} value={String(opt.id)}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">Shopify variant ID</div>
-                <Input value={linkVariantId} onChange={(e) => setLinkVariantId(e.target.value)} placeholder="e.g. 31003477114976" />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  className="w-full"
-                  disabled={linking}
-                  onClick={async () => {
-                    if (!linkItemId || !linkVariantId) {
-                      toast.message("Select an item and enter a Shopify variant ID");
-                      return;
-                    }
-                    setLinking(true);
-                    try {
-                      await linkPartToShopifyVariant({ itemId: Number(linkItemId), shopifyVariantId: Number(linkVariantId) });
-                      toast.success("Linked");
-                      setLinkItemId("");
-                      setLinkVariantId("");
-                      await refresh();
-                      await onSynced();
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Couldn't link.");
-                    } finally {
-                      setLinking(false);
-                    }
-                  }}
-                >
-                  {linking ? "Linking…" : "Link"}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Variant</TableHead>
-                  <TableHead>Mapping</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Price (SGD)</TableHead>
-                  <TableHead>Compare-at (SGD)</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((r) => {
-                  const d = draftByVariantId[r.shopifyVariantId] ?? { sku: "", price: "", compareAt: "" };
-                  const mappingLabel =
-                    r.kind === "part"
-                      ? r.item
-                        ? `${r.item.category} — ${r.item.name}${r.item.size ? ` (${r.item.size})` : ""}${r.item.subtype ? ` — ${r.item.subtype}` : ""}`
-                        : "part"
-                      : r.kind === "pillow"
-                        ? `${r.pillowKind ?? "basic"} / ${r.pillowSize ?? ""}`
-                        : `bolster / ${r.bolsterVariant ?? ""}`;
-
-                  return (
-                    <TableRow key={r.shopifyVariantId}>
-                      <TableCell className="text-xs">{r.shopifyVariantId}</TableCell>
-                      <TableCell className="text-xs">{mappingLabel}</TableCell>
-                      <TableCell>
-                        <Input
-                          value={d.sku}
-                          onChange={(e) =>
-                            setDraftByVariantId((prev) => ({
-                              ...prev,
-                              [r.shopifyVariantId]: { ...d, sku: e.target.value },
-                            }))
-                          }
-                          placeholder="(optional)"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={d.price}
-                          onChange={(e) =>
-                            setDraftByVariantId((prev) => ({
-                              ...prev,
-                              [r.shopifyVariantId]: { ...d, price: e.target.value },
-                            }))
-                          }
-                          placeholder="(optional)"
-                          inputMode="decimal"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={d.compareAt}
-                          onChange={(e) =>
-                            setDraftByVariantId((prev) => ({
-                              ...prev,
-                              [r.shopifyVariantId]: { ...d, compareAt: e.target.value },
-                            }))
-                          }
-                          placeholder="(optional)"
-                          inputMode="decimal"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            onClick={async () => {
-                              const price = parseMoney(d.price);
-                              const compareAt = parseMoney(d.compareAt);
-                              if (price === null) { toast.error("Invalid price"); return; }
-                              if (compareAt === null) { toast.error("Invalid compare-at"); return; }
-                              try {
-                                await upsertShopifyVariantOverride({
-                                  shopifyVariantId: r.shopifyVariantId,
-                                  sku: d.sku.trim() ? d.sku.trim() : null,
-                                  price: price === undefined ? undefined : price,
-                                  compareAtPrice: compareAt === undefined ? undefined : compareAt,
-                                });
-                                toast.success("Saved");
-                                await refresh();
-                              } catch (e) {
-                                toast.error(e instanceof Error ? e.message : "Couldn't save.");
-                              }
-                            }}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={async () => {
-                              try {
-                                await deleteShopifyVariantOverride(r.shopifyVariantId);
-                                toast.success("Override cleared");
-                                setDraftByVariantId((prev) => ({ ...prev, [r.shopifyVariantId]: { sku: "", price: "", compareAt: "" } }));
-                                await refresh();
-                              } catch (e) {
-                                toast.error(e instanceof Error ? e.message : "Couldn't clear the override.");
-                              }
-                            }}
-                          >
-                            Clear
-                          </Button>
-                          {r.kind === "part" ? (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={async () => {
-                                try {
-                                  await deleteShopifyMapping(r.shopifyVariantId);
-                                  toast.success("Mapping deleted");
-                                  await refresh();
-                                } catch (e) {
-                                  toast.error(e instanceof Error ? e.message : "Couldn't delete the mapping.");
-                                }
-                              }}
-                            >
-                              Unlink
-                            </Button>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {visible.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-sm text-muted-foreground">
-                      No rows
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-*/
-
-/** Image button + Clear; `save` persists the choice and resolves once it is stored. */
 function BaseImageControl({ name, current, title, save }: {
   name: string;
   current: string | undefined;
@@ -2335,7 +1990,6 @@ function BaseImageControl({ name, current, title, save }: {
           className={cn("max-md:min-w-11", current && "overflow-hidden p-0")}
         >
           {current ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={current} alt="" className="h-full w-9 object-cover max-md:w-11" />
           ) : (
             <ImageIcon className="h-4 w-4" />
@@ -2351,7 +2005,6 @@ function BaseImageControl({ name, current, title, save }: {
   );
 }
 
-/** One image for every size of a same-name item; it becomes the base image of its shop product. */
 function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
   name: string;
   itemIds: number[];
@@ -2379,13 +2032,8 @@ function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
   );
 }
 
-/**
- * One buildable count. On a phone the five sizes share a row of small tiles;
- * the roomier stat tile comes back from `md`.
- */
 function BuildableTile({ label, detail, available, onSelect }: {
   label: string;
-  /** A second line, e.g. a bolster's length; on a phone it replaces `label`. */
   detail?: string;
   available: number;
   onSelect: () => void;
@@ -2410,11 +2058,9 @@ function BuildableTile({ label, detail, available, onSelect }: {
   );
 }
 
-/** Opens a custom-build drawer: a stat-sized tile from `md`, a plain full-width row on a phone. */
 function CustomBuildTile({ label, phoneLabel, className, onOpen }: {
   label: string;
   phoneLabel: string;
-  /** The phone column span, so the row fills its grid. */
   className: string;
   onOpen: () => void;
 }) {
@@ -2441,7 +2087,6 @@ function CustomBuildTile({ label, phoneLabel, className, onOpen }: {
   );
 }
 
-/** Section heading with the base image of the pillow/bolster shop product it sells. */
 function ComposedSectionHeading({ label, slug, imageUrls, setImageUrls }: {
   label: string;
   slug: ComposedProductSlug;
@@ -2470,7 +2115,6 @@ function ComposedSectionHeading({ label, slug, imageUrls, setImageUrls }: {
   );
 }
 
-/** "Cost $10.00, MSRP $38.00", or what Costings still needs. */
 function CostingLine({ item, prices }: { item: Item; prices: CostingPrices }) {
   const gaps = costingGaps(item.category, prices);
   const money = (cents: number) => formatCurrency(cents / 100);
@@ -2494,11 +2138,6 @@ const productStateLabel: Record<string, string> = {
   archived: "archived in Products",
 };
 
-/**
- * The icon buttons beside a family in the parts drawer: "Add cost" while
- * Costings lacks a price (it goes away once they are saved), and the product
- * the family sells as once it is pushed.
- */
 function FamilyPipelineActions({ name, variants, prices, family, to }: {
   name: string;
   variants: Item[];
@@ -2544,7 +2183,6 @@ function FamilyPipelineActions({ name, variants, prices, family, to }: {
   );
 }
 
-/** Under a family that Costings has finished and Products lacks: the push, with what it will do. */
 function FamilyPushBar({ name, family, onPush }: {
   name: string;
   family: InventoryFamily | null;
@@ -2596,7 +2234,6 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
     () => new Map((costing?.families ?? []).map((f) => [f.key, f])),
     [costing],
   );
-  /** The one sellable family a drawer group is, or null (a build input, or names that merged across categories). */
   const familyOf = (variants: Item[]): InventoryFamily | null => {
     const keys = new Set(variants.map((v) => familyKey(v.category, v.name)));
     if (keys.size !== 1) return null;
@@ -2753,8 +2390,6 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
     Object.values(qtyByItem).some(v => (parseInt((v || '0'), 10) > 0)) ||
     Object.values(outQtyByItem).some(v => (parseInt((v || '0'), 10) > 0));
 
-  // Stock in on alterations converts out of the base, so sibling alterations
-  // (6D Round + 6D Fold) draw on the same base and are summed here.
   const convertingByBase = new Map<number, number>();
   (group?.items ?? []).forEach((it) => {
     const qty = parseInt(qtyByItem[it.id] || "0", 10);
@@ -3017,8 +2652,6 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
     setLines((prev: Array<{ item_id: number; quantity: number }>) => prev.filter(l => l.item_id!==item_id));
   };
 
-  // One pass over `lines` per render instead of a linear scan inside every
-  // rendered <Input value=...>.
   const qtyByItemId = useMemo(() => {
     const map = new Map<number, number>();
     lines.forEach((l) => { if (!map.has(l.item_id)) map.set(l.item_id, l.quantity); });
@@ -3218,8 +2851,6 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
     setLines((prev: Array<{ item_id: number; quantity: number }>) => prev.filter(l => l.item_id!==item_id));
   };
 
-  // One pass over `lines` per render instead of a linear scan inside every
-  // rendered <Input value=...>.
   const qtyByItemId = useMemo(() => {
     const map = new Map<number, number>();
     lines.forEach((l) => { if (!map.has(l.item_id)) map.set(l.item_id, l.quantity); });

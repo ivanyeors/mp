@@ -44,7 +44,6 @@ async function shopifyRest(path: string, init?: RequestInit) {
 
 export async function shopifyListActiveProductsWithVariants(args?: { limit?: number }): Promise<ShopifyProduct[]> {
   const limit = Math.min(250, Math.max(1, args?.limit ?? 250))
-  // fields trimmed to avoid huge payloads; variants included by default in REST response.
   const json = (await shopifyRest(
     `/products.json?status=active&limit=${limit}&fields=id,title,handle,status,variants`,
     { method: 'GET' },
@@ -53,7 +52,6 @@ export async function shopifyListActiveProductsWithVariants(args?: { limit?: num
 }
 
 async function shopifyFindProductByHandle(handle: string): Promise<ShopifyProduct | null> {
-  // REST doesn't have a dedicated handle lookup endpoint; list active/draft and filter locally.
   const json = (await shopifyRest(
     `/products.json?limit=250&fields=id,title,handle,status,variants`,
     { method: 'GET' },
@@ -73,7 +71,6 @@ export async function shopifyUpsertCanonicalProduct(args: {
 
   const variants = args.optionValues.map((v) => ({
     option1: v,
-    // SKU is optional; if user is renaming, we keep it stable but human-readable.
     ...(args.skuPrefix ? { sku: `${args.skuPrefix}${v.replace(/\s+/g, '').toUpperCase()}` } : {}),
   }))
 
@@ -92,11 +89,6 @@ export async function shopifyUpsertCanonicalProduct(args: {
     return created.product
   }
 
-  // Update product options to match canonical list.
-  // Shopify REST product update will not delete existing variants automatically; we keep it simple:
-  // - ensure option name is set
-  // - ensure all required option values exist as variants (create missing)
-  // - leave extra variants alone (user can delete manually if desired)
   const updatePayload = {
     product: {
       id: existing.id,
@@ -108,7 +100,6 @@ export async function shopifyUpsertCanonicalProduct(args: {
   }
   await shopifyRest(`/products/${existing.id}.json`, { method: 'PUT', body: JSON.stringify(updatePayload) })
 
-  // Refresh product (includes variants)
   const refreshed = (await shopifyRest(
     `/products/${existing.id}.json?fields=id,title,handle,status,variants,options`,
     { method: 'GET' },

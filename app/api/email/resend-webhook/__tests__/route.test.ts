@@ -1,21 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AftercareFakeDb, RpcHandler } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * Resend's webhook for campaign mail (migration slice 08). A forged, missing
- * or stale signature is a 401 and changes nothing. A hard bounce marks the
- * send `bounced`; a complaint marks it `complained` and unsubscribes the
- * Customer with source `complaint`, writing the consent event. Repeats change
- * nothing, and anything that is not a campaign send is acknowledged and left
- * alone.
- */
-
 const h = vi.hoisted(() => ({ db: {} as AftercareFakeDb, calls: [] as string[] }));
 
 vi.mock("@/lib/supabase/server", async () => {
   const { fakeAftercareDb } = await import("@/lib/aftercare/__tests__/fake-db");
   const { setMarketingEmailRpc } = await import("@/lib/marketing-consent/__tests__/fake-consent");
-  /** record_campaign_send_event as 20261020130000 defines it. */
   const recordEvent: RpcHandler = (args, db) => {
     h.calls.push(`${String(args.p_event)}:${String(args.p_provider_message_id)}`);
     const row = (db.customer_campaign_sends ?? []).find((s) => s.provider_message_id === args.p_provider_message_id);

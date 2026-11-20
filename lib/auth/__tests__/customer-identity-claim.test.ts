@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "@supabase/supabase-js";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * linkCustomerToAuthUser runs the Claim after the link, for every decision
- * type (PRD-shopify-customer-migration slice 05), and only for a row the
- * signed-in user owns. It stays the only path that binds a login.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb, claims: [] as string[] }));
 
 vi.mock("@/lib/supabase/server", async () => {

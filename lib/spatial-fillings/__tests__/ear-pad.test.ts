@@ -1,11 +1,3 @@
-/**
- * The Ear Comfort Pad in the x-ray: placeable like a Neck support (premium
- * pillows only, shipped inside the pillow out of its own stock, and charged at its
- * own MSRP on top of the pillow's), measured as a pouch, drawn as a puffy
- * square with a sewn well from above and as a cushion dipping between two rims
- * side-on, settled at its own firmness.
- */
-
 import { describe, expect, it } from "vitest";
 
 import { assembleBuild } from "@/lib/build-assembly";
@@ -37,7 +29,6 @@ describe("what an Ear Comfort Pad is", () => {
     expect(isInPillowAccessory(EAR)).toBe(true);
     expect(isNeckSupportItem(EAR)).toBe(false);
     expect(isInPillowAccessory({ category: "accessories", name: "Cervical Neck Support" })).toBe(true);
-    // An ear pad must be an accessory, as a neck support must.
     expect(isEarPadItem({ category: "filling", name: "Ear Comfort Pad" })).toBe(false);
     expect(isInPillowAccessory({ category: "accessories", name: "Slope Mattress" })).toBe(false);
   });
@@ -115,13 +106,11 @@ describe("placing an Ear Comfort Pad", () => {
     };
     const priced = priceComposedBuild({ ...base, addonLines: lines });
     expect(priced.ok && priced.subtotal).toBe(360 + 2 * 60);
-    // Unpriced → refused, never free.
     const unpriced = placedChargeLines([{ item_id: 41, count: 1 }], items, new Map());
     expect(priceComposedBuild({ ...base, addonLines: unpriced }).ok).toBe(false);
   });
 
   it("ships inside the pillow beside the fillings, out of stock and into its cost", () => {
-    // The build ships it as a filling line; its price is added on top (above).
     const costs = new Map([
       [55, 4],
       [41, 15],
@@ -190,11 +179,9 @@ describe("its well", () => {
     expect(ring).toHaveLength(40);
     const topAt = (x: number) => Math.min(...ring.filter((p) => Math.abs(p[0] - x) < 6).map((p) => p[1]));
     const bottom = Math.max(...ring.map((p) => p[1]));
-    // The rims stand near full height; the middle is sewn down by about the well's depth.
     expect(topAt(150)).toBeLessThan(box.y + 8);
     expect(topAt(200) - box.y).toBeGreaterThan(well.depth * box.h * 0.8);
     expect(bottom).toBeCloseTo(box.y + box.h, 0);
-    // The slab drawing dips the same way, and a well of no depth is the plain cushion.
     expect(pouchPath(box, 1, { well })).not.toBe(pouchPath(box, 1));
     expect(pouchPath(box, 1, { well: { width: 0.3, depth: 0 } })).toBe(pouchPath(box, 1));
   });
@@ -208,7 +195,6 @@ describe("its well", () => {
     expect(c.cx).toBeCloseTo(60, 0);
     expect(c.cy).toBeCloseTo(60, 0);
     expect(c.r).toBeCloseTo(16, 0);
-    // A pad squeezed front ↔ back keeps its well, up to what its length holds.
     expect(earWellCircle(outline(100, 30), 0.6)!.r).toBeCloseTo(12, 0);
     expect(earWellCircle(outline(100, 80), 0)).toBeNull();
   });

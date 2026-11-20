@@ -18,23 +18,6 @@ import { cn } from "@/lib/utils";
 import { UNDATED_TITLE } from "./lifecycle-stage-badge";
 import { stackedPartStyle } from "./stacked-bar";
 
-/**
- * The Customer lifecycle on the Customers page (owner, 2026-10-31): one chart
- * of every Customer's **Lifecycle stage** and the sub-status within it. Each
- * row is a stage, in funnel order *Lead > New > Loyal > At risk > Lost*; its
- * bar is the stage's share of all Customers, split into its sub-statuses.
- * Choosing a row filters the list below to that stage.
- *
- * Colour: each stage keeps its badge's hue (blue New, green Loyal, amber At
- * risk, red Lost; Lead recedes in gray), and a stage's sub-statuses are an
- * ordinal ramp of that hue, more ink further along. Every ramp is validated
- * (monotone lightness, visible steps, light end ≥ 2:1) on the card in both
- * modes. Hatching marks *no dates yet*: placed by the Shopify-era order count.
- * The counts beside and under each bar are the table view: nothing is read
- * from colour alone.
- */
-
-/** The CSS name of a stage's hue (Tailwind reads `_` in a class as a space). */
 const HUE: Record<LifecycleStage, string> = { lead: "lead", new: "new", loyal: "loyal", at_risk: "risk", lost: "lost" };
 
 export const LIFECYCLE_PALETTE_CLASS =
@@ -53,20 +36,13 @@ function fill(stage: LifecycleStage, shade: LifecycleShade, hatched: boolean): C
 }
 
 export interface LifecycleBarPart {
-    /** The sub-status, or `track` for the rest of the Customers. */
     key: LifecyclePartKey | "track";
     shade: LifecycleShade;
-    /** *No dates yet*. */
     hatched: boolean;
-    /** Fractions of every Customer. */
     from: number;
     to: number;
 }
 
-/**
- * A stage's bar, left to right: each sub-status, its dated Customers then
- * those with no dates yet, then the empty track. Empty parts are left out.
- */
 export function lifecycleBarParts(stage: Pick<LifecycleStageSummary, "parts" | "customers">, total: number): LifecycleBarPart[] {
     if (total <= 0) return [{ key: "track", shade: 1, hatched: false, from: 0, to: 1 }];
     const out: LifecycleBarPart[] = [];
@@ -86,17 +62,14 @@ export function lifecycleBarParts(stage: Pick<LifecycleStageSummary, "parts" | "
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
-/** The parts a row names under its bar: the stage's sub-statuses with anyone in them. */
 function namedParts(row: LifecycleStageSummary): LifecyclePart[] {
     return row.parts.length > 1 ? row.parts.filter((p) => p.customers > 0) : [];
 }
 
-/** "With no dates yet" beside the sub-statuses, where it is not one of them (Loyal). */
 function undatedWithin(row: LifecycleStageSummary): number {
     return row.parts.filter((p) => !p.undatedPart).reduce((t, p) => t + p.undated, 0);
 }
 
-/** The row as one sentence: the link's name, and what the tooltip says first. */
 export function lifecycleRowSummary(row: LifecycleStageSummary): string {
     const parts = namedParts(row).map((p) => `${p.label} ${n(p.customers)}`);
     const within = undatedWithin(row);
@@ -127,7 +100,6 @@ function LifecycleBar({ row, total }: { row: LifecycleStageSummary; total: numbe
                             className={cn(
                                 "absolute inset-y-0",
                                 p.key === "track" && "bg-muted",
-                                // Square at the baseline, a 4px round on the data end and on the track's end.
                                 (i === lastData || p.key === "track") && "rounded-r-[4px]",
                                 p.key === "track" && i === 0 && "rounded-l-[4px]",
                             )}
@@ -163,7 +135,6 @@ function LifecycleBar({ row, total }: { row: LifecycleStageSummary; total: numbe
     );
 }
 
-/** Under the bar: each sub-status with anyone in it, then those with no dates yet within them. */
 function PartsLegend({ row }: { row: LifecycleStageSummary }) {
     const named = namedParts(row);
     const within = undatedWithin(row);
@@ -190,11 +161,6 @@ const ROW_GRID =
     "grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 " +
     "@4xl:grid-cols-[15rem_minmax(0,1fr)_5.5rem_4rem] @4xl:items-start @4xl:gap-x-5 @4xl:gap-y-0";
 
-/**
- * The chart. Below a 56rem card each row stacks: the stage and its count, the
- * bar, then its sub-statuses; from 56rem it is a table with the bar in the
- * middle.
- */
 export function LifecycleChart({
     summary,
     activeStage,
@@ -202,7 +168,6 @@ export function LifecycleChart({
     onChooseStage,
 }: {
     summary: LifecycleSummary;
-    /** The stage the list is filtered to, alone; its row reads as chosen. */
     activeStage: LifecycleStage | null;
     stageHref: (stage: LifecycleStage) => string;
     onChooseStage: (stage: LifecycleStage) => void;
@@ -275,10 +240,6 @@ export function LifecycleChart({
     );
 }
 
-/**
- * The card above the Customers list, with `customers`. Phones open on a
- * one-line summary; the chart is a tap away.
- */
 export function LifecycleCard({
     summary,
     activeStage,

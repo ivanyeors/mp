@@ -13,7 +13,6 @@ async function _getCategoryTree(): Promise<ProductCategory[]> {
   if (error) return [];
   const categories = (data ?? []) as ProductCategory[];
 
-  // Build tree from flat list
   const map = new Map<string, ProductCategory>();
   const roots: ProductCategory[] = [];
 

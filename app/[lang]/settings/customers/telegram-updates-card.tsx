@@ -26,18 +26,9 @@ import {
 
 export type TelegramUpdatesCardData = {
   settings: TelegramUpdatesSettings;
-  /** Settings → General → Review SLA's Telegram reminder switch. */
   heldReminderTelegram: boolean;
 };
 
-/**
- * Customers → Settings → Telegram updates (CRM slice 14): a switch per type,
- * the Weekly summary's day, and *Send test*.
- *
- * Everyone with `customers` sees it. Without `customers-edit` it is read-only;
- * the online Result switch also needs `results`. The API refuses the same
- * changes, so this only spares people a button that would fail.
- */
 export function TelegramUpdatesCard({
   canEdit,
   canEditOnlineResult,

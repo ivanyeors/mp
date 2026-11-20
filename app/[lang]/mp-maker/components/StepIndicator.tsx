@@ -28,7 +28,6 @@ export function StepIndicator() {
 
         return (
           <div key={s.key} className="flex items-center flex-1 last:flex-initial">
-            {/* Dot + label */}
             <div className="flex flex-col items-center gap-1 min-w-0">
               <div className="relative">
                 <div
@@ -60,7 +59,6 @@ export function StepIndicator() {
               </span>
             </div>
 
-            {/* Connecting line */}
             {idx < steps.length - 1 && (
               <div className="flex-1 h-[2px] bg-muted mx-1.5 mt-[-16px] relative overflow-hidden rounded-full">
                 <motion.div

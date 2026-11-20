@@ -18,15 +18,9 @@ const TestSchema = z.object({
   destination: QuoteDestinationSchema,
   profile: z.enum(["pillow", "bolster", "accessory"]).default("pillow"),
   quantity: z.number().int().min(1).max(10).default(1),
-  /** The unsaved form, so Staff can try settings before saving them. Defaults to the saved row. Boxes are always the saved doc's. */
   settings: ShippingSettingsSchema.optional(),
 });
 
-/**
- * Settings → Shipping "Test a quote": today's live rates for a sample parcel,
- * every courier with what it costs us, and what each active method would charge.
- * Always fresh — this is how Staff find a courier service id to pin.
- */
 export async function POST(req: Request) {
   const denied = await requireAdmin("shipping");
   if (denied) return denied;
@@ -45,7 +39,6 @@ export async function POST(req: Request) {
     settings = parseShippingSettings(data as Record<string, unknown> | null);
   }
 
-  // What shop checkout would offer, which never includes Self-collect.
   const methods = ((await readShippingMethods(false, destination.country).catch(() => [])) as ShippingMethod[]).filter(
     (m) => !isSelfCollect(m),
   );

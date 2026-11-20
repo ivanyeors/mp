@@ -3,12 +3,6 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { ZONE_TINTS, bounds, fitDistance, partFacts, partLabel } from "@/lib/showroom/describe";
 import type { ShowroomUnit, Vec3, ViewerPart } from "@/lib/showroom/types";
 
-/**
- * The showroom's three.js scene, kept out of React so the page can load it
- * (and three.js) only when the viewer mounts. The page drives it through
- * `update` and hears about the part under the pointer through `onPick`.
- */
-
 export type SceneOptions = {
   mode: "materials" | "zones";
   cutaway: boolean;
@@ -38,7 +32,7 @@ const THEME = {
   dark: { edge: "#171b1e", dim: "#80b4e4", grid: "#323b40" },
 };
 const HIGHLIGHT = "#d9932a";
-const WALK_SPEED = 3; // m/s, x2.5 with Shift
+const WALK_SPEED = 3;
 
 const TAG_ZONE =
   "absolute left-0 top-0 whitespace-nowrap rounded border border-border bg-background/85 px-1.5 py-1 text-[11px] font-semibold uppercase leading-none tracking-wider text-foreground shadow-sm";
@@ -74,11 +68,10 @@ export function createShowroomScene(
   controls.dampingFactor = 0.09;
   controls.minDistance = 0.3;
   controls.maxDistance = 90;
-  controls.maxPolarAngle = Math.PI * 0.49; // never below the target, so never under the floor
-  controls.screenSpacePanning = false; // pan slides along the floor
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.screenSpacePanning = false;
   controls.zoomToCursor = true;
 
-  // Light in physical units (three r155+): the old 0-1 intensities times pi.
   scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa09a, 2.2));
   const sun = new THREE.DirectionalLight(0xffffff, 2.25);
   const [cx, , cz] = unit.home.target;
@@ -100,7 +93,6 @@ export function createShowroomScene(
   scene.add(ground);
   let grid: THREE.GridHelper | null = null;
 
-  // ---- the model: one group coloured by material, one by zone ----
   const edgeMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.5 });
   const frameMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.95 });
 
@@ -108,7 +100,7 @@ export function createShowroomScene(
     const indexed = new THREE.BufferGeometry();
     indexed.setAttribute("position", new THREE.Float32BufferAttribute(p.position, 3));
     indexed.setIndex(p.index);
-    const g = indexed.toNonIndexed(); // flat shading: no normals shared across corners
+    const g = indexed.toNonIndexed();
     indexed.dispose();
     g.computeVertexNormals();
     const mat = new THREE.MeshStandardMaterial({
@@ -139,7 +131,6 @@ export function createShowroomScene(
   scene.add(matGroup, zoneGroup);
   const meshes = () => (opts.mode === "zones" ? zoneGroup : matGroup).children as THREE.Mesh[];
 
-  // ---- dimension chains and tags ----
   const dimMat = new THREE.LineBasicMaterial();
   const dimGroup = new THREE.Group();
   scene.add(dimGroup);
@@ -164,7 +155,6 @@ export function createShowroomScene(
   ));
   for (const t of unit.tags) tag(t.text, v3(t.at), "zone");
 
-  // ---- options ----
   function apply(next: SceneOptions) {
     const themeChanged = !grid || next.dark !== opts.dark;
     opts = next;
@@ -194,7 +184,6 @@ export function createShowroomScene(
     setPick(null, null);
   }
 
-  // ---- camera ----
   function homePose() {
     const h = unit.home;
     const d = fitDistance(h.halfW, h.halfH, h.fov, camera.aspect);
@@ -218,7 +207,6 @@ export function createShowroomScene(
   }
   controls.addEventListener("start", () => { tween = null; });
 
-  // ---- picking ----
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   let hovered: THREE.Mesh | null = null;
@@ -281,7 +269,6 @@ export function createShowroomScene(
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerleave", onLeave);
 
-  // ---- walking: W A S D / arrows along the floor, E up, Q down, Shift faster ----
   const keys = new Set<string>();
   const WALK_KEYS = new Set(["w", "a", "s", "d", "q", "e", "arrowup", "arrowdown", "arrowleft", "arrowright"]);
   const onKeyDown = (e: KeyboardEvent) => {
@@ -314,7 +301,7 @@ export function createShowroomScene(
     if (keys.has("q")) step.y -= 1;
     if (step.lengthSq() === 0) return;
     step.normalize().multiplyScalar(WALK_SPEED * (fast ? 2.5 : 1) * dt);
-    if (controls.target.y + step.y < 0) step.y = -controls.target.y; // the target stays on or above the floor
+    if (controls.target.y + step.y < 0) step.y = -controls.target.y;
     camera.position.add(step);
     controls.target.add(step);
   }
@@ -323,7 +310,6 @@ export function createShowroomScene(
   host.addEventListener("keydown", onShift);
   host.addEventListener("keyup", onShift);
 
-  // ---- size and loop ----
   function resize() {
     const w = host.clientWidth, h = host.clientHeight;
     if (!w || !h) return;
@@ -361,7 +347,7 @@ export function createShowroomScene(
       const wanted = t.kind === "zone" ? opts.labels : opts.dims;
       proj.copy(t.at).project(camera);
       let vis = wanted && proj.z > -1 && proj.z < 1 && Math.abs(proj.x) < 1.05 && Math.abs(proj.y) < 1.05;
-      if (vis) { // hide a tag that a wall stands in front of
+      if (vis) {
         occ.setFromCamera(new THREE.Vector2(proj.x, proj.y), camera);
         const first = occ.intersectObjects(solids, false)[0];
         vis = !first || first.distance > occ.ray.origin.distanceTo(t.at) - 0.2;

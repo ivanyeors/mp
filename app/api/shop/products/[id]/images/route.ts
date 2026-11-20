@@ -27,7 +27,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const admin = supabaseAdmin();
 
-  // Auto-calculate position if not provided
   let position = parsed.data.position;
   if (position === undefined) {
     const { count } = await admin

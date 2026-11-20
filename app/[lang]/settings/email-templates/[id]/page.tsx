@@ -8,7 +8,6 @@ import { EmailCopyEditor } from "../email-copy-editor";
 
 export const runtime = "nodejs";
 
-/** One email's words: edit, preview each version, test, save or reset (PRD-email-templates). */
 export default async function EmailTemplatePage({ params }: { params: Promise<{ lang: string; id: string }> }) {
     const { lang, id } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

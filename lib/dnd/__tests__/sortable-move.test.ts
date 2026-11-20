@@ -5,7 +5,6 @@ import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move
 const items = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
 const idOf = (item: { id: string }) => item.id;
 
-/** A drag-end event as `@dnd-kit/dom/sortable` emits it. */
 function dragEnd(
   source: { id: string; index?: number },
   target: { id: string },
@@ -16,8 +15,6 @@ function dragEnd(
 
 describe("sortableMove", () => {
   it("uses the projected index when dnd-kit has retargeted the drop onto the source", () => {
-    // The regression: after a real reorder dnd-kit calls setDropTarget(source.id), so
-    // target === source. Deriving the destination from `target` reordered nothing.
     const next = sortableMove(items, dragEnd({ id: "a", index: 2 }, { id: "a" }), idOf);
     expect(next?.map(idOf)).toEqual(["b", "c", "a", "d"]);
   });

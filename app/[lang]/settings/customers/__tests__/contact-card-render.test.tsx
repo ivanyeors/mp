@@ -5,11 +5,6 @@ import type { CustomerOverviewRow } from "@/lib/crm/customer-overview";
 import type { ContactFacts, ContactFactsResult } from "@/lib/crm/contact-status";
 import { DEFAULT_CUSTOMER_FILTERS, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
-/**
- * Contact and sign-in status (CRM slice 11): the Customer page's card, and the
- * marks in the list's Account column. Every line comes from a fact.
- */
-
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "c1" }),
   usePathname: () => "/en-US/settings/customers",
@@ -20,7 +15,6 @@ const { ContactCard, SignInFacts, signInSummary } = await import("../[id]/custom
 const { CustomersClient } = await import("../customers-client");
 const { CustomerFilterGroup } = await import("../customer-filters-panel");
 
-/** One group of the mega filter, as it renders inside the open panel. */
 const groupFor = (
   group: "stage" | "purchases" | "reach" | "account" | "reviews",
   filters: Partial<CustomerListFilters>,
@@ -111,7 +105,6 @@ describe("Contact details card and the Sign-in row: email and sign-in", () => {
       <ContactCard customer={member} headerAction={<button>Edit</button>} emailActions={<button>Email</button>} mobileActions={<button>WhatsApp</button>} />,
     );
     for (const label of [">Edit<", ">Email<", ">WhatsApp<"]) expect(withButtons, label).toContain(label);
-    // No number, no WhatsApp button, even when one is handed in.
     expect(renderToString(<ContactCard customer={{ ...member, phone: null }} mobileActions={<button>WhatsApp</button>} />)).not.toContain(">WhatsApp<");
     const editing = renderToString(<ContactCard customer={member} editForm={<form>the form</form>} />);
     expect(editing).toContain("the form");
@@ -267,7 +260,6 @@ describe("Customers list: Contact marks and filters", () => {
     expect(html).toContain('aria-label="Mobile"');
     expect(html).toContain("Google linked");
     expect(html).toContain("Mobile missing");
-    // Not in the toolbar any more: the toolbar is search, sort and Filters.
     expect(list([])).not.toContain('aria-label="Google"');
   });
 });

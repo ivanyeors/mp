@@ -9,11 +9,6 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/**
- * One Telegram link: set its actions, switch it on or off, issue a new link
- * code, or unlink the Telegram account. One change per request, so each is
- * its own Audit Log entry. `users` permission.
- */
 const PatchSchema = z.union([
   z.object({ actions: z.array(z.enum(TELEGRAM_ACTIONS as [TelegramAction, ...TelegramAction[]])).max(10) }).strict(),
   z.object({ is_active: z.boolean() }).strict(),
@@ -56,7 +51,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
 }
 
-/** Remove a profile's Telegram access entirely. */
 export async function DELETE(_req: Request, { params }: Ctx) {
   let ctx;
   try {

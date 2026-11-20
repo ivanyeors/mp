@@ -6,14 +6,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { docFromValue, richTextFromWords, richTextWords, valueFromDoc, type DocNode, type RichTextValue } from "../rich-text-doc";
 import { matchVariables, richTextExtensions, type RichTextMarks } from "../rich-text-schema";
 
-/**
- * TipTap → runs (PRD-campaign-email-editor slice 04): the input's value maps
- * to TipTap's document and back unchanged, and whatever is pasted keeps only
- * what the page allows. The paste goes through ProseMirror's own clipboard
- * parsing, as a browser's paste does.
- */
-
-// jsdom has no ClipboardEvent; ProseMirror's paste makes one to hand its handlers.
 globalThis.ClipboardEvent ??= class extends Event {
   clipboardData = null;
 } as unknown as typeof ClipboardEvent;
@@ -111,7 +103,6 @@ describe("pasting", () => {
           { text: ", not an http page or a script." },
         ],
       },
-      // A table's cells, as words: there is no table to keep.
       { kind: "p", runs: [{ text: "A table cellsome code" }] },
       {
         kind: "bullets",
@@ -154,7 +145,6 @@ describe("words with their Variables written {name} (PRD-campaign-email-editor s
     expect(richTextFromWords("", VARIABLES)).toEqual([]);
     for (const words of ["{first_name}{first_name}", "Hi {first_name}!", "No names", "One\nline\n\nTwo {first_name}"]) {
       expect(richTextWords(richTextFromWords(words, VARIABLES))).toBe(words);
-      // Through TipTap's document and back, as the input holds it.
       expect(richTextWords(read(editor(richTextFromWords(words, VARIABLES))))).toBe(words);
     }
   });

@@ -8,12 +8,6 @@ import { TELEGRAM_ACTIONS, type TelegramAction } from "@/lib/telegram/roles";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Users & permissions → Telegram: Telegram links, one per Staff profile, each
- * with the review-card actions granted to it. The `users` permission, like the
- * rest of the page: a review manager speaks for the business on Google Maps.
- */
-
 const CreateSchema = z.object({
   staff_profile_id: z.string().uuid(),
   actions: z.array(z.enum(TELEGRAM_ACTIONS as [TelegramAction, ...TelegramAction[]])).max(10),
@@ -35,7 +29,6 @@ export async function GET() {
   }
 }
 
-/** Link a Staff profile to Telegram and issue its first one-time code. */
 export async function POST(req: Request) {
   let ctx;
   try {

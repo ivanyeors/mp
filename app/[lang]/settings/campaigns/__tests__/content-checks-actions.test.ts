@@ -1,16 +1,7 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Campaign } from "@/lib/email-campaigns/rules";
-
-/**
- * The email's checks through the page's actions (PRD-campaign-email-editor
- * slice 11): *Ready to send?* reuses a link's answer from the last ten
- * minutes, *Check again* and the wave's own start ask every link again, so a
- * link that died since the save holds the wave; and the site asks links
- * through the public-only request.
- */
 
 const ID = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
 const CAMPAIGN: Campaign = {

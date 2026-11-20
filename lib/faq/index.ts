@@ -115,7 +115,6 @@ export async function getFaqPageData(
   }));
 }
 
-/** Admin: all categories including hidden */
 export async function getAllFaqCategoriesAdmin(): Promise<FaqCategoryRow[]> {
   await ensureFaqSeeded();
   const admin = supabaseAdmin();
@@ -131,7 +130,6 @@ export async function getAllFaqCategoriesAdmin(): Promise<FaqCategoryRow[]> {
   return (data ?? []) as FaqCategoryRow[];
 }
 
-/** Admin: all items including hidden */
 export async function getAllFaqItemsAdmin(): Promise<FaqItemRow[]> {
   await ensureFaqSeeded();
   const admin = supabaseAdmin();
@@ -147,7 +145,6 @@ export async function getAllFaqItemsAdmin(): Promise<FaqItemRow[]> {
   return (data ?? []) as FaqItemRow[];
 }
 
-/** Strip markdown for JSON-LD plain text */
 export function stripMarkdownForSchema(text: string): string {
   return text
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")

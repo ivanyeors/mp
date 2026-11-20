@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, GOOGLE_REVIEW_DEFAULTS, type Row } from "./fake-supabase";
 
-/**
- * Answering a Google review from the Customer page (PRD-customer-page-journey
- * slice 03): a redraft is kept only while the review still waits, *Mark
- * replied* is for Places reviews only and only once, and an open Telegram card
- * is redrawn after either. Nothing here ever posts to Google.
- */
-
 const REVIEW_ID = "3f2b7c1e-8a4d-4e9b-9c11-0123456789ab";
 const CARD = 77;
 

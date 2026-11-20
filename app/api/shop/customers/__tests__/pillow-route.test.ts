@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * ADR 0042 j: the Customer's pillow. Without a link it is the latest fitting's
- * configuration type matched to its Filling Template; a role with
- * customers-edit links another size and template, or removes the link to go
- * back to the fitting's. A view-only role changes nothing. Every name and id
- * here is made up; the template names follow the catalog's.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -27,7 +19,6 @@ vi.mock("@/lib/supabase/server", async () => {
       return {
         from: (table: string) => {
           const q = fake.from(table) as ReturnType<typeof fake.from> & { upsert?: unknown };
-          // The shared fake has no upsert; customer_pillows is keyed by `customer_id`.
           q.upsert = async (row: Record<string, unknown>) => {
             const list = (h.db[table] ??= []);
             const at = list.findIndex((r) => r.customer_id === row.customer_id);
@@ -161,13 +152,11 @@ describe.each(["crm-editor", "owner"])("a role with customers-edit (%s)", (roleI
       size: "S",
       template: { id: 74, name: "Type-8a", keys: ["S"] },
       link: { linkedBy: "Mei" },
-      // What the record says stays beside it.
       fitting: { id: "f-2", label: "Mpillow S · T12 · S-LN" },
       match: { template: { id: 57 }, otherSize: true },
     });
     expect(pillow.placements).toHaveLength(1);
     expect(pillow.items.map((i: { id: number }) => i.id)).toEqual([69]);
-    // Change offers active pillow filling templates only.
     expect(pillow.templates.map((t: { id: number }) => t.id).sort()).toEqual([57, 74]);
 
     expect(h.db.customer_pillows).toEqual([

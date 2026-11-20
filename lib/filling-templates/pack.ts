@@ -1,16 +1,8 @@
-/** A Filling Template's pack list, read from the database: what one build of it uses. */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { derivePackList } from "@/lib/spatial-fillings/core";
 
 export type FillingPackLine = { item_id: number; quantity: number };
 
-/**
- * The fillings one build of a Filling Template uses. Placements are the truth
- * when the template has them (ADR 0008); its flat `bom_template_lines` are the
- * fallback for a template that was never placed, and are left stale once it is.
- * This is how a Result's fillings flatten at Accept (`loadAssignedBuild`).
- */
 export async function loadFillingTemplatePack(
   admin: SupabaseClient,
   templateId: number,

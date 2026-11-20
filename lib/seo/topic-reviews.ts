@@ -1,16 +1,7 @@
 import type { GuideTopic } from "@/lib/seo/guides-content";
 
-/**
- * Real customer voices on editorial pages (PRD-search-visibility slice 12).
- * Approved store reviews and Google reviews, matched to a guide's topic by
- * keywords in the review text. Rendered as quotes only — never as Review
- * JSON-LD: self-serving and third-party review markup is against Google's
- * structured-data policy.
- */
-
 export type TopicReview = {
   quote: string;
-  /** "Jun T." — never a full name. */
   name: string;
   rating: number | null;
   date: string | null;
@@ -48,7 +39,6 @@ export function trimQuote(text: string): string {
   return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), MAX_QUOTE - 40)).replace(/[,;:\s]+$/, "")}…`;
 }
 
-/** Best on-topic reviews: most keyword hits, then rating, then recency. Off-topic reviews never fill in. */
 export function selectTopicReviews(reviews: RawReview[], topic: GuideTopic, limit = 4): TopicReview[] {
   const keywords = TOPIC_KEYWORDS[topic];
   return reviews

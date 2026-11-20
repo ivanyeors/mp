@@ -3,14 +3,6 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_CAMPAIGN_DRAFT, type Campaign } from "@/lib/email-campaigns/rules";
 
-/**
- * Arranging the Email flow and *Add as a draft* (PRD-email-funnel slice 07):
- * guarded by `campaigns`; planned on facts read now, so a started campaign is
- * refused whatever the page says; a Segment with the new filters is reused,
- * one is created only when missing and only by someone who may; an audit row
- * per campaign; and nothing on the way reaches the sending code.
- */
-
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
 type Seg = { id: string; name: string; params: Record<string, string>; needsReview: boolean };
@@ -64,7 +56,6 @@ vi.mock("@/lib/email-campaigns/store", () => ({
   }),
   createCampaign: vi.fn(async (_admin: unknown, draft: Record<string, unknown>) => {
     h.newCampaigns.push(draft);
-    // Saved, it is live: the next read lists it.
     const saved = { ...draft, id: id(900 + h.newCampaigns.length - 1), lockedAt: null, archivedAt: null, createdAt: "2026-11-19T00:00:00Z" };
     h.campaigns.push({ campaign: saved as unknown as Campaign, stats: { handed: 0, firstSentAt: null, lastSentAt: null } });
     return saved.id;
@@ -91,7 +82,6 @@ const camp = (n: number, name: string, segment: number, started = false) => ({
 
 beforeEach(() => {
   h.permissions = new Set(["campaigns", "customers-edit"]);
-  // Lead: A → B (got A) → C (clicked B), all drafts.
   h.segments = [
     { id: id(1), name: "Lead", params: { stage: "lead" }, needsReview: false },
     { id: id(2), name: "got A", params: { campaign: `${id(10)}:sent` }, needsReview: false },
@@ -124,11 +114,9 @@ describe("moveFunnelEmail", () => {
   });
 
   it("swaps two drafts: reuses the Segment found by its filters, creates the missing one, an audit row per campaign", async () => {
-    // A Segment with C's new filters exists under another name: it is reused, not duplicated.
     h.segments.push({ id: id(4), name: "Anyone who got A", params: { campaign: `${id(10)}:sent` }, needsReview: false });
     const res = await moveFunnelEmail(swap);
     expect(res).toEqual({ ok: true, moved: [id(12), id(11)] });
-    // C → the first Segment with `campaign=A:sent` (got A); B → a new one reading C.
     expect(h.pointed[0]).toEqual([id(12), id(2)]);
     expect(h.created).toEqual([{ name: "Lead · got “C”", params: { campaign: `${id(12)}:sent` } }]);
     expect(h.pointed[1]).toEqual([id(11), id(500)]);
@@ -223,13 +211,11 @@ describe("the module graph", () => {
     expect(reached.size).toBeGreaterThan(10);
     const sending = [...reached].map((f) => path.relative(root, f)).filter((f) => /(^|\/)(send-flow|sender|keep-sending-run)\.tsx?$/.test(f));
     expect(sending).toEqual([]);
-    // The walker sees the sending code where it is imported: the renders' actions do.
     const renders = [...importsOf(root, path.resolve(__dirname, "../actions.ts"))].map((f) => path.relative(root, f));
     expect(renders).toContain("lib/email-campaigns/sender.ts");
   });
 });
 
-/** Every project file `entry` imports, followed to the end (type-only imports left out: they are erased). */
 function importsOf(root: string, entry: string): Set<string> {
   const resolve = (from: string, spec: string) => {
     const base = spec.startsWith("@/") ? path.join(root, spec.slice(2)) : spec.startsWith(".") ? path.resolve(path.dirname(from), spec) : null;

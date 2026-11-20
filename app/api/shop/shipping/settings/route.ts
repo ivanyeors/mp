@@ -14,12 +14,10 @@ export type ShippingSettingsResponse = {
   ok: true;
   settings: ShippingSettings;
   easyship: {
-    /** EASYSHIP_API_TOKEN is set. The token itself never leaves the server. */
     tokenConfigured: boolean;
     environment: "sandbox" | "production" | null;
     webhookSecretConfigured: boolean;
     webhookUrl: string;
-    /** A default sender address exists on Couriers › Addresses. */
     hasSender: boolean;
     missingOrigin: string[];
   };
@@ -27,7 +25,6 @@ export type ShippingSettingsResponse = {
 
 async function respond(settings: ShippingSettings) {
   const config = easyshipConfig();
-  // A failed courier-doc read shows as "no sender" instead of failing the whole response.
   const sender = await readSenderAddress().catch((err) => {
     console.error("[shipping] Could not read the sender address:", err);
     return null;
@@ -47,7 +44,6 @@ async function respond(settings: ShippingSettings) {
   return NextResponse.json(body);
 }
 
-/** Read uncached: Staff editing the settings must see the row, not a five-minute-old copy. */
 export async function GET() {
   const denied = await requireAdmin("shipping");
   if (denied) return denied;

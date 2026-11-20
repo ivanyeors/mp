@@ -17,32 +17,14 @@ import { useCampaignVariables } from "../blocks/variables";
 import { useCampaignAi } from "./ai-context";
 import type { RewriteOffer } from "./refine-state";
 
-/**
- * ✨ Rewrite's parts on a heading or text block (PRD-campaign-email-editor
- * slice 10), loaded after the page, not with it: the button with its
- * labelled choices and *Something else…*, and the rewrite shown in the block,
- * the original struck through beside it, with *Replace*, *Try again* and
- * *Keep mine*. The ideas under the subject and the preview line are
- * editor-ai.tsx's, beside ✨ Generate's.
- */
-
-/** The labelled choices, in the order Staff read them; *Something else…* is its own line below. */
 const CHOICES: RewriteAction[] = ["shorter", "warmer", "clearer", "fix_grammar"];
 
-/**
- * *✨ Rewrite* on a heading or text block's card, and its popover: the
- * labelled choices, and *Something else…* in Staff's own words (one line, at
- * most 120 characters, sent as data). While Claude writes, the button says
- * so, with Stop; when it can't run, it says why.
- */
 export function RewriteMenu({
   id,
   name,
   block,
 }: {
-  /** The button's id: focus comes back to it after Replace or Keep mine. */
   id: string;
-  /** The block's name: "Heading, block 2 of 5". */
   name: string;
   block: RewritableBlock;
 }) {
@@ -115,7 +97,6 @@ export function RewriteMenu({
   );
 }
 
-/** A block's words as they read, not editable: a heading's one line, or a text block's paragraphs. */
 function BlockWords({ block, labelledBy }: { block: RewritableBlock; labelledBy: string }) {
   const variables = useCampaignVariables();
   const value = useMemo(() => (block.type === "heading" ? richTextFromWords(block.text, variables) : richTextOf(block.paragraphs)), [block, variables]);
@@ -130,13 +111,6 @@ function BlockWords({ block, labelledBy }: { block: RewritableBlock; labelledBy:
   );
 }
 
-/**
- * Claude's rewrite in the block itself: the original struck through beside
- * it (stacked on a narrow card), and *Replace*, *Try again*, *Keep mine*.
- * Replace is one change that Undo takes back; Keep mine changes nothing.
- * Focus goes to Replace when the rewrite arrives, and back to *✨ Rewrite*
- * after.
- */
 export function RewriteOfferView({
   offer,
   idPrefix,

@@ -10,18 +10,8 @@ export type WorkingAsState = {
   current: string | null;
 };
 
-/**
- * Dispatched on `window` once the switch has been saved, so what depends on
- * who is at the device (the Customers follow-ups badge, the *Mine* list)
- * re-reads without a page load.
- */
 export const WORKING_AS_CHANGED_EVENT = "mp:working-as-changed";
 
-/**
- * "Working as <name>" on a login with more than one Staff profile: who is at
- * this device. New Results default their "measured by" to it and the Audit Log
- * names it. It never changes what the login can see.
- */
 export function WorkingAsPicker({ initial }: { initial: WorkingAsState }) {
   const [current, setCurrent] = useState(initial.current ?? "");
   if (initial.profiles.length < 2) return null;

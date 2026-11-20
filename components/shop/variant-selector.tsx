@@ -10,20 +10,15 @@ interface VariantSelectorProps {
   onSelect: (variantId: string) => void;
 }
 
-/**
- * Given the currently selected variantId and an option axis being changed,
- * find the best matching variant that preserves other selections where possible.
- */
 function findBestVariant(
   variants: ProductVariant[],
   currentVariantId: string | undefined,
-  axisIndex: number, // 0 = option1, 1 = option2, 2 = option3
+  axisIndex: number,
   newValue: string
 ): ProductVariant | null {
   const current = variants.find((v) => v.id === currentVariantId);
   const optionKeys = ["option1", "option2", "option3"] as const;
 
-  // Build a preference list: try to preserve selections on other axes
   const candidates = variants.filter((v) => {
     const key = optionKeys[axisIndex];
     return v[key] === newValue;
@@ -34,7 +29,6 @@ function findBestVariant(
 
   if (!current) return candidates[0];
 
-  // Score by how many other option values match the current variant
   const scored = candidates.map((v) => {
     let score = 0;
     optionKeys.forEach((key, i) => {
@@ -55,14 +49,12 @@ export function VariantSelector({
 }: VariantSelectorProps) {
   const activeVariants = variants.filter((v) => v.is_active);
 
-  // Determine option axes: prefer named options, fall back to deriving from variant data
   type Axis = { name: string; values: string[]; axisIndex: number };
   const axes: Axis[] = [];
 
   const optionKeys = ["option1", "option2", "option3"] as const;
 
   optionKeys.forEach((key, i) => {
-    // Collect unique non-null values across all active variants for this slot
     const seen = new Set<string>();
     activeVariants.forEach((v) => {
       const val = v[key];
@@ -70,11 +62,9 @@ export function VariantSelector({
     });
     if (seen.size === 0) return;
 
-    // Name from the options array if provided
     const optionDef = options?.find((o) => o.position === i + 1);
     const name = optionDef?.name ?? `Option ${i + 1}`;
 
-    // Preserve order from ProductOption.values if available, else sort
     const orderedValues = optionDef?.values?.length
       ? optionDef.values.filter((val) => seen.has(val))
       : [...seen].sort();
@@ -82,7 +72,6 @@ export function VariantSelector({
     axes.push({ name, values: orderedValues, axisIndex: i });
   });
 
-  // Derive current selections per axis from the selected variantId
   const selectedVariant = activeVariants.find((v) => v.id === selected);
   const currentSelections: Record<number, string | null> = {};
   axes.forEach(({ axisIndex }) => {
@@ -109,8 +98,6 @@ export function VariantSelector({
             {values.map((value) => {
               const isSelected = currentSelections[axisIndex] === value;
 
-              // Check if any active variant exists with this value on this axis
-              // and respects current selections on other axes (if possible)
               const optKey = optionKeys[axisIndex];
               const matchingVariants = activeVariants.filter(
                 (v) => v[optKey] === value

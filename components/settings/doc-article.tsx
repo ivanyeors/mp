@@ -3,10 +3,6 @@ import { Info } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { DocBlock, DocSection } from "@/lib/admin-docs/types";
 
-/**
- * Admin Panel → Documentation: one guide's sections, with a contents list of
- * anchors at the top. `to` adds the locale to a link.
- */
 export function DocArticle({ sections, to }: { sections: DocSection[]; to: (href: string) => string }) {
     return (
         <div className="space-y-10">
@@ -17,7 +13,6 @@ export function DocArticle({ sections, to }: { sections: DocSection[]; to: (href
                 <ol className="mt-1 grid text-sm sm:grid-cols-2 md:mt-2 md:gap-1">
                     {sections.map((s, i) => (
                         <li key={s.id}>
-                            {/* Phone: each entry is a 44px row with a pressed tint, not a 17px line of text. */}
                             <a
                                 href={`#${s.id}`}
                                 className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline max-md:-mx-2 max-md:flex max-md:min-h-11 max-md:items-center max-md:rounded-md max-md:px-2 max-md:active:bg-press md:active:opacity-60"

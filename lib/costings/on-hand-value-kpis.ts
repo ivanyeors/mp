@@ -1,5 +1,3 @@
-/** As-of-now on-hand stock value KPIs (Costings home; same math as former Analytics strip). */
-
 export type OnHandPricedUnit = {
   cost: number | null;
   msrp: number | null;
@@ -14,7 +12,6 @@ export type OnHandValueKpis = {
   totalItems: number;
 };
 
-/** Inventory at cost / potential MSRP / unrealized margin / weighted margin % from active items × prices × on_hand. */
 export function computeOnHandValueKpis(items: OnHandPricedUnit[]): OnHandValueKpis {
   let costValue = 0;
   let msrpValue = 0;

@@ -1,14 +1,6 @@
 import { canonicalAt } from "@/lib/crm/timeline/merge";
 import type { TimelineBatch, TimelineEntry } from "@/lib/crm/timeline/types";
 
-/**
- * Bounded reads for timeline adapters. A stream is one query over one timestamp
- * column: the newest `limit` rows at or before the cursor, newest first. A row
- * with several dated facts (an order is placed, paid, shipped…) is one stream
- * per column, so an old order delivered yesterday is found by its delivery.
- */
-
-/** The part of a PostgREST filter builder a bounded read uses. */
 export interface BoundedQuery
   extends PromiseLike<{ data: unknown[] | null; error: { message: string } | null }> {
   not(column: string, operator: "is", value: null): BoundedQuery;
@@ -17,7 +9,6 @@ export interface BoundedQuery
   limit(count: number): BoundedQuery;
 }
 
-/** The newest `limit` rows whose `column` is set and at or before `before`. Throws on a query error. */
 export async function newestRows<Row>(
   query: BoundedQuery,
   column: string,
@@ -31,10 +22,6 @@ export async function newestRows<Row>(
   return (data ?? []) as Row[];
 }
 
-/**
- * One stream's rows as a batch: an entry per row (or none), and the row's
- * `column` as the floor when the read came back full.
- */
 export function streamBatch<Row extends object>(
   rows: readonly Row[],
   column: keyof Row & string,
@@ -48,7 +35,6 @@ export function streamBatch<Row extends object>(
   };
 }
 
-/** {@link newestRows} then {@link streamBatch}: a whole stream in one call. */
 export async function readStream<Row extends object>(
   query: BoundedQuery,
   column: keyof Row & string,
@@ -59,7 +45,6 @@ export async function readStream<Row extends object>(
   return streamBatch(await newestRows<Row>(query, column, before, limit), column, limit, toEntry);
 }
 
-/** One adapter's streams as one batch: every entry, under the highest floor. */
 export function joinBatches(batches: readonly TimelineBatch[]): TimelineBatch {
   let floor: string | null = null;
   for (const b of batches) {
@@ -69,11 +54,6 @@ export function joinBatches(batches: readonly TimelineBatch[]): TimelineBatch {
   return { entries: batches.flatMap((b) => b.entries), floor };
 }
 
-/**
- * A batch from a capped read of everything a Customer has in one table (their
- * Results, their bookings: a handful each), keeping the entries at or before
- * `before`. When the cap was reached, the oldest row read is the floor.
- */
 export function cappedBatch(
   entries: readonly TimelineEntry[],
   before: string | null,

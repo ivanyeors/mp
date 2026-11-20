@@ -1,13 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { upsertMilestoneRung } from "./milestone-rungs-actions";
 
-/**
- * Admin editor for the milestone rung ladder (#79). Self-contained async server
- * component — reads the rungs and renders a table + a plain server-action form (no
- * client JS). Mounted on the Partner Commissions settings page (which already gates
- * with requireAdminPage('partner-commissions')); the action re-asserts assertAdmin. Values
- * here feed the hub progress bar. Rungs pay no money (ADR 0034).
- */
 type RungRow = {
   tier: number;
   units_threshold: number;
@@ -62,7 +55,6 @@ export async function MilestoneRungsEditor() {
         </table>
       </div>
 
-      {/* Upsert form — plain server action, no client JS. Existing tier updates in place. */}
       <form
         action={upsertMilestoneRung}
         className="mt-6 grid max-w-xl grid-cols-1 gap-4 rounded-lg border p-4 sm:grid-cols-2"

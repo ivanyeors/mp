@@ -5,12 +5,6 @@ import { hasPermission, permissionEntry, permissionForHref, permissionsForRoleRo
 import { defaultEmailCopy } from "@/lib/email/copy";
 import { ORDER_EMAIL_COPY } from "@/lib/email/templates";
 
-/**
- * Email templates is its own key (PRD-email-templates), held by Owner and
- * Admin. The actions validate the words against the email's spec before they
- * save, preview or send a test; a save is one upsert, a reset one delete.
- */
-
 const h = vi.hoisted(() => ({
   permissions: new Set<string>(),
   rows: new Map<string, { template_id: string; copy: unknown; updated_at: string; editor: null }>(),
@@ -39,7 +33,6 @@ vi.mock("@/lib/email/transport", async (orig) => ({
   getDefaultFromAddress: () => "Mpillow <orders@mpillow.com>",
 }));
 
-// The one table, in memory: select by id or all, upsert, delete.
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from: (table: string) => {
@@ -212,7 +205,6 @@ describe("the editor", () => {
       />,
     );
     expect(html).toContain("Order shipped");
-    // Each field is the shared text input, its words as they read until it loads; each Variable is its chip.
     expect(html).toContain('id="copy-heading" role="textbox"');
     expect(html).toContain("<p>On its way!</p>");
     expect(html).toContain("Original: Your order is on its way");

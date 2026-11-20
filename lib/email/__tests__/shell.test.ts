@@ -14,8 +14,6 @@ describe("renderEmailShell", () => {
   });
 
   it("omits the <h1> entirely when no title is given", () => {
-    // Some templates carry their heading as body copy; an empty <h1> would
-    // leave a stray gap and confuse screen readers.
     expect(renderEmailShell({ bodyHtml: "<p>x</p>" })).not.toContain("<h1");
   });
 
@@ -59,7 +57,6 @@ describe("renderEmailShell", () => {
     const staff = renderEmailShell({ bodyHtml: "", audience: "staff" });
     expect(staff).not.toContain("/shipping-refund-policies");
     expect(staff).not.toContain("facebook.com");
-    // The legal line stays on every email.
     expect(staff).toContain("Mellow Life Pte Ltd");
   });
 
@@ -76,12 +73,8 @@ describe("renderEmailShell", () => {
   });
 
   describe("logo header", () => {
-    // The mark is the only brand signal above the fold in most clients, so its
-    // placement and size are asserted rather than left to eyeball review.
     it("sits top-left, declaring alignment for Outlook and for webmail", () => {
       const html = renderEmailShell({ bodyHtml: "" });
-      // Anchor on the <img>, not the class name: `.mp-logo-light` also appears
-      // in the <head> style block, which precedes every <td>.
       const beforeLogo = html.slice(0, html.indexOf('class="mp-logo-light"'));
       const row = beforeLogo.slice(beforeLogo.lastIndexOf("<td "));
       expect(row).toContain('align="left"');
@@ -90,8 +83,6 @@ describe("renderEmailShell", () => {
     });
 
     it("renders both logo variants at LAYOUT.logoSize in attributes and CSS", () => {
-      // Outlook sizes from the width/height ATTRIBUTES and ignores the CSS, so
-      // the two must agree or the logo renders at its intrinsic size there.
       const html = renderEmailShell({ bodyHtml: "" });
       const size = LAYOUT.logoSize;
       for (const cls of ["mp-logo-light", "mp-logo-dark"]) {
@@ -105,8 +96,6 @@ describe("renderEmailShell", () => {
     });
 
     it("keeps the logo large enough to read the stacked wordmark", () => {
-      // The art is a lockup, not a bare glyph: the word "pillow" is about a
-      // fifth of the box, so below ~64px it stops being legible.
       expect(LAYOUT.logoSize).toBeGreaterThanOrEqual(64);
     });
   });
@@ -114,8 +103,6 @@ describe("renderEmailShell", () => {
 
 describe("css()", () => {
   it("does not add px to unitless properties", () => {
-    // font-weight:600px is invalid and is dropped wholesale by the client,
-    // silently flattening every heading back to normal weight.
     expect(css({ "font-weight": 600 })).toBe("font-weight:600");
     expect(css({ opacity: 0 })).toBe("opacity:0");
   });

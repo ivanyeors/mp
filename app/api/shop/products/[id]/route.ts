@@ -19,7 +19,6 @@ const UpdateProductSchema = z.object({
     body: z.string().optional().default(""),
     seo_title: z.string().optional().default(""),
     seo_description: z.string().optional().default(""),
-    // The answer lede under the product's title: left out here, every save from the editor erased it.
     seo_answer: z.string().optional().default(""),
     seo_keywords: z.array(z.string()).optional().default([]),
   })).optional(),
@@ -56,7 +55,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const admin = supabaseAdmin();
   const update: Record<string, unknown> = { ...parsed.data };
 
-  // Auto-set published_at when first publishing
   if (parsed.data.status === "active") {
     const { data: existing } = await admin.from("products").select("published_at").eq("id", id).single();
     if (existing && !existing.published_at) {
@@ -73,16 +71,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     );
   }
 
-  // Push name/description/image (and variant prices) to Stripe once a product is
-  // active. Drafts stay out of Stripe until published.
   const stripe = data.status === "active" ? await syncProductToStripeSafe(id) : undefined;
 
-  // A live page changed, or a page went live or came down.
   if (data.status === "active" || parsed.data.status) after(() => pingIndexNow(productUrls(data.slug)));
 
-  // The sync writes whichever column this environment's key belongs to, so echo it
-  // back under that same key — merging a sandbox id onto `stripe_product_id` would
-  // tell the editor that live is linked when it is not.
   const row = stripe?.result
     ? { ...data, [stripeProductIdColumn()]: stripe.result.stripeProductId }
     : data;

@@ -1,12 +1,3 @@
-/**
- * Server-side reads and writes of Filling Template size membership.
- *
- * Every route that lists, creates or rescopes a Filling Template goes through
- * here, so `bom_template_keys` and the `bom_templates.key` primary can never
- * drift apart. Service-role only (the membership table has RLS on and no
- * policy), exactly like the placement tables.
- */
-
 import type { supabaseAdmin } from "@/lib/supabase/server";
 import {
   normalizeTemplateKeys,
@@ -17,7 +8,6 @@ import {
 
 type Admin = ReturnType<typeof supabaseAdmin>;
 
-/** Membership for a set of templates, as `{ [template_id]: keys }`. One query. */
 export async function loadTemplateKeys(
   admin: Admin,
   templateIds: number[],
@@ -36,10 +26,6 @@ export async function loadTemplateKeys(
   return { ok: true, byId };
 }
 
-/**
- * Template ids serving one key. The list, assign and assist readers all narrow
- * with this instead of `bom_templates.key`, which only carries the primary.
- */
 export async function templateIdsForKey(
   admin: Admin,
   key: string,
@@ -49,13 +35,6 @@ export async function templateIdsForKey(
   return { ok: true, ids: (data ?? []).map((r: { template_id: number }) => Number(r.template_id)) };
 }
 
-/**
- * Refuse a name already taken at any size the template would serve. The DB's
- * legacy unique is on the primary key only, so a name clash introduced by
- * sharing into another size is caught here. Two shares racing into the same
- * size can still both pass — the cost is a duplicate name in one list, which
- * an operator can rename, not corrupt data.
- */
 export async function assertTemplateNameFree(
   admin: Admin,
   opts: { kind: FillingKind; keys: string[]; name: string; excludeId?: number },
@@ -91,12 +70,6 @@ export async function assertTemplateNameFree(
   };
 }
 
-/**
- * Replace a template's membership and re-point its primary key. The only
- * writer: membership rows and `bom_templates.key` move together or not at all,
- * so no caller can leave the primary pointing at a size the template no longer
- * serves.
- */
 export async function setTemplateKeys(
   admin: Admin,
   opts: { templateId: number; kind: FillingKind; keys: readonly string[] },
@@ -105,12 +78,6 @@ export async function setTemplateKeys(
   if (!normalized.ok) return normalized;
   const keys = normalized.keys;
 
-  // Add before pruning, never delete-then-insert. These are two round trips
-  // with no transaction between them, and a failure after a wholesale delete
-  // would leave the template serving NO size — invisible in every list, with
-  // nothing to reconcile it from. Adding first means the worst case is a
-  // template that still serves a size it was meant to drop, which an operator
-  // can see and fix.
   const { error: insErr } = await admin
     .from("bom_template_keys")
     .upsert(
@@ -136,7 +103,6 @@ export async function setTemplateKeys(
     if (delErr) return { ok: false, error: delErr.message };
   }
 
-  // Primary follows the membership so legacy `key` readers stay truthful.
   const { error: upErr } = await admin
     .from("bom_templates")
     .update({ key: primaryTemplateKey(opts.kind, keys) })
@@ -149,17 +115,6 @@ export async function setTemplateKeys(
   return { ok: true, keys };
 }
 
-/**
- * Drop this template as the Default Filling Template of any product card whose
- * size it no longer serves.
- *
- * A default that points at a template out of scope is invisible rather than
- * wrong-looking: the assign hint silently stops appearing, the Configure picker
- * shows "No default configured" over the old template's preview, and the next
- * unrelated BOM save on that card fails validation. Clearing it here — in the
- * one writer that can remove a size — keeps the stored default and the
- * membership that justifies it in step.
- */
 async function clearDefaultsOutsideMembership(
   admin: Admin,
   templateId: number,
@@ -185,7 +140,6 @@ async function clearDefaultsOutsideMembership(
     return { ok: true, clearedKeys: stale };
   }
 
-  // Pillow cards are size×tier, so one dropped size clears both tiers' defaults.
   const { data, error } = await admin
     .from("pillow_products")
     .select("id,size")

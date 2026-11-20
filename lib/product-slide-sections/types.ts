@@ -1,8 +1,6 @@
-/** Serializable media props — live in section config, not i18n. */
 export type ImageMediaConfig = {
   src: string;
   alt: string;
-  /** Media Asset id when resolved via slide migrate (slice 17). */
   assetId?: string;
   sizes?: string;
   className?: string;
@@ -12,11 +10,8 @@ export type ImageMediaConfig = {
 export type SectionCtaConfig = {
   href: string;
   label?: string;
-  /** Resolved from messages when label is omitted. */
   labelKey?: string;
-  /** Resolve label from common messages instead of product messages. */
   labelScope?: "common";
-  /** Wrap CTA link in SheetClose (overseas flow). */
   closeSheet?: boolean;
 };
 
@@ -35,9 +30,7 @@ export type SplitHeroContent = {
   listTitle?: string;
   listItems?: string[];
   table?: SizeTableContent;
-  /** Stacked layout: paragraphs[0], image[0], paragraphs[1..], image[1..] */
   stackedParagraphs?: string[];
-  /** Button label that shows and hides the list, when the config makes it collapsible. */
   listToggle?: string;
 };
 
@@ -141,27 +134,23 @@ export type HelpContactContent = {
   description: string;
 };
 
-/** A large centred quote that decrypts into view (Size Matters' press quote). */
 export type PressQuoteContent = {
   text: string;
   attribution?: string;
 };
 
-/** Measurement cards with an icon each, in a swipe carousel (Size Matters). */
 export type MeasureCarouselContent = {
   title: string;
   intro?: string;
   cards: Array<{ title: string; description: string }>;
 };
 
-/** A testimonial typed out as it scrolls into view (Ambassadors). */
 export type TypedQuoteContent = {
   title: string;
   quote: string;
   attribution?: string;
 };
 
-/** v1 template IDs — renderer implements incrementally per slice. */
 export const PRODUCT_SLIDE_SECTION_TYPES = [
   "split_hero",
   "split_hero_dual_media",

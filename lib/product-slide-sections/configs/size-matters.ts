@@ -1,9 +1,5 @@
 import type { ProductSlideSectionConfig } from "../section-config";
 
-/**
- * Size Matters learn-more slide-in (landing `size-matters` section → "Learn more").
- * Copy: `m.slides.sizeMatters`. Every image the hand-built sheet showed is kept here.
- */
 const SPLIT_TITLE = "text-base font-semibold leading-tight tracking-normal md:text-base";
 
 export const sizeMattersSlideSections = [

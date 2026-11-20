@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -10,15 +9,6 @@ import { verifyUnsubscribeToken } from "@/lib/marketing-consent/unsubscribe";
 import type { CampaignContent } from "../content";
 import { EMPTY_CAMPAIGN_DRAFT, type Campaign } from "../rules";
 import { emptyWorld, fakeCampaignsClient, type FakeWorld } from "./fake-db";
-
-/**
- * Products in what a campaign sends (PRD-campaign-email-editor slice 07,
- * decision 3): the preview, the test send and every batch read each product
- * from the shop as it is sold at that moment, through the shop's columns, so
- * a price changed in Costings is the next email's and no campaign row
- * changes. A product no longer Listed fails the checks before a wave by name,
- * and stops a batch, so no wave sends a dead link.
- */
 
 const h = vi.hoisted(() => ({ asked: [] as string[][], failed: new Map<string, string>() }));
 vi.mock("@/lib/media-assets/email-renditions", () => ({
@@ -74,7 +64,6 @@ const product = (id: string, slug: string, title: string, over: Record<string, u
   ...over,
 });
 
-/** The shop: a cover in two sizes at two prices, a neck support on sale, a bolster case with one Variant and no photo. */
 function shop(w: FakeWorld) {
   w.products = [
     product(COVER, "fibrecool-cover", "FibreCool Cover", {
@@ -86,7 +75,6 @@ function shop(w: FakeWorld) {
     }),
     product(NECK, "cervical-neck-support", "Cervical Neck Support", {
       product_variants: [variant("neck", 45, { compare_at_price: 59 })],
-      // A photo added before the Media Library: only its address.
       product_images: [{ id: "i3", url: NECK_PHOTO_URL, alt_text: null, position: 0, media_asset_id: null }],
     }),
     product(CASE, "camel-bolster-case", "Camel Bolster Case", { product_variants: [variant("case", 29.5)] }),
@@ -137,7 +125,6 @@ function setup() {
     replyTo: "Mpillow Support <support@mpillow.com>",
     origin: ORIGIN,
     unsubscribeSecret: SECRET,
-    // The site answers one-click unsubscribe for links signed here.
     fetchImpl: vi.fn(async (input: string | URL | Request) => {
       const url = new URL(String(input));
       if (url.pathname !== "/api/email/unsubscribe") return new Response("not found", { status: 404 });
@@ -232,11 +219,9 @@ describe("a product's price in what is sent", () => {
     expect(sent[0].text).toContain(`FibreCool Cover\nfrom ${sgd(39)}`);
     expect(sent[0].text).toContain(`Cervical Neck Support\n${sgd(45)} (was ${sgd(59)})`);
 
-    // Costings' save mirrors the new MSRP onto the Variant (price-sync); the campaign is not touched.
     reprice("cover-s", 35);
     reprice("cover-l", 35);
     const shown = await readCampaignRenderData(s.admin, c.content);
-    // Both sizes at one price still read from, as the shop card says (shopCardPrice).
     expect(renderCampaignPreview(c, { origin: ORIGIN, firstName: "Ivan", ...shown }).text).toContain(`FibreCool Cover\nfrom ${sgd(35)}`);
     const r = await sendCampaignBatch(c, { wave: "W1", customerIds: [BEA, DAN] }, s);
     expect(r).toMatchObject({ sent: 2, stopped: null });
@@ -245,7 +230,6 @@ describe("a product's price in what is sent", () => {
       expect(email.html).toContain("/en-US/shop/fibrecool-cover?utm_source=email_campaign&amp;utm_medium=email&amp;utm_campaign=december-launch");
     }
     expect(JSON.stringify(c)).toBe(before);
-    // Read from the shop, never written back: the fake has no campaigns table to write.
     expect(world.reads).not.toContain("email_campaigns");
   });
 });
@@ -260,7 +244,6 @@ describe("a product that is no longer Listed", () => {
 
     unlist(NECK);
     const r = await planWave(campaign(), { size: 10 }, s);
-    // Named by the block it is in (slice 11), so the Send tab can go to it.
     const problem = "Cervical Neck Support is no longer in the shop: remove it or list it again";
     expect(r.readiness.checks.find((c) => c.key === "products")).toMatchObject({
       key: "products",
@@ -269,7 +252,6 @@ describe("a product that is no longer Listed", () => {
       issues: [{ blockId: "grid", text: `Block 2, Products: ${problem}`, what: problem }],
     });
     expect(r.readiness.ready).toBe(false);
-    // The Send tab names it in words.
     expect(CHECK_LABEL.products).toBe("Every product is still in the shop");
   });
 

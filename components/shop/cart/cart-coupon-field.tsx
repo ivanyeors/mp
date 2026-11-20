@@ -9,7 +9,6 @@ import type { CartMessages } from "./cart-types";
 
 interface CartCouponFieldProps {
   couponCode: string | null;
-  /** A discount or a partner's referral code (ADR 0033); null until checked. */
   couponKind: "discount" | "referral" | null;
   couponPartnerName: string | null;
   couponDiscount: number;

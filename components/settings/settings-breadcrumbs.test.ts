@@ -12,13 +12,11 @@ const GROUPS: BreadcrumbNavGroup[] = [
   {
     label: "Landing Site",
     items: [
-      // URL-nested child (like Product Builder → Rules Engine).
       {
         href: "/settings/product-builder",
         label: "Product Builder",
         items: [{ href: "/settings/product-builder/rules-engine", label: "Rules Engine" }],
       },
-      // Structurally-nested but sibling-URL child (Partners → Partner Commissions).
       {
         href: "/settings/partners",
         label: "Partners",

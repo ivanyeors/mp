@@ -6,13 +6,6 @@ import {
   type PairedHandoff,
 } from "@/lib/configurator/paired-mbolster";
 
-/**
- * A Paired build's step 2 (the Mbolster page) shows the Mpillow it is paired with.
- * Staff measured the customer, so the Mpillow owes the Measurement service (ADR
- * 0024). The fee is the Mpillow's, not the Mbolster's, and it must stay on screen
- * as its own row while the shopper customises the Mbolster, the way steps 1, 3
- * and 4 show it, rather than disappearing into the Mpillow's figure.
- */
 const handoff: PairedHandoff = {
   v: 2,
   anchorId: "a",

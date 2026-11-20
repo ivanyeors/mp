@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatCurrency } from "@/lib/i18n/currencies";
 
-// formatCurrency is the single money-formatting interface (slice 03).
-// These guard the two things that actually matter: the right currency symbol
-// shows up, and unknown codes don't throw.
 describe("formatCurrency", () => {
   it("defaults to SGD (en-SG: $ symbol, never RM or US$)", () => {
     const out = formatCurrency(1234.5);
@@ -27,11 +24,7 @@ describe("formatCurrency", () => {
     expect(() => formatCurrency(1, "GBP")).not.toThrow();
   });
 
-  // display: "code" is what every transactional email uses — an email is read
-  // out of context, and Intl renders SGD in en-SG as a bare "$".
   it("renders the explicit ISO code for every supported currency", () => {
-    // Intl separates the code from the amount with U+00A0, which is what we
-    // want: it stops "SGD" and the figure being split across two lines.
     expect(formatCurrency(1234.5, "SGD", { display: "code" })).toBe("SGD\u00A01,234.50");
     for (const code of ["SGD", "MYR", "USD", "CNY"] as const) {
       expect(formatCurrency(1234.5, code, { display: "code" })).toContain(code);

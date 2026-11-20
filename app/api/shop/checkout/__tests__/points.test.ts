@@ -1,16 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Points at shop checkout (PRD-loyalty-points slice 04; ADR 0030 (h) to (k)).
- *
- * Real handler, real coupon validation, real pricing and real Stripe session
- * construction. Faked: the tables (fake-admin), the SQL functions (`rpc`),
- * the session, the partner context, and the Stripe client, so the assertions
- * read the exact amount_off Stripe would have been sent. Every write, call and
- * Stripe request lands in `h.log`, in order.
- */
-
 const OWNER = "8b1c3f9e-0000-4000-8000-000000000001";
 const OTHER = "8b1c3f9e-0000-4000-8000-000000000002";
 const PRODUCT = "22222222-2222-4222-8222-222222222222";
@@ -52,7 +42,6 @@ vi.mock("@/lib/supabase/server", async () => {
           return q;
         },
         async rpc(fn: string, args: Record<string, unknown>) {
-          // The shared rate limiter, not a points call.
           if (fn === "rate_limit_hit") return { data: false, error: null };
           h.log.push(`rpc:${fn}`);
           h.rpcCalls.push({ fn, args });
@@ -172,7 +161,6 @@ function pay(email: string, opts: { points?: unknown; coupon?: string; body?: Re
         shipping_method_id: SHIPPING,
         ...(opts.coupon ? { coupon_code: opts.coupon } : {}),
         ...(opts.points !== undefined ? { points: opts.points } : {}),
-        // Two S$50 items: S$100 of products.
         items: [{ variant_id: VARIANT, quantity: 2 }],
         ...opts.body,
       }),
@@ -186,7 +174,6 @@ const orderInsert = () => {
 };
 const reserveCalls = () => h.rpcCalls.filter((c) => c.fn === "reserve_points");
 
-/** What Stripe would charge for the session the route built: catalog lines, less amount_off, plus shipping. */
 function stripeCharge() {
   const params = h.sessionsCreate.mock.calls[0][0] as {
     line_items: Array<{ price?: string; price_data?: { unit_amount: number }; quantity: number }>;
@@ -208,7 +195,6 @@ describe("checkout with points: the Stripe total", () => {
     const res = await pay("Wei.Ling@example.com", { coupon: "SAVE10", points: 2000 });
     expect(res).toEqual({ status: 200, body: expect.objectContaining({ ok: true }) });
 
-    // S$10 coupon + S$20 of points.
     expect(h.couponsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount_off: 3000, name: "SAVE10 + Points" }));
     const order = orderInsert()!;
     expect(order).toMatchObject({
@@ -254,14 +240,12 @@ describe("checkout with points: the Stripe total", () => {
     expect(reserveCalls()).toEqual([
       { fn: "reserve_points", args: { p_customer_id: OWNER, p_order_id: orderInsert()!.id, p_points: 2000 } },
     ]);
-    // The session's partner context is read once, for pricing and points both.
     expect(h.getPartnerContext).toHaveBeenCalledTimes(1);
   });
 
   it("leaves free shipping and a coupon's minimum on the subtotal before points", async () => {
     h.session = OWNER;
     h.db.shipping_methods[0].free_above = 100;
-    // SAVE10 needs S$100 of products; S$45 of points takes the cart below that, and it still applies.
     const res = await pay("wei.ling@example.com", { coupon: "SAVE10", points: 4500 });
     expect(res.status).toBe(200);
     expect(orderInsert()).toMatchObject({ shipping_amount: 0, discount_amount: 55, total: 45 });
@@ -289,8 +273,6 @@ describe("who may spend (rule h, rule r)", () => {
     refusedBeforeAnyWrite();
   });
 
-  // Carried over from the retired bound coupon (slice 06): whose account it is
-  // comes from the session, never from the request.
   it("ignores a Customer named in the body: a guest claiming to be the owner is refused", async () => {
     const forged = { customer_id: OWNER, customerId: OWNER, session_customer_id: OWNER };
     expect(await pay("wei.ling@example.com", { points: 1000, body: forged })).toEqual({
@@ -351,7 +333,6 @@ describe("forged amounts (rule i)", () => {
     ["a fraction", 1000.5, "Points are used in steps of 100 (S$1)."],
     ["a negative", -1000, "Points are used in steps of 100 (S$1)."],
     ["below the minimum", 400, "Use at least 500 points (S$5.00)."],
-    // S$100 less the S$10 coupon: half is S$45.
     ["above half the products after the coupon", 4600, "This order can take at most 4,500 points (S$45.00)."],
   ])("refuses %s", async (_name, points, error) => {
     h.balance = 100000;
@@ -388,7 +369,6 @@ describe("the reservation and its release (rule j)", () => {
     expect(h.sessionsCreate).not.toHaveBeenCalled();
     expect(h.db.orders).toEqual([]);
     expect(h.log).toContain("delete:order_items");
-    // Nothing was reserved, so nothing is released.
     expect(h.rpcCalls.map((c) => c.fn)).not.toContain("release_points");
   });
 
@@ -446,7 +426,6 @@ describe("the one code field (ADR 0033)", () => {
   });
 
   it("refuses a discount code that cannot be used on this order, with its reason", async () => {
-    // SAVE10 needs S$100 of products; one S$50 item is not enough.
     const res = await pay("wei.ling@example.com", {
       body: { code: "SAVE10", items: [{ variant_id: VARIANT, quantity: 1 }] },
     });

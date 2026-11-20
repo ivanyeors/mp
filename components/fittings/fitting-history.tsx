@@ -8,16 +8,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 import { fittingLabel, inches, yesNo, type FittingAnswersView } from "@/lib/fitting-import/view";
 
-/**
- * Fitting history (ADR 0042): each in-store fitting the old Google Form
- * recorded, newest first and open, older ones folded. One person often came
- * more than once, and each visit is its own record with its own
- * measurements: with more than one, the newest is marked Latest and each
- * measurement says what it was at the visit before. One UI for Staff on the
- * Customer page and for the customer on their own Profile (decision h). The
- * Staff page adds the Drive photos and the contact on the form through `media`
- * and `footer`; the Profile adds neither, and its records carry no Drive file.
- */
 export function FittingHistory<F extends FittingAnswersView>({
     fittings,
     description,
@@ -29,9 +19,7 @@ export function FittingHistory<F extends FittingAnswersView>({
     fittings: F[];
     description: ReactNode;
     formatDate: (iso: string) => string;
-    /** After the notes: the Staff page's Drive photos. */
     media?: (f: F) => ReactNode;
-    /** Last in each fitting: the Staff page's contact on the form. */
     footer?: (f: F) => ReactNode;
     className?: string;
 }) {
@@ -72,7 +60,6 @@ function FittingSection<F extends FittingAnswersView>({
     footer,
 }: {
     fitting: F;
-    /** The visit before this one, when there was one. */
     previous?: F;
     latest: boolean;
     defaultOpen: boolean;
@@ -140,7 +127,6 @@ const MEASUREMENTS: [string, string, MeasurementKey][] = [
     ["D", "Neck length", "neckLengthIn"],
 ];
 
-/** A, B, C and D, each with what it was at the visit before when that differs. */
 function Measurements({ fitting: f, previous }: { fitting: FittingAnswersView; previous?: FittingAnswersView }) {
     return (
         <dl className="grid grid-cols-2 gap-2 @lg:grid-cols-4">

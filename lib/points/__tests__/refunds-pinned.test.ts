@@ -2,17 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Refunds do not change for points (PRD-loyalty-points slice 04; ADR 0030
- * (l)): points used are never refunded. Every refund path already pays cash
- * only, capped at the cash not yet refunded, so a return refunds cash first
- * and the points stay spent on what was kept. These pin that behaviour
- * through the real refund code: the RMA refund action and the Admin refund
- * route.
- *
- * The Order: two S$50 items, S$20 of points, S$80 cash.
- */
-
 const ORDER = "0b0b0b0b-0000-4000-8000-000000000001";
 
 const h = vi.hoisted(() => ({
@@ -92,7 +81,6 @@ beforeEach(() => {
   };
 });
 
-/** A Staff full refund, as the order screen sends it. */
 const fullRefund = () =>
   new Request(`https://x.test/api/shop/orders/${ORDER}/refund`, {
     method: "POST",
@@ -103,7 +91,6 @@ const fullRefund = () =>
     }),
   });
 
-/** The charge.refunded webhook rolls the refund into amount_refunded. */
 const settle = (amount: number) => {
   h.order.amount_refunded = Number(h.order.amount_refunded) + amount;
 };
@@ -121,7 +108,6 @@ describe("refunds with points used (rule l)", () => {
     await issueRmaRefund("rma-1");
     settle(50);
     expect(await issueRmaRefund("rma-2")).toEqual({ ok: true, amount: 30 });
-    // The rest of the cash: a full refund of what is left, so Stripe is sent no amount.
     expect(refundedAmountArg(1)).toBeUndefined();
     settle(30);
     await expect(issueRmaRefund("rma-3")).rejects.toThrow("Nothing left to refund on this order.");

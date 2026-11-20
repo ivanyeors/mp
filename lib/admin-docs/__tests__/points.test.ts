@@ -10,11 +10,6 @@ import { ADMIN_GUIDES } from "../guides";
 import { pointsGuideSections, pointsStatusLine } from "../points";
 import type { DocSection } from "../types";
 
-/**
- * Documentation → Mpillow Points: the guide says the programme with the live
- * numbers, and where it stands now.
- */
-
 const text = (sections: DocSection[]) =>
   sections
     .flatMap((s) => [

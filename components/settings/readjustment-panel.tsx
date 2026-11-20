@@ -48,10 +48,6 @@ const day = (iso: string) =>
     new Date(iso),
   );
 
-/**
- * The Re-adjustment behind an appointment (ADR 0024): which pillow, its order,
- * whether the visit is free or paid, and the Attended / No-show / Cancel actions.
- */
 export function ReadjustmentPanel({ bookingId, onChanged }: { bookingId: string; onChanged?: () => void }) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;

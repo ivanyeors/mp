@@ -1,8 +1,3 @@
-/**
- * Slice 03: save→reload fidelity of a full 9-cell recipe.
- * Grid state → PUT payload rows → back to grid state must be identity, and the
- * grid's live BOM must equal the server-side derivation (ADR 0008).
- */
 import { describe, expect, it } from "vitest";
 
 import { CELLS, cellsToPlacements, placementsToCells, type CellMap } from "../cells";
@@ -15,9 +10,6 @@ import {
   validatePillowPlacements,
 } from "@/lib/spatial-fillings/core";
 
-// Full 9-cell recipe: 1–5 pieces per cell, repeated items included. The CellMap
-// view is single-layer, so the fixture is bounded by the PER-LAYER cap — the
-// per-cell cap is five layers' worth and unreachable from a flat cell list.
 const fullGrid: CellMap = new Map(
   CELLS.map(({ section, subSection }, i) => {
     const count = (i % MAX_PIECES_PER_LAYER) + 1;
@@ -38,11 +30,9 @@ describe("pillow cell grid save→reload fidelity", () => {
     );
     for (const p of placements) expect(p.slot).toBeGreaterThanOrEqual(1);
 
-    // PUT payload the panel sends; must pass the exact validation the route runs.
     const rows = pillowPlacementsToRows(placements);
     expect(validatePillowPlacements(rowsToPillowPlacements(rows), categories)).toEqual({ ok: true });
 
-    // Reload: GET returns rows (any order) → placements → grid state.
     const reloaded = [...rows].reverse();
     expect(placementsToCells(rowsToPillowPlacements(reloaded))).toEqual(fullGrid);
     expect(cellsToPlacements(placementsToCells(rowsToPillowPlacements(reloaded)))).toEqual(placements);

@@ -9,15 +9,6 @@ import type { DraftEvent, DraftRequest } from "@/lib/email-campaigns/ai-draft-sh
 import type { CampaignContent, EmailBlock } from "@/lib/email-campaigns/content";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * ✨ Generate in the campaign editor (PRD-campaign-email-editor slice 09,
- * decision 9): the popover under the button, the blocks arriving one by one
- * as one change, the ideas under the subject and preview line, Keep, Try
- * again and Undo, *Drafted with AI* until a person edits or keeps a block,
- * and *Write this from the subject* in an empty text block. It never saves
- * or sends; with AI writing off there is no ✨ at all.
- */
-
 const actions = vi.hoisted(() => ({
   archiveCampaignAction: vi.fn(),
   checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),
@@ -68,7 +59,6 @@ const ON: AiWritingAvailability = { on: true, configured: true };
 const HEADING: EmailBlock = { id: "ai1", type: "heading", level: 1, text: "Cool nights are back" };
 const TEXT: EmailBlock = { id: "ai2", type: "text", paragraphs: [{ kind: "p", runs: [{ text: "The FibreCool cover keeps your pillow cool." }] }] };
 
-/** A draft's stream, line by line, as the test sends each event. */
 function draftStream() {
   const queue: (string | null)[] = [];
   let wake: (() => void) | null = null;
@@ -132,7 +122,6 @@ function mount(draft: CampaignDraft = DRAFT, ai: AiWritingAvailability = ON) {
 
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label) ?? null;
-/** The ✨ button in the header, once its popover has loaded. */
 const generate = () => until(() => [...document.querySelectorAll<HTMLButtonElement>("button[aria-haspopup='dialog']")].find((b) => b.textContent?.includes("Generate")));
 const headings = () => [...document.querySelectorAll<HTMLElement>("[data-block-id] [data-block-body] [role='textbox']")].map((i) => i.textContent);
 const blockIds = () => [...document.querySelectorAll<HTMLElement>("li[data-block-id]")].map((b) => b.dataset.blockId);
@@ -140,20 +129,16 @@ const badges = () => [...document.querySelectorAll<HTMLElement>("li[data-block-i
 const undo = () => press("z", { ctrl: true }, document.body);
 const saved = () => button("Save changes")!.disabled;
 
-/** Opens the popover, fills the brief, and presses *Write the email*. */
 async function draftIt(about = "") {
   await click(await generate());
   const box = await until(() => document.getElementById("ai-about") as HTMLTextAreaElement | null);
   if (about) act(() => typeField(box, about));
   const sent = requests.length;
   await click(button("Write the email")!);
-  // The request goes when the click's handler gets to it, which under a full run's load can be
-  // later than a fixed wait: wait for the request itself.
   await until(() => requests.length > sent || null);
   await settle(20);
 }
 
-/** Streams a whole draft: the stage, the ideas, two blocks, done. */
 async function writeAll(s: ReturnType<typeof draftStream>) {
   await s.send({ type: "stage", stage: "writing" });
   await s.send({ type: "subjects", subjects: ["Cool nights are back", "FibreCool covers are back", "Sleep cooler this December"] });
@@ -191,10 +176,8 @@ describe("✨ Generate", () => {
     await s.send({ type: "stage", stage: "writing" });
     expect(document.body.textContent).toContain("Writing the email…");
     await s.send({ type: "block", block: HEADING });
-    // The first block is in the email while the rest is still being written, in place of the old one.
     expect(blockIds()).toEqual(["ai1"]);
     expect(button("Keep")).toBeNull();
-    // However long Claude takes between blocks, the draft stays one change.
     const later = Date.now() + 30_000;
     const clock = vi.spyOn(Date, "now").mockReturnValue(later);
     await s.send({ type: "block", block: TEXT });
@@ -214,7 +197,7 @@ describe("✨ Generate", () => {
     expect(blockIds()).toEqual(["title"]);
     expect(headings()).toEqual(["Sleep cooler"]);
     expect(badges()).toEqual([]);
-    expect(saved()).toBe(true); // exactly as it was saved
+    expect(saved()).toBe(true);
     expect(button("Keep")).toBeNull();
     expect(actions.saveCampaign).not.toHaveBeenCalled();
   });

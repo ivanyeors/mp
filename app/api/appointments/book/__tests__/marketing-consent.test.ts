@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * POST /api/appointments/book — the marketing email box on a guest's booking
- * (PRD-campaign-audiences slice 02; ADR 0039), ticked by default. Recorded for
- * the email given, as `appointment`, once the visit is on the calendar; the
- * consent write itself is lib/marketing-consent/__tests__/box-consent.test.ts's.
- */
-
 const h = vi.hoisted(() => ({
   isSlotFree: vi.fn(),
   bookCalendarSlot: vi.fn(),

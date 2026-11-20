@@ -8,7 +8,6 @@ import {
   swapComponent,
 } from "../build-costs";
 
-// Premium XS as stored: two covers, an uncosted zip lock, a Fibrecool case, a protector.
 const COVER = 1;
 const ZIP_LOCK = 2;
 const FIBRECOOL_CASE = 3;
@@ -108,7 +107,6 @@ describe("buildCostOptions", () => {
     const [def, cheap, neck] = result.options;
     expect(def).toMatchObject({ isDefault: true, pieces: 6, fillingCents: 1100, buildCents: 4050, neckSupport: "none" });
     expect(cheap).toMatchObject({ isDefault: false, fillingCents: 480, buildCents: 3430, neckSupport: "none" });
-    // The neck support's cost is COGS; the price is the row's, with nothing on top.
     expect(neck).toMatchObject({ neckSupport: "included", pieces: 3, fillingCents: 620, buildCents: 3570 });
     expect(neck.uncostedItemIds).toEqual([ZIP_LOCK]);
     expect(neck).toMatchObject({ earPad: "none", extraChargeCents: 0 });
@@ -135,7 +133,6 @@ describe("buildCostOptions", () => {
       fillingCents: 2 * 160 + 2 * 1500,
       buildCents: 2950 + 2 * 160 + 2 * 1500,
     });
-    // An unpriced ear pad is never free: the margin has nothing to count.
     expect(earOption(true, new Map([[EAR_PAD, null]])).extraChargeCents).toBeNull();
   });
 

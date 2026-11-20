@@ -28,7 +28,6 @@ export type ShopifyOrderLite = {
 
 export type ShopifyOrdersPage = {
   orders: ShopifyOrderLite[]
-  /** Shopify `page_info` for the next page, or null when exhausted. */
   nextPageInfo: string | null
 }
 
@@ -41,10 +40,6 @@ function pageInfoFromNextUrl(nextUrl: string | null): string | null {
   }
 }
 
-/**
- * One Admin API orders page for mirror catch-up.
- * When `pageInfo` is set, Shopify forbids other filters — only page_info + limit.
- */
 export async function shopifyFetchOrdersPage(args?: {
   pageInfo?: string | null
   sinceId?: number | null
@@ -55,9 +50,6 @@ export async function shopifyFetchOrdersPage(args?: {
   const limit = Math.max(1, Math.min(250, Math.floor(args?.limit ?? 50)))
   const qs = new URLSearchParams()
   qs.set('limit', String(limit))
-  // Full payload — no fields= (line_items[].id / processed_at needed for mirror).
-  // Filter paid client-side so refunded / partially_refunded still land in the mirror.
-  // Shopify: page_info cursor requests may only send page_info + limit (no status/filters).
 
   if (args?.pageInfo) {
     qs.set('page_info', args.pageInfo)
@@ -80,7 +72,6 @@ function parseNextLink(linkHeader: string | null): string | null {
   if (!linkHeader) return null
   const parts = linkHeader.split(',').map((p) => p.trim())
   for (const part of parts) {
-    // Example: <https://{shop}.myshopify.com/admin/api/{ver}/orders.json?...&page_info=...>; rel="next"
     if (!part.includes('rel="next"')) continue
     const m = part.match(/<([^>]+)>/)
     return m?.[1] ?? null
@@ -130,7 +121,6 @@ async function shopifyFetchAbsolute(url: string, init?: RequestInit) {
 export async function shopifyListPaidOrdersPaginated(args?: {
   createdAtMin?: string
   createdAtMax?: string
-  // Safety valve to avoid fetching unbounded order history.
   maxPages?: number
   pageSize?: number
 }): Promise<ShopifyOrderLite[]> {

@@ -3,21 +3,8 @@ import { normalizePhone } from "./phone";
 
 const PEOPLE_BASE = "https://people.googleapis.com/v1";
 
-/**
- * Google Contacts (People API) sync for appointment guests.
- *
- * Runs as admin@mpillow.com (same OAuth grant as Calendar, see google-auth.ts) so
- * the WhatsApp Business phone that syncs that account's contacts shows guest names.
- *
- * Flow for every guest: search existing contacts by phone (then email) → if none,
- * create; if found but name / phone / email differ, update; if identical, skip.
- * All callers treat this as best-effort — a People API failure never blocks a
- * booking or a reminder.
- */
-
 export type GuestContact = {
   name: string;
-  /** E.164, e.g. +6587805311 */
   phone: string;
   email?: string | null;
 };
@@ -51,7 +38,6 @@ function normEmail(raw: string | null | undefined): string {
   return (raw ?? "").trim().toLowerCase();
 }
 
-/** Loose phone equality: same digits, or one is a national suffix of the other (8780 5311 vs +65 8780 5311). */
 export function phonesMatch(a: string | null | undefined, b: string | null | undefined): boolean {
   const x = phoneDigits(a);
   const y = phoneDigits(b);
@@ -83,11 +69,6 @@ function personDisplayName(person: PeoplePerson): string {
   );
 }
 
-/**
- * Pick the existing contact for a guest from People search results.
- * Phone is the primary key (WhatsApp is keyed by number); email is the fallback
- * for contacts saved without a number.
- */
 export function findMatchingPerson(
   candidates: PeoplePerson[],
   guest: GuestContact,
@@ -104,11 +85,8 @@ export function findMatchingPerson(
 }
 
 export type ContactDiff = {
-  /** True when the stored contact already carries this name, phone and email. */
   same: boolean;
-  /** Which People fields need updating (subset of names,phoneNumbers,emailAddresses). */
   updateFields: string[];
-  /** Merged body for updateContact — existing phones/emails are kept, ours is added. */
   body: {
     etag?: string;
     names?: PeoplePerson["names"];
@@ -117,7 +95,6 @@ export type ContactDiff = {
   };
 };
 
-/** Compare an existing contact against the guest and build a minimal merge body. */
 export function diffContact(person: PeoplePerson, guest: GuestContact): ContactDiff {
   const name = guest.name.trim().replace(/\s+/g, " ");
   const updateFields: string[] = [];
@@ -151,7 +128,6 @@ export function diffContact(person: PeoplePerson, guest: GuestContact): ContactD
   return { same: updateFields.length === 0, updateFields, body };
 }
 
-/** People API `names[]` entry. `displayName` is output-only; givenName carries the full name. */
 function buildName(name: string): NonNullable<PeoplePerson["names"]>[number] {
   return { givenName: name };
 }
@@ -202,20 +178,13 @@ async function searchContacts(query: string, token: string): Promise<PeoplePerso
     .filter((p): p is PeoplePerson => Boolean(p));
 }
 
-/**
- * Google recommends an empty-query "warm-up" call before searchContacts so a
- * cold cache does not miss recently created contacts. Failures are ignored.
- */
 async function warmupSearch(token: string): Promise<void> {
   try {
     const qs = new URLSearchParams({ query: "", readMask: "names" });
     await peopleFetch(`/people:searchContacts?${qs}`, token);
-  } catch {
-    /* best-effort */
-  }
+  } catch {}
 }
 
-/** Find the existing Google contact for a guest, if any. Searches phone first, then email. */
 export async function findGuestContact(
   guest: GuestContact,
   token?: string,
@@ -223,7 +192,6 @@ export async function findGuestContact(
   const t = token ?? (await getGoogleAccessToken());
   await warmupSearch(t);
 
-  // National digits match how most contacts are typed (8780 5311) as well as +65 forms.
   const national = guest.phone.startsWith("+65") ? guest.phone.slice(3) : guest.phone;
   const queries = [national];
   if (guest.email?.trim()) queries.push(guest.email.trim());
@@ -236,13 +204,6 @@ export async function findGuestContact(
   return null;
 }
 
-/**
- * Create / update / skip a guest's Google contact.
- *
- * - no existing contact → createContact → "created"
- * - existing contact with different name / missing phone / missing email → updateContact → "updated"
- * - existing contact already identical → "skipped"
- */
 export async function syncGuestContact(guest: GuestContact): Promise<ContactSyncResult> {
   const name = guest.name.trim();
   if (!name) throw new Error("syncGuestContact: name is required");
@@ -284,10 +245,6 @@ export type ContactSweepSummary = {
   errors: string[];
 };
 
-/**
- * Sync a batch of guests (e.g. every appointment in the next N days), one People
- * round-trip per distinct phone. Per-guest failures are collected, not thrown.
- */
 export async function syncGuestContacts(
   guests: Array<GuestContact & { id?: string }>,
   sync: (g: GuestContact) => Promise<ContactSyncResult> = syncGuestContact,

@@ -2,10 +2,6 @@
 
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/**
- * Validates cart item prices against the database before checkout.
- * Returns corrected prices if any differ from the client-sent prices.
- */
 export async function validateCartPrices(
   items: { variantId: string; clientPrice: number }[],
 ) {

@@ -21,19 +21,12 @@ export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ id: z.string().uuid() });
 
-/**
- * Dual-audience read: the Admin Panel Result detail and the guest configurator
- * both call this. Staff get the record unchanged; an Owner gets a redacted
- * projection; anyone holding only a Result id gets 403.
- */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const parsedParams = ParamsSchema.safeParse({ id });
   if (!parsedParams.success) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
   const admin = supabaseAdmin();
-  // Ownership is settled before the detail load, which runs the Rules Engine and
-  // persists a recommendation record — work a refused caller should never trigger.
   const { data: authRow, error: authErr } = await admin
     .from("mp_config_responses")
     .select("access_token, customer_id, customer_email, status, order_id")
@@ -56,8 +49,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 }
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  // Staff-only: the only callers are the two Admin Panel Results clients. GET and
-  // POST stay open because the guest configurator uses them.
   const denied = await requireAdmin("results");
   if (denied) return denied;
 
@@ -67,8 +58,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
 
   const admin = supabaseAdmin();
 
-  // Deleting the row used to orphan a live Stripe authorization on the customer's
-  // card — nothing else references the payment intent once the row is gone.
   const { data: row } = await admin
     .from("mp_config_responses")
     .select(
@@ -76,8 +65,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
     )
     .eq("id", parsedParams.data.id)
     .maybeSingle();
-  // A Paired build shares one hold (ADR 0026): deleting the Mbolster keeps it for
-  // the Mpillow, and deleting the Mpillow cancels the Mbolster with it.
   const locked = row ? await companionLockReason(admin, row) : null;
   if (locked) return NextResponse.json({ error: locked, code: "pair_paid" }, { status: 409 });
   const plan = row ? await loadEndingPlan(admin, row) : null;

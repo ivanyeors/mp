@@ -23,7 +23,6 @@ export type ReturnHit = {
   gapMs: number;
 };
 
-/** Immediately prior Visit for the same Visitor that already ended. */
 export function priorEndedVisit(
   visit: VisitMeta,
   visitorVisits: VisitMeta[],
@@ -33,7 +32,7 @@ export function priorEndedVisit(
     if (v.id === visit.id) continue;
     if (!v.endedAt) continue;
     if (v.startedAt >= visit.startedAt) continue;
-    if (v.endedAt > visit.startedAt) continue; // still open when this one started
+    if (v.endedAt > visit.startedAt) continue;
     if (!best || v.startedAt > best.startedAt) best = v;
   }
   return best;
@@ -46,10 +45,6 @@ export function classifyVisitCohort(
   return priorEndedVisit(visit, visitorVisits) ? "returning" : "new";
 }
 
-/**
- * Returns into Visits in `focusVisitIds`: landing page + gap from prior Drop-off.
- * Same-session backtracks are not returns (those stay solid page→page edges).
- */
 export function collectReturns(
   visits: VisitMeta[],
   landingByVisitId: Map<string, string>,
@@ -69,7 +64,6 @@ export function collectReturns(
     if (!landing || landing === DROP_OFF_NODE) continue;
     const prior = priorEndedVisit(visit, byVisitor.get(visit.visitorId) ?? []);
     if (!prior?.endedAt) continue;
-    // Re-entry only after a Drop-off (ended Visit with last path recorded).
     if (!prior.dropOffPath) continue;
     const start = Date.parse(visit.startedAt);
     const end = Date.parse(prior.endedAt);
@@ -89,7 +83,6 @@ export function collectReturns(
   return hits;
 }
 
-/** Dashed Drop-off → landing edges (unique-node; no multi-day spaghetti). */
 export function buildReentryEdges(
   returns: ReturnHit[],
   opts?: { countryByVisitId?: Map<string, string> },
@@ -140,7 +133,6 @@ export function returnsForPath(returns: ReturnHit[], path: string): ReturnHit[] 
   return returns.filter((r) => r.landingPath === path);
 }
 
-/** Visit ids matching New/Returning cohort (needs full visitor history). */
 export function filterVisitIdsByCohort(
   rangeVisits: VisitMeta[],
   allVisits: VisitMeta[],

@@ -60,31 +60,20 @@ import type { ReturningSummary } from "@/lib/crm/returning-customers";
 import { SegmentsRow } from "./segments-row";
 import type { CampaignFilterOption } from "@/lib/email-campaigns/store";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const LIMIT = 20;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-/**
- * Exactly the JSON `GET /api/shop/customers?page=1&limit=20` returns: rows of
- * the Customer overview (`admin_customer_overview`, migration slice 12).
- */
 export type CustomersListResponse = {
     ok: true;
     rows: CustomerOverviewRow[];
     total: number;
     page: number;
     limit: number;
-    /** With *Ships to* Singapore or elsewhere: how many more ship to an unknown country (slice 05). */
     shipsToUnknown?: number | null;
 };
 
 export type CustomersInitialData = {
     customers: CustomersListResponse;
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatSGD(amount: number): string {
     return new Intl.NumberFormat("en-SG", {
@@ -101,11 +90,6 @@ function getCustomerName(customer: CustomerOverviewRow): string {
     return customerDisplayName(customer) ?? "—";
 }
 
-/**
- * The Review column (CRM slice 12): the strongest fact first (*★5 Google*,
- * *★4 shop (2)*, *Asked 3 Nov · clicked*, *Asked 3 Nov*), then the rest,
- * muted. *—* with none. A Google review counts only once Staff have linked it.
- */
 function ReviewCell({ customer }: { customer: CustomerOverviewRow }) {
     const [first, ...rest] = reviewFacts(customer);
     if (!first) return <span className="text-sm text-muted-foreground">—</span>;
@@ -117,11 +101,6 @@ function ReviewCell({ customer }: { customer: CustomerOverviewRow }) {
     );
 }
 
-/**
- * Contact status as small marks (CRM slice 11): how they sign in (an envelope
- * for the emailed code, G for Google) and a phone when a valid number is on
- * file. Each says what it means to a screen reader and on hover.
- */
 function ContactMarks({ customer }: { customer: CustomerOverviewRow }) {
     const providers = customer.account_providers ?? [];
     const marks: { key: string; label: string; mark: ReactNode }[] = [];
@@ -146,7 +125,6 @@ function ContactMarks({ customer }: { customer: CustomerOverviewRow }) {
     );
 }
 
-/** The Account status: *Signed up* with its date, or a muted *No account*, then the Contact marks. */
 function AccountStatus({ customer, compact = false }: { customer: CustomerOverviewRow; compact?: boolean }) {
     if (!customer.has_account) {
         return compact ? (
@@ -184,8 +162,6 @@ function AccountStatus({ customer, compact = false }: { customer: CustomerOvervi
     );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function CustomersClient({
     initialData,
     initialFilters,
@@ -198,21 +174,13 @@ export function CustomersClient({
     canEmail = false,
 }: {
     initialData?: CustomersInitialData;
-    /** The filters the page's URL asked for; `initialData` is page 1 of them. */
     initialFilters?: Partial<CustomerListFilters>;
-    /** URL parameters the page dropped as invalid; the list says so. */
     ignoredFilters?: readonly CustomerFilterParam[];
-    /** The Customer lifecycle chart's counts, or null when they could not be read. */
     lifecycle?: LifecycleSummary | null;
-    /** The Returning customer rate by first-purchase month (PRD-crm-retention-loop slice 06), or null. */
     returning?: ReturningSummary | null;
-    /** The Segments row (CRM slice 05), read by the page; undefined and the row fetches them. */
     initialSegments?: CustomerSegment[];
-    /** The *Campaign* filter's choices (PRD-campaign-audiences slice 05), latest started first. */
     campaigns?: readonly CampaignFilterOption[];
-    /** `customers-edit`: saving, updating, renaming and archiving Segments. */
     canEdit?: boolean;
-    /** `campaigns`: *Email this Segment* (PRD-crm-retention-loop slice 02). */
     canEmail?: boolean;
 }) {
     const pathname = usePathname() ?? "/";
@@ -220,39 +188,28 @@ export function CustomersClient({
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
-    // Filter state: one object, read through the list's one schema
-    // (lib/crm/customer-filters.ts). All of it lives in the URL too, so a
-    // filtered list can be shared (migration slice 12, CRM slice 04). Search
-    // is typed into `search` and reaches `filters` once typing pauses.
-    // Paging is the list's own `page` state; any page or limit in here is unused.
     const [filters, setFilters] = useState<CustomerListFilters>(() => ({ ...DEFAULT_CUSTOMER_FILTERS, ...initialFilters }));
     const [search, setSearch] = useState(filters.search ?? "");
     const [page, setPage] = useState(1);
-    // The Segment chosen on this list (CRM slice 05): a Segment's own link
-    // opens with it chosen, so changing a filter offers *Update {name}*.
     const [segmentId, setSegmentId] = useState<string | null>(() => {
         const now = segmentParams(filters);
         if (!Object.keys(now).length) return null;
         return initialSegments?.find((s) => sameSegmentFilters(s.params, now))?.id ?? null;
     });
 
-    // Data state
     const [customers, setCustomers] = useState<CustomerOverviewRow[]>(initialData?.customers.rows ?? []);
     const [total, setTotal] = useState(initialData?.customers.total ?? 0);
     const [shipsToUnknown, setShipsToUnknown] = useState<number | null>(initialData?.customers.shipsToUnknown ?? null);
     const [loading, setLoading] = useState(!initialData);
 
-    // The RSC page already fetched page 1 — skip the mount fetch once.
     const hydratedFromServer = useRef(Boolean(initialData));
 
-    /** Every change to the filters starts again at page 1. */
     const applyFilters = (next: (f: CustomerListFilters) => CustomerListFilters) => {
         setFilters(next);
         setPage(1);
     };
     const changeFilters = (patch: Partial<CustomerListFilters>) => applyFilters((f) => ({ ...f, ...patch }));
 
-    // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -268,13 +225,9 @@ export function CustomersClient({
 
     const filtersQuery = customerFilterParams(filters).toString();
     const panelCount = MEGA_FILTER_KEYS.filter((k) => isCustomerFilterActive(filters, k)).length;
-    // The filters page reads and writes the same parameters, the search and sort included.
     const filtersHref = to(`/settings/customers/filters${filtersQuery ? `?${filtersQuery}` : ""}`);
     const filtered = CUSTOMER_FILTER_KEYS.some((k) => isCustomerFilterActive(filters, k));
 
-    // Keep the address bar in step without a server round trip, so the list's
-    // filters survive a reload and can be shared. Only the filters' own keys
-    // are rewritten: `?view=` belongs to CustomersPageTabs.
     useEffect(() => {
         const url = new URL(window.location.href);
         for (const key of CUSTOMER_FILTER_PARAMS) url.searchParams.delete(key);
@@ -284,7 +237,6 @@ export function CustomersClient({
 
     const changeSort = (sort: CustomerSort) => changeFilters({ sort });
 
-    // The summary's × and Clear all. Search is also the box's text.
     const clearFilter = (key: CustomerFilterKey) => {
         if (key === "search") setSearch("");
         applyFilters((f) => clearCustomerFilter(f, key));
@@ -295,25 +247,18 @@ export function CustomersClient({
         applyFilters(clearCustomerFilters);
     };
 
-    // Choosing a Segment puts exactly its filters on the list, and in the URL;
-    // the list keeps its sort.
     const chooseSegment = (segment: CustomerSegment) => {
         setSearch(segment.params.search ?? "");
         setSegmentId(segment.id);
         applyFilters((f) => ({ ...f, ...chosenSegmentFilters(segment.params) }));
     };
 
-    // The Customer lifecycle chart: a stage's row lists that stage alone, and
-    // choosing it again lists everyone. The list keeps its other filters.
-    // The chart marks a whole stage only: a sub-status alone (slice 04's
-    // *New · Awaiting delivery*) is part of a row, not the row.
     const onlyStage = filters.stage.length === 1 ? filters.stage[0]! : null;
     const activeStage = (LIFECYCLE_STAGES as readonly string[]).includes(onlyStage ?? "") ? (onlyStage as LifecycleStage) : null;
     const chooseStage = (stage: LifecycleStage) => changeFilters({ stage: activeStage === stage ? [] : [stage] });
     const stageHref = (stage: LifecycleStage) =>
         `${to("/settings/customers")}?${customerFilterParams({ stage: [stage] }).toString()}`;
 
-    // Fetch customers
     const fetchCustomers = useCallback(async () => {
         setLoading(true);
         const params = new URLSearchParams(filtersQuery);
@@ -343,7 +288,6 @@ export function CustomersClient({
         fetchCustomers();
     }, [fetchCustomers]);
 
-    // Pagination helpers
     const totalPages = Math.ceil(total / LIMIT);
 
     const buildPageNumbers = (): (number | "ellipsis")[] => {
@@ -361,7 +305,6 @@ export function CustomersClient({
 
     return (
         <div className="space-y-4 md:space-y-6">
-            {/* The page header and tabs are CustomersPageTabs'; this is the list tab. */}
             {lifecycle && (
                 <LifecycleCard
                     summary={lifecycle}
@@ -383,7 +326,6 @@ export function CustomersClient({
                 onSelect={setSegmentId}
             />
 
-            {/* Toolbar: search, the sort from md, and Filters, which opens the filters page (the mega filter). */}
             <div className="flex items-center gap-2 sm:gap-3">
                 <div className="relative min-w-0 flex-1 md:max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -417,7 +359,6 @@ export function CustomersClient({
                 onClearAll={clearAll}
             />
 
-            {/* Content */}
             {loading ? (
                 <div className="flex items-center justify-center py-12 md:py-24">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -509,7 +450,6 @@ export function CustomersClient({
                                             <span className="block text-xs text-muted-foreground mt-0.5 sm:hidden">
                                                 {customer.email}
                                             </span>
-                                            {/* The Stage and Account columns are hidden below md: show them here instead. */}
                                             <span className="mt-1 flex flex-wrap items-center gap-2 md:hidden">
                                                 <LifecycleStageBadge
                                                     stage={customer.lifecycle_stage}
@@ -538,14 +478,12 @@ export function CustomersClient({
                                         <TableCell className="px-4 text-right hidden md:table-cell text-sm font-medium">
                                             {formatSGD(customer.total_spent)}
                                         </TableCell>
-                                        {/* Formatted in the viewer's timezone, which the server render cannot know. */}
                                         <TableCell
                                             className="px-4 hidden lg:table-cell text-sm text-muted-foreground whitespace-nowrap"
                                             suppressHydrationWarning
                                         >
                                             {formatDate(customer.last_purchase_at)}
                                         </TableCell>
-                                        {/* Dates in Singapore time, so the server render and the browser agree. */}
                                         <TableCell className="px-4 hidden lg:table-cell">
                                             <ReviewCell customer={customer} />
                                         </TableCell>
@@ -570,7 +508,6 @@ export function CustomersClient({
                                                 )}
                                             </div>
                                         </TableCell>
-                                        {/* Formatted in the viewer's timezone, which the server render cannot know. */}
                                         <TableCell
                                             className="px-4 hidden xl:table-cell text-sm text-muted-foreground"
                                             suppressHydrationWarning
@@ -586,7 +523,6 @@ export function CustomersClient({
                 </>
             )}
 
-            {/* Pagination */}
             {totalPages > 1 && (
                 <div className="flex min-w-0 flex-col items-center gap-2 overflow-x-auto sm:flex-row sm:flex-wrap sm:justify-between">
                     <p className="text-sm text-muted-foreground">

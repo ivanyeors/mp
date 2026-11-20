@@ -19,13 +19,6 @@ type Params = { params: Promise<{ id: string; followupId: string }> };
 
 const notFound = () => NextResponse.json({ error: "Follow-up not found" }, { status: 404 });
 
-/**
- * PATCH /api/shop/customers/[id]/followups/[followupId] — on an open
- * follow-up, either `{ done: true }` (done now, by the profile the signed-in
- * Member works as) or `{ assignedToProfileId }` (reassign, for example from an
- * archived assignee). The new assignee must be a live profile whose Member
- * holds `customers-edit`. Needs `customers-edit`; audited with ids only.
- */
 export async function PATCH(req: Request, { params }: Params) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;
@@ -79,11 +72,6 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 }
 
-/**
- * DELETE /api/shop/customers/[id]/followups/[followupId] — removes a
- * follow-up added by mistake. Needs `customers-edit`; the audit entry keeps
- * its ids and due date, never its title.
- */
 export async function DELETE(_req: Request, { params }: Params) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

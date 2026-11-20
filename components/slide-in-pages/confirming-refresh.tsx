@@ -3,11 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
-/**
- * Re-renders the server page every few seconds while a payment's webhook is
- * still on its way, then gives up and shows `slowMessage`. Never claims a
- * booking the server has not written.
- */
 export function ConfirmingRefresh({
   slowMessage,
   intervalMs = 3000,

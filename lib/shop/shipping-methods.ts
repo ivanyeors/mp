@@ -1,12 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/**
- * Shipping methods change rarely and are read on every storefront cart/checkout
- * render. The service-role read is cached per (includeInactive, country) and
- * invalidated by the `shipping-methods` tag; the cookie-based admin check that
- * decides `canIncludeInactive` stays outside the cache.
- */
 export const readShippingMethods = unstable_cache(
   async (canIncludeInactive: boolean, country: string | null) => {
     const admin = supabaseAdmin();

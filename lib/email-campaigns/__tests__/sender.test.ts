@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -33,10 +32,10 @@ const ORIGIN = "https://custom.mpillow.com";
 const SECRET = "campaign-test-secret";
 const CAMPAIGN = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const ANN = id(1); // imported, unclaimed, subscribed, buyer
-const BEA = id(2); // signed up here, subscribed
-const CAL = id(3); // imported, unsubscribed
-const DAN = id(4); // imported, Claimed, subscribed
+const ANN = id(1);
+const BEA = id(2);
+const CAL = id(3);
+const DAN = id(4);
 
 let world: FakeWorld;
 
@@ -53,7 +52,6 @@ function seed(w: FakeWorld) {
     { customer_id: DAN, imported_at: "2026-10-10T00:00:00Z", claimed_at: "2026-10-15T00:00:00Z" },
   );
   w.campaigns.push({ id: CAMPAIGN, audience: "subscribed" });
-  // Points are live, so the first campaign (which promises them) may go.
   w.settings = {
     points_enabled: "true",
     points_launch_at: "2026-10-01T00:00:00.000Z",
@@ -74,7 +72,6 @@ const campaign = (over: Partial<Campaign> = {}): Campaign => ({
   ...over,
 });
 
-/** The site: its one-click route verifies links with `siteSecret`. */
 function site({ siteSecret = SECRET } = {}) {
   return vi.fn(async (input: string | URL | Request) => {
     const url = new URL(String(input));
@@ -134,7 +131,6 @@ describe("sendCampaignBatch", () => {
     expect(ann.replyTo).toBe("support@mpillow.com");
     expect(ann.subject).toBe(FIRST_CAMPAIGN_DRAFT.subject);
     expect(ann.html).toContain("Hi Ann,");
-    // Slice 08: the link names Ann's send, signed with her.
     const annSend = world.sends.find((x) => x.customer_id === ANN)!.id;
     const token = unsubscribeToken(ANN, SECRET, annSend)!;
     expect(ann.headers?.["List-Unsubscribe"]).toContain(`${ORIGIN}/api/email/unsubscribe?u=${ANN}&t=${token}&s=${annSend}`);
@@ -252,13 +248,10 @@ describe("planWave", () => {
       "unsubscribe_route",
       "unsubscribe_secret",
       "pause",
-      // The first campaign promises points.
       "points",
       "send_limit",
     ]);
     expect(r.wave).toBe("w1");
-    // Ann (2 Shopify orders) and Bea (1 here) are buyers, Bea the newer; Dan
-    // Claimed, but this audience is everyone subscribed.
     expect(r.plan.eligible).toBe(3);
     expect(r.customerIds).toEqual([BEA, ANN]);
     expect(r.plan.excluded).toEqual({ unsubscribed: 1 });
@@ -338,7 +331,6 @@ describe("planWave", () => {
     expect(segment.customerIds).toEqual([BEA]);
   });
 
-  // PRD-campaign-audiences slice 06.
   describe("leaving Segments out", () => {
     const ids = (...pages: string[][]) =>
       async function* () {
@@ -351,13 +343,11 @@ describe("planWave", () => {
         { segmentId: "seg-staff", name: "Staff and test accounts", ids: ids([BEA], [CAL]) },
         { segmentId: "seg-recent", name: "Bought in the last 14 days", ids: ids([BEA, ANN]) },
       ]);
-      // Bea is in both: she counts once, against the first.
       expect(r.leftOutBySegment).toEqual([
         { segmentId: "seg-staff", name: "Staff and test accounts", count: 2 },
         { segmentId: "seg-recent", name: "Bought in the last 14 days", count: 1 },
       ]);
       expect(r.customerIds).toEqual([DAN]);
-      // Cal left with the Segment, before the rule could count her unsubscribe.
       expect(r.plan.considered).toBe(1);
       expect(r.plan.excluded).toEqual({});
     });
@@ -450,10 +440,6 @@ describe("links", () => {
 
 describe("placeholders (PRD-campaign-email-editor slice 01)", () => {
   const escaped = (s: string) => s.replace(/'/g, "&#39;");
-  /**
-   * Only the subject typed; the message and button label empty. Save never
-   * stores this, but a send must not draw placeholders even if a row did.
-   */
   const partly = campaign({
     ...EMPTY_CAMPAIGN_DRAFT,
     content: null,
@@ -487,7 +473,6 @@ describe("placeholders (PRD-campaign-email-editor slice 01)", () => {
     }
     expect(sent[0].html).not.toContain("dashed");
     expect(sent[0].html).toContain(">Sleep cooler</h1>");
-    // A button with no words is no button.
     expect(sent[0].html).not.toContain("/en-US/account");
   });
 
@@ -512,8 +497,6 @@ describe("the preview's Dark (PRD-campaign-email-editor slice 15)", () => {
   });
 
   it("can never reach a sent email: nothing a send calls takes forceDark", async () => {
-    // At the type level (`pnpm typecheck`): only the preview has the option,
-    // and each function a test send or a wave calls has none to pass.
     expectTypeOf<Parameters<typeof renderCampaignPreview>[1]>().toHaveProperty("forceDark");
     expectTypeOf<Parameters<typeof sendCampaignBatch>[0]>().not.toHaveProperty("forceDark");
     expectTypeOf<Parameters<typeof sendCampaignBatch>[1]>().not.toHaveProperty("forceDark");
@@ -525,7 +508,6 @@ describe("the preview's Dark (PRD-campaign-email-editor slice 15)", () => {
     expectTypeOf<ComposedCampaignEmailData>().not.toHaveProperty("forceDark");
     expectTypeOf<EmailShellOptions>().not.toHaveProperty("forceDark");
 
-    // And at run time: a test send and a wave carry the shell's own rules, for the reader's setting, never forced ones.
     const { s, sent } = setup();
     await sendCampaignTest(campaign(), { to: ["me@mpillow.com"], firstName: "Ivan" }, s);
     await sendCampaignBatch(campaign(), { wave: "w1", customerIds: [BEA] }, s);
@@ -598,19 +580,16 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     expect(ann.html).toContain(">Sleep cooler this December</h1>");
     expect(ann.html).toContain("Hi Ann,");
     expect(ann.html).toContain("Hello Ann, our <strong>FibreCool</strong> covers are back.");
-    // Slice 08: a site link carries the send's click token.
     expect(ann.html).toMatch(/<a class="mp-fg" href="https:\/\/custom\.mpillow\.com\/en-US\/faq\?mc=[A-Za-z0-9_-]{43}"[^>]*>the care guide<\/a>/);
     expect(ann.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
-    // Ann was imported and has not signed in: the sign-in button is her own Claim link, in her language.
     expect(world.claimLinks).toEqual([expect.objectContaining({ customer_id: ANN, template: `campaign:${CAMPAIGN}` })]);
     expect(ann.html).toMatch(/\/zh-CN\/account\/welcome\?c=[A-Za-z0-9_-]{43}/);
     expect(ann.html).toContain(`${ORIGIN}/zh-CN/mp-config?utm_source=email_campaign&amp;utm_medium=email&amp;utm_campaign=december-cooling`);
     expect(ann.text).toMatch(/^Sign in: https:\/\/custom\.mpillow\.com\/zh-CN\/account\/welcome\?c=/m);
     expect(ann.text).toMatch(/the care guide: https:\/\/custom\.mpillow\.com\/en-US\/faq\?mc=[A-Za-z0-9_-]{43}/);
-    // Bea signed up here: her sign-in button is her account.
     expect(bea.html).toContain(`${ORIGIN}/en-US/account?utm_source=email_campaign`);
     expect(bea.html).not.toContain("welcome?c=");
-    expect(bea.html).toContain("max-width:240px"); // the two buttons, side by side
+    expect(bea.html).toContain("max-width:240px");
   });
 
   it("fills the first name with the campaign's fallback words for a customer who has none", async () => {
@@ -628,7 +607,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     await sendCampaignBatch(blocks({ content: { ...CONTENT, fallbacks: {} } }), { wave: "w1", customerIds: [EVE] }, s);
     expect(sent[0].subject).toBe("there, sleep cooler");
     expect(sent[0].html).toContain("Hello there, our");
-    // The greeting is the First name Variable, with its fallback (slice 13): one fallback for a first name.
     expect(sent[0].html).toContain(">Hi there,</p>");
   });
 
@@ -654,7 +632,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
       expect(ann.html).toMatch(/<h1 class="mp-fg"[^>]*>Ann Tan, sleep cooler<\/h1>/);
       expect(ann.html).toContain("You have 1,250 points waiting.");
       expect(ann.text).toContain("Ann Tan, sleep cooler\n\nHi Ann,\n\nYou have 1,250 points waiting.");
-      // Bea has no last name and nothing to spend: the campaign's fallback words.
       expect(bea.subject).toBe("For Bea friend");
       expect(bea.html).toContain("You have some points waiting.");
       expect(admin.rpcCalls.filter((c) => c.name === "points_balance").map((c) => c.args.p_customer_id)).toEqual([ANN, BEA]);
@@ -663,7 +640,7 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
     it("reads no points balance for an email that does not say it", async () => {
       const { s, sent, admin } = setup();
       await sendCampaignBatch(blocks(), { wave: "w1", customerIds: [ANN, BEA] }, s);
-      await sendCampaignBatch(campaign(), { wave: "w2", customerIds: [DAN] }, s); // a legacy campaign
+      await sendCampaignBatch(campaign(), { wave: "w2", customerIds: [DAN] }, s);
       expect(sent).toHaveLength(3);
       expect(admin.rpcCalls.map((c) => c.name)).not.toContain("points_balance");
       expect(usesPointsBalance(blocks())).toBe(false);
@@ -690,7 +667,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
       expect(held.readiness.checks.find((c) => c.key === "points")).toMatchObject({ ok: false });
       const { s, sent } = setup();
       expect(await sendCampaignBatch(named(), { wave: "w1", customerIds: [ANN] }, s)).toMatchObject({ sent: 0, stopped: expect.stringContaining("points") });
-      // A test is filled from what it is given: the action gives the sample customer.
       await sendCampaignTest(named(), { to: ["me@mpillow.com"], firstName: "Mei Ling", lastName: "Tan", pointsBalance: 1250 }, s);
       expect(sent[0].subject).toBe("[Test] For Mei Ling Tan");
       expect(sent[0].html).toContain("You have 1,250 points waiting.");
@@ -736,7 +712,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
         expect(e.html).not.toContain(escaped(hint));
         expect(e.text).not.toContain(hint);
       }
-      // A button with no words is no button.
       expect(e.html).not.toContain("/en-US/shop");
     }
   });
@@ -753,7 +728,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
 
 describe("the send limit (Resend's free plan: 100 a day, 3,000 a month, tests included)", () => {
   const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
-  /** Sends of another campaign email, `h` hours ago. */
   const earlier = (n: number, status: string, h: number) => {
     for (let i = 0; i < n; i++) {
       world.sends.push({
@@ -779,8 +753,8 @@ describe("the send limit (Resend's free plan: 100 a day, 3,000 a month, tests in
 
   it("is the free plan when no limits are given, and counts the ledger and tests over both windows", async () => {
     earlier(10, "sent", 2);
-    earlier(3, "failed", 2); // never reached Resend
-    earlier(40, "sent", 30); // yesterday: the month only
+    earlier(3, "failed", 2);
+    earlier(40, "sent", 30);
     tests(3, 1);
     tests(2, 24 * 20);
     const r = await planWave(campaign(), { size: 2 }, setup().s);
@@ -900,7 +874,6 @@ describe("readSendingStatus", () => {
   });
 });
 
-// PRD-campaign-audiences slice 07: the rest period, from plan to claim.
 describe("the rest period", () => {
   const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
@@ -916,7 +889,6 @@ describe("the rest period", () => {
 
   it("skips, never fails, someone who started resting after the plan, writing no ledger row", async () => {
     const { s, sent } = setup();
-    // Another campaign reached Bea between the plan and the send.
     world.onClaim = (customerId) => {
       if (customerId === BEA) world.recentMarketing = { [BEA]: [ago(0.01)] };
     };
@@ -936,7 +908,6 @@ describe("the rest period", () => {
   });
 });
 
-// PRD-campaign-audiences slice 08: clicks and unsubscribes tied to the send.
 describe("each send's click token and unsubscribe link", () => {
   const tokensIn = (html: string) => [...new Set([...html.matchAll(/[?&](?:amp;)?mc=([A-Za-z0-9_-]{43})/g)].map((m) => m[1]))];
 
@@ -949,9 +920,7 @@ describe("each send's click token and unsubscribe link", () => {
     expect(annTokens[0]).not.toBe(beaTokens[0]);
     const annSend = world.sends.find((x) => x.customer_id === ANN)!;
     expect(annSend.click_token_hash).toBe(await hashClickToken(annTokens[0]));
-    // The plaintext is in the email only.
     expect(JSON.stringify(world.sends)).not.toContain(annTokens[0]);
-    // The unsubscribe link names the send instead, and never carries the click token.
     const unsub = sent[0].html.match(/href="([^"]*\/unsubscribe\?[^"]*)"/)![1].replace(/&amp;/g, "&");
     expect(unsub).not.toContain("mc=");
     const u = new URL(unsub);

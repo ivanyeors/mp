@@ -12,12 +12,6 @@ function productName(variant: VariantWithProduct): string {
   return variant.title ? `${title} — ${variant.title}` : title;
 }
 
-/**
- * One cart line as a courier sees it. The checkout page's quote and the checkout
- * route both go through here with the variant row read from the database, so the
- * two build identical parcels and share one cached rate. Declared value is the
- * Variant's shelf price — close enough for customs, and the same on both sides.
- */
 export function toShippableLine(variant: VariantWithProduct, quantity: number): ShippableLine {
   return {
     product_type: (variant.products?.product_type ?? "pillow") as ProductType,
@@ -30,12 +24,6 @@ export function toShippableLine(variant: VariantWithProduct, quantity: number): 
   };
 }
 
-/**
- * A quote without a cart: one unit of each product type, declared at the
- * estimate value. The delivery checker and the customisation flows quote this
- * way, and a Result's hold builds the same lines, so it reads the rate the page
- * showed from the quote cache (ADR 0032).
- */
 export function estimateLines(types: PackageType[], declaredValue: number, currency: string): ShippableLine[] {
   return types.map((type) => ({
     product_type: type,
@@ -47,7 +35,6 @@ export function estimateLines(types: PackageType[], declaredValue: number, curre
   }));
 }
 
-/** Load posted cart items (variant + quantity) as shippable lines. Unknown variants are skipped. */
 export async function loadShippableLines(
   admin: SupabaseClient,
   items: Array<{ variant_id: string; quantity: number }>,
@@ -80,11 +67,6 @@ type OrderItemRow = {
   product_variants?: { weight_grams: number | null; products?: { product_type: string } | null } | null;
 };
 
-/**
- * An order's lines for its label. A customised build without a variant ships as its
- * product type. A Service fee line (ADR 0024) is not a parcel and is left out —
- * without that, a variant-less service line would be boxed as a "pillow".
- */
 export async function loadOrderShippableLines(
   admin: SupabaseClient,
   orderId: string,

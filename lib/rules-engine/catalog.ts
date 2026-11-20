@@ -1,7 +1,6 @@
 import type { EngineInputs, InputDef, RuleFlow, RuleGraphJson } from "./types";
 import { inchesToCm, roundCm } from "./units";
 
-/** Shared customize-step answers collected by Premium + Basic. Values mirror the configurator options. */
 const CUSTOMIZE_INPUTS: readonly InputDef[] = [
   {
     key: "sleep_position",
@@ -77,11 +76,6 @@ export function catalogDef(flow: RuleFlow, key: string): InputDef | undefined {
   return inputCatalog(flow).find((d) => d.key === key);
 }
 
-/**
- * Workbench Simulate drafts → engine inputs. Measurements are typed in inches,
- * like Range bands and the configurator, and converted to canonical cm the same
- * way the configurator does (roundCm) so a simulated band edge matches a real one.
- */
 export function simulationInputs(flow: RuleFlow, drafts: EngineInputs): EngineInputs {
   const inputs: EngineInputs = { ...drafts };
   for (const def of inputCatalog(flow)) {
@@ -93,7 +87,6 @@ export function simulationInputs(flow: RuleFlow, drafts: EngineInputs): EngineIn
   return inputs;
 }
 
-/** Input keys referenced by Input / Range / Match nodes in a graph. */
 export function referencedInputKeys(graph: RuleGraphJson): ReadonlySet<string> {
   const keys = new Set<string>();
   for (const n of graph.nodes) {
@@ -104,10 +97,6 @@ export function referencedInputKeys(graph: RuleGraphJson): ReadonlySet<string> {
   return keys;
 }
 
-/**
- * Required inputs for evaluation. When `graph` is provided, only keys the graph
- * actually references are required (seeds may omit unused catalog answers).
- */
 export function missingRequiredInputs(
   flow: RuleFlow,
   inputs: Record<string, unknown>,

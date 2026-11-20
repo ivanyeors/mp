@@ -9,13 +9,8 @@ import {
   type DiscoverySourceValidationError,
 } from "./types";
 
-/** Min free-text length when Other is selected. */
 export const OTHER_TEXT_MIN_LENGTH = 2;
 
-/**
- * Validate Discovery source for hold / in-store submit.
- * Rejects missing, unknown, and archived ids; requires Other free text when other.
- */
 export function validateDiscoverySource(
   input: DiscoverySourceInput,
   catalog: DiscoverySourceCatalog,
@@ -34,7 +29,6 @@ export function validateDiscoverySource(
   const active = activeDiscoverySourceOptions(catalog);
   const allowed = active.find((o) => o.id === id);
   if (!allowed) {
-    // Distinguish unknown vs archived for clearer ops debugging
     const known = findDiscoverySourceOption(catalog, id);
     return {
       field: "discoverySource",
@@ -60,7 +54,6 @@ export function validateDiscoverySource(
   return null;
 }
 
-/** Trim Other text only when source is Other; otherwise null for storage. */
 export function normalizeDiscoverySourceOther(
   discoverySource: string,
   discoverySourceOther: string | null | undefined,

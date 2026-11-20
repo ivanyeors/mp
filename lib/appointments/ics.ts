@@ -1,17 +1,13 @@
-// Hand-built RFC 5545 iCalendar. No dependency: a VEVENT is a dozen lines of text.
-
 type VEventInput = {
   summary: string;
-  startIso: string; // ISO datetime, may carry +08:00 (SGT) or Z
+  startIso: string;
   endIso: string;
   location?: string;
   description?: string;
   uid: string;
-  /** DTSTAMP source; defaults to startIso (never Date.now — keeps output deterministic). */
   stampIso?: string;
 };
 
-/** ISO (with offset or Z) → iCalendar UTC basic format `YYYYMMDDTHHMMSSZ`. */
 export function toIcsUtc(iso: string): string {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) throw new Error(`Invalid datetime: ${iso}`);
@@ -23,7 +19,6 @@ export function toIcsUtc(iso: string): string {
   );
 }
 
-/** Escape a TEXT value per RFC 5545 §3.3.11. Order matters: backslash first. */
 function esc(v: string): string {
   return v
     .replace(/\\/g, "\\\\")
@@ -32,7 +27,6 @@ function esc(v: string): string {
     .replace(/\r\n|\r|\n/g, "\\n");
 }
 
-/** Build a single-event VCALENDAR string (CRLF line endings, per RFC 5545). */
 export function buildVEvent(input: VEventInput): string {
   const dtstamp = toIcsUtc(input.stampIso ?? input.startIso);
   // ponytail: no line-folding. RFC 5545 SHOULDs fold at 75 octets and LOCATION/DESCRIPTION

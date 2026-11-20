@@ -1,12 +1,3 @@
-/**
- * Calibration sheet (X-ray pillow UX slice 10): what the x-ray predicts for
- * each bench check, so the build team writes the ruler reading beside it and
- * a disagreement is visible at a glance. Pure and browser-safe: every number
- * comes from the same fit, settle and scaling the x-ray draws with, read
- * through the registry the caller resolved from Settings — never a second
- * model of the pillow.
- */
-
 import { MAX_LAYERS_PER_CELL, type PillowPlacement, type Section } from "./core";
 import { neckCatalog, pouchCatalog, type CatalogSource } from "./dimension-overrides";
 import {
@@ -25,7 +16,6 @@ import { fitMessage, fitPillow, type FitStatus } from "./fit";
 
 const r0 = (n: number) => Math.round(n);
 
-/** One pouch as the sheet lists it, with where its numbers came from. */
 export type CalibrationPouch = { key: string; label: string; source: CatalogSource; dims: PouchDimensions };
 
 export type LoftBudgetRow = { size: PillowSize; sideMm: number; centreMm: number };
@@ -34,16 +24,13 @@ export type FootprintRow = {
   key: string;
   label: string;
   source: CatalogSource;
-  /** Per Size: the pouch as it sits in that pillow (M is what was entered). */
   bySize: Record<PillowSize, { widthMm: number; lengthMm: number; thicknessMm: number }>;
 };
 
-/** How many Layers of one pouch, across a whole Section, it takes before it squeezes and before it cannot close. */
 export type LayersRow = {
   key: string;
   label: string;
   source: CatalogSource;
-  /** Per Size and per Section kind: the first Layer count that reads compressed / over, null if none within the cap. */
   bySize: Record<PillowSize, { side: { compressedAt: number | null; overAt: number | null }; centre: { compressedAt: number | null; overAt: number | null } }>;
 };
 
@@ -51,10 +38,8 @@ export type SettleRow = {
   key: string;
   label: string;
   source: CatalogSource;
-  /** One pouch alone in centre middle of a Size M, front and back empty. */
   spreadFrontMm: number;
   spreadBackMm: number;
-  /** Front ↔ back, relaxed and once settled. */
   lengthMm: number;
   settledLengthMm: number;
   thicknessMm: number;
@@ -65,7 +50,6 @@ export type SeamRow = { key: string; label: string; source: CatalogSource; seamF
 
 export type SqueezeCheck = { label: string; status: FitStatus; message: string };
 
-/** A Size's default Filling Template, as the caller loaded it. */
 export type CalibrationTemplate = {
   size: PillowSize;
   tier: string;
@@ -79,16 +63,13 @@ export type TemplateRow = {
   tier: string;
   name: string;
   status: FitStatus;
-  /** Loft at each Section's middle, mm. */
   middleLoftMm: Record<Section, number>;
   maxLoftMm: Record<Section, number>;
-  /** The fit messages of any cell that squeezes or cannot close. */
   notes: string[];
 };
 
 export type CalibrationSheet = {
   loftAllowance: number;
-  /** Pouches still drawn from a fallback: their predictions are placeholders until measured. */
   unmeasured: string[];
   budgets: LoftBudgetRow[];
   footprints: FootprintRow[];
@@ -104,11 +85,9 @@ const ID = 1;
 const one = (d: PouchDimensions): Map<number, ResolvedDims> =>
   new Map([[ID, { key: "calibration", kind: "pouch", dims: d, source: "configured", measuredOn: null }]]);
 
-/** n Layers of one pouch, one per Layer, in a Section's middle cell. */
 const stack = (section: Section, n: number): PillowPlacement[] =>
   Array.from({ length: n }, (_, i) => ({ section, subSection: "middle", slot: i + 1, itemId: ID, row: i }));
 
-/** n Layers of one pouch across a whole Section (front, middle and back each n deep): nothing to settle into, as on the bench. */
 const fullSection = (section: Section, n: number): PillowPlacement[] =>
   (["front", "middle", "back"] as const).flatMap((subSection) =>
     Array.from({ length: n }, (_, i) => ({ section, subSection, slot: i + 1, itemId: ID, row: i })),
@@ -124,7 +103,6 @@ function layersToClose(d: PouchDimensions, size: PillowSize, section: Section, l
   return { compressedAt, overAt: null };
 }
 
-/** The sheet for a registry (code defaults folded with Settings) and the default templates the caller loaded. */
 export function calibrationSheet(registry: DimensionRegistry, templates: readonly CalibrationTemplate[] = []): CalibrationSheet {
   const allowance = registry.loftAllowance;
   const pouches: CalibrationPouch[] = pouchCatalog(registry).map((p) => ({ key: p.key, label: p.label, source: p.source, dims: p.dims }));
@@ -153,8 +131,6 @@ export function calibrationSheet(registry: DimensionRegistry, templates: readonl
     };
   });
 
-  // Front and back filled with the same pouch, middle empty: where the front one ends, from the front edge. At true
-  // size (9-11-2026) each keeps its own length, so they meet only if they are long enough to.
   const seamPouch = pouches.find((p) => p.key === "6d/l") ?? pouches[0];
   let seam: SeamRow | null = null;
   if (seamPouch) {
@@ -175,7 +151,6 @@ export function calibrationSheet(registry: DimensionRegistry, templates: readonl
     };
   }
 
-  // Five 6D L by hand into one Section: side by side in one Layer, and stacked five deep.
   const l = pouches.find((p) => p.key === "6d/l");
   const squeeze: SqueezeCheck[] = [];
   if (l) {

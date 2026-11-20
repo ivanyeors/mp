@@ -1,6 +1,5 @@
 import { getProducts, getProductPriceRange } from "@/lib/ecommerce/products";
 
-/** Price range across active composed products of a type (pillow / bolster) for configurator JSON-LD. */
 export async function getConfiguratorOfferRange(
   productType: "pillow" | "bolster",
 ): Promise<{ lowPrice: number; highPrice: number; currency: string } | null> {

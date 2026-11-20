@@ -1,8 +1,3 @@
-/**
- * Houdini-style section dive: focused subgraph for one page.
- * Page graph stays page-only; dive swaps the canvas contents.
- */
-
 export const DIVE_ENTRY = "__dive_entry__";
 export const DIVE_EXIT = "__dive_exit__";
 
@@ -15,16 +10,10 @@ export type DiveEdge = {
   country?: string;
 };
 
-/** Section child paths are `pagePath#sectionId`. */
 export function isDivePort(path: string) {
   return path === DIVE_ENTRY || path === DIVE_EXIT;
 }
 
-/**
- * Build a focused dive graph from an expandPath-expanded transition set.
- * Keeps only section children of `pagePath`, plus Entry/Exit ports wired from
- * page-level inbound/outbound traffic (Houdini subnet I/O analogue).
- */
 export function buildDiveGraph(
   pagePath: string,
   nodes: DiveNode[],
@@ -86,7 +75,6 @@ export function buildDiveGraph(
   return { nodes: diveNodes, edges: diveEdges };
 }
 
-/** Left→right layout: Entry | sections | Exit. */
 export function layoutDiveGraph(
   nodes: DiveNode[],
   width: number,

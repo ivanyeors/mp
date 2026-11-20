@@ -1,7 +1,3 @@
-/**
- * Runnable self-check for shouldTrackFetchRequest.
- * Run: npx tsx components/api-request-tracker.check.ts
- */
 import { shouldTrackFetchRequest } from "./api-request-tracker";
 
 const ORIGIN = "http://localhost:3000";

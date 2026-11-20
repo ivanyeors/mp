@@ -35,7 +35,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const admin = supabaseAdmin();
 
-  // Verify the order exists
   const { error: orderError } = await admin
     .from("orders")
     .select("id")

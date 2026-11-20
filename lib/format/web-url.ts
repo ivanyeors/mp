@@ -1,11 +1,3 @@
-/**
- * A user-supplied link as an http(s) URL, or null.
- *
- * Customers and partners type links that end up as `href`s in front of Staff
- * and visitors. Only http and https survive, so `javascript:`, `data:` and
- * friends never become a clickable link. A bare domain ("mpillow.com/shop"),
- * the usual way people type a website, gets `https://`.
- */
 export function toWebUrl(value: string | null | undefined): string | null {
   const raw = (value ?? "").trim();
   if (!raw) return null;

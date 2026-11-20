@@ -14,7 +14,6 @@ import { withLocale } from "@/lib/i18n/routing";
 import { getClientPublicOrigin } from "@/lib/site-url";
 import { payLinkPath, payLinkState, type PayLinkState } from "@/lib/staff-orders/shared";
 
-/** What the Order page knows about a Staff order's Payment link (ADR 0048). */
 export type PaymentLinkCardData = {
     token: string;
     expiresAt: string;
@@ -22,7 +21,6 @@ export type PaymentLinkCardData = {
     lastSentAt: string | null;
     lastSentTo: string | null;
     sendCount: number;
-    /** The Order's locale: the link opens in it. */
     locale: string;
 };
 
@@ -43,12 +41,6 @@ const date = (iso: string) =>
         minute: "2-digit",
     }).format(new Date(iso));
 
-/**
- * The Payment link card on a Staff order: whether it can still be paid, when
- * it was sent and to whom, and the link to copy, show as a QR or email again.
- * Resending renews it for 7 days. Cancel lives on the Status card, as for
- * every Order.
- */
 export function PaymentLinkCard({
     orderId,
     order,
@@ -65,8 +57,6 @@ export function PaymentLinkCard({
 
     const state = payLinkState(order, { expires_at: data.expiresAt }, new Date());
     const locale = isSupportedLocale(data.locale) ? data.locale : DEFAULT_LOCALE;
-    // getClientPublicOrigin, never window.location: a link copied from a preview
-    // deployment must not send a customer to a preview deployment.
     const url = `${getClientPublicOrigin()}${withLocale(payLinkPath(data.token), locale)}`;
     const usable = state === "payable" || state === "expired";
 
@@ -75,9 +65,7 @@ export function PaymentLinkCard({
             await navigator.clipboard.writeText(url);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch {
-            /* clipboard blocked — the link stays selectable in the input */
-        }
+        } catch {}
     };
 
     const resend = async () => {
@@ -134,7 +122,6 @@ export function PaymentLinkCard({
                             <Input
                                 readOnly
                                 value={url}
-                                // The origin is the visitor's on localhost and the site's elsewhere.
                                 suppressHydrationWarning
                                 aria-label="Payment link"
                                 onFocus={(e) => e.currentTarget.select()}

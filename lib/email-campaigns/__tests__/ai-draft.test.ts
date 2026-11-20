@@ -16,13 +16,6 @@ import { REVIEW_REPLY_SYSTEM_PROMPT } from "@/lib/reviews/draft-reply";
 import { fakeClaude, userMessage, type FakeAnswer } from "@/lib/ai/__tests__/fake-claude";
 import { BRIEF, COVER_ID, GOOD_BLOCKS, REQUEST, draftAnswer } from "./ai-draft-fixtures";
 
-/**
- * ✨ Generate's call (PRD-campaign-email-editor slice 09), against a fake
- * client: the request it sends, each block as it arrives, the retry on a
- * block that doesn't parse or fails a check, and how a refusal, a cut-off
- * answer and Stop end it.
- */
-
 let ids = 0;
 const newId = () => `b${++ids}`;
 
@@ -53,7 +46,6 @@ describe("the request", () => {
     const changed = { ...AI_WRITING_DEFAULTS, model: "a-model-added-later" as AiModelId, effortDraft: "high" as const, effortQuick: "low" as const };
     const next = await run([{ text: draftAnswer() }], { settings: changed });
     expect(next.calls[0]).toMatchObject({ model: "a-model-added-later", output_config: { effort: "high" } });
-    // A quick action's effort is not a draft's.
     const quick = await run([{ text: draftAnswer() }], { settings: { ...AI_WRITING_DEFAULTS, effortQuick: "high" } });
     expect(quick.calls[0]).toMatchObject({ output_config: { effort: "medium" } });
   });
@@ -100,7 +92,6 @@ describe("the draft", () => {
     expect(events[0]).toMatchObject({ type: "stage", stage: "writing" });
     const blocks = events.filter((e) => e.type === "block");
     expect(blocks).toHaveLength(3);
-    // The first block was in the editor long before the answer finished.
     expect(blocks[0].at).toBeLessThan(total * 0.75);
     expect(draftBlocks(events)[0]).toEqual({ id: expect.stringMatching(/^b\d+$/), type: "heading", level: 1, text: "Sleep cooler this December" });
     expect(draftBlocks(events)[1]).toMatchObject({ type: "text" });
@@ -125,7 +116,6 @@ describe("the draft", () => {
     expect(events.map((e) => e.type)).toContain("restart");
     expect(draftBlocks(events)).toHaveLength(3);
     expect(outcome).toMatchObject({ ok: true, attempts: 2 });
-    // Both attempts are paid for: the first's output as far as it streamed, which the API never reports for a stopped stream.
     expect(outcome).toMatchObject({ inputTokens: 6000 });
     expect(outcome.outputTokens).toBeGreaterThan(2000);
   });
@@ -178,7 +168,6 @@ describe("the draft", () => {
     expect(outcome).toMatchObject({ ok: true, stopped: true, attempts: 1 });
     expect(draftBlocks(events)).toHaveLength(1);
     expect(fake.calls).toHaveLength(1);
-    // What it streamed before Stop, about four bytes a token.
     expect(outcome.outputTokens).toBe(Math.ceil(new TextEncoder().encode(draftAnswer().slice(0, fake.delivered())).length / 4));
   });
 

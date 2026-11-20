@@ -1,12 +1,3 @@
-/**
- * Price a Staff order from the database (ADR 0048). The draft names Variants,
- * Services, where it goes and a code; every amount here is read from the shop
- * (`product_variants.price`, the MSRP mirror checkout charges), Costings
- * (`service_prices`), the shipping method and the coupon. The dialog's summary
- * and the Order that is written come from this one function, so what Staff
- * see is what the customer is asked to pay.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { checkCoupon, findActiveCoupon } from "@/lib/ecommerce/discounts";
@@ -31,7 +22,6 @@ import {
   type StaffOrderQuoteView,
 } from "@/lib/staff-orders/shared";
 
-/** A pillow or bolster is a customised build: a Result, never a Staff order line. */
 const CUSTOMISED_ONLY = new Set(["pillow", "bolster"]);
 
 export type StaffOrderCustomer = {
@@ -57,10 +47,8 @@ type VariantRow = StockVariant & {
   products: Pick<Product, "id" | "slug" | "content" | "product_type" | "status" | "category_id"> | null;
 };
 
-/** The quote plus what only the server needs to write the Order. */
 export type StaffOrderQuote = StaffOrderQuoteView & {
   customer: StaffOrderCustomer;
-  /** Each goods line's Variant, for its frozen cost; keyed by Variant id. */
   variants: Map<string, VariantRow>;
   servicePrices: ServicePrices | null;
   shippingAddress: Record<string, unknown>;
@@ -78,7 +66,6 @@ export type QuoteOutcome =
 
 const refuse = (status: number, error: string): QuoteOutcome => ({ ok: false, status, error });
 
-/** A product's name as the shop shows it: the default locale's title, else any. */
 export function productTitle(product: Pick<Product, "content" | "slug"> | null | undefined): string {
   if (!product) return "Product";
   const content = product.content ?? {};
@@ -115,7 +102,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
   const customer = await loadStaffOrderCustomer(admin, draft.customer_id);
   if (!customer) return refuse(404, "Customer not found");
 
-  // ── Goods: the shop's price, the shop's stock ──
   const goods = mergeQuantities(draft.goods, "variant_id");
   const variants = new Map<string, VariantRow>();
   if (goods.length > 0) {
@@ -173,7 +159,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
   );
   if (shortage) return refuse(400, shortage);
 
-  // ── Services: Costings, never typed (ADR 0024) ──
   const services = mergeQuantities(draft.services, "key");
   let servicePrices: ServicePrices | null = null;
   if (services.length > 0) {
@@ -193,7 +178,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
   const sums = subtotals(lines);
   const goodsLines = lines.filter((l): l is Extract<StaffOrderLine, { kind: "goods" }> => l.kind === "goods");
 
-  // ── Discount code: off the goods only, checked against this Customer's account ──
   let discountAmount = 0;
   let couponId: string | null = null;
   let discountCode: string | null = null;
@@ -211,7 +195,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
       goodsLines.map((l) => l.categoryId).filter((id): id is string => !!id),
       {
         customerEmail: customer.email,
-        // Staff act for a known Customer, so a per-customer code is counted on theirs.
         account: { customerId: customer.id, email: customer.email },
         lineItems: goodsLines.map((l) => ({
           productId: l.productId,
@@ -227,7 +210,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
     freeShipping = checked.coupon?.discount_type === "free_shipping";
   }
 
-  // ── Where it goes ──
   const recipient = [customer.firstName, customer.lastName].filter(Boolean).join(" ").trim() || customer.email;
   let shippingAmount = 0;
   let shippingAddress: Record<string, unknown>;
@@ -242,8 +224,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
     if (!location || location.type !== "own" || !location.address?.trim()) {
       return refuse(400, "Pick one of our studios with an address.");
     }
-    // A Self-collect address (CONTEXT.md): the studio's, the customer as recipient,
-    // the collect_location marker. Never born delivered; no courier label.
     shippingAddress = collectionAddress(
       { id: location.id, name: location.name, address: location.address, postal_code: location.postalCode },
       recipient,
@@ -270,7 +250,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
     }
     let label = resolveShippingContent(method).name;
     if ((method.rate_source ?? "flat") === "easyship") {
-      // Priced as checkout prices it (ADR 0020): the goods' parcels, from the database.
       const { options } = await quoteShippingMethods(admin, {
         methods: [method],
         lines: goodsLines.map((l) => {
@@ -305,7 +284,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
         };
       }
     } else {
-      // A Service fee is outside the free-shipping threshold (CONTEXT.md): goods only.
       shippingAmount = calculateShippingRate(method, sums.goods);
     }
     if (freeShipping) shippingAmount = 0;
@@ -325,12 +303,9 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
     delivery = { kind: "ship", methodId: method.id, label };
   }
 
-  // ── Tax and total, as checkout computes them ──
   const taxInput = { subtotal: sums.all, shippingAmount, discountAmount };
   const tax = computeTax(taxInput, await resolveTaxRuleForRegion(taxCountry));
   const total = computeOrderTotal(taxInput, tax);
-  // Stored as the webhook reconciles it (subtotal − discount + shipping + tax):
-  // inclusive tax is inside the prices already, so it is not added again.
   const taxAmount = tax.mode === "exclusive" ? round2(tax.taxAmount) : 0;
 
   if (total < MIN_CHARGE) {
@@ -366,7 +341,6 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
   };
 }
 
-/** What the browser may see: the quote without the rows the server writes from. */
 export function quoteView(quote: StaffOrderQuote): StaffOrderQuoteView {
   return {
     currency: quote.currency,
@@ -392,11 +366,6 @@ export type StockCheckLine = {
   stockAvailable?: number;
 };
 
-/**
- * Per Variant, as checkout checks it (`variant_stock.stock_available`). Fills
- * each goods line's `stockAvailable`, and returns a sentence when one is
- * short, or null. Lines must already be merged per Variant.
- */
 export async function checkGoodsStock(
   admin: SupabaseClient,
   goods: StockCheckLine[],

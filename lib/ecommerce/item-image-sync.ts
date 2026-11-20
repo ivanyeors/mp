@@ -9,7 +9,6 @@ export type GalleryOp =
   | { kind: "prepend" }
   | { kind: "delete"; rowId: string };
 
-/** Decide how one product's gallery follows an item's image change from `oldAssetId` to `next`. */
 export function planGalleryOp(
   rows: GalleryRow[],
   oldAssetId: string | null,
@@ -33,7 +32,6 @@ async function loadImage(admin: SupabaseClient, assetId: string | null): Promise
   return asset?.hosted_url ? { assetId: asset.id, url: asset.hosted_url, altText: asset.alt_text ?? null } : null;
 }
 
-/** Make `next` the product's base gallery image, replacing the row holding `oldAssetId`. */
 async function applyGalleryImage(
   admin: SupabaseClient,
   productId: string,
@@ -70,10 +68,6 @@ async function applyGalleryImage(
   }
 }
 
-/**
- * Item image is the source of truth for the base image of every storefront
- * product projected from it: variant `image_url` plus one gallery row (Primary on first add).
- */
 export async function syncItemImageToProducts(
   admin: SupabaseClient,
   itemId: number,
@@ -91,7 +85,6 @@ export async function syncItemImageToProducts(
 
   const productIds = [...new Set((variants ?? []).map((v: { product_id: string }) => v.product_id))];
   for (const productId of productIds) {
-    // Sibling sizes may still show the old photo; leave their row alone.
     let oldStillUsed = false;
     if (oldAssetId) {
       const { data: siblings, error: sErr } = await admin
@@ -107,10 +100,6 @@ export async function syncItemImageToProducts(
   }
 }
 
-/**
- * Base image for a pillow/bolster storefront product, set from Inventory.
- * Every variant's `image_url` holds it, so the previous image is read back from there.
- */
 export async function setProductBaseImage(
   admin: SupabaseClient,
   productId: string,

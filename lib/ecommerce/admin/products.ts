@@ -4,15 +4,6 @@ import {
 } from "@/lib/ecommerce/products";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/**
- * Admin product reads shared by `GET /api/shop/products`,
- * `GET /api/shop/products/[id]` and the RSC settings pages that render the
- * same data on the server instead of fetching it after hydration.
- *
- * The list function takes `URLSearchParams` so the route handler and a server
- * component parse query parameters through exactly the same code path.
- */
-
 export interface AdminProductsListPayload {
   ok: true;
   rows: unknown[];
@@ -51,7 +42,6 @@ export async function listAdminProducts(
     if (types.length === 1) query = query.eq("product_type", types[0]);
     else if (types.length > 1) query = query.in("product_type", types);
   } else if (!includeCustom) {
-    // Public catalog: accessories and other non-custom sellables only.
     query = query.not("product_type", "in", `(${CUSTOM_COMPOSED_PRODUCT_TYPES.join(",")})`);
   }
   if (featured === "true") query = query.eq("featured", true);

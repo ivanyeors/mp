@@ -5,14 +5,6 @@ import type { DraftEvent, DraftRequest } from "@/lib/email-campaigns/ai-draft-sh
 import { fakeClaude, userMessage, type FakeAnswer } from "@/lib/ai/__tests__/fake-claude";
 import { COVER_ID, REQUEST, draftAnswer } from "@/lib/email-campaigns/__tests__/ai-draft-fixtures";
 
-/**
- * ✨ Generate's route (PRD-campaign-email-editor slice 09): `campaigns`
- * first, the AI writing settings read at the call, the per-Staff limits, then
- * Claude, streamed back to the editor. It returns blocks and ideas, and
- * writes nothing but its audit entry: never a campaign, never `content`,
- * never a send.
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -36,7 +28,6 @@ vi.mock("@/lib/auth/admin", () => ({
 }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 
-/** The service-role client: reads from `h.tables`, counts `rate_limit_hit`, and records every write. */
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from(table: string) {
@@ -84,7 +75,6 @@ vi.mock("@/lib/email-campaigns/products", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email-campaigns/products")>()),
   readCampaignProductCards: vi.fn(async (_: unknown, ids: string[]) => h.cards.filter((c) => ids.includes(c.id))),
 }));
-// Nothing here may save, lock or send: each is a spy that must stay uncalled.
 vi.mock("@/lib/email-campaigns/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email-campaigns/store")>()),
   getCampaign: vi.fn(async () => h.campaign),
@@ -171,7 +161,6 @@ describe("POST /api/campaigns/ai-draft", () => {
       entityId: "4f1c2b3a-1d2e-4f50-8a6b-7c8d9e0f1a2b",
       after: { kind: "draft", model: DEFAULT_AI_MODEL_ID, input_tokens: 3000, output_tokens: 2000, kept: false, ended: "drafted", blocks: 3, attempts: 1 },
     });
-    // Never the brief's text.
     expect(JSON.stringify(entry.after)).not.toContain("keeps the pillow cool");
   });
 
@@ -218,7 +207,6 @@ describe("POST /api/campaigns/ai-draft", () => {
     expect((await post()).status).toBe(200);
     const res = await post();
     expect(res.status).toBe(429);
-    // From 15:50 to 16:00 UTC the ten minutes end at midnight in Singapore: "12:00 am tomorrow".
     expect((await res.json()).error).toMatch(/^You've drafted a lot today\. Try again after \d{1,2}:\d{2} (am|pm)( tomorrow)?\.$/);
     expect(fake.calls).toHaveLength(2);
   });

@@ -4,41 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PresetPicker } from "@/components/block-editor/preset-picker";
 
-/**
- * The editor's preview (PRD-campaign-email-editor slice 04): the email the
- * server rendered, in a frame that runs no script, re-rendered as Staff type.
- * Desktop shows the 600px column, Mobile a 375px phone; Dark renders with the
- * shell's own dark rules (slice 15), as Apple Mail and Outlook.com apply them.
- * Above it, the inbox row: sender, subject and preview line as Gmail lists
- * them, cut where Gmail on a phone cuts them. Clicking a block in the email
- * selects its card.
- */
-
 export type PreviewDevice = "desktop" | "mobile";
 export type PreviewScheme = "light" | "dark";
 
-/** Where Gmail on a phone cuts the inbox row (PRD *Research*, Courier's preview tool). */
 export const INBOX_CUT = { sender: 20, subject: 35, preview: 45 } as const;
 
-/** The frame's width: the shell's 600px column with its padding, or a phone. */
 const FRAME_WIDTH: Record<PreviewDevice, number> = { desktop: 640, mobile: 375 };
-/** How tall the preview shows; the email scrolls inside it. */
 const VIEW_HEIGHT = 680;
 
-/** Pure — words cut where an inbox cuts them, with an ellipsis. */
 export function inboxCut(text: string, max: number): string {
     const t = text.replace(/\s+/g, " ").trim();
     return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
 }
 
-/** Pure — the name an inbox shows for a From address: `Mpillow <hello@…>` reads as Mpillow. */
 export function senderName(from: string | null): string | null {
     if (!from) return null;
     const named = /^\s*"?([^"<]*?)"?\s*<[^>]+>\s*$/.exec(from);
     return (named?.[1] || from).trim() || null;
 }
 
-/** The email's hidden preview line, which inboxes show after the subject: the first hidden element of its body. */
 function inboxLineOf(html: string): string {
     if (typeof DOMParser === "undefined") return "";
     const doc = new DOMParser().parseFromString(html, "text/html");
@@ -47,7 +31,6 @@ function inboxLineOf(html: string): string {
     return (hidden?.textContent ?? "").replace(/[\u200c\u00a0]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-/** The selected block's outline inside the frame. */
 const HIGHLIGHT = "mp-editor-selected";
 
 export function EmailPreview({
@@ -62,7 +45,6 @@ export function EmailPreview({
     selected,
     onSelectBlock,
 }: {
-    /** Null until the first render arrives. */
     html: string | null;
     subject: string;
     from: string | null;
@@ -90,8 +72,6 @@ export function EmailPreview({
     const preview = html ? inboxLineOf(html) : "";
     const sender = senderName(from) ?? "Mpillow";
 
-    // The frame's document is ours to reach (it runs no script): a click selects
-    // the block it lands in, links go nowhere, and the selected block is outlined.
     const latest = useRef({ onSelectBlock, selected });
     useEffect(() => {
         latest.current = { onSelectBlock, selected };
@@ -163,7 +143,6 @@ export function EmailPreview({
                         ref={frame}
                         title="Email preview"
                         srcDoc={html}
-                        // No script runs in it; the editor reaches its document to select a block.
                         sandbox="allow-same-origin"
                         onLoad={wire}
                         className="block border-0 bg-white"
@@ -173,7 +152,6 @@ export function EmailPreview({
                             transform: `scale(${scale})`,
                             transformOrigin: "top left",
                             marginLeft: Math.max(0, (width - frameWidth * scale) / 2),
-                            // The email's own prefers-color-scheme rules follow the frame's scheme.
                             colorScheme: scheme,
                         }}
                     />
@@ -190,6 +168,5 @@ export function EmailPreview({
 function mark(doc: Document, selected: string | null) {
     for (const el of doc.querySelectorAll(`.${HIGHLIGHT}`)) el.classList.remove(HIGHLIGHT);
     if (!selected) return;
-    // A block id is letters, digits, - and _ only (lib/email-campaigns/content.ts), safe in a selector.
     doc.querySelector(`[data-block-id="${selected}"]`)?.classList.add(HIGHLIGHT);
 }

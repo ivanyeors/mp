@@ -85,8 +85,6 @@ function getCategoryName(product: Product, lang: string): string {
 
 function getDefaultVariant(product: Product, preferredId?: string): ProductVariant | null {
   const active = product.variants?.filter((v) => v.is_active) ?? [];
-  // A linked variant (e.g. from a Merchant Center listing) wins when it is still on sale,
-  // so the landing page shows that listing's exact price. Unknown ids fall back silently.
   const preferred = preferredId ? active.find((v) => v.id === preferredId) : undefined;
   return preferred ?? active[0] ?? product.variants?.[0] ?? null;
 }
@@ -100,7 +98,6 @@ function getStockStatus(variant: ProductVariant | null): "in_stock" | "low_stock
   return "in_stock";
 }
 
-/** The below-fold tabs; each is also the `#hash` that opens it. */
 const DETAIL_TABS = new Set(["description", "specifications", "reviews"]);
 
 interface ProductDetailClientProps {
@@ -108,9 +105,7 @@ interface ProductDetailClientProps {
   relatedProducts: Product[];
   lang: string;
   answerLede?: string | null;
-  /** Variant to preselect from `?variant=`; ignored unless it is an active variant of this product. */
   initialVariantId?: string;
-  /** Server-rendered Page FAQ (after tabs). Null/empty when surface has no visible items. */
   pageFaq?: React.ReactNode;
 }
 
@@ -143,10 +138,6 @@ export function ProductDetailClient({
 
   const addToCartRef = useRef<HTMLButtonElement>(null);
 
-  // The tab a `#hash` names opens and scrolls into view: the Reviews tab's
-  // sign-in prompt returns to `#reviews`. Read after mount, since the server
-  // never sees the hash; an inactive tab's panel is unmounted, so the browser
-  // has no element to scroll to on its own.
   const [detailTab, setDetailTab] = useState("description");
   const detailTabsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -227,11 +218,9 @@ export function ProductDetailClient({
     <>
       <div className={cn("container mx-auto px-4 py-8 max-w-7xl", mobileStickyActionBarSpacerClassName, "md:pb-8")}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* LEFT: Image Gallery */}
           <div className="flex flex-col gap-4" id="gallery" data-section="gallery">
             {images.length > 0 ? (
               <>
-                {/* Desktop: single main image driven by the thumbnails below. */}
                 <div className="relative aspect-square rounded-lg overflow-hidden bg-muted max-md:hidden">
                   <Image
                     src={images[mainImageIndex]?.url ?? images[0].url}
@@ -248,13 +237,9 @@ export function ProductDetailClient({
                   )}
                 </div>
 
-                {/* Mobile: native horizontal swipe + snap over the full image
-                    set. Default touch-action so a single-finger drag pans the
-                    snap track (advances images).
-                    ponytail: no pinch-zoom — the site viewport meta
-                    (user-scalable=false) locks zoom globally, so a per-slide
-                    touch-action:pinch-zoom bought nothing and disabled the swipe
-                    pan. Upgrade to a transform-on-gesture handler if true
+                {/* ponytail: no pinch-zoom — the site viewport meta (user-scalable=false) locks
+                    zoom globally, so a per-slide touch-action:pinch-zoom bought nothing and
+                    disabled the swipe pan. Upgrade to a transform-on-gesture handler if true
                     unbounded zoom is ever required. */}
                 <div className="relative aspect-square rounded-lg overflow-hidden bg-muted md:hidden">
                   <div className="flex h-full snap-x snap-mandatory overflow-x-auto">
@@ -315,7 +300,6 @@ export function ProductDetailClient({
             )}
           </div>
 
-          {/* RIGHT: Product Info */}
           <div className="flex flex-col gap-5" id="buy-box" data-section="buy-box">
             <Breadcrumb>
               <BreadcrumbList>
@@ -488,9 +472,7 @@ export function ProductDetailClient({
               </Button>
             </div>
 
-            {/* Trust signals */}
             <div className="flex flex-col gap-2 pt-1 text-sm text-muted-foreground">
-              {/* Free-shipping threshold and live delivery rates, from the shipping methods (was a hardcoded S$150). */}
               <DeliveryEstimator
                 locale={isSupportedLocale(lang) ? lang : DEFAULT_LOCALE}
                 variantId={selectedVariant?.id}
@@ -516,7 +498,6 @@ export function ProductDetailClient({
           </div>
         </div>
 
-        {/* Below fold */}
         <div className="mt-12 lg:mt-16 space-y-12">
           <Tabs ref={detailTabsRef} value={detailTab} onValueChange={setDetailTab} className="scroll-mt-24">
             <TabsList variant="line">
@@ -587,8 +568,6 @@ export function ProductDetailClient({
         </div>
       </div>
 
-      {/* Mobile sticky Add-to-Cart bar (shared dock clearance). Only mounts
-          once the in-panel Add-to-Cart button scrolls out of view. */}
       {stickyBarVisible && (
         <MobileStickyActionBar className="flex items-center justify-between gap-4">
           <div className="flex flex-col min-w-0">

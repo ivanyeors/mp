@@ -7,12 +7,6 @@ import { countryName } from "@/lib/shipping/countries";
 import { countryFlag, groupCountries } from "@/lib/shipping/country-picker";
 import { cn } from "@/lib/utils";
 
-/**
- * A searchable country picker with flags: Singapore first, then Southeast
- * Asia, then the rest of the world A–Z (lib/shipping/country-picker). Type to
- * filter by name, code or a common other name ("USA", "UK"); arrows and Enter
- * pick without the mouse.
- */
 export function CountryPicker({
   id,
   value,
@@ -22,7 +16,6 @@ export function CountryPicker({
 }: {
   id?: string;
   value: string;
-  /** The countries to offer, e.g. `useDeliveryCountries`. */
   codes: string[];
   onChange: (code: string) => void;
   invalid?: boolean;
@@ -37,7 +30,6 @@ export function CountryPicker({
   const flat = useMemo(() => groups.flatMap((g) => g.codes), [groups]);
   const indexOf = useMemo(() => new Map(flat.map((code, i) => [code, i])), [flat]);
 
-  // The highlighted row follows the keyboard into view.
   useEffect(() => {
     if (!open) return;
     listRef.current
@@ -53,7 +45,6 @@ export function CountryPicker({
   const onOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) {
-      // Open on a fresh search with the current country highlighted.
       setQuery("");
       const all = groupCountries(codes).flatMap((g) => g.codes);
       setActive(Math.max(0, all.indexOf(value)));
@@ -109,7 +100,6 @@ export function CountryPicker({
             aria-label="Search country"
             aria-controls={listId}
             aria-activedescendant={flat[active] ? `${listId}-${flat[active]}` : undefined}
-            // 16px on phones so iOS does not zoom into the field.
             className="h-11 w-full bg-transparent text-base outline-none placeholder:text-muted-foreground md:h-10 md:text-sm"
           />
         </div>

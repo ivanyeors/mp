@@ -1,16 +1,5 @@
-/**
- * Slice 16 — migrate known `/public` marketing images into Media Assets.
- *
- * Landing: write site_settings URL + companion `*_asset_id` (slice 15 dual-write).
- * Blogs: rewrite featured `image_url` (+ `media_asset_id`).
- * Slide configs / ambassadors: adopted in slice 17 (`SLIDE_PUBLIC_PATHS` / slide migrate).
- *
- * Idempotency: Assets tagged `public:<lowercase-path>`; re-run reuses them.
- */
-
 import { landingAssetIdKey } from "@/lib/media/replace";
 
-/** Landing slot defaults — keep in sync with `app/[lang]/page.tsx` IMAGE_DEFAULTS. */
 export const LANDING_PUBLIC_DEFAULTS: Array<{ slotKey: string; publicPath: string }> = [
   { slotKey: "landing_hero", publicPath: "/m-pillow-417953-web.webp" },
   { slotKey: "landing_size_matters", publicPath: "/images/landing/size-matters.jpg" },
@@ -23,22 +12,18 @@ export const LANDING_PUBLIC_DEFAULTS: Array<{ slotKey: string; publicPath: strin
   { slotKey: "landing_founder", publicPath: "/Darrenyeo-profileshoot_2.webp" },
 ];
 
-/** @deprecated Slice 17 adopted slides — kept empty for plan shape compatibility. */
 export const DEFERRED_PUBLIC_PATHS: Array<{ publicPath: string; reason: string }> = [];
 
-/** Tag used for idempotent lookup (`public:/path`, lowercased). */
 export function publicPathTag(publicPath: string): string {
   return `public:${normalizePublicPath(publicPath).toLowerCase()}`;
 }
 
-/** Ensure leading `/`; preserve case for case-sensitive filesystems. */
 export function normalizePublicPath(publicPath: string): string {
   const p = publicPath.trim();
   if (!p.startsWith("/")) return `/${p}`;
   return p;
 }
 
-/** Relative site path like `/images/foo.jpg` (not protocol-relative). */
 export function isPublicPath(url: string | null | undefined): boolean {
   if (!url) return false;
   return url.startsWith("/") && !url.startsWith("//");
@@ -84,10 +69,6 @@ export type PublicMigrationPlan = {
   deferred: Array<{ publicPath: string; reason: string }>;
 };
 
-/**
- * Pure plan: which Assets to ingest/reuse and which consumers to rewrite.
- * `existingByTag` maps `public:/path` → asset.
- */
 export function planPublicMigration(input: {
   landingDefaults?: Array<{ slotKey: string; publicPath: string }>;
   settings?: Array<{ key: string; value: string }>;
@@ -123,7 +104,6 @@ export function planPublicMigration(input: {
       continue;
     }
 
-    // Prefer explicit public override if present; else default path.
     const sourcePath =
       currentUrl && isPublicPath(currentUrl) ? normalizePublicPath(currentUrl) : path;
     neededPaths.add(sourcePath);
@@ -178,7 +158,6 @@ export function planPublicMigration(input: {
   return { assets, landing, blogs, deferred };
 }
 
-/** Index Assets that carry a `public:` tag. */
 export function indexAssetsByPublicTag(
   assets: Array<{ id: string; hosted_url: string | null; tags?: string[] | null }>,
 ): Map<string, ExistingPublicAsset> {

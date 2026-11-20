@@ -20,9 +20,7 @@ type SplitHeroSectionProps = {
   flip?: boolean;
   stacked?: boolean;
   stackedImages?: ImageMediaConfig[];
-  /** Show the image at its own aspect ratio instead of cropping it into the frame. */
   naturalImage?: boolean;
-  /** Put the list behind a button labelled `content.listToggle`, open to start with. */
   collapsibleList?: boolean;
   cta?: SectionCtaConfig;
   buttonLabel?: string;
@@ -61,7 +59,6 @@ function CtaButton({
   return <div className="pt-1">{link}</div>;
 }
 
-/** The list under the paragraphs, behind a show/hide button when the config asks. */
 function HeroList({ content, collapsible }: { content: SplitHeroContent; collapsible?: boolean }) {
   const [open, setOpen] = React.useState(true);
   if (!content.listItems?.length) return null;
@@ -261,10 +258,7 @@ export function SplitHeroSection({
 
         <div className={cn(flip ? "md:order-1" : null)}>
           {naturalImage ? (
-            // Animated GIFs and tall charts keep their own shape; a fixed frame would crop
-            // them. A plain <img>: next/image needs dimensions, and serves GIFs unoptimised.
             <div className={cn("overflow-hidden rounded-xl bg-muted/20", imageWrapperClassName)}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.src}
                 alt={image.alt}

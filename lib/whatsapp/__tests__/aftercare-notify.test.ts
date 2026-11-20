@@ -2,12 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeAftercareDb, type AftercareFakeDb } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * The aftercare WhatsApp channel (CRM slice 13), which slices 07 and 08 send
- * through: the pure decision for every skip reason, the ledger that stops a
- * second send under concurrent runs, and 131050 recorded by name.
- */
-
 const send = vi.hoisted(() => ({ fn: vi.fn() }));
 
 vi.mock("@/lib/appointments/whatsapp", async (orig) => {
@@ -54,7 +48,6 @@ describe("decideAftercareWhatsApp", () => {
   });
 
   it("checks the cheap, common gates first", () => {
-    // Opted out and stopped: opted_out wins. No template and opted out: the template.
     expect(decideAftercareWhatsApp({ ...base, optedIn: false, stopRequested: true })).toEqual({ send: false, skip: "opted_out" });
     expect(decideAftercareWhatsApp({ ...base, templateName: null, optedIn: false })).toEqual({
       send: false,
@@ -122,7 +115,6 @@ describe("notifyAftercareWhatsApp", () => {
     client = fakeAftercareDb(db);
     send.fn.mockReset();
     send.fn.mockImplementation(async () => {
-      // Let a concurrent run reach its own claim while this send is in flight.
       await new Promise((r) => setTimeout(r, 5));
       return "wamid.1";
     });
@@ -168,7 +160,6 @@ describe("notifyAftercareWhatsApp", () => {
     send.fn.mockRejectedValueOnce(new WhatsAppSendError("WhatsApp send failed (400): Unable to deliver", 400, 131050));
     expect(await notifyAftercareWhatsApp(admin(), input)).toEqual({ sent: false, error: "whatsapp_marketing_off" });
     expect(db.customer_whatsapp[0]).toMatchObject({ status: "failed", last_error: "whatsapp_marketing_off" });
-    // Our switch is left alone: it is their WhatsApp setting, not ours.
     expect(db.customers[0].aftercare_whatsapp).toBe(true);
 
     expect(await notifyAftercareWhatsApp(admin(), input)).toEqual({ sent: false, skip: "duplicate" });

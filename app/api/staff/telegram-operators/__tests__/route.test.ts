@@ -4,12 +4,6 @@ import { createFakeSupabase } from "@/lib/reviews/__tests__/fake-supabase";
 import { hashLinkCode } from "@/lib/telegram/link-codes";
 import { ADMIN_PERMISSIONS } from "@/lib/auth/permissions";
 
-/**
- * Users & permissions → Telegram API (slice 08). `users` only, every change
- * audited with before/after actions, a link code returned once while only its
- * hash is kept, and a link never granted more than its login's role allows.
- */
-
 const h = vi.hoisted(() => ({
   db: null as unknown,
   tables: {} as Record<string, Record<string, unknown>[]>,
@@ -176,7 +170,6 @@ describe("Telegram access API", () => {
     });
 
     it("cannot reissue a code for a link that can do more than they can", async () => {
-      // Sam's login role allows moderation; the manager holds it, so a code is fine…
       h.tables.telegram_operators.push({
         id: "5b5b5b5b-1111-4222-8333-444455556666",
         staff_profile_id: SHOPPER,
@@ -187,7 +180,6 @@ describe("Telegram access API", () => {
       h.requireAdminContext.mockResolvedValue(peopleManager);
       const ok = await item.PATCH(json({ action: "new_link_code" }, "PATCH"), params("5b5b5b5b-1111-4222-8333-444455556666"));
       expect(ok.status).toBe(200);
-      // …but not for someone who lacks moderation themselves.
       h.requireAdminContext.mockResolvedValue({ ...peopleManager, permissions: new Set(["users", "orders"]) });
       const res = await item.PATCH(json({ action: "new_link_code" }, "PATCH"), params("5b5b5b5b-1111-4222-8333-444455556666"));
       expect(res.status).toBe(403);

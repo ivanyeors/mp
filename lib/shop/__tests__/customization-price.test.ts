@@ -6,27 +6,18 @@ import {
 } from "@/lib/shop/customization-price";
 import type { ConfigLine } from "@/lib/types/customization";
 
-/**
- * Live Costings values (prod, 2026-09-13). The point of this file is that the shop
- * customizer now reaches the same numbers `/mp-config` does — it used to charge the
- * full MSRP of any case you swapped TO, and nothing back for the one you swapped
- * FROM.
- */
-
 const SATIN_XS = 25;
-const LINEN_XS = 65; // items 6 / 42
-const FIBRECOOL_XS = 88; // item 32
+const LINEN_XS = 65;
+const FIBRECOOL_XS = 88;
 
 const line = (over: Partial<ConfigLine> & Pick<ConfigLine, "item_id" | "category">): ConfigLine => ({
   name: "x",
   quantity: 1,
   is_addon: false,
-  // Browser-supplied and deliberately absurd: nothing may read it.
   price_delta: 9999,
   ...over,
 });
 
-/** Basic XS: one cover, one linen case, Costings row 170. */
 const basicXs: CustomizationPricingInputs = {
   msrp_by_family: { "": 170 },
   default_cover: { item_id: 1, msrp: SATIN_XS, quantity: 1 },
@@ -40,7 +31,6 @@ const basicXs: CustomizationPricingInputs = {
   shelf_price: 170,
 };
 
-/** Premium XS: TWO covers, ships Fibrecool, two family rows (340 linen / 360 fibrecool). */
 const premiumXs: CustomizationPricingInputs = {
   msrp_by_family: { linen: 340, fibrecool: 360 },
   default_cover: { item_id: 1, msrp: SATIN_XS, quantity: 2 },
@@ -48,7 +38,7 @@ const premiumXs: CustomizationPricingInputs = {
   case_options: basicXs.case_options,
   cover_options: [
     { item_id: 1, msrp: SATIN_XS },
-    { item_id: 29, msrp: 33 }, // Deep Blue Batik
+    { item_id: 29, msrp: 33 },
   ],
   shelf_price: 360,
 };
@@ -58,8 +48,6 @@ const noExtraPrices = new Map<number, number | null>();
 
 describe("priceCustomizedBuild — a swap is not an extra part", () => {
   it("basic XS with the Fibrecool case is 193, not 258", () => {
-    // 258 is what shipped: 170 + the whole 88, on top of a row that already
-    // includes a 65 case.
     const r = priceCustomizedBuild({
       pricing: basicXs,
       lines: [line({ item_id: 1, category: "cover" }), line({ item_id: 32, category: "case" })],
@@ -81,8 +69,6 @@ describe("priceCustomizedBuild — a swap is not an extra part", () => {
   });
 
   it("ignores the price_delta the browser sends", () => {
-    // Every fixture line carries price_delta 9999. If it were read, nothing above
-    // would land on a Costings number.
     const r = priceCustomizedBuild({
       pricing: basicXs,
       lines: [line({ item_id: 32, category: "case", price_delta: 9999 })],
@@ -95,8 +81,6 @@ describe("priceCustomizedBuild — a swap is not an extra part", () => {
 
 describe("priceCustomizedBuild — a cheaper choice reduces the price", () => {
   it("premium XS moving from its Fibrecool build to linen is -20", () => {
-    // The shelf price is 360 (Fibrecool). Linen is its own Costings row at 340, so
-    // the delta is negative — the old rule clamped this to 0 and charged 360.
     const r = priceCustomizedBuild({
       pricing: premiumXs,
       lines: [line({ item_id: 1, category: "cover", quantity: 2 }), line({ item_id: 42, category: "case" })],
@@ -108,7 +92,6 @@ describe("priceCustomizedBuild — a cheaper choice reduces the price", () => {
   });
 
   it("a dearer cover moves by the difference ONCE PER COVER THE BOM SHIPS", () => {
-    // Premium ships two. 340 + (33-25)*2 = 356.
     const r = priceCustomizedBuild({
       pricing: premiumXs,
       lines: [line({ item_id: 29, category: "cover", quantity: 2 }), line({ item_id: 42, category: "case" })],

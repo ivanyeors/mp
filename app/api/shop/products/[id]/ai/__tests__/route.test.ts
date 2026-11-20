@@ -2,13 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeClaude, userMessage, type FakeAnswer } from "@/lib/ai/__tests__/fake-claude";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * The product editor's ✨ route: `products` first, then the request, the AI
- * writing settings read at the call, Claude's credentials and the per-Staff
- * limits, then the product's own details and Claude. It returns words to
- * offer and writes one thing, its audit entry: never the product.
- */
-
 type Row = Record<string, unknown>;
 
 const PRODUCT_ID = "00000000-0000-4000-8000-00000000a001";
@@ -30,7 +23,6 @@ vi.mock("@/lib/auth/admin", () => ({
 }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 
-/** The service-role client: reads from `h.tables`, counts `rate_limit_hit`, and records every write. */
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from(table: string) {
@@ -132,7 +124,6 @@ describe("POST /api/shop/products/[id]/ai", () => {
     const res = await post(SEO_ASK);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ kind: "seo", locale: "en-US", seoTitle: GOOD_SEO.seoTitle });
-    // The category's name reached Claude; the price never did.
     expect(userMessage(fake.calls[0]!)).toContain("Accessories");
     expect(userMessage(fake.calls[0]!)).not.toContain("137");
     expect(h.writes).toEqual([]);

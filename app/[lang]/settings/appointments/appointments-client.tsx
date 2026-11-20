@@ -27,7 +27,6 @@ const AppointmentsCalendar = dynamic(
   },
 );
 
-/** The `/api/settings/appointments` settings the page mounts with. */
 export type AppointmentsInitialData = AppointmentSettings;
 
 export default function AppointmentSettingsPage({
@@ -48,12 +47,9 @@ export default function AppointmentSettingsPage({
   const [savingAvailability, setSavingAvailability] = useState(false);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
-  // Serialize availability writes so rapid toggles don't clobber each other
   const saveChain = useRef(Promise.resolve());
-  // The server already loaded the settings; the sheet still saves and reloads.
   const skipFirstFetch = useRef(initialData != null);
 
-  // Locations missed on the server (or not passed): pull them once on mount.
   const skipLocationsFetch = useRef(initialLocations != null);
   useEffect(() => {
     if (skipLocationsFetch.current) {
@@ -106,7 +102,6 @@ export default function AppointmentSettingsPage({
   const saveAvailability = useCallback((patch: Partial<AppointmentSettings>) => {
     const run = async () => {
       const previous = settingsRef.current;
-      // Hour fields are derived from the windows; keep them in step optimistically too.
       const optimistic = withDerivedHours({ ...previous, ...patch });
       setSettings(optimistic);
       settingsRef.current = optimistic;
@@ -127,8 +122,6 @@ export default function AppointmentSettingsPage({
             typeof json.error === "string" ? json.error : "Invalid settings",
           );
         }
-        // Apply only this patch's keys from the server onto whatever is current
-        // (later queued writes may have updated other fields already).
         if (json.settings) {
           let after = { ...settingsRef.current };
           for (const key of Object.keys(patch) as (keyof AppointmentSettings)[]) {
@@ -164,11 +157,6 @@ export default function AppointmentSettingsPage({
     return next;
   }, []);
 
-  /**
-   * Flip one Location's bookable switch. Optimistic, rolled back on failure,
-   * and queued on the same chain as availability writes so rapid taps land
-   * in order.
-   */
   const saveLocationBookable = useCallback((id: string, bookable: boolean) => {
     const run = async () => {
       const previous = locationsRef.current;
@@ -215,7 +203,6 @@ export default function AppointmentSettingsPage({
   return (
     <div className="flex flex-col sm:p-3 md:p-6">
       <style data-fullcalendar />
-      {/* Title row keeps the gear in thumb reach. */}
       <div className="mb-3 flex shrink-0 items-start justify-between gap-3 md:mb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">

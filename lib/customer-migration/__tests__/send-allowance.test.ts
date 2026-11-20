@@ -53,9 +53,9 @@ describe("readRecentCampaignSends", () => {
       });
     send("sent", ago(2 * HOUR), 1);
     send("bounced", ago(3 * HOUR), 2);
-    send("failed", ago(23 * HOUR), 3); // never reached Resend
+    send("failed", ago(23 * HOUR), 3);
     send("complained", ago(3 * 86400_000), 4);
-    send("sent", ago(32 * 86400_000), 5); // outside the month
+    send("sent", ago(32 * 86400_000), 5);
     world.auditLog = [
       { action: "email_campaign.test", created_at: ago(20 * HOUR), after: { sent: 2, failed: 1 } },
       { action: "email_campaign.test", created_at: ago(10 * 86400_000), after: { sent: 1, failed: 0 } },

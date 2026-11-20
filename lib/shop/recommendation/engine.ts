@@ -2,15 +2,6 @@ import type { CustomizationResult } from "@/lib/types/customization";
 import { callModelEndpoint, getModelConfig, type ModelEndpointConfig } from "./model";
 import { parseModelResult } from "./schema";
 
-/**
- * Single entry point for producing a recommendation. It first attempts the
- * configured, active real-model endpoint and validates its response; on a
- * missing endpoint, an invalid response shape, or a request failure it returns
- * the guaranteed rule-based recommendation. Genuine fallbacks (a configured
- * endpoint that failed or returned garbage) are logged.
- *
- * Dependencies are injectable so the engine can be tested without I/O.
- */
 export interface EngineDeps {
   loadConfig?: () => Promise<ModelEndpointConfig | null>;
   fetchImpl?: typeof fetch;
@@ -37,7 +28,6 @@ export async function recommendWithFallback(
     config = null;
   }
 
-  // No configured/active endpoint: rule-based is the normal path (not logged).
   if (!config?.base_url) {
     return computeRuleBased();
   }

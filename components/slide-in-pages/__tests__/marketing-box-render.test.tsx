@@ -4,13 +4,6 @@ import { MARKETING_BOX_LABEL } from "@/lib/marketing-consent/state";
 import { I18nMessagesProvider } from "@/lib/i18n/messages/provider";
 import { zhCN } from "@/lib/i18n/messages/zh-CN";
 
-/**
- * The marketing email box where people give their email, past checkout
- * (PRD-campaign-audiences slice 02; ADR 0039): on booking, in the page's
- * language, and on a customisation's contact step. Ticked by default, never
- * required.
- */
-
 const nav = vi.hoisted(() => ({ pathname: "/en-US/appointments" }));
 vi.mock("next/navigation", () => ({
   usePathname: () => nav.pathname,
@@ -20,7 +13,6 @@ vi.mock("next/navigation", () => ({
 const { BookingFlow } = await import("@/components/slide-in-pages/booking-flow");
 const { PreviewContactFields } = await import("@/components/configurator/preview-contact-fields");
 
-/** The checkbox with this id: its tag, so its state and its `required` can be read. */
 const box = (html: string, id: string) => html.match(new RegExp(`<button[^>]*id="${id}"[^>]*>`))?.[0] ?? "";
 
 describe("the booking form's box", () => {
@@ -35,7 +27,6 @@ describe("the booking form's box", () => {
 
   it("speaks Chinese on the Chinese page", () => {
     nav.pathname = "/zh-CN/appointments";
-    // As the [lang] layout serves a zh-CN page: its dictionary, provided.
     const html = renderToString(
       <I18nMessagesProvider locale="zh-CN" messages={zhCN}>
         <BookingFlow type="customisation" />

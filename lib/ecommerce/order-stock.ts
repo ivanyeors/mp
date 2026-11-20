@@ -1,23 +1,9 @@
-/**
- * Taking an Order's goods out of stock exactly once. Result Accept, Staff-made
- * Orders and the Order page's "Deduct stock" all come through here. The Stripe
- * webhook keeps its own claim on the same column.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { deductInventoryForOrder, type OrderItemForDeduction } from "./inventory-deduction";
 import { isSoldOrderStatus } from "./sold-status";
 
 export type DeductOrderStockResult = "deducted" | "already_deducted";
 
-/**
- * Take an Order's goods out of stock once.
- *
- * `orders.inventory_deducted_at` is the claim. The call that sets it deducts.
- * Any other call, concurrent or later, finds it set and returns. An Order whose
- * sale rows were written before the claim existed keeps them and is only
- * claimed. A failed deduction hands the claim back, so a retry deducts, and throws.
- */
 export async function deductOrderStock(
   admin: SupabaseClient,
   orderId: string,
@@ -55,12 +41,6 @@ export async function deductOrderStock(
   }
 }
 
-/**
- * `deductOrderStock`, tried up to `attempts` times. When every attempt fails, the
- * Order is flagged `needs_attention` with a `stock_not_deducted` timeline event,
- * and Staff deduct it from the Order page once the cause is fixed. Never throws:
- * the sale has already happened.
- */
 export async function deductOrderStockOrFlag(
   admin: SupabaseClient,
   orderId: string,
@@ -87,12 +67,6 @@ export async function deductOrderStockOrFlag(
   return { ok: false, error };
 }
 
-/**
- * An Order becoming sold takes its stock out: call on every status change, with
- * the status before and after. Staying sold, or never becoming sold, deducts
- * nothing, so an Order sold before this rule is not deducted again by a later
- * change. An Order that missed its deduction is deducted from the Order page.
- */
 export async function deductStockWhenSold(
   admin: SupabaseClient,
   orderId: string,

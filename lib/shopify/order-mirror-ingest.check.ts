@@ -1,8 +1,3 @@
-/**
- * Run: npx tsx lib/shopify/order-mirror-ingest.check.ts
- *
- * Fixture-based external behavior for slice 03 ingest (no HTTP / live Shopify).
- */
 import assert from 'node:assert/strict'
 import {
   buildMirrorLineFromShopify,
@@ -53,7 +48,7 @@ const ctx: CostingsContext = {
         pillow_size: null,
         pillow_kind: null,
         bolster_variant: null,
-        item_id: 99, // uncosted item
+        item_id: 99,
       },
     ],
   ]),
@@ -74,7 +69,6 @@ const ctx: CostingsContext = {
   ]),
 }
 
-// --- paid_at selection ---
 assert.equal(isShopifyPaidFinancialStatus('paid'), true)
 assert.equal(isShopifyPaidFinancialStatus('pending'), false)
 assert.equal(
@@ -97,12 +91,10 @@ assert.equal(
   'unpaid has no paid_at',
 )
 
-// --- Costings freeze via mapping rollup ---
 assert.equal(resolveShopifyMappingUnitCost(ctx.mappingsByVariantId.get(101)!, ctx), 10)
-assert.equal(resolveShopifyMappingUnitCost(ctx.mappingsByVariantId.get(202)!, ctx), 25) // 2*10 + 5
+assert.equal(resolveShopifyMappingUnitCost(ctx.mappingsByVariantId.get(202)!, ctx), 25)
 assert.equal(resolveShopifyMappingUnitCost(ctx.mappingsByVariantId.get(303)!, ctx), null)
 
-// --- Order + lines upsert plan (fixture, no HTTP) ---
 const paidOrder: ShopifyOrderLike = {
   id: 9001,
   name: '#9001',
@@ -146,7 +138,6 @@ assert.equal(unmapped.is_others, true, 'unmapped → Others')
 assert.equal(unmapped.gross_revenue, 20)
 assert.equal(unmapped.unit_cost, null)
 
-// Unpaid skipped
 const unpaid = planShopifyOrderMirrorUpsert(
   { ...paidOrder, financial_status: 'pending' },
   ctx,
@@ -157,7 +148,6 @@ assert.equal(unpaid.ok, false)
 if (unpaid.ok) throw new Error('expected skip')
 assert.equal(unpaid.reason, 'not_paid')
 
-// Freeze: later Costings change does not rewrite healthy line without re-resolve
 const existingHealthy: MirrorLineRow = {
   ...cover,
   unit_cost: 10,
@@ -186,7 +176,6 @@ if (!rePlan.ok) throw new Error('expected ok')
 assert.equal(rePlan.order.paid_at, '2026-06-01T09:30:00Z', 'paid_at unchanged on re-ingest')
 assert.equal(rePlan.lines.find((l) => l.shopify_line_item_id === 1)!.unit_cost, 10)
 
-// --- Refund netting + idempotency; paid_at not in refund plan ---
 const linesForRefund = new Map([
   [1, { shopify_line_item_id: 1, unit_cost: 10, total_cost: 20, quantity: 2 }],
 ])
@@ -219,7 +208,6 @@ assert.equal(secondRefund.alreadyApplied, true)
 assert.equal(secondRefund.amountRefunded, 15, 'idempotent: no double net')
 assert.equal(secondRefund.lineCostPatches.length, 0)
 
-// Money-only refund (no restock) still nets revenue, leaves COGS
 const moneyOnly = planShopifyRefundApply({
   refund: {
     id: 56,
@@ -234,7 +222,6 @@ const moneyOnly = planShopifyRefundApply({
 assert.equal(moneyOnly.amountRefunded, 20)
 assert.equal(moneyOnly.lineCostPatches.length, 0, 'no_restock does not drop COGS')
 
-// --- Cursor semantics ---
 const current: SyncStateRow = {
   id: 1,
   phase: 'backfill',

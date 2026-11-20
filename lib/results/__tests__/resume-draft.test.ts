@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The continue link's loader (ADR 0050): it reopens a guest's own Mpillow
- * Draft for whoever holds its access token, and nothing else, so a stale or
- * forged link shows the ordinary configurator and learns nothing.
- */
-
 const h = vi.hoisted(() => ({ row: null as Record<string, unknown> | null }));
 
 vi.mock("@/lib/supabase/server", () => ({

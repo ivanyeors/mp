@@ -9,13 +9,6 @@ import { SegmentNameTakenError, createSegment, listSegments } from "@/lib/crm/se
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/settings/customers/segments — the live Segments (CRM slice 05), by
- * name, each with its live count through the list's own filter mapping. Every
- * Staff member with `customers` sees and counts every Segment. Answers `{ ok,
- * rows }`; a Segment that needs review has `count: null` and names what was
- * ignored.
- */
 export async function GET() {
   const denied = await requireAdmin("customers");
   if (denied) return denied;
@@ -28,13 +21,6 @@ export async function GET() {
 
 const CreateSegmentSchema = z.object({ name: SegmentNameSchema, filters: z.unknown() });
 
-/**
- * POST /api/settings/customers/segments — saves `{ name, filters }`, where
- * `filters` are the list's URL parameters (`{ bought: "premium" }`). Anything
- * the list's schema would drop is refused (400), never saved; a live name in
- * use is 409. Needs `customers-edit`. The audit entry has the name and the
- * filters, never Customer data.
- */
 export async function POST(req: Request) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

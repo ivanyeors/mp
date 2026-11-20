@@ -11,8 +11,6 @@ import {
 import type { CustomerPreferences } from "@/lib/types/customization";
 import type { RecommendationResponseData } from "@/components/shop/customization-steps";
 
-// ─── Types ───────────────────────────────────────────────────
-
 export type ProductType = "pillow" | "bolster";
 export type BuilderStep = "preferences" | "recommendation" | "components" | "summary";
 
@@ -28,29 +26,22 @@ export interface BuilderState {
   step: BuilderStep;
   stepIndex: number;
 
-  // Config warm start
   configId: string | null;
   configLoaded: boolean;
 
-  // Preferences (pillow)
   pillowPreferences: CustomerPreferences | null;
-  // Preferences (bolster)
   bolsterPreferences: BolsterPreferences | null;
 
-  // Recommendation data from API
   recommendation: RecommendationResponseData | null;
   isLoadingRecommendation: boolean;
 
-  // Component selections
   selectedTemplateId: number | null;
   selectedCover: number | null;
   selectedCase: number | null;
   componentQtyOverrides: Map<number, number>;
 
-  // Upsells
   selectedUpsells: Set<number>;
 
-  // Apply state
   isApplying: boolean;
 }
 
@@ -80,8 +71,6 @@ export interface BuilderActions {
   reset: () => void;
 }
 
-// ─── Context ─────────────────────────────────────────────────
-
 const BuilderContext = createContext<(BuilderState & BuilderActions) | null>(null);
 
 export function useBuilder() {
@@ -89,8 +78,6 @@ export function useBuilder() {
   if (!ctx) throw new Error("useBuilder must be used within BuilderProvider");
   return ctx;
 }
-
-// ─── Provider ────────────────────────────────────────────────
 
 interface BuilderProviderProps {
   children: ReactNode;

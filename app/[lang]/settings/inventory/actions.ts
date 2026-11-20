@@ -41,7 +41,6 @@ const SellFromTemplateSchema = z.object({
 })
 
 const SellCartSchema = z.object({
-  /** One per cart. Selling the same cart again (a double click, a retry after a timeout) sells nothing twice. */
   saleId: z.string().uuid(),
   builds: z.array(SellFromTemplateSchema).default([]),
   parts: z.array(ItemQtySchema).default([]),
@@ -79,7 +78,6 @@ const AddItemSchema = z.object({
   msrp: z.number().min(0).optional(),
 }).superRefine((value, ctx) => {
   const normalizedSize = value.size?.trim()
-  // Fillings are product-agnostic (size optional). Covers/cases/protectors are sized.
   if (
     ['cover', 'pillow_case', 'pillow_protector', 'bolster_case', 'bolster_protector'].includes(value.category)
     && (!normalizedSize || normalizedSize === '-')
@@ -175,13 +173,9 @@ async function onHandOf(admin: ReturnType<typeof supabaseAdmin>, itemId: number)
   return Number(data?.on_hand ?? 0)
 }
 
-/**
- * Receiving an altered filling converts it out of its base filling, refusing to
- * take the base below zero.
- * ponytail: read-then-insert, so two conversions from the same base at the same
- * instant can both pass and overdraw it. Move into a Postgres function holding
- * pg_advisory_xact_lock(base id) if concurrent staff conversions ever happen.
- */
+// ponytail: read-then-insert, so two conversions from the same base at the same instant can both
+// pass and overdraw it. Move into a Postgres function holding pg_advisory_xact_lock(base id) if
+// concurrent staff conversions ever happen.
 async function insertStockIn(admin: ReturnType<typeof supabaseAdmin>, item: StockItem, quantity: number) {
   const baseId = alterationBaseId(item)
   const baseOnHand = baseId === null ? 0 : await onHandOf(admin, baseId)
@@ -197,11 +191,6 @@ export async function setThreshold(itemId: number, minLevel: number) {
   return { ok: true }
 }
 
-/**
- * One build's sale rows: a Warehouse Template's lines plus a Filling Template's
- * pack, aggregated per Item. The pack comes from its placements when it has
- * them, as a Result's fillings do (`loadFillingTemplatePack`).
- */
 async function templateBuildSaleRows(
   admin: ReturnType<typeof supabaseAdmin>,
   build: z.infer<typeof SellFromTemplateSchema>,
@@ -257,12 +246,6 @@ async function templateBuildSaleRows(
   return combined.map((t) => ({ ...t, metadata }))
 }
 
-/**
- * Sell an in-store cart: every build and part in one ledger insert, so the cart
- * sells whole or not at all. Each row carries the cart's `sale_id` and its line,
- * and a unique index on them refuses a second insert of the same cart: a resubmit
- * answers "already sold" instead of deducting twice.
- */
 export async function sellCart(input: z.input<typeof SellCartSchema>) {
   await assertAdmin('inventory')
   const parsed = SellCartSchema.parse(input)
@@ -308,7 +291,6 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
 
   if (kind === 'pillow') {
     q = q.eq('pillow_kind', effectivePillowKind)
-    // When pillowVariant is passed, filter; otherwise return all variants so UI can price by selection.
     if (effectivePillowKind === 'premium' && effectivePillowVariant) {
       q = q.eq('pillow_variant', effectivePillowVariant)
     }
@@ -323,8 +305,6 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
 export async function listFillingTemplates(kind: 'pillow' | 'bolster', key: string) {
   await assertAdmin('inventory')
   const admin = supabaseAdmin()
-  // Membership, not `key`: the Default picker must offer recipes shared in from
-  // another size, or a shared template could never be made a card's default.
   const members = await templateIdsForKey(admin, key)
   if (!members.ok) throw new Error(members.error)
   if (!members.ids.length) return { ok: true, templates: [] }
@@ -394,7 +374,6 @@ const ItemsImageSchema = z.object({
   assetId: z.string().uuid().nullable(),
 })
 
-/** Set one primary image on a group of Items (all sizes of a family); it becomes their shop products' base image. */
 export async function setItemsPrimaryImage(input: z.infer<typeof ItemsImageSchema>) {
   await assertAdmin('inventory')
   const parsed = ItemsImageSchema.parse(input)
@@ -411,14 +390,12 @@ export async function setItemsPrimaryImage(input: z.infer<typeof ItemsImageSchem
     .update({ primary_media_asset_id: parsed.assetId })
     .in('id', before.map((i) => i.id))
   if (error) throw new Error(error.message)
-  // All items updated first so the sync replaces the shared old row in place.
   for (const it of before) {
     await syncItemImageToProducts(admin, it.id, it.primary_media_asset_id ?? null, parsed.assetId)
   }
   return { ok: true }
 }
 
-/** item_id → current primary image URL, for thumbnails on the inventory page. */
 export async function getItemImageUrls(): Promise<Record<number, string>> {
   await assertAdmin('inventory')
   const admin = supabaseAdmin()
@@ -438,11 +415,6 @@ export async function getItemImageUrls(): Promise<Record<number, string>> {
   return Object.fromEntries(resolveAddonImageUrls(items ?? [], assets ?? []))
 }
 
-/**
- * Where each Item stands after Inventory: its Costings prices (so the page can
- * offer "Add cost" until it has them) and, for the families the shop can sell,
- * whether they have been pushed to Products.
- */
 export async function getInventoryCostingState(): Promise<{
   prices: Record<number, CostingPrices>
   families: InventoryFamily[]
@@ -469,7 +441,6 @@ const ComposedImageSchema = z.object({
   assetId: z.string().uuid().nullable(),
 })
 
-/** Set the base image of the basic / premium pillow or bolster storefront product. */
 export async function setComposedProductImage(input: z.infer<typeof ComposedImageSchema>) {
   await assertAdmin('inventory')
   const parsed = ComposedImageSchema.parse(input)
@@ -485,7 +456,6 @@ export async function setComposedProductImage(input: z.infer<typeof ComposedImag
   return { ok: true, url }
 }
 
-/** slug → current base image URL of the pillow/bolster storefront products. */
 export async function getComposedProductImageUrls(): Promise<Partial<Record<ComposedProductSlug, string>>> {
   await assertAdmin('inventory')
   const { data, error } = await supabaseAdmin()
@@ -536,8 +506,6 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
       throw new Error('Alteration base must have the same size')
     }
 
-    // Initial stock converts out of the base — check before creating the item so a
-    // refusal doesn't leave a stockless item behind.
     if (parsed.initialStock > 0) {
       assertConvertible(parsed.initialStock, await onHandOf(admin, parsed.alterationOfItemId))
     }
@@ -565,8 +533,6 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
 
   if (insertErr) {
     if (insertErr.code === '23505') {
-      // The unique index does not include is_active. This means a previously "deleted" (inactive) item
-      // can block re-creating the same item. In that case, revive it instead of throwing.
       type ExistingItemRow = { id: number | string; is_active: boolean | null }
       let q = admin
         .from('items')
@@ -585,7 +551,6 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
           .from('items')
           .update({
             is_active: true,
-            // Keep alteration metadata aligned with the requested payload.
             alteration_of_item_id: parsed.alterationOfItemId ?? null,
             alteration_name: normalizedAlterationName,
           })
@@ -652,26 +617,11 @@ export async function fullShopifySync() {
   return { ok: true, inventory, prices }
 }
 
-/**
- * Shape of the Shopify Admin API active-products payload, as far as the admin
- * panel needs it.
- */
 type ShopifyActiveProduct = {
   title?: string
   variants?: Array<{ id: number; title?: string; sku?: string | null }>
 }
 
-/**
- * Builds the Shopify admin table from the database, optionally enriched with
- * the live Shopify active-products list.
- *
- * `activeProducts` is a parameter rather than a fetch so the Admin API call can
- * be kept off the page's first paint: {@link listShopifyAdminState} builds the
- * DB-only view for immediate render, and {@link listShopifyRemoteProducts}
- * rebuilds it once the remote list is in hand. Passing an empty list yields
- * exactly the mappings-only fallback this function already produced whenever
- * the Shopify env vars were missing.
- */
 async function buildShopifyAdminState(activeProducts: ShopifyActiveProduct[]) {
   const admin = supabaseAdmin()
   const [
@@ -808,8 +758,6 @@ async function buildShopifyAdminState(activeProducts: ShopifyActiveProduct[]) {
     return null
   }
 
-  // If we can see active variants from Shopify, include "inactive" variants too
-  // (mappings/overrides that no longer exist in Shopify's active products list).
   if (activeVariantIds.size) {
     const variantIdsToShow = new Set<number>()
     for (const rawId of Array.from(activeVariantIds)) {
@@ -854,7 +802,6 @@ async function buildShopifyAdminState(activeProducts: ShopifyActiveProduct[]) {
     return { ok: true, rows }
   }
 
-  // Fallback (no Shopify active variants available): show mappings only.
   const rows = (mappings ?? [])
     .map((m: Mapping) => {
       const variantId = Number(m.shopify_variant_id)
@@ -878,12 +825,6 @@ async function buildShopifyAdminState(activeProducts: ShopifyActiveProduct[]) {
   return { ok: true, rows }
 }
 
-/**
- * Unmapped-variant list built from an already-fetched active-products payload.
- * Split out for the same reason as {@link buildShopifyAdminState}: it lets the
- * single Admin API fetch in {@link listShopifyRemoteProducts} serve both halves
- * of the panel instead of each action fetching the list for itself.
- */
 async function buildShopifyUnmappedVariants(activeProducts: ShopifyActiveProduct[]) {
   const admin = supabaseAdmin()
   const { data: mappings, error: mErr } = await admin
@@ -914,26 +855,13 @@ async function buildShopifyUnmappedVariants(activeProducts: ShopifyActiveProduct
   return { ok: true, variants }
 }
 
-/**
- * Database-only Shopify admin state. Deliberately does NOT call the Shopify
- * Admin API: that request dominated this action's latency and the panel's first
- * paint waited on it. Callers render this immediately, then upgrade to the full
- * view with {@link listShopifyRemoteProducts}.
- */
 export async function listShopifyAdminState() {
   await assertAdmin('inventory')
   return buildShopifyAdminState([])
 }
 
-/**
- * The Shopify Admin API half of the panel: fetches the active products once and
- * uses that single payload to rebuild both the admin table and the unmapped
- * variant list. Its `rows` are what {@link listShopifyAdminState} used to
- * return, so the rendered result once this lands is identical to before.
- */
 export async function listShopifyRemoteProducts() {
   await assertAdmin('shopify-link')
-  // If env vars are missing in a local shell, fall back to the DB-only view.
   const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
     () => [],
   )) as ShopifyActiveProduct[]
@@ -946,9 +874,6 @@ export async function listShopifyRemoteProducts() {
   return { ok: true as const, rows: state.rows, variants: unmapped.variants }
 }
 
-/**
- * Standalone unmapped-variant list, kept for callers that need only this half.
- */
 export async function listShopifyUnmappedVariants() {
   await assertAdmin('shopify-link')
   const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
@@ -995,7 +920,6 @@ export async function linkPartToShopifyVariant(input: z.infer<typeof LinkPartMap
   const parsed = LinkPartMappingSchema.parse(input)
   const admin = supabaseAdmin()
 
-  // Alteration-derived items are internal-only; they should inherit Shopify behavior from their base item.
   const { data: item, error: itemErr } = await admin
     .from('items')
     .select('id,category,alteration_of_item_id')

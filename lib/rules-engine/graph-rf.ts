@@ -1,4 +1,3 @@
-/** RuleGraphJson ↔ React Flow node/edge shapes (authoring only). */
 import type { Edge, Node } from "@xyflow/react";
 import type { RuleEdge, RuleGraphJson, RuleNode, ValidationError } from "./types";
 
@@ -8,11 +7,6 @@ export type RuleNodeData = {
   fired?: boolean;
 };
 
-/**
- * Structure only. Publish errors and the Simulate path are an overlay applied
- * at render time (`withOverlay`), never baked into editor state — rebuilding
- * the nodes to show them dropped the selection and left stale highlights.
- */
 export function graphToRf(
   graph: RuleGraphJson,
 ): { nodes: Node<RuleNodeData>[]; edges: Edge[] } {
@@ -33,7 +27,6 @@ export function graphToRf(
 
 const FIRED_EDGE_STYLE = { stroke: "#16a34a", strokeWidth: 2.5 };
 
-/** Paints publish errors + the fired path; untouched nodes/edges keep identity. */
 export function withOverlay(
   nodes: Node<RuleNodeData>[],
   edges: Edge[],

@@ -3,7 +3,6 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 
-/** Default entry → Premium Mpillow flow. */
 export default async function RulesEngineIndexPage({
   params,
 }: {

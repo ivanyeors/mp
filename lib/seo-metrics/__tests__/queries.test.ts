@@ -55,9 +55,7 @@ describe("buildWatchlist", () => {
     });
     expect(row).toMatchObject({ query: "custom pillow singapore", clicks: 30, position: 6, previousPosition: 9 });
     expect(row.topPage).toBe(page("mp-config"));
-    // blog has 150/600 = 25% of impressions → competing; faq has 8% → not.
     expect(row.competingPages).toEqual([page("blog/custom-made-pillow")]);
-    // 12 settled weeks; the current (partial) week is excluded.
     expect(row.spark).toHaveLength(12);
     expect(row.spark.filter((v) => v !== null)).toEqual([7, 5]);
 

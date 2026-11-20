@@ -22,36 +22,12 @@ import { stripeJs } from "@/lib/stripe/browser";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import type { WalletDisplay } from "@/lib/stripe/wallet";
 
-/**
- * The payment step of shop checkout, on our own page (ADR 0053).
- *
- * The Order and its Checkout Session already exist: the shopper's details,
- * delivery, code and points were priced and locked by `/api/shop/checkout`,
- * which opened the Session with `ui_mode: "elements"`. This only collects the
- * money. Apple Pay and Google Pay sit on top in Stripe's Express Checkout
- * Element (shown only on a device and browser that can pay with them); card
- * and PayNow are in the Payment Element below. Both confirm the same Session,
- * so the webhook fulfils the Order exactly as it does for Stripe's hosted page,
- * and Stripe sends the shopper to the confirmation page once paid.
- *
- * Changing anything means going back to the form, which makes a new Order:
- * `onEdit` closes this one first. If the payment form cannot load here, the
- * way back asks for Stripe's hosted page next time (`payOnStripe`), rather
- * than the same form failing again.
- */
 export interface PayOnPageProps {
   clientSecret: string;
   email: string;
-  /** One line: recipient and address, as the form had it. */
   shipTo: string;
-  /** The delivery method's name. */
   delivery: string;
-  /**
-   * Why the shopper is here instead of paid: a wallet beside the checkout
-   * button showed a total that the server's pricing did not match.
-   */
   notice?: string | null;
-  /** How widely Apple Pay and Google Pay show, as beside the checkout button. */
   walletDisplay: WalletDisplay;
   onEdit: (opts?: { payOnStripe?: boolean }) => void;
 }
@@ -60,7 +36,6 @@ const FONTS: StripeCheckoutElementsSdkOptions["elementsOptions"] = {
   fonts: [{ cssSrc: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap" }],
 };
 
-/** The site's neutral palette (app/globals.css), in the hex Stripe accepts. */
 function appearance(dark: boolean): Appearance {
   return {
     theme: dark ? "night" : "stripe",
@@ -95,7 +70,6 @@ const PAYMENT_OPTIONS: PaymentElementProps["options"] = {
 
 export default function PayOnPage(props: PayOnPageProps) {
   const { resolvedTheme } = useTheme();
-  // The provider takes its options once, so the theme is read when the step opens.
   const [dark] = useState(() => resolvedTheme === "dark");
   const options = useMemo<StripeCheckoutElementsSdkOptions>(
     () => ({
@@ -129,12 +103,10 @@ function PaymentStep({
   const checkout = state.type === "success" ? state.checkout : null;
   const failed = state.type === "error";
 
-  // Stripe's wording ("Invalid API Key provided…") is for us, not the shopper.
   const loadError = state.type === "error" ? state.error.message : null;
   useEffect(() => {
     if (loadError) console.warn("[checkout] The on-page payment form did not load; falling back to Stripe's page:", loadError);
   }, [loadError]);
-  // Stripe's own total for this Session, which is what the shopper is charged.
   const total = checkout
     ? formatCurrency(
         checkout.total.total.minorUnitsAmount / checkout.minorUnitsAmountDivisor,
@@ -147,7 +119,6 @@ function PaymentStep({
     setPaying(true);
     setError(null);
     const result = await checkout.confirm();
-    // Paid: Stripe is already taking this tab to the confirmation page.
     if (result.type === "error") {
       setError(result.error.message);
       setPaying(false);
@@ -189,7 +160,6 @@ function PaymentStep({
 
   return (
     <div className="flex flex-col gap-8">
-      {/* What was locked in when the Order was made. */}
       <section aria-label="Your details" className="rounded-lg border bg-card text-sm">
         <dl className="divide-y">
           <RecapRow label="Contact" value={email} onEdit={paying ? undefined : () => onEdit({ payOnStripe: failed })} />
@@ -222,8 +192,6 @@ function PaymentStep({
           </div>
         ) : (
           <>
-            {/* Apple Pay / Google Pay / Link: those this device can use (on a computer,
-                Apple Pay and Google Pay whether set up or not, `WalletDisplay`). */}
             <ExpressCheckoutElement
               key={walletDisplay}
               options={expressOptions(dark, walletDisplay)}
@@ -251,7 +219,6 @@ function PaymentStep({
         )}
 
         <div className="max-md:hidden">{payButton}</div>
-        {/* Not a <p>: public pages force paragraphs to 16px, and this is small print. */}
         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <Lock className="mt-0.5 size-3 shrink-0" />
           <span>Payments are processed securely by Stripe. We never see your card details.</span>

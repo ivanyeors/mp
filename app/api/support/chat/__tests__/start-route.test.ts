@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { fakeSupabaseAdmin, type FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Nothing starts a website chat without a verified email: a visitor without
- * an account sends the code they were emailed with their first message, and
- * a later chat in the same tab shows the token of the chat that code started.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb }));
 
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => fakeSupabaseAdmin(h.db) }));
@@ -80,7 +74,6 @@ describe("POST /api/support/chat without an account", () => {
     expect(body.chat).toMatchObject({ email: "jane@example.com", name: "Jane", hasAccount: false });
     expect(body.token).toBeTruthy();
 
-    // A code works once.
     const again = await post(startChat, { message: "Hi again", verification: { codeId, code } });
     expect(await again.json()).toMatchObject({ codeError: "expired" });
   });

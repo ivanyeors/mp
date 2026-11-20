@@ -2,17 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, type Row } from "@/lib/reviews/__tests__/fake-supabase";
 import type { SocialEvent } from "@/lib/social-inbox/types";
 
-/**
- * Customer messages end to end, against an in-memory database: a webhook
- * event becomes one card in the measurements group, a staff reply to that card
- * reaches the customer (only from someone allowed, only inside the reply
- * window, never twice), and echoes and unsends keep the group up to date.
- */
-
 const GROUP = -1001279910218;
-const IVAN = { id: 111, first_name: "Ivan" }; // answers customers only
-const SAM = { id: 222, first_name: "Sam" }; // moderates shop reviews; his role can't answer customers
-const RITA = { id: 333, first_name: "Rita" }; // every Telegram action
+const IVAN = { id: 111, first_name: "Ivan" };
+const SAM = { id: 222, first_name: "Sam" };
+const RITA = { id: 333, first_name: "Rita" };
 const STRANGER = { id: 999, first_name: "Who" };
 const REPLY = "telegram.google-review-reply";
 const MODERATE = "telegram.shop-review-moderate";
@@ -66,7 +59,6 @@ function igMessage(id: string, text: string | null, extra: Partial<Extract<Socia
   };
 }
 
-/** The text and Telegram id of the card posted for an inbound message. */
 function cardOf(externalMessageId: string) {
   const row = messages().find((m) => m.external_message_id === externalMessageId)!;
   const call = h.sendGroupMessage.mock.calls.find((c) => String(c[0]).includes(String(row.body ?? "")));
@@ -91,7 +83,6 @@ beforeEach(() => {
   h.send.mockResolvedValue({ ok: true, messageId: "out-1" });
   h.profile.mockResolvedValue({ displayName: "Jane Tan", username: "janetan" });
   h.tables = {
-    // Telegram links (ADR 0023): effective access = the login's role ∩ the link's actions.
     admin_roles: [
       { id: "r-owner", name: "Owner", grants_all: true, permissions: [] },
       { id: "r-shop", name: "Shop desk", grants_all: false, permissions: ["orders", MODERATE] },
@@ -144,7 +135,6 @@ describe("incoming messages", () => {
     expect(opts).toEqual({ replyToMessageId: null });
     expect(messages()[0]).toMatchObject({ status: "carded", telegram_chat_id: GROUP, telegram_message_id: 1001 });
 
-    // Meta delivered it again: nothing new.
     expect(await ingestSocialEvents([igMessage("in.1", "Do you open on Sundays?")])).toMatchObject({ duplicates: 1, carded: 0 });
     expect(h.sendGroupMessage).toHaveBeenCalledTimes(1);
 
@@ -177,7 +167,6 @@ describe("incoming messages", () => {
 
     expect(await sweepUncarded({ now: new Date(Date.now() + 5 * 60_000) })).toEqual({ retried: 1, carded: 1 });
     expect(messages()[0]).toMatchObject({ status: "carded", error: null });
-    // Nothing left to sweep.
     expect(await sweepUncarded({ now: new Date(Date.now() + 10 * 60_000) })).toEqual({ retried: 0, carded: 0 });
   });
 
@@ -215,7 +204,6 @@ describe("answering from Telegram", () => {
       telegram_message_id: 1002,
     });
 
-    // Replying to the "Sent" note continues the same conversation.
     h.send.mockResolvedValueOnce({ ok: true, messageId: "out-2" });
     await reply(IVAN, "See you then.", { id: 1002, text: lastReply() }, 501);
     expect(h.send).toHaveBeenCalledTimes(2);
@@ -303,7 +291,6 @@ describe("echoes", () => {
     await ingestSocialEvents([echo("out-1", "Yes!")]);
     expect(h.replyInGroup).not.toHaveBeenCalled();
 
-    // The echo beats the API response: matched by text while still sending.
     let finishSend: (v: unknown) => void = () => {};
     h.send.mockImplementationOnce(() => new Promise((resolve) => (finishSend = resolve)));
     const sending = reply(IVAN, "On my way", cardOf("in.1"), 501);
@@ -334,7 +321,6 @@ describe("isInboxUpdate", () => {
     expect(isInboxUpdate(msg({ text: undefined, caption: "photo" }))).toBe(true);
     expect(isInboxUpdate(msg({ reply_to_message: { message_id: 7, caption: card.text } }))).toBe(true);
     expect(isInboxUpdate(msg({ text: "/stock" }))).toBe(false);
-    // A team note starts with "/" but is not a command: the inventory bot must not answer it.
     expect(isInboxUpdate(msg({ text: "// she ordered last week" }))).toBe(true);
     expect(isInboxUpdate(msg({ chat: { id: 12345 } }))).toBe(false);
     expect(isInboxUpdate(msg({ reply_to_message: { message_id: 7, text: "Enter quantity for IN – x" } }))).toBe(false);

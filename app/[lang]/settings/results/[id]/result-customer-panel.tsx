@@ -31,20 +31,6 @@ import { cn } from "@/lib/utils";
 
 type Mode = "link" | "create";
 
-/**
- * A **Result**'s **Customer** (ADR 0051 d–g; PRD-results-to-customer slice
- * 02): who it belongs to and their stage, or a way to link an existing
- * Customer or create one, so a drop-off is a *Lead* Staff can follow up.
- *
- * - **Matched**: name, stage, email and mobile, and *Open customer*. A Customer
- *   who bought before and was measured under another name is said to be
- *   measuring someone else (owner, 2026-11-15).
- * - **Not matched**: *Link existing* or *Create customer*. An email is a must;
- *   a mobile is asked for and encouraged. The marketing box is the
- *   customisation's own, ticked by default.
- * - **A Result whose email is locked** (a guest's own, or a live Result's) can
- *   only be added as the Customer with that email.
- */
 export function ResultCustomerPanel({
   resultId,
   resultName,
@@ -60,10 +46,8 @@ export function ResultCustomerPanel({
   resultName: string | null;
   resultEmail: string | null;
   resultPhone: string | null;
-  /** `resultContactEditable`: Staff may point it at any Customer. */
   editable: boolean;
   customer: ResultCustomerSummary | null;
-  /** The viewer holds `customers-edit` (the page already needs `results`). */
   canEdit: boolean;
   customerHref: (id: string) => string;
   onChanged: () => void;
@@ -206,7 +190,6 @@ function CustomerDialog({
   const [name, setName] = useState(resultName ?? "");
   const [email, setEmail] = useState(resultEmail ?? "");
   const [phone, setPhone] = useState(resultPhone ?? "");
-  // Owner, 2026-11-15: ticked by default, as the customisation's own box is.
   const [marketing, setMarketing] = useState(true);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; phone?: string; form?: string }>({});

@@ -1,5 +1,3 @@
-/** Composed sellable BOM + Costings MSRP for pillow (size×tier) or bolster (length). */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   validateDefaultFillingTemplate,
@@ -27,22 +25,12 @@ export type ComposedBomLine = {
 
 export type ComposedSellable = {
   bomLines: ComposedBomLine[];
-  /**
-   * Costings MSRP of the DEFAULT build — the shelf price, what the shop shows.
-   * `null` when the default build cannot be priced; `priceFault` says why. NOT an
-   * error: `assign-prep` and the admin assign screen want only `bomLines`, and one
-   * unpriced BOM cover used to take both down.
-   */
   msrp: number | null;
   priceFault: { code: "no_price" | "unpriced_component"; error: string } | null;
-  /** Costings MSRPs by `product_prices.variant`; `UNKEYED` holds a single unkeyed row. */
   msrpByFamily: Record<string, number>;
-  /** Cover and case the composed BOM ships by default, priced. */
   defaultCover: PricedComponent | null;
   defaultCase: PricedComponent | null;
-  /** Every case offered at this size — the baseline each family's row was priced with. */
   caseOptions: PricedComponent[];
-  /** Every cover offered at this size. Unpriced ones keep a null MSRP, never 0. */
   coverOptions: PricedComponent[];
   currency: string;
 };
@@ -68,13 +56,6 @@ async function withCategories(
 
 const CASE_CATEGORIES = new Set(["case", "pillow_case", "bolster_case"]);
 
-/**
- * The cover and case a pillow's BOM ships, plus every case offered at that size —
- * priced, and tagged with the `items.price_family` that selects a Costings row.
- *
- * Case options are loaded (not just the BOM's own) because a family's row was priced
- * with that family's case, and the shopper may pick a family the BOM does not use.
- */
 async function loadPillowComponents(
   admin: SupabaseClient,
   size: string,
@@ -90,14 +71,6 @@ async function loadPillowComponents(
   const bomCoverId = bomCover?.item_id ?? null;
   const bomCaseId = bomCase?.item_id ?? null;
 
-  // Must match what the shopper is actually offered — `getPillowComponents` keeps an
-  // item whose size matches OR is null, and still accepts the legacy `case` category.
-  // A narrower set here meant a cover or case the picker showed was absent from the
-  // pricing inputs, so the preview refused (and silently fell back to the shelf price)
-  // while the server priced it from its real MSRP. Shown 170, authorised 245.
-  // `.or()` takes a raw PostgREST filter string, so `size` is interpolated into a
-  // query language. It arrives from a stored column rather than a request body, but
-  // that is a property of today's callers, not of this function.
   const safeSize = /^[A-Za-z0-9_-]{1,16}$/.test(size) ? size : null;
   const { data: optionItems } = safeSize
     ? await admin
@@ -161,7 +134,6 @@ async function loadPillowComponents(
   };
 }
 
-/** Load BOM lines and Costings MSRP for a composed sellable. */
 export async function loadComposedSellable(
   admin: SupabaseClient,
   key: ComposedSellableKey,
@@ -188,10 +160,6 @@ export async function loadComposedSellable(
       };
     }
 
-    // Premium is priced per case fabric family: `product_prices.variant` is
-    // 'linen' | 'fibrecool', basic and bolster carry one unkeyed row. Two rows are
-    // normal here, so this reads them all rather than maybeSingle() — which errored,
-    // returned null, and surfaced to shoppers as "not available for purchase yet".
     const [{ data: bomLines, error: bomErr }, { data: priceRows }] = await Promise.all([
       admin.from("bom_lines").select("item_id, quantity").eq("product_id", pillowProduct.id),
       admin
@@ -206,8 +174,6 @@ export async function loadComposedSellable(
     const msrpByFamily: Record<string, number> = {};
     for (const r of priced) {
       const family = (r.variant as string | null) ?? UNKEYED;
-      // Two rows for the SAME family is still unresolvable — the original bug, now
-      // narrowed to the case it actually is rather than "more than one row".
       if (msrpByFamily[family] != null) {
         return {
           ok: false,
@@ -231,8 +197,6 @@ export async function loadComposedSellable(
     const composedBom = await withCategories(admin, bomLines ?? []);
     const components = await loadPillowComponents(admin, key.size, composedBom);
 
-    // The shelf price: this pillow exactly as its BOM ships it. Stored as `msrp` so
-    // every existing reader (storefront variant, display) keeps its meaning.
     const shelf = priceComposedBuild({
       msrpByFamily,
       defaultCover: components.defaultCover,
@@ -279,11 +243,6 @@ export async function loadComposedSellable(
     };
   }
 
-  // A bolster has one price and no fabric-family split, so it prices through the
-  // same unkeyed path basic uses. Its cover and case still come from its own BOM:
-  // every bolster length ships a priced `bolster_case`, and leaving these null made
-  // the baseline of a case swap unknown — which reads as "unpriced component" and
-  // refuses the build outright.
   const composedBom = await withCategories(admin, bomLines ?? []);
   const bomCover = composedBom.find((l) => l.category === "cover") ?? null;
   const bomCase = composedBom.find((l) => CASE_CATEGORIES.has(l.category)) ?? null;
@@ -315,8 +274,6 @@ export async function loadComposedSellable(
       msrpByFamily: { [UNKEYED]: msrp },
       defaultCover: asComponent(bomCover),
       defaultCase: asComponent(bomCase),
-      // No fabric families exist for bolsters, so there is no per-family baseline to
-      // derive: a swap is measured against the BOM's own case.
       caseOptions: [],
       coverOptions: [],
       currency: (productPrice?.currency as string) ?? "SGD",
@@ -324,7 +281,6 @@ export async function loadComposedSellable(
   };
 }
 
-/** Read persisted Default Filling Template id for a product card. */
 export async function getDefaultFillingTemplateId(
   admin: SupabaseClient,
   key: ComposedSellableKey,
@@ -350,7 +306,6 @@ export async function getDefaultFillingTemplateId(
   return id != null ? Number(id) : null;
 }
 
-/** Persist Default Filling Template id for a product card (nullable to clear). */
 export async function setDefaultFillingTemplateId(
   admin: SupabaseClient,
   key: ComposedSellableKey,
@@ -364,8 +319,6 @@ export async function setDefaultFillingTemplateId(
       .maybeSingle();
     if (tplErr) return { ok: false, error: tplErr.message };
     if (!template) return { ok: false, error: "Filling Template not found" };
-    // Membership decides scope: a recipe shared into this size is a legitimate
-    // default for it, even though its primary `key` names a different size.
     const served = await loadTemplateKeys(admin, [templateId]);
     if (!served.ok) return served;
     const valid = validateDefaultFillingTemplate(

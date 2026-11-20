@@ -9,18 +9,10 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/pay/[token]/checkout — the Pay button of a Payment link (ADR 0048).
- *
- * Public: the token is the credential. Answers the Stripe Checkout URL for the
- * Order's stored total, reusing an open session. The body carries nothing; no
- * amount is ever read from the request.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!isPayLinkToken(token)) return NextResponse.json({ error: "This payment link doesn't exist." }, { status: 404 });
 
-  // A guessed token costs the same as any other lookup; a real one opens at most a few sessions.
   const limited = await tooManyRequests([
     { bucket: "pay-link-ip", key: clientIp(req), windowMs: 10 * 60_000, max: 30 },
     { bucket: "pay-link-token", key: token, windowMs: 10 * 60_000, max: 10 },

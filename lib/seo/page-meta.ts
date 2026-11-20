@@ -5,15 +5,7 @@ import { MAX_META_DESCRIPTION_CHARS, MIN_META_DESCRIPTION_CHARS } from "@/lib/se
 
 export type PageMeta = { title: string; description: string };
 
-/**
- * Search titles and descriptions for pages whose on-page copy does not make one.
- *
- * A description runs MIN_ to MAX_META_DESCRIPTION_CHARS (`page-meta.test.ts`):
- * site audits flag a shorter one as too thin for a search snippet and a longer
- * one as cut off. Titles get " | Mpillow" from the root layout's template.
- */
 export const PAGE_META = {
-  // The hero's answer lede is written for the page; this one is sized for a snippet.
   home: {
     "en-US": {
       title: "Custom cervical pillow for neck pain in Singapore",
@@ -50,7 +42,6 @@ export const PAGE_META = {
         "认识与 Mpillow 合作的新加坡脊骨神经科诊所、物理治疗中心与健康工作室。如果您希望把定制颈椎枕和 Mbolster 支撑抱枕介绍给您的客户，欢迎申请加入我们的合作伙伴计划，获取产品演示、量身指导与联合推广支持，期待与您携手。",
     },
   },
-  // /appointments with no type: the "what do you need?" choice.
   appointments: {
     "en-US": {
       title: "Book a pillow fitting in Singapore",
@@ -89,11 +80,6 @@ export const PAGE_META = {
   },
 } satisfies Record<string, Record<Locale, PageMeta>>;
 
-/**
- * Pages written in English only. Their zh-CN URL shows the same English text,
- * so it is a copy that canonicalises to en-US (`buildPageMetadata`'s
- * `alternateLocales`), and the sitemap lists the en-US URL alone.
- */
 export const ENGLISH_ONLY_PAGE_META = {
   support: {
     path: "/support",
@@ -139,12 +125,10 @@ export const ENGLISH_ONLY_PAGE_META = {
   },
 } satisfies Record<string, PageMeta & { path: string }>;
 
-/** An English-only page's metadata in the URL's locale. */
 export function englishOnlyPageMetadata(page: keyof typeof ENGLISH_ONLY_PAGE_META, lang: string): Metadata {
   return buildPageMetadata({ ...ENGLISH_ONLY_PAGE_META[page], lang, alternateLocales: [DEFAULT_LOCALE] });
 }
 
-/** Lines that top up a product description too short for a snippet, longest first. */
 const PRODUCT_DESCRIPTION_TAILS: Record<Locale, string[]> = {
   "en-US": [
     "From Mpillow, the Singapore maker of customisable cervical pillows and bolsters. Order online with delivery.",
@@ -159,11 +143,6 @@ const PRODUCT_DESCRIPTION_TAILS: Record<Locale, string[]> = {
   ],
 };
 
-/**
- * A product page's description: the SEO description Staff wrote, as written;
- * else the product description, topped up with a line about Mpillow when it is
- * too short to fill a snippet; else that line after the product's name.
- */
 export function productMetaDescription(
   content: { title?: string | null; description?: string | null; seo_description?: string | null },
   locale: Locale,

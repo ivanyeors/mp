@@ -39,13 +39,11 @@ export default async function RmaQueuePage({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  // The Returns page's own permission (ADR 0023; split from "orders", ADR 0011).
   await requireAdminPage("returns", locale);
 
   const { status: rawStatus } = await searchParams;
   const status = parseStatusFilter(rawStatus);
 
-  // Service-role read (not customer RLS): join order number + customer email.
   const admin = supabaseAdmin();
   let query = admin
     .from("rma_requests")
@@ -69,7 +67,6 @@ export default async function RmaQueuePage({
         </InfoTip>
       </div>
 
-      {/* Status filter — a plain GET form, no client JS needed. */}
       <form method="get" className="mt-4 flex flex-wrap items-center gap-2 md:mt-6">
         <label htmlFor="status" className="text-sm text-muted-foreground">
           Status

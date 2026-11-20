@@ -6,19 +6,6 @@ import { applyPayload, importRows } from "@/lib/fitting-import/apply";
 import { normaliseRows, NO_EXISTING, planRows, settleWholeFile } from "@/lib/fitting-import/plan";
 import { formCsv } from "./fixtures";
 
-/**
- * The payload the server action hands `import_fitting_rows` must be the one
- * the SQL function reads (column names, types, the skip reasons), and the SQL
- * must decide each row as the preview forecast it. This writes the payload
- * for a fixture file, with the forecast against an empty database, to
- * supabase/tests/fitting-import/cases.json; assert-agreement.sql imports it
- * and requires the same outcomes.
- *
- * Regenerate with
- *   UPDATE_SQL_CASES=1 pnpm vitest run lib/fitting-import/__tests__/sql-agreement.test.ts
- * and run ./scripts/check-fitting-import-sql.sh.
- */
-
 const CASES_PATH = join(process.cwd(), "supabase/tests/fitting-import/cases.json");
 const NOW = Date.parse("2026-10-31T08:00:00Z");
 
@@ -29,9 +16,7 @@ const FILE = formCsv([
   {},
   { "Email:": "", "Mobile No: ": "" },
   { Timestamp: "not a date" },
-  // Avery again, under another email: the same mobile and name.
   { "Email:": "second@example.com", "Additional Notes": "Prefers a lower neck.\nRe-check in 3 months.", "Who were you referred from?": "Dr Tan" },
-  // Someone else on Avery's mobile, then a visit of Avery's with only the mobile: two hold it, one is Avery Lim.
   { "Name:": "Kim Lim", "Email:": "kim.lim@example.com", Timestamp: "10/21/2026 10:00:00" },
   { "Email:": "", Timestamp: "10/22/2026 10:00:00", "A) Shoulder length Measurements (Inches)": "18.5" },
 ]);

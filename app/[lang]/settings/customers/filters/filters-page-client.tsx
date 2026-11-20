@@ -35,16 +35,8 @@ import {
     type CustomerFilterGroupId,
 } from "../customer-filters-panel";
 
-/** What the list holds with the filters: its total, and with *Ships to*, how many more are Unknown. */
 export type FilterCount = { total: number; shipsToUnknown: number | null };
 
-/**
- * The mega filter, a page of its own (/settings/customers/filters). Every group
- * is laid out at once, each a section; from md an index beside them jumps to
- * each and says how many of its filters are set. Each change applies at once:
- * the URL follows, and the count above (below, on a phone) says how many
- * customers match. *Show N customers* opens the list with these filters.
- */
 export function CustomerFiltersPageClient({
     initialFilters,
     ignoredFilters = [],
@@ -54,7 +46,6 @@ export function CustomerFiltersPageClient({
     initialFilters: Partial<CustomerListFilters>;
     ignoredFilters?: readonly CustomerFilterParam[];
     campaigns?: readonly CampaignFilterOption[];
-    /** Read by the page for the first paint; null when that read failed. */
     initialCount: FilterCount | null;
 }) {
     const pathname = usePathname() ?? "";
@@ -74,7 +65,6 @@ export function CustomerFiltersPageClient({
     const clearOne = (key: CustomerFilterKey) => setFilters((f) => clearCustomerFilter(f, key));
     const clearAll = () => setFilters(clearCustomerFilters);
 
-    // The address bar follows, so this page can be shared and the list's Back returns here as left.
     useEffect(() => {
         const url = new URL(window.location.href);
         for (const key of CUSTOMER_FILTER_PARAMS) url.searchParams.delete(key);
@@ -82,7 +72,6 @@ export function CustomerFiltersPageClient({
         if (url.href !== window.location.href) window.history.replaceState(null, "", url);
     }, [filtersQuery]);
 
-    // The count, once the filters settle: one row of the list's own read.
     const counted = useRef(initialCount ? filtersQuery : null);
     useEffect(() => {
         if (counted.current === filtersQuery) return;
@@ -109,7 +98,6 @@ export function CustomerFiltersPageClient({
         };
     }, [filtersQuery]);
 
-    // The index marks the section in view.
     useEffect(() => {
         if (typeof IntersectionObserver === "undefined") return;
         const sections = CUSTOMER_FILTER_GROUPS.map((g) => document.getElementById(`filters-${g.id}`)).filter(
@@ -162,7 +150,6 @@ export function CustomerFiltersPageClient({
                 </div>
             </div>
 
-            {/* From md the count and the way back stay in view while the groups scroll. */}
             <div
                 role="status"
                 className="sticky top-0 z-20 -mx-1 hidden items-center justify-between gap-4 border-b bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:flex"
@@ -181,7 +168,6 @@ export function CustomerFiltersPageClient({
                 onClear={clearOne}
             />
 
-            {/* The sort sits in the list's toolbar from md; a phone's toolbar has no room. */}
             <div className="space-y-2 md:hidden">
                 <Label htmlFor={sortId}>Sort</Label>
                 <CustomerSortSelect id={sortId} value={filters.sort} onChange={(sort) => changeFilters({ sort })} />

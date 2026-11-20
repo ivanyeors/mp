@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HISTORY_LIMIT, historyKey, historyReducer, initialHistory, typingBurst, type HistoryState } from "../use-editor-history";
 
-/**
- * The editor's history (PRD-campaign-email-editor slice 04): at least a
- * hundred steps, a burst of typing in one field as one step, and everything
- * else a step of its own.
- */
-
 const set = (s: HistoryState<string>, next: string, now: number, burst?: string) => historyReducer(s, { type: "set", next, burst, now, burstMs: 1000 });
 
 describe("historyReducer", () => {
@@ -30,12 +24,12 @@ describe("historyReducer", () => {
     s = set(s, "Sl", 300, "subject");
     s = set(s, "Sle", 900, "subject");
     expect(s.past.map((p) => p.value)).toEqual([""]);
-    s = set(s, "Sle ", 2000, "subject"); // a pause: a new step
-    s = set(s, "Sle x", 2100, "preview"); // another field
-    s = set(s, "Sle xy", 2200); // a choice, a drag or a paste: always its own
+    s = set(s, "Sle ", 2000, "subject");
+    s = set(s, "Sle x", 2100, "preview");
+    s = set(s, "Sle xy", 2200);
     expect(s.past.map((p) => p.value)).toEqual(["", "Sle", "Sle ", "Sle x"]);
     s = historyReducer(s, { type: "undo" });
-    s = set(s, "Sle xz", 2300, "preview"); // typing after an Undo starts a step
+    s = set(s, "Sle xz", 2300, "preview");
     expect(s.past.map((p) => p.value)).toEqual(["", "Sle", "Sle ", "Sle x"]);
   });
 
@@ -48,7 +42,6 @@ describe("historyReducer", () => {
     expect(s.past.map((p) => p.value)).toEqual([""]);
     s = historyReducer(s, { type: "undo" });
     expect(s.present.value).toBe("");
-    // Anything else in between ends it: what streams in after is a step of its own.
     s = stream("Heading", 10000);
     s = set(s, "Heading!", 10100, "subject");
     s = stream("Heading!, text", 10200);

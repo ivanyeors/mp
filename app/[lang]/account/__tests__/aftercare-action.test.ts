@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AftercareFakeDb } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * The Profile's Aftercare toggles (CRM slice 13). The Customer comes from the
- * session, whatever the request body says. Turning WhatsApp on stores the exact
- * wording shown, and with no valid mobile on file it asks for one first.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as AftercareFakeDb,
   sessionCustomerId: null as string | null,

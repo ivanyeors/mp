@@ -9,7 +9,6 @@ import { ProductSlideSection } from "./product-slide-section";
 
 type FullBleedMediaSectionProps = {
   image: ImageMediaConfig;
-  /** Optional heading over the image; absent when the config names no copy. */
   content?: FullBleedMediaContent;
   borderTop?: boolean;
 };

@@ -11,14 +11,6 @@ import { getPublicOrigin } from "@/lib/site-url";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Customers → Settings → Aftercare (CRM slices 07 and 08): the Review
- * request's and the Check-up reminder's settings, their numbers, and open STOP
- * requests on WhatsApp.
- *
- * Seeing it needs `customers`. Changing it needs `customers-edit` (slice 10).
- * Each value is its own `site_settings` key, which the daily job reads.
- */
 export async function GET(req: Request) {
   let ctx;
   try {

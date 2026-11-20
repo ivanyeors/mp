@@ -17,23 +17,13 @@ import { formatDollars, formatPoints, formatPointsCount } from "@/lib/points/val
 
 const n = (v: number) => v.toLocaleString("en-SG");
 
-/**
- * **Past-purchase points** on Discounts → Points (ADR 0030, amendment of
- * 2026-11-08): each customer imported from Shopify gets points once for what
- * they spent on the old shop, at the earn rate. The panel shows what a run
- * would grant before anything is granted; Give opens a confirmation with the
- * same numbers, and the server grants only if they are still the numbers.
- * Running it again grants only customers imported since.
- */
 export function PastPurchasePoints({
     savedRate,
     unsavedRate,
     pointsOn,
     onGranted,
 }: {
-    /** The earn rate as saved: the one the preview used. */
     savedRate: number | null;
-    /** The rate in the form, when Staff changed it without saving. */
     unsavedRate: number | null;
     pointsOn: boolean;
     onGranted: () => void;
@@ -43,7 +33,6 @@ export function PastPurchasePoints({
     const [confirming, setConfirming] = useState(false);
     const [running, setRunning] = useState(false);
 
-    // Again when the saved rate changes: the preview is worked out at it.
     useEffect(() => {
         let live = true;
         fetch("/api/settings/discounts/points/past-purchases")

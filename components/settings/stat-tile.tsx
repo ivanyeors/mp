@@ -5,18 +5,12 @@ import { cn } from "@/lib/utils";
 type StatTileProps = {
   label: ReactNode;
   value: ReactNode;
-  /** A short line under the figure, e.g. "Covers 28 active items." */
   hint?: ReactNode;
   icon?: LucideIcon;
   loading?: boolean;
   className?: string;
 };
 
-/**
- * One figure and its label for an Admin Panel summary row. It is ~64px tall on a
- * phone (`p-3`, no icon), so a row of KPIs doesn't push the list below the fold;
- * the icon and roomier padding come back from `sm`.
- */
 export function StatTile({ label, value, hint, icon: Icon, loading, className }: StatTileProps) {
   return (
     <div className={cn("flex min-w-0 items-center gap-3 rounded-xl border bg-card p-3 sm:p-4", className)}>

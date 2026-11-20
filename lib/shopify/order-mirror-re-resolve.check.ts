@@ -1,8 +1,3 @@
-/**
- * Run: npx tsx lib/shopify/order-mirror-re-resolve.check.ts
- *
- * Slice 06: Others graduates after mapping+cost; healthy frozen untouched.
- */
 import assert from 'node:assert/strict'
 import {
   planReResolveMirrorLines,
@@ -42,7 +37,6 @@ const frozenLine: MirrorLineRow = {
   updated_at: '2026-07-01T00:00:00.000Z',
 }
 
-// Before mapping+cost: Others stays Others
 const emptyCtx: CostingsContext = {
   mappingsByVariantId: new Map(),
   pillowProductIdByKindSize: new Map(),
@@ -52,7 +46,6 @@ const emptyCtx: CostingsContext = {
 }
 assert.equal(planReResolveMirrorLines([othersLine, frozenLine], emptyCtx, { at }).length, 0)
 
-// Mapping + Costings available for variant 101 → Others graduates
 const resolvedCtx: CostingsContext = {
   mappingsByVariantId: new Map([
     [
@@ -106,7 +99,6 @@ assert.equal(patches[0]!.unit_cost, 10)
 assert.equal(patches[0]!.total_cost, 20)
 assert.equal(patches[0]!.mapping_kind, 'part')
 
-// Global Costings re-resolve still leaves healthy frozen alone (even if BOM cheaper now)
 const cheaperCtx: CostingsContext = {
   ...resolvedCtx,
   costByItemId: new Map([
@@ -126,7 +118,6 @@ assert.equal(
   'frozen line not in patches',
 )
 
-// Mapped gap (is_others, null cost) fills when Costings arrives
 const gapLine: MirrorLineRow = {
   ...othersLine,
   shopify_line_item_id: 3,

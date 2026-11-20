@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * A Customer's points (PRD-loyalty-points slice 02): seeing them needs
- * `customers`; an adjustment needs `customers-edit`, a reason and a non-zero
- * whole number, names the Staff profile in the ledger, and is audited.
- */
-
 const h = vi.hoisted(() => ({
   standing: vi.fn(),
   permissions: new Set<string>(),

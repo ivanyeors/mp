@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FunnelResultRow, FunnelView } from "../model";
 
-/**
- * The Email funnel's loader (PRD-email-funnel slice 03) against a fake
- * client that answers as PostgREST does: at most 1,000 rows a request unless
- * a range asks for others, and an exact count on `head: true`. Built to fail
- * the plausible wrong versions: counting the rows one request returned (1,000)
- * and letting one failed read fail the page.
- */
-
 type Row = Record<string, unknown>;
 
 const db = vi.hoisted(() => ({
@@ -59,7 +51,6 @@ function query(table: string) {
     {
       get(_t, prop) {
         if (prop === "then") return (ok: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve(run()).then(ok, bad);
-        // Any other filter the code applies (the Customers mapping's) narrows nothing here.
         return (...args: unknown[]) => {
           known[prop as string]?.(...args);
           return builder;
@@ -136,7 +127,6 @@ describe("getEmailFunnel", () => {
     const drafts = automatic(view, "lead.draft_reminders");
     expect(drafts).toMatchObject({ counted: true, sent: 1500, outcome: 1500 });
     expect(drafts?.also).toContainEqual({ label: "Drafts reminded", count: 1500 });
-    // Check-ups read rows, so they page too.
     expect(automatic(view, "aftercare.checkup_reminder")).toMatchObject({ counted: true, sent: 1200 });
   });
 
@@ -209,11 +199,9 @@ describe("summariseFunnelCheckups", () => {
     const send = (template: string, entity: string, sent_at: string) => ({ customer_id: "c1", template, entity_id: entity, sent_at });
     const s = summariseFunnelCheckups({
       email: [send("aftercare.checkup_12m", "o1", "2025-01-01T00:00:00Z"), send("aftercare.checkup_24m", "o1", "2026-01-01T00:00:00Z")],
-      // The same 24-month check-up by WhatsApp too: still one check-up.
       whatsapp: [send("aftercare.checkup_24m", "o1", "2026-01-01T01:00:00Z")],
       bookings: [
         { customer_id: "c1", created_at: "2026-02-01T00:00:00Z", status: "attended" },
-        // Before any check-up, or not a booking: no credit.
         { customer_id: "c1", created_at: "2024-06-01T00:00:00Z", status: "attended" },
         { customer_id: "c1", created_at: "2026-03-01T00:00:00Z", status: "cancelled" },
       ],
@@ -237,7 +225,6 @@ describe("summariseFunnelCheckups", () => {
   it("dates a check-up by its earlier send, WhatsApp before email", async () => {
     const { summariseFunnelCheckups } = await import("../server");
     const send = (sent_at: string) => ({ customer_id: "c1", template: "aftercare.checkup_12m", entity_id: "o1", sent_at });
-    // Booked after the WhatsApp went, before the email did: still followed by a booking.
     const s = summariseFunnelCheckups({
       email: [send("2025-01-10T00:00:00Z")],
       whatsapp: [send("2025-01-01T00:00:00Z")],

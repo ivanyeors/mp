@@ -10,7 +10,6 @@ export async function GET() {
     const denied = await requireAdmin("media");
     if (denied) return denied;
 
-    // Prefer Asset registry; fall back to bucket list if registry empty (pre-backfill).
     try {
         const assets = await listMediaAssets();
         if (assets.length > 0) {
@@ -24,9 +23,7 @@ export async function GET() {
                 }));
             return NextResponse.json({ ok: true, files });
         }
-    } catch {
-        // fall through to storage list
-    }
+    } catch {}
 
     const admin = supabaseAdmin();
     const { data, error } = await admin.storage.from("media").list("", {

@@ -1,7 +1,3 @@
-/**
- * Slice 02 self-check — Neck Pains + Cervical Tech Neck section.
- * Run: npx tsx lib/i18n/marketing-copy-slice-02.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -58,19 +54,16 @@ assert.deepEqual(resolved.paragraphs, cns.techNeckParagraphs);
 const hero = resolveSlideContent(cns, "media_intro", "hero");
 assert.equal(hero.description, cns.heroDescription);
 
-// Mobile Learn More path still present
 const neckSrc = read("components/sections/landing/neck-pains-section.tsx");
 assert.match(neckSrc, /md:hidden[\s\S]*feelCard/);
 assert.match(neckSrc, /CervicalNeckSupportLearnMoreCta/);
 
-// openCervicalNeckSupportSheet + Shop footer CTA
 const sheetSrc = read("components/slide-in-pages/cervical-neck-support.tsx");
 assert.match(sheetSrc, /export function openCervicalNeckSupportSheet/);
 assert.match(sheetSrc, /\/shop\/cervical-neck-support/);
 assert.match(sheetSrc, /bottomShop/);
 assert.doesNotMatch(sheetSrc, />\s*Back\s*</);
 
-// zh-CN Neck Pains + existing heroDescription left untouched; new keys only for type parity
 assert.equal(zhCN.home.neckPains.title, "颈椎不适？");
 assert.equal(zhCN.slides.cervicalNeckSupport.heroDescription, "");
 assert.ok(zhCN.slides.cervicalNeckSupport.techNeckTitle.trim());

@@ -47,7 +47,6 @@ function mapItem(row: FaqPageItemRow, locale: Locale): FaqPageItem {
   };
 }
 
-/** Public: visible Page FAQ for a surface, items in position order. Empty if none. */
 export async function getPageFaq(
   surfaceKey: string,
   locale: Locale = DEFAULT_LOCALE,
@@ -91,7 +90,6 @@ export async function getPageFaq(
   };
 }
 
-/** Admin: ensure a set exists for surface_key (empty items). */
 export async function ensurePageFaqSet(
   surfaceKey: string,
   titles?: FaqLocalizedText
@@ -197,7 +195,6 @@ export async function deletePageFaqItem(id: string): Promise<boolean> {
   return true;
 }
 
-/** Reorder items within a set; `orderedIds` is full ordered list of item ids. */
 export async function reorderPageFaqItems(setId: string, orderedIds: string[]): Promise<boolean> {
   const admin = supabaseAdmin();
   for (let i = 0; i < orderedIds.length; i++) {

@@ -55,7 +55,6 @@ function importedNote(lastDate: string | null, importedAt: string | null) {
   return `Data through ${lastDate}${importedAt ? ` · uploaded ${importedAt.slice(0, 10)}` : ""}`;
 }
 
-/** Imported AI-answer reports + upload (slice 07). */
 export function AiAnswersPanel({
   ai,
   annotations,
@@ -204,7 +203,6 @@ export function AiAnswersPanel({
 }
 type MoverRow = Queries["queryMovers"]["gainers"][number];
 
-/** Show a URL as its path, so the column stays readable. */
 function shortPath(url: string): string {
   try {
     const u = new URL(url);
@@ -218,7 +216,6 @@ function PositionChange({ position, previous }: { position: number | null; previ
   if (position === null) return <span className="text-muted-foreground">not ranking</span>;
   const change = previous === null ? null : position - previous;
   const Icon = change === null || Math.abs(change) < 0.05 ? null : change < 0 ? ArrowUpRight : ArrowDownRight;
-  // Lower position = better, so a negative change is good.
   const tone = change !== null && change < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
   return (
     <span className="inline-flex items-center gap-1">
@@ -262,7 +259,6 @@ function MoversList({ title, rows, isPage }: { title: string; rows: MoverRow[]; 
   );
 }
 
-/** Target-query watchlist + biggest movers (slice 06). */
 export function QueriesPanel({ queries, onChange }: { queries: Queries; onChange: () => void }) {
   const [moversOf, setMoversOf] = useState<"queries" | "pages">("queries");
   const [draft, setDraft] = useState("");
@@ -290,7 +286,6 @@ export function QueriesPanel({ queries, onChange }: { queries: Queries; onChange
     <div className="space-y-6">
       <div className="space-y-2">
         <div className="text-sm font-medium">Target searches</div>
-        {/* Phone: one row per search, so position, clicks and the ranking page stay on screen. */}
         <MobileList className="rounded-md text-xs tabular-nums">
           {queries.watchlist.map((w) => (
             <MobileListRow
@@ -437,7 +432,6 @@ export function QueriesPanel({ queries, onChange }: { queries: Queries; onChange
   );
 }
 
-/** Annotations in range + add form (slice 05). */
 export function AnnotationsPanel({ annotations, onChange }: { annotations: Annotation[]; onChange: () => void }) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
@@ -528,7 +522,6 @@ export function AnnotationsPanel({ annotations, onChange }: { annotations: Annot
   );
 }
 
-/** Presentational: AI crawler activity (slice 04). */
 export function CrawlerPanel({ crawlers, annotations }: { crawlers: Crawlers; annotations?: Annotation[] }) {
   if (!crawlers.hasData) {
     return (
@@ -606,7 +599,6 @@ type Credit = "last" | "first";
 type FunnelLine = {
   key: string;
   label: string;
-  /** How a platform's Visits came (Paid, Social, …); absent on a channel row. */
   via?: string;
   visits: number;
   configuratorVisits: number;
@@ -614,11 +606,9 @@ type FunnelLine = {
   revenue: number;
 };
 
-/** Phone list and desktop table of one funnel, by channel or by platform. */
 function FunnelTable({ heading, rows, totalVisits }: { heading: string; rows: FunnelLine[]; totalVisits: number }) {
   return (
     <>
-      {/* Phone: one row each; the seven-column table hid its funnel columns off-screen. */}
       <MobileList className="rounded-md text-xs tabular-nums">
         {rows.map((r) => (
           <MobileListRow key={r.key}>
@@ -683,7 +673,6 @@ function FunnelTable({ heading, rows, totalVisits }: { heading: string; rows: Fu
   );
 }
 
-/** Presentational: visits by channel, the funnel per channel, and the same per platform. */
 export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: Annotation[] }) {
   const [credit, setCredit] = useState<Credit>("last");
   const counted = <T extends { orders: number; revenue: number; firstOrders: number; firstRevenue: number }>(r: T) =>
@@ -758,8 +747,6 @@ export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: 
   );
 }
 
-// `short` is shown while the card header is under 42rem: five full labels plus
-// Weekly/Daily need ~580px, and without room the strip collapses to a menu.
 const RANGES = [
   { value: "28d", label: "28 days", short: "28D" },
   { value: "3m", label: "3 months", short: "3M" },
@@ -820,11 +807,9 @@ function DeltaBadge({ delta, metric }: { delta: Delta; metric: Metric }) {
     return <span className="text-xs text-muted-foreground">No previous data</span>;
   }
   const Icon = delta.direction === "flat" ? Minus : (delta.value > 0) ? ArrowUpRight : ArrowDownRight;
-  // Status color on the icon only; the text stays in ink so it never relies on color.
   const tone =
     delta.direction === "better" ? "text-emerald-600 dark:text-emerald-400" : delta.direction === "worse" ? "text-red-600 dark:text-red-400" : "text-muted-foreground";
   return (
-    // Wraps as whole pieces: in a half-width phone tile "vs prev. period" drops to its own line.
     <span className="inline-flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
       <Icon className={`size-3.5 ${tone}`} aria-hidden />
       <span className="whitespace-nowrap tabular-nums text-foreground">{metric.formatDelta(delta.value)}</span>
@@ -863,7 +848,6 @@ function points(buckets: Bucket[], key: keyof Totals) {
   return buckets.map((b) => ({ start: b.start, value: b[key], partial: b.partial }));
 }
 
-/** Presentational: everything below the header once data is loaded. */
 export function VisibilityPanel({
   data,
   loading,
@@ -971,7 +955,6 @@ export function SearchVisibilityCard() {
   const [crawlers, setCrawlers] = useState<Crawlers | null>(null);
   const [crawlersError, setCrawlersError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Loading is derived: the request key we last settled differs from the one on screen.
   const requestKey = `${range}|${granularity}`;
   const [settledKey, setSettledKey] = useState<string | null>(null);
   const loading = settledKey !== requestKey;
@@ -982,7 +965,6 @@ export function SearchVisibilityCard() {
       .then((a) => {
         if (!cancelled) setAnnotations(a);
       })
-      // Markers are context, not data: a failure leaves the charts unannotated, not broken.
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -1009,7 +991,6 @@ export function SearchVisibilityCard() {
       .then((a) => {
         if (!cancelled) setAi(a);
       })
-      // Before the migration is applied the panel still offers the upload.
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -1064,9 +1045,6 @@ export function SearchVisibilityCard() {
           </InfoTip>
         </div>
         {data?.lastDate ? <CardDescription>Latest data: {data.lastDate}.</CardDescription> : null}
-        {/* Not a CardAction: seven tabs beside the description squeeze it to a sliver below
-            ~1280px, so they get their own row. On a phone each strip is a full-width row of its
-            own, like the other analytics cards' tabs. */}
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
           <Tabs value={range} onValueChange={setRange} className="w-full sm:min-w-0 sm:flex-1">
             <TabsList className="w-full sm:w-fit">

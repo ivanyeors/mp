@@ -10,10 +10,6 @@ import {
   signInMethodLabel,
 } from "@/lib/crm/contact-status";
 
-/**
- * Contact status (CRM slice 11; ADR 0028 (j)): every part derived from a fact.
- */
-
 describe("sign-in methods", () => {
   it("names the emailed code and Google as Staff read them", () => {
     expect(signInMethodLabel("email")).toBe("Email code");
@@ -43,7 +39,6 @@ describe("emailStatus", () => {
       verified: false,
       source: "shopify-import",
     });
-    // Matched by the import: the row, and its email, came from checkout first.
     expect(emailStatus({ hasAccount: false, accountLinkedAt: null, createdByImport: false })).toEqual({
       verified: false,
       source: "checkout",
@@ -79,7 +74,6 @@ describe("the mobile on file", () => {
     expect(describeMobile("87805311")).toBe("Valid Singapore mobile");
     expect(describeMobile("61234567")).toBe("Valid Singapore landline");
     expect(describeMobile("+447700900123")).toBe("Valid overseas number");
-    // Well-formed E.164 that only looks like Singapore: +65 and nine digits.
     expect(describeMobile("+65123456789")).toBe("Valid overseas number");
     expect(describeMobile("12345678")).toBe("Not a valid number");
     expect(describeMobile(null)).toBe("No mobile on file");

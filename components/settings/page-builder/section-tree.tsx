@@ -16,7 +16,6 @@ import { CUSTOM_SECTION_TEMPLATES } from "@/lib/types/landing-sections";
 import type { SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import type { LandingSection } from "@/lib/types/landing-sections";
 
-/** Human labels for the section type badge. */
 export const SECTION_TYPE_LABELS: Record<string, string> = {
   hero: "Hero",
   text_image: "Text and image",
@@ -45,7 +44,6 @@ export function sectionTitle(section: Pick<LandingSection, "slug">): string {
   return section.slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** What the tree needs of a section — a Landing section or a sub page's Slide-in section. */
 export interface TreeSection {
   id: string;
   slug: string;
@@ -53,10 +51,6 @@ export interface TreeSection {
   visible: boolean;
 }
 
-/**
- * Landing sections: derived from the same list the Add dialog offers, so it cannot drift
- * from the server's delete guard the way a hand-maintained copy would.
- */
 function isCustomLandingSection(section: TreeSection): boolean {
   return CUSTOM_SECTION_TEMPLATES.some((t) => t.type === section.section_type);
 }
@@ -105,10 +99,6 @@ function SectionRow<T extends TreeSection>({
         section.visible ? "" : "opacity-60"
       }`}
     >
-      {/*
-        Phones: drag, show/hide, the name (opens the section) and one menu, each 44px
-        and 8px apart; the ▲▼ and remove buttons move into the menu.
-      */}
       <div className="flex items-center gap-1 px-2 py-1.5 max-md:gap-2 max-md:px-1 max-md:py-1">
         <button
           ref={handleRef}
@@ -118,10 +108,6 @@ function SectionRow<T extends TreeSection>({
           <GripVertical className="h-4 w-4" />
         </button>
 
-        {/*
-          Keyboard path for reordering. The drag handle is pointer-only, so without these
-          the tree cannot be reordered without a mouse.
-        */}
         <span className="flex flex-col max-md:hidden">
           <button
             onClick={(e) => { e.stopPropagation(); onMove(section, -1); }}
@@ -217,18 +203,11 @@ export interface SectionTreeProps<T extends TreeSection> {
   onDelete?: (section: T) => void;
   onMove: (section: T, direction: -1 | 1) => void;
   onDragEnd: (event: SortableDragEndEvent) => void;
-  /** Which sections may be removed. Defaults to the landing page's custom sections. */
   canDelete?: (section: T) => boolean;
-  /** The type badge. Defaults to the landing page's section type labels. */
   typeLabel?: (section: T) => string;
-  /**
-   * A row above the list that is always there and always shown — a sub page's sheet
-   * header. It can be selected for editing but not moved, hidden or removed.
-   */
   pinned?: { slug: string; title: string; label: string };
 }
 
-/** A pinned row: selectable only. */
 function PinnedRow({
   slug,
   title,
@@ -267,7 +246,6 @@ function PinnedRow({
   );
 }
 
-/** Ordered list of sections — the builder's left pane. */
 export function SectionTree<T extends TreeSection>({
   sections,
   selectedSlug,

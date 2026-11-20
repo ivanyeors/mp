@@ -16,29 +16,14 @@ import {
 } from "@/lib/crm/contact-links";
 import { cn } from "@/lib/utils";
 
-/**
- * The Customer page's shortcuts to the customer (PRD-customer-page-journey
- * slice 02): Email opens Gmail and WhatsApp opens WhatsApp, each with the
- * message filled in, on whatever device the Staff member is using
- * (lib/crm/contact-links.ts). Nothing is sent by the platform.
- *
- * The page cannot see a send, so after a link opens it asks once, in a toast
- * that waits: *Sent it* saves a Customer note by the Staff member, which the
- * Journey then shows; *Didn't send* closes it. Staff without `customers-edit`
- * are not asked, because they cannot add a note.
- */
-
 type Message = { subject?: string | null; body?: string | null };
 
 type Shortcuts = {
-    /** What this browser gets; `computer` until the page has mounted. */
     device: ContactDevice;
     email: string;
-    /** The mobile on file, when WhatsApp and a call can reach it; null otherwise. */
     phone: string | null;
     openEmail: (message?: Message) => void;
     openWhatsApp: (text?: string | null) => void;
-    /** Where the Email and WhatsApp buttons go on this device, for the line under a draft. */
     emailOpens: string;
     whatsappOpens: string | null;
 };
@@ -51,10 +36,8 @@ export function useShortcuts(): Shortcuts {
     return value;
 }
 
-/** A device does not change while the page is open: there is nothing to listen for. */
 const subscribeToNothing = () => () => {};
 
-/** How long an iPhone gets to open the Gmail app before its own mail app is tried. */
 const IPHONE_FALLBACK_MS = 1500;
 
 export function CustomerShortcutsProvider({
@@ -67,16 +50,11 @@ export function CustomerShortcutsProvider({
 }: {
     customerId: string;
     email: string;
-    /** The mobile on file, valid or not: an invalid one draws no WhatsApp button. */
     phone: string | null;
-    /** Holds `customers-edit`: may be asked "Sent it?", which saves a note. */
     canLog: boolean;
-    /** A note was saved: the Journey reads again. */
     onLogged: () => void;
     children: ReactNode;
 }) {
-    // The server cannot know the device, so it renders the computer's links
-    // and the browser's own follow once the page is live there.
     const device = useSyncExternalStore<ContactDevice>(
         subscribeToNothing,
         () => contactDevice(navigator.userAgent, navigator.maxTouchPoints),
@@ -133,7 +111,6 @@ export function CustomerShortcutsProvider({
             } else {
                 window.location.href = link.href;
                 if (link.fallback) {
-                    // The page is still showing: the Gmail app did not take the link.
                     const fallback = link.fallback;
                     window.setTimeout(() => {
                         if (document.visibilityState === "visible") window.location.href = fallback;
@@ -173,7 +150,6 @@ export function CustomerShortcutsProvider({
 
 type ButtonSize = "sm" | "default";
 
-/** Opens a blank email to the customer. */
 export function EmailButton({ size = "sm", className }: { size?: ButtonSize; className?: string }) {
     const { openEmail, emailOpens } = useShortcuts();
     return (
@@ -184,7 +160,6 @@ export function EmailButton({ size = "sm", className }: { size?: ButtonSize; cla
     );
 }
 
-/** Opens their WhatsApp chat; draws nothing without a valid mobile. */
 export function WhatsAppButton({ size = "sm", className }: { size?: ButtonSize; className?: string }) {
     const { phone, openWhatsApp, whatsappOpens } = useShortcuts();
     if (!phone) return null;
@@ -203,7 +178,6 @@ export function WhatsAppButton({ size = "sm", className }: { size?: ButtonSize; 
     );
 }
 
-/** Dials the mobile; draws nothing without a valid one. */
 export function CallButton({ className }: { className?: string }) {
     const { phone } = useShortcuts();
     const href = telLink(phone);
@@ -218,7 +192,6 @@ export function CallButton({ className }: { className?: string }) {
     );
 }
 
-/** Copies `text` and says so on the button for a moment. */
 export function CopyButton({
     text,
     label = "Copy",

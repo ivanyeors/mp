@@ -8,15 +8,6 @@ import type { CampaignProductCard } from "@/lib/email-campaigns/products";
 import { findCampaignProducts } from "../actions";
 import { ProductThumb } from "./products-field";
 
-/**
- * The shop's Listed products to choose from (PRD-campaign-email-editor slice
- * 07), searched through the shop's own query and shown as the email will
- * show each: its photo, name and price. Products bought through the
- * configurator are not here; a *Customise* button covers them. Loaded with
- * the first products block or product button, not with the page.
- */
-
-/** How long typing pauses before the shop is searched. */
 const SEARCH_PAUSE_MS = 250;
 
 type Found = { ok: true; products: CampaignProductCard[] } | { ok: false; error: string };
@@ -28,10 +19,8 @@ export function ProductPicker({
     children,
 }: {
     onPick: (product: CampaignProductCard) => void;
-    /** Already in the block: shown, but not offered again. */
     chosen?: readonly string[];
     title?: string;
-    /** The button that opens it. */
     children: ReactNode;
 }) {
     const [open, setOpen] = useState(false);

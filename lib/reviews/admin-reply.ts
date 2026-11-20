@@ -7,24 +7,12 @@ import { GOOGLE_REVIEW_COLUMNS, getGoogleReview, type GoogleReviewRow } from "@/
 import { MARKABLE_STATUSES, canMarkReplied } from "@/lib/reviews/mark-replied";
 import { checkReplyText } from "@/lib/reviews/reply-rules";
 
-/**
- * Replying to a Google review from the Customer page's Reviews tab
- * (PRD-customer-page-journey slice 03). Nothing here posts to Google: a Staff
- * member copies the reply, pastes it on Google themselves, and says so.
- *
- * The Telegram card stays the other way in (lib/reviews/google-actions.ts).
- * Both share one row, so every write here is guarded on `status` the way those
- * are, and a card that is open in Telegram is redrawn after a change so the
- * two never show different drafts.
- */
-
 type Deps = {
   draft?: (review: ReviewForDraft) => Promise<DraftResult>;
   edit?: typeof editGroupCard;
   matchLink?: (reviewId: string) => Promise<string | null>;
 };
 
-/** Redraws the review's Telegram card, when it has one. Best-effort: Telegram being down never fails the action. */
 async function refreshCard(row: GoogleReviewRow, deps: Deps): Promise<void> {
   if (!row.telegram_message_id) return;
   try {
@@ -37,18 +25,9 @@ async function refreshCard(row: GoogleReviewRow, deps: Deps): Promise<void> {
 }
 
 export type RedraftResult =
-  | { ok: true; reply: string; /** Stored on the review, so Telegram shows it too. */ saved: boolean }
+  | { ok: true; reply: string; saved: boolean }
   | { ok: false; reason: "not_found" | "draft_failed"; message: string };
 
-/**
- * A fresh draft from Claude, by the same prompt and rules as the Telegram card
- * (lib/reviews/draft-reply.ts). Called only when a Staff member asks for a
- * suggestion on the Reviews tab, never because the tab was opened. A review
- * still waiting for an answer keeps the draft: it is saved, its version moves
- * on (so a Post tapped on the old card is refused as stale), and the card is
- * redrawn. A settled review, and one whose draft a review manager wrote in
- * Telegram, get the draft back without a write.
- */
 export async function redraftReviewReply(reviewId: string, deps: Deps = {}): Promise<RedraftResult> {
   const row = await getGoogleReview(reviewId);
   if (!row) return { ok: false, reason: "not_found", message: "This review is no longer stored." };
@@ -57,7 +36,6 @@ export async function redraftReviewReply(reviewId: string, deps: Deps = {}): Pro
   if (!result.ok) return { ok: false, reason: "draft_failed", message: result.error };
 
   if (row.status !== "pending") return { ok: true, reply: result.reply, saved: false };
-  // A review manager wrote the draft on the Telegram card: Claude's is for this page only.
   if (row.draft_source === "staff") return { ok: true, reply: result.reply, saved: false };
 
   const { data } = await supabaseAdmin()
@@ -73,7 +51,6 @@ export async function redraftReviewReply(reviewId: string, deps: Deps = {}): Pro
     .eq("draft_version", row.draft_version)
     .select(GOOGLE_REVIEW_COLUMNS)
     .maybeSingle();
-  // Someone acted in Telegram meanwhile: the draft is still good to copy.
   if (!data) return { ok: true, reply: result.reply, saved: false };
   await refreshCard(data as GoogleReviewRow, deps);
   return { ok: true, reply: result.reply, saved: true };
@@ -83,12 +60,6 @@ export type MarkRepliedResult =
   | { ok: true; row: GoogleReviewRow }
   | { ok: false; reason: "not_found" | "invalid" | "already" | "not_places"; message: string };
 
-/**
- * A Staff member posted the reply on Google themselves. Only for a review read
- * through the Places API, which cannot show us replies: the text they copied
- * is the only record of it. A Business Profile review needs no mark, because
- * the sync reads the reply from Google.
- */
 export async function markReviewRepliedByStaff(
   reviewId: string,
   reply: string,

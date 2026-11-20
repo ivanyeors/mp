@@ -1,11 +1,3 @@
-/**
- * X-ray pillow UX slice 01 self-check: the dimension registry is real,
- * complete and honest — pillow geometry from the drawings, no placeholder
- * posing as a measurement, every known filling resolving without a throw,
- * and the glossary, ADR and Product Visualize column in place.
- * Run: npx tsx lib/spatial-fillings/dimensions.check.ts
- */
-
 import { existsSync, readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
@@ -18,14 +10,12 @@ import {
 } from "./dimensions";
 import { SILHOUETTE_MASTER } from "./silhouette-master";
 
-// --- Placeholders never merge as truth ---------------------------------------
 assert.equal(
   PLACEHOLDER_DIMENSIONS,
   false,
   "PLACEHOLDER_DIMENSIONS is true: typed-in placeholders are posing as measurements. Replace them with Ivan's numbers (measuredOn set) or drop them so the pouch resolves as a fallback.",
 );
 
-// --- Pillow geometry from the drawings ---------------------------------------
 const sections = JSON.parse(
   readFileSync(".claude/PRD-xray-pillow-ux/reference/protector-sections.json", "utf8"),
 ) as Record<string, { width_mm: number; section_widths_mm: [number, number, number] }>;
@@ -44,7 +34,6 @@ for (const size of PILLOW_SIZES) {
 }
 assert.ok(SILHOUETTE_MASTER.length >= 60 && SILHOUETTE_MASTER.length <= 400, "master ring simplified to a sane vertex count");
 
-// --- Every known filling resolves; unmeasured ones are named, not hidden ----
 const seeds = ["3D (S)", "6D (S)", "6D (M)", "6D (L)", "6D (XL)", "6D (Corner)", "6D+ (S)", "6D+ (L)", "6D+ (Folded)"];
 const unmeasured: string[] = [];
 for (const subtype of seeds) {
@@ -62,7 +51,6 @@ if (unmeasured.length) {
   console.warn(`dimensions.check: ${unmeasured.length} entries still resolve as fallback (Ivan's measurements pending):\n  ${unmeasured.join("\n  ")}`);
 }
 
-// --- Configure › Dimensions tab (slice 12) -----------------------------------
 const page = readFileSync("app/[lang]/settings/inventory/configure/configure-client.tsx", "utf8");
 assert.match(page, /<DimensionsSection settingsPath=\{settingsPath\} \/>/, "Configure mounts the Dimensions tab");
 const section = readFileSync("app/[lang]/settings/inventory/configure/dimensions-section.tsx", "utf8");
@@ -71,7 +59,6 @@ assert.match(section, /Use default/, "Reset restores the code default");
 assert.match(section, /Loft allowance/, "the allowance is editable");
 assert.doesNotMatch(section, /kind:\s*"pillow"|sectionWidthsMm|scaledOutline|SILHOUETTE_MASTER/, "pillow geometry has no edit path on the page");
 
-// --- Route: admin-gated, validated, never writes pillow geometry --------------
 const route = readFileSync("app/[lang]/settings/product-builder/dimensions/route.ts", "utf8");
 assert.equal(route.match(/const denied = await requireAdmin\('configure'\)/g)?.length, 3, "GET, POST and DELETE are admin-gated");
 assert.match(route, /min_thickness_mm <= d\.thickness_mm/, "the route enforces min thickness ≤ thickness");
@@ -82,7 +69,6 @@ const migration = readFileSync("supabase/migrations/20260925090000_dimension_ove
 assert.match(migration, /min_thickness_mm <= thickness_mm/, "the database enforces min thickness ≤ thickness");
 assert.match(migration, /enable row level security/, "override tables are service-role only");
 
-// --- Glossary and ADR --------------------------------------------------------
 const glossary = readFileSync("CONTEXT.md", "utf8");
 for (const term of ["**Product dimensions**", "**Loft**", "**Fit status**", "**Cross-section view**", "**Nudge**", "**Natural settle**"]) {
   assert.ok(glossary.includes(`${term}`), `CONTEXT.md lacks ${term}`);

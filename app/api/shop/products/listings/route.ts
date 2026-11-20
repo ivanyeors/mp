@@ -11,7 +11,6 @@ const ToggleSchema = z.object({
   listed: z.boolean(),
 });
 
-/** The products on the Products page the shop can sell, with whether each is in the shop. */
 export async function GET() {
   const denied = await requireAdmin("products");
   if (denied) return denied;
@@ -25,7 +24,6 @@ export async function GET() {
   }
 }
 
-/** Put one product in the shop, or take it out. */
 export async function PATCH(req: Request) {
   const denied = await requireAdmin("products");
   if (denied) return denied;

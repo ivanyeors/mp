@@ -7,11 +7,6 @@ import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 
 export const runtime = "nodejs";
 
-/**
- * Take a sold Order's goods out of stock when its own deduction did not: a
- * failed write after a Result Accept, a flagged shop Order, or an Order sold
- * before Staff-made Orders deducted. Deducts at most once (`deductOrderStock`).
- */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;

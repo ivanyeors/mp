@@ -1,8 +1,3 @@
-/**
- * Manual restock for returned order goods. Refunds never auto-restock (slice 07);
- * staff deliberately restock here and we link inventory rows + returned_quantity.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { stockLinesForOrderItem } from "./inventory-deduction";
 
@@ -16,7 +11,6 @@ interface OrderItemRow {
   customization_snapshot?: Record<string, unknown> | null;
 }
 
-/** Pure guard: cannot restock more product units than were sold. */
 export function restockQuantityAllowed(
   sold: number,
   returned: number,
@@ -58,7 +52,6 @@ function restockMetadata(
 
 type RestockRow = { item_id: number; quantity_signed: number; reason: string; metadata: Record<string, unknown> };
 
-/** Reverses a line's sale rows pro rata: `units` of `sold` units come back. */
 export function reverseSaleRows(
   saleRows: Array<{ item_id: number; quantity_signed: number }>,
   sold: number,
@@ -72,7 +65,6 @@ export function reverseSaleRows(
     .filter((r) => r.quantity_signed > 0);
 }
 
-/** A Result line has no Variant: its stock left as sale rows tagged with the Result. */
 async function resultRestockTransactions(
   admin: SupabaseClient,
   item: OrderItemRow,
@@ -91,7 +83,6 @@ async function resultRestockTransactions(
   return reverseSaleRows(data ?? [], item.quantity, units, { ...metadata, result_id: resultId });
 }
 
-/** Positive inventory rows for `units` of one order line, resolved as its sale was. */
 async function buildRestockTransactions(
   admin: SupabaseClient,
   item: OrderItemRow,
@@ -117,9 +108,6 @@ async function buildRestockTransactions(
   }));
 }
 
-/**
- * Restock `units` of a sold order line into inventory and bump returned_quantity.
- */
 export async function restockOrderItem(
   admin: SupabaseClient,
   orderId: string,

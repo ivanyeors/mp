@@ -1,11 +1,3 @@
-/**
- * In-memory stand-in for the service-role client, answering the PostgREST calls
- * the aftercare code makes: filters, order, limit, a to-one embed through a
- * `!column` hint, update, and `upsert(..., { onConflict, ignoreDuplicates })`
- * with a real unique key, so a second claim of the same ledger row returns
- * nothing exactly as Postgres's ON CONFLICT DO NOTHING does. `rpc` runs a
- * handler the test registers.
- */
 type Row = Record<string, unknown>;
 export type AftercareFakeDb = Record<string, Row[]>;
 
@@ -84,11 +76,6 @@ export function fakeAftercareDb(db: AftercareFakeDb, rpcs: Record<string, RpcHan
   return client;
 }
 
-/**
- * set_aftercare_preference as the migration defines it: writes the column and
- * one event, nothing when the value is unchanged, and refuses WhatsApp on
- * without the wording (Profile) or a note (Staff).
- */
 export const setAftercarePreferenceRpc: RpcHandler = (args, db) => {
   const customer = (db.customers ?? []).find((c) => c.id === args.p_customer_id);
   if (!customer) return { data: null, error: { message: `Customer ${String(args.p_customer_id)} not found` } };

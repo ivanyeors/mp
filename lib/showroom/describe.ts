@@ -1,15 +1,10 @@
 import type { ShowroomUnit, Vec3, ViewerPart } from "./types";
 
-/**
- * Zone colours in the viewer: the render pipeline's red / green / blue ID
- * colours, softened so the shell still reads as a building.
- */
 export const ZONE_TINTS: [number, number, number][] = [
   [204, 118, 100], [110, 172, 124], [106, 148, 204],
   [214, 186, 92], [178, 120, 190], [96, 182, 188],
 ];
 
-/** The key's swatches: each entry's colour is the one its item is painted in. */
 export function legendSwatches(unit: ShowroomUnit): { label: string; rgb: [number, number, number] }[] {
   return unit.legend.flatMap(({ label, item }) => {
     const rgb = unit.model.parts.find((p) => p.item === item)?.rgb;
@@ -17,11 +12,6 @@ export function legendSwatches(unit: ShowroomUnit): { label: string; rgb: [numbe
   });
 }
 
-/**
- * What a part is, in words: a wall piece's own name, else its item's, else the
- * raw item. Furniture blocks (role `block`) are edited on the ComfyUI canvas and
- * come and go with the layout, so their own name is spelled out instead.
- */
 export function partLabel(unit: ShowroomUnit, part: Pick<ViewerPart, "item" | "role">): string {
   const named = unit.pieceNames[`${part.item}:${part.role}`] ?? unit.partNames[part.item];
   if (named) return named;
@@ -29,13 +19,11 @@ export function partLabel(unit: ShowroomUnit, part: Pick<ViewerPart, "item" | "r
   return part.item;
 }
 
-/** `waiting_sofa` -> `Waiting sofa`, `bed_2` -> `Bed 2`. */
 function blockLabel(name: string): string {
   const words = name.replace(/[_-]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/** Axis-aligned bounds of a flat xyz list. */
 export function bounds(position: number[]): { min: Vec3; max: Vec3 } {
   const min: Vec3 = [Infinity, Infinity, Infinity];
   const max: Vec3 = [-Infinity, -Infinity, -Infinity];
@@ -50,7 +38,6 @@ export function bounds(position: number[]): { min: Vec3; max: Vec3 } {
 
 const m = (x: number) => x.toFixed(2);
 
-/** A part's size and place, one line each: plan size, height range, plan position. */
 export function partFacts(b: { min: Vec3; max: Vec3 }): string[] {
   const [x0, y0, z0] = b.min;
   const [x1, y1, z1] = b.max;
@@ -61,10 +48,6 @@ export function partFacts(b: { min: Vec3; max: Vec3 }): string[] {
   ];
 }
 
-/**
- * Camera distance that fits a halfW × halfH metre frame (half-width across the
- * screen, half-height up it) into a perspective view of vertical `fovDeg`.
- */
 export function fitDistance(halfW: number, halfH: number, fovDeg: number, aspect: number): number {
   const t = Math.tan((fovDeg * Math.PI) / 360);
   return Math.max(halfH / t, halfW / (t * aspect));

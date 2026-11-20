@@ -40,8 +40,6 @@ import {
   computeComponentLines,
 } from "@/components/shop/customization-steps";
 
-// ─── Config Warm Start Handler ──────────────────────────────
-
 function ConfigLoader() {
   const builder = useBuilder();
   const searchParams = useSearchParams();
@@ -49,7 +47,6 @@ function ConfigLoader() {
   const heightParam = searchParams.get("height");
   const positionParam = searchParams.get("position");
 
-  // Handle direct bolster params from mbolster-config redirect
   const loadBolsterDirect = useCallback(async (height: number, position: string) => {
     builder.setIsLoadingRecommendation(true);
     builder.goToStep("recommendation");
@@ -171,8 +168,6 @@ function ConfigLoader() {
   return null;
 }
 
-// ─── Step Renderer ───────────────────────────────────────────
-
 function BuilderSteps() {
   const builder = useBuilder();
 
@@ -200,8 +195,6 @@ function BuilderSteps() {
       return null;
   }
 }
-
-// ─── Add to Cart handler ─────────────────────────────────────
 
 function AddToCartHandler({ children }: { children: (handleAddToCart: () => void) => React.ReactNode }) {
   const builder = useBuilder();
@@ -283,8 +276,6 @@ function AddToCartHandler({ children }: { children: (handleAddToCart: () => void
   return <>{children(handleAddToCart)}</>;
 }
 
-// ─── Main Content ────────────────────────────────────────────
-
 function MakerContent() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
@@ -294,7 +285,6 @@ function MakerContent() {
 
   return (
     <div className="min-h-dvh bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="flex h-14 items-center justify-between px-4 max-w-[1400px] mx-auto">
           <Dialog>
@@ -327,14 +317,10 @@ function MakerContent() {
         </div>
       </header>
 
-      {/* Split-panel layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] min-h-[calc(100dvh-56px)]">
-        {/* ─── LEFT PANEL: Product Visual + Background Effects ─── */}
         <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] max-h-[40vh] lg:max-h-none overflow-hidden">
-          {/* Background effects: desktop only — mobile skips the WebGL/canvas work (#64). */}
           {!isMobile && (
             <>
-              {/* Background layer 1: Particles */}
               <Particles
                 className="absolute inset-0 z-[1]"
                 quantity={100}
@@ -344,7 +330,6 @@ function MakerContent() {
                 size={0.8}
               />
 
-              {/* Background layer 3: DotPattern */}
               <DotPattern
                 dotSize={3}
                 gap={32}
@@ -357,20 +342,16 @@ function MakerContent() {
             </>
           )}
 
-          {/* Product visual on top */}
           <div className="relative z-10 flex items-center justify-center h-full">
             <ProductVisual />
           </div>
         </div>
 
-        {/* ─── RIGHT PANEL: Customization ─── */}
         <div className="flex flex-col bg-background min-h-0 lg:h-[calc(100vh-56px)] lg:border-l">
-          {/* Step indicator */}
           <div className="px-5 pt-5 pb-3 border-b">
             <StepIndicator />
           </div>
 
-          {/* Scrollable step content */}
           <div className="flex-1 overflow-y-auto px-5 py-6">
             <Suspense>
               <ConfigLoader />
@@ -388,7 +369,6 @@ function MakerContent() {
             </AnimatePresence>
           </div>
 
-          {/* Sticky bottom bar */}
           <AddToCartHandler>
             {(handleAddToCart) => (
               <BottomBar onAddToCart={handleAddToCart} />
@@ -399,8 +379,6 @@ function MakerContent() {
     </div>
   );
 }
-
-// ─── Page Export ──────────────────────────────────────────────
 
 export default function MpMakerPage() {
   return (

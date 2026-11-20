@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AftercareFakeDb } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * Staff's manual switch (CRM slice 13): a view-only role sees the switches and
- * their history and cannot change them; a role with customers-edit changes
- * them, each change writing the column, one event and an audit row; turning
- * WhatsApp on needs a note.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as AftercareFakeDb,
   identity: null as { id: string; email: string } | null,

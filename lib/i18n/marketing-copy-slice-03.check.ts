@@ -1,7 +1,3 @@
-/**
- * Slice 03 self-check — Mbolster Families weave (en-US).
- * Run: npx tsx lib/i18n/marketing-copy-slice-03.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -43,7 +39,6 @@ assert.match(discover, /household/i);
 assert.doesNotMatch(discover, FORBIDDEN_OFFER);
 assert.doesNotMatch(discover, BANNED);
 
-// Keep existing size-guide kids line
 assert.match(slide.sizeGuideDescription, /kids/i);
 assert.match(slide.sizeGuideItems[0] ?? "", /children/i);
 
@@ -60,7 +55,6 @@ assert.doesNotMatch(lede, BANNED);
 const w = words(lede);
 assert.ok(w >= 50 && w <= 140, `mbolster-config lede words ${w}`);
 
-// zh-CN home mbolster untouched
 assert.match(zhCN.home.mbolster.description, /可定制/);
 assert.doesNotMatch(zhCN.home.mbolster.subtitle, /Science of Sleep/);
 

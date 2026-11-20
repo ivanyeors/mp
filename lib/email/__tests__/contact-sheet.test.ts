@@ -1,9 +1,3 @@
-/**
- * The review sheet is a committed artefact (docs/email-templates-preview.html),
- * so it is worth asserting the builder keeps covering everything and keeps the
- * embedded documents inert.
- */
-
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -28,8 +22,6 @@ describe("contact sheet", () => {
   });
 
   it("escapes the embedded documents into srcdoc", () => {
-    // Exactly one unescaped doctype — the sheet's own. All 28 emails must be
-    // escaped, or they would tear the host document apart.
     expect((sheet.match(/<!doctype html>/gi) ?? []).length).toBe(1);
     expect((sheet.match(/&lt;!doctype html&gt;/g) ?? []).length).toBe(
       EMAIL_REGISTRY.length + AUTH_COUNT,

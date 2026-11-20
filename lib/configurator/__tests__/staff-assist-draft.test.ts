@@ -18,7 +18,6 @@ import {
 import { parsePairedHandoff, reanchorPairedHandoff, type PairedHandoff } from "@/lib/configurator/paired-mbolster";
 import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings/core";
 
-/** Through device storage and back, as a reload or another page sees it. */
 const stored = <T,>(value: T): unknown => JSON.parse(JSON.stringify(value));
 
 const mix: PillowPlacement[] = [
@@ -139,7 +138,6 @@ describe("the Paired build hand-off carries the Mbolster's Staff session", () =>
   it("across the trip to the Mpillow page and back", () => {
     const parsed = parsePairedHandoff(stored(handoff));
     expect(parsed?.bolster).toEqual(handoff.bolster);
-    // A cancelled Checkout re-anchors the pair; the Mbolster's answers stay.
     expect(reanchorPairedHandoff(parsed!, "a2", () => "c2").bolster).toEqual(handoff.bolster);
   });
 

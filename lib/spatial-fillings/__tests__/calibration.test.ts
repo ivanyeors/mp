@@ -44,7 +44,6 @@ describe("calibrationSheet", () => {
         }
       }
     }
-    // The centre is a gusset inch lower, so it never holds more than a side.
     const l = sheet.layers.find((r) => r.key === "6d/l")!.bySize.M;
     expect(l.centre.overAt ?? 99).toBeLessThanOrEqual(l.side.overAt ?? 99);
   });
@@ -56,7 +55,6 @@ describe("calibrationSheet", () => {
     expect(l.settledLengthMm).toBe(l.lengthMm);
     expect(l.settledThicknessMm).toBe(l.thicknessMm);
     expect(sheet.seam?.key).toBe("6d/l");
-    // The front 6D L, centred in its 110 mm cell at its 100 mm: it ends 105 mm from the front edge.
     expect(sheet.seam!.seamFromFrontMm).toBe(105);
   });
 

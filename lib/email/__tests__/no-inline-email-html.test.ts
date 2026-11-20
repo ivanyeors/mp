@@ -1,12 +1,3 @@
-/**
- * Structural guard: email HTML belongs in lib/email/, not in route handlers or
- * server actions.
- *
- * Six route files used to build their own <!doctype html> documents or bare <p>
- * fragments, which is how the branding drifted and how unescaped interpolation
- * got in. This test fails the build if that pattern returns.
- */
-
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -54,9 +45,6 @@ describe("no inline email HTML in app/", () => {
 });
 
 describe("email colours come from the theme", () => {
-  // theme.ts is the ONLY file allowed to hold colour literals — including
-  // components.ts and base.ts, which is where the status-pill palette first
-  // drifted in behind the earlier version of this exemption.
   const scanned = readdirSync(EMAIL_DIR)
     .filter((f) => f.endsWith(".ts"))
     .filter((f) => f !== "theme.ts")
@@ -70,7 +58,6 @@ describe("email colours come from the theme", () => {
     "%s hardcodes no hex colour",
     (_name, file) => {
       const src = readFileSync(file, "utf8")
-        // Comments may cite a hex for provenance (e.g. "= #009689").
         .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/\/\/.*$/gm, "");
       expect(src.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).toEqual([]);

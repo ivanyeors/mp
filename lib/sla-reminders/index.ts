@@ -1,31 +1,12 @@
-/** Working-day SLA deadlines, reminder eligibility, and expire-before-auth rules. */
-
-/** Stripe uncaptured PaymentIntents typically expire after 7 days. */
 export const STRIPE_AUTH_HOLD_DAYS = 7;
 
 export type SlaSettings = {
-  /** Working days (Mon–Fri) before an unassigned held Result expires. Default 5. */
   workingDays: number;
-  /** Calendar days between operator reminders. Default 1. */
   reminderIntervalDays: number;
   remindTelegram: boolean;
   remindEmail: boolean;
-  /** Operator inbox for email reminders (optional). */
   opsEmail: string | null;
-  /**
-   * Hours before Stripe auth expiry to force expire.
-   * Default 48: daily Hobby cron (±1h jitter) must still expire before the hold dies.
-   */
   authExpiryBufferHours: number;
-  /**
-   * Take a Stripe authorization hold on an online customisation submit.
-   *
-   * Off means the shopper submits with no card at all: the Result still prices
-   * and still enters the build queue, but `authorized_amount` stays null and
-   * the whole total is collected later through the existing top-up Checkout
-   * (ADR 0016's `planCapture` already treats a zero hold as a full top-up).
-   * `source` stays `online_purchase` — this is not an Assisted customisation.
-   */
   authHoldEnabled: boolean;
 };
 
@@ -62,7 +43,6 @@ function parsePositiveInt(v: string | undefined, fallback: number): number {
   return Math.floor(n);
 }
 
-/** Merge stored site_settings key/values with defaults. */
 export function parseSlaSettings(stored: Record<string, string>): SlaSettings {
   const d = DEFAULT_SLA_SETTINGS;
   const ops = stored.results_sla_ops_email?.trim();
@@ -95,28 +75,22 @@ export function slaSettingsToStored(s: SlaSettings): Record<string, string> {
   };
 }
 
-/** Advance `from` by `days` Mon–Fri working days (skips Sat/Sun). */
 export function addWorkingDays(from: Date, days: number): Date {
   if (days < 1) return new Date(from.getTime());
   const d = new Date(from.getTime());
   let left = days;
   while (left > 0) {
     d.setUTCDate(d.getUTCDate() + 1);
-    const dow = d.getUTCDay(); // 0 Sun … 6 Sat
+    const dow = d.getUTCDay();
     if (dow !== 0 && dow !== 6) left -= 1;
   }
   return d;
 }
 
-/** When the authorization hold is assumed to die (heldAt + 7d). */
 export function authExpiresAt(heldAt: Date): Date {
   return new Date(heldAt.getTime() + STRIPE_AUTH_HOLD_DAYS * 24 * 60 * 60 * 1000);
 }
 
-/**
- * Effective expiry deadline: earlier of SLA working-day deadline and
- * (auth expiry − buffer). Never relies on capturing after auth dies.
- */
 export function expiryDeadline(heldAt: Date, settings: SlaSettings): Date {
   const sla = addWorkingDays(heldAt, settings.workingDays);
   const authCut =
@@ -132,18 +106,10 @@ export type HeldResultTick = {
 
 export type TickAction = "expire" | "remind" | "none";
 
-/** Decide expire vs remind for one held Result at `now`. Expire wins over remind. */
 export function planHeldTick(
   row: HeldResultTick,
   settings: SlaSettings,
   now: Date = new Date(),
-  /**
-   * Whether an Authorization hold is what this Result is waiting on. The whole
-   * expiry rule exists because a Stripe authorization dies at
-   * STRIPE_AUTH_HOLD_DAYS; a deferred Result has no such clock (ADR 0016), so it
-   * is reminded indefinitely and closed by a human, never by a timeout. Expiring
-   * one would throw away a build Staff already spent time composing.
-   */
   hasHold = true,
 ): TickAction {
   if (hasHold && now.getTime() >= expiryDeadline(row.heldAt, settings).getTime()) {

@@ -28,7 +28,6 @@ const CreateSchema = z.object({
   postal_code: z.string().nullable().optional(),
   branch_name: z.string().trim().max(120).nullable().optional(),
   bookable: z.boolean().optional().default(true),
-  /** The partner's further clinics. Only a partner has them. */
   branches: BranchesSchema.optional(),
 });
 
@@ -36,7 +35,6 @@ export async function GET() {
   const denied = await requireAdmin("partners");
   if (denied) return denied;
 
-  // Returns all locations (own + partner); the /our-partners projection filters own out.
   try {
     return NextResponse.json({ ok: true, partners: await listAdminLocationRows() });
   } catch (err) {
@@ -92,7 +90,6 @@ export async function POST(req: Request) {
       try {
         await savePartnerBranches(data.id, parsed.branches);
       } catch (e) {
-        // A partner half-added is worse than one not added: take the main row back out.
         await admin.from("partners").delete().eq("id", data.id);
         invalidateTag("locations");
         throw e;

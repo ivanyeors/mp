@@ -18,7 +18,6 @@ import { previewDefaultConsent, subscribeImportedByDefault } from "./actions";
 const int = new Intl.NumberFormat("en-SG");
 const people = (n: number) => `${int.format(n)} ${n === 1 ? "customer" : "customers"}`;
 
-/** The list given: a file read in this tab, or the owner's word that there is none. */
 type List = { kind: "file"; name: string; emails: string[]; rows: number; skipped: number } | { kind: "none" };
 
 type Phase =
@@ -29,14 +28,6 @@ type Phase =
     | { kind: "done"; counts: DefaultConsentCounts }
     | { kind: "error"; error: string };
 
-/**
- * *Subscribe imported customers* (owner, 2026-10-31; ADR 0039): every imported
- * customer starts subscribed to marketing email, except the people who
- * unsubscribed in Shopify. Shopify's export says "no" for them and for people
- * nobody asked alike, so nothing runs until the owner gives Shopify's
- * unsubscribed list, or says nobody is on it. The preview and the run are the
- * same SQL function, so the numbers shown are the numbers written.
- */
 export function DefaultConsentCard({ counts }: { counts: DefaultConsentCounts | null }) {
     const router = useRouter();
     const [list, setList] = useState<List | null>(null);
@@ -70,7 +61,6 @@ export function DefaultConsentCard({ counts }: { counts: DefaultConsentCounts | 
         setPhase(res.ok ? { kind: "ready", counts: res.counts } : { kind: "error", error: res.error });
     };
 
-    // Read in this tab; only the emails go to the server, to keep those people unsubscribed.
     const onPick = async (input: HTMLInputElement) => {
         const file = input.files?.[0];
         input.value = "";

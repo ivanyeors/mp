@@ -18,14 +18,6 @@ import {
     type ReviewSuggestionView,
 } from "@/lib/crm/reviews";
 
-/**
- * The pieces the Customers page's Reviews tab and the Customer detail's
- * Reviews card share (CRM slice 12): how a Google review reads, a suggestion
- * with *Link* and *Not them*, and *Find customer…* for a review from someone
- * we never asked. Only a Staff member's click links a review; the buttons
- * render only for `customers-edit`, and the routes refuse without it.
- */
-
 const base = (reviewId: string) => `/api/settings/customers/google-reviews/${reviewId}`;
 
 async function readError(res: Response, fallback: string): Promise<{ error: string; current?: CurrentGoogleReviewLink }> {
@@ -36,7 +28,6 @@ async function readError(res: Response, fallback: string): Promise<{ error: stri
     };
 }
 
-/** Says who holds a review when a link is refused: the review belongs to at most one Customer. */
 function heldBy(current: CurrentGoogleReviewLink | undefined): string {
     if (!current) return "";
     const who = current.name ?? current.email ?? "another customer";
@@ -83,7 +74,6 @@ export async function unlinkReview(reviewId: string, customerId: string): Promis
     return false;
 }
 
-/** *★5 · "Jane T." · 3 Nov 2026 · Not replied yet* */
 export function ReviewHeadline({ review }: { review: GoogleReviewSummary }) {
     return (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -103,7 +93,6 @@ export function ReviewHeadline({ review }: { review: GoogleReviewSummary }) {
     );
 }
 
-/** One suggested Customer: who, why, and *Link* / *Not them* for `customers-edit`. */
 export function SuggestionRow({
     reviewId,
     suggestion,
@@ -115,7 +104,6 @@ export function SuggestionRow({
     suggestion: ReviewSuggestionView;
     canEdit: boolean;
     customerHref: string;
-    /** After a link (the review leaves the list) or a rejection (the suggestion does). */
     onDone: (result: "linked" | "rejected") => void;
 }) {
     const [busy, setBusy] = useState<"link" | "reject" | null>(null);
@@ -156,11 +144,6 @@ export function SuggestionRow({
     );
 }
 
-/**
- * *Find customer…*: search any Customer by name or email (the list's own
- * search, `GET /api/shop/customers`) and link the review to them by hand, for
- * a review from someone we never asked.
- */
 export function FindCustomerLink({ reviewId, onLinked }: { reviewId: string; onLinked: () => void }) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");

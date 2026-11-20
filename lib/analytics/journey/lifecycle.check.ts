@@ -1,7 +1,3 @@
-/**
- * Slice 03 — Visit lifecycle / Drop-off.
- * Run: npx tsx lib/analytics/journey/lifecycle.check.ts
- */
 import assert from "node:assert/strict";
 import {
   resolveExplicitDropOff,

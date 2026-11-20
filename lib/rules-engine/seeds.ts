@@ -1,7 +1,3 @@
-/**
- * v1 seed Rule graphs — reproduce today's sizing (in-store shoulder / bolster height).
- * Template ids are injected at seed time from Default Filling Templates.
- */
 import type {
   BolsterLength,
   PillowSize,
@@ -34,7 +30,6 @@ const ANY_BAND: RangeBand = { id: "b-any", minCm: null, maxCm: null, label: "any
 export type PillowTemplateIds = Record<PillowSize, string>;
 export type BolsterTemplateIds = Record<BolsterLength, string>;
 
-/** Premium: shoulder → size; neck-trio (full-domain) AND size → Default Filling Template. */
 export function premiumSeedGraph(templates: PillowTemplateIds): RuleGraphJson {
   const nodes: RuleNode[] = [
     { id: "in-shoulder", type: "input", inputKey: "shoulder_length_cm" },
@@ -83,7 +78,6 @@ export function premiumSeedGraph(templates: PillowTemplateIds): RuleGraphJson {
   return { nodes, edges };
 }
 
-/** Basic: shoulder → size → Default Filling Template (no Flow route). */
 export function basicSeedGraph(templates: PillowTemplateIds): RuleGraphJson {
   const nodes: RuleNode[] = [
     { id: "in-shoulder", type: "input", inputKey: "shoulder_length_cm" },
@@ -116,7 +110,6 @@ export function basicSeedGraph(templates: PillowTemplateIds): RuleGraphJson {
   return { nodes, edges };
 }
 
-/** Mbolster: height → length → Default Filling Template. */
 export function mbolsterSeedGraph(templates: BolsterTemplateIds): RuleGraphJson {
   const lengths = ["short", "medium", "long"] as const;
   const nodes: RuleNode[] = [

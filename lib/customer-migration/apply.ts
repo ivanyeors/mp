@@ -1,26 +1,3 @@
-/**
- * Applying a Shopify customer import from the Admin Panel, end to end, apart
- * from the server actions it calls (PRD-shopify-customer-migration, slice 03;
- * ADR 0029 e).
- *
- * Pure: the page passes the actions in, so vitest drives the same flow with
- * fakes, and the server action shares the chunk check and the row builder.
- *
- *  1. `startShopifyImport` records the Import batch: the file's name and
- *     SHA-256, its row count, the export's date and the address choice.
- *  2. The browser sends the rows in file order, 100 at a time, from the
- *     batch's `rows_done`. Each chunk is one transaction in
- *     `import_shopify_customers`, which re-decides every row against the rows
- *     as they are then. A chunk that does not start at `rows_done` is refused,
- *     so a resumed or retried import never counts a row twice.
- *  3. The browser marks the rows whose email or Shopify id appears twice in
- *     the file. Only it holds the whole file; the server sees one chunk, and
- *     would otherwise create the first copy and skip the second.
- *  4. `finishShopifyImport` reconciles and stamps the batch applied.
- *
- * Tags and Note travel here, unlike in the preview. They are written to
- * `migrated_customers` only, which the service role alone can read.
- */
 import { duplicateSkips, normaliseRows, type PlanOutcome, type SkipReason } from "./plan";
 import { pickFields, takeChunk } from "./preview";
 import {
@@ -31,25 +8,18 @@ import {
   type ShopifyRawRow,
 } from "./shopify-csv";
 
-/** `import_shopify_customers` takes at most this many rows per call. */
 export const APPLY_CHUNK_ROWS = 100;
-/** Well under the 1 MB server action limit, with room for its encoding. */
 export const APPLY_CHUNK_MAX_BYTES = 512 * 1024;
-/** What the operator types to start an import, and to undo one. */
 export const IMPORT_CONFIRMATION = "IMPORT";
 export const UNDO_CONFIRMATION = "UNDO";
 
-/** Every column the import reads, Tags and Note included. */
 export const APPLY_FIELDS: readonly ShopifyField[] = SHOPIFY_FIELDS;
 
-/** Skips only the whole file can see. The server honours these and no others from the browser. */
 export type FileSkipReason = "duplicate_email_in_file" | "duplicate_customer_id_in_file";
 const FILE_SKIPS: ReadonlySet<string> = new Set<FileSkipReason>(["duplicate_email_in_file", "duplicate_customer_id_in_file"]);
 
-/** One row as the apply sends it. A row skipped for a file-wide duplicate carries no cells at all. */
 export type ApplyRawRow = { i: number; raw: ShopifyRawRow; skip?: FileSkipReason };
 
-/** The rows as the apply sends them: indexed, only APPLY_FIELDS, file-wide duplicates marked. */
 export function applyPayload(rows: readonly ShopifyRawRow[]): ApplyRawRow[] {
   const dupes = duplicateSkips(normaliseRows(rows.map((raw, i) => ({ i, raw }))));
   return rows.map((raw, i) => {
@@ -58,11 +28,6 @@ export function applyPayload(rows: readonly ShopifyRawRow[]): ApplyRawRow[] {
   });
 }
 
-/**
- * The server's check of one chunk: at most 100 rows, numbered in file order
- * from `startIndex`, and only APPLY_FIELDS string cells, so anything else the
- * request carries is dropped on arrival.
- */
 export function readApplyChunk(
   input: unknown,
   startIndex: unknown,
@@ -87,15 +52,8 @@ export function readApplyChunk(
   return { ok: true, startIndex, rows };
 }
 
-/** One row of `import_shopify_customers`' input (20261020110000_customer_import_apply.sql). */
 export type ImportRow = { i: number; skip: SkipReason } | ({ i: number } & NormalisedShopifyRow);
 
-/**
- * What the server hands the SQL function for a chunk. Every row is normalised
- * here from its raw cells, never trusting the browser's own reading. The
- * browser's file-wide duplicate marks are kept, and duplicates within the
- * chunk are found again here.
- */
 export function importRows(chunk: readonly ApplyRawRow[]): ImportRow[] {
   const normalised = normaliseRows(chunk.filter((r) => !r.skip).map(({ i, raw }) => ({ i, raw })));
   const byIndex = new Map(normalised.map((n) => [n.i, n.result]));
@@ -109,9 +67,6 @@ export function importRows(chunk: readonly ApplyRawRow[]): ImportRow[] {
   });
 }
 
-// ─── Server answers ──────────────────────────────────────────────────────────
-
-/** One row's outcome as the database decided it. No PII: the browser holds the row. */
 export type RowOutcome = { i: number; outcome: PlanOutcome; reason?: SkipReason };
 
 export type RefusedReason = "out_of_order" | "past_end" | "applied" | "undone";
@@ -121,7 +76,6 @@ export type ApplyChunkResponse =
   | { ok: true; status: "refused"; reason: RefusedReason; rowsDone: number }
   | { ok: false; error: string };
 
-/** Read `import_shopify_customers`' answer. */
 export function readImportResult(data: unknown): ApplyChunkResponse {
   const d = (data ?? {}) as { status?: unknown; reason?: unknown; rows_done?: unknown; outcomes?: unknown };
   if (typeof d.rows_done !== "number") return { ok: false, error: "The database gave no answer." };
@@ -130,14 +84,12 @@ export function readImportResult(data: unknown): ApplyChunkResponse {
   return { ok: true, status: "applied", rowsDone: d.rows_done, outcomes: d.outcomes as RowOutcome[] };
 }
 
-/** An Import batch's counts, as the server keeps them. */
 export type BatchCounts = {
   rowsTotal: number;
   rowsDone: number;
   created: number;
   merged: number;
   alreadyImported: number;
-  /** { reason: count } */
   skipped: Partial<Record<SkipReason, number>>;
 };
 
@@ -146,7 +98,6 @@ export const skippedTotal = (skipped: BatchCounts["skipped"]) =>
 
 export type Reconciliation = { complete: boolean; accounted: number; reconciles: boolean };
 
-/** rows_total = created + merged + already_imported + Σ skipped, over every row. */
 export function reconcile(c: BatchCounts): Reconciliation {
   const accounted = c.created + c.merged + c.alreadyImported + skippedTotal(c.skipped);
   const complete = c.rowsDone === c.rowsTotal;
@@ -160,14 +111,11 @@ export type FinishResponse =
       ok: true;
       status: FinishStatus;
       counts: BatchCounts;
-      /** migrated_customers rows the batch holds, created and merged: the second half of the reconcile. */
       rows: { created: number; merged: number };
-      /** This call stamped the batch applied (and recorded the audit row). */
       newlyApplied: boolean;
     }
   | { ok: false; error: string };
 
-/** Read `finish_shopify_import`'s answer. */
 export function readFinishResult(data: unknown): FinishResponse {
   const d = (data ?? {}) as Record<string, unknown>;
   const status = d.status as FinishStatus;
@@ -191,16 +139,12 @@ export function readFinishResult(data: unknown): FinishResponse {
   };
 }
 
-// ─── Starting a batch ────────────────────────────────────────────────────────
-
 export type StartImportInput = {
   fileName: string;
   sha256: string;
   rowsTotal: number;
   withAddresses: boolean;
-  /** YYYY-MM-DD: the day the owner exported the file. */
   exportedAt: string;
-  /** The operator typed IMPORT_CONFIRMATION. */
   confirmation: string;
 };
 
@@ -213,20 +157,14 @@ export type StartImportRow = {
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-/** No export predates the shop. */
 const EARLIEST_EXPORT = "2015-01-01";
 
-/** `YYYY-MM-DD` in the browser's own time zone. */
 export function localIsoDate(ms: number): string {
   const d = new Date(ms);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/**
- * The server's check of a new batch. `today` is the server's date; a day of
- * grace covers Singapore being ahead of UTC.
- */
 export function readStartInput(
   input: unknown,
   today: string,
@@ -256,22 +194,13 @@ export function readStartInput(
   };
 }
 
-// ─── The run ─────────────────────────────────────────────────────────────────
-
 export type ApplyChunkFn = (batchId: string, startIndex: number, rows: ApplyRawRow[]) => Promise<ApplyChunkResponse>;
 export type FinishFn = (batchId: string) => Promise<FinishResponse>;
 
 export type ImportRun =
   | { kind: "finished"; result: Extract<FinishResponse, { ok: true }> }
-  /** Stopped part-way. Picking the same file continues from `rowsDone`. */
   | { kind: "stopped"; rowsDone: number; error: string };
 
-/**
- * Send the file's rows from the batch's `rowsDone`, then finish. A refusal
- * that says the batch is further on than we are (a chunk that landed but
- * whose answer was lost) moves on from there; any other refusal or failure
- * stops, and the same file resumes it.
- */
 export async function runShopifyImport({
   text,
   batch,

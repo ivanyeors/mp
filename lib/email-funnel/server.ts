@@ -1,20 +1,3 @@
-/**
- * The **Email funnel**'s loader (PRD-email-funnel slice 03; ADR 0054): reads
- * the facts with the service role and hands them to `buildFunnel`. The caller
- * has checked `campaigns`.
- *
- * - Every read is a `head: true` count or pages to the end: PostgREST returns
- *   at most 1,000 rows per request (PRD, Hazards).
- * - A failed read of one part leaves that part *not counted* (or, for a
- *   Segment, campaign or results read, named in `notRead`), logged, and never
- *   fails the page.
- * - Nothing that names a Customer leaves this file: the rows it reads for the
- *   draft reminders' and check-ups' outcomes are reduced to counts here.
- *
- * Automatic emails' *Sent* is always emails sent (`customer_emails`, status
- * `sent`), all time; their outcomes are what each already records.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CHECKUP_TEMPLATE_LIKE } from "@/lib/aftercare/checkup";
 import { readAftercareSettings } from "@/lib/aftercare/card-server";
@@ -39,7 +22,6 @@ type Query = PromiseLike<{ data: unknown[] | null; error: { message: string } | 
 type Rangeable = Query & { range(from: number, to: number): Query };
 type Counted = PromiseLike<{ count: number | null; error: { message: string } | null }>;
 
-/** Every row `build` selects, a page at a time. `build` must order by a unique column so pages do not overlap. */
 async function readAll<T>(label: string, build: () => Rangeable): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE) {
@@ -51,7 +33,6 @@ async function readAll<T>(label: string, build: () => Rangeable): Promise<T[]> {
   }
 }
 
-/** Rows for `ids`, a chunk at a time (an IN list stays short enough for a URL). */
 async function readIn<T>(label: string, ids: readonly string[], build: (chunk: string[]) => Query): Promise<T[]> {
   const out: T[] = [];
   for (let i = 0; i < ids.length; i += CHUNK) {
@@ -71,7 +52,6 @@ async function headCount(label: string, query: Counted): Promise<number> {
 const logFailed = (part: string, e: unknown) =>
   console.error(`[email-funnel] ${part} not read:`, e instanceof Error ? e.message : e);
 
-/** `p`, or `fallback` with the failure logged. */
 async function orElse<T>(part: string, p: Promise<T>, fallback: T): Promise<T> {
   try {
     return await p;
@@ -81,17 +61,9 @@ async function orElse<T>(part: string, p: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
-// ─── Draft reminders' outcome ────────────────────────────────────────────────
-
 type DraftRow = { id: string; status: string | null; customer_email: string | null; created_at: string };
 type ResultRow = { customer_email: string | null; created_at: string };
 
-/**
- * Pure — of the reminded Drafts, how many were finished afterwards: the Draft
- * itself is now held, assigned or bought (its status is set), or, by the rule
- * the reminder job uses for *went on to buy*, the same email started a Result
- * on or after the Draft was started that was since held, paid or submitted.
- */
 export function countDraftsFinished(drafts: readonly DraftRow[], results: readonly ResultRow[]): number {
   const latest = new Map<string, string>();
   for (const r of results) {
@@ -115,7 +87,6 @@ async function draftReminderCount(admin: SupabaseClient): Promise<AutomaticCount
   const perReminder = await Promise.all(
     DRAFT_REMINDERS.map((r) => headCount(r.template, sentEmails(admin).eq("template", r.template))),
   );
-  // Each reminded Draft once: the ledger's entity is the Draft.
   const ledger = await readAll<{ id: string; entity_id: string }>("draft reminder sends", () =>
     admin.from("customer_emails").select("id, entity_id").in("template", templates).eq("status", "sent").order("id"),
   );
@@ -147,8 +118,6 @@ async function draftReminderCount(admin: SupabaseClient): Promise<AutomaticCount
   };
 }
 
-// ─── Review request and Check-up reminder ────────────────────────────────────
-
 async function reviewRequestCount(admin: SupabaseClient): Promise<AutomaticCount> {
   const asked = () => admin.from("customer_review_requests").select("customer_id", { count: "exact", head: true });
   const [sent, requests, opened, linked] = await Promise.all([
@@ -157,7 +126,6 @@ async function reviewRequestCount(admin: SupabaseClient): Promise<AutomaticCount
     headCount("customer_review_requests opened", asked().not("first_clicked_at", "is", null)),
     countLinkedGoogleReviewsOfRequested(admin),
   ]);
-  // One basis: Customers asked, by either channel, and of them those who opened the link (shared by both).
   return {
     sent: requests,
     sentLabel: "Customers asked, by email or WhatsApp",
@@ -171,15 +139,6 @@ async function reviewRequestCount(admin: SupabaseClient): Promise<AutomaticCount
 
 type CheckupSent = { customer_id: string; template: string; entity_id: string; sent_at: string };
 
-/**
- * Pure — the funnel's check-up numbers, all time, on one basis: check-ups
- * sent, one per Order and milestone whatever carried it (as
- * `summariseCheckupSends` counts them), and of those, the ones followed by a
- * booking. A booking is credited once: to the Customer's latest check-up at
- * or before it, so a 12-month and a 24-month check-up followed by one booking
- * count 1. (`summariseCheckupSends`, which the Aftercare card reads over a
- * window, is left as it is.)
- */
 export function summariseFunnelCheckups(input: {
   email: readonly CheckupSent[];
   whatsapp: readonly CheckupSent[];
@@ -205,7 +164,6 @@ export function summariseFunnelCheckups(input: {
   return { sent: first.size, byEmail: emailed.size, followedByBooking: credited.size };
 }
 
-/** A booking that is a booking (as lib/aftercare/checkup-counts reads them). */
 const BOOKED = ["booked", "attended", "no_show", "needs_reschedule"];
 
 async function checkupCount(admin: SupabaseClient): Promise<AutomaticCount> {
@@ -237,8 +195,6 @@ async function checkupCount(admin: SupabaseClient): Promise<AutomaticCount> {
   };
 }
 
-// ─── Switches ────────────────────────────────────────────────────────────────
-
 async function readSwitches(admin: SupabaseClient): Promise<FunnelFacts["switches"]> {
   const [setting, aftercare, fee] = await Promise.all([
     admin.from("site_settings").select("value").eq("key", DRAFT_REMINDERS_ENABLED_KEY).maybeSingle(),
@@ -255,7 +211,6 @@ async function readSwitches(admin: SupabaseClient): Promise<FunnelFacts["switche
   };
 }
 
-/** When the switches cannot be read: every switch off, at the code's timings, and named in `notRead`. */
 const UNREAD_SWITCHES: FunnelFacts["switches"] = {
   draftReminders: false,
   reviewRequests: false,
@@ -264,9 +219,6 @@ const UNREAD_SWITCHES: FunnelFacts["switches"] = {
   reviewRequestDays: DEFAULT_REVIEW_REQUEST_SETTINGS.daysAfter,
 };
 
-// ─── The page's view ─────────────────────────────────────────────────────────
-
-/** Settled, without a throw: the value, or the failure logged and `null`. */
 const settle = <T,>(part: string, p: Promise<T>) => orElse<T | null>(part, p, null);
 
 export async function getEmailFunnel({ admin = supabaseAdmin(), now = new Date() }: { admin?: SupabaseClient; now?: Date } = {}): Promise<FunnelView> {
@@ -303,7 +255,6 @@ export async function getEmailFunnel({ admin = supabaseAdmin(), now = new Date()
   return buildFunnel({
     summary,
     subscribed: Object.fromEntries(FUNNEL_STAGES.map((s, i) => [s, subscribed[i]])),
-    // Only what the view needs: a Segment's creator, a campaign's words stay here.
     segments: (segments ?? []).map((s) => ({ id: s.id, name: s.name, count: s.count, needsReview: s.needsReview, params: s.params })),
     campaigns: (campaigns ?? []).map(({ campaign, stats }) => ({ campaign, stats })),
     stageResults: stageResults ?? [],

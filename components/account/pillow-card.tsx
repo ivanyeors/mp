@@ -39,13 +39,6 @@ function describe(pillow: OwnPillowView): ReactNode {
   return "What's inside your pillow, section by section, as our team recorded it.";
 }
 
-/**
- * Profile → Your pillow (ADR 0042 k): the x-ray of the pillow they bought, the
- * same drawing Staff see on the Customer page. The server sends it only once
- * something says they bought it, already stripped to what is theirs
- * (`ownPillowView`): read-only, with no Staff names, notices or other
- * templates.
- */
 export function OwnPillowCard({ pillow }: { pillow: OwnPillowView }) {
   const placements = useMemo(() => rowsToPillowPlacements(pillow.placements), [pillow.placements]);
   return (

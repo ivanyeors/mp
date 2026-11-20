@@ -46,7 +46,6 @@ describe("custom vs built-in", () => {
   it("drives slug locking and deletion", () => {
     expect(isCustomSectionType("custom_video")).toBe(true);
     expect(isCustomSectionType("hero")).toBe(false);
-    // Generic-looking, but seeded twice and branched on by slug.
     expect(isCustomSectionType("text_image")).toBe(false);
   });
 });

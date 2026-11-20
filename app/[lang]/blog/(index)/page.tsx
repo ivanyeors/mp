@@ -11,7 +11,6 @@ import { JsonLdScript } from "@/components/seo/json-ld-script";
 const BLOG_DESCRIPTION =
     "Read our latest articles on improving sleep posture, neck pain relief, and choosing the perfect pillow in Singapore.";
 
-// ?label= and ?q= views share the one canonical /blog URL, and so declare no hreflang of their own.
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const [{ lang }, query] = await Promise.all([params, searchParams]);
     return buildPageMetadata({
@@ -28,7 +27,6 @@ type Props = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-// Reusable Post Card Component
 function PostCard({ post, locale }: { post: BlogPost; locale: Locale }) {
     return (
         <Link
@@ -97,11 +95,9 @@ export default async function BlogHubPage(props: Props) {
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
     const allPosts = await getBlogPostsFromDb({ locale, status: "published" });
 
-    // Read queries
     const q = typeof searchParams?.q === "string" ? searchParams.q : "";
     const activeLabel = typeof searchParams?.label === "string" ? searchParams.label : "";
 
-    // Filter posts
     let filteredPosts = allPosts;
     if (q) {
         const queryLower = q.toLowerCase();
@@ -117,7 +113,6 @@ export default async function BlogHubPage(props: Props) {
 
     const isActiveFilter = q !== "" || activeLabel !== "";
 
-    // Standard Grid View for Filters
     const renderFilteredView = () => (
         <div className="space-y-8">
             <h2 className="text-2xl font-bold">
@@ -137,7 +132,6 @@ export default async function BlogHubPage(props: Props) {
         </div>
     );
 
-    // Grouped Layout for Default View (No filters)
     const renderDefaultView = () => {
         const featuredCount = 3;
         const featuredPosts = allPosts.slice(0, featuredCount);
@@ -151,29 +145,24 @@ export default async function BlogHubPage(props: Props) {
             "Pillow Guide"
         ];
 
-        // Explicitly map posts to our predefined categories
         const sections: Record<string, BlogPost[]> = {};
         PREDEFINED_CATEGORIES.forEach(cat => { sections[cat] = []; });
 
         remainingPosts.forEach((post) => {
             if (!post.labels || post.labels.length === 0) {
-                // Determine a fallback if no labels
                 sections["Sleep Health"].push(post);
                 return;
             }
-            // For explicitly categorizing, we place the post in the first predefined category it matches
             const matchedCategory = post.labels.find(l => PREDEFINED_CATEGORIES.includes(l));
             if (matchedCategory) {
                 sections[matchedCategory].push(post);
             } else {
-                // Fallback to Sleep Health if an unknown label is present
                 sections["Sleep Health"].push(post);
             }
         });
 
         return (
             <div className="space-y-20">
-                {/* Latest / Featured Section */}
                 <section>
                     <h2 className="text-3xl font-extrabold tracking-tight mb-8">Latest Articles</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -183,7 +172,6 @@ export default async function BlogHubPage(props: Props) {
                     </div>
                 </section>
 
-                {/* Explicit Categorized Sections */}
                 {PREDEFINED_CATEGORIES.map((labelTitle) => {
                     const categoryPosts = sections[labelTitle];
                     if (!categoryPosts || categoryPosts.length === 0) return null;

@@ -1,7 +1,3 @@
-/**
- * Live DB smoke for slices 08+09. Inserts disposable rows, asserts aggregates, deletes.
- * Run: npx tsx lib/analytics/journey/slice-08-09.smoke.ts
- */
 import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
 import { loadPageTransitionsFromDb, listCountriesFromDb } from "./aggregates";
@@ -102,7 +98,6 @@ async function main() {
   ]);
   if (eErr) throw new Error(eErr.message);
 
-  // Schema: no raw IP product field
   const { data: sample } = await db.from("analytics_visits").select("*").eq("id", visit1).single();
   assert.ok(sample);
   assert.equal(sample.country, "SG");

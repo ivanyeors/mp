@@ -1,7 +1,3 @@
-/**
- * Slice 08 — Returns: dashed re-entry + return metrics + New/Returning cohort.
- * Run: npx tsx lib/analytics/journey/returns.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -45,7 +41,6 @@ const other: VisitMeta = {
   dropOffPath: null,
 };
 
-// --- Prior ended Visit / cohort ---
 assert.equal(priorEndedVisit(v2, [v1, v2])?.id, "visit-1");
 assert.equal(classifyVisitCohort(v1, [v1, v2]), "new");
 assert.equal(classifyVisitCohort(v2, [v1, v2]), "returning");
@@ -56,7 +51,6 @@ assert.deepEqual(cohortNew?.sort(), ["visit-1", "visit-other"]);
 const cohortRet = filterVisitIdsByCohort([v1, v2, other], [v1, v2, other], "returning");
 assert.deepEqual(cohortRet, ["visit-2"]);
 
-// --- Return hit + dashed Drop-off → landing ---
 const landings = new Map([
   ["visit-1", "/"],
   ["visit-2", "/"],
@@ -79,7 +73,6 @@ const metrics = returnMetricsByPath(returns);
 assert.equal(metrics.get("/")?.returnHits, 1);
 assert.equal(metrics.get("/")?.medianReturnGapMs, returns[0]!.gapMs);
 
-// --- Same-session backtrack is solid, not a return ---
 const loopEvents = [
   { visitId: "visit-1", path: "/", occurredAt: "2026-07-14T10:00:00.000Z" },
   { visitId: "visit-1", path: "/shop", occurredAt: "2026-07-14T10:01:00.000Z" },
@@ -92,7 +85,6 @@ assert.equal(
   0,
 );
 
-// --- Chrome + side panel consume return fields ---
 const chrome = buildNodeChrome({
   nodes: [
     { path: "/", views: 2 },
@@ -123,7 +115,6 @@ const panel = buildNodeSidePanel({
 assert.equal(panel.returnTimeline.length, 1);
 assert.equal(panel.returnTimeline[0]!.priorDropOffPath, "/shop");
 
-// --- UI wiring ---
 const card = readFileSync(
   join(root, "app/[lang]/settings/analytics/ProspectJourneyCard.tsx"),
   "utf8",

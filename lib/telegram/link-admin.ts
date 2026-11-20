@@ -1,11 +1,3 @@
-/**
- * Telegram link writes for Users & permissions → Telegram (ADR 0023).
- *
- * A link may only grant actions its profile's login role holds (the matrix is
- * the ceiling), and someone who is not Owner or Admin may only grant actions
- * they hold themselves. Every change is audited as `telegram_link.*` with the
- * before/after action lists.
- */
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
@@ -63,13 +55,6 @@ async function profileContext(profileId: string): Promise<ProfileContext | null>
   };
 }
 
-/**
- * May the actor touch this link at all? Its login must be one they may manage
- * (login-guard), and — unless they are Owner or Admin — they must hold every
- * action the link lists, so a new code, a switch-on or a relink never hands
- * them access they lack. That includes actions the login's role does not
- * grant today: they come back the moment someone ticks them on the role.
- */
 async function manageRefusal(
   actor: AdminContext,
   profile: ProfileContext,
@@ -89,7 +74,6 @@ async function manageRefusal(
   return null;
 }
 
-/** Refusal for actions the profile's role or the actor does not hold; null when all are fine. */
 function actionsRefusal(
   actor: AdminContext,
   profile: ProfileContext,

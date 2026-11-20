@@ -9,7 +9,6 @@ import {
 
 type Row = Record<string, unknown>;
 
-/** The few PostgREST calls the identity writers make, over arrays. */
 function fakeDb(tables: Record<string, Row[]>) {
   const from = (table: string) => {
     const rows = (tables[table] ??= []);

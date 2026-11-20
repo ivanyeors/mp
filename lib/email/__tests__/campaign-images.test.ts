@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -11,15 +10,6 @@ import { EMAIL_BLOCK_SAMPLE_IMAGES, EMAIL_BLOCK_SAMPLES, SAMPLE_CUTOUT_ASSET, SA
 import { CONTENT_PLACEHOLDERS, emptyBlock, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
 import { EMPTY_CAMPAIGN_DRAFT } from "@/lib/email-campaigns/rules";
-
-/**
- * Images and the hero in the email (PRD-campaign-email-editor slice 05):
- * every image is its email rendition, a JPEG or PNG with width and height,
- * never the WebP master; a hero's words are real text and a real link below
- * its image; a transparent image sits on the light plate, which keeps its
- * light fill in dark, and a photo sits on none. Every block names itself
- * with `data-block-id`, in a send as in the preview.
- */
 
 const ORIGIN = "https://custom.mpillow.com";
 const UNSUB = `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=abc`;
@@ -54,7 +44,6 @@ describe("an image block", () => {
       expect(Number(img.getAttribute("height"))).toBeGreaterThan(0);
       expect(img.getAttribute("style")).toContain("display:block;max-width:100%;height:auto");
     }
-    // Full is the card's column; Inset leaves room either side; each keeps its shape.
     expect(shown.map((i) => [i.width, i.height])).toEqual([
       [542, 361],
       [408, 272],
@@ -70,7 +59,6 @@ describe("an image block", () => {
     expect(cutout.closest("a")).toBeNull();
     expect(flourish.getAttribute("alt")).toBe("");
     expect(flourish.getAttribute("role")).toBe("presentation");
-    // The plain-text part has no picture: a linked one is its words and link.
     expect(send(EMAIL_BLOCK_SAMPLES.image).text).toContain(`A FibreCool cover on a made bed, in white: ${ORIGIN}/en-US/shop`);
   });
 
@@ -80,7 +68,6 @@ describe("an image block", () => {
     expect(photo.closest(".mp-plate")).toBeNull();
     const plate = cutout.closest(".mp-plate")!;
     expect(plate.getAttribute("bgcolor")).toBe(LIGHT.card);
-    // Apple Mail (prefers-color-scheme) and Outlook.com ([data-ogsc]) both get the plate's rule.
     const rule = `.mp-plate { background: ${LIGHT.card} !important; }`;
     const media = /@media \(prefers-color-scheme: dark\) \{([\s\S]*?)\n {4}\}/.exec(html)![1];
     expect(media).toContain(rule);
@@ -92,7 +79,6 @@ describe("an image block", () => {
     expect(() => send(EMAIL_BLOCK_SAMPLES.image, {})).toThrow(/No email rendition for image/);
     const preview = renderCampaignPreview({ ...EMPTY_CAMPAIGN_DRAFT, subject: "News", content: EMAIL_BLOCK_SAMPLES.image }, { origin: ORIGIN, firstName: "Ann" });
     expect(preview.html).toContain(escapeHtml(CONTENT_PLACEHOLDERS.imageUnavailable));
-    // An image not chosen yet is its placeholder in the preview, and nothing in a send.
     const empty = one(emptyBlock("image", "i"));
     expect(renderCampaignPreview({ ...EMPTY_CAMPAIGN_DRAFT, subject: "News", content: empty }, { origin: ORIGIN, firstName: "Ann" }).html).toContain(CONTENT_PLACEHOLDERS.image);
     expect(imgs(send(empty).html)).toEqual([]);
@@ -105,11 +91,9 @@ describe("a hero", () => {
     const hero = doc(html).querySelector('[data-block-id="hero"]')!;
     const parts = [...hero.querySelectorAll("img, h1, h2, p, a.mp-btn")].map((el) => el.tagName.toLowerCase() + (el.textContent?.trim() ? `: ${el.textContent.trim()}` : ""));
     expect(parts).toEqual(["img", "h1: Sleep cooler this December", "p: Our FibreCool covers are back, in every size.", "a: Shop the covers"]);
-    // Nothing is laid over the image: its row holds the image alone.
     const row = hero.querySelector("img")!.closest("td")!;
     expect(row.textContent?.trim()).toBe("");
     expect(hero.querySelector("a.mp-btn")!.getAttribute("href")).toBe(`${ORIGIN}/en-US/shop`);
-    // Outlook's own button, too.
     expect(hero.innerHTML).toContain(`<!--[if mso]>\n<v:roundrect`);
     expect(send(EMAIL_BLOCK_SAMPLES.hero).text).toContain("Sleep cooler this December\n\nOur FibreCool covers are back, in every size.\n\nShop the covers: https://custom.mpillow.com/en-US/shop");
   });
@@ -118,7 +102,6 @@ describe("a hero", () => {
     const d = doc(send(EMAIL_BLOCK_SAMPLES.hero).html);
     expect(d.querySelector('[data-block-id="hero"] h1')?.textContent).toBe("Sleep cooler this December");
     expect(d.querySelector('[data-block-id="second"] h2')?.textContent).toBe("Made to your measure");
-    // The greeting comes after the opening hero, before the words.
     const greeted = send(EMAIL_BLOCK_SAMPLES.hero, EMAIL_BLOCK_SAMPLE_IMAGES, { greeting: true });
     expect(greeted.text.indexOf("Hi Ann,")).toBeGreaterThan(greeted.text.indexOf("Shop the covers"));
     expect(greeted.text.indexOf("Hi Ann,")).toBeLessThan(greeted.text.indexOf("Cool to the touch"));
@@ -144,7 +127,6 @@ describe("data-block-id", () => {
     const d = doc(send(content).html);
     const named = [...d.querySelectorAll(".mp-card [data-block-id]")];
     expect(named.map((el) => el.getAttribute("data-block-id"))).toEqual(content.blocks.map((b) => b.id));
-    // Each is a direct part of the card, holding its whole block.
     for (const el of named) expect(el.parentElement?.classList.contains("mp-card")).toBe(true);
     expect(d.querySelector('[data-block-id="buttons-pair"] .mp-btn-secondary')).not.toBeNull();
   });

@@ -2,13 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { WantedSegment } from "@/lib/email-campaigns/wanted-segment";
 import { keptDraft, keptOf, type EditorDraft } from "../kept-draft";
 
-/**
- * What the browser keeps of a draft (PRD-campaign-email-editor slice 04): the
- * Segment New campaign's address wants and the address's note (PRD-email-funnel
- * slices 04 and 06) are the editor's, never kept, so a copy read back after a
- * crash cannot carry them.
- */
-
 const DRAFT: EditorDraft = {
   name: "We miss you",
   subject: "It's been a while",
@@ -35,7 +28,6 @@ describe("keptOf", () => {
     expect(json).not.toContain("would reach nobody");
     expect(kept.email).not.toHaveProperty("wanted");
     expect(kept.email).not.toHaveProperty("audienceNote");
-    // What is kept still reads back.
     expect(keptDraft(JSON.parse(json))).toEqual(kept);
   });
 });

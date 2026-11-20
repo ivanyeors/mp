@@ -2,12 +2,9 @@ import { bucketStart, bucketize, summarize, type DailyTotal } from "@/lib/seo-me
 import { addDays } from "@/lib/seo-metrics/dates";
 import { splitQueryPageKey } from "@/lib/seo-metrics/keys";
 
-/** Target-query watchlist and biggest movers (slice 06, PRD-search-visibility). Pure. */
-
 export type KeyTotals = { key: string; clicks: number; impressions: number; position_sum: number };
 export type KeyDaily = KeyTotals & { date: string };
 
-/** Search Console reports queries lower-cased with single spaces; match that. */
 export function normalizeQuery(q: string): string {
   return q.trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -25,10 +22,6 @@ export type Mover = {
   previousPosition: number | null;
 };
 
-/**
- * Keys whose clicks changed most between periods. Keys with too few impressions
- * across both periods are ignored, so a 1 → 3 click query does not top the list.
- */
 export function buildMovers(
   current: KeyTotals[],
   previous: KeyTotals[],
@@ -70,10 +63,8 @@ export type WatchRow = {
   impressions: number;
   position: number | null;
   previousPosition: number | null;
-  /** Weekly impression-weighted position, oldest first; null for weeks with no impressions. */
   spark: (number | null)[];
   topPage: string | null;
-  /** Other pages taking ≥ 20% of this query's impressions: a cannibalisation signal. */
   competingPages: string[];
 };
 
@@ -84,9 +75,7 @@ export function buildWatchlist(input: {
   targets: string[];
   current: KeyTotals[];
   previous: KeyTotals[];
-  /** Daily query rows for the targets over the last SPARK_WEEKS weeks. */
   daily: KeyDaily[];
-  /** query_page rows for the current period. */
   queryPages: KeyTotals[];
   today: string;
 }): WatchRow[] {

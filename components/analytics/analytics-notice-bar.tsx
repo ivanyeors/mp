@@ -11,7 +11,6 @@ import { useScreenBottomPin } from "@/hooks/use-screen-bottom-pin";
 
 const STORAGE_KEY = "mp_analytics_notice_ok";
 
-/** Disclosure-only bottom bar (Got it dismiss). Collection stays always-on via JourneyTracker. */
 export function AnalyticsNoticeBar() {
   const pathname = usePathname() ?? "/";
   const [visible, setVisible] = useState(false);
@@ -32,8 +31,6 @@ export function AnalyticsNoticeBar() {
     setVisible(true);
   }, [pathname]);
 
-  // Publish how much of the bottom corner the bar takes, so the chat bubble
-  // (components/support/support-chat-window.tsx) sits above it, not over "Got it".
   const barRef = useRef<HTMLDivElement>(null);
   const pinRef = useScreenBottomPin();
   useEffect(() => {
@@ -59,17 +56,11 @@ export function AnalyticsNoticeBar() {
   const dismiss = () => {
     try {
       localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      // still hide this Visit
-    }
+    } catch {}
     setVisible(false);
   };
 
   return (
-    // pointer-events only on the bar — rest of viewport stays clickable (configurator/checkout)
-    // desktop: right side (clears center dock); mobile: above the dock (--app-dock-clearance)
-    // and above a step's or the cart's action bar (--mobile-bottom-bar-height)
-    // bottom: 0, kept on the screen's edge on iOS after a keyboard (useScreenBottomPin)
     <div
       ref={pinRef}
       className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--screen-pin-offset,0px)*-1)] z-40 flex justify-center p-3 pb-[calc(0.75rem+max(var(--safe-bottom),var(--app-dock-clearance),var(--mobile-bottom-bar-height,0px)))] md:justify-end md:pb-[calc(0.75rem+var(--safe-bottom))]"

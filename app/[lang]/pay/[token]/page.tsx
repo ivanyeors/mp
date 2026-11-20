@@ -16,16 +16,6 @@ import { PayButton } from "./pay-button";
 export const metadata: Metadata = { title: "Pay your order", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
-/**
- * A Staff order's Payment link (ADR 0048), opened on the customer's own
- * device. Read fresh on every render: what is in the order, its total, and
- * whether it can still be paid. Pay hands them to Stripe's hosted Checkout;
- * Stripe sends them back here with `?paid=1`, and the page waits for the
- * webhook to confirm the Order rather than claiming a payment it has not seen.
- *
- * The token is the only credential, so the page shows the first name, the
- * lines, the total and where it goes — never the email or phone.
- */
 export default async function PayPage({
   params,
   searchParams,
@@ -177,7 +167,6 @@ function OrderSummary({
   const { order, items } = loaded;
   const address = (order.shipping_address ?? {}) as Record<string, string | null | undefined>;
   const collect = collectLocationOf(order.shipping_address);
-  // A studio's address is one free-text line that already names the city.
   const addressLines = [
     address.line1,
     address.line2,

@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 
-// Categories are now managed inside the Products page (Categories tab).
 export default async function CategoriesRedirect({
   params,
 }: {

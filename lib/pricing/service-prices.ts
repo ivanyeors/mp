@@ -1,11 +1,3 @@
-/**
- * Service prices (ADR 0024): the only reader of `service_prices`.
- *
- * A Service is a price without a part — Mpillow's labour, priced in Costings but
- * never an Item, so it is never a build line and never stock-checked. Every surface
- * that shows or charges a service fee gets its number from here.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const SERVICE_KEYS = ["measurement_premium", "measurement_basic", "readjustment"] as const;
@@ -14,14 +6,12 @@ export type ServiceKey = (typeof SERVICE_KEYS)[number];
 export type ServicePrice = { msrp: number; costPrice: number | null; currency: string };
 export type ServicePrices = Record<ServiceKey, ServicePrice>;
 
-/** Customer-facing names, as they appear on a receipt line. */
 export const SERVICE_LABELS: Record<ServiceKey, string> = {
   measurement_premium: "Measurement service (Premium)",
   measurement_basic: "Measurement service (Basic)",
   readjustment: "Re-adjustment service",
 };
 
-/** Order line SKUs (`order_items.sku`) for a service line. */
 export const SERVICE_SKUS: Record<ServiceKey, string> = {
   measurement_premium: "SERVICE-MEASUREMENT-PREMIUM",
   measurement_basic: "SERVICE-MEASUREMENT-BASIC",
@@ -34,13 +24,11 @@ export function isServiceKey(value: unknown): value is ServiceKey {
 
 type Row = { key: string; msrp: string | number | null; cost_price: string | number | null; currency: string | null };
 
-/** Rows → prices. Throws when a key is missing: a missing price is a broken deploy, not a free service. */
 export function parseServicePrices(rows: Row[]): ServicePrices {
   const byKey = new Map(rows.map((r) => [r.key, r]));
   const out = {} as ServicePrices;
   for (const key of SERVICE_KEYS) {
     const row = byKey.get(key);
-    // Number(null) is 0 — a null MSRP must read as missing, never as free.
     const msrp = row && row.msrp != null && row.msrp !== "" ? Number(row.msrp) : Number.NaN;
     if (!row || !Number.isFinite(msrp) || msrp < 0) {
       throw new Error(`service_prices is missing a valid price for "${key}"`);
@@ -61,8 +49,6 @@ export async function loadServicePrices(admin: SupabaseClient): Promise<ServiceP
   return parseServicePrices((data ?? []) as Row[]);
 }
 
-// --- Complimentary re-adjustment rule ---------------------------------------
-
 export const READJUSTMENT_POLICY_KEYS = [
   "readjustment_free_visits",
   "readjustment_free_window_days",
@@ -74,11 +60,6 @@ export const DEFAULT_READJUSTMENT_POLICY: ReadjustmentPolicy = { freeVisits: 1, 
 
 export const READJUSTMENT_POLICY_LIMITS = { freeVisits: 10, freeWindowDays: 365 } as const;
 
-/**
- * A re-adjustment is charged on its own through Stripe Checkout, which refuses
- * anything under SGD 0.50. Its fee is therefore $0 (every visit free) or at
- * least this; the measurement fees ride on a Result's total and need no floor.
- */
 export const READJUSTMENT_MIN_FEE_CENTS = 50;
 
 export function isValidReadjustmentFeeCents(cents: number): boolean {
@@ -91,7 +72,6 @@ function parseCount(raw: string | undefined, fallback: number, max: number): num
   return Number.isInteger(n) && n >= 0 && n <= max ? n : fallback;
 }
 
-/** Stored `site_settings` strings → policy, falling back per key on anything unparseable. */
 export function parseReadjustmentPolicy(stored: Record<string, string>): ReadjustmentPolicy {
   return {
     freeVisits: parseCount(

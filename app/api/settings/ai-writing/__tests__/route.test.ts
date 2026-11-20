@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AI_WRITING_DEFAULTS, type AiWritingSettings } from "@/lib/ai/writing-settings";
 import { estimateAiUsage } from "@/lib/ai/usage";
 
-/**
- * General → AI writing (PRD-campaign-email-editor slice 16): `api-configs` to
- * see and to change; a model not in the list, or an effort it does not take,
- * is refused; each save is audited with before and after.
- */
-
 const h = vi.hoisted(() => ({
   permissions: new Set<string>(),
   stored: null as AiWritingSettings | null,
@@ -133,7 +127,6 @@ describe("AI writing settings route", () => {
         after: next,
       }),
     );
-    // The next read, as the next AI call makes it, has the lower limit.
     expect((await (await GET()).json()).settings.limitDay).toBe(30);
   });
 

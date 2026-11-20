@@ -37,18 +37,10 @@ import { FillingMixWorkbench, WorkbenchTile } from "./filling-mix-workbench";
 import { ResultCustomerPanel } from "./result-customer-panel";
 import { resultContactEditable, type ResultCustomerSummary } from "@/lib/results/result-customer";
 
-/**
- * The x-ray editor and the cross-section load on demand, as on the Configure
- * card: the editor drags in @dnd-kit and the sunburst picker, both sit inside
- * the collapsed assign section, and importing them statically put that weight
- * in this route's first load and past its bundle budget. `ssr: false` — they
- * are interactive client editors with nothing to render on the server.
- */
 const XrayEditor = dynamic(
   () => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor),
   { ssr: false, loading: () => <Skeleton className="aspect-[664/374] w-full rounded-lg" /> },
 );
-// Left, center and right at once: three pinned XrayCrossSection cuts (xray-cross-section-strip.tsx).
 const XrayCrossSectionStrip = dynamic(
   () => import("@/components/spatial/xray-cross-section-strip").then((m) => m.XrayCrossSectionStrip),
   { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
@@ -126,7 +118,6 @@ type MpConfigResponseRow = {
   id: string;
   data: Partial<MeasurementData> | null;
   is_final: boolean;
-  /** Who measured — `staff` means the Measurement service fee applies (ADR 0024). */
   measured_by_type?: string | null;
   source?: string | null;
   order_id?: string | null;
@@ -149,7 +140,6 @@ type MpConfigResponseRow = {
   final_amount?: number | null;
   currency?: string | null;
   payment_intent_id?: string | null;
-  /** Discount code held with (ADR 0033); every repricing takes it off the goods. */
   coupon_code?: string | null;
   customer_id?: string | null;
   customer_email?: string | null;
@@ -160,9 +150,7 @@ type MpConfigResponseRow = {
   is_pre_order?: boolean | null;
   recommendation_record?: Record<string, unknown> | null;
   filling_fingerprint?: string | null;
-  /** Paired build (ADR 0026): the anchor's id on both Results. */
   paired_build_id?: string | null;
-  /** The other Result on the same hold. */
   paired_result_id?: string | null;
 };
 
@@ -203,7 +191,6 @@ type AssignPrepData = {
   fillingTemplates: Array<{ id: number; name: string }>;
 };
 
-/** The answers the rules read, in the configurator's words, for "why no suggestion". */
 const ENGINE_INPUT_LABELS: Record<string, string> = {
   shoulder_length_cm: "shoulder length",
   neck_to_back_cm: "neck to back",
@@ -245,51 +232,24 @@ const normalizeMeasurement = (data: Partial<MeasurementData> | null | undefined)
   neckLength: safeString(data?.neckLength),
 });
 
-/**
- * Server-rendered first paint. `detail` is exactly the JSON
- * `/api/mp-config/responses/[id]` returns; `assignPrep` exactly what
- * `/api/results/assign/prep` returns for the request this page would have
- * fired on mount; `fillingItems` the rows the browser `items` query returns.
- * Any member is null when the server could not (or should not) load it, and
- * the client then fetches it on mount exactly as before.
- */
 export type ResultDetailInitialData = {
   detail: {
     ok: true;
     response: MpConfigResponseRow;
     order_number: string | null;
     order: LinkedOrderDetail | null;
-    /** Null when the rules could not run on this Result's answers. */
     suggestion: MpConfigSuggestion | null;
-    /** The answers the rules needed and this Result lacks, when `suggestion` is null. */
     suggestion_missing?: string[];
   } | null;
   assignPrep: AssignPrepData | null;
   fillingItems: BolsterListItem[] | null;
-  /**
-   * The Result's own saved Filling configuration with the colours and
-   * dimensions the x-ray draws in (`lib/results/admin/filling-mix.ts`). The
-   * editor opens on it, not on a template, whenever it has pieces.
-   */
   fillingMix?: ResultFillingMixPayload | null;
-  /**
-   * The Customer this Result belongs to, for *Open customer*
-   * (PRD-crm-retention-loop slice 02). Null when the viewer lacks `customers`
-   * or no single Customer matches.
-   */
   customerId?: string | null;
-  /** The Customer panel's Customer and stage (ADR 0051 d); null with none or unread. */
   customer?: ResultCustomerSummary | null;
-  /** The viewer holds `customers`: the panel shows at all. */
   canViewCustomers?: boolean;
-  /** The viewer holds `customers-edit`: the panel links and creates. */
   canEditCustomer?: boolean;
 };
 
-/**
- * Rebuilds the state `load()` would have produced from the server payload.
- * Kept in one place so the seeded values and the fetched ones cannot drift.
- */
 function deriveSeed(initialData: ResultDetailInitialData | undefined) {
   const detail = initialData?.detail ?? null;
   const response = detail?.response ?? null;
@@ -310,9 +270,6 @@ function deriveSeed(initialData: ResultDetailInitialData | undefined) {
   const rowTemplateId =
     response?.filling_template_id != null ? String(response.filling_template_id) : "";
 
-  // The "size/tier/length changed" effect also fires on mount, so today the
-  // row's saved filling template only survives the initial load when the
-  // loaded values match the pre-load defaults. Reproduce that exactly.
   const matchesPreLoadDefaults =
     assignSize === "M" && assignTier === "basic" && assignLength === "" && productType === "pillow";
 
@@ -348,11 +305,9 @@ function deriveSeed(initialData: ResultDetailInitialData | undefined) {
   };
 }
 
-/** The Result's saved snapshot as editor placements, per kind, with the Items it places. */
 type SavedMix = {
   pillow: PillowPlacement[];
   bolster: BolsterPlacement[];
-  /** Placed Items, labelled for the lists — merged into the editor's Items so a retired piece still has a name. */
   items: BolsterListItem[];
 };
 
@@ -408,14 +363,9 @@ export default function ResultDetailPage({
     seed.fillingTemplates,
   );
   const [assignPrep, setAssignPrep] = useState<AssignPrepData | null>(seed.assignPrep);
-  // The Result's own saved mix, and the editor's working copy. The editor opens
-  // on the saved mix when it has pieces (a template is then only the reference
-  // Save assignment names); otherwise on the recommended template. Pillow =
-  // spatial cells; bolster = single-compartment slot list (own schema, no cap).
   const [savedMix, setSavedMix] = useState<SavedMix>(seed.savedMix);
   const [placements, setPlacements] = useState<PillowPlacement[]>(seed.savedMix.pillow);
   const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>(seed.savedMix.bolster);
-  /** Where the editor's mix came from: the Result's saved snapshot, or the template last picked. */
   const [mixOrigin, setMixOrigin] = useState<"saved" | "template">(
     seed.savedMix.pillow.length || seed.savedMix.bolster.length ? "saved" : "template",
   );
@@ -427,9 +377,6 @@ export default function ResultDetailPage({
   const [templateNotes, setTemplateNotes] = useState("");
   const [fillingItems, setFillingItems] = useState<BolsterListItem[]>(seed.fillingItems);
 
-  // The server already delivered the row, the assignment preview and the
-  // filling items; skip those mount fetches. Every re-fetch after a mutation
-  // (save / assign / release) is untouched.
   const skipDetailFetch = useRef(Boolean(initialData?.detail));
   const skipPrepFetch = useRef(Boolean(initialData?.assignPrep));
   const skipFillingItemsFetch = useRef(Boolean(initialData?.fillingItems));
@@ -438,7 +385,6 @@ export default function ResultDetailPage({
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [requestingPayment, setRequestingPayment] = useState(false);
-  /** Customer's tokenised status URL, returned by the route — never built here. */
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [paymentLinkCopied, setPaymentLinkCopied] = useState(false);
 
@@ -496,27 +442,15 @@ export default function ResultDetailPage({
 
   const productType = row?.product_type === "bolster" ? "bolster" : "pillow";
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
-  /**
-   * What the page does with the Result's filling mix (`lib/results/filling-mix.ts`):
-   * `assign` on a held Result (Save assignment), `draft` on a Draft Result Staff
-   * lay out ahead of the customer (Save mix), `view` once it is assigned or later.
-   */
   const mixMode = row ? fillingMixMode(row) : "view";
   const canEditMix = mixMode !== "view";
   const hasSavedMix = savedMix.pillow.length > 0 || savedMix.bolster.length > 0;
-  /**
-   * Re-open this build in the configurator (`lib/results/staff-edit.ts`) rather
-   * than growing a second editor here. Mirrors `staffEditableResult`: the two
-   * open states, no Order yet, and Mpillow only — Mbolster composes through its
-   * own schema and stays with the assignment card above.
-   */
   const canReconfigure =
     productType === "pillow" &&
     !row?.order_id &&
     (row?.status === "held" || row?.status === "assigned") &&
     Boolean(row?.assigned_size ?? row?.suggested_size) &&
     Boolean(row?.assigned_tier ?? row?.suggested_tier);
-  // Both open states. Once an Order exists the money moves through the Order, not here.
   const canCancel =
     !row?.order_id && (row?.status === "held" || row?.status === "assigned");
 
@@ -608,26 +542,17 @@ export default function ResultDetailPage({
     hasAssistSnapshot,
   ]);
 
-  // Read by the size-change effect without re-running it when the origin moves.
   const mixOriginRef = useRef(mixOrigin);
   useEffect(() => {
     mixOriginRef.current = mixOrigin;
   }, [mixOrigin]);
 
-  // Size×tier (or length) change clears the filling pick; the prep effect below
-  // reloads the Default Filling Template hint for the new key. A template's mix
-  // is cleared with it and re-seeded from the new hint. The Result's own saved
-  // mix stays: nothing in a recipe is size-specific, and the fit redraws it at
-  // the new Size.
   useEffect(() => {
-    // Seeded state is already in sync on mount — only a real size/tier/length
-    // change should clear the operator's pick.
     if (skipScopeReset.current) {
       skipScopeReset.current = false;
       return;
     }
     setFillingTemplateId("");
-    // The old size's hint must not re-seed the mix before the new prep lands.
     setAssignPrep(null);
     if (mixOriginRef.current !== "saved") {
       setPlacements([]);
@@ -646,7 +571,6 @@ export default function ResultDetailPage({
     void loadAssignPrep();
   }, [row, canEditMix, loadAssignPrep]);
 
-  // Filling Items for the spatial editor (pillow cells or bolster compartment).
   useEffect(() => {
     if (skipFillingItemsFetch.current) {
       skipFillingItemsFetch.current = false;
@@ -667,7 +591,6 @@ export default function ResultDetailPage({
           (data ?? []).map((i) => ({
             id: Number(i.id),
             label: fillingLabel(i),
-            // name/subtype/size feed the bolster picker's family grouping.
             name: i.name,
             subtype: i.subtype ?? null,
             size: i.size ?? null,
@@ -680,11 +603,6 @@ export default function ResultDetailPage({
     };
   }, [canEditMix, productType]);
 
-  /**
-   * Load a template. Picking one starts the mix over from it; `keepMix` loads
-   * only what describes it (notes, legacy lines) and leaves the editor on the
-   * Result's own saved mix, which the template is then just the reference for.
-   */
   const loadSelectedFillingPreview = useCallback(
     async (templateId: string, opts: { keepMix?: boolean } = {}) => {
       if (!templateId) {
@@ -708,9 +626,6 @@ export default function ResultDetailPage({
           item_id: Number(l.item_id),
           quantity: Number(l.quantity),
         }));
-        // Confirming a template loads its placements into the spatial editor;
-        // legacy flat templates load an empty editor (notice shown, like Configure).
-        // Bolster rows are slot-only — never the pillow enums.
         if (productType === "pillow") {
           const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
           if (!opts.keepMix) setPlacements(rowsToPillowPlacements(placementRows));
@@ -723,12 +638,9 @@ export default function ResultDetailPage({
         if (!opts.keepMix) setMixOrigin("template");
         setTemplateLegacyLines(lines);
         setTemplateNotes(String(payload?.template?.notes ?? ""));
-        // Product Builder colours for the x-ray — same server route as Configure,
-        // because filling_color_overrides is service-role-only under RLS.
         setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
         setDimensionOverrides((payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined);
       } catch {
-        // A template that will not load never wipes the Result's own mix.
         if (opts.keepMix) return;
         setPlacements([]);
         setBolsterMix([]);
@@ -737,21 +649,11 @@ export default function ResultDetailPage({
     [productType, to],
   );
 
-  // Open the Filling mix pre-filled. A Result with its own saved mix opens on
-  // it, and the template select names the template it still matches (else the
-  // recommendation) as the reference Save assignment needs. Otherwise the
-  // recommended (engine or size-default) template loads straight into the
-  // x-ray, so Staff confirm or adjust a real mix instead of starting from a
-  // hidden editor. Re-seeds after a size/tier change, which clears the pick and
-  // reloads the prep.
   const ownTemplateId = row?.filling_template_id ?? null;
   useEffect(() => {
     if (!canEditMix || fillingTemplateId || !assignPrep) return;
     const own =
       ownTemplateId != null && assignPrep.fillingTemplates.some((t) => t.id === ownTemplateId) ? ownTemplateId : null;
-    // Save assignment needs a template to name even when the mix is the Result's
-    // own; with no recommendation for this size, the first one serves (the server
-    // keeps it on the Result only if the mix still matches it exactly).
     const fallback = mixMode === "assign" && mixOriginRef.current === "saved" ? (assignPrep.fillingTemplates[0]?.id ?? null) : null;
     const pick = own ?? assignPrep.defaultFillingTemplate?.id ?? fallback;
     if (pick == null) return;
@@ -760,7 +662,6 @@ export default function ResultDetailPage({
     void loadSelectedFillingPreview(next, { keepMix: mixOriginRef.current === "saved" });
   }, [canEditMix, mixMode, fillingTemplateId, assignPrep, ownTemplateId, loadSelectedFillingPreview]);
 
-  /** Re-read the Result's saved mix (after a save, or when the page loaded without it) and open the editor on it. */
   const loadFillingMix = useCallback(async () => {
     if (!id) return;
     try {
@@ -782,7 +683,6 @@ export default function ResultDetailPage({
     }
   }, [id]);
 
-  // Rendered without the server's first paint (a client navigation fallback): fetch the saved mix too.
   const skipFillingMixFetch = useRef(initialData?.fillingMix !== undefined);
   useEffect(() => {
     if (skipFillingMixFetch.current) return;
@@ -790,18 +690,12 @@ export default function ResultDetailPage({
     void loadFillingMix();
   }, [loadFillingMix]);
 
-  /** Put the Result's saved mix back in the editor after trying a template. */
   const restoreSavedMix = useCallback(() => {
     setPlacements(savedMix.pillow);
     setBolsterMix(savedMix.bolster);
     setMixOrigin("saved");
   }, [savedMix]);
 
-  /**
-   * Draft Result: save the mix onto it ahead of the customer submitting
-   * (`/api/results/[id]/filling-mix`). No status, price or email moves; the
-   * hold keeps it, and Save assignment confirms it once they have submitted.
-   */
   const saveDraftMix = useCallback(async () => {
     if (!id) return;
     setSavingMix(true);
@@ -825,9 +719,6 @@ export default function ResultDetailPage({
           ? "Mix saved on this result. It waits for the customer to submit."
           : "Mix cleared from this result",
       );
-      // Only the snapshot moved, so only it is re-read. A full reload would reset
-      // the size and the template pick to the row's and re-seed a template over
-      // the mix just saved.
       setRow((prev) =>
         prev
           ? {
@@ -853,7 +744,6 @@ export default function ResultDetailPage({
     }
     setAssigning(true);
     try {
-      // Spatial Result snapshot per kind; server clears the template id on divergence.
       const body =
         productType === "bolster"
           ? {
@@ -879,7 +769,6 @@ export default function ResultDetailPage({
           ? "Assigned and emailed to the customer"
           : "Assigned",
       );
-      // The assigned snapshot is now the Result's own mix: the read-only view draws it.
       await Promise.all([load(), loadFillingMix()]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save the assignment.");
@@ -899,10 +788,6 @@ export default function ResultDetailPage({
     loadFillingMix,
   ]);
 
-  // Re-send the priced email and fetch the customer's link. The route reprices
-  // the Result from its current configuration, so the stored final amount can
-  // change here — reload afterwards rather than leave a stale number on screen.
-  // Still safe to press twice: the same build reprices to the same total.
   const requestPayment = useCallback(async () => {
     if (!id) return;
     setRequestingPayment(true);
@@ -914,15 +799,12 @@ export default function ResultDetailPage({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Couldn't request payment.");
       setPaymentLink((payload?.statusUrl as string | undefined) ?? null);
-      // Three outcomes, not two: emailStatus "failed" comes back with HTTP 200.
       const emailStatus = payload?.emailStatus as
         | "sent"
         | "failed"
         | "skipped"
         | undefined;
       if (emailStatus === "sent") {
-        // Which template went out is the operator's confirmation that the
-        // customer was told the price moved — not just that mail was sent.
         toast.success(
           payload?.emailTemplate === "updated"
             ? "Repriced. The customer has the updated build and new total."
@@ -933,7 +815,6 @@ export default function ResultDetailPage({
       } else {
         toast.success("Link ready, but there's no customer email on file.");
       }
-      // The route stores the recomputed total, so the amount on screen is stale.
       if (payload?.repriced === "updated") await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't request payment.");
@@ -948,9 +829,7 @@ export default function ResultDetailPage({
       await navigator.clipboard.writeText(paymentLink);
       setPaymentLinkCopied(true);
       setTimeout(() => setPaymentLinkCopied(false), 2000);
-    } catch {
-      /* clipboard blocked — the link stays selectable in the input */
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -961,8 +840,6 @@ export default function ResultDetailPage({
     load();
   }, [load]);
 
-  // Every Item the mix draws: the active placeable Items, plus any piece the
-  // saved mix places that they no longer list (a read-only build loads only those).
   const mixItems = useMemo(() => {
     const known = new Set(fillingItems.map((i) => i.id));
     const extra = savedMix.items.filter((i) => !known.has(i.id));
@@ -972,17 +849,12 @@ export default function ResultDetailPage({
     () => new Map(mixItems.map((i) => [i.id, i.label])),
     [mixItems],
   );
-  // A neck support or an ear pad is for premium pillows only — never offered on
-  // basic or a bolster. A piece the saved mix already places stays drawable.
   const pickerItems = useMemo(() => {
     if (productType === "pillow" && assignTier === "premium") return mixItems;
     const placed = new Set(savedMix.items.map((i) => i.id));
     return mixItems.filter((i) => placed.has(i.id) || (!NECK_SUPPORT.test(i.name) && !EAR_PAD.test(i.name)));
   }, [mixItems, savedMix.items, productType, assignTier]);
-  // Slice 04: the physical fit of the assignment at its Size — one object for
-  // the x-ray, the save confirm and the cross-section.
   const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
-  // Slice 05: the cross-sections under the x-ray; the dived Section's cut is ringed.
   const { setCut, onDiveChange } = useCut();
   const [divedSection, setDivedSection] = useState<Section | null>(null);
   const onXrayDive = useCallback(
@@ -992,12 +864,9 @@ export default function ResultDetailPage({
     },
     [onDiveChange],
   );
-  // The workbench follows the card's width (a sidebar can be open or collapsed):
-  // wide, the dived Section's controls dock in the rail beside the x-ray.
   const [workbenchRef, workbenchWidth] = useElementWidth<HTMLDivElement>();
   const wideWorkbench = workbenchWidth >= 760;
   const [controlsSlot, setControlsSlot] = useState<HTMLElement | null>(null);
-  // Whether the editor still shows exactly what is saved on the Result.
   const mixDirty = useMemo(
     () =>
       productType === "bolster"
@@ -1006,9 +875,7 @@ export default function ResultDetailPage({
     [productType, placements, bolsterMix, savedMix],
   );
   const { itemSubtypes: pickerItemSubtypes, itemSizes: pickerItemSizes, itemDims: pickerItemDims } = useItemMaps(pickerItems, dimensionOverrides);
-  // ADR 0025: the soft cut draws with the settings Staff saved, carried by the same payload.
   const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
-  // Slice 09: the Mbolster's fit at the assigned length, for the confirm and the end-on cut.
   const bolsterLength = (["short", "medium", "long"] as const).find((l) => l === assignLength) ?? "medium";
   const bolsterFit = useBolsterFit(bolsterMix, bolsterLength as BolsterLength, pickerItems, dimensionOverrides);
 
@@ -1072,12 +939,6 @@ export default function ResultDetailPage({
     }
   }, [id, router, to]);
 
-  /**
-   * Staff void. Covers both open states — unlike the SLA cron, which only expires
-   * `held`, so an `assigned` Result whose customer goes quiet had no exit at all.
-   * A release failure offers force: a Stripe auth that already died cannot be
-   * cancelled, and refusing outright would strand the row forever.
-   */
   const cancelResult = useCallback(
     async (force: boolean) => {
       if (!id) return;
@@ -1111,9 +972,6 @@ export default function ResultDetailPage({
     [cancelReason, id, load],
   );
 
-  // Phones: the header cluster moves into the bottom dock, within thumb reach.
-  // Built before the early returns so the hook order never changes; the ids are
-  // stable, so the dock animates values rather than remounting buttons.
   const dockActions = useMemo<DockAction[]>(() => {
     const actions: DockAction[] = [];
     if (canReconfigure && row) {
@@ -1197,7 +1055,6 @@ export default function ResultDetailPage({
     </>
   );
 
-  // The short state beside the Filling mix title.
   const mixStatusLabel =
     mixMode === "view"
       ? "Read-only"
@@ -1217,12 +1074,6 @@ export default function ResultDetailPage({
             ? "From a template"
             : "Needs confirming";
 
-  /**
-   * One Filling mix workbench for every state (`filling-mix-workbench.tsx`):
-   * editable on a held Result (Save assignment) and a Draft Result (Save mix),
-   * read-only after. Rendered in one place at a time, so the width measure
-   * and the dock slot belong to whichever card shows it.
-   */
   const renderFillingMix = () => {
     const editable = canEditMix;
     const isPillow = productType === "pillow";
@@ -1346,7 +1197,6 @@ export default function ResultDetailPage({
         />
       </div>
     ) : editable ? (
-      // Mbolster: single compartment — ordered list, no cap, never the 3×3 grid.
       <BolsterCompartmentList value={bolsterMix} onChange={setBolsterMix} items={pickerItems} />
     ) : null;
 
@@ -1378,7 +1228,6 @@ export default function ResultDetailPage({
         <Button
           className="w-full"
           onClick={() => {
-            // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
             if (productType === "pillow" && !confirmSaveWithOverCells(fit, "Save assignment")) return;
             if (productType === "bolster" && !confirmSaveWithBolsterFit(bolsterFit, "Save assignment")) return;
             void assign();
@@ -1431,8 +1280,6 @@ export default function ResultDetailPage({
     const insertSteps = isPillow ? (
       <InsertOrderList placements={placements} onPlacementsChange={editable ? setPlacements : undefined} items={mixItems} />
     ) : null;
-    // The insert order folds away: one row per piece runs far longer than the
-    // pack list beside it, and the build team reads it after the pack list.
     const insertOrder = isPillow ? (
       <Collapsible className="min-w-0 rounded-md border">
         <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted/50 active:bg-press [&[data-state=open]>svg]:rotate-180">
@@ -1493,8 +1340,6 @@ export default function ResultDetailPage({
             </p>
           ) : null}
         </div>
-        {/* Phones: Edit configuration, Cancel and Save are in the dock, Refresh
-            sits beside the title, and the shell breadcrumb is the way back. */}
         <PageActions className="max-md:hidden">
           <Button
             variant="secondary"
@@ -1547,7 +1392,6 @@ export default function ResultDetailPage({
         </PageActions>
       </div>
 
-      {/* Inline rather than a modal: keeps Radix Dialog out of this route's bundle. */}
       {cancelDialogOpen && (
         <Card className="border-destructive/40 p-4 space-y-3">
           <div>
@@ -1598,8 +1442,6 @@ export default function ResultDetailPage({
         </Card>
       )}
 
-      {/* Who this Result belongs to, for every Result: a Draft that stopped
-          part-way most of all (ADR 0051). */}
       {initialData?.canViewCustomers ? (
         <ResultCustomerPanel
           resultId={row.id}
@@ -1618,9 +1460,7 @@ export default function ResultDetailPage({
         />
       ) : null}
 
-      {/* Purchase-path assignment (held Results) */}
       {(row.status === "held" || row.status === "assigned") && (
-        // `#assignment`: the configurator sends Staff here after an Assist submit.
         <Card id="assignment" className="p-4 space-y-4 scroll-mt-20">
           <div>
             <div className="text-sm font-medium">Assignment</div>
@@ -1665,9 +1505,6 @@ export default function ResultDetailPage({
                       : "—"}
                   </div>
                   {row.measured_by_type === "staff" && row.product_type !== "bolster" ? (
-                    // The fee follows who measured (ADR 0024); Mbolster carries none.
-                    // "Measured by" locks once the Result is held, so a wrong value
-                    // can't be corrected from the Results list after that.
                     <div className="mt-1 text-xs text-muted-foreground">
                       Measured by staff, so the measurement fee applies.
                     </div>
@@ -1835,7 +1672,6 @@ export default function ResultDetailPage({
                   <span className="font-medium">{row.coupon_code}</span>
                 </div>
               )}
-              {/* The Customer itself, and *Open customer*, are on the panel above. */}
               {row.customer_email && (
                 <div>
                   <span className="text-muted-foreground">Email: </span>
@@ -1879,8 +1715,6 @@ export default function ResultDetailPage({
         </Card>
       )}
 
-      {/* The filling mix outside the Assignment card: a Draft Result Staff lay out
-          ahead of the customer, or a settled build's mix, read-only. */}
       {(mixMode === "draft" || (hasSavedMix && row.status !== "held" && row.status !== "assigned")) && (
         <Card id="filling-mix" className="p-4 space-y-4 scroll-mt-20">
           <div>
@@ -1903,7 +1737,6 @@ export default function ResultDetailPage({
         </Card>
       )}
 
-      {/* Linked Order — the fulfilment half of this customisation's story. */}
       {row.order_id && (
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -1994,7 +1827,6 @@ export default function ResultDetailPage({
         </Card>
       )}
 
-      {/* Online customization preferences (read-only, only for online-sourced results) */}
       {row.source === "online_customization" && (
         <Card className="p-4">
           <div className="text-sm font-medium mb-3">Online customisation preferences</div>
@@ -2029,9 +1861,6 @@ export default function ResultDetailPage({
 
       <Card className="p-4">
         <div className="flex flex-col gap-4">
-          {/* Two columns from the phone up: eleven short fields stacked one per row
-              ran past two screens. Bottom-aligned on a phone, so a label that wraps to
-              two lines doesn't push its input out of line with its neighbour's. */}
           <div className="grid grid-cols-2 gap-3 max-md:items-end sm:gap-4 lg:grid-cols-3">
             <div className="col-span-2 sm:col-span-1">
             <Field label="Name">
@@ -2116,7 +1945,6 @@ export default function ResultDetailPage({
             >
               {suggestionLoading ? "Refreshing suggestion…" : "Refresh suggestion"}
             </Button>
-            {/* Phones: Delete moves to the end of the page, away from this button. */}
             <Button
               variant="destructive"
               className={cn(pageActionClassName, "max-md:hidden")}
@@ -2227,10 +2055,6 @@ export default function ResultDetailPage({
   );
 }
 
-/**
- * A labelled value tile. On a phone it drops its frame: it already sits inside a
- * card, and a box in a box costs width and height for nothing.
- */
 const valueTileClassName =
   "rounded-md border bg-muted/30 p-3 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-0";
 

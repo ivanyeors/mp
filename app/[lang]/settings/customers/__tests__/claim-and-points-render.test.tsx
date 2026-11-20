@@ -3,14 +3,6 @@ import { renderToString } from "react-dom/server";
 import type { MigratedCustomerFacts } from "@/lib/customer-migration/overview";
 import { DEFAULT_CUSTOMER_FILTERS, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
-/**
- * What the Claim link and the Claim bonus add to the Customers page
- * (migration slice 06; PRD-loyalty-points slice 06, which retired the
- * Welcome-back voucher): the list's Points filter, and the From Shopify
- * card's first click and Claim bonus. (The Migration card, with Points spent
- * and Revenue, left the page on 2026-11-01.)
- */
-
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "c1" }),
   usePathname: () => "/en-US/settings/customers",
@@ -20,7 +12,6 @@ vi.mock("next/navigation", () => ({
 const { CustomersClient } = await import("../customers-client");
 const { CustomerFilterGroup } = await import("../customer-filters-panel");
 
-/** One group of the mega filter, as it renders inside the open panel. */
 const groupFor = (
   group: "stage" | "purchases" | "reach" | "account" | "reviews",
   filters: Partial<CustomerListFilters>,
@@ -46,7 +37,6 @@ describe("Customers list: Points filter", () => {
     );
     expect(html).toContain("Has points");
     expect(html).toContain("No customers match these filters.");
-    // In the mega filter's Account group.
     const account = groupFor("account", { points: "has" });
     expect(account).toContain('aria-label="Points"');
     expect(account).toContain("Has points");
@@ -68,7 +58,6 @@ const facts: MigratedCustomerFacts = {
   claimBonusAt: "2026-11-03T02:00:00Z",
 };
 
-// The Journey shows these on the chapter that holds the import (PRD-customer-page-journey slice 04).
 const detail = (f: MigratedCustomerFacts) =>
   renderToString(<FromShopifyCard migration={{ ok: true, facts: f }} importHistoryHref={null} bare />);
 

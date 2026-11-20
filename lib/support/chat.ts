@@ -5,38 +5,10 @@ import { sendChatTranscript, type TranscriptReason } from "@/lib/email/support-c
 import { replyInGroup, sendGroupMessage } from "@/lib/telegram/bot-api";
 import { chatRef, renderChatEndedNote, renderChatFollowUp, renderChatRootNotice } from "./chat-notices";
 
-/**
- * The website chat (the "Get in touch" chat on /support).
- *
- * A visitor starts a chat; each message is stored here and posted to the staff
- * Telegram group, threaded under the chat's first notice. A staff member's
- * Telegram reply to any of those is stored as a `staff` message
- * (lib/support/chat-telegram.ts), and the visitor's page picks it up by
- * polling.
- *
- * Who can open a chat: whoever holds its token (the browser that started it,
- * in sessionStorage — so without an account it is gone with the tab), and the
- * signed-in customer it belongs to, from anywhere.
- *
- * Every chat has a verified email from its first message: the signed-in
- * customer's, or one a visitor proved with a 6-digit code
- * (lib/support/chat-codes.ts). The transcript goes there, with no second
- * code, when the customer ends the chat, when they leave the page (and don't
- * come straight back), and when a staff reply arrives after they've gone.
- * Each transcript is the whole chat, and only goes when there is something it
- * hasn't sent yet.
- *
- * Telegram and email are best-effort: nothing here throws because either is
- * down. The stored chat is the record.
- */
-
 export const CHAT_MESSAGE_MAX_CHARS = 2000;
 export const STAFF_MESSAGE_MAX_CHARS = 4000;
-/** A runaway chat stops taking messages; the customer starts a new one. */
 export const CHAT_MAX_MESSAGES = 200;
-/** The page polls every few seconds while open (slower in a background tab). */
 export const PRESENCE_WINDOW_MS = 90_000;
-/** Polls write `last_seen_at` at most this often, unless the page had left. */
 const TOUCH_EVERY_MS = 20_000;
 
 export type SupportChatRow = {
@@ -70,7 +42,6 @@ export type ChatMessageView = {
   createdAt: string;
 };
 
-/** What the visitor's page is told about a chat. Never the token hash. */
 export type ChatView = {
   id: string;
   ref: string;
@@ -84,7 +55,6 @@ export type ChatView = {
 
 export type ChatSummary = ChatView & { preview: string; lastMessageAt: string };
 
-/** The signed-in customer a chat is started by or adopted into. */
 export type ChatCustomer = { customerId: string; authUserId: string; email: string; name: string | null };
 
 type MessageRow = {
@@ -110,7 +80,6 @@ export function newChatToken(): { token: string; tokenHash: string } {
 
 export type ChatAccess = { token?: string | null; authUserId?: string | null };
 
-/** The token's holder, or the signed-in customer the chat belongs to. */
 export function canAccessChat(chat: Pick<SupportChatRow, "token_hash" | "auth_user_id">, access: ChatAccess): boolean {
   if (access.authUserId && chat.auth_user_id === access.authUserId) return true;
   if (!access.token) return false;
@@ -142,7 +111,6 @@ function toMessageView(row: MessageRow): ChatMessageView {
   };
 }
 
-/** The customer is on the chat's page right now, so a staff reply is seen there. */
 export function isCustomerPresent(chat: SupportChatRow, now: Date = new Date()): boolean {
   if (chat.status !== "open" || chat.left_at || !chat.last_seen_at) return false;
   return now.getTime() - Date.parse(chat.last_seen_at) < PRESENCE_WINDOW_MS;
@@ -166,7 +134,6 @@ export async function readMessages(chatId: string): Promise<ChatMessageView[]> {
   return ((data ?? []) as MessageRow[]).map(toMessageView);
 }
 
-/** Messages are never deleted, so the count is also the page's poll version. */
 export async function countMessages(chatId: string): Promise<number> {
   const { count, error } = await supabaseAdmin()
     .from("support_chat_messages")
@@ -209,11 +176,6 @@ async function setTelegramId(messageId: number | string, telegramMessageId: numb
   if (error) console.error("[support/chat] storing the Telegram id failed:", error.message);
 }
 
-/**
- * Posts a customer message to the group: under the chat's root notice, or as
- * the root when there is none yet (the first message, or every earlier attempt
- * failed — then the root carries all of them). Returns the new root id, if any.
- */
 async function postCustomerMessage(
   chat: SupportChatRow,
   message: MessageRow,
@@ -236,7 +198,6 @@ async function postCustomerMessage(
   return { delivered: true, rootId: chat.telegram_root_message_id ? null : sent.messageId };
 }
 
-/** A one-line note under the chat's root; skipped when the chat never reached Telegram. */
 async function noteInGroup(chat: SupportChatRow, text: string): Promise<void> {
   if (!chat.telegram_root_message_id) return;
   await replyInGroup(text, chat.telegram_root_message_id);
@@ -247,11 +208,6 @@ function clean(value: string | null | undefined, max: number): string | null {
   return v ? v.slice(0, max) : null;
 }
 
-/**
- * Starts a chat as a signed-in customer, or with an email the visitor has
- * proved (redeemChatCode, or the chat this tab started before). Never with an
- * email nobody checked.
- */
 export async function startChat(
   input: { body: string; name?: string | null; now?: Date } & (
     | { customer: ChatCustomer; verifiedEmail?: undefined }
@@ -329,26 +285,19 @@ export async function addCustomerMessage(chat: SupportChatRow, text: string, now
   return { ok: true, chat: updated, message: toMessageView(message), delivered };
 }
 
-/** A poll: the customer is on the page. Writes at most every TOUCH_EVERY_MS. */
 export async function touchChat(chat: SupportChatRow, now: Date = new Date()): Promise<SupportChatRow> {
   const stale = !chat.last_seen_at || now.getTime() - Date.parse(chat.last_seen_at) >= TOUCH_EVERY_MS;
   if (!chat.left_at && !stale) return chat;
   return updateChat(chat.id, { last_seen_at: now.toISOString(), left_at: null });
 }
 
-/** The page's pagehide beacon. settleLeave decides, a little later, whether they really went. */
 export async function markChatLeft(chat: SupportChatRow, now: Date = new Date()): Promise<SupportChatRow> {
   if (chat.status === "ended") return chat;
   return updateChat(chat.id, { left_at: now.toISOString() });
 }
 
-/** How long a reload has to poll again before leaving counts as leaving. */
 export const LEAVE_SETTLE_MS = 15_000;
 
-/**
- * After the beacon: a reload polls within seconds and clears `left_at`, so a
- * chat still marked left really was left, and gets its transcript.
- */
 export async function settleLeave(chatId: string): Promise<TranscriptResult> {
   const chat = await loadChat(chatId);
   if (!chat || !chat.left_at || chat.status === "ended") return "skipped";
@@ -357,11 +306,6 @@ export async function settleLeave(chatId: string): Promise<TranscriptResult> {
 
 export type TranscriptResult = "sent" | "nothing_new" | "failed" | "skipped";
 
-/**
- * Emails the whole chat when it has messages the last transcript didn't
- * cover. Claims the send first (a conditional update on the count it last
- * covered), so two triggers at once send one email.
- */
 export async function emailTranscriptIfNew(chatId: string, reason: TranscriptReason): Promise<TranscriptResult> {
   try {
     const chat = await loadChat(chatId);
@@ -392,7 +336,6 @@ export async function emailTranscriptIfNew(chatId: string, reason: TranscriptRea
       return "sent";
     } catch (err) {
       console.error("[support/chat] transcript email failed:", err instanceof Error ? err.message : err);
-      // Give the claim back, so the next trigger tries again.
       await supabaseAdmin()
         .from("support_chats")
         .update({ transcript_message_count: covered })
@@ -414,12 +357,6 @@ export async function endChat(chat: SupportChatRow, now: Date = new Date()): Pro
   return { chat: ended, emailed };
 }
 
-/**
- * A signed-in customer's chats, newest first. Chats nobody owns that carry
- * their sign-in email are adopted first: that address was proved with a code
- * before the chat began, and its transcripts already went there, so showing
- * them in the account reveals nothing new.
- */
 export async function listCustomerChats(customer: ChatCustomer, limit = 30): Promise<ChatSummary[]> {
   const admin = supabaseAdmin();
   const { error: adoptError } = await admin
@@ -443,7 +380,6 @@ export async function listCustomerChats(customer: ChatCustomer, limit = 30): Pro
   }));
 }
 
-/** The chat a group message belongs to, if it is one of a chat's messages. */
 export async function chatIdForTelegramMessage(telegramMessageId: number): Promise<string | null> {
   const { data, error } = await supabaseAdmin()
     .from("support_chat_messages")
@@ -459,11 +395,6 @@ export type StaffReplyResult =
   | { kind: "duplicate" }
   | { kind: "recorded"; chat: SupportChatRow; message: ChatMessageView; present: boolean };
 
-/**
- * A staff member replied in Telegram to one of a chat's messages: store it as
- * the chat's next message. `present` says whether the customer is on the page
- * to see it; the caller emails it otherwise.
- */
 export async function recordStaffReply(input: {
   replyToTelegramId: number;
   telegramMessageId: number;
@@ -489,7 +420,6 @@ export async function recordStaffReply(input: {
       created_at: at,
     });
   } catch (err) {
-    // Telegram redelivers an update it thinks failed; the unique Telegram id makes that a no-op.
     if ((err as { code?: string }).code === "23505") return { kind: "duplicate" };
     throw err;
   }
@@ -497,7 +427,6 @@ export async function recordStaffReply(input: {
   return { kind: "recorded", chat: updated, message: toMessageView(message), present: isCustomerPresent(chat, now) };
 }
 
-/** Is this still the chat's latest staff message? Later ones send the email instead. */
 export async function isLatestStaffMessage(chatId: string, messageId: string): Promise<boolean> {
   const messages = await readMessages(chatId);
   const latest = messages.filter((m) => m.sender === "staff").at(-1);

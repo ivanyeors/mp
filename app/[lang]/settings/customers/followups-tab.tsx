@@ -25,13 +25,6 @@ import {
 } from "@/lib/crm/followup-rules";
 import { FollowUpActions, FollowUpAssignee, FollowUpDue } from "./followup-parts";
 
-/**
- * The Customers page's Follow-ups tab (CRM slice 06): open follow-ups by due
- * date, as *Mine* (assigned to the profile you work as), *All* (everyone's,
- * archived assignees included) and *Overdue* (due before today in Singapore).
- * Every Staff member with `customers` sees all three; *Done* and *Reassign*
- * render only for `customers-edit`. The list is kept in `?scope=`.
- */
 export function FollowUpsTab({
     canEdit,
     initialScope = "mine",
@@ -39,7 +32,6 @@ export function FollowUpsTab({
 }: {
     canEdit: boolean;
     initialScope?: FollowUpScope;
-    /** Read by the caller; otherwise the tab fetches on mount. */
     initialData?: FollowUpListData;
 }) {
     const pathname = usePathname() ?? "/";
@@ -73,7 +65,6 @@ export function FollowUpsTab({
         void load(scope);
     }, [load, scope]);
 
-    // Switching who you work as changes whose list *Mine* is.
     useEffect(() => {
         const reload = () => void load(scope);
         window.addEventListener(WORKING_AS_CHANGED_EVENT, reload);
@@ -88,7 +79,6 @@ export function FollowUpsTab({
         window.history.replaceState(null, "", url);
     };
 
-    // A row leaves an open list once it is done; a reassigned one leaves *Mine*.
     const update = (row: FollowUpListRow, next: FollowUpListRow["assignee"] | null, done: boolean) =>
         setData((d) => {
             if (!d) return d;
@@ -166,7 +156,6 @@ export function FollowUpsTab({
                                     </TableCell>
                                     <TableCell className="px-4 py-3 align-top">
                                         <span className="break-words">{row.title}</span>
-                                        {/* Due and assignee columns are hidden on narrow screens: show them here. */}
                                         <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 md:hidden">
                                             <span className="sm:hidden">
                                                 <FollowUpDue followUp={row} today={data!.today} />

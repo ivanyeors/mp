@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { boughtPillows, pillowOwnership, snapshotPillowBuild } from "../bought";
 
-/**
- * ADR 0042 k: a pillow bought here is drawn from the build its order line
- * froze at Accept, and the Profile shows the pillow only once something says
- * they bought one. Every id and figure here is made up.
- */
-
 const cell = (slot: number, itemId: number, extra: Record<string, unknown> = {}) => ({
   section: "center",
   sub_section: "middle",

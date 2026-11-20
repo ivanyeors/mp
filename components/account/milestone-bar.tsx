@@ -5,14 +5,6 @@ import { formatDollarsShort, formatPointsCount, pointsToDollars } from "@/lib/po
 const n = (v: number) => v.toLocaleString("en-SG");
 const pct = (f: number) => `${Math.round(f * 1000) / 10}%`;
 
-/**
- * Profile → Points → Bonus milestones (PRD-loyalty-points slice 09; ADR 0030
- * s to w): the ladder as one bar, an equal stretch per milestone, filled by
- * the points earned from orders, with points on their way shown lighter. Each
- * milestone's bonus sits above its end and its number of points below.
- * `preview` shows the ladder empty, before the launch. Nothing without a
- * ladder.
- */
 export function MilestoneBar({
   ladder,
   earned = 0,

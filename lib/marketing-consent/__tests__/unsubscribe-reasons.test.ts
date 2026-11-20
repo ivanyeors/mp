@@ -10,12 +10,6 @@ import {
 } from "../unsubscribe-reasons";
 import { UnsubscribeAnswerSchema, summariseUnsubscribes } from "../unsubscribe-reasons-server";
 
-/**
- * PRD-crm-retention-loop slice 11: the answers, the order they are asked in,
- * the request schema, and the Analytics summary. The SQL's check and function
- * name the same keys and outcomes.
- */
-
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261101081458_unsubscribe_reasons.sql"), "utf8");
 
 describe("the answers", () => {

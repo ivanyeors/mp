@@ -1,7 +1,3 @@
-/**
- * Visitor identity writers: email/Customer merge + Visit→paid Order link.
- * Deterministic only (ADR 0007) — never IP/UA/fingerprint.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const VISITOR_COOKIE = "mp_vid";
@@ -15,7 +11,6 @@ export function parseVisitorId(raw: unknown): string | null {
   return UUID_RE.test(id) ? id : null;
 }
 
-/** The Visitor id a request's own cookie carries, or null. */
 export function readVisitorCookie(req: { headers: { get(name: string): string | null } }): string | null {
   const header = req.headers.get("cookie");
   if (!header) return null;
@@ -46,10 +41,6 @@ export type VisitorMergePatch = {
   merged_at?: string;
 };
 
-/**
- * Set-if-null for email/customer_id; never clobber a different email.
- * Returns null when nothing to write.
- */
 export function planVisitorMerge(
   existing: VisitorIdentityRow,
   input: { email?: string | null; customerId?: string | null },
@@ -66,7 +57,6 @@ export function planVisitorMerge(
   if (email) {
     if (!existing.email) patch.email = email;
     else if (existing.email !== email) {
-      // Different person on this Visitor cookie — leave identity alone.
       return null;
     }
   }
@@ -88,10 +78,6 @@ export type VisitConversionCandidate = {
   converted_order_id: string | null;
 };
 
-/**
- * Prefer the open Visit; else the newest Visit that is not already converted
- * to a different Order. Idempotent when already linked to this Order.
- */
 export function pickVisitForConversion(
   visits: VisitConversionCandidate[],
   orderId: string,
@@ -114,7 +100,6 @@ export function pickVisitForConversion(
   return null;
 }
 
-/** Attach email and/or Customer to a Visitor (set-if-null). */
 export async function mergeVisitorIdentity(
   db: SupabaseClient,
   opts: {
@@ -134,7 +119,6 @@ export async function mergeVisitorIdentity(
     .maybeSingle();
   if (lookErr) return { ok: false, error: lookErr.message };
   if (!row) {
-    // Ensure Visitor exists so checkout/sign-in can stitch before first beacon.
     const { error: insErr } = await db.from("analytics_visitors").upsert(
       { id: visitorId },
       { onConflict: "id", ignoreDuplicates: true },
@@ -158,7 +142,6 @@ export async function mergeVisitorIdentity(
   return { ok: true, merged: true };
 }
 
-/** Set converted_order_id on the paying Visit for this Visitor. */
 export async function linkVisitToPaidOrder(
   db: SupabaseClient,
   opts: { visitorId: string; orderId: string },
@@ -195,11 +178,6 @@ export async function linkVisitToPaidOrder(
   return { ok: true, linked: true, visitId: pick.visitId };
 }
 
-/**
- * Every Visitor known to be this person: linked to the Customer, or carrying
- * the email. One person has several when they use a phone and a laptop, or an
- * app's built-in browser and then Safari.
- */
 export async function visitorIdsForPerson(
   db: SupabaseClient,
   person: { customerId?: string | null; email?: string | null },
@@ -207,7 +185,6 @@ export async function visitorIdsForPerson(
   const customerId = parseVisitorId(person.customerId);
   const email = normalizeVisitorEmail(person.email);
   const ids = new Set<string>();
-  // Two plain lookups, not one `.or()`: an email goes into a filter untouched.
   if (customerId) {
     const { data, error } = await db.from("analytics_visitors").select("id").eq("customer_id", customerId).limit(50);
     if (error) throw new Error(error.message);
@@ -221,12 +198,6 @@ export async function visitorIdsForPerson(
   return [...ids];
 }
 
-/**
- * Set converted_order_id on the Visit that paid, found through the Order's
- * Customer or email. Payment is confirmed by Stripe or by Staff, with no
- * browser cookie in reach, so the Visitor is whoever gave that email earlier
- * (`stitchVisitor`). Last-touch: the open Visit, else the newest.
- */
 export async function linkPaidOrderToPerson(
   db: SupabaseClient,
   opts: { orderId: string; customerId?: string | null; email?: string | null },
@@ -263,17 +234,6 @@ export async function linkPaidOrderToPerson(
   return { ok: true, linked: true, visitId: pick.visitId };
 }
 
-/**
- * Tie the browser that just gave an email to that email, and to the Customer
- * when there is one. Called wherever a shopper types their own email: the
- * configurator's first question, the hold, shop checkout.
- *
- * Never on a Staff or Partner device: one browser there serves many shoppers,
- * and the first would be handed every later shopper's Visits. The caller
- * decides that; this only refuses a request with no Visitor cookie.
- *
- * Analytics must not fail a save or a sale, so this never throws.
- */
 export async function stitchVisitor(
   db: SupabaseClient,
   req: { headers: { get(name: string): string | null } },
@@ -289,7 +249,6 @@ export async function stitchVisitor(
   }
 }
 
-/** `linkPaidOrderToPerson`, for a payment path that must not fail on analytics. */
 export async function recordPaidOrderVisit(
   db: SupabaseClient,
   opts: { orderId: string; customerId?: string | null; email?: string | null },

@@ -14,12 +14,6 @@ import {
 import { fillLabel } from "@/lib/tiktok/types";
 import { cn } from "@/lib/utils";
 
-/**
- * Opened by a tap, so the player may start with sound. Only TikTok's play,
- * volume and progress controls show (volume matters: where a browser starts the
- * video muted, it is how the visitor turns the sound on). The end screen
- * recommends only this account's posts (see `tiktokPlayerSrc`).
- */
 const PLAYER: TikTokPlayerOptions = {
   autoplay: true,
   loop: false,
@@ -30,39 +24,22 @@ const PLAYER: TikTokPlayerOptions = {
   timestamp: false,
 };
 
-/** The site's navy-to-blue (the dock's gradient) ending in its bright accent, glowing under the window. */
 const GLOW = "linear-gradient(160deg, #001736 0%, #18478f 40%, #2b69bc 70%, #1298ff 100%)";
 
 const SIDE = "0.75rem";
-/** `--tiktok-pip-top`, set by class: below the floating logo pill on a phone. */
 const TOP = "var(--tiktok-pip-top)";
-/**
- * The chat bubble's offset (support-chat-window.tsx): above the phone dock, a
- * page's or the cart's action bar, and the analytics notice.
- */
 const BOTTOM =
   "calc(max(var(--safe-bottom), var(--app-dock-clearance), var(--mobile-bottom-bar-height, 0px)) + var(--analytics-notice-clearance, 0px) + 0.75rem)";
-/** The size set by class, narrowed when the window is too short for a 9:16 video that wide. */
 const WIDTH = `min(var(--tiktok-pip-w), calc((100dvh - ${TOP} - ${BOTTOM}) * 9 / 16))`;
 
-/**
- * Where the window sits for a position the visitor dragged it to: CSS keeps it
- * inside those margins, on every frame of a drag and whenever the window resizes.
- */
 const leftAt = (x: number) => `clamp(${SIDE}, ${Math.round(x)}px, calc(100% - ${SIDE} - var(--tiktok-pip-width)))`;
 const topAt = (y: number) =>
   `clamp(${TOP}, ${Math.round(y)}px, calc(100% - ${BOTTOM} - var(--tiktok-pip-width) * 16 / 9))`;
 
-/** Where the visitor last left it, for the next video this visit. Starts bottom right. */
 const remembered = { x: 1e5, y: 1e5 };
 
-/** Below this much movement a press is a tap (play or pause), not a drag. */
 const DRAG_THRESHOLD = 4;
 
-/**
- * Leaves TikTok's control row at the bottom of the video to TikTok: everything
- * above it is the surface the window is dragged by.
- */
 const CONTROLS_HEIGHT = "3.5rem";
 
 interface TikTokPipProps {
@@ -71,14 +48,6 @@ interface TikTokPipProps {
   onClose: () => void;
 }
 
-/**
- * A TikTok video floating over the page, nothing around it but a blue glow:
- * the page keeps scrolling and working behind it, and it follows the visitor
- * to other pages. Drag it anywhere by the video; a tap plays or pauses. The
- * one control of ours is close, which shows while the pointer is over the
- * window (always, on touch screens). It moves on to the next video in the set
- * when one ends. Opened through `useTikTokPip().open` (tiktok-pip-provider.tsx).
- */
 export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPipProps) {
   const { videos, index, labels, opener, openCount } = session;
   const video = videos[index];
@@ -92,15 +61,12 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
   const drag = React.useRef<{ id: number; x: number; y: number; left: number; top: number; moved: boolean } | null>(
     null,
   );
-  // Autoplay is on, so assume playing until TikTok says otherwise.
   const playing = React.useRef(true);
 
-  // Take focus each time a video is picked, so keyboard and screen reader users land in the player.
   React.useEffect(() => {
     box.current?.focus({ preventScroll: true });
   }, [openCount]);
 
-  /** Closes; focus goes back to the card that opened it when the visitor closed it from the keyboard. */
   const close = (fromKeyboard: boolean) => {
     onClose();
     if (fromKeyboard && opener?.isConnected && !opener.closest("[aria-hidden='true']")) {
@@ -113,7 +79,6 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
     onIndexChange((index + step + videos.length) % videos.length);
   };
 
-  // Stop after the last one rather than looping the visitor forever.
   const onEnded = () => {
     if (index < videos.length - 1) go(1);
   };
@@ -147,7 +112,6 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
       d.moved = true;
       setDragging(true);
     }
-    // Straight to the element: a re-render per pointer move is wasted work.
     box.current.style.left = leftAt(d.left + dx);
     box.current.style.top = topAt(d.top + dy);
   };
@@ -202,7 +166,6 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
         } as React.CSSProperties
       }
     >
-      {/* The drop shadow: the brand gradient, blurred, showing round the window's edges. */}
       <div
         aria-hidden
         className="pointer-events-none absolute -inset-x-1 -bottom-4 top-6 -z-10 rounded-[1.75rem] opacity-90 blur-xl"
@@ -219,11 +182,9 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
           options={PLAYER}
           onEnded={onEnded}
           onEvent={onEvent}
-          // A drag that crosses the control row would hand the pointer to TikTok's frame.
           className={cn(dragging && "pointer-events-none")}
         />
 
-        {/* Drag anywhere above TikTok's controls; a tap there plays or pauses. */}
         <div
           aria-hidden
           onPointerDown={onPointerDown}
@@ -244,8 +205,6 @@ export default function TikTokPip({ session, onIndexChange, onClose }: TikTokPip
           title={labels.closePlayer}
           className={cn(
             "absolute left-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity duration-150 hover:bg-black/70 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white pointer-coarse:size-8",
-            // Shown while the pointer is over the window; always there on touch screens.
-            // and when the window was reached from the keyboard.
             "[@media(hover:hover)]:opacity-0 group-hover/pip:opacity-100 group-focus-visible/pip:opacity-100",
           )}
         >

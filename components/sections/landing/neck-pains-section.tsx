@@ -84,7 +84,6 @@ export function NeckPainsSection({ section, messages: m, images }: NeckPainsSect
           />
         </div>
 
-        {/* Mobile: feel + Learn more below image so Tech Neck path is reachable */}
         <div className="mt-6 md:hidden">{feelCard}</div>
       </div>
     </section>

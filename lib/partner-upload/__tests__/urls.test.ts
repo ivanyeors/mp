@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { applicantLogoFolder, isStoredLogoUrl, partnerLogoFolder } from "@/lib/partner-upload/urls";
 
-/**
- * Spec tests for where partner logos live and which URLs count as ones we
- * stored (owner request, 2026-11-16). External behaviour only: folder strings
- * in, booleans out. A logo URL is accepted only on our own storage origin,
- * under `/storage/v1/object/public/media/{folder}`, and never by a prefix,
- * look-alike host or `..` trick.
- */
-
 const ORIGIN = "https://proj.supabase.co";
 const MEDIA = `${ORIGIN}/storage/v1/object/public/media/`;
 const PARTNER = "3f6c1d2e-8a4b-4c5d-9e7f-0a1b2c3d4e5f";

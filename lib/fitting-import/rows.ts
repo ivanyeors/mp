@@ -1,22 +1,12 @@
-/**
- * The rows a Fitting import sends, as the server reads them back (ADR 0042 e).
- *
- * Pure. The browser holds the file; a server action receives a chunk of rows
- * and trusts nothing in it: `readRawRow` keeps only known fields and string
- * cells within the columns' limits, so anything else the request carries is
- * dropped on arrival.
- */
 import { FORM_FIELDS, type FormField, type FormRawRow } from "./google-form-csv";
 
 const FIELD_SET: ReadonlySet<string> = new Set(FORM_FIELDS);
-/** A cell longer than this is not a form answer. Notes, the longest column, are capped at 5,000. */
 const MAX_CELL = 20_000;
 const MAX_OTHER_COLUMNS = 100;
 const MAX_HEADER = 300;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
-/** One raw row from a request, or null when it is not one. */
 export function readRawRow(input: unknown, fields: readonly FormField[] = FORM_FIELDS, withOther = true): FormRawRow | null {
   if (!isRecord(input) || !isRecord(input.cells)) return null;
   const wanted = new Set<string>(fields);
@@ -34,7 +24,6 @@ export function readRawRow(input: unknown, fields: readonly FormField[] = FORM_F
   return { cells, other };
 }
 
-/** Only `fields`' cells, and no other answers: what the preview sends. */
 export function pickCells(raw: FormRawRow, fields: readonly FormField[]): FormRawRow {
   const cells: FormRawRow["cells"] = {};
   for (const f of fields) {

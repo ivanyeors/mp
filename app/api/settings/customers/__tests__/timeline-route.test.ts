@@ -1,22 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * CRM 03: the Customer timeline route. One fixture Customer with an order and
- * its emails, a guest Result matched by email in another case and padded, a
- * Paired build, a booking, a return, a review and notes. Every event shows, in
- * order, each kind only to a role holding its source's permission, and no
- * Result of another Customer whose email merely contains this one's. Since the
- * merges with CRM 13 and migrations 05 and 12, also aftercare switches and the
- * account (imported, signed up, Claimed, the Claim bonus from the Points
- * ledger since PRD-loyalty-points slice 06), since
- * migration 06 the Claim links a campaign email carried, by first click,
- * since CRM 06 follow-ups (added, done), since CRM 12 a Linked Google review
- * at its own date, since migration 08 the campaign emails sent, bounced
- * and complained about, and since ADR 0042 an in-store fitting from the old
- * Google Form.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
 
 vi.mock("@/lib/auth/user", () => ({
@@ -35,18 +19,18 @@ const KIM = "aaaaaaaa-0000-4000-8000-000000000002";
 const NOBODY = "aaaaaaaa-0000-4000-8000-0000000000ff";
 const O1 = "0e000000-0000-4000-8000-000000000001";
 const O2 = "0e000000-0000-4000-8000-000000000002";
-const GUEST = "0f000000-0000-4000-8000-000000000001"; // guest Result, matched by email
-const ANCHOR = "0f000000-0000-4000-8000-000000000002"; // Paired build: the Mpillow
-const COMPANION = "0f000000-0000-4000-8000-000000000003"; // Paired build: the Mbolster
+const GUEST = "0f000000-0000-4000-8000-000000000001";
+const ANCHOR = "0f000000-0000-4000-8000-000000000002";
+const COMPANION = "0f000000-0000-4000-8000-000000000003";
 const DECLINED = "0f000000-0000-4000-8000-000000000004";
 const CANCELLED = "0f000000-0000-4000-8000-000000000005";
 const DRAFT = "0f000000-0000-4000-8000-000000000006";
-const KIMS = "0f000000-0000-4000-8000-000000000007"; // xmei@x.test: someone else's
-const KIMS_SG = "0f000000-0000-4000-8000-000000000008"; // mei@x.test.sg: someone else's
+const KIMS = "0f000000-0000-4000-8000-000000000007";
+const KIMS_SG = "0f000000-0000-4000-8000-000000000008";
 const BOOKING = "0b000000-0000-4000-8000-000000000001";
 const RMA = "0c000000-0000-4000-8000-000000000001";
 const REVIEW = "0d000000-0000-4000-8000-000000000001";
-const G_REVIEW = "0d000000-0000-4000-8000-0000000000a1"; // a Linked Google review (CRM 12)
+const G_REVIEW = "0d000000-0000-4000-8000-0000000000a1";
 const NOTE = "0a000000-0000-4000-8000-000000000001";
 const LEGACY_NOTE = "0a000000-0000-4000-8000-000000000002";
 const CLAIM_BONUS = "0c000000-0000-4000-8000-0000000000a1";
@@ -102,7 +86,6 @@ beforeEach(() => {
       { id: KAI, name: "Kai", admin_user_id: OWNER, archived_at: null },
     ],
     customers: [
-      // Migration 12: when the current login was bound. Kim has no account.
       { id: MEI, email: "mei@x.test", first_name: "Mei", account_linked_at: t("06-14T23:59") },
       { id: KIM, email: "kim@x.test", first_name: "Kim", account_linked_at: null },
     ],
@@ -124,16 +107,12 @@ beforeEach(() => {
       { id: "em-3", order_id: O2, template: "order_confirmation", status: "sent", created_at: t("09-02T02:02") },
     ],
     mp_config_responses: [
-      // A guest Result: no customer_id, the email in another case and padded.
       result({ id: GUEST, customer_email: "  MEI@X.Test ", assigned_size: "M", assigned_tier: "premium", created_at: t("08-20T01:00"), assigned_at: t("08-22T01:00") }),
-      // A Paired build: two Results, one entry per fact.
       result({ id: ANCHOR, customer_id: MEI, customer_email: "mei@x.test", paired_build_id: ANCHOR, suggested_size: "L", suggested_tier: "basic", created_at: t("07-01T00:00"), assigned_at: t("07-02T00:00"), topup_paid_at: t("07-04T00:00") }),
       result({ id: COMPANION, customer_id: MEI, customer_email: "mei@x.test", paired_build_id: ANCHOR, product_type: "bolster", assigned_length: "90", created_at: t("07-01T00:05"), assigned_at: t("07-03T00:00") }),
-      // Declined and cancelled: no time of their own, so only their created entry, with the status pill.
       result({ id: DECLINED, customer_id: MEI, status: "declined", created_at: t("06-01T00:00") }),
       result({ id: CANCELLED, customer_id: MEI, status: "cancelled", created_at: t("05-01T00:00") }),
       result({ id: DRAFT, customer_id: MEI, status: null, created_at: t("09-15T00:00") }),
-      // Someone else's, with an email that merely contains Mei's, or that Mei's is a prefix of.
       result({ id: KIMS, customer_id: KIM, customer_email: "xmei@x.test", created_at: t("09-12T00:00") }),
       result({ id: KIMS_SG, customer_id: null, customer_email: "mei@x.test.sg", created_at: t("09-13T00:00") }),
     ],
@@ -146,7 +125,6 @@ beforeEach(() => {
     admin_audit_log: [
       { id: "au-1", action: "result.cancel", entity_type: "mp_config_response", entity_id: CANCELLED, created_at: t("05-02T00:00") },
       { id: "au-2", action: "readjustment.attended", entity_type: "readjustment_booking", entity_id: BOOKING, created_at: t("09-20T03:00") },
-      // Someone else's Result: never read.
       { id: "au-3", action: "result.cancel", entity_type: "mp_config_response", entity_id: KIMS, created_at: t("09-14T00:00") },
     ],
     rma_requests: [
@@ -165,8 +143,6 @@ beforeEach(() => {
       { id: LEGACY_NOTE, customer_id: MEI, body: "old box", author_profile_id: null, author_user_id: null, created_at: t("04-01T00:00"), deleted_at: null },
       { id: "gone", customer_id: MEI, body: "Deleted", author_profile_id: JESS, author_user_id: "auth-owner", created_at: t("09-25T00:00"), deleted_at: t("09-26T00:00") },
     ],
-    // CRM 13: every switch change is an event.
-    // CRM 06: one follow-up added and done, one still open, and one of Kim's.
     customer_followups: [
       { id: FOLLOW_UP, customer_id: MEI, title: "Call about her second pillow", due_on: "2026-09-29", assigned_to_profile_id: JESS, created_by_profile_id: KAI, created_at: t("09-27T02:00"), done_at: t("09-29T03:00"), done_by_profile_id: JESS },
       { id: OPEN_FOLLOW_UP, customer_id: MEI, title: "Send the fill sample", due_on: "2026-10-30", assigned_to_profile_id: KAI, created_by_profile_id: null, created_at: t("09-28T02:00"), done_at: null, done_by_profile_id: null },
@@ -177,13 +153,11 @@ beforeEach(() => {
       { id: 2, customer_id: MEI, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-25T00:00") },
       { id: 3, customer_id: KIM, preference: "aftercare_email", to_value: false, source: "profile", changed_by_profile_id: null, note: null, wording: null, created_at: t("08-26T00:00") },
     ],
-    // Migration 07: Shopify's yes, dated the export day (before the import), then the link.
     customer_consent_events: [
       { id: 1, customer_id: MEI, channel: "email", from_state: "not_subscribed", to_state: "subscribed", source: "shopify_import", created_at: t("02-27T16:00") },
       { id: 2, customer_id: MEI, channel: "email", from_state: "subscribed", to_state: "unsubscribed", source: "unsubscribe_link", created_at: t("09-28T01:00") },
       { id: 3, customer_id: KIM, channel: "email", from_state: "not_subscribed", to_state: "subscribed", source: "account", created_at: t("09-27T00:00") },
     ],
-    // CRM 07: asked for a Google review once, by both channels, and the link opened twice.
     customer_review_requests: [
       { customer_id: MEI, order_id: O1, token_hash: "h-mei", created_at: t("09-15T02:00"), first_clicked_at: t("09-16T03:00"), click_count: 2 },
     ],
@@ -193,7 +167,6 @@ beforeEach(() => {
     customer_whatsapp: [
       { id: 1, customer_id: MEI, template: "aftercare.review_request", entity_id: MEI, status: "sent", sent_at: t("09-15T02:01") },
     ],
-    // CRM 12: Mei's Google review, linked by Staff weeks after she wrote it; Kim's; and one nobody linked.
     google_reviews: [
       { id: G_REVIEW, star_rating: 5, comment: "Slept through the night.", review_created_at: t("09-18T02:00"), created_at: t("09-18T03:00"), status: "posted", google_reply: "Thank you, Mei!" },
       { id: "g-kim", star_rating: 2, comment: "Too firm.", review_created_at: t("09-19T02:00"), created_at: t("09-19T03:00"), status: "pending", google_reply: null },
@@ -203,34 +176,25 @@ beforeEach(() => {
       { google_review_id: G_REVIEW, customer_id: MEI, how: "suggestion", linked_by_profile_id: JESS, linked_at: t("10-01T00:00") },
       { google_review_id: "g-kim", customer_id: KIM, how: "manual", linked_by_profile_id: null, linked_at: t("10-01T00:00") },
     ],
-    // Migration 02 and 05: imported, Claimed, and the Claim bonus the Claim granted in the same transaction.
     migrated_customers: [
       { customer_id: MEI, created_by_import: false, imported_at: t("03-01T00:00"), claimed_at: t("06-15T00:00") },
       { customer_id: KIM, created_by_import: true, imported_at: t("03-01T00:00"), claimed_at: null },
     ],
-    // Migration 06: the announcement's link opened twice, the reminder's never;
-    // Kim's link is Kim's alone.
     customer_claim_links: [
       { id: 1, customer_id: MEI, token_hash: "h-1", template: "migration_announcement", created_at: t("06-10T00:00"), first_clicked_at: t("06-14T12:00"), click_count: 2 },
       { id: 2, customer_id: MEI, token_hash: "h-2", template: "migration_reminder", created_at: t("06-12T00:00"), first_clicked_at: null, click_count: 0 },
       { id: 3, customer_id: KIM, token_hash: "h-3", template: "migration_announcement", created_at: t("06-10T00:00"), first_clicked_at: t("06-11T00:00"), click_count: 1 },
     ],
-    // Migration 08: the announcement sent, the reminder sent and then bounced,
-    // and a service notice that failed (it reached nobody, so it is not shown).
-    // Kim's complaint is Kim's alone.
     customer_campaign_sends: [
       { id: "cs-1", customer_id: MEI, template: "migration_announcement", wave: "w1", status: "sent", provider_message_id: "re_1", sent_at: t("06-10T00:05"), bounced_at: null, complained_at: null },
       { id: "cs-2", customer_id: MEI, template: "migration_reminder", wave: "r1", status: "bounced", provider_message_id: "re_2", sent_at: t("06-12T00:05"), bounced_at: t("06-12T01:00"), complained_at: null },
       { id: "cs-3", customer_id: MEI, template: "migration_service_notice", wave: "n1", status: "failed", provider_message_id: null, sent_at: t("06-13T00:00"), bounced_at: null, complained_at: null },
       { id: "cs-k", customer_id: KIM, template: "migration_announcement", wave: "w1", status: "complained", provider_message_id: "re_k", sent_at: t("06-10T00:06"), bounced_at: null, complained_at: t("06-10T09:00") },
     ],
-    // ADR 0042: Mei's fitting from the old Google Form; Kim's is Kim's alone.
     customer_fittings: [
       { id: FITTING, customer_id: MEI, fitted_at: t("08-10T03:00"), recommended_size: "M", configuration_type: "T12", profile_side: "M-LN", serviced_by: "Sophie" },
       { id: "fit-kim", customer_id: KIM, fitted_at: t("08-11T03:00"), recommended_size: "S", configuration_type: null, profile_side: null, serviced_by: null },
     ],
-    // PRD-loyalty-points: Mei's Claim bonus, and her spend, which is not an
-    // account event. Kim's bonus is Kim's alone.
     points_ledger: [
       { id: CLAIM_BONUS, customer_id: MEI, kind: "claim_bonus", points: 1000, order_id: null, note: "Claim bonus", created_at: t("06-15T00:00") },
       { id: "pl-spend", customer_id: MEI, kind: "spend", points: -1000, order_id: O1, note: null, created_at: t("09-01T02:00") },
@@ -255,7 +219,6 @@ async function page(id = MEI, query = "") {
   return (await res.json()) as { entries: Entry[]; next: string | null; groups: { key: string }[]; unavailable: string[] };
 }
 
-/** Every event on Mei's timeline, newest first, for a role that holds every key. */
 const EVERYTHING = [
   `note.added:${NOTE}`,
   `follow_up.done:${FOLLOW_UP}`,
@@ -264,7 +227,6 @@ const EVERYTHING = [
   `follow_up.added:${FOLLOW_UP}`,
   "aftercare.turned_on:1",
   "readjustment.attended:au-2",
-  // At the review's own date, not the day Staff linked it.
   `google_review.written:${G_REVIEW}`,
   `review_request.clicked:${MEI}`,
   `review_request.sent:${MEI}`,
@@ -284,7 +246,6 @@ const EVERYTHING = [
   `result.balance_paid:${ANCHOR}`,
   `result.build_sent:${ANCHOR}`,
   `result.created:${ANCHOR}`,
-  // Same instant (one transaction): ties go by kind.
   `account.claim_bonus:${CLAIM_BONUS}`,
   `account.claimed:${MEI}`,
   `account.signed_up:${MEI}`,
@@ -325,7 +286,6 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`review.submitted:${REVIEW}`)).toMatchObject({ summary: "Shop review: 5★ on Mpillow", status: "approved" });
     expect(byId.get(`review_request.sent:${MEI}`)?.summary).toBe("Review requested (email, WhatsApp)");
     expect(byId.get(`review_request.clicked:${MEI}`)?.summary).toBe("Review link clicked (2 times)");
-    // CRM 12: the stars and whether we replied; the text stays on the Reviews card.
     expect(byId.get(`google_review.written:${G_REVIEW}`)).toMatchObject({
       summary: "Google review: 5★",
       status: "We replied on Google",
@@ -333,7 +293,6 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     });
     expect(JSON.stringify(byId.get(`google_review.written:${G_REVIEW}`))).not.toContain("Slept");
     expect(byId.get(`note.added:${NOTE}`)).toMatchObject({ summary: "Note by Jess", detail: "Prefers a firm fill." });
-    // ADR 0042: the form's codes and who serviced them; measurements and health answers stay on the card.
     expect(byId.get(`fitting.recorded:${FITTING}`)).toMatchObject({
       summary: "In-store fitting: Mpillow M · T12 · M-LN (serviced by Sophie)",
       group: "fittings",
@@ -357,14 +316,11 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get(`account.imported:${MEI}`)?.summary).toBe("Imported from Shopify, matched to this Customer");
     expect(byId.get(`account.claimed:${MEI}`)?.summary).toBe("Claimed: first sign-in since the import");
     expect(byId.get(`account.signed_up:${MEI}`)?.summary).toBe("Signed up: a login was linked to this Customer");
-    // The Claim bonus, read from the Points ledger, in points and dollars.
     expect(byId.get(`account.claim_bonus:${CLAIM_BONUS}`)).toMatchObject({ summary: "Claim bonus: 1,000 points (S$10.00)", group: "account" });
     expect(byId.has("account.claim_bonus:pl-kim")).toBe(false);
     expect([...byId.keys()].some((k) => k.includes("pl-spend"))).toBe(false);
-    // Only the first click is dated; the count is in the line. The token is never read.
     expect(byId.get("claim_link.opened:1")).toMatchObject({ summary: "Claim link opened (announcement email, 2 times)", group: "account" });
     expect(JSON.stringify(byId.get("claim_link.opened:1"))).not.toContain("h-1");
-    // Migration 08: each send the provider took, with its status; its bounce, dated.
     expect(byId.get("campaign_email.sent:cs-1")).toMatchObject({
       summary: "Campaign email sent: Account announcement (wave w1)",
       status: "sent",
@@ -373,7 +329,6 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     expect(byId.get("campaign_email.sent:cs-2")).toMatchObject({ summary: "Campaign email sent: Account reminder (wave r1)", status: "bounced" });
     expect(byId.get("campaign_email.bounced:cs-2")?.summary).toBe("Campaign email bounced: Account reminder. Left out of later waves");
     expect([...byId.keys()].some((k) => k.endsWith("cs-3"))).toBe(false);
-    // No customer email in any line.
     for (const e of byId.values()) expect(e.summary.toLowerCase()).not.toContain("mei@x.test");
   });
 
@@ -389,7 +344,6 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     const entries = (await page()).entries;
     expect(entries.find((e) => e.id === `result.created:${DECLINED}`)?.status).toBe("declined");
     expect(entries.filter((e) => e.id.endsWith(DECLINED))).toHaveLength(1);
-    // The cancel is dated by the audit entry Staff's cancel wrote, nothing else.
     expect(entries.find((e) => e.id === "result.cancelled:au-1")?.summary).toBe("Cancelled by Staff: Mpillow");
     expect(entries.some((e) => e.kind === "result.declined" || e.kind === "result.expired")).toBe(false);
   });
@@ -398,7 +352,6 @@ describe("GET /api/settings/customers/[id]/timeline", () => {
     signIn(OWNER);
     const ids = (await page()).entries.map((e) => e.id).join(" ");
     for (const other of [KIMS, KIMS_SG, DRAFT, "au-3"]) expect(ids).not.toContain(other);
-    // Kim's own timeline has their Result, and none of Mei's.
     const kim = (await page(KIM)).entries.map((e) => e.id);
     expect(kim).toContain(`result.created:${KIMS}`);
     expect(kim.join(" ")).not.toContain(GUEST);

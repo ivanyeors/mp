@@ -7,7 +7,6 @@ import {
 import type { BolsterVariant, ComponentOption, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 import type { ItemOverlay, OverlayFit } from "@/lib/product-builder/overlays";
 
-/** Product Builder overlay mappings for the given items (slice 10). */
 export async function fetchOverlayMap(
   admin: ReturnType<typeof supabaseAdmin>,
   itemIds: number[],
@@ -31,10 +30,6 @@ export async function fetchOverlayMap(
   return map;
 }
 
-/**
- * Inventory stores split categories (pillow_case / bolster_case, …) after migration 0015.
- * Customisation UI / preference lines still use the role names cover | case | protector.
- */
 export function toComponentRole(category: string): string {
   if (category === "pillow_case" || category === "bolster_case" || category === "case") return "case";
   if (category === "pillow_protector" || category === "bolster_protector" || category === "protector") {
@@ -55,15 +50,8 @@ export function isProtectorInventoryCategory(category: string): boolean {
   );
 }
 
-/** `items.size` of a bolster case cut for each length (as the Staff BOM editor maps them). */
 const BOLSTER_CASE_SIZE: Record<BolsterVariant, string> = { short: "S", medium: "M", long: "L" };
 
-/**
- * True when a bolster case fits this length. Cases are cut and priced per length, so
- * offering (or accepting) any bolster case let a long bolster take the short one's
- * price. Legacy single-size `BOLSTER` cases fit nothing here; the BOM default stays
- * offered through its own path.
- */
 export function isBolsterCaseForLength(
   item: { category: string; size: string | null },
   length: BolsterVariant,
@@ -74,7 +62,6 @@ export function isBolsterCaseForLength(
   );
 }
 
-/** True when a DB item may be used as the given customer preference role. */
 export function itemMatchesPreferenceRole(
   itemCategory: string,
   preferenceRole: "cover" | "case",
@@ -88,7 +75,6 @@ const PILLOW_COMPONENT_CATEGORIES = [
   "pillow_case",
   "pillow_protector",
   "packaging",
-  // legacy pre-0015 rows (if any remain)
   "case",
   "protector",
 ] as const;
@@ -102,10 +88,6 @@ const BOLSTER_COMPONENT_CATEGORIES = [
   "protector",
 ] as const;
 
-/**
- * Get available components (covers, cases, protectors, packaging) for a pillow product.
- * Source of truth: inventory `items` (+ balances / prices). Cases are `pillow_case`.
- */
 export async function getAvailableComponents(pillowProductId: number): Promise<{
   covers: ComponentOption[];
   cases: ComponentOption[];
@@ -114,7 +96,6 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
 }> {
   const admin = supabaseAdmin();
 
-  // Get the pillow product to know its size
   const { data: pillowProduct } = await admin
     .from("pillow_products")
     .select("id, size, kind")
@@ -125,7 +106,6 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
     return { covers: [], cases: [], protectors: [], packaging: [] };
   }
 
-  // Get BOM lines for this product (to know base quantities)
   const { data: bomLines } = await admin
     .from("bom_lines")
     .select("item_id, quantity")
@@ -135,7 +115,6 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
     (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => [bl.item_id, bl.quantity])
   );
 
-  // Inventory categories: pillow_case / pillow_protector (not legacy case / protector).
   const { data: items } = await admin
     .from("items")
     .select("id, category, subtype, name, size")
@@ -144,7 +123,6 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
 
   if (!items) return { covers: [], cases: [], protectors: [], packaging: [] };
 
-  // Filter items by size compatibility
   const pillowSize = pillowProduct.size;
   const packagingSize = ["XS", "S", "M"].includes(pillowSize) ? "S" : "L";
 
@@ -155,7 +133,6 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
     return i.size === pillowSize || i.size === null;
   });
 
-  // Get stock levels
   const itemIds = relevantItems.map((i: { id: number }) => i.id);
   const { data: balances } = await admin
     .from("inventory_balances")
@@ -166,7 +143,6 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
     (balances ?? []).map((b: { item_id: number; on_hand: number }) => [b.item_id, b.on_hand])
   );
 
-  // Get prices
   const { data: prices } = await admin
     .from("item_prices")
     .select("item_id, msrp")
@@ -178,7 +154,6 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
 
   const overlayMap = await fetchOverlayMap(admin, itemIds);
 
-  // Role category (case/protector) so preference + component-line logic stays stable.
   const toOption = (i: {
     id: number;
     category: string;
@@ -207,10 +182,6 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
   };
 }
 
-/**
- * Get available components for a bolster product.
- * Similar to getAvailableComponents but for bolsters.
- */
 export async function getAvailableBolsterComponents(bolsterProductId: number): Promise<{
   covers: ComponentOption[];
   cases: ComponentOption[];
@@ -219,7 +190,6 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
 }> {
   const admin = supabaseAdmin();
 
-  // Get the bolster product to know its size
   const { data: bolsterProduct } = await admin
     .from("bolster_products")
     .select("id, size")
@@ -230,7 +200,6 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     return { covers: [], cases: [], protectors: [], packaging: [] };
   }
 
-  // Get BOM lines for this bolster
   const { data: bomLines } = await admin
     .from("bom_lines")
     .select("item_id, quantity")
@@ -240,7 +209,6 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => [bl.item_id, bl.quantity])
   );
 
-  // Inventory categories: bolster_case / bolster_protector (size often BOLSTER).
   const { data: items } = await admin
     .from("items")
     .select("id, category, subtype, name, size")
@@ -249,7 +217,6 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
 
   if (!items) return { covers: [], cases: [], protectors: [], packaging: [] };
 
-  // Filter items by size compatibility for bolsters
   const bolsterSize = bolsterProduct.size;
   const relevantItems = items.filter((i: { category: string; size: string | null }) => {
     const size = i.size?.toUpperCase() ?? null;
@@ -260,7 +227,6 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     );
   });
 
-  // Get stock levels
   const itemIds = relevantItems.map((i: { id: number }) => i.id);
   if (itemIds.length === 0) return { covers: [], cases: [], protectors: [], packaging: [] };
 
@@ -273,7 +239,6 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     (balances ?? []).map((b: { item_id: number; on_hand: number }) => [b.item_id, b.on_hand])
   );
 
-  // Get prices
   const { data: prices } = await admin
     .from("item_prices")
     .select("item_id, msrp")
@@ -316,15 +281,9 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
 type ConfigValidation = {
   valid: boolean;
   shortages: { item_id: number; name: string; needed: number; available: number }[];
-  /** What this config needs, item_id -> quantity (excluding `reserved`). */
   needed: Map<number, number>;
 };
 
-/**
- * Check what one build needs, `orderQuantity` times over, against on-hand stock.
- * The build is `composedBuildLines`, the same lines the sale deducts: the chosen
- * components and fillings over the recipe and the Default Filling Template.
- */
 async function validateComposedBuild(
   sellable: ComposedSellableRef,
   chosen: CategorisedLine[],
@@ -352,7 +311,6 @@ async function validateComposedBuild(
     (balances ?? []).map((b: { item_id: number; on_hand: number }) => [b.item_id, b.on_hand])
   );
 
-  // Get item names for shortage reporting
   const { data: items } = await admin
     .from("items")
     .select("id, name, subtype")
@@ -383,10 +341,6 @@ async function validateComposedBuild(
   return { valid: shortages.length === 0, shortages, needed };
 }
 
-/**
- * Validate a full customization config against current inventory.
- * Checks ALL components (fillings + covers + cases + etc) can be fulfilled.
- */
 export async function validateFullConfig(
   pillowProductId: number,
   fillingLines: FillingLine[],
@@ -405,9 +359,6 @@ export async function validateFullConfig(
   );
 }
 
-/**
- * Get base BOM quantities for a bolster variant from bolster_bom_lines.
- */
 export async function getBolsterBaseQuantities(
   bolsterVariant: BolsterVariant
 ): Promise<Map<number, number>> {
@@ -423,11 +374,6 @@ export async function getBolsterBaseQuantities(
   );
 }
 
-/**
- * Validate a bolster customization config against current inventory. A shop
- * bolster offers no filling choice, so its length's Default Filling Template
- * fillings are checked with its components.
- */
 export async function validateBolsterConfig(
   bolsterVariant: BolsterVariant,
   componentQuantities: ConfigLine[],
@@ -442,9 +388,6 @@ export async function validateBolsterConfig(
   );
 }
 
-/**
- * Validate a customization config for either pillow or bolster products.
- */
 export async function validateCustomizationConfig(params: {
   product_type: CustomizationProductType;
   pillow_product_id?: number;
@@ -452,10 +395,6 @@ export async function validateCustomizationConfig(params: {
   filling_lines: FillingLine[];
   component_quantities: ConfigLine[];
   orderQuantity: number;
-  /**
-   * Quantities other lines of the same order already need, so two lines that each
-   * fit in stock cannot together oversell it. Add each result's `needed` to it.
-   */
   reserved?: ReadonlyMap<number, number>;
 }): Promise<ConfigValidation> {
   if (params.product_type === "bolster") {
@@ -500,9 +439,3 @@ export async function validateCustomizationConfig(params: {
     params.reserved
   );
 }
-
-// The old add-on price rule lived here. It summed `quantity above BOM x price_delta`,
-// which counted a SWAP as an extra part and trusted a price the browser sent: a
-// basic XS with a Fibrecool case quoted 258 against Costings' 193. Builds price
-// through `lib/shop/customization-price.ts` now, and pricing-surface.check.ts fails
-// the build if that function reappears anywhere.

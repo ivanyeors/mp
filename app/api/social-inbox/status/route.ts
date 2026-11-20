@@ -6,7 +6,6 @@ import { getSocialInboxStatus } from "@/lib/social-inbox/status";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Users & permissions → Telegram: which platforms are connected. Needs the `users` permission. */
 export async function GET(req: Request) {
   try {
     await requireAdminContext("users");

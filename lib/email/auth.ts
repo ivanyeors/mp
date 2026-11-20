@@ -1,23 +1,7 @@
-// ============================================================
-// Identity / verification emails sent by our own code
-// ============================================================
-//
-// Supabase's own auth emails (magic link, confirm signup, invite, password
-// reset) are NOT sent from here — they live in the hosted dashboard. The
-// branded HTML for those is generated into supabase/templates/ by
-// scripts/build-auth-email-templates.ts; see that directory's README.
-
 import { renderEmailShell } from "./base";
 import { codeBlock, infoList, paragraph } from "./components";
 import { defaultEmailCopy, defineEmailCopy, fillCopy, type EmailCopy } from "./copy";
 import type { RenderedEmail } from "./types";
-
-// ------------------------------------------------------------
-// The words of the partner's verification email (PRD-email-templates)
-// ------------------------------------------------------------
-//
-// The code is data and stays in code. The Admin Panel invite below is Staff
-// mail and is not editable.
 
 export const AUTH_EMAIL_COPY = {
   backup_email_otp: defineEmailCopy({
@@ -38,14 +22,12 @@ export const AUTH_EMAIL_COPY = {
 
 type BackupEmailOtpCopy = EmailCopy<keyof typeof AUTH_EMAIL_COPY.backup_email_otp.fields>;
 
-/** Fill every field of `copy` from `values`. */
 function filled<K extends string>(copy: EmailCopy<K>, values: Record<string, string | number | null | undefined>): EmailCopy<K> {
   const out = {} as EmailCopy<K>;
   for (const k of Object.keys(copy) as K[]) out[k] = fillCopy(copy[k], values);
   return out;
 }
 
-/** Backup-email verification code for a Partner account. */
 export function renderBackupEmailOtpEmail(
   p: {
     code: string;
@@ -72,11 +54,6 @@ ${paragraph(t.closing, { muted: true })}`,
   return { subject: t.subject, text, html };
 }
 
-/**
- * An Admin Panel invite (Users & permissions → Members). There is no token:
- * signing in with the invited address — Google or an emailed link — is what
- * binds the login, so the button only takes them to Sign in.
- */
 export function renderAdminInviteEmail(p: {
   inviterEmail: string;
   invitedEmail: string;

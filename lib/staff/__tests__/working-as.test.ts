@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * "Working as" (slice 10): a cookie is attribution only. It is honoured only
- * for one of the signed-in login's live profiles, and never changes what the
- * login can do.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -77,7 +71,6 @@ describe("validWorkingAs", () => {
 
 describe("actingProfile: who measured a Result a Staff session creates (ADR 0024)", () => {
   it("is a personal login's only profile, which never sees the picker", async () => {
-    // No cookie can exist here: the picker renders only for two or more profiles.
     expect(await actingProfile("m-other")).toEqual({ id: OTHERS, name: "Sam" });
   });
 

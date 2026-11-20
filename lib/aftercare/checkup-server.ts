@@ -1,25 +1,3 @@
-/**
- * The Check-up reminder job (PRD customer-crm slice 08, ADR 0028 f, g, h): the
- * IO around the pure rules in ./checkup. It runs daily, chained onto
- * `results-sla` through ./job, and the Aftercare card runs its planning half as
- * a dry run to show today's numbers.
- *
- * Once per milestone per Order, per channel. There is no table of its own: each
- * ledger's unique key is the guard, keyed by template `aftercare.checkup_<n>m`
- * and `entity_id` = the Order:
- *  - email in `customer_emails`, claimed by claim_customer_email before the
- *    send. A failed send is retried by a later run, up to 3 attempts, while the
- *    milestone is still the current one and the email may still go;
- *  - WhatsApp in `customer_whatsapp`, through slice 13's channel. Never retried.
- *
- * Coverage is read from `customer_purchase_lines` (CRM slice 04), which is
- * `classifyOrderLine` in SQL with a parity check: Premium Mpillow only.
- *
- * The fee is read from Costings (`loadServicePrices`) at send time, every run.
- * When it cannot be read, or is $0, the run sends nothing: a check-up that does
- * not say what it costs is not sent.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import { CHECKUP_EMAIL_COPY, renderCheckupEmail } from "@/lib/email/aftercare";
@@ -61,13 +39,9 @@ import {
 import { bump } from "./review-request";
 import { aftercareAccountUrl, decideAftercareWhatsAppFor } from "./review-request-server";
 
-/** At most this many check-ups sent per run; the rest stay due for the next. */
 export const CHECKUP_BATCH = 100;
-/** At most this many failed emails retried per run. */
 const RETRY_BATCH = 50;
-/** PostgREST returns at most 1000 rows a request; longer reads page. */
 const PAGE = 1000;
-/** Ids per `in (...)` filter, so a request URL stays well under the limit. */
 const CHUNK = 150;
 
 type CustomerRow = {
@@ -77,7 +51,6 @@ type CustomerRow = {
   phone: string | null;
   aftercare_email: boolean | null;
   aftercare_whatsapp: boolean | null;
-  /** Migration slice 07. Read for the check-up email only (README, second hazard). */
   marketing_email: string | null;
 };
 
@@ -87,9 +60,7 @@ export type PlannedCheckup = CheckupCandidate & { customer: CustomerRow; plan: C
 
 export type CheckupPlan = {
   settings: CheckupSettings;
-  /** Orders due today, each with how it would be reached. */
   planned: PlannedCheckup[];
-  /** Earlier failed emails that may be retried today. */
   retries: PlannedCheckup[];
   skipped: CheckupReport["skipped"];
 };
@@ -97,7 +68,6 @@ export type CheckupPlan = {
 type Query = PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
 type Rangeable = Query & { range(from: number, to: number): Query };
 
-/** Every row of an ordered query, a page at a time. */
 async function readAll<T>(label: string, build: () => Rangeable): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE) {
@@ -109,7 +79,6 @@ async function readAll<T>(label: string, build: () => Rangeable): Promise<T[]> {
   }
 }
 
-/** One read per chunk of ids, concatenated. */
 async function readIn<T>(label: string, ids: readonly string[], build: (chunk: string[]) => Query): Promise<T[]> {
   const out: T[] = [];
   for (let i = 0; i < ids.length; i += CHUNK) {
@@ -133,10 +102,6 @@ export async function loadCheckupSettings(admin: SupabaseClient): Promise<Checku
   return parseCheckupSettings(stored);
 }
 
-/**
- * The fee as today's messages state it, read from Costings now. Null, with
- * the reason, when it cannot be read or is $0.
- */
 export async function readCheckupFee(admin: SupabaseClient): Promise<{ fee: string | null; error: string | null }> {
   try {
     const prices = await loadServicePrices(admin);
@@ -147,13 +112,8 @@ export async function readCheckupFee(admin: SupabaseClient): Promise<{ fee: stri
   }
 }
 
-/**
- * The covered Premium Mpillow line of each Order, read from
- * `customer_purchase_lines` with the units still owned.
- */
 async function loadCovered(admin: SupabaseClient, orderIds: readonly string[]): Promise<Map<string, string>> {
   if (orderIds.length === 0) return new Map();
-  // Coverage, in the query: Premium Mpillow only. isCheckupCovered says the same.
   const lines = await readIn<Omit<CheckupPurchaseLine, "units">>("customer_purchase_lines", orderIds, (chunk) =>
     admin
       .from("customer_purchase_lines")
@@ -172,7 +132,6 @@ async function loadCovered(admin: SupabaseClient, orderIds: readonly string[]): 
   return coveredLineByOrder(lines.map((l) => ({ ...l, units: units.get(l.order_item_id) ?? 0 })));
 }
 
-/** Counted Orders with a Customer, delivered long enough ago that a milestone may be due. */
 async function loadDeliveredOrders(admin: SupabaseClient, now: Date, settings: CheckupSettings): Promise<CheckupOrderRow[]> {
   const before = deliveredBefore({ now, months: settings.months });
   const rows = await readAll<CheckupOrderRow>("orders", () =>
@@ -187,10 +146,6 @@ async function loadDeliveredOrders(admin: SupabaseClient, now: Date, settings: C
   return rows.filter(isCountedCheckupOrder);
 }
 
-/**
- * Orders with a Premium Mpillow, paid long enough ago to be due, that were
- * never marked delivered: an operations signal, counted and never messaged.
- */
 async function countNotMarkedDelivered(admin: SupabaseClient, now: Date, settings: CheckupSettings): Promise<number> {
   const before = deliveredBefore({ now, months: settings.months });
   const rows = await readAll<Pick<CheckupOrderRow, "id" | "paid_at" | "status">>("orders not delivered", () =>
@@ -206,7 +161,6 @@ async function countNotMarkedDelivered(admin: SupabaseClient, now: Date, setting
   return (await loadCovered(admin, counted)).size;
 }
 
-/** Every check-up row of these Customers, in both ledgers. */
 async function loadLedger(admin: SupabaseClient, customerIds: readonly string[]): Promise<CheckupLedgerRow[]> {
   const [emails, whatsapp] = await Promise.all([
     readIn<Omit<CheckupLedgerRow, "channel">>("customer_emails", customerIds, (chunk) =>
@@ -230,7 +184,6 @@ async function loadLedger(admin: SupabaseClient, customerIds: readonly string[])
   ];
 }
 
-/** Their Re-adjustment bookings booked or attended within the previous `months` (a future one included). */
 async function loadRecentReadjustments(
   admin: SupabaseClient,
   customerIds: readonly string[],
@@ -259,10 +212,6 @@ async function planOne(admin: SupabaseClient, candidate: CheckupCandidate, custo
   return { ...candidate, customer, plan: planCheckupChannels(email, whatsapp) };
 }
 
-/**
- * Who is due today, who may be retried, and who is skipped and why. Reads
- * only; the job and the Aftercare card both start here.
- */
 export async function planCheckups(
   admin: SupabaseClient,
   opts: { now: Date; settings?: CheckupSettings },
@@ -313,14 +262,12 @@ export async function planCheckups(
   return { settings, planned, retries, skipped };
 }
 
-/** The booking page for this Premium Mpillow. A signed-out visitor goes through Sign in and back. */
 export function checkupBookingUrl(origin: string, orderItemId: string): string {
   const path = withLocale("/appointments", DEFAULT_LOCALE);
   return `${origin.replace(/\/$/, "")}${path}?type=readjustment&item=${encodeURIComponent(orderItemId)}`;
 }
 
 async function renderFor(origin: string, item: PlannedCheckup, fee: string) {
-  // The words Staff saved on Email templates, or the defaults (never throws).
   const copy = await loadEmailCopy(CHECKUP_EMAIL_COPY);
   return renderCheckupEmail(
     {
@@ -348,7 +295,6 @@ function sendEmail(admin: SupabaseClient, item: PlannedCheckup, to: string, ctx:
   });
 }
 
-/** One check-up: each planned channel claims its own ledger row, then sends. */
 async function sendOne(
   admin: SupabaseClient,
   item: PlannedCheckup,
@@ -390,17 +336,10 @@ async function sendOne(
   ]);
 }
 
-/**
- * The daily run. Plans, and — unless the settings or the fee stop it, or
- * `dryRun` is set — retries failed emails, then sends each reachable Order its
- * check-up. While `checkup_reminders_enabled` is false, or no fee can be read
- * from Costings, it reports and sends nothing.
- */
 export async function runCheckups(
   admin: SupabaseClient,
   opts: { origin: string; now: Date; dryRun?: boolean; limit?: number },
 ): Promise<CheckupReport> {
-  // The fee is read first, every run: a run that cannot state it sends nothing.
   const [settings, fee] = await Promise.all([loadCheckupSettings(admin), readCheckupFee(admin)]);
   const report = emptyCheckupReport(settings, fee);
   const plan = await planCheckups(admin, { now: opts.now, settings });
@@ -419,9 +358,6 @@ export async function runCheckups(
   if (opts.dryRun || checkupBlock(settings, fee.fee)) return report;
   const ctx = { origin: opts.origin, fee: fee.fee!, report };
 
-  // Earlier runs' failures first, so an email that fails in this run waits for
-  // the next run rather than being retried straight away. Only the email: the
-  // WhatsApp row is final either way.
   for (const item of plan.retries) {
     if (!item.plan.email.send) continue;
     const out = await sendEmail(admin, item, item.plan.email.to, ctx);

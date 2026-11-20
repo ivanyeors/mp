@@ -5,14 +5,6 @@ import { describe, expect, it } from "vitest";
 import { fixEmphasisFlanking } from "../emphasis";
 import { listInWords, markdownReadable, roundTripMarkdown, tidyMarkdown, unsupportedMarkdown } from "../product-markdown";
 
-/**
- * A product body is Markdown the shop renders with `ReactMarkdown`; the
- * product editor edits it visually. What it can show it keeps exactly, what
- * it can't it never drops (the body opens as Markdown instead), and bold
- * written the way Chinese is usually written renders on the shop.
- */
-
-/** What the product page renders, as HTML. */
 const shop = (md: string) => renderToStaticMarkup(createElement(ReactMarkdown, null, md)).replace(/\n/g, "");
 
 const BODY = [

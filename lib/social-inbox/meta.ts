@@ -4,25 +4,6 @@ import { getPublicOrigin } from "@/lib/site-url";
 import type { SocialPlatform } from "@/lib/social-inbox/platforms";
 import type { InboundAttachment, SocialEvent } from "@/lib/social-inbox/types";
 
-/**
- * Facebook Messenger and Instagram Direct, through one Meta app and one
- * Facebook Page.
- *
- * Instagram uses "Instagram API with Facebook Login": the Instagram
- * professional account is linked to the Page, its DMs arrive on the same
- * webhook (object "instagram"), and replies go out through the Page's Send API
- * with the same Page access token as Messenger. One token, one webhook, two
- * platforms.
- *
- * Env: META_PAGE_ACCESS_TOKEN (a never-expiring system-user Page token),
- * META_APP_SECRET (signs webhooks; also sent as appsecret_proof — falls back to
- * WHATSAPP_APP_SECRET, since one app serves all three), META_WEBHOOK_VERIFY_TOKEN,
- * and optionally META_PAGE_ID / INSTAGRAM_ACCOUNT_ID to ignore any other Page
- * the app is subscribed to. The rest of the setup — the app's webhooks and the
- * Page's subscription — is checked and done from Users & permissions → Telegram
- * (checkMetaSetup / connectMetaWebhooks below).
- */
-
 const TIMEOUT_MS = 8_000;
 
 export function graphBase(): string {
@@ -34,16 +15,13 @@ export function metaConfigured(): boolean {
   return Boolean(process.env.META_PAGE_ACCESS_TOKEN?.trim());
 }
 
-/** The app secret. Messenger and Instagram run on the WhatsApp app, so its secret serves when ours is unset. */
 export function metaAppSecret(): string | undefined {
   return process.env.META_APP_SECRET?.trim() || process.env.WHATSAPP_APP_SECRET?.trim() || undefined;
 }
 
-/** Webhook fields each object needs: customer messages, our own replies from the app, and button taps. */
 export const META_PAGE_FIELDS = ["messages", "message_echoes", "messaging_postbacks"] as const;
 export const META_INSTAGRAM_FIELDS = ["messages", "messaging_postbacks"] as const;
 
-/** Ids this deployment answers for; an unset id accepts any (the signature still gates). */
 export function metaAccountIds(): { pageId: string | null; instagramId: string | null } {
   return {
     pageId: process.env.META_PAGE_ID?.trim() || null,
@@ -51,11 +29,6 @@ export function metaAccountIds(): { pageId: string | null; instagramId: string |
   };
 }
 
-// ---------------------------------------------------------------------------
-// Webhook verification
-// ---------------------------------------------------------------------------
-
-/** GET subscribe handshake: echo the challenge only for our verify token. */
 export function verifyMetaChallenge(params: {
   mode: string | null;
   token: string | null;
@@ -66,10 +39,6 @@ export function verifyMetaChallenge(params: {
   return null;
 }
 
-/**
- * X-Hub-Signature-256: HMAC-SHA256 of the raw body with the app secret.
- * Fails closed in production; open only in development with no secret set.
- */
 export function verifyMetaSignature(
   rawBody: string,
   header: string | null,
@@ -80,10 +49,6 @@ export function verifyMetaSignature(
   const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
   return secretMatches(expected, header.slice("sha256=".length));
 }
-
-// ---------------------------------------------------------------------------
-// Webhook parsing
-// ---------------------------------------------------------------------------
 
 type MetaAttachment = {
   type?: string;
@@ -142,12 +107,6 @@ function isoFromMs(ms: number | undefined): string {
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }
 
-/**
- * Messenger (`object: "page"`) and Instagram (`object: "instagram"`) message
- * events. Reads, deliveries, reactions and anything without a message id are
- * dropped. Messages Meta routes to us on `standby` (another app or Meta's
- * inbox holds the thread) are still customer messages and are kept.
- */
 export function parseMetaWebhook(
   payload: unknown,
   ids: { pageId: string | null; instagramId: string | null } = { pageId: null, instagramId: null },
@@ -168,7 +127,6 @@ export function parseMetaWebhook(
       if (!sender || !recipient || sender === recipient) continue;
 
       if (item.postback?.mid) {
-        // A tap on one of our buttons (ice breaker, menu): its label is what they "said".
         events.push({
           kind: "message",
           platform,
@@ -205,16 +163,11 @@ export function parseMetaWebhook(
   return events;
 }
 
-// ---------------------------------------------------------------------------
-// Graph API calls
-// ---------------------------------------------------------------------------
-
 type GraphError = { error?: { message?: string; code?: number; error_subcode?: number } };
 
 function authQuery(token: string): string {
   const params = new URLSearchParams({ access_token: token });
   const secret = metaAppSecret();
-  // Required when the app has "Require app secret" on; harmless otherwise.
   if (secret) params.set("appsecret_proof", createHmac("sha256", secret).update(token).digest("hex"));
   return params.toString();
 }
@@ -228,11 +181,6 @@ function describeGraphError(json: GraphError | null, status: number): string {
 
 export type SendResult = { ok: true; messageId: string | null } | { ok: false; error: string };
 
-/**
- * One text message through the Page's Send API — the same call for Messenger
- * (PSID) and Instagram (IGSID). `tag` is HUMAN_AGENT outside the 24-hour
- * window (see platforms.ts).
- */
 export async function sendMetaText(
   recipientId: string,
   text: string,
@@ -263,11 +211,6 @@ export async function sendMetaText(
   }
 }
 
-/**
- * The customer's name (and Instagram handle) for the card. Best-effort: Meta
- * withholds profiles in some cases (privacy settings, error 230), and a card
- * without a name is still a card.
- */
 export async function fetchMetaProfile(
   platform: "facebook" | "instagram",
   id: string,
@@ -297,16 +240,8 @@ export async function fetchMetaProfile(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Setup — what Users & permissions → Telegram checks, and its connect button
-// ---------------------------------------------------------------------------
-
 export const META_WEBHOOK_PATH = "/api/webhooks/meta-messages";
 
-/**
- * Where Meta should send messages, when this deployment may claim them: the
- * production site only, so a preview can never take the live webhook away.
- */
 export function productionMetaWebhookUrl(req: Request): string | null {
   if (process.env.VERCEL_ENV !== "production") return null;
   return `${getPublicOrigin(req)}${META_WEBHOOK_PATH}`;
@@ -337,7 +272,6 @@ async function graphCall(
   }
 }
 
-/** The two setup mistakes Meta's own wording doesn't explain. */
 function setupHint(error: string): string {
   if (/appsecret_proof/i.test(error)) {
     return `${error} — the app secret is not from the app this token was made for. Set META_APP_SECRET to that app's secret (App settings → Basic).`;
@@ -354,7 +288,6 @@ type MetaIdentity = {
   instagram: { id: string; username: string | null } | null;
 };
 
-/** The Page the token speaks for, its linked Instagram account, and the app the token belongs to. */
 async function metaIdentity(
   token: string,
   deps: { fetch?: typeof fetch },
@@ -403,17 +336,9 @@ export type MetaSetup =
       ok: true;
       page: { id: string; name: string | null };
       instagram: { id: string; username: string | null } | null;
-      /** What still keeps messages from reaching the group; empty when nothing does. */
       problems: string[];
     };
 
-/**
- * Checks the whole Meta side with the env this deployment has: the token is a
- * Page token, the app secret belongs to its app, the app's Page and Instagram
- * webhooks point at `expectedUrl` (any …/meta-messages URL when null) with the
- * fields we need, and the Page sends its messages to the app. Null without a
- * Page token.
- */
 export async function checkMetaSetup(
   expectedUrl: string | null,
   deps: { fetch?: typeof fetch } = {},
@@ -481,13 +406,6 @@ export async function checkMetaSetup(
   return { ok: true, page, instagram, problems };
 }
 
-/**
- * The connect button (OPS checklist part 1, steps 5–6 through the API): point
- * the app's Page and Instagram webhooks at `callbackUrl` and subscribe the Page
- * to the app. Meta calls `callbackUrl` with META_WEBHOOK_VERIFY_TOKEN before it
- * saves it, so this deployment must be the one serving that URL. Facebook goes
- * first, so an Instagram refusal leaves Facebook working. Safe to repeat.
- */
 export async function connectMetaWebhooks(
   callbackUrl: string,
   deps: { fetch?: typeof fetch } = {},

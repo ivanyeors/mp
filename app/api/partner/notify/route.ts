@@ -8,11 +8,6 @@ export const runtime = "nodejs";
 
 const bodySchema = z.object({ notify_whatsapp: z.boolean() });
 
-/**
- * Toggle the caller's WhatsApp notification preference (#86). Email is always-on
- * and untouched here — this only flips the additive WhatsApp channel. Opt-out
- * takes effect immediately (the next event reads the fresh flag).
- */
 export async function PATCH(req: Request) {
   const ctx = await getPartnerContext();
   if (!isPartnerActive(ctx)) {
@@ -24,15 +19,12 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid" }, { status: 400 });
   }
 
-  // Per-partner preference on the partners aggregate, keyed by ctx.partnerId —
-  // resolves in every session (incl. backup-email sign-in), unlike auth_user_id.
   const { data, error } = await supabaseAdmin()
     .from("partners")
     .update({ notify_whatsapp: parsed.data.notify_whatsapp })
-    .eq("id", ctx.partnerId) // guard: only the caller's own partner row
+    .eq("id", ctx.partnerId)
     .select("id");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  // Never confirm a write that hit nothing (would be a lying ok:true).
   if (!data || data.length === 0) {
     return NextResponse.json({ error: "Partner not found" }, { status: 404 });
   }

@@ -65,8 +65,6 @@ import { LIFECYCLE_STAGE_LABEL } from "@/lib/crm/lifecycle-stage";
 import { parseCustomerTab, type CustomerTab } from "@/lib/crm/customer-tabs";
 import { LifecycleStageBadge, UNENGAGED_TITLE, lifecycleNote } from "../lifecycle-stage-badge";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function formatSGD(amount: number): string {
     return new Intl.NumberFormat("en-SG", {
         style: "currency",
@@ -77,8 +75,6 @@ function formatSGD(amount: number): string {
 function formatDate(dateStr: string): string {
     return formatAdminDateMY(dateStr);
 }
-
-// ─── Address form initial state ───────────────────────────────────────────────
 
 type AddressFormState = {
     label: string;
@@ -92,31 +88,18 @@ type AddressFormState = {
     phone: string;
 };
 
-/**
- * Exactly the JSON `GET /api/shop/customers/[id]` returns: the `{ ok, row }`
- * envelope on success, `{ error }` with a 404 when the row is missing.
- */
 export type CustomerDetailResponse = { ok: true; row: Customer } | { error: string };
 
 export type CustomerDetailInitialData = {
     customer: CustomerDetailResponse;
-    /** The Customer's notes, or null when the server could not read them. */
     notes: CustomerNote[] | null;
-    /** What the Shopify import holds for them (migration slice 12): shown on the Journey, in the import's chapter. */
     migration?: MigratedCustomerResult;
-    /** WhatsApp and the other numbers seen, matched by phone on the server (CRM slice 11). */
     contact?: ContactFactsResult;
-    /** The Lifecycle stage (PRD-crm-retention-loop slice 03); null when it could not be read. */
     lifecycle?: AdminCustomerLifecycle | null;
-    /** Why they unsubscribed, when they said (slice 11); null otherwise. */
     unsubscribeReason?: CustomerUnsubscribeReason | null;
-    /** What to do now (PRD-crm-retention-loop slice 05); null when nothing is due or it could not be read. */
     nextStep?: NextStep | null;
-    /** Fitting records from the old Google Form (ADR 0042); null when they could not be read. */
     fittings?: CustomerFittingsResult;
-    /** Their pillow, drawn in the x-ray (ADR 0042 j); null when it could not be read. */
     pillow?: CustomerPillowResult;
-    /** How they found us: first Visit's Entry source, and their own answer. A failed read says so on the card. */
     entry?: CustomerEntryResult;
 };
 
@@ -132,8 +115,6 @@ const emptyAddress: AddressFormState = {
     phone: "",
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function CustomerDetailClient({
     initialData,
     canEdit,
@@ -143,21 +124,10 @@ export function CustomerDetailClient({
     initialTab = "journey",
 }: {
     initialData?: CustomerDetailInitialData;
-    /**
-     * Holds `customers-edit` (CRM slice 10). Without it every edit control is
-     * left out and the fields read as text; the write routes refuse regardless.
-     * The same flag shows the Journey's composer and the buttons on its
-     * entries: add and delete notes; add, complete, reassign and delete
-     * follow-ups; draft a message; answer a review.
-     */
     canEdit: boolean;
-    /** Holds `customer-import`: the From Shopify facts link their batch in the import history. */
     canImport?: boolean;
-    /** Holds `orders`: Create order makes a Staff order for them, paid by link (ADR 0048). */
     canCreateOrder?: boolean;
-    /** Who is looking: decides which notes they may delete (CRM 02). */
     viewer: JourneyViewer;
-    /** `?tab=` as the server read it, so a link opens on its tab with no flash. */
     initialTab?: CustomerTab;
 }) {
     const pathname = usePathname() ?? "/";
@@ -166,8 +136,6 @@ export function CustomerDetailClient({
     const params = useParams<{ id: string }>();
     const customerId = params.id;
 
-    // The route answers `{ ok: true, row }` (or `{ error }` on a miss); unwrap
-    // the row so the header, dates and editable fields read real values.
     const initialRow: Customer | null =
         initialData?.customer && "ok" in initialData.customer && initialData.customer.ok
             ? (initialData.customer.row as Customer)
@@ -176,11 +144,8 @@ export function CustomerDetailClient({
     const lifecycle = initialData?.lifecycle ?? null;
     const [loading, setLoading] = useState(!initialData);
 
-    // The RSC page already read the customer — skip that mount fetch once. The
-    // addresses fetch still runs on mount as before.
     const hydratedFromServer = useRef(Boolean(initialData));
 
-    // Which section is open, the composer's mode, and the Journey's cue to read again.
     const [tab, setTab] = useState<CustomerTab>(initialTab);
     const [composerMode, setComposerMode] = useState<ComposerMode>("note");
     const [composerFocus, setComposerFocus] = useState(0);
@@ -188,11 +153,9 @@ export function CustomerDetailClient({
     const [reviewCount, setReviewCount] = useState<number | null>(null);
     const [editing, setEditing] = useState(false);
 
-    // Addresses
     const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
     const [addressesLoading, setAddressesLoading] = useState(true);
 
-    // Editable fields
     const [firstName, setFirstName] = useState(initialRow?.first_name ?? "");
     const [lastName, setLastName] = useState(initialRow?.last_name ?? "");
     const [phone, setPhone] = useState(initialRow?.phone ?? "");
@@ -203,13 +166,10 @@ export function CustomerDetailClient({
         [firstName, lastName].filter(Boolean).join(" ") || customer?.email || null,
     );
 
-    // Saving
     const [saving, setSaving] = useState(false);
 
-    // Create order (ADR 0048)
     const [createOrderOpen, setCreateOrderOpen] = useState(false);
 
-    // Add address dialog
     const [addAddressOpen, setAddAddressOpen] = useState(false);
     const [addressForm, setAddressForm] = useState<AddressFormState>(emptyAddress);
     const [savingAddress, setSavingAddress] = useState(false);
@@ -241,8 +201,6 @@ export function CustomerDetailClient({
         try {
             const res = await fetch(`/api/shop/customers/${customerId}/addresses`);
             const json = await res.json();
-            // The route answers `{ ok, rows }`; anything else (an error body)
-            // must not reach `addresses.map`.
             setAddresses(res.ok && Array.isArray(json?.rows) ? json.rows : []);
         } catch {
             setAddresses([]);
@@ -260,8 +218,6 @@ export function CustomerDetailClient({
         fetchAddresses();
     }, [fetchCustomer, fetchAddresses]);
 
-    // Sends only the fields that changed; an empty name or phone clears it.
-    // Notes save on their own, from the Journey's composer.
     const saveChanges = async () => {
         if (!customer) return;
         const { after } = changedCustomerFields(customer, {
@@ -360,8 +316,6 @@ export function CustomerDetailClient({
 
     const note = lifecycle ? lifecycleNote(lifecycle, { unsubscribeReason: initialData?.unsubscribeReason?.reason ?? null }) : null;
 
-    // The open tab is kept in the address without a navigation, so the page
-    // is not read again and a copied link opens where the Staff member was.
     const changeTab = (value: string) => {
         const next = parseCustomerTab(value);
         setTab(next);
@@ -371,12 +325,10 @@ export function CustomerDetailClient({
         window.history.replaceState(window.history.state, "", url);
     };
 
-    /** Opens the Journey on the composer in `mode`, with the cursor in its field. */
     const compose = (mode: ComposerMode) => {
         changeTab("journey");
         setComposerMode(mode);
         setComposerFocus((n) => n + 1);
-        // After the tab has shown: the composer is not laid out while its tab is hidden.
         requestAnimationFrame(() => document.getElementById("composer")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     };
 
@@ -416,7 +368,6 @@ export function CustomerDetailClient({
                 {tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 max-md:gap-2">
                         {tags.map((tag) => (
-                            // The whole tag removes it: a 44px chip on a phone.
                             <Badge
                                 key={tag}
                                 variant="secondary"
@@ -460,8 +411,6 @@ export function CustomerDetailClient({
         </div>
     );
 
-    // The numbers and columns follow the width the page has, not the window (a
-    // container query), so a collapsed sidebar counts.
     return (
         <CustomerShortcutsProvider
             customerId={customer.id}
@@ -471,7 +420,6 @@ export function CustomerDetailClient({
             onLogged={() => setJourneyReload((n) => n + 1)}
         >
             <div className="@container space-y-4 md:space-y-6">
-                {/* Header: who they are, the numbers, and the ways to act */}
                 <div className="flex flex-col gap-3 @3xl:flex-row @3xl:items-start @3xl:justify-between">
                     <div className="flex min-w-0 items-start gap-4">
                         <Button variant="ghost" size="sm" asChild className="max-md:hidden">
@@ -521,7 +469,6 @@ export function CustomerDetailClient({
                     </div>
                 </div>
 
-                {/* The numbers, in one line: what the Stats strip held */}
                 <dl className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
                     {lifecycle ? (
                         <>
@@ -567,7 +514,6 @@ export function CustomerDetailClient({
                     <Stat label="Total spent">{formatSGD(customer.total_spent)}</Stat>
                 </dl>
 
-                {/* PRD-crm-retention-loop slice 05: what now. Nothing due, no line. */}
                 {initialData?.nextStep ? (
                     <div
                         role="note"
@@ -586,12 +532,7 @@ export function CustomerDetailClient({
                     </div>
                 ) : null}
 
-                {/*
-                  Who they are beside what happened. One column on a phone and a
-                  narrow page; from @4xl the rail sits left of the tabs.
-                */}
                 <div className="grid grid-cols-1 items-start gap-4 md:gap-6 @4xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-                    {/* ── The rail: how to reach them, then one row per section of the record ── */}
                     <aside className="min-w-0 space-y-4 md:space-y-6">
                         <ContactCard
                             customer={customer}
@@ -726,7 +667,6 @@ export function CustomerDetailClient({
                                 )}
                             </RailRow>
 
-                            {/* The aftercare switches (CRM slice 13) and Marketing consent (migration slice 07) */}
                             <RailRow
                                 icon={SlidersHorizontal}
                                 label="Preferences"
@@ -746,12 +686,10 @@ export function CustomerDetailClient({
                                 </RowPart>
                             </RailRow>
 
-                            {/* Points (PRD-loyalty-points slice 02): balance, pending, history; Adjust needs customers-edit */}
                             <RailRow icon={Gift} label="Points" summary="Balance and history">
                                 <PointsCard customerId={customer.id} canEdit={canEdit} />
                             </RailRow>
 
-                            {/* How they found us: first Visit's Entry source beside their own answer (ADR 0007) */}
                             {initialData?.entry ? (
                                 <RailRow icon={Search} label="How they found us">
                                     <CustomerEntryCard entry={initialData.entry} />
@@ -760,7 +698,6 @@ export function CustomerDetailClient({
                         </RailRows>
                     </aside>
 
-                    {/* ── The three sections. Each stays mounted, so a tab keeps what it loaded. ── */}
                     <Tabs value={tab} onValueChange={changeTab} className="min-w-0 gap-4 md:gap-6">
                         <div className="sticky top-0 z-20 -mx-1 bg-background/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                             <TabsList variant="line" size="lg" collapsible={false} aria-label="Customer sections">
@@ -807,9 +744,7 @@ export function CustomerDetailClient({
                         </TabsContent>
 
                         <TabsContent value="pillow" forceMount className="space-y-4 data-[state=inactive]:hidden md:space-y-6">
-                            {/* Pillow (ADR 0042 j): the x-ray of what they have, from a Staff link or their latest fitting */}
                             <CustomerPillowCard customerId={customer.id} pillow={initialData?.pillow} canEdit={canEdit} />
-                            {/* Fitting history (ADR 0042): in-store fittings from the old Google Form, with their Drive photos */}
                             <CustomerFittingsCard customerId={customer.id} fittings={initialData?.fittings} />
                             {!hasPillowSection ? (
                                 <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
@@ -819,7 +754,6 @@ export function CustomerDetailClient({
                         </TabsContent>
 
                         <TabsContent value="reviews" forceMount className="data-[state=inactive]:hidden">
-                            {/* Reviews (CRM slice 12): Google (Staff-linked), shop, and the review request */}
                             <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} onCount={setReviewCount} />
                         </TabsContent>
                     </Tabs>
@@ -841,7 +775,6 @@ export function CustomerDetailClient({
     );
 }
 
-/** A titled part of a rail row that holds more than one card. */
 function RowPart({ title, children }: { title: string; children: ReactNode }) {
     return (
         <section className="space-y-2">
@@ -877,7 +810,6 @@ function AddressField({
     );
 }
 
-/** One number in the header's line; `title` explains a count on hover. */
 function Stat({ label, title, children }: { label: string; title?: string; children: ReactNode }) {
     return (
         <div className="flex min-w-0 items-baseline gap-1.5">

@@ -65,7 +65,6 @@ describe("links back to TikTok", () => {
 
   it("uses TikTok's own handle-less form when the link had none", () => {
     expect(tiktokPostUrl({ id: ID })).toBe(`https://www.tiktok.com/@/video/${ID}`);
-    // And that form reads back as the same post.
     expect(tiktokPostId(tiktokPostUrl({ id: ID }))).toBe(ID);
   });
 

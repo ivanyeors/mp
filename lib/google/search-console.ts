@@ -1,17 +1,8 @@
 import { JWT } from "google-auth-library";
 
-/**
- * Search Console Search Analytics client (slice 01, PRD-search-visibility).
- *
- * Auth is a service account added to the GSC property as a restricted user, so no
- * personal OAuth refresh token is involved. The same account is reused for the GA4
- * Data API in slice 08.
- */
-
 const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 const ENDPOINT = "https://searchconsole.googleapis.com/webmasters/v3/sites";
 
-/** The API maximum per request; a shorter page means there is nothing left. */
 export const GSC_ROW_LIMIT = 25_000;
 
 export type GscDimension = "date" | "query" | "page" | "country" | "device";
@@ -25,7 +16,7 @@ export type GscRow = {
 };
 
 export type GscQuery = {
-  startDate: string; // YYYY-MM-DD
+  startDate: string;
   endDate: string;
   dimensions: GscDimension[];
 };
@@ -41,7 +32,6 @@ function env(name: string): string | null {
   return v ? v : null;
 }
 
-/** Null when any variable is missing, so callers can skip without failing. */
 export function getGscConfig(): GscConfig | null {
   const siteUrl = env("GOOGLE_SEARCH_CONSOLE_SITE_URL");
   const clientEmail = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
@@ -51,7 +41,6 @@ export function getGscConfig(): GscConfig | null {
 }
 
 export type GscClient = {
-  /** Every row for the query, following `startRow` pagination to the end. */
   queryAll(query: GscQuery): Promise<GscRow[]>;
 };
 
@@ -81,7 +70,6 @@ export function createGscClient(
       endDate: query.endDate,
       dimensions: query.dimensions,
       type: "web",
-      // Include the fresh, still-settling days; the ingest re-fetches them on later runs.
       dataState: "all",
       rowLimit: GSC_ROW_LIMIT,
       startRow,
@@ -99,7 +87,6 @@ export function createGscClient(
         const json = (await res.json()) as { rows?: GscRow[] };
         return json.rows ?? [];
       }
-      // 429 / 5xx are quota and transient errors; anything else is a real failure.
       if ((res.status === 429 || res.status >= 500) && attempt < 3) {
         await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
         continue;

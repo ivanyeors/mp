@@ -2,10 +2,6 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/**
- * The "nothing here yet" box for an Admin Panel list. Compact on a phone (32px
- * top and bottom instead of 56px), roomy from `md`.
- */
 export function EmptyState({
   icon: Icon,
   action,
@@ -13,7 +9,6 @@ export function EmptyState({
   children,
 }: {
   icon?: LucideIcon;
-  /** A button to create the first record. */
   action?: ReactNode;
   className?: string;
   children: ReactNode;

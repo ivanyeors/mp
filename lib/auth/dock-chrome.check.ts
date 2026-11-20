@@ -1,6 +1,3 @@
-/**
- * Slice 04/05 self-check: dock session role → Menu pill + Admin Panel dock path.
- */
 import assert from "node:assert/strict";
 import {
   isAdminPanelDockPath,
@@ -11,7 +8,6 @@ import {
 assert.equal(resolveDockSessionRole(false, false), "guest");
 assert.equal(resolveDockSessionRole(true, false), "customer");
 assert.equal(resolveDockSessionRole(true, true), "staff");
-// Staff wins even if caller only has staff flag (session implied by admin API).
 assert.equal(resolveDockSessionRole(false, true), "staff");
 
 assert.deepEqual(landingAuthPill("guest"), {

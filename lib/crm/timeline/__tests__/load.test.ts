@@ -3,12 +3,6 @@ import type { Permission } from "@/lib/auth/permissions";
 import { loadTimeline } from "@/lib/crm/timeline/load";
 import type { TimelineAdapter, TimelineEntry } from "@/lib/crm/timeline/types";
 
-/**
- * CRM 03: the timeline runner. An adapter runs only for a viewer holding its
- * permission, a link survives only for a viewer who may open its page, and a
- * source that fails costs its own entries, not the page.
- */
-
 const customer = { id: "c1", email: "mei@x.test" };
 const viewer = (...keys: Permission[]) => ({ permissions: new Set<Permission>(keys) });
 
@@ -54,7 +48,6 @@ describe("loadTimeline", () => {
   });
 
   it("drops a link to a page the viewer cannot open, and keeps the entry", async () => {
-    // A customers-gated entry that links to an order: only an orders holder gets the link.
     const linked = adapter("reviews", "customers", [entry("r", 1, "/settings/orders/o1")]);
     const without = await loadTimeline({ customer, viewer: viewer("customers"), groups: null, after: null, adapters: [linked] });
     expect(without.entries[0]!.ref).toEqual({ type: "t", id: "r" });

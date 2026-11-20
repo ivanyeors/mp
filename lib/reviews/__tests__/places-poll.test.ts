@@ -2,14 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, GOOGLE_REVIEW_DEFAULTS, type Row } from "./fake-supabase";
 import type { PlaceReview, PlaceReviewsRead } from "@/lib/google/places-reviews";
 
-/**
- * The weekly Places poll: one billed read, counted against a monthly cap
- * before it is made; its reviews carded like Business Profile ones but
- * answered on Google Maps by hand; reviews the five do not show announced;
- * Places content gone after 30 days; and standing down once the Business
- * Profile API is configured.
- */
-
 const h = vi.hoisted(() => ({
   db: null as unknown,
   tables: {} as Record<string, Record<string, unknown>[]>,
@@ -104,7 +96,6 @@ describe("pollPlacesReviews", () => {
     expect(await run(read, { now: new Date(NOW.getTime() + 86_400_000) })).toMatchObject({ skipped: "not_due" });
     expect(read).toHaveBeenCalledOnce();
 
-    // The cron starts a few seconds earlier one week than the last: still due.
     expect(await run(read, { now: new Date(weekLater.getTime() - 5_000) })).toMatchObject({ ok: true, calls: 2 });
     expect(await run(read, { now: weekLater, force: true })).toMatchObject({ ok: true, calls: 3 });
     expect(read).toHaveBeenCalledTimes(3);
@@ -157,7 +148,6 @@ describe("pollPlacesReviews", () => {
 
   it("announces new reviews that Google counted but the five did not include", async () => {
     h.tables.google_places_polls.push({ month: "2026-09-01", calls: 4, rating_count: 40 });
-    // Three more reviews on Google; one of them came back in the five.
     const summary = await run(async () => ok([placeReview("r1")], 43));
     expect(summary).toMatchObject({ ok: true, missed: 2 });
     expect(notify).toHaveBeenCalledWith(expect.stringMatching(/^⭐ 2 new Google reviews didn't come through as a card/));

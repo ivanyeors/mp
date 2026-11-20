@@ -7,17 +7,6 @@ import type { RichTextVariable } from "./rich-text-doc";
 import { VARIABLE_CHIP } from "./rich-text-style";
 import { useVariableTargets } from "./variable-targets";
 
-/**
- * The palette's Variables (PRD-campaign-email-editor slice 13, decision 3):
- * the Variables a page offers, as chips. Drag one into any `RichText`, or put
- * the cursor where it goes and press the chip (a click, or Enter): it goes in
- * there, and says so. Typing `{` in the words is the same list, for the
- * keyboard. It knows nothing about email: a page hands it its Variables, and
- * whatever it shows under them (a campaign's fallback words). The chips land
- * in the `RichText` last written in inside `VariableTargets`.
- */
-
-/** A chip as it is dragged: the input's own chip, which only an input that offers it takes in. */
 export const variableDragHtml = (key: string) => `<span data-variable="${key.replace(/[^a-z0-9_]/g, "")}"></span>`;
 
 export function VariablePalette({
@@ -29,18 +18,13 @@ export function VariablePalette({
   className,
 }: {
   variables: readonly RichTextVariable[];
-  /** One line above the chips: where Variables go on this page. */
   hint?: ReactNode;
-  /** Off in a phone's sheet, where a tap puts one in. */
   draggable?: boolean;
-  /** After a chip went in: a sheet closes. */
   onInserted?: () => void;
-  /** Under the chips: a campaign's fallback words. */
   children?: ReactNode;
   className?: string;
 }) {
   const targets = useVariableTargets();
-  // Unique to this palette: a phone's sheet can hold a second one beside the laptop's.
   const uid = useId();
   const [said, setSaid] = useState({ text: "", n: 0 });
   const say = useCallback((text: string) => setSaid((s) => ({ text, n: s.n + 1 })), []);
@@ -52,7 +36,6 @@ export function VariablePalette({
     say(`${v.label} added to ${target.name}.`);
     onInserted?.();
   };
-  // Only HTML, which the text input reads as its chip: a plain field (a button's label) takes nothing.
   const drag = (v: RichTextVariable) => (e: DragEvent) => {
     e.dataTransfer.setData("text/html", variableDragHtml(v.key));
     e.dataTransfer.effectAllowed = "copy";

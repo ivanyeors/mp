@@ -1,15 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { sanitizeSearchTerm } from "@/lib/supabase/like-pattern";
 
-/**
- * Product search is interpolated into a PostgREST `.or()` filter string, which
- * is a query language, not a value. Before the fix, `?search=` was placed raw,
- * so a comma could add a new `column.op.value` condition — turning the search
- * into a blind boolean oracle over `cost_price` (never in the public select,
- * but still filterable). sanitizeSearchTerm must make that impossible while
- * leaving a normal substring search intact.
- */
-
 const STRUCTURAL = [",", "(", ")", "%", "_", "*", "\\", '"'];
 
 describe("sanitizeSearchTerm: neutralizes PostgREST/LIKE metacharacters", () => {
@@ -33,7 +24,6 @@ describe("sanitizeSearchTerm: neutralizes PostgREST/LIKE metacharacters", () => 
   it("the built .or() string cannot grow a third, injected condition", () => {
     const term = sanitizeSearchTerm("x,cost_price.gte.100,slug.ilike.%");
     const orStr = `slug.ilike.%${term}%,content->>'en-US'->>'title'.ilike.%${term}%`;
-    // The only top-level comma is the one between the two intended columns.
     expect(orStr.split(",")).toHaveLength(2);
   });
 

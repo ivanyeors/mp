@@ -4,23 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessageView, ChatSummary, ChatView } from "@/lib/support/chat";
 import { STORAGE_KEY } from "./support-chat-root";
 
-/**
- * The website chat's state on the page (app/api/support/chat).
- *
- * The open chat's id and token live in sessionStorage: a reload keeps the
- * chat, closing the tab loses it — which is all a visitor without an account
- * gets. A signed-in customer's chats come back from the server instead.
- *
- * A visitor without an account checks their email with a 6-digit code before
- * the first message goes out; the message waits in the chat meanwhile. The
- * chat that code started then vouches for the email (VERIFIED_KEY), so a new
- * chat in the same tab needs no second code.
- *
- * It runs in the chat engine (support-chat-engine.tsx), which the root layout
- * loads once there's a chat to show, so a chat carries on as the visitor
- * moves between pages.
- */
-
 const VERIFIED_KEY = "mp.supportChatVerified";
 const POLL_VISIBLE_MS = 3_000;
 const POLL_HIDDEN_MS = 15_000;
@@ -31,23 +14,17 @@ export type Me =
   | { status: "anon" }
   | { status: "signed-in"; email: string; name: string | null; chats: ChatSummary[] };
 
-/** `held`: the first message, not sent until the visitor's email is checked. */
 export type PendingMessage = ChatMessageView & { pending?: boolean; failed?: boolean; held?: boolean };
 
 export type ActiveChat = {
   chat: ChatView;
-  /** Null for a signed-in customer's chat opened from their list: the session opens it. */
   token: string | null;
   messages: PendingMessage[];
-  /** False when the last message didn't reach the staff Telegram group. */
   delivered: boolean;
-  /** The chat isn't started yet: its first message waits for the email code. */
   awaitingCode?: boolean;
-  /** The visitor signed in (or made an account) to start this chat, just now. */
   signedInHere?: boolean;
 };
 
-/** The email this tab proved with a code, and the chat that proves it. */
 export type Verified = { email: string; name: string | null; chatId: string; token: string };
 
 type Stored = { id: string; token: string };
@@ -65,9 +42,7 @@ function writeJson(key: string, value: unknown): void {
   try {
     if (value) window.sessionStorage.setItem(key, JSON.stringify(value));
     else window.sessionStorage.removeItem(key);
-  } catch {
-    // Private mode or blocked storage: the chat still works until the page goes.
-  }
+  } catch {}
 }
 
 function readStored(): Stored | null {
@@ -82,7 +57,6 @@ function readVerified(): Verified | null {
   return v?.email && v.chatId && v.token ? { email: v.email, name: v.name ?? null, chatId: v.chatId, token: v.token } : null;
 }
 
-/** A request the server refused, with what it said (`codeError`, `needsCode`). */
 export class ChatRequestError extends Error {
   constructor(
     message: string,
@@ -120,7 +94,6 @@ export function useSupportChat() {
   const [me, setMe] = useState<Me>({ status: "loading" });
   const [active, setActive] = useState<ActiveChat | null>(null);
   const [verified, setVerifiedState] = useState<Verified | null>(null);
-  // The launcher's honeypot, sent with the code request and the first message.
   const honeypotRef = useRef("");
   const [restoring, setRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,14 +124,12 @@ export function useSupportChat() {
     return { chat: res.chat, token, messages: res.messages, delivered: true } satisfies ActiveChat;
   }, []);
 
-  // First load: who is this, and is there a chat to restore (this tab's, or the one a link names)?
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const [who] = await Promise.all([loadMe()]);
       if (!cancelled) setVerifiedState(readVerified());
       const stored = readStored();
-      // A transcript email's "Open your chat" link names the chat.
       const wanted = new URLSearchParams(window.location.search).get("chat");
       try {
         if (stored && (!wanted || wanted === stored.id)) {
@@ -177,10 +148,8 @@ export function useSupportChat() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- first load only
   }, []);
 
-  // Poll the open chat for staff replies; slower when the tab is in the background.
   const chatId = active?.chat.id ?? null;
   const chatOpen = active?.chat.status === "open";
   useEffect(() => {
@@ -202,9 +171,7 @@ export function useSupportChat() {
           const local = prev.messages.filter((m) => m.pending || m.failed);
           return { ...prev, chat: res.chat, messages: [...res.messages, ...local] };
         });
-      } catch {
-        // A missed poll is retried on the next tick.
-      }
+      } catch {}
       if (!stopped) {
         timer = setTimeout(tick, document.visibilityState === "visible" ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
       }
@@ -223,7 +190,6 @@ export function useSupportChat() {
     };
   }, [chatId]);
 
-  // Leaving the page: the server emails the transcript unless the page comes straight back.
   useEffect(() => {
     if (!chatId || !chatOpen) return;
     const onLeave = () => {
@@ -241,7 +207,6 @@ export function useSupportChat() {
     setVerifiedState(value);
   }, []);
 
-  /** Starts the chat on the server and swaps it in for whatever the page showed meanwhile. */
   const startOnServer = useCallback(
     async (body: string, extra: Record<string, unknown>): Promise<Started> => {
       const res = await call<Started>("/api/support/chat", {
@@ -254,7 +219,6 @@ export function useSupportChat() {
     [],
   );
 
-  /** The first message waits in the chat while the visitor checks their email. */
   const holdForCode = useCallback((message: PendingMessage) => {
     setActive({
       chat: placeholderChat(false, message.createdAt),
@@ -288,7 +252,6 @@ export function useSupportChat() {
           holdForCode(optimistic);
           return true;
         }
-        // Signed in, or this tab already proved its email: start straight away.
         setActive({ chat: placeholderChat(signedIn, optimistic.createdAt), token: null, messages: [optimistic], delivered: true });
         try {
           const res = await startOnServer(
@@ -300,7 +263,6 @@ export function useSupportChat() {
           return true;
         } catch (e) {
           if (e instanceof ChatRequestError && e.data.needsCode) {
-            // The chat that vouched for the email is gone: check the email again.
             setVerified(null);
             holdForCode(optimistic);
             return true;
@@ -351,7 +313,6 @@ export function useSupportChat() {
     [send],
   );
 
-  /** Emails the visitor a code for their address (not a sign-in). */
   const requestCode = useCallback(async (email: string) => {
     return call<{ codeId: string; email: string }>("/api/support/chat/code", {
       method: "POST",
@@ -359,11 +320,6 @@ export function useSupportChat() {
     });
   }, []);
 
-  /**
-   * Sends the held first message with the visitor's way in: the code they
-   * were emailed, or (`signedIn`) the session they just signed in with.
-   * Throws a ChatRequestError for a wrong or expired code; the message stays held.
-   */
   const startHeld = useCallback(
     async (how: { codeId: string; code: string; name?: string } | { signedIn: true; name?: string }) => {
       const held = activeRef.current;
@@ -374,7 +330,6 @@ export function useSupportChat() {
       mark(true);
       try {
         if ("signedIn" in how) {
-          // The server has to see the new session, or it would ask for a code again.
           if ((await loadMe()).status !== "signed-in") {
             throw new Error("You're signed in, but this page can't tell yet. Refresh it and send your message again.");
           }
@@ -397,7 +352,6 @@ export function useSupportChat() {
     [startOnServer, loadMe, setVerified],
   );
 
-  /** Back to the start, with the held message in the box again. */
   const cancelHeld = useCallback((): string => {
     const held = activeRef.current;
     setActive(null);

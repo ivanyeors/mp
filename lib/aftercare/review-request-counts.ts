@@ -1,10 +1,3 @@
-/**
- * Review request counts (CRM slice 07), for the Aftercare card and the Weekly
- * summary on Telegram. Counts only, with `head: true`: nothing that names a
- * customer leaves this file, so nothing that names one can reach the Staff
- * group (README, third hazard).
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countLinkedReviewsOfAsked } from "@/lib/crm/google-review-match-server";
 import { REVIEW_REQUEST_TEMPLATE } from "./review-request";
@@ -20,12 +13,6 @@ async function count(
   return n ?? 0;
 }
 
-/**
- * Customers asked in `window`, and how many of those have opened the link
- * since. A request is counted when it is claimed, which is when it goes out.
- * It reads one timestamp per request and nothing else; a week or a month of
- * requests is a few dozen rows.
- */
 export async function countReviewRequests(
   admin: SupabaseClient,
   window: ReviewRequestWindow,
@@ -40,7 +27,6 @@ export async function countReviewRequests(
   return { sent: rows.length, opened: rows.filter((r) => r.first_clicked_at != null).length };
 }
 
-/** Review request messages delivered to the transport in `window`, by channel. */
 export async function countReviewRequestSends(
   admin: SupabaseClient,
   window: ReviewRequestWindow,
@@ -60,11 +46,6 @@ export async function countReviewRequestSends(
   return { email, whatsapp };
 }
 
-/**
- * CRM slice 12. Customers we sent a Review request who have a **Linked Google
- * review**: a `head: true` count on the Customer overview, where both are
- * derived (`review_requested_at`, `google_reviewed_at`).
- */
 export async function countLinkedGoogleReviewsOfRequested(admin: SupabaseClient): Promise<number> {
   return countLinkedReviewsOfAsked(admin);
 }

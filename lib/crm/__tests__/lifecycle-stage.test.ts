@@ -13,13 +13,6 @@ import {
 } from "@/lib/crm/lifecycle-stage";
 import { LIFECYCLE_CASES, NOW } from "./lifecycle-stage-cases";
 
-/**
- * PRD-crm-retention-loop slice 03: the Lifecycle stage. Owner, 2026-10-28:
- * Lead > New > Loyal (repeat purchases / bookings) > At risk (Lapsed) > Lost;
- * 2026-10-27: At risk from 12 months, Lapsed from 24.
- * lib/crm/lifecycle-stage.check.ts runs the same table through the SQL.
- */
-
 const factsOf = (c: (typeof LIFECYCLE_CASES)[number]) => ({
   purchases: c.purchases,
   lastPurchaseAt: c.lastPurchaseAt,

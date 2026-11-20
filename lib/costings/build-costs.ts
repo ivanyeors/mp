@@ -1,13 +1,3 @@
-/**
- * What a composed sellable costs to build, once per Filling Template that can fill it.
- *
- * A build's COGS is its composed BOM (cover, case, protector, packaging; never
- * fillings, ADR 0003) plus the Filling Template the Result is assigned, the same
- * sum `assembleBuild` makes. The template is picked per Result, so a size has no
- * single cost: it has one per template whose Size membership covers it. Pure, so
- * the Costings page reruns it on every keystroke.
- */
-
 import { baselineCaseByFamily } from "@/lib/pricing/composed-price";
 
 export type CostComponent = { itemId: number; quantity: number };
@@ -15,13 +5,11 @@ export type CostComponent = { itemId: number; quantity: number };
 export type FillingTemplateRecipe = {
   id: number;
   name: string;
-  /** The Derived pack list: placements when present, flat lines otherwise. */
   pack: Array<{ itemId: number; count: number }>;
 };
 
 export type CaseCandidate = {
   itemId: number;
-  /** `items.price_family`; selects the Costings row (`product_prices.variant`). */
   family: string | null;
   msrpCents: number | null;
 };
@@ -30,25 +18,13 @@ export type BuildCostOption = {
   templateId: number;
   name: string;
   isDefault: boolean;
-  /** The filling lines this build ships: the pack list, less any Neck support or ear pad it cannot take. */
   lines: CostComponent[];
   pieces: number;
   fillingCents: number;
   buildCents: number;
-  /**
-   * `included`: shipped inside the pillow at the row's price, its cost in the build
-   * (CONTEXT.md). `left_out`: the template holds one this build cannot take.
-   */
   neckSupport: "none" | "included" | "left_out";
-  /** `charged`: shipped inside the pillow at its own MSRP on top. `left_out`: as for a Neck support. */
   earPad: "none" | "charged" | "left_out";
-  /**
-   * MSRP charged on top of the Costings row for the Ear Comfort Pads placed in this
-   * template (CONTEXT.md). `null` when one has no MSRP, which the money path
-   * refuses rather than charging nothing.
-   */
   extraChargeCents: number | null;
-  /** Items in the build with no cost price. They add 0 here, so the cost is a floor. */
   uncostedItemIds: number[];
 };
 
@@ -58,7 +34,6 @@ export type BuildCosts = {
   options: BuildCostOption[];
 };
 
-/** Sum of `quantity × cost`, counting an uncosted item as 0 and naming it. */
 export function componentsCostCents(
   components: CostComponent[],
   costByItem: ReadonlyMap<number, number | null>,
@@ -77,15 +52,6 @@ export function componentsCostCents(
   return { cents: Math.round(cents), uncostedItemIds: [...uncosted] };
 }
 
-/**
- * The case a premium build ships in one fabric family.
- *
- * The BOM's own case when it is already that family. Otherwise the case that
- * family's Costings row was priced with (`baselineCaseByFamily`, the pricing
- * module's rule), so cost and price describe the same pillow. An unpriced case
- * is used only when the family has no priced one. `null`: no case of that family
- * exists at this size.
- */
 export function familyCaseItemId(opts: {
   bomCase: CaseCandidate | null;
   family: string;
@@ -100,7 +66,6 @@ export function familyCaseItemId(opts: {
   return unpriced[0]?.itemId ?? null;
 }
 
-/** The BOM with one item swapped for another at the same quantity. */
 export function swapComponent(
   components: CostComponent[],
   fromItemId: number,
@@ -110,24 +75,13 @@ export function swapComponent(
   return components.map((c) => (c.itemId === fromItemId ? { ...c, itemId: toItemId } : c));
 }
 
-/**
- * One option per Filling Template: the base build plus that template's pack list.
- * The Default Filling Template comes first, then cheapest to dearest.
- */
 export function buildCostOptions(input: {
   baseComponents: CostComponent[];
   templates: FillingTemplateRecipe[];
   defaultTemplateId: number | null;
   costByItem: ReadonlyMap<number, number | null>;
-  /** Neck support item ids. */
   neckSupportItemIds: ReadonlySet<number>;
-  /** Ear Comfort Pad items, with their MSRP (`null` when unpriced). */
   earPadMsrpByItem: ReadonlyMap<number, number | null>;
-  /**
-   * Basic Mpillow takes no Neck support or ear pad: its pieces come out of the
-   * mix, as `mixAfterTierChange` takes them out of a session's, and the rest
-   * still builds.
-   */
   allowNeckSupport: boolean;
 }): BuildCosts {
   const base = componentsCostCents(input.baseComponents, input.costByItem);
@@ -173,13 +127,11 @@ export function buildCostOptions(input: {
   return { baseCents: base.cents, baseUncostedItemIds: base.uncostedItemIds, options };
 }
 
-/** Cheapest and dearest of a set of costs, or `null` when there are none. */
 export function costRange(cents: number[]): { min: number; max: number } | null {
   if (cents.length === 0) return null;
   return { min: Math.min(...cents), max: Math.max(...cents) };
 }
 
-/** Gross margin as a percentage of the sell price; `null` without a positive price. */
 export function marginPct(sellCents: number | null, costCents: number): number | null {
   if (sellCents == null || sellCents <= 0) return null;
   return ((sellCents - costCents) / sellCents) * 100;

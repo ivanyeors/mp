@@ -3,13 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CampaignContent } from "../content";
 import type { EmailRendition } from "@/lib/media-assets/email-renditions";
 
-/**
- * A campaign's images as its email shows them (PRD-campaign-email-editor
- * slice 05): read before any render, by the preview, the test send and every
- * batch alike; an image with no email copy stops a send and is a field error
- * on Save.
- */
-
 const PHOTO = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
 const GONE = "99999999-8888-4777-8666-555555555555";
 

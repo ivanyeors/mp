@@ -43,7 +43,6 @@ const CreateSchema = z.object({
   pillowVariant: PillowVariantSchema.optional(),
   name: z.string().trim().min(1).max(120),
   notes: z.string().trim().max(2000).optional(),
-  // Filling Templates may serve several sizes; defaults to the creating scope.
   keys: z.array(z.string().min(1).max(40)).optional(),
   role: RoleSchema.default('warehouse'),
   is_active: z.boolean().optional(),
@@ -109,9 +108,6 @@ export async function GET(req: NextRequest) {
     .eq('role', role)
     .order('updated_at', { ascending: false })
 
-  // Filling Templates are scoped by MEMBERSHIP, not by `key` — that column only
-  // carries the primary, so filtering on it would hide every template shared in
-  // from another size. Warehouse templates keep the size×tier key scope.
   let memberIds: number[] | null = null
   if (role === 'filling') {
     const members = await templateIdsForKey(admin, parsed.data.key)
@@ -132,16 +128,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // No template serves this size yet: skip the list query (an empty `in` is not
-  // a filter PostgREST can express) but still ship the colours below, which a
-  // brand-new template needs before it has been saved once.
   const { data, error } = memberIds && !memberIds.length ? { data: [], error: null } : await q
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const templates = data ?? []
 
-  // Every size each listed template serves, so the list can show what a save or
-  // a delete would reach beyond the size being viewed.
   let templateKeys: Record<number, string[]> | undefined
   if (role === 'filling') {
     const ids = templates.map((t: { id: number }) => Number(t.id))
@@ -150,10 +141,6 @@ export async function GET(req: NextRequest) {
     templateKeys = Object.fromEntries(ids.map((id) => [id, loaded.byId.get(id) ?? []]))
   }
 
-  // Section coverage per pillow Filling Template, so the list can badge the ones
-  // that are not Spatially authored (CONTEXT.md) without fetching every placement
-  // row. One `in` query for the whole page — never one per template. Bolster has
-  // no Section enum and is never evaluated (ADR 0008).
   let sectionCoverage: Record<number, string[]> | undefined
   if (role === 'filling' && parsed.data.kind === 'pillow' && templates.length) {
     const ids = templates.map((t: { id: number }) => Number(t.id))
@@ -172,10 +159,6 @@ export async function GET(req: NextRequest) {
     sectionCoverage = Object.fromEntries(ids.map((id) => [id, [...(bySection.get(id) ?? [])]]))
   }
 
-  // Per-subtype x-ray colours are global, not per-template, so they ride the list
-  // response: without this the editor renders code defaults until a template is
-  // opened, and a brand-new template never gets them at all. Service-role-only
-  // under RLS, so the browser cannot fetch them itself.
   let colorOverrides: Array<{ subtype: string; color: string }> | undefined
   let dimensionOverrides: DimensionOverridesPayload | undefined
   if (role === 'filling' && parsed.data.kind === 'pillow') {
@@ -184,7 +167,6 @@ export async function GET(req: NextRequest) {
       .select('subtype,color')
     if (colorErr) return NextResponse.json({ error: colorErr.message }, { status: 500 })
     colorOverrides = colors ?? []
-    // Slice 02/12: the dimension overrides ride beside the colours, same reason.
     try {
       dimensionOverrides = await loadDimensionOverrides(admin)
     } catch (err) {
@@ -213,8 +195,6 @@ export async function POST(req: NextRequest) {
   const admin = supabaseAdmin()
   const { kind, key, name, notes, lines, role } = parsed.data
   const isActive = parsed.data.is_active ?? true
-  // Sizes this Filling Template will serve. Defaults to the creating scope, so
-  // a caller that knows nothing about membership still gets today's behaviour.
   let fillingKeys: string[] = []
   if (role === 'filling') {
     const normalized = normalizeTemplateKeys(kind, parsed.data.keys ?? [key])
@@ -227,12 +207,7 @@ export async function POST(req: NextRequest) {
     }
     fillingKeys = normalized.keys
   }
-  // Whether the caller asked for a membership at all. When this create lands on
-  // an existing shared template, an absent `keys` must leave its sizes alone —
-  // defaulting to [key] would let a create-shaped call silently drop every
-  // other size's recipe with a 200.
   const keysRequested = role === 'filling' && parsed.data.keys !== undefined
-  // Filling templates are size-scoped only (no tier).
   const pillowKind = role === 'filling' ? null : kind === 'pillow' ? (parsed.data.pillowKind ?? 'basic') : null
   const pillowVariant =
     role === 'filling'
@@ -265,9 +240,6 @@ export async function POST(req: NextRequest) {
     .eq('role', role)
 
   if (role === 'filling') {
-    // Same name already serving this size = the same template, whatever its
-    // primary key says. Matching on `key` would fork a duplicate the moment a
-    // shared template's primary moved to a smaller size.
     const members = await templateIdsForKey(admin, key)
     if (!members.ok) return NextResponse.json({ error: members.error }, { status: 500 })
     if (!members.ids.length) existingQuery = existingQuery.eq('id', -1)

@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-/** Pure: shared by the settings UI, the API route and the sync. No server imports. */
-
 export const WEBHOOK_PATH = "/api/shipping/easyship/webhook";
 
 export const TRACKING_STATUSES = [
@@ -88,7 +86,6 @@ export const BoxSchema = z.object({
   weight: z.number().nonnegative(),
 });
 
-/** Which box an item type ships in, plus one unit's content weight. Kept on the doc only; never synced. */
 export const BOX_TYPES = ["pillow", "bolster", "accessory"] as const;
 const BoxForTypeSchema = z.object({ box: z.string().trim().min(1), weight_grams: z.number().int().positive().max(70_000) });
 export const BoxForTypesSchema = z
@@ -124,7 +121,6 @@ export const EasyshipSettingsSchema = z.object({
   webhook: WebhookSettingsSchema,
 });
 
-/** What a save accepts: also refuses repeated box names, which "Used for" can't tell apart. Reads stay lenient. */
 export const EasyshipSettingsInputSchema = EasyshipSettingsSchema.refine(
   (s) => new Set(s.boxes.map((b) => b.name.trim().toLowerCase())).size === s.boxes.length,
   { message: "Box names must be unique", path: ["boxes"] },
@@ -171,8 +167,6 @@ export const DEFAULT_SETTINGS: EasyshipSettings = {
     ],
   },
 };
-
-/* ── Live Easyship shapes (the subset the sync and import read) ─────────── */
 
 export type LiveAddress = EasyshipAddress & { id: string; status: "active" | "inactive" };
 export type LiveBox = {
@@ -223,7 +217,6 @@ export type OptionField = {
   optional?: boolean;
 };
 
-/** Condition type → option fields, from the 2024-09 ShippingRuleCreate schema. */
 export const RULE_CONDITIONS: Record<string, OptionField[]> = {
   match_all: [],
   match_country: [{ key: "country_ids", kind: "ref-list", ref: "country", label: "Destination countries" }],
@@ -259,7 +252,6 @@ export const RULE_CONDITIONS: Record<string, OptionField[]> = {
   include_order_tag_name: [{ key: "order_tag_list", kind: "text-list", label: "Order tags" }],
 };
 
-/** Action type → option fields, from the 2024-09 ShippingRuleCreate schema. */
 export const RULE_ACTIONS: Record<string, OptionField[]> = {
   add_never_courier_service: [{ key: "never_courier_service_ids", kind: "ref-list", ref: "courier_service" }],
   add_preferred_courier_service: [{ key: "preferred_courier_service_ids", kind: "ref-list", ref: "courier_service" }],
@@ -308,7 +300,6 @@ function importTracking<T extends { display_options: Record<string, boolean>; bu
   } as T;
 }
 
-/** Seeds the desired state from what Easyship holds today. Strays (no default flag) are not imported. */
 export function importFromLive(live: LiveSnapshot, origin: string | null): EasyshipSettings {
   const setting = (live.setting ?? {}) as { tracking_email?: unknown; tracking_page?: unknown };
   const email = importTracking(setting.tracking_email, DEFAULT_SETTINGS.tracking_email);
@@ -352,7 +343,6 @@ export function importFromLive(live: LiveSnapshot, origin: string | null): Easys
   return parsed.data;
 }
 
-/** Ids the shipping-rule editor picks from; served by /api/settings/easyship/reference. */
 export type EasyshipReference = {
   countries: { id: number; alpha2: string; name: string }[];
   courier_services: { id: string; name: string; umbrella_name: string }[];
@@ -362,7 +352,6 @@ export type EasyshipReference = {
   categories: { id: string; name: string }[];
 };
 
-/** The courier account has no type → box mapping: keep ours, and the boxes it names that the account lacks. */
 export function keepMappedBoxes(
   current: Pick<EasyshipSettings, "boxes" | "box_for_type">,
   imported: EasyshipSettings["boxes"],

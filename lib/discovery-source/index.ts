@@ -37,13 +37,11 @@ export {
   type DiscoverySourceValidationError,
 } from "./types";
 
-/** Load catalog from site_settings; seed defaults when unset. */
 export async function getDiscoverySourceCatalog(): Promise<DiscoverySourceCatalog> {
   const stored = await getSiteSettings([DISCOVERY_SOURCE_SETTING_KEY]);
   return parseDiscoverySourceCatalog(stored[DISCOVERY_SOURCE_SETTING_KEY]);
 }
 
-/** Persist catalog (page-builder callers). Enforces Other lock. */
 export async function saveDiscoverySourceCatalog(
   catalog: DiscoverySourceCatalog,
 ): Promise<{ ok: true; catalog: DiscoverySourceCatalog } | { ok: false; error: string }> {

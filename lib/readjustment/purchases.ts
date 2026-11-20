@@ -1,17 +1,3 @@
-/**
- * Which pillows and bolsters a Customer has bought, and what re-adjusting each
- * would cost today (ADR 0024).
- *
- * Purchases are the customer's own platform Orders — the only purchases the
- * platform can prove. A captured Result already appears as its Order's line
- * (`customization_snapshot.result_id`), and an uncaptured one is not a purchase,
- * so Results are never a second source. Shopify orders are not linked (owner,
- * 2026-10-13); those customers book as "not listed".
- *
- * Always scoped by the `customerId` the caller resolved from the session — never
- * an id from a request body.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -26,16 +12,8 @@ import {
   type ReadjustmentPolicy,
 } from "@/lib/pricing/service-prices";
 
-/**
- * Orders that were never paid for, or whose money went back, hold nothing to
- * re-adjust. A counted Order is one with `paid_at` set and a status outside
- * this set; the review request (CRM slice 07) uses the same rule, and
- * `customer_purchase_lines` and the Customer overview count Orders by it in
- * SQL (CRM slice 04; lib/crm/purchase-lines.check.ts keeps them equal).
- */
 export const NOT_A_PURCHASE: ReadonlySet<string> = new Set(["pending", "cancelled", "refunded", "payment_failed"]);
 
-/** Complimentary bookings that use a free visit (cancelled / expired give it back). */
 export const COMPLIMENTARY_USING_STATUSES = ["booked", "attended", "no_show"] as const;
 
 export type OrderLineRow = {
@@ -78,11 +56,6 @@ function asTier(v: unknown): "basic" | "premium" | null {
   return v === "basic" || v === "premium" ? v : null;
 }
 
-/**
- * A pillow or bolster line, or null for anything else (an accessory, a Service fee).
- * Same precedence the courier path uses (lib/shipping/lines.ts): the variant's
- * product, then the customisation snapshot.
- */
 export function classifyOrderLine(
   line: OrderLineRow,
   pillowById: ReadonlyMap<number, PillowProduct>,
@@ -90,7 +63,6 @@ export function classifyOrderLine(
   if (line.kind === "service") return null;
   const snap = (line.customization_snapshot ?? {}) as Record<string, unknown>;
 
-  // A Result order (authorize-then-capture): the build is in the snapshot.
   if (typeof snap.result_id === "string" && (snap.product_type === "pillow" || snap.product_type === "bolster")) {
     return {
       productType: snap.product_type,
@@ -111,7 +83,6 @@ export function classifyOrderLine(
     return { productType: "bolster", tier: null, size: null, length };
   }
 
-  // A shop pillow variant, or a legacy cart customisation carrying its product id.
   const pillowId =
     variant?.pillow_product_id ??
     (typeof snap.pillow_product_id === "number" ? snap.pillow_product_id : null);
@@ -143,7 +114,6 @@ export type ReadjustablePurchaseView = ReadjustablePurchase & {
   quote: ReadjustmentQuote;
 };
 
-/** Pure: orders → the picker's list, newest first, each with today's quote. */
 export function buildPurchaseList(input: {
   orders: OrderRow[];
   pillowById: ReadonlyMap<number, PillowProduct>;
@@ -196,7 +166,6 @@ export type ReadjustmentContext = {
   today: string;
 };
 
-/** The signed-in customer's readjustable purchases with today's quotes. */
 export async function loadReadjustmentContext(
   admin: SupabaseClient,
   customerId: string,

@@ -48,11 +48,6 @@ function StatusPill({ status, detail }: { status: MemberStatus; detail?: string 
   );
 }
 
-/**
- * Members tab: every Admin Panel login, its role and state. The same role
- * policy the server enforces decides what is disabled here, so a refused
- * change is explained before it is attempted.
- */
 export function MembersTab({
   actor,
   members,
@@ -73,7 +68,6 @@ export function MembersTab({
   reload: () => Promise<void>;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
-  // Sampled once per mount; relative labels are suppressHydrationWarning.
   const [nowMs] = useState(() => Date.now());
 
   const rolesById = useMemo(() => new Map<string, PolicyRole>(roles.map((r) => [r.id, r])), [roles]);
@@ -104,7 +98,6 @@ export function MembersTab({
   }
 
   const rows = members.map((m) => {
-    // Can the actor change this Member at all (role or state)?
     const lock = canUpdateMember(actor, { id: m.id, roleId: m.roleId, isActive: m.isActive }, {}, rolesById, activeOwners);
     const toggle = canUpdateMember(
       actor,
@@ -219,7 +212,6 @@ export function MembersTab({
     );
   };
 
-  // Phone card: the profile count is a full-width 44px row, not a 20px floating link.
   const profilesRow = (m: MemberRow) => {
     const n = profileCounts.get(m.id) ?? 0;
     return (
@@ -249,7 +241,6 @@ export function MembersTab({
         <p className="py-10 text-center text-sm text-muted-foreground">No members yet.</p>
       ) : (
         <>
-          {/* Phone: one card per Member. */}
           <div className="space-y-3 sm:hidden">
             {rows.map(({ m, lock, toggle }) => (
               <Card key={m.id} className={cn("min-w-0 gap-2 p-4", !m.isActive && "opacity-60")}>

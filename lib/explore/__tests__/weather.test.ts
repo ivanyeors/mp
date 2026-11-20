@@ -3,19 +3,18 @@ import { coarse, rainingInSingapore } from "@/lib/explore/weather";
 
 const NOW = new Date("2026-11-17T09:00:00+08:00");
 const STATIONS = [
-  { id: "W", lat: 1.34, lon: 103.7 }, // west
-  { id: "C1", lat: 1.29, lon: 103.85 }, // city
+  { id: "W", lat: 1.34, lon: 103.7 },
+  { id: "C1", lat: 1.29, lon: 103.85 },
   { id: "C2", lat: 1.3, lon: 103.86 },
   { id: "C3", lat: 1.31, lon: 103.84 },
   { id: "C4", lat: 1.28, lon: 103.84 },
-  { id: "N", lat: 1.44, lon: 103.8 }, // north
-  { id: "E1", lat: 1.35, lon: 103.98 }, // east
+  { id: "N", lat: 1.44, lon: 103.8 },
+  { id: "E1", lat: 1.35, lon: 103.98 },
   { id: "E2", lat: 1.34, lon: 103.96 },
   { id: "E3", lat: 1.36, lon: 103.99 },
   { id: "E4", lat: 1.33, lon: 103.95 },
 ];
 
-/** The feed's shape, with rain (mm in the last five minutes) at the named stations. */
 const feed = (wet: Record<string, number>, timestamp = "2026-11-17T08:55:00+08:00") => ({
   code: 0,
   data: {

@@ -8,10 +8,6 @@ import {
   type CustomizeApplyRecommendation,
 } from "@/lib/shop/customize-apply-payload";
 
-/**
- * Minimal `.env.local` loader — avoids a `dotenv` dependency for this one
- * integration test file. Only fills vars that aren't already set.
- */
 function loadDotEnvLocal(path: string) {
   if (!existsSync(path)) return;
   for (const rawLine of readFileSync(path, "utf8").split("\n")) {

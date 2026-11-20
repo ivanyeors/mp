@@ -24,7 +24,6 @@ export function displayHeight(unit: HeightUnit, heightCm: string): string {
   return String(Math.round(cmToInches(cm) * 100) / 100);
 }
 
-/** Round-trip helper for checks (canonical cm stays the stored value). */
 export function heightInchesRoundTrip(inches: number): number {
   return roundCm(inchesToCm(inches));
 }

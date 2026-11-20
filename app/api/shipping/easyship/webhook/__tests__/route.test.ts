@@ -1,13 +1,6 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The Easyship webhook: fails closed without a secret, rejects a bad signature,
- * stores the label from a label event, marks the order shipped at the courier's
- * first scan and delivered at the last — once each (ADR 0044). Only Supabase and
- * the email sender are faked.
- */
-
 const h = vi.hoisted(() => ({
   tables: {} as Record<string, Record<string, unknown> | null>,
   updates: [] as Array<{ table: string; row: Record<string, unknown> }>,
@@ -18,7 +11,6 @@ const h = vi.hoisted(() => ({
 
 vi.mock("@/lib/email", () => ({ sendShippingEmail: h.sendShippingEmail, sendTrackingEmail: h.sendTrackingEmail }));
 vi.mock("@/lib/supabase/server", () => ({
-  /** One row per table — enough for one order and its shipment. */
   supabaseAdmin: () => ({
     from(table: string) {
       const filters: Array<[string, string, unknown]> = [];
@@ -155,7 +147,6 @@ describe("POST /api/shipping/easyship/webhook", () => {
       tracking_number: "NV123",
       tracking_url: "https://track.test/ESSG1",
     });
-    // The label lives with the shipment, off the customer-readable order.
     expect(h.tables.orders).not.toHaveProperty("label_url");
     expect(h.tables.order_shipments).toMatchObject({
       easyship_shipment_id: "ESSG1",

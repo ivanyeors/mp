@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * PRD-crm-retention-loop slice 10: *What made you decide?* on the decline
- * step. The answer is optional, recorded only once the decline has happened,
- * and never a reason for a decline to fail.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb, failInsert: false }));
 
 vi.mock("@/lib/supabase/server", async () => {

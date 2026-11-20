@@ -134,7 +134,6 @@ describe("sendSteps", () => {
       { text: "Block 3, Buttons: the button goes to http://x.test", blockId: "cta", advisory: false },
       { text: "Recommended: write a preview line", blockId: null, advisory: true },
     ]);
-    // The sending setup's step is the setup's alone.
     expect(steps.find((s) => s.key === "checks")).toMatchObject({ done: true });
 
     const fixed = sendSteps({ ...base, checks: [size], advice: [preview] }).find((s) => s.key === "email")!;

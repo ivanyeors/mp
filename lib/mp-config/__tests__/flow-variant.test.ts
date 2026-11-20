@@ -12,8 +12,6 @@ describe("session storage keys", () => {
     expect(tokenKeyFor("basic")).not.toBe(tokenKeyFor("full"));
   });
 
-  // The bug this guards: one surface overwriting the other's token while the
-  // ids stay separate, so /mp-basic silently stops being the Owner of its Result.
   it("never collides an id key with a token key", () => {
     const keys = [
       sessionKeyFor("basic"),
@@ -30,8 +28,6 @@ describe("newResponseId", () => {
     expect(newResponseId()).toMatch(UUID_V4);
   });
 
-  // The route validates with z.string().uuid(); the old fallback produced
-  // `${Date.now()}-${Math.random()}`, which it rejected with a swallowed 400.
   it("still returns a v4 uuid without crypto.randomUUID", () => {
     const spy = vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
       undefined as unknown as `${string}-${string}-${string}-${string}-${string}`,

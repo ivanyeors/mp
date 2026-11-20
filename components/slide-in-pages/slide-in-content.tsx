@@ -21,12 +21,6 @@ import {
 } from "@/lib/slide-in-pages/sections";
 import { cn } from "@/lib/utils";
 
-/**
- * Staff overrides for the landing page's sub pages (CONTEXT.md — **Slide-in section**),
- * provided once by the root layout so every slide-in — opened from the landing page, the
- * app dock or the Mbolster configurator — shows what was published.
- */
-
 type ProvidedRow = Pick<SlideInSectionRow, "page" | "slug" | "section_type" | "position" | "visible" | "content">;
 
 const SlideInRowsContext = React.createContext<readonly ProvidedRow[]>([]);
@@ -45,13 +39,11 @@ function asRows(rows: readonly ProvidedRow[]): SlideInSectionRow[] {
   return rows.map((row) => ({ id: "", ...row }));
 }
 
-/** The published views of one sub page, from the provider. */
 function usePublishedViews(page: SlideInPageKey): SlideInSectionView[] {
   const rows = React.useContext(SlideInRowsContext);
   return React.useMemo(() => slideInSectionViews(page, asRows(rows), "published"), [page, rows]);
 }
 
-/** The sheet header's title and description, with any published override. */
 export function useSlideInHeader(page: SlideInPageKey, views?: readonly SlideInSectionView[]) {
   const { m, locale } = useI18n();
   const published = usePublishedViews(page);
@@ -64,18 +56,9 @@ export function useSlideInHeader(page: SlideInPageKey, views?: readonly SlideInS
 interface SlideInPageSectionsProps {
   page: SlideInPageKey;
   resolveHref?: (href: string) => string;
-  /**
-   * Preview mode: render these views (drafts applied) instead of the published ones, and
-   * keep hidden sections — marked — so the visibility toggle has a visible effect.
-   */
   previewViews?: readonly SlideInSectionView[];
 }
 
-/**
- * One sub page's sections in their published order and content — the body of a
- * learn-more slide-in. Preview mode renders through this same component, so the builder
- * cannot drift from what shoppers see.
- */
 export function SlideInPageSections({ page, resolveHref, previewViews }: SlideInPageSectionsProps) {
   const { m, locale } = useI18n();
   const published = usePublishedViews(page);
@@ -118,11 +101,6 @@ export function SlideInPageSections({ page, resolveHref, previewViews }: SlideIn
   );
 }
 
-/**
- * Preview mode's selectable wrapper. `data-builder-section` rather than `data-section`:
- * some templates set their own `data-section` for analytics, and the picker must land on
- * the section, not on an element inside it.
- */
 export function PreviewSectionFrame({
   slug,
   type,

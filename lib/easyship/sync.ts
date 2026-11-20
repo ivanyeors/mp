@@ -18,7 +18,6 @@ type SyncOutcome = {
   easyship_company_id: string | null;
 };
 
-/** Easyship can only post to a public https origin; dev and previews skip the webhook step. */
 export function webhookEndpoint(): string | null {
   const origin = getSiteOrigin();
   if (!/^https:\/\//.test(origin) || /localhost|127\.0\.0\.1|\.vercel\.app$/.test(origin)) return null;
@@ -46,11 +45,6 @@ function addressDiffers(a: EasyshipAddress, b: LiveAddress): boolean {
   return (Object.keys(f) as (keyof typeof f)[]).some((k) => norm(f[k] as string | null) !== norm(b[k] as string | null));
 }
 
-/**
- * Easyship accepts only `true` default flags, on POST and PATCH alike (`false`
- * fails its schema: "false isn't part of the enum"); omitted flags are left as
- * they are.
- */
 function trueFlags(df: EasyshipAddress["default_for"]): Record<string, true> {
   return Object.fromEntries(Object.entries(df).filter(([, v]) => v).map(([k]) => [k, true as const]));
 }
@@ -74,7 +68,6 @@ function trackingBody<T extends { advertising: unknown }>(t: T) {
   return { ...rest, ...(advertising ? { advertising } : {}) };
 }
 
-/** We send status emails once tracking webhooks reach us; until then the courier account keeps sending its own. */
 export function courierEmailStatuses(s: EasyshipSettings): string[] {
   const ours = s.webhook.enabled && s.webhook.event_types.includes("shipment_tracking_status_changed");
   return ours ? [] : s.tracking_email.allowed_statuses;
@@ -114,7 +107,6 @@ export async function syncEasyship(desired: EasyshipSettings, endpoint: string |
     const live = await easyshipList<LiveAddress>("/addresses", "addresses");
     for (const a of desired.addresses) {
       const target = `${a.company_name} · ${a.line_1}`;
-      // A renamed company at the same place is an update, not a second address.
       const match =
         live.find((l) => samePlace(a, l) && norm(a.company_name) === norm(l.company_name)) ??
         live.find((l) => samePlace(a, l));
@@ -269,7 +261,6 @@ export async function syncEasyship(desired: EasyshipSettings, endpoint: string |
   };
 }
 
-/** Read-only snapshot of everything the settings page mirrors. */
 export async function readLiveSnapshot() {
   const [account, setting, addresses, boxes, shipping_rules, webhooks] = await Promise.all([
     easyship<{ account: { name: string; easyship_company_id: string } }>("/account").then((r) => r.account).catch(() => null),

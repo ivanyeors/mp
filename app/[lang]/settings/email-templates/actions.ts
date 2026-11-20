@@ -9,16 +9,6 @@ import { getDefaultFromAddress, getDefaultTransport } from "@/lib/email/transpor
 import { getWorkingAs } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/**
- * Admin Panel → Email templates (PRD-email-templates).
- *
- * Every action checks `email-templates`, which Owner and Admin hold. The
- * words are validated here against the email's spec (lib/email/copy.ts)
- * before they are saved, previewed or sent as a test; the layout, data and
- * footer stay in code. Saves and resets are audited with the words before
- * and after.
- */
-
 type Failure = { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 const NOT_FOUND: Failure = { ok: false, error: "That email does not exist." };
@@ -36,7 +26,6 @@ function checkWords(id: string, values: unknown) {
   return { ok: true as const, email, values: checked.values };
 }
 
-/** Saves an email's words. Words equal to the default everywhere reset it. */
 export async function saveEmailCopy(id: string, values: Record<string, string>): Promise<{ ok: true } | Failure> {
   const ctx = await assertAdmin("email-templates");
   const checked = checkWords(id, values);
@@ -60,7 +49,6 @@ export async function saveEmailCopy(id: string, values: Record<string, string>):
   }
 }
 
-/** Back to the default words. */
 export async function resetEmailCopy(id: string): Promise<{ ok: true } | Failure> {
   const ctx = await assertAdmin("email-templates");
   const email = typeof id === "string" ? editableEmail(id) : null;
@@ -82,7 +70,6 @@ export async function resetEmailCopy(id: string): Promise<{ ok: true } | Failure
   }
 }
 
-/** The words as typed, in one of the email's versions, with sample data. Saves nothing. */
 export async function previewEmailCopy(
   id: string,
   variantId: string | null,
@@ -95,11 +82,6 @@ export async function previewEmailCopy(
   return { ok: true, subject: rendered.subject, html: rendered.html };
 }
 
-/**
- * Sends the words as typed, in one version with sample data, to up to three
- * addresses, through the mailbox these emails go out from, with "[Test]"
- * before the subject.
- */
 export async function sendEmailCopyTest(
   id: string,
   variantId: string | null,

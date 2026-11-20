@@ -1,61 +1,30 @@
-/** Appointment reminder rules stored in site_settings (secrets stay in env). */
-
 export type AppointmentType = "customisation" | "readjustment";
 
 export type BlockedRange = { start: string; end: string };
 
-/** One open window in Asia/Singapore wall clock, `HH:MM`, end exclusive (`24:00` allowed). */
 export type AvailabilityWindow = { start: string; end: string };
-/** Index = JS getDay() (0=Sun … 6=Sat). An empty list means the day is closed. */
 export type WeeklyAvailability = AvailabilityWindow[][];
 
 export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 export type AppointmentSettings = {
-  /**
-   * Master switch for outbound appointment WhatsApp. When false the daily cron
-   * sends nothing and the inbound webhook acks without acting — the only kill
-   * switch that does not need an env change or a redeploy.
-   */
   whatsappEnabled: boolean;
-  /** Default venue when calendar event has no location. */
   venue: string;
-  /** Appointment length in minutes. */
   durationMinutes: number;
-  /**
-   * Per-weekday open windows (the source of truth for slots, the calendar's
-   * business-hours bands and the Open/Closed headers) — Google Calendar's
-   * appointment-schedule availability, one shared schedule for every Location.
-   */
   availability: WeeklyAvailability;
-  /**
-   * Derived from `availability` (earliest window start, in hours). Kept so
-   * coarse readers and the legacy store keep working; never edit directly.
-   */
   openHour: number;
-  /** Derived: last bookable start hour (latest window end − duration), inclusive. */
   closeHour: number;
-  /** Derived: weekdays with at least one window, as JS getDay() values. */
   bookableDays: number[];
   customisationBookingUrl: string;
   readjustmentBookingUrl: string;
-  /** Case-insensitive substring match against event summary. */
   customisationSummaryMatch: string;
   readjustmentSummaryMatch: string;
-  /** How many days ahead to search for reschedule slots. */
   slotLookaheadDays: number;
-  /** Max slots offered in one WhatsApp interactive list. */
   slotOfferCount: number;
-  /** Admin-blocked intervals (ISO datetimes); excluded from slot offers. */
   blockedRanges: BlockedRange[];
-  /**
-   * Admin calendar: also list cancelled appointments (Google `showDeleted`),
-   * drawn struck-through. Off by default so cancellations don't crowd the grid.
-   */
   showCancelled: boolean;
 };
 
-/** The window a day gets when reopened with nothing to copy from. */
 export const DEFAULT_AVAILABILITY_WINDOW: AvailabilityWindow = { start: "10:00", end: "19:00" };
 const DEFAULT_WINDOW = DEFAULT_AVAILABILITY_WINDOW;
 
@@ -63,7 +32,6 @@ export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
   whatsappEnabled: true,
   venue: "22 Sin Ming Lane, #08-83, Midview City, Singapore 573969",
   durationMinutes: 60,
-  // Sun, Tue–Sat 10:00–19:00 (last 60-min start 18:00); Monday closed.
   availability: [0, 2, 3, 4, 5, 6].reduce<WeeklyAvailability>(
     (av, dow) => {
       av[dow] = [{ ...DEFAULT_WINDOW }];
@@ -73,7 +41,7 @@ export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
   ),
   openHour: 10,
   closeHour: 18,
-  bookableDays: [0, 2, 3, 4, 5, 6], // Sun, Tue–Sat
+  bookableDays: [0, 2, 3, 4, 5, 6],
   customisationBookingUrl: "https://calendar.app.google/wtLKP75zQRDB5gqC7",
   readjustmentBookingUrl: "https://calendar.app.google/RGe6GCxzBhX1coGV8",
   customisationSummaryMatch: "Mpillow Customisation",
@@ -102,9 +70,6 @@ export const APPOINTMENT_SETTING_KEYS = [
   "appointments_availability",
 ] as const;
 
-/* ---------- availability helpers (pure) ---------- */
-
-/** `"HH:MM"` → minutes since midnight; `24:00` = 1440. null when malformed. */
 export function minutesOf(hhmm: string): number | null {
   const m = /^(\d{2}):(\d{2})$/.exec(hhmm.trim());
   if (!m) return null;
@@ -114,17 +79,11 @@ export function minutesOf(hhmm: string): number | null {
   return h * 60 + min;
 }
 
-/** Minutes since midnight → `"HH:MM"` (1440 → `24:00`). */
 export function hhmm(minutes: number): string {
   const clamped = Math.max(0, Math.min(1440, Math.round(minutes)));
   return `${String(Math.floor(clamped / 60)).padStart(2, "0")}:${String(clamped % 60).padStart(2, "0")}`;
 }
 
-/**
- * Why a week is invalid, or null when it is fine. Rules: seven days, each a
- * list of `HH:MM` windows with start < end, no overlaps within a day, and at
- * least one window somewhere (an all-closed week would offer no slots at all).
- */
 export function validateAvailability(av: unknown): string | null {
   if (!Array.isArray(av) || av.length !== 7) return "availability must list seven days";
   let any = false;
@@ -150,7 +109,6 @@ export function validateAvailability(av: unknown): string | null {
   return any ? null : "At least one open window is required";
 }
 
-/** Validated copy with each day's windows sorted by start. */
 export function normalizeAvailability(av: WeeklyAvailability): WeeklyAvailability {
   return av.map((day) =>
     [...day]
@@ -159,7 +117,6 @@ export function normalizeAvailability(av: WeeklyAvailability): WeeklyAvailabilit
   );
 }
 
-/** The pre-window model (one range on every bookable day) as windows. */
 export function availabilityFromLegacy(legacy: {
   openHour: number;
   closeHour: number;
@@ -173,7 +130,6 @@ export function availabilityFromLegacy(legacy: {
   );
 }
 
-/** Coarse range readers still want: earliest start, last start, open days. */
 export function legacyFromAvailability(
   av: WeeklyAvailability,
   durationMinutes: number,
@@ -198,7 +154,6 @@ export function legacyFromAvailability(
   return { openHour, closeHour: Math.min(23, closeHour), bookableDays };
 }
 
-/** Same settings with the derived hour fields recomputed from `availability`. */
 export function withDerivedHours(s: AppointmentSettings): AppointmentSettings {
   return { ...s, ...legacyFromAvailability(s.availability, s.durationMinutes) };
 }
@@ -268,7 +223,6 @@ function parseBlockedRanges(v: string | undefined, fallback: BlockedRange[]): Bl
   }
 }
 
-/** Merge stored site_settings key/values with defaults. */
 export function parseAppointmentSettings(
   stored: Record<string, string>,
 ): AppointmentSettings {
@@ -277,8 +231,6 @@ export function parseAppointmentSettings(
     stored.appointments_duration_minutes,
     d.durationMinutes,
   );
-  // Windows win. A store from before windows existed (or an unparsable one)
-  // is rebuilt from the old open/close/days trio so nothing changes for it.
   const legacy = {
     openHour: parseHour(stored.appointments_open_hour, d.openHour),
     closeHour: parseHour(stored.appointments_close_hour, d.closeHour),

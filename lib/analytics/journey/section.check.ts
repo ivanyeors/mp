@@ -1,7 +1,3 @@
-/**
- * Slice 06 — section tracer + expand/collapse.
- * Run: npx tsx lib/analytics/journey/section.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -16,7 +12,6 @@ import {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-// Landing sections moved into the shared list component (page-builder slice 06).
 const home = readFileSync(
   join(root, "components/sections/landing/landing-sections-list.tsx"),
   "utf8",
@@ -101,7 +96,7 @@ const sections = buildSectionTransitions(
       path: "/",
       sectionId: "hero",
       occurredAt: "2026-07-15T10:02:00.000Z",
-    }, // loop back
+    },
   ],
   [{ path: "/", sectionId: "hero", count: 2 }],
 );
@@ -117,12 +112,11 @@ const page = buildPageTransitions([
   { visitId: "v1", path: "/shop", occurredAt: "2026-07-15T10:03:00.000Z" },
 ]);
 const expanded = expandPageToSections(page, sections, "/");
-assert.ok(expanded.nodes.some((n) => n.path === "/")); // page stays; children added
+assert.ok(expanded.nodes.some((n) => n.path === "/"));
 assert.ok(expanded.nodes.some((n) => n.path === "/#hero"));
 assert.ok(expanded.nodes.some((n) => n.path === "/#size-matters"));
 assert.ok(expanded.nodes.some((n) => n.path === "/shop"));
 assert.ok(expanded.edges.some((e) => e.from === "/#hero" && e.to === "/#size-matters"));
-// Untagged expand is a no-op (page-level only)
 assert.deepEqual(expandPageToSections(page, sections, "/untagged"), page);
 
 console.log("section.check.ts: ok");

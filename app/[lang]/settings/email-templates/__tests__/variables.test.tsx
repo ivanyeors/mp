@@ -13,16 +13,6 @@ import { editableEmails, type EditableEmail, type SavedCopy } from "@/lib/email/
 import { ORDER_EMAIL_COPY } from "@/lib/email/templates";
 import { copyVariables, isOneLine } from "../copy-fields";
 
-/**
- * Variables in Email templates (PRD-campaign-email-editor slice 14), as the
- * owner's demo goes: on *Order confirmed*, drag *Order number* from the
- * Variables list into the subject, see it as a chip, and the preview fills it
- * with the sample order. Each field is the shared text input in plain mode,
- * and is still stored as a string with `{order_number}` in it: words nobody
- * touched are saved as they were, for every email. The actions are the real
- * ones, over an in-memory table, so a save is what the table holds.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, { template_id: string; copy: unknown; updated_at: string; editor: null }>(),
   sent: [] as { to: string; subject: string; html: string }[],
@@ -63,19 +53,16 @@ const { EmailCopyEditor } = await import("../email-copy-editor");
 const EMAILS = editableEmails();
 const CONFIRMED = EMAILS.find((e) => e.spec.id === ORDER_EMAIL_COPY.order_confirmation.id)!;
 
-/** A saved edit of every field: the original words, then every Variable, and a second paragraph with a line break where the field has paragraphs. */
 function savedEdit(spec: EmailCopySpec): EmailCopy {
   const all = Object.keys(spec.placeholders).map((k) => `{${k}}`);
   const edit = (f: CopyField) =>
     f.multiline
       ? `${f.default || "Some words."}\n\n${["A second paragraph", ...all].join(" ")}.\nAnd a line of its own.`
       : [f.default || "Some words", ...all, "again"].join(" ");
-  // Each field as the table would hold it: an edit that passes, else the original (one that would run past its length).
   return resolveEmailCopy(spec, Object.fromEntries(Object.entries(spec.fields).map(([k, f]) => [k, edit(f)])));
 }
 
 const editors: Editor[] = [];
-/** A field's words loaded into the input's TipTap document, and read back out, as the input does. */
 function throughTheInput(words: string, field: CopyField, variables: RichTextVariable[]) {
   const value = richTextFromWords(words, variables);
   const e = new Editor({ extensions: richTextExtensions({ marks: {}, variables, singleLine: isOneLine(field) }), content: docFromValue(value) });
@@ -129,7 +116,6 @@ describe("every email's words, loaded and saved", () => {
           written[k] = richTextWords(read);
           expect(written[k], `${spec.id}.${k}`).toBe(copy[k]);
         }
-        // And Save's check passes them as they are: the strings the table gets are the ones it had.
         expect(validateEmailCopy(spec, written)).toEqual({ ok: true, values: copy });
       }
     }
@@ -157,7 +143,6 @@ describe("every email's words, loaded and saved", () => {
 describe("the demo", () => {
   it("drags Order number into the subject as a chip; the preview and a test fill it with the sample order, and it saves as {order_number}", async () => {
     mount(CONFIRMED);
-    // Only this email's Variables, by their labels, each with what it becomes.
     expect(chips().map((b) => b.querySelector("span span")?.textContent)).toEqual(["Customer name", "Order number", "Points", "Amount"]);
     expect(chip("Order number").textContent).toContain("The order number, e.g. MP-10428");
 
@@ -165,7 +150,6 @@ describe("the demo", () => {
     act(() => void subject.commands.setContent({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Confirmed: " }] }] }));
     const data = dragData();
     dragStart(chip("Order number"), data);
-    // Only the input's own chip travels: the plain "Send to" box takes nothing from it.
     expect(data.types).toEqual(["text/html"]);
     dropInto(subject, data, end(subject));
     const placed = subject.view.dom.querySelector<HTMLElement>('[data-variable="order_number"]')!;
@@ -205,7 +189,7 @@ describe("the keyboard's ways", () => {
 
     const heading = await richTextById("copy-heading");
     act(() => void heading.commands.focus("start"));
-    await settle(50); // TipTap focuses on the next frame
+    await settle(50);
     await click(chip("Customer name"));
     expect(wordsOf("copy-heading")).toBe("Customer nameThanks for your order!");
     expect(said()).toContain("Customer name added to Heading.");
@@ -241,7 +225,6 @@ describe("only this email's Variables", () => {
     expect(subject.view.dom.querySelector('[data-variable="first_name"]')).toBeNull();
     expect(subject.view.dom.querySelector('[data-variable="order_number"]')).not.toBeNull();
 
-    // `{fir` matches nothing this email has, so no list opens; `{first_name}` stays words.
     act(() => void subject.commands.focus("end"));
     typeInto(subject, " {fir");
     await settle();

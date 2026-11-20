@@ -36,7 +36,6 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
-/** Human value for one questionnaire field (category → label). */
 function fieldValue(
   field: Exclude<keyof ApplicationFields, "logoUrl">,
   q: Partial<ApplicationFields>,
@@ -84,14 +83,12 @@ export default async function PartnerApplicationsPage({
         <div className="space-y-4">
           {applications.map((app) => {
             const q = app.questionnaire ?? {};
-            // Only the applicant's own upload is shown: the questionnaire is jsonb.
             const logoUrl =
               app.auth_user_id && isStoredLogoUrl(q.logoUrl, applicantLogoFolder(app.auth_user_id))
                 ? (q.logoUrl as string)
                 : null;
             return (
               <Card key={app.id}>
-                {/* Phones: the actions get their own full-width row, so the name and email aren't squeezed. */}
                 <CardHeader className="flex flex-col gap-3 space-y-0 md:flex-row md:items-start md:justify-between md:gap-4">
                   <div className="min-w-0 max-md:w-full">
                     <CardTitle className="break-words max-md:leading-snug md:truncate">
@@ -111,8 +108,6 @@ export default async function PartnerApplicationsPage({
                       </dt>
                       <dd className="mt-1">
                         {logoUrl ? (
-                          // A raw <img>: the URL is verified as our own storage above.
-                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={logoUrl}
                             alt={`${q.companyName || app.email} logo`}

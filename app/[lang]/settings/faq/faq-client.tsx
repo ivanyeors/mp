@@ -128,7 +128,6 @@ function SortableCategoryRow({
             </span>
             <span className="text-xs text-muted-foreground">{category.key}</span>
           </div>
-          {/* Phones: the name opens the category, so the chevron's 44px goes to the name. */}
           <CollapsibleTrigger asChild>
             <button
               type="button"
@@ -213,7 +212,6 @@ function ItemEditor({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      {/* Phones: a flat row (the list draws the dividers), and the question opens it. */}
       <div
         className={`flex items-center gap-2 rounded-md border px-3 py-2 max-md:rounded-none max-md:border-0 max-md:px-0 max-md:py-0.5 ${!item.visible ? "opacity-60" : ""}`}
       >
@@ -307,7 +305,6 @@ function ItemEditor({
   );
 }
 
-/** The `/api/faq/categories` + `/api/faq/items` payloads the page mounts with. */
 export type FaqInitialData = {
   categories: { ok: true; rows: CategoryRow[] };
   items: { ok: true; rows: ItemRow[] };
@@ -324,7 +321,6 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
   const [items, setItems] = useState<ItemRow[]>(initialData?.items.rows ?? []);
   const [loading, setLoading] = useState(!initialData);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
-  // The server already loaded categories and items; every edit still reloads.
   const skipFirstFetch = useRef(initialData != null);
 
   const load = useCallback(async () => {

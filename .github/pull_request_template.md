@@ -9,6 +9,8 @@
 <!-- The commands you ran and their actual output, or screenshots (say if they
      are sample data). "Tests pass" on its own is not enough. -->
 
+Lint baseline (`node scripts/lint-baseline.mjs --against origin/main`):
+
 ## Risk
 
 - [ ] Docs or copy only: may auto-merge once checks pass

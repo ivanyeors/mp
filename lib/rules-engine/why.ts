@@ -1,6 +1,3 @@
-/**
- * Plain-language "why" for shoppers / assign — names answers, never node ids.
- */
 import type { RecommendationRecord } from "./recommendation-record";
 import type { TraceStep } from "./types";
 
@@ -32,7 +29,6 @@ function bandBits(trace: TraceStep[]): string[] {
     const label = inputKey
       ? INPUT_LABELS[inputKey] ?? humanize(inputKey)
       : "Measurement";
-    // Size output bands (XS–XL / short–long) read as the size itself.
     if (/^(XS|S|M|L|XL|short|medium|long)$/i.test(band)) {
       bits.push(`${label} band ${band}`);
     } else {
@@ -47,13 +43,12 @@ function matchBits(trace: TraceStep[]): string[] {
   for (const step of trace) {
     if (step.type !== "match" || !step.detail?.startsWith("match:")) continue;
     const raw = step.detail.slice("match:".length);
-    if (raw === "true" || raw === "false") continue; // skip bare booleans in v1 why
+    if (raw === "true" || raw === "false") continue;
     bits.push(humanize(raw));
   }
   return bits;
 }
 
-/** Build shopper-facing why from a recommendation record (+ optional answers). */
 export function plainLanguageWhy(
   record: Pick<
     RecommendationRecord,

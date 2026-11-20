@@ -17,7 +17,6 @@ import { configuratorPath } from "@/lib/ecommerce/configurator-path";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
-/** Locale-prefixed: an unprefixed link answers with a redirect. */
 function getProductHref(product: Product, locale: Locale): string {
   return withLocale(configuratorPath(product.product_type) ?? `/shop/${product.slug}`, locale);
 }
@@ -51,7 +50,6 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
 
   const sortedByPrice = [...activeVariants].sort((a, b) => a.price - b.price);
   const cheapestVariant = sortedByPrice[0] ?? null;
-  // The price an email's products block shows for this product too (one rule).
   const shown = shopCardPrice(product.variants ?? []);
 
   const primaryImage = product.images?.[0] ?? null;
@@ -104,7 +102,6 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
         "shadow-sm transition-shadow duration-200 hover:shadow-md",
       )}
     >
-      {/* Image area */}
       <Link href={href} className="block relative aspect-square w-full overflow-hidden bg-muted">
         {imageUrl ? (
           <Image
@@ -123,7 +120,6 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
           </div>
         )}
 
-        {/* Badges — top-left */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {hasSale && (
             <Badge variant="destructive" className="text-xs">
@@ -137,7 +133,6 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
           )}
         </div>
 
-        {/* Out of stock overlay */}
         {isOutOfStock && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
             <span className="rounded-full bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground border border-border">
@@ -146,7 +141,6 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
           </div>
         )}
 
-        {/* Quick add button */}
         {canQuickAdd && (
           <Button
             size="icon"
@@ -160,7 +154,6 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
         )}
       </Link>
 
-      {/* Content */}
       <Link href={href} className="block p-3">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium leading-snug line-clamp-2 text-foreground">

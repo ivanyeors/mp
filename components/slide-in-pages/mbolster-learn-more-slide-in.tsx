@@ -25,7 +25,6 @@ export type MbolsterLearnMoreFaq = {
 type Props = {
   className?: string;
   triggerLabel?: string;
-  /** Live Page FAQ from server; falls back to mbolster-config defaults. */
   faq?: MbolsterLearnMoreFaq | null;
 };
 

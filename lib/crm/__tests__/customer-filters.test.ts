@@ -18,15 +18,8 @@ import {
   type CustomerListQuery,
 } from "@/lib/crm/customer-filters";
 
-/**
- * The Customers list's one filter schema and its filter-to-query mapping
- * (migration slice 12, CRM slice 04), as pure functions over a recording query
- * stub: every call the list would make on `admin_customer_overview`, in order.
- */
-
 type Call = [method: string, ...args: unknown[]];
 
-/** Records every call. It has no `or`: the mapping has no way to send one (ADR 0028 (d)). */
 function recorder() {
   const calls: Call[] = [];
   const record =
@@ -153,7 +146,6 @@ describe("parseCustomerFilters", () => {
 
 describe("customerFiltersSchema", () => {
   it("is the one schema: a stored set of parameters reads as the same link does", () => {
-    // What a Segment (CRM slice 05) stores: the list's own parameters.
     const stored = Object.fromEntries(
       customerFilterParams({ bought: ["premium"], last_order: { when: "over", months: 12 }, readjusted: "never" }),
     );
@@ -184,8 +176,6 @@ describe("applyCustomerFilters", () => {
   });
 
   it("maps From Shopify + No account to the two derived columns", () => {
-    // The list that matters during the migration: migrated_customers join
-    // customers where auth_user_id is null.
     expect(query("source=shopify&account=no-account").calls).toEqual([
       ["eq", "has_account", false],
       ["eq", "from_shopify", true],
@@ -303,7 +293,6 @@ describe("applyCustomerFilters", () => {
   });
 
   it("maps the Points filter to the overview's available balance (PRD-loyalty-points slice 06)", () => {
-    // Has points: a balance above 0. No points: the rest, since a balance is never below 0.
     expect(query("points=has").calls).toEqual([["gt", "points_available", 0], newest]);
     expect(query("points=none&source=shopify").calls).toEqual([
       ["eq", "from_shopify", true],
@@ -325,7 +314,6 @@ describe("applyCustomerFilters", () => {
     expect(ignored).toEqual([]);
   });
 
-  // Email consent (migration slice 07): the URL's words, the view's states.
   it.each([
     ["subscribed", "subscribed"],
     ["not-subscribed", "not_subscribed"],
@@ -363,7 +351,6 @@ describe("applyCustomerFilters", () => {
 describe("Contact status filters (CRM slice 11)", () => {
   it("maps Google linked and not linked to the sign-in methods", () => {
     expect(query("google=linked").calls).toEqual([["contains", "account_providers", ["google"]], newest]);
-    // Not linked includes every Customer with no account, whose list is empty.
     expect(query("google=not-linked").calls).toEqual([["not", "account_providers", "cs", "{google}"], newest]);
   });
 
@@ -468,7 +455,6 @@ describe("Review filters (CRM slice 12)", () => {
 });
 
 describe("on the real Supabase query builder", () => {
-  // No request is sent: the builder's URL is what PostgREST would receive.
   const builder = () =>
     createClient("http://localhost:54321", "anon-key").from("admin_customer_overview").select("id", { count: "exact" });
   const urlOf = (search: string) => {
@@ -681,7 +667,6 @@ describe("searchParamsFromRecord", () => {
   });
 });
 
-// PRD-crm-retention-loop slice 03: *Stage*, the overview's lifecycle_stage.
 describe("the Stage filter", () => {
   it("reads hyphenated stages into the overview's words, in stage order, once each", () => {
     expect(parseCustomerFilters(new URLSearchParams("stage=lost,at-risk,lost")).filters.stage).toEqual(["at_risk", "lost"]);
@@ -689,7 +674,6 @@ describe("the Stage filter", () => {
   });
 
   it("drops the whole parameter for an unknown stage, the underscore spelling included", () => {
-    // `repeat` and `lapsed` were stages before the funnel (2026-10-28); Lapsed is now At risk's sub-status.
     for (const bad of ["stage=vip", "stage=at_risk", "stage=new,whale", "stage=repeat", "stage=lapsed", "stage="]) {
       const { filters, ignored } = parseCustomerFilters(new URLSearchParams(bad));
       expect(filters.stage, bad).toEqual([]);
@@ -724,7 +708,6 @@ describe("the Stage filter", () => {
   });
 });
 
-// PRD-campaign-audiences slice 04: the Playbooks' audiences.
 describe("Purchase filters (PRD-campaign-audiences slice 04)", () => {
   const label = (search: string) =>
     describeCustomerFilters(parseCustomerFilters(new URLSearchParams(search)).filters).map((f) => f.label);
@@ -859,7 +842,6 @@ describe("Purchase filters (PRD-campaign-audiences slice 04)", () => {
   });
 });
 
-// PRD-campaign-audiences slice 05: where they are, what they read, what we last sent them.
 describe("Reach filters (PRD-campaign-audiences slice 05)", () => {
   const CAMPAIGN = "0b5c6c1e-2a7d-4c4e-9f3a-1d2e3f4a5b6c";
   const names = new Map([[CAMPAIGN, "November care tips"]]);
@@ -878,7 +860,6 @@ describe("Reach filters (PRD-campaign-audiences slice 05)", () => {
 
     it("never takes an unknown country for Singapore, nor for outside it", () => {
       expect(query("ships_to=sg").calls).toEqual([["eq", "ship_country", "SG"], newest]);
-      // `<>` never lists a null: Unknown stays out of *outside Singapore* too.
       expect(query("ships_to=not-sg").calls).toEqual([["neq", "ship_country", "SG"], newest]);
       expect(query("ships_to=unknown").calls).toEqual([["is", "ship_country", null], newest]);
     });

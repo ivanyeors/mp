@@ -1,14 +1,3 @@
-/**
- * Open Stripe Checkout for a Staff order's Payment link (ADR 0048).
- *
- * Our link is durable; a Checkout Session is not (an hour here, a PayNow QR an
- * hour too). So every Pay press asks for one: an open session is reused, and a
- * new one is made for exactly the Order's stored total. Only one session is
- * ever the Order's: a new one is installed on `orders.stripe_session_id` by
- * compare-and-set, and a request that loses expires its own before anyone sees
- * it. The session carries `order_id`, so the webhook's shop branch settles it.
- */
-
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -25,13 +14,6 @@ export type OpenCheckoutOutcome =
 
 const cents = (amount: number) => Math.round(amount * 100);
 
-/**
- * The session's line items, shipping and discount, built from what the Order
- * stores so Stripe charges exactly `orders.total`: every line at its unit
- * price, any tax as its own line (the total less what the lines, shipping and
- * discount already make), shipping as a fixed rate, a discount as a one-off
- * coupon. Pure, for the tests.
- */
 export function checkoutAmounts(loaded: Pick<LoadedPayLink, "order" | "items">): {
   lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
   shipping: number;
@@ -78,13 +60,11 @@ export async function openStaffOrderCheckout(
   if (previous) {
     const session = await stripe.checkout.sessions.retrieve(previous);
     if (session.status === "open" && session.url) return { ok: true, url: session.url };
-    // Paid a moment ago: the webhook has not confirmed it yet.
     if (session.status === "complete") {
       return { ok: false, status: 409, error: "We're confirming your payment.", state: "confirming" };
     }
   }
 
-  // Stock may have gone since Staff made the order.
   const goods = mergeQuantities(
     items
       .filter((i) => i.variant_id && i.kind !== "service")
@@ -111,7 +91,6 @@ export async function openStaffOrderCheckout(
     customer_email: order.email,
     line_items: lineItems,
     metadata,
-    // Mirrored so payment_intent.* events can find the Order too.
     payment_intent_data: { metadata },
     success_url: `${pageUrl}?paid=1`,
     cancel_url: pageUrl,
@@ -141,7 +120,6 @@ export async function openStaffOrderCheckout(
   const session = await stripe.checkout.sessions.create(params);
   if (!session.url) throw new Error("Checkout session missing url");
 
-  // Install it only if nobody else did since we read the Order.
   let claim = admin
     .from("orders")
     .update({ stripe_session_id: session.id })
@@ -153,7 +131,6 @@ export async function openStaffOrderCheckout(
   if (claimError) throw new Error(claimError.message);
 
   if (!claimed?.length) {
-    // Another press won. Close ours so it can never be paid, then send them to the winner's.
     await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
     const { data: current } = await admin.from("orders").select("stripe_session_id").eq("id", order.id).maybeSingle();
     const winner = current?.stripe_session_id as string | undefined;

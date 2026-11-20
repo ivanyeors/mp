@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-/**
- * A Paired build through POST /api/results/hold (ADR 0026): one request, two
- * Results, one Checkout. Same in-memory harness as ownership.test.ts, with every
- * quote stubbed to `h.total`, so the pillow and the bolster each quote 200.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   requireAnyAdmin: vi.fn(),

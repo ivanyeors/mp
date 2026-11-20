@@ -10,11 +10,6 @@ const PaymentLinkSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  // Staff-only: the sole caller is the Admin Panel product editor, which already
-  // sits behind requireAdminPage("products"). Ungated, this minted real Stripe
-  // Payment Links for any product id — unbounded object creation in the Stripe
-  // account, and a genuine merchant checkout URL an attacker chooses when to
-  // distribute.
   const denied = await requireAdmin("products");
   if (denied) return denied;
 

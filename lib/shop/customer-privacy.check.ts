@@ -1,29 +1,8 @@
-/**
- * CRM 02 privacy check (ADR 0028 (a)): a signed-in customer's own key cannot
- * read Staff notes, tags or order notes, and every account path still reads
- * what it needs.
- *
- * Run: npx tsx --env-file=.env.local lib/shop/customer-privacy.check.ts
- *
- * Signs in as a fixture customer through the database API, never through
- * `auth.admin`. Give it either:
- *   CUSTOMER_CHECK_EMAIL + CUSTOMER_CHECK_PASSWORD — a customer login with a
- *     password (Supabase dashboard → Authentication → Add user), or
- *   CUSTOMER_CHECK_ACCESS_TOKEN + CUSTOMER_CHECK_REFRESH_TOKEN — a real
- *     customer session (the owner's own login, for the production run in
- *     CRM 09).
- * With CUSTOMER_CHECK_SITE_URL as well, it also opens each account page with
- * that session's cookies: /account, /account/orders, an order, /account/addresses
- * and /appointments?type=readjustment. The site must use the same project.
- *
- * Without credentials it runs the static part only, and says so.
- */
 import assert from "node:assert/strict";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CUSTOMER_ORDER_COLUMNS, ORDER_WITH_ITEMS } from "./customer-orders";
 
-// --- static: the shopper's order query never asks for `*` or internal_notes ---
 assert.doesNotMatch(ORDER_WITH_ITEMS, /\*/, "customer order reads must list columns, never *");
 assert.ok(
   !(CUSTOMER_ORDER_COLUMNS as readonly string[]).includes("internal_notes"),
@@ -60,7 +39,6 @@ const db: SupabaseClient = createServerClient(url, anonKey, {
 const results: { what: string; ok: boolean; detail: string }[] = [];
 const record = (what: string, ok: boolean, detail: string) => results.push({ what, ok, detail });
 
-/** "Refused or returns nothing": an error, or no row carrying the column. */
 async function mustNotRead(what: string, table: string, columns: string, column?: string) {
   const { data, error } = await db.from(table).select(columns);
   if (error) return record(what, true, `refused (${error.code ?? "error"}: ${error.message})`);
@@ -87,14 +65,12 @@ async function main() {
   const user = signedIn.data.user;
   console.log(`Signed in as ${user.email} (${user.id})`);
 
-  // Pages first: opening /account links the customer record on a first sign-in.
   const pages: string[] = [];
   if (siteUrl) {
     const cookie = [...jar].map(([n, v]) => `${n}=${v}`).join("; ");
     const open = async (path: string) => {
       const res = await fetch(`${siteUrl}${path}`, { headers: { cookie }, redirect: "manual" });
       const html = res.status === 200 ? await res.text() : "";
-      // A signed-out visitor is redirected (3xx) or, on the booking page, shown Sign in.
       const signedOut = html.includes("/account/login?next=");
       record(`page ${path}`, res.status === 200 && !signedOut, `HTTP ${res.status}${signedOut ? " (signed out)" : ""}`);
       pages.push(path);
@@ -105,7 +81,6 @@ async function main() {
     await open("/en-US/appointments?type=readjustment");
   }
 
-  // --- refused or nothing ---
   await mustNotRead("customers.notes", "customers", "notes", "notes");
   await mustNotRead("customers.tags", "customers", "tags", "tags");
   await mustNotRead("customers *", "customers", "*", "notes");
@@ -114,7 +89,6 @@ async function main() {
   await mustNotRead("customer_notes", "customer_notes", "*");
   await mustNotRead("customer_followups (CRM 06)", "customer_followups", "*");
 
-  // --- what the storefront reads under the customer's key still works ---
   const me = await mustRead("customers.id (lib/shop/customer-addresses.ts)", () =>
     db.from("customers").select("id").eq("auth_user_id", user.id).maybeSingle(),
   );
@@ -144,7 +118,6 @@ async function main() {
 
 main()
   .then(async () => {
-    // A password sign-in made its own session: end it. A borrowed session is left alone.
     if (email && password) await db.auth.signOut();
     console.log("customer-privacy.check.ts: ok");
   })

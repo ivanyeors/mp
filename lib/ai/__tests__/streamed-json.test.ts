@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { streamedJson, type JsonPiece } from "@/lib/ai/streamed-json";
 
-/** Structured output read as it streams (PRD-campaign-email-editor slice 09): each block the moment it is whole. */
-
 const ANSWER = JSON.stringify(
   {
     subjects: ["Sleep cooler", 'A "quoted" line, with } and ] in it'],
@@ -38,7 +36,6 @@ describe("streamedJson", () => {
     expect(pieces.find((p) => p.kind === "value" && p.key === "count")?.value).toBe(3);
     expect(pieces.find((p) => p.kind === "value" && p.key === "done")?.value).toBe(true);
     expect(pieces.find((p) => p.kind === "value" && p.key === "reviewerNotes")?.value).toEqual([]);
-    // Each block arrives before the array it is in has closed.
     const third = pieces.findIndex((p) => p.kind === "item" && p.key === "blocks" && p.index === 2);
     const all = pieces.findIndex((p) => p.kind === "value" && p.key === "blocks");
     expect(third).toBeLessThan(all);

@@ -17,8 +17,6 @@ function formatSupabaseError(err: unknown) {
 }
 
 function dedupeLines<T extends { item_id: number; quantity: number }>(lines: T[]): Array<{ item_id: number; quantity: number }> {
-  // Defensive: avoid Postgres "ON CONFLICT DO UPDATE command cannot affect row a second time"
-  // if the client sends duplicate item_id entries in a single request.
   const m = new Map<number, number>()
   for (const l of lines) m.set(Number(l.item_id), Number(l.quantity))
   return Array.from(m.entries()).map(([item_id, quantity]) => ({ item_id, quantity }))
@@ -43,7 +41,6 @@ export async function POST(req: NextRequest) {
 
   const json = await req.json().catch(() => null)
   if (!json) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  // Two modes: standard pillow product BOM, or bolster pseudo-product using size='Bolster'
   const bolsterParsed = BolsterBodySchema.safeParse(json)
   if (bolsterParsed.success) {
     const { lines, variant } = bolsterParsed.data
@@ -52,7 +49,6 @@ export async function POST(req: NextRequest) {
     const cats = await lookupItemCategories(admin, deduped.map((l) => l.item_id))
     if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 })
     const safeLines = stripFillingLines(deduped, cats.byId)
-    // Replace lines for this variant only
     const { error: delErr } = await admin.from('bolster_bom_lines').delete().eq('variant', variant)
     if (delErr) {
       console.error('save/bolster delete failed', formatSupabaseError(delErr))

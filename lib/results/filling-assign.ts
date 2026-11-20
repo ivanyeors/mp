@@ -1,11 +1,7 @@
-/** Assign-save decision for the spatial filling snapshot (slice 06). Pure — no I/O. */
-
 import { fingerprintPlacements, placementsExactMatch, type AnyPlacement } from "@/lib/spatial-fillings";
 
 export type FillingAssignDecision = {
-  /** Kept only while the saved snapshot exactly matches the confirmed template (PRD divergence rule). */
   fillingTemplateId: number | null;
-  /** Null when the save carries no placement rows — "fillings not yet chosen" stays explicit. */
   fillingFingerprint: string | null;
 };
 

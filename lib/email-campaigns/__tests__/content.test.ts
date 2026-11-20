@@ -32,12 +32,6 @@ import {
   withSampleValues,
 } from "../variables";
 
-/**
- * The content model (PRD-campaign-email-editor slice 03): one schema for the
- * editor, the database and Claude's output, with the limits in code, and
- * nothing in it that could become markup.
- */
-
 const CONTENT: CampaignContent = {
   v: 1,
   blocks: [
@@ -88,7 +82,6 @@ const CONTENT: CampaignContent = {
   fallbacks: { first_name: "there" },
 };
 
-/** The content with one block replaced by `b` (anything, as a crafted payload would be). */
 const withBlock = (b: unknown) => ({ ...CONTENT, blocks: [b] });
 const refused = (c: unknown) => CampaignContentSchema.safeParse(c).success === false && CampaignContentPreviewSchema.safeParse(c).success === false;
 
@@ -105,7 +98,6 @@ describe("CampaignContentSchema", () => {
     expect(refused(withBlock({ id: "h", type: "heading", level: 1, text: "<b>Sale</b>" }))).toBe(true);
     expect(refused(withBlock({ id: "b", type: "buttons", buttons: [{ label: "<i>Go</i>", target: "shop", style: "primary" }] }))).toBe(true);
     expect(refused({ ...CONTENT, fallbacks: { first_name: "<script>" } })).toBe(true);
-    // Words that only look like a comparison are words.
     expect(CampaignContentSchema.safeParse(run(`I <3 "pillows" & 2 < 3 > 1`)).success).toBe(true);
   });
 
@@ -164,7 +156,6 @@ describe("CampaignContentSchema", () => {
     const issues = (c: unknown) => CampaignContentSchema.safeParse(c).error?.issues.map((i) => [i.path.join("."), i.message]);
     const unknown = (name: string) => `{${name}} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.`;
     expect(issues(text(", our {frist_name} covers"))).toEqual([["blocks.0.paragraphs", unknown("frist_name")]]);
-    // A heading takes Variables (slice 13), written as the subject writes them.
     expect(issues(withBlock({ id: "h", type: "heading", level: 1, text: "{first_name}, sleep cooler" }))).toBeUndefined();
     expect(issues(withBlock({ id: "h", type: "heading", level: 1, text: "{points_balance} points, {last_name}" }))).toBeUndefined();
     expect(issues(withBlock({ id: "h", type: "heading", level: 2, text: "Hi {firstname}" }))).toEqual([["blocks.0.text", unknown("firstname")]]);
@@ -174,9 +165,7 @@ describe("CampaignContentSchema", () => {
     expect(issues(withBlock({ id: "b", type: "buttons", buttons: [{ label: "Shop, {first_name}", target: "shop", style: "primary" }] }))).toEqual([
       ["blocks.0.buttons.0.label", "{first_name} can go in a heading, a text block, the subject or the preview line, not here."],
     ]);
-    // Braces around anything but a name are words.
     expect(CampaignContentSchema.safeParse(text(", {50% off} today")).success).toBe(true);
-    // The preview still draws it, and a row saved before still opens.
     expect(CampaignContentPreviewSchema.safeParse(text(", our {frist_name} covers")).success).toBe(true);
     expect(CampaignContentPreviewSchema.safeParse(withBlock({ id: "h", type: "heading", level: 1, text: "{first_name}" })).success).toBe(true);
   });
@@ -217,7 +206,6 @@ describe("reading the blocks", () => {
       "A cover, folded",
       "Why FibreCool",
       "Cool all night.",
-      // A product's name and price are the shop's: only the block's own label is the campaign's.
       "Shop now",
     ]);
   });
@@ -225,11 +213,9 @@ describe("reading the blocks", () => {
   it("knows which Variables the blocks use, and whether a button signs in", () => {
     expect(variablesUsed(CONTENT)).toEqual(["first_name"]);
     expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT)).toEqual([]);
-    // The subject and preview line fill theirs from the same fallbacks.
     expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT, ["{first_name}, sleep cooler this December", ""])).toEqual(["first_name"]);
     expect(variablesUsed(CONTENT, ["{first_name}, {last_name}"])).toEqual(["first_name", "last_name"]);
     expect(variablesUsed(EMPTY_CAMPAIGN_CONTENT, ["{last_name}", "{nickname}"])).toEqual(["last_name"]);
-    // In every block's words alike: a heading's, a text block's.
     const heading = { ...EMPTY_CAMPAIGN_CONTENT, blocks: [{ id: "h", type: "heading" as const, level: 1 as const, text: "{points_balance} points" }] };
     expect(variablesUsed(heading, ["{first_name}"])).toEqual(["first_name", "points_balance"]);
     expect(contentSignsIn(CONTENT)).toBe(false);
@@ -303,9 +289,7 @@ describe("Variables", () => {
     expect(CAMPAIGN_VARIABLES.first_name).toMatchObject({ label: "First name", sample: "Mei Ling", fallback: "there" });
     expect(CAMPAIGN_VARIABLES.last_name).toMatchObject({ label: "Last name", sample: "Tan", fallback: null });
     expect(CAMPAIGN_VARIABLES.points_balance).toMatchObject({ label: "Points balance", sample: "1,250", fallback: null, needsPoints: true });
-    // PRD-campaign-audiences slice 09.
     expect(CAMPAIGN_VARIABLES.your_pillow).toMatchObject({ label: "Your pillow", sample: "Premium Mpillow, size M", fallback: "your pillow", chineseFallback: "您的枕头" });
-    // The sample customer reads as each Variable's sample.
     expect(variableValues(SAMPLE_RECIPIENT, {})).toEqual({
       first_name: "Mei Ling",
       last_name: "Tan",
@@ -327,7 +311,6 @@ describe("Variables", () => {
       your_pillow: "Basic Mpillow, size L",
     });
     expect(variableValues({ firstName: null }, fallbacks)).toEqual({ first_name: "friend", last_name: "of ours", points_balance: "some", your_pillow: "your pillow" });
-    // A balance of 0 is none: the fallback words, not "0".
     expect(variableValues({ firstName: "Ann", pointsBalance: 0 }, fallbacks).points_balance).toBe("some");
     expect(variableValues({ firstName: " " }, {})).toEqual({ first_name: "there", last_name: "", points_balance: "", your_pillow: "your pillow" });
     expect(variableFallback("first_name", { first_name: "  " })).toBe("there");
@@ -336,12 +319,10 @@ describe("Variables", () => {
   it("names their pillow as the shop does, in English letters in the 中文 version too, and none for no pillow (slice 09)", () => {
     expect(pillowWords({ tier: "premium", size: "M" })).toBe("Premium Mpillow, size M");
     expect(pillowWords({ tier: "basic", size: " xl " })).toBe("Basic Mpillow, size XL");
-    // A line from before Tiers were recorded: the pillow, without one.
     expect(pillowWords({ tier: null, size: "S" })).toBe("Mpillow, size S");
     expect(pillowWords({ tier: "premium", size: null })).toBe("Premium Mpillow");
     expect(pillowWords({ tier: "premium", size: "M" }, { chinese: true })).toBe("Premium Mpillow（尺寸 M）");
     expect(pillowWords(null)).toBeNull();
-    // A reader of Chinese with no pillow reads the 中文 fallback.
     expect(variableValues({ firstName: "美玲", pillow: null }, {}, { chinese: true }).your_pillow).toBe("您的枕头");
     expect(variableValues({ firstName: "美玲", pillow: { tier: "basic", size: "S" } }, {}, { chinese: true }).your_pillow).toBe("Basic Mpillow（尺寸 S）");
   });
@@ -391,7 +372,6 @@ describe("filling the blocks for one recipient", () => {
       },
       { id: "b", type: "buttons", buttons: [{ label: "For {first_name}", target: "url", url: "https://custom.mpillow.com/{first_name}", style: "primary" }] },
     ]);
-    // Nothing is changed in place.
     expect(content.blocks[0]).toMatchObject({ text: "{first_name}, {nickname}" });
   });
 

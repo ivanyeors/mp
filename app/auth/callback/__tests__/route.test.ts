@@ -1,12 +1,6 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The callback for Google and today's emailed link (PRD-campaign-audiences
- * slice 03): it reads the intent from the return address, hands the session
- * to `completeSignIn`, and sends a failure back to the right tab.
- */
-
 const exchange = vi.fn();
 const complete = vi.fn();
 vi.mock("@/lib/supabase/ssr-server", () => ({

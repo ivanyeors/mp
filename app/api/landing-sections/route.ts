@@ -14,18 +14,12 @@ import {
 
 export const runtime = "nodejs";
 
-/**
- * GET /api/landing-sections
- * Returns all sections ordered by position, including hidden ones — so it is
- * staff-only. (It was public until slice 02, which leaked unpublished copy.)
- */
 export async function GET() {
   const denied = await requireAdmin("page-builder");
   if (denied) return denied;
 
   try {
     const rows = await listLandingSectionRows();
-    // The builder edits the draft, so it must see the draft.
     return NextResponse.json({
       ok: true,
       sections: draftSections(rows),
@@ -45,11 +39,6 @@ const CreateSchema = z.object({
   content: SectionContentSchema.optional().default({}),
 });
 
-/**
- * POST /api/landing-sections
- * Creates a new section at the end. Only custom types can be created — built-ins
- * are seeded by migration and their components branch on `slug`.
- */
 export async function POST(req: Request) {
   let ctx;
   try {
@@ -79,7 +68,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Get next position
     const { data: maxRow } = await admin
       .from("landing_sections")
       .select("position")
@@ -97,7 +85,6 @@ export async function POST(req: Request) {
         position: nextPosition,
         visible: false,
         content: parsed.content,
-        // New sections are hidden on the live page until Publish shows them.
         draft_visible: true,
       })
       .select()

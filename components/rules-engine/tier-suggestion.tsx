@@ -2,7 +2,6 @@
 
 export type TierSuggestionProps = {
   tier: "basic" | "premium";
-  /** Optional reason fragment, e.g. "acid reflux" */
   because?: string | null;
 };
 
@@ -22,7 +21,6 @@ export function tierSuggestionCopy(
     : `We'd recommend ${label}`;
 }
 
-/** Advisory tier copy only — never implies product or price change. */
 export function TierSuggestion({ tier, because }: TierSuggestionProps) {
   return (
     <p className="max-w-sm text-center text-[11px] italic leading-snug text-white/70">

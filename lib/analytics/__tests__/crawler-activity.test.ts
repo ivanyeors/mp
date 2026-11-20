@@ -7,7 +7,7 @@ describe("buildCrawlerActivity", () => {
     { date: "2026-09-22", bot: "GPTBot", path_group: "llms.txt", hits: 1 },
     { date: "2026-09-23", bot: "OAI-SearchBot", path_group: "mp-config", hits: 3 },
     { date: "2026-09-23", bot: "Googlebot", path_group: "home", hits: 40 },
-    { date: "2026-09-15", bot: "GPTBot", path_group: "blog", hits: 2 }, // previous period
+    { date: "2026-09-15", bot: "GPTBot", path_group: "blog", hits: 2 },
   ];
   const a = buildCrawlerActivity({
     rows,
@@ -24,7 +24,7 @@ describe("buildCrawlerActivity", () => {
       { start: "2026-09-24", value: 0, partial: true },
     ]);
     expect(a.aiHits).toBe(9);
-    expect(a.previousAiHits).toBe(0); // 09-15 is before previousFrom
+    expect(a.previousAiHits).toBe(0);
     expect(a.llmsTxtHits).toBe(1);
   });
 

@@ -56,7 +56,6 @@ describe("movePiece", () => {
     expect(moved.slot).toBe(1);
     expect(r.ref).toEqual({ section: "left", subSection: "back", slot: 1 });
     expect(inCell(r.placements, "left", "front").map((p) => p.itemId)).toEqual([11]);
-    // The pack list is what the Placements say, wherever they sit.
     expect(flattenToPackList(r.placements)).toEqual(flattenToPackList(base));
   });
 
@@ -67,25 +66,21 @@ describe("movePiece", () => {
     const moved = inCell(r.placements, "center", "middle").find((p) => p.itemId === 21)!;
     expect(moved.insertOrder).toBeUndefined();
     expect(moved.slot).toBe(2);
-    // The Layer it left (the top one) closes up: item 22 is now the only, top Layer.
     expect(cellLayers(r.placements, { section: "left", subSection: "middle" }).map((l) => l.map((p) => p.itemId))).toEqual([[22]]);
     expect(inCell(r.placements, "left", "middle")[0].row).toBeUndefined();
   });
 
   it("targets a Layer and a position when asked, and stays put on a same-cell no-op", () => {
-    // Into the centre cell's second (new) Layer.
     const r = movePiece(base, ref("left", "front", 1), { cell: { section: "center", subSection: "middle" }, layer: 1 });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(cellLayers(r.placements, { section: "center", subSection: "middle" }).map((l) => l.map((p) => p.itemId))).toEqual([[31], [11]]);
-    // Into an existing Layer at position 0: the newcomer takes the lower slot.
     const first = movePiece(base, ref("left", "middle", 3), { cell: { section: "left", subSection: "front" }, layer: 0, index: 0 });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
     expect(cellLayers(first.placements, { section: "left", subSection: "front" })[0].map((p) => p.itemId)).toEqual([22, 11, 12]);
     expect(first.ref.slot).toBe(1);
     expect(slotsUnique(first.placements)).toBe(true);
-    // Same cell, same Layer, no index: the same recipe, same slot.
     const noop = movePiece(base, ref("left", "front", 2), { cell: { section: "left", subSection: "front" }, layer: 0 });
     expect(noop.ok && placementsExactMatch(noop.placements, base) && noop.ref.slot === 2).toBe(true);
   });
@@ -103,7 +98,6 @@ describe("movePiece", () => {
       const r = addPiece(cap, { section: "right", subSection: "front" }, 50 + i, null);
       if (r.ok) cap = r.placements;
     }
-    // A cell at its cap has five full Layers: the Layer ceiling answers first, exactly as addPiece does.
     const capped = movePiece([...base, ...cap], ref("left", "front", 1), { cell: { section: "right", subSection: "front" } });
     expect(capped).toEqual(addPiece([...base, ...cap], { section: "right", subSection: "front" }, 99, null));
     expect(capped.ok).toBe(false);
@@ -114,7 +108,6 @@ describe("movePiece", () => {
     const thick: ResolvedDims = { key: "k", kind: "pouch", source: "measured", measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, thicknessMm: 60, minThicknessMm: 50 } };
     const dims = new Map([[1, thick]]);
     const ctx = { size: "M", dims, pillow: { ...PILLOW_DIMENSIONS.M, subSectionDividers: true } };
-    // Three 60 mm (min 50) planes in the centre: 150 min > 140.8 — a fourth cannot close either.
     const stack = [0, 1, 2].map((row) => at("center", "middle", row + 1, 1, { row }));
     const over = movePiece([...stack, at("left", "front", 1, 1)], ref("left", "front", 1), { cell: { section: "center", subSection: "middle" }, layer: 3 });
     expect(over.ok).toBe(true);
@@ -129,16 +122,13 @@ describe("shiftPieceLayer", () => {
     if (!down.ok) return;
     expect(cellLayers(down.placements, { section: "left", subSection: "front" }).map((l) => l.map((p) => p.itemId))).toEqual([[12], [11]]);
     expect(down.ref).toEqual(ref("left", "front", 1));
-    // Back up: the second Layer empties and closes.
     const up = shiftPieceLayer(down.placements, down.ref, -1);
     expect(up.ok).toBe(true);
     if (!up.ok) return;
     expect(cellLayers(up.placements, { section: "left", subSection: "front" }).map((l) => l.map((p) => p.itemId))).toEqual([[11, 12]]);
     expect(up.placements.every((p) => p.section !== "left" || p.subSection !== "front" || p.row === undefined)).toBe(true);
-    // Already on top: nothing to do, the input comes back.
     const top = shiftPieceLayer(base, ref("left", "front", 1), -1);
     expect(top.ok && top.placements).toBe(base);
-    // Alone in the deepest Layer: going down is a no-op too.
     const alone = shiftPieceLayer(base, ref("left", "middle", 3), 1);
     expect(alone.ok && alone.placements).toBe(base);
   });
@@ -148,7 +138,6 @@ describe("shiftPieceLayer", () => {
     const cell = { section: "right", subSection: "back" } as const;
     const layersOf = (r: ReturnType<typeof movePiece>) => (r.ok ? cellLayers(r.placements, cell).map((l) => l.map((p) => p.itemId)) : r.error);
     expect(layersOf(shiftPieceLayer(three, ref("right", "back", 1), 1))).toEqual([[1, 2], [3]]);
-    // Index 1 of the Layers left behind is the third one's.
     expect(layersOf(movePiece(three, ref("right", "back", 1), { cell, layer: 1 }))).toEqual([[2], [1, 3]]);
     expect(layersOf(movePiece(three, ref("right", "back", 1), { cell, layer: 2 }))).toEqual([[2], [3], [1]]);
   });
@@ -168,12 +157,10 @@ describe("reorderInLayer", () => {
     expect(cellLayers(right, { section: "left", subSection: "front" })[0].map((p) => p.itemId)).toEqual([12, 11]);
     expect(slotsUnique(right)).toBe(true);
     expect(reorderedRef(base, ref("left", "front", 1), 1)).toEqual(ref("left", "front", 2));
-    // Nothing downstream moves: same multiset per cell, same pack list.
     expect(placementsExactMatch(right, base)).toBe(true);
     expect(reorderInLayer(base, ref("left", "front", 1), -1)).toBe(base);
     expect(reorderInLayer(base, ref("left", "front", 2), 1)).toBe(base);
     expect(reorderedRef(base, ref("left", "front", 2), 1)).toEqual(ref("left", "front", 2));
-    // Pieces on another Layer of the same cell are not neighbours.
     expect(reorderInLayer(base, ref("left", "middle", 1), 1)).toBe(base);
   });
 });

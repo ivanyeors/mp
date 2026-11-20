@@ -1,10 +1,7 @@
-/** ISO country on Visit from request geo headers. Never from locale cookie. */
-
 export const UNKNOWN_COUNTRY = "Unknown";
 
 const ISO2 = /^[A-Z]{2}$/;
 
-/** Normalize platform geo code → ISO2 or Unknown. */
 export function normalizeCountryCode(raw: string | null | undefined): string {
   if (raw == null) return UNKNOWN_COUNTRY;
   const c = raw.trim().toUpperCase();
@@ -28,10 +25,6 @@ function headerGet(headers: HeaderBag, name: string): string | null {
   return v ?? null;
 }
 
-/**
- * Derive country from CDN/platform headers only.
- * Prefers Vercel → Cloudflare → generic. Does not read cookies or Accept-Language.
- */
 export function resolveCountryFromHeaders(headers: HeaderBag): string {
   const raw =
     headerGet(headers, "x-vercel-ip-country") ||
@@ -40,7 +33,6 @@ export function resolveCountryFromHeaders(headers: HeaderBag): string {
   return normalizeCountryCode(raw);
 }
 
-/** Stable palette for color-by-country legend / edges. */
 const PALETTE = [
   "#0f766e",
   "#b45309",

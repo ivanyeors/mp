@@ -1,7 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/** `google_reviews` row shape and the reads shared by the sync and Telegram handlers. */
-
 export const GOOGLE_REVIEW_STATUSES = [
   "new",
   "pending",
@@ -13,18 +11,12 @@ export const GOOGLE_REVIEW_STATUSES = [
 ] as const;
 export type GoogleReviewStatus = (typeof GOOGLE_REVIEW_STATUSES)[number];
 
-/**
- * Where a row was read from. Business Profile reviews are answered from
- * Telegram (Post reply); Places reviews are read-only, so staff reply on Google
- * Maps and tap Mark replied (lib/reviews/places-poll.ts).
- */
 export type GoogleReviewSource = "business_profile" | "places";
 
 export type GoogleReviewRow = {
   id: string;
   review_name: string;
   source: GoogleReviewSource;
-  /** The review on Google Maps; Places gives one, the Business Profile API does not. */
   maps_uri: string | null;
   star_rating: number | null;
   comment: string | null;
@@ -46,9 +38,7 @@ export type GoogleReviewRow = {
   telegram_chat_id: number | null;
   telegram_message_id: number | null;
   last_error: string | null;
-  /** Set when a settled review came back because its rating changed reply type. */
   reopened_at: string | null;
-  /** The rating before that change; null when it is not known. */
   reopened_from_rating: number | null;
   created_at: string;
   updated_at: string;

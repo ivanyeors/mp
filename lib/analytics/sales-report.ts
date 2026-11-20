@@ -1,15 +1,3 @@
-/**
- * Analytics sales: this site's Orders, as Stripe took their money (ADR 0036).
- *
- * An Order is a sale once Stripe has charged it: it has a `charge` row in the
- * money ledger (`order_payments`, written only from Stripe), and is dated by its
- * latest charge's `occurred_at`, Stripe's own time for the payment. Revenue is
- * `order_margins`' product revenue, which the ledger scales for refunds and
- * disputes; COGS is what each `order_items` line froze at sale. Nothing sold
- * elsewhere is read. Months are Singapore months (`sg-calendar.ts`), and every
- * read pages.
- */
-
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { selectAll, selectAllIn } from "@/lib/supabase/select-all";
 import { sgMonthRange, type SgMonthRange } from "./sg-calendar";
@@ -86,9 +74,6 @@ const stripeCharges = (admin: AdminClient) =>
     .not("stripe_object_id", "is", null);
 
 async function loadSoldOrders(admin: AdminClient, range: SgMonthRange): Promise<SoldOrder[]> {
-  // Orders Stripe charged in the period, then every charge of theirs, so an
-  // Order paid in two parts (a Balance payment, then the hold's capture) is
-  // dated by the last: the moment Stripe held the whole price.
   const inPeriod = (await selectAll(() =>
     stripeCharges(admin)
       .gte("occurred_at", range.from.toISOString())
@@ -111,8 +96,6 @@ async function loadSoldOrders(admin: AdminClient, range: SgMonthRange): Promise<
     .map(([id]) => id);
   if (!candidates.length) return [];
 
-  // Confirmed by the payment flow (paid_at set). A payment that landed on a
-  // closed Order is held for a human to refund or reinstate, not a sale yet.
   const orders = (await selectAllIn(candidates, (chunk) =>
     admin.from("orders").select("id").not("paid_at", "is", null).in("id", chunk).order("id"),
   )) as Array<{ id: string }>;
@@ -165,14 +148,11 @@ async function loadSoldOrders(admin: AdminClient, range: SgMonthRange): Promise<
     const units = Math.max(0, Math.floor(Number(row.quantity ?? 0)));
     const gross = money(row.total_price);
     const totalCost = moneyOrNull(row.total_cost);
-    // Restocked returns come back out of COGS, as `order_margins` takes them.
     const restocked = (moneyOrNull(row.unit_cost) ?? 0) * Math.max(0, Number(row.returned_quantity ?? 0));
     let cost: number | null = totalCost == null ? null : Math.max(0, totalCost - restocked);
     let line: Omit<SoldLine, "units" | "gross" | "cost">;
 
     if (row.kind === "service") {
-      // A Service takes no stock; its cost is what Costings → Service fees
-      // recorded at sale, and none when that is blank.
       cost = cost ?? 0;
       line = { group: "service", key: `service:${row.service_key ?? "other"}`, label: title };
     } else {
@@ -217,7 +197,6 @@ async function loadSoldOrders(admin: AdminClient, range: SgMonthRange): Promise<
 
   return orders.map((o) => {
     const m = marginByOrder.get(String(o.id));
-    // `order_margins`: product revenue after discount, scaled by refunds = margin + COGS.
     const productRevenue = m ? money(m.gross_margin) + money(m.cogs) : 0;
     return {
       soldAt: soldAtByOrder.get(String(o.id))!,

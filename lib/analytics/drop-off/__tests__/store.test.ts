@@ -9,9 +9,7 @@ import {
   type DropOffRow,
 } from "@/lib/analytics/drop-off/store";
 
-/** PRD-crm-retention-loop slice 10: answers are recorded once, and summed for *Why people leave*. */
-
-const NOW = new Date("2026-10-27T12:00:00Z"); // a Tuesday
+const NOW = new Date("2026-10-27T12:00:00Z");
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86_400_000).toISOString();
 
 const ROW: DropOffInsert = {
@@ -45,10 +43,8 @@ describe("recordDropOffReason", () => {
 describe("weekStartOf", () => {
   it("is the Monday of the week in Singapore, not in UTC", () => {
     expect(weekStartOf(Date.parse("2026-10-27T12:00:00Z"))).toBe("2026-10-26");
-    // Monday 00:00 in Singapore is Sunday 16:00 UTC.
     expect(weekStartOf(Date.parse("2026-10-25T16:00:00Z"))).toBe("2026-10-26");
     expect(weekStartOf(Date.parse("2026-10-25T15:59:59Z"))).toBe("2026-10-19");
-    // A Monday-morning answer in Singapore is still Sunday in UTC.
     expect(weekStartOf(Date.parse("2026-10-25T23:59:59Z"))).toBe("2026-10-26");
   });
 });
@@ -109,7 +105,6 @@ describe("readDropOffSummary", () => {
       created_at: new Date(NOW.getTime() - (i + 1) * 60_000).toISOString(),
     }));
 
-  // Supabase answers at most 1,000 rows and drops the rest without an error.
   it("pages past a thousand answers", async () => {
     const db: FakeDb = { drop_off_reasons: many(2_500) };
     const s = await readDropOffSummary(fakeSupabaseAdmin(db) as never, { days: 30, now: NOW });

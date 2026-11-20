@@ -26,15 +26,8 @@ import { cn } from "@/lib/utils";
 import { previewEmailCopy, resetEmailCopy, saveEmailCopy, sendEmailCopyTest } from "./actions";
 import { copyVariables, isLong, isOneLine } from "./copy-fields";
 
-/** Where this page's Variables go: what the list says above its chips. */
 const VARIABLES_HINT = "Drag one into a field, or click where it goes and choose it. Typing { in a field lists them too. Each email fills in its own value.";
 
-/**
- * One field's words in the shared text input, plain (PRD-campaign-email-editor
- * slice 14): no bold, italic, links or lists, the email's Variables as chips.
- * It loads the stored string with each `{name}` as its chip and writes it back
- * the same way, so words nobody touched are saved as they were.
- */
 function WordsInput({
     id,
     field,
@@ -83,17 +76,6 @@ function Section({ title, note, children }: { title?: string; note?: string; chi
     );
 }
 
-/**
- * Admin Panel → Email templates → one email (PRD-email-templates). Each field
- * is a piece of the email's wording, with the original words one click away;
- * the preview shows the words as typed in any version of the email, with
- * sample data. A test sends what is on screen, saved or not.
- *
- * The email's placeholders are its Variables (PRD-campaign-email-editor slice
- * 14): chips listed beside the fields (in a sheet on a phone), dragged into a
- * field or pressed where the cursor is, or chosen from the list `{` opens.
- * Only this email's own are offered.
- */
 export function EmailCopyEditor({
     spec,
     groupLabel,
@@ -104,7 +86,6 @@ export function EmailCopyEditor({
 }: {
     spec: EmailCopySpec;
     groupLabel: string;
-    /** The email's versions, the main one first. */
     variants: { id: string; label: string }[];
     saved: SavedCopy;
     readError: string | null;
@@ -125,7 +106,6 @@ export function EmailCopyEditor({
     const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
     const [busy, setBusy] = useState<"save" | "reset" | "test" | null>(null);
 
-    // ── Preview ────────────────────────────────────────────────────────────
     const [variant, setVariant] = useState(variants[0]?.id ?? "");
     const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
     useEffect(() => {
@@ -189,7 +169,6 @@ export function EmailCopyEditor({
         setStatus({ ok: true, text: `Test sent to ${res.sent} address${res.sent === 1 ? "" : "es"}, with sample data.` });
     };
 
-    // Fields for every version first, then each version's own.
     const sections = useMemo(() => {
         const out: { title?: string; keys: string[] }[] = [{ keys: keys.filter((k) => !spec.fields[k].group) }];
         for (const g of [...new Set(keys.map((k) => spec.fields[k].group).filter((g): g is string => Boolean(g)))]) {
@@ -198,7 +177,6 @@ export function EmailCopyEditor({
         return out.filter((s) => s.keys.length);
     }, [keys, spec]);
 
-    // The email's placeholders, as the Variables every field offers.
     const variables = useMemo(() => copyVariables(spec), [spec]);
     const [variablesOpen, setVariablesOpen] = useState(false);
 
@@ -247,14 +225,12 @@ export function EmailCopyEditor({
         );
     };
 
-    // Phones: Save is pinned to the bottom while there is something to save, not 1,000px down the form.
     const showSaveBar = dirty || busy === "save";
 
     return (
         <VariableTargets>
             <div className={cn("space-y-6", showSaveBar && mobileStickyActionBarSpacerClassName)}>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                    {/* The shell breadcrumb already links back on a phone. */}
                     <Button variant="ghost" size="sm" className="self-start max-md:hidden" asChild>
                         <Link href={withLocale("/settings/email-templates", locale)}>
                             <ChevronLeft className="mr-1 h-4 w-4" />
@@ -277,7 +253,6 @@ export function EmailCopyEditor({
                 ) : null}
 
                 <div className={cn("grid gap-6", variables.length ? "lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-2")}>
-                    {/* On a laptop the Variables sit beside the fields; on a phone they open in a sheet from the Words card. */}
                     {variables.length ? (
                         <aside className="max-lg:hidden" aria-label="Variables">
                             <div className="sticky top-4 space-y-2">
@@ -385,7 +360,6 @@ export function EmailCopyEditor({
                     </Card>
                 </div>
 
-                {/* Phones: a tap puts a Variable in where the cursor was, in the field last written in, and closes the sheet. */}
                 {variables.length ? (
                     <Sheet open={variablesOpen} onOpenChange={setVariablesOpen}>
                         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">

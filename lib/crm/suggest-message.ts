@@ -3,26 +3,6 @@ import { CLAUDE_NOT_CONFIGURED, SERVER_SIDE_FALLBACK_BETA, claudeCallError, clau
 import type { AiModelId } from "@/lib/ai/models";
 import { MPILLOW_ABOUT, MPILLOW_FACT_LINES } from "@/lib/ai/mpillow-facts";
 
-/**
- * Claude drafts a message from a Staff member to one Customer, for the
- * Journey's composer (PRD-customer-page-journey slice 05). The Staff member
- * reads it, edits it, and sends it from their own Gmail or WhatsApp
- * (lib/crm/contact-links.ts). Nothing here sends anything, and a draft is
- * never saved by itself.
- *
- * One plain Messages API call, in the pattern of lib/reviews/draft-reply.ts:
- * no tools, the shared client and credentials (lib/ai/claude.ts), the shared
- * facts about Mpillow (lib/ai/mpillow-facts.ts), effort set explicitly, and
- * server-side fallbacks on so a safety decline is retried on Anthropic's
- * recommended model inside the same call.
- *
- * What Claude is told about the customer is deliberately small: their first
- * name, what happened lately (one line each, no order numbers), what the page
- * says to do next, and their latest review when the message is about it. No
- * email, mobile or address ever enters a request.
- */
-
-/** Kept in code, like the review reply's (PRD-campaign-email-editor decision 10). */
 export const SUGGEST_MESSAGE_MODEL: AiModelId = "claude-opus-5-5";
 
 export const MESSAGE_CHANNELS = ["email", "whatsapp"] as const;
@@ -31,7 +11,6 @@ export type MessageChannel = (typeof MESSAGE_CHANNELS)[number];
 export const MESSAGE_INTENTS = ["check_in", "review", "after_readjustment", "invite_readjustment"] as const;
 export type MessageIntent = (typeof MESSAGE_INTENTS)[number];
 
-/** The intent chips, in the order the composer shows them. */
 export const MESSAGE_INTENT_LABELS: Record<MessageIntent, string> = {
   check_in: "Check in",
   review: "About their review",
@@ -73,22 +52,15 @@ Output only the message.`;
 export type SuggestMessageInput = {
   channel: MessageChannel;
   intent: MessageIntent;
-  /** The customer's first name; null when none is on file. */
   firstName: string | null;
-  /** The Staff profile the message is from; null on a shared login where nobody chose one. */
   staffName: string | null;
-  /** The page's Next step line; null with nothing due. */
   nextStep: string | null;
-  /** The latest timeline entries, newest first: a date and one line each. */
   history: ReadonlyArray<{ on: string; line: string }>;
-  /** Their latest Linked Google review, for an intent about it. */
   review: { rating: number | null; comment: string | null; on: string } | null;
 };
 
-/** How many timeline entries a request carries. */
 export const HISTORY_LINES = 12;
 
-/** A timeline summary as a request carries it: no order or reference numbers. */
 export function historyLine(summary: string): string {
   return summary.replace(/\s*#\d+/g, "").replace(/\s{2,}/g, " ").trim();
 }
@@ -123,13 +95,8 @@ export function buildSuggestPrompt(input: SuggestMessageInput): string {
 
 export type SuggestedMessage = { subject: string | null; body: string };
 
-/** Longest draft accepted; the rules ask for far less. */
 const MAX_DRAFT_CHARS = 2000;
 
-/**
- * Claude's text as a message. An email's first line is its subject; a draft
- * that is empty, or an email without a body, is refused, never shown.
- */
 export function parseSuggestion(
   channel: MessageChannel,
   raw: string,
@@ -157,7 +124,6 @@ export async function suggestMessage(input: SuggestMessageInput, opts?: { client
       max_tokens: 16000,
       betas: [SERVER_SIDE_FALLBACK_BETA],
       fallbacks: "default",
-      // A short, low-stakes draft a person edits: the model's default is `medium`, set here so it is a choice.
       output_config: { effort: "low" },
       system: SUGGEST_MESSAGE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildSuggestPrompt(input) }],

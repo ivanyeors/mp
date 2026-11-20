@@ -44,3 +44,74 @@ a product call, not a mechanical fix.
 and scope by membership via `templateIdsForKey` from
 `lib/filling-templates/membership.ts`. Add the call site to the reader list in
 `lib/filling-templates/membership.check.ts` so it cannot regress.
+
+---
+
+## Refunding every line of an Order can come out a cent over or a cent under what it paid
+
+**Where:** `lib/ecommerce/admin-refund.ts` → `lineRefundAmount` and `selectionRefundAmount`
+**Callers:** `app/[lang]/settings/orders/[id]/refund-dialog.tsx` (the *Choose items* figure
+and each line's share)
+**Status:** open, found 2026-11-20 by the property tests, awaiting the owner's decision
+
+ADR 0038 says each line refunds its share of the cash the Order took for goods
+(`total − shipping`, spread by list price), "so … the whole Order adds up to what was
+paid". `lineRefundAmount` rounds each line's share to the cent on its own, so ticking
+every line and the shipping can differ from the Order total by up to half a cent per
+line, in either direction. Both cases below were run through the real functions:
+
+1. **Over by a cent.** Lines S$152.32, S$228.48 and S$76.16 (subtotal S$456.96), no
+   shipping, a S$0.03 discount, so the Order paid S$456.93. The exact shares are
+   152.3100…, 228.4650… and 76.1550…; rounded they are 152.31, 228.47 and 76.16, which
+   is **S$456.94**.
+2. **Under by a cent.** Three S$1.00 lines (subtotal S$3.00), no shipping, a S$0.02
+   discount, so the Order paid S$2.98. Each exact share is 0.99333…, rounded 0.99, so
+   every line is **S$2.97**.
+
+What happens on each path:
+
+- **Over:** the dialog caps the figure at `refundableAmount` and the refund route
+  refuses an amount above it, so no money moves wrongly. Staff see a worked-out figure
+  a cent higher than the refund that is sent.
+- **Under:** nothing caps that direction. The dialog fills in S$2.97, the route accepts
+  it as a partial refund, and the ledger reads `partially_refunded` with S$0.01 left.
+  The full-refund effects in the `charge.refunded` webhook
+  (`app/api/stripe/webhook/route.ts`, `nowFullyRefunded`) do not run: the shipping
+  label is not cancelled, the partner commission is not voided, coupon usage and the
+  customer's lifetime stats are not reversed.
+
+`lib/ecommerce/__tests__/refunds.property.test.ts` ("choosing every line and the
+shipping drifts from what the Order took by at most half a cent per line") pins the
+drift at its current bound, `Math.floor(lines / 2)` cents.
+
+**If you fix it:** give out the cents by largest remainder: work every line's exact
+share in cents, floor them, then hand the cents still owed to the lines with the
+largest remainders, so the shares sum exactly to `total − shipping`. A partial
+selection reads its lines' allotted cents. Then set the tolerance in
+`refunds.property.test.ts` to zero.
+
+## Stripe sync hides every error when it retires an old Price or payment link
+
+**Where:** `lib/stripe/sync.ts` → `syncVariantPrice` (the `catch {}` after the old
+Price is archived) and `createPaymentLink` (the `catch {}` after the old link is
+deactivated)
+**Status:** open, found 2026-11-20 by the second check on the comment removal, by
+reading; not reproduced against Stripe. Awaiting the owner's decision
+
+Both blocks were written to step over one expected case ("price not found", "link
+already inactive") but catch everything:
+
+1. **Old Price left active.** The `try` covers `prices.retrieve`, the nickname update
+   and the archive. If the archive fails on a rate limit or a network error, the code
+   goes on to create the new Price. The old one stays active in Stripe at the old
+   amount, and nothing is logged.
+2. **Old payment link left live.** If deactivating the old link fails for any reason,
+   the new link is created and overwrites `stripe_payment_link_id`. The old link still
+   takes payment at its old price and no row points at it.
+
+`syncProductToStripe` in the same file already does this properly: it steps over
+`resource_missing` only and rethrows the rest.
+
+**If you fix it:** narrow both blocks the same way (step over `resource_missing` for
+the Price, an already-inactive link for the link; rethrow anything else), with a test
+for each that fails when the catch is widened again.

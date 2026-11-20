@@ -30,13 +30,6 @@ const shortDate = (iso: string, withYear = false) =>
     timeZone: "UTC",
   });
 
-/**
- * *Why people leave* (PRD-crm-retention-loop slice 10): what visitors say
- * stopped them on the configurators and checkout, and why shoppers declined a
- * quote. Self-reported, beside the Drop-off graph that shows where. One hue
- * for magnitude; every number is also written out, so nothing rests on the
- * bars alone.
- */
 export function DropOffReasonsCard({ initial }: { initial?: DropOffSummary }) {
   const [days, setDays] = useState<number>(initial?.days ?? 30);
   const [data, setData] = useState<DropOffSummary | null>(initial ?? null);
@@ -63,7 +56,6 @@ export function DropOffReasonsCard({ initial }: { initial?: DropOffSummary }) {
   const loading = !error && (!data || data.days !== days);
   const top = data?.byReason[0]?.count ?? 0;
   const weekMax = Math.max(1, ...(data?.weeks.map((w) => w.count) ?? [0]));
-  // A window that crosses New Year needs the year on its dates.
   const withYear = Boolean(data && data.weeks[0]?.weekStart.slice(0, 4) !== data.weeks.at(-1)?.weekStart.slice(0, 4));
   const weekLabel = (w: { weekStart: string; partial: boolean }) =>
     `Week of ${shortDate(w.weekStart, withYear)}${w.partial ? " (part week)" : ""}`;

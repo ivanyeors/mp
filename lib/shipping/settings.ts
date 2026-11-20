@@ -6,7 +6,6 @@ import type { PackageType, ShippingSettings } from "@/lib/shipping/types";
 
 export const PACKAGE_TYPES: readonly PackageType[] = ["pillow", "bolster", "accessory"];
 
-/** Mirrors the column defaults in 20261002090000_easyship_shipping.sql. */
 export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
   incoterms: "DDU",
   insure_shipments: false,
@@ -17,11 +16,9 @@ export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
   estimate_declared_value: 150,
 };
 
-/** The body Settings → Shipping saves. Every field is required so a save is a whole state. */
 export const ShippingSettingsSchema = z.object({
   incoterms: z.enum(["DDU", "DDP"]),
   insure_shipments: z.boolean(),
-  /** Empty: classify by item_category instead. */
   hs_code: z.string().trim().regex(/^(\d{6,10})?$/, "HS code is 6–10 digits"),
   item_category: z.string().trim().min(1).max(80),
   handling_days: z.number().int().min(0).max(30),
@@ -29,7 +26,6 @@ export const ShippingSettingsSchema = z.object({
   estimate_declared_value: z.number().positive().max(100_000),
 });
 
-/** A stored row (or nothing) as complete settings: anything missing or malformed takes its default. */
 export function parseShippingSettings(row: Record<string, unknown> | null | undefined): ShippingSettings {
   const d = DEFAULT_SHIPPING_SETTINGS;
   if (!row) return { ...d };
@@ -40,7 +36,6 @@ export function parseShippingSettings(row: Record<string, unknown> | null | unde
   return {
     incoterms: row.incoterms === "DDP" ? "DDP" : "DDU",
     insure_shipments: row.insure_shipments === true,
-    // An empty HS code is a choice (classify by category), not a missing value.
     hs_code: typeof row.hs_code === "string" ? row.hs_code : d.hs_code,
     item_category: typeof row.item_category === "string" && row.item_category ? row.item_category : d.item_category,
     handling_days: n(row.handling_days, d.handling_days),
@@ -59,16 +54,10 @@ const REQUIRED_ORIGIN_FIELDS = [
   "country_alpha2",
 ] as const;
 
-/** The sender address fields still empty; Easyship needs all of them to quote or ship. */
 export function missingOriginFields(origin: EasyshipAddress): string[] {
   return REQUIRED_ORIGIN_FIELDS.filter((f) => !String(origin[f] ?? "").trim());
 }
 
-/**
- * Read on every live quote; edited rarely. Cached behind the `shipping-settings`
- * tag, which the settings PUT invalidates. A failed read throws so a database
- * blip is never mistaken for an empty settings row.
- */
 export const readShippingSettings = unstable_cache(
   async (): Promise<ShippingSettings> => {
     const { data, error } = await supabaseAdmin()

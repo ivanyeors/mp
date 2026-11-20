@@ -1,32 +1,12 @@
 import type { ProductSlideSectionConfig } from "@/lib/product-slide-sections/section-config";
 import type { ImageMediaConfig, ProductSlideSectionType } from "@/lib/product-slide-sections/types";
 
-/**
- * What Staff may edit on each **Slide-in section**, by template type.
- *
- * Copy field keys are the keys of the template's resolved content (`SplitHeroContent`
- * and friends), so an override merges straight over what the renderer would show. A
- * field that is not listed here is not editable and an override for it is ignored —
- * that is what keeps a stray key from reaching a template.
- *
- * Deliberately not editable: prices (the Premium price table and the Mbolster price are
- * sell prices, and Costings is their one source), the size/shoulder-length chart (fit
- * data, not copy), firmness percentages, and measurement icons (designed artwork).
- */
-
 export type SubField = { key: string; label: string; multiline?: boolean };
 
 export type CopyField =
   | { kind: "text"; key: string; label: string; multiline?: boolean; always?: boolean }
-  /** An ordered list of strings — paragraphs or bullets. Staff may add and remove. */
   | { kind: "list"; key: string; label: string; itemLabel: string }
-  /**
-   * An ordered list of records. `fixedCount` when each card is paired by position with
-   * media the config owns (a carousel image, a step photo): adding a card would leave it
-   * without one, so the count stays the template's.
-   */
   | { kind: "cards"; key: string; label: string; itemLabel: string; fields: SubField[]; fixedCount?: boolean }
-  /** One nested record, e.g. a callout's title, description and note. */
   | { kind: "group"; key: string; label: string; fields: SubField[] };
 
 const title = (label = "Title"): CopyField => ({ kind: "text", key: "title", label, always: true });
@@ -41,7 +21,6 @@ const TITLE_DESCRIPTION: SubField[] = [
   { key: "description", label: "Description", multiline: true },
 ];
 
-/** The sheet's own header: its title and the line under it. */
 export const HEADER_SECTION_TYPE = "header";
 export const HEADER_FIELDS: CopyField[] = [
   title("Sheet title"),
@@ -155,25 +134,17 @@ export function copyFieldsFor(sectionType: string): CopyField[] {
   return COPY_FIELDS[sectionType as ProductSlideSectionType] ?? [];
 }
 
-/** True when a default value exists, so the field is part of this section's layout. */
 function hasDefault(value: unknown): boolean {
   if (typeof value === "string") return value.trim() !== "";
   if (Array.isArray(value)) return value.length > 0;
   return value !== null && typeof value === "object";
 }
 
-/**
- * The copy fields that apply to one section: the template's fields, less any its default
- * content does not use. A text-only split has no list to edit; a split with a stacked
- * layout edits `stackedParagraphs` rather than `paragraphs`.
- */
 export function visibleCopyFields(sectionType: string, defaults: Record<string, unknown>): CopyField[] {
   return copyFieldsFor(sectionType).filter(
     (field) => (field.kind === "text" && field.always) || hasDefault(defaults[field.key]),
   );
 }
-
-// --- Media --------------------------------------------------------------------
 
 export type SingleImageKey = "image" | "heroImage" | "secondaryImage";
 export type ImageListKey = "images" | "stackedImages" | "cardImages" | "stepImages" | "gallery";
@@ -185,7 +156,6 @@ export type MediaField =
       key: ImageListKey;
       label: string;
       itemLabel: string;
-      /** One slot per position; `undefined` where the template shows no image. */
       fallbacks: Array<ImageMediaConfig | undefined>;
     }
   | { kind: "video"; key: "videoId"; label: string; fallback: string };
@@ -204,7 +174,6 @@ const IMAGE_LIST_LABELS: Record<ImageListKey, { label: string; itemLabel: string
   gallery: { label: "Gallery", itemLabel: "Photo" },
 };
 
-/** The media a section's config carries, and so the media Staff may replace. */
 export function mediaFieldsFor(section: ProductSlideSectionConfig): MediaField[] {
   const fields: MediaField[] = [];
   const record = section as unknown as Record<string, unknown>;
@@ -230,7 +199,6 @@ export function mediaFieldsFor(section: ProductSlideSectionConfig): MediaField[]
   return fields;
 }
 
-/** The type badge in the builder's section list. */
 export const SLIDE_IN_TYPE_LABELS: Record<string, string> = {
   header: "Sheet header",
   split_hero: "Text and image",
@@ -258,7 +226,6 @@ export const SLIDE_IN_TYPE_LABELS: Record<string, string> = {
   typed_quote: "Testimonial",
 };
 
-/** What a section shows that Staff cannot change here, said once in its editor. */
 export const FIXED_CONTENT_NOTES: Partial<Record<string, string>> = {
   size_guide_split: "The size chart is fit data, so it isn't edited here.",
   spec_table: "Prices aren't edited in the Page Builder.",

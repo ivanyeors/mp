@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * The "Use points" preview (PRD-loyalty-points slice 04): whose points comes
- * from the session, never the body, and a guest or partner learns nothing.
- */
-
 const OWNER = "8b1c3f9e-0000-4000-8000-000000000001";
 const OTHER = "8b1c3f9e-0000-4000-8000-000000000002";
 

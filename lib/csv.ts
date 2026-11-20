@@ -1,13 +1,3 @@
-/**
- * CSV read and write, shared by every import and export that runs in the
- * browser as well as on the server. No Node imports.
- *
- * Callers: the AI-answer report import (`lib/seo-metrics/csv-import.ts`), the
- * Shopify customer import (`lib/customer-migration/shopify-csv.ts`) and the
- * Google Form fitting import (`lib/fitting-import/google-form-csv.ts`).
- */
-
-/** Minimal RFC 4180 parser: quoted fields, escaped quotes, CRLF or LF, BOM. */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -39,13 +29,11 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
-/** RFC 4180: quote a field that holds a comma, a double quote, CR or LF. */
 export function csvCell(value: unknown): string {
   const s = value == null ? "" : String(value);
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** A header row and body rows as one CRLF-separated CSV document. */
 export function toCsv(header: readonly string[], rows: readonly (readonly unknown[])[]): string {
   return [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
 }

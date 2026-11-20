@@ -19,9 +19,6 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // The theme is only known in the browser, so the three radios stay unchecked
-  // for the first paint and flip once mounted — the rest of the page renders
-  // straight from the server.
   useEffect(() => {
     setMounted(true);
   }, []);

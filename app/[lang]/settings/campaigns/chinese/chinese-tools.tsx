@@ -10,14 +10,6 @@ import type { RewritableBlock } from "@/lib/email-campaigns/ai-refine-brief";
 import { RewriteTool } from "../ai/rewrite-tools";
 import { useChineseEditing } from "./chinese-context";
 
-/**
- * A block's card in the editor's 中文 (PRD-campaign-email-editor slice 17):
- * a block not translated yet offers ✨ *Translate*; one whose English changed
- * since offers ✨ *Translate again* and *Keep*, which makes its 中文 words
- * current as they are. One whose 中文 words Claude wrote, and nobody has
- * edited since, offers *Keep* too: a person has read them. In English,
- * nothing (or a heading's and a text block's ✨ Rewrite, `BlockTools`).
- */
 export function ChineseTools<B extends EmailBlock>({ block, name }: BlockFormProps<B> & { name: string }) {
   const zh = useChineseEditing();
   const status = zh?.status(block.id);
@@ -49,7 +41,6 @@ export function ChineseTools<B extends EmailBlock>({ block, name }: BlockFormPro
   );
 }
 
-/** A heading's and a text block's tools: ✨ Rewrite in English (slice 10), the 中文 ones in 中文. */
 export function BlockTools<B extends RewritableBlock>(props: BlockFormProps<B> & { name: string }) {
   return useChineseEditing() ? <ChineseTools {...props} /> : <RewriteTool block={props.block} name={props.name} idPrefix={props.idPrefix} />;
 }

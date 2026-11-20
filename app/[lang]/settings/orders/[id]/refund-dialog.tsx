@@ -37,7 +37,6 @@ const MODES: Array<{ value: RefundMode; label: string; hint: string }> = [
     { value: "amount", label: "Custom amount", hint: "Any figure" },
 ];
 
-/** What the parent needs after a refund: the lines that came back, for restocking. */
 export interface RefundIssued {
     reason: StaffRefundReason;
     returnedQuantities: Record<string, number>;
@@ -48,17 +47,11 @@ function newRequestId(): string {
     return crypto.randomUUID();
 }
 
-/** Parse a typed dollar amount to cents, or null when it is not a positive number. */
 function toCents(raw: string): number | null {
     const n = Number.parseFloat(raw.trim());
     return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null;
 }
 
-/**
- * Staff refund from the order screen: everything left, chosen lines (each at
- * its share of what the customer paid), or a typed amount. Stripe moves the
- * money; the order updates when its webhook confirms.
- */
 export function RefundDialog({
     order,
     isResultOrder,
@@ -101,14 +94,12 @@ export function RefundDialog({
     const worked = selectionRefundAmount(order, items, selection);
     const workedCapped = Math.min(worked, remaining);
 
-    // Items: the worked-out figure unless Staff typed over it. Amount: what they typed.
     const amountText =
         mode === "items" ? (amountDraft ?? (workedCapped > 0 ? workedCapped.toFixed(2) : "")) : (amountDraft ?? "");
     const amountCents = mode === "full" ? remainingCents : toCents(amountText);
 
     const nothingChosen = mode === "items" && selection.items.length === 0 && !shipping;
     const overLimit = amountCents != null && amountCents > remainingCents;
-    // The server's rule for a customised order, so a return it would refuse says why here.
     const returnDenied = staffRefundDeniedReason(order, items, {
         returned: reason === "returned",
         inPersonReturnAcknowledged: returnAcknowledged,
@@ -132,7 +123,6 @@ export function RefundDialog({
 
     const setLineQuantity = (id: string, quantity: number) => {
         setQuantities((prev) => ({ ...prev, [id]: quantity }));
-        // A new selection works the figure out again.
         setAmountDraft(null);
     };
 
@@ -157,7 +147,6 @@ export function RefundDialog({
             });
             const json = await res.json().catch(() => ({}));
             if (!res.ok) {
-                // Part of a split refund went through: start a fresh request for the rest.
                 if (json.amount) setRequestId(newRequestId());
                 throw new Error(json.error ?? "Couldn't issue the refund.");
             }

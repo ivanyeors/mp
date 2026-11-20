@@ -1,7 +1,3 @@
-/**
- * Slice 12 — GA sync parse + stitch (no live BigQuery).
- * Run: npx tsx lib/analytics/journey/ga-sync.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -27,7 +23,7 @@ const parsed = parseGaExportRows({
       event_name: "page_view",
       event_timestamp: "2026-07-14T12:00:00.000Z",
     },
-    { client_id: "x", event_name: "x" }, // skipped — too short / invalid
+    { client_id: "x", event_name: "x" },
     {
       client_id: "1112223334.5556667778",
       event_name: "session_start",
@@ -57,7 +53,6 @@ const stitches = stitchGaRowsToVisitors(
 );
 assert.deepEqual(stitches, [{ id: "e1", visitorId: "v1" }]);
 
-// Ingest accepts gaClientId (set-if-null path covered in persist; parse only here)
 const ingest = parseIngestBody({
   visitorId: "11111111-1111-4111-8111-111111111111",
   visitId: "22222222-2222-4222-8222-222222222222",
@@ -76,7 +71,6 @@ const badGa = parseIngestBody({
 assert.equal(badGa.ok, true);
 if (badGa.ok) assert.equal(badGa.body.gaClientId, null);
 
-// Admin graph stays first-party only — no live GA / staging table reads
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const aggregates = readFileSync(join(root, "lib/analytics/journey/aggregates.ts"), "utf8");
 assert.doesNotMatch(aggregates, /analytics_ga|bigquery|googleapis|gtag/i);

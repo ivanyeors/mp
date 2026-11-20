@@ -1,18 +1,3 @@
-/**
- * Is one-click unsubscribe live on a site? (PRD-shopify-customer-migration
- * slice 07; the README's first hazard: no campaign email before it is.)
- *
- * Run: npx tsx lib/marketing-consent/unsubscribe-route.check.ts https://custom.mpillow.com
- *
- * POSTs an empty one-click unsubscribe to `/api/email/unsubscribe` and expects
- * `400 { error: "invalid_link" }`: the route is deployed, holds its
- * UNSUBSCRIBE_SECRET, and refused without changing anyone. Exits 0 when ready,
- * 1 when not, saying why. Changes nothing on the site. Slice 08's sender runs
- * the same probe (`probeUnsubscribeRoute`) before it sends.
- *
- * With UNSUBSCRIBE_SECRET in the environment as well, it also checks a link
- * built here verifies here, and prints none of it.
- */
 import assert from "node:assert/strict";
 import {
   probeUnsubscribeRoute,

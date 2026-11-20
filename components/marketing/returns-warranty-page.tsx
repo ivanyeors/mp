@@ -101,8 +101,6 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
   const supportHref = withLocale("/support", locale);
   const mpCareHref = withLocale("/mp-care", locale);
   const readjustHref = withLocale("/appointments?type=readjustment", locale);
-  // Fees and the free window come from Costings → Service fees (ADR 0024), so
-  // this page never quotes a price an operator has since changed.
   const copy = await loadServiceCopyValues(supabaseAdmin());
   const products = PRODUCT_WARRANTIES.map((p) => interpolateServiceCopyDeep(p, copy));
 

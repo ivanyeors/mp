@@ -5,12 +5,6 @@ import { cn } from "@/lib/utils";
 import type { RichTextRun, RichTextValue, RichTextVariable } from "./rich-text-doc";
 import { RICH_TEXT_BOX, RICH_TEXT_EMPTY, VARIABLE_CHIP } from "./rich-text-style";
 
-/**
- * `RichText`'s words as they read, not editable (PRD-campaign-email-editor
- * slice 04): on the server, before TipTap loads, and while the input is
- * read-only. It looks as the editor does, so one never jumps to the other.
- */
-
 function RunView({ run, variables }: { run: RichTextRun; variables: readonly RichTextVariable[] }) {
   if ("var" in run) {
     const v = variables.find((x) => x.key === run.var);
@@ -35,11 +29,6 @@ const Runs = ({ runs, variables }: { runs: readonly RichTextRun[]; variables: re
   </>
 );
 
-/**
- * The words inline, each Variable its chip, paragraphs and items a space
- * apart: a line of the page that quotes them (an Email template's original
- * words, slice 14), not an input.
- */
 export function RichTextInline({ value, variables = [] }: { value: RichTextValue; variables?: readonly RichTextVariable[] }) {
   return (
     <>
@@ -64,11 +53,9 @@ export function RichTextView({
   ...aria
 }: {
   value: RichTextValue;
-  /** Fixed for good (sending has started), not only waiting for the editor. */
   readOnly?: boolean;
   variables?: readonly RichTextVariable[];
   placeholder?: string;
-  /** One line, as the editor's `singleLine`: the same height, and said so. */
   singleLine?: boolean;
   className?: string;
   id?: string;

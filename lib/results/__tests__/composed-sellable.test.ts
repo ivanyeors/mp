@@ -31,7 +31,7 @@ describe("slice 09 — mbolster composed sellable", () => {
       composedBomLines: [
         { item_id: 10, quantity: 1, category: "cover" },
         { item_id: 11, quantity: 1, category: "bolster_protector" },
-        { item_id: 99, quantity: 2, category: "filling" }, // ignored — template owns fillings
+        { item_id: 99, quantity: 2, category: "filling" },
       ],
       fillingTemplateLines: [{ item_id: 20, quantity: 3, category: "filling" }],
       preferenceLines: [
@@ -50,9 +50,6 @@ describe("slice 09 — mbolster composed sellable", () => {
     });
     expect(assembled.ok).toBe(true);
     if (!assembled.ok) return;
-    // Was [10, 11]. The shopper chose a cover, so the BOM's default cover (10) is
-    // displaced rather than shipped alongside it; the protector (11) fills no
-    // preference role and survives.
     expect(assembled.lines.filter((l) => l.role === "composed").map((l) => l.item_id)).toEqual([
       11,
     ]);
@@ -69,19 +66,7 @@ describe("slice 09 — mbolster composed sellable", () => {
   });
 });
 
-/**
- * Two Costings MSRPs for one size x tier used to surface to the shopper as
- * "This configuration isn't available for purchase yet" — an absence, when the truth
- * was an ambiguity.
- *
- * That has since been narrowed, and the narrowing is a deliberate REVERSAL: premium
- * is PRICED per case fabric family, so `…:linen` + `…:fibrecool` is the correct,
- * expected shape and must resolve. Only two rows for the SAME family are ambiguous.
- * Do not "restore" the old rule — the nine premium price points do not decompose into
- * one base (see 20260913000000_premium_variant_prices.sql).
- */
 describe("loadComposedSellable — one row per case fabric family", () => {
-  /** Chainable Supabase stub: every builder method returns itself, await yields data. */
   function table(data: unknown) {
     const chain: Record<string, unknown> = {};
     const self = () => chain;
@@ -100,7 +85,6 @@ describe("loadComposedSellable — one row per case fabric family", () => {
     return chain;
   }
 
-  /** Premium M: BOM ships the Fibrecool case (item 53, MSRP 104). */
   const FIBRECOOL_M = { id: 53, category: "pillow_case", price_family: "fibrecool", size: "M" };
   const LINEN_M = { id: 44, category: "pillow_case", price_family: "linen", size: "M" };
   const COVER_M = { id: 3, category: "cover", price_family: null, size: "M" };
@@ -140,8 +124,6 @@ describe("loadComposedSellable — one row per case fabric family", () => {
     );
     expect(res.ok).toBe(true);
     if (res.ok) {
-      // Ships Fibrecool, so the shelf price is 460 — not 430, and not whichever row
-      // the query returned last.
       expect(res.sellable.msrp).toBe(460);
       expect(res.sellable.msrpByFamily).toEqual({ linen: 430, fibrecool: 460 });
     }
@@ -198,15 +180,11 @@ describe("loadComposedSellable — one row per case fabric family", () => {
       stub([{ key: "product:pillow:8:linen", variant: "linen", msrp: 430 }]),
       key,
     );
-    // BOM ships Fibrecool; only a linen row exists and there is no unkeyed fallback.
-    // The loader still succeeds: `assign-prep` and the admin assign screen want only
-    // `bomLines`, and one unpriceable default used to take both down with a 500.
     expect(res.ok).toBe(true);
     if (res.ok) {
       expect(res.sellable.msrp).toBeNull();
       expect(res.sellable.priceFault?.code).toBe("no_price");
       expect(res.sellable.bomLines.length).toBeGreaterThan(0);
-      // The family rows are still handed over, so a shopper CHOOSING linen prices.
       expect(res.sellable.msrpByFamily).toEqual({ linen: 430 });
     }
   });

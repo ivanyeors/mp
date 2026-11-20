@@ -35,26 +35,6 @@ import {
   type DefaultConsentCounts,
 } from "@/lib/customer-migration/default-consent";
 
-/**
- * Customers → Import from Shopify (PRD-shopify-customer-migration, slices 02
- * and 03; ADR 0029).
- *
- * Every action checks `customer-import`, never `customers`, which Manager and
- * Staff also hold; `customer-import` requires `customers-edit`. The browser
- * sends rows, a chunk at a time; the file itself is never uploaded or stored.
- * Rows are re-read here from their raw cells, and the browser's own reading
- * is not trusted. No answer carries a customer's PII: the browser already
- * holds the rows, and looks each one up by its index.
- *
- * Writes go through SQL functions only, each one transaction, executable by
- * the service role alone (20261020110000_customer_import_apply.sql). The one
- * insert here is the Import batch itself.
- */
-
-/**
- * Preview one chunk against live rows (slice 02). Reads only: it answers each
- * row with its outcome and repairs.
- */
 export async function previewShopifyImport(rows: IndexedRawRow[]): Promise<PreviewChunkResponse> {
   await assertAdmin("customer-import");
 
@@ -83,12 +63,6 @@ export type StartImportResponse =
   | { ok: true; batch: { id: string; rowsDone: number; rowsTotal: number } }
   | { ok: false; error: string };
 
-/**
- * Record a new Import batch: the file's name and SHA-256, its row count, the
- * export's date and whether addresses come in, with who ran it. A file that
- * already has a batch that is not undone cannot start another: an applied one
- * is not imported twice, and a stopped one is continued instead.
- */
 export async function startShopifyImport(input: StartImportInput): Promise<StartImportResponse> {
   const ctx = await assertAdmin("customer-import");
 
@@ -113,12 +87,6 @@ export async function startShopifyImport(input: StartImportInput): Promise<Start
   return { ok: true, batch: { id: data.id as string, rowsDone: data.rows_done as number, rowsTotal: data.rows_total as number } };
 }
 
-/**
- * Write one chunk of up to 100 rows, in file order from `startIndex`. The SQL
- * function re-decides every row against the rows as they are now, adds the
- * outcomes to the batch, and refuses a chunk that does not start at the
- * batch's `rows_done`.
- */
 export async function applyShopifyImportChunk(
   batchId: string,
   startIndex: number,
@@ -139,7 +107,6 @@ export async function applyShopifyImportChunk(
   return readImportResult(data);
 }
 
-/** Counts only, never a customer's email or name, nor the file's name. */
 const auditCounts = (c: BatchCounts) => ({
   rows_total: c.rowsTotal,
   created: c.created,
@@ -149,11 +116,6 @@ const auditCounts = (c: BatchCounts) => ({
   skipped_by_reason: c.skipped,
 });
 
-/**
- * Reconcile the batch and, when every row is accounted for, mark it applied
- * and record `customer_import.apply`. A batch that does not reconcile stays
- * unapplied.
- */
 export async function finishShopifyImport(batchId: string): Promise<FinishResponse> {
   const ctx = await assertAdmin("customer-import");
   if (typeof batchId !== "string" || !UUID.test(batchId)) return NO_BATCH;
@@ -175,7 +137,6 @@ export async function finishShopifyImport(batchId: string): Promise<FinishRespon
 
 export type UndoResponse = { ok: true; counts: UndoCounts } | { ok: false; error: string };
 
-/** What undoing the batch would remove, unlink and keep. Writes nothing. */
 export async function previewShopifyImportUndo(batchId: string): Promise<UndoResponse> {
   await assertAdmin("customer-import");
   if (typeof batchId !== "string" || !UUID.test(batchId)) return NO_BATCH;
@@ -186,11 +147,6 @@ export async function previewShopifyImportUndo(batchId: string): Promise<UndoRes
   return { ok: true, counts };
 }
 
-/**
- * Undo the batch, after the operator typed UNDO: remove the Customers it
- * created that nobody has claimed or referenced since, unlink the ones it
- * merged into, and record `customer_import.undo` with the counts.
- */
 export async function undoShopifyImport(batchId: string, confirmation: string): Promise<UndoResponse> {
   const ctx = await assertAdmin("customer-import");
   if (typeof batchId !== "string" || !UUID.test(batchId)) return NO_BATCH;
@@ -219,11 +175,6 @@ export async function undoShopifyImport(batchId: string, confirmation: string): 
 
 export type DefaultConsentResponse = { ok: true; counts: DefaultConsentCounts } | { ok: false; error: string };
 
-/**
- * What subscribing the imported customers would do, given Shopify's
- * unsubscribed list (ADR 0039). Writes nothing. An empty list is the owner
- * saying nobody unsubscribed in Shopify; the page asks them to say so.
- */
 export async function previewDefaultConsent(emails: string[]): Promise<DefaultConsentResponse> {
   await assertAdmin("customer-import");
   const list = readEmailList(emails);
@@ -238,12 +189,6 @@ export async function previewDefaultConsent(emails: string[]): Promise<DefaultCo
   return { ok: true, counts };
 }
 
-/**
- * Unsubscribe everyone on Shopify's unsubscribed list, then subscribe every
- * other imported customer nobody has asked, as `import_default`, in one
- * transaction, and record `customer_consent.import_default` with the counts.
- * Run again after a later import: it changes only who is new.
- */
 export async function subscribeImportedByDefault(emails: string[]): Promise<DefaultConsentResponse> {
   const ctx = await assertAdmin("customer-import");
   const list = readEmailList(emails);

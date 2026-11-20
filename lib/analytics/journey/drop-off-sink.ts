@@ -4,7 +4,6 @@ export const DROP_OFF_NODE = "__drop_off__";
 
 export type DropOffFeed = { lastPath: string; count: number; country?: string };
 
-/** Add Drop-off sink node + edges from last pages of ended Visits. */
 export function attachDropOffSink(
   graph: { nodes: JourneyNode[]; edges: JourneyEdge[] },
   feeds: DropOffFeed[],
@@ -12,7 +11,7 @@ export function attachDropOffSink(
   if (feeds.length === 0) return graph;
 
   let sinkViews = 0;
-  const edgeCounts = new Map<string, number>(); // from[\0country?]
+  const edgeCounts = new Map<string, number>();
   for (const f of feeds) {
     if (!f.lastPath || f.count <= 0) continue;
     sinkViews += f.count;

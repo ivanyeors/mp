@@ -3,9 +3,6 @@ import { SUPPORTED_LOCALES } from "@/lib/i18n/locales";
 import { getMessages } from "@/lib/i18n/messages";
 import { buildCartMessages } from "@/lib/shop/cart-messages";
 
-// The real client component pulls in next/link, motion and the cart context.
-// This test is about the page's contract with it — which props cross the
-// server → client boundary — so a stub that records nothing is enough.
 vi.mock("@/components/shop/cart-page-client", () => ({
   CartPageClient: () => null,
 }));
@@ -13,13 +10,6 @@ vi.mock("@/components/shop/cart-page-client", () => ({
 import CartPage from "../page";
 import { CartPageClient } from "@/components/shop/cart-page-client";
 
-/**
- * Paths inside `value` whose leaf is a function. React's server renderer
- * throws "Functions cannot be passed directly to Client Components" for any
- * of these, which is exactly how the cart page broke on mobile: the server
- * page built `CartMessages` (two formatter functions) and handed it to the
- * client component.
- */
 function functionPaths(value: unknown, path = "props"): string[] {
   if (typeof value === "function") return [path];
   if (Array.isArray(value)) return value.flatMap((v, i) => functionPaths(v, `${path}[${i}]`));

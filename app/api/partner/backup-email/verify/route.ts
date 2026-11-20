@@ -6,17 +6,10 @@ import { verifyOtpCode } from "@/lib/partner-backup-email";
 
 export const runtime = "nodejs";
 
-// A 6-digit code is 1e6 wide; cap wrong guesses so it can't be brute-forced
-// within the 10-minute window. On the Nth miss we burn the pending code.
 const MAX_OTP_ATTEMPTS = 5;
 
 const bodySchema = z.object({ code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code.") });
 
-/**
- * Confirm the self-issued code. On success promote backup_email_pending ->
- * backup_email, set backup_email_verified = true, and clear the pending fields.
- * Only then does the backup address become a recognised sign-in identity.
- */
 export async function POST(req: Request) {
   const ctx = await getPartnerContext();
   if (!isPartnerActive(ctx)) {
@@ -48,8 +41,6 @@ export async function POST(req: Request) {
       })
       .eq("auth_user_id", ctx.userId);
 
-  // Every guess takes one of the code's tries before it is checked, with a
-  // conditional update, so guesses sent at once cannot share a try.
   const attempts = row.backup_email_otp_attempts ?? 0;
   if (attempts >= MAX_OTP_ATTEMPTS) {
     await clearCode();

@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/** Roles API (slice 06): each endpoint's allow and refuse cases, and the audit trail. */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -142,7 +140,6 @@ describe("a concurrent role edit between the check and the write (review finding
     Object.defineProperty(h.db, "admin_roles", {
       configurable: true,
       get: () => {
-        // Read 4 is after the policy check and before the write: an Owner adds Media then.
         if (++reads === 4) Object.assign(orders, { permissions: ["orders", "media"], updated_at: "2026-10-04T00:00:00Z" });
         return roles;
       },

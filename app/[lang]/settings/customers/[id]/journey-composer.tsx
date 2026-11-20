@@ -31,21 +31,6 @@ async function readError(res: Response, fallback: string): Promise<string> {
     return typeof payload?.error === "string" ? payload.error : fallback;
 }
 
-/**
- * The Journey's composer (PRD-customer-page-journey slices 04 and 05): one
- * place to add to the story. Four modes:
- *
- *  - **Note**: a Customer note (ADR 0028 (a)), as the Notes card added one.
- *  - **Follow-up**: a dated to-do for a Staff profile, as the Follow-ups card
- *    added one.
- *  - **Email** and **WhatsApp**: a message to the customer, drafted by Claude
- *    on request, edited here, and sent from the Staff member's own Gmail or
- *    WhatsApp (./customer-shortcuts). The platform sends nothing.
- *
- * Rendered only for `customers-edit`: every mode writes or drafts, and the
- * routes refuse without it. The header's buttons choose a mode from outside
- * (`mode`, `focusSignal`).
- */
 export function JourneyComposer({
     customerId,
     mode,
@@ -58,9 +43,7 @@ export function JourneyComposer({
     customerId: string;
     mode: ComposerMode;
     onModeChange: (mode: ComposerMode) => void;
-    /** Changes when a header button asked for this mode: the field takes the cursor. */
     focusSignal: number;
-    /** Who a follow-up may be for, and today; null until read. */
     followUps: CustomerFollowUpsData | null;
     onNoteAdded: (note: CustomerNote) => void;
     onFollowUpAdded: (followUp: CustomerFollowUp) => void;
@@ -166,7 +149,6 @@ function NoteForm({
     );
 }
 
-/** The profile you work as, when it may be given one; otherwise nobody (the picker asks). */
 function defaultAssignee(data: CustomerFollowUpsData | null): string {
     if (!data?.me) return "";
     return data.assignees.some((p) => p.id === data.me!.id) ? data.me.id : "";
@@ -184,7 +166,6 @@ function FollowUpForm({
     onAdded: (followUp: CustomerFollowUp) => void;
 }) {
     const [title, setTitle] = useState("");
-    // Empty until chosen: the defaults (tomorrow in Singapore, the profile you work as) follow the data.
     const [dueChoice, setDueChoice] = useState("");
     const [assigneeChoice, setAssigneeChoice] = useState("");
     const [adding, setAdding] = useState(false);
@@ -269,13 +250,6 @@ function FollowUpForm({
     );
 }
 
-/**
- * Email or WhatsApp: pick what it is about, press *Generate suggestion* to
- * have Claude draft it through the API, edit, then open it in Gmail or
- * WhatsApp with the text filled in. Choosing a subject drafts nothing: Claude
- * is called only on that press (owner, 2026-11-15). Blank is always there:
- * the buttons work with nothing drafted.
- */
 function MessageForm({ customerId, channel }: { customerId: string; channel: MessageChannel }) {
     const { device, openEmail, openWhatsApp, emailOpens, whatsappOpens } = useShortcuts();
     const [subject, setSubject] = useState("");

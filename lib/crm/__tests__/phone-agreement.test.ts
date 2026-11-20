@@ -4,34 +4,14 @@ import { describe, expect, it } from "vitest";
 import { isValidPhone } from "@/lib/appointments/phone";
 import { mobileStatus } from "@/lib/crm/contact-status";
 
-/**
- * The list's Mobile filter and the Customer page's Mobile row must agree
- * (CRM slice 11). The page asks `isValidPhone` (lib/appointments/phone.ts); the
- * list asks `public.is_valid_phone` and `public.is_blank_phone` through the
- * overview's `phone_valid` and `has_phone` (20261020123000). Both run the same
- * fixture:
- *
- *  - here, every phone in PHONES is decided by the TypeScript, and the answers
- *    are `expected` in phone-cases.json;
- *  - supabase/tests/customer-crm/assert-11-contact-status.sql seeds a Customer
- *    per phone and requires *Mobile: invalid* to list exactly those whose
- *    phone fails `isValidPhone`, and the other two buckets likewise.
- *
- * After changing the fixture or the phone rules, regenerate with
- *   UPDATE_SQL_CASES=1 pnpm vitest run lib/crm/__tests__/phone-agreement.test.ts
- * and run the SQL assert.
- */
-
 const CASES_PATH = join(process.cwd(), "supabase/tests/customer-crm/phone-cases.json");
 
-/** Every branch of normalizePhone, and the inputs that sit on its edges. */
 const PHONES: (string | null)[] = [
   null,
   "",
   " ",
   "\t \n",
   " ",
-  // 8-digit local: mobile 8/9, landline 6, anything else invalid.
   "87805311",
   "91234567",
   "61234567",
@@ -40,7 +20,6 @@ const PHONES: (string | null)[] = [
   "8780 5311",
   "8780-5311",
   " 87805311 ",
-  // +65, 65 and 065 prefixes, each with a good and a bad national part.
   "+6587805311",
   "+65 8780 5311",
   "+65 1234 5678",
@@ -48,13 +27,11 @@ const PHONES: (string | null)[] = [
   "6512345678",
   "06587805311",
   "06512345678",
-  // A plus only counts as the first character after whitespace.
   "  +6587805311",
   " +6587805311",
   "　+447700900123",
   "​+6587805311",
   "65+87805311",
-  // Overseas E.164: 8 to 15 digits after the plus.
   "+447700900123",
   "+65123456789",
   "+1234567",
@@ -62,7 +39,6 @@ const PHONES: (string | null)[] = [
   "+123456789012345",
   "+1234567890123456",
   "+",
-  // Wrong lengths and noise.
   "8780531",
   "878053111",
   "658780531",

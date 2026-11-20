@@ -5,10 +5,6 @@ import { buildUsageMap } from "@/lib/media/image-usages";
 
 export const runtime = "nodejs";
 
-/**
- * GET /api/media/usage
- * Returns map of hosted_url → UsageEntry[]. Optional ?url= filter.
- */
 export async function GET(req: Request) {
   const denied = await requireAdmin("media");
   if (denied) return denied;

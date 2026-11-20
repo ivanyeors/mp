@@ -10,7 +10,6 @@ const stripeWith = (intent: Intent | Error) => ({
     },
   },
 });
-// The narrow fake stands in for the one call the helper makes.
 const capturedAt = (intent: Intent | Error) =>
   paymentIntentCapturedAt(stripeWith(intent) as unknown as Parameters<typeof paymentIntentCapturedAt>[0], "pi_1");
 

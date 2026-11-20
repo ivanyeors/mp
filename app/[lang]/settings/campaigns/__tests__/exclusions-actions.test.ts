@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Campaign } from "@/lib/email-campaigns/rules";
 
-/**
- * Leaving Segments out (PRD-campaign-audiences slice 06), through the page's
- * wave action: each left-out Segment goes to the planner with its name and
- * its Customers, in the campaign's order, and one that is archived, needs
- * review or is gone refuses the wave by name, never widening it.
- */
-
 const ID = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
 const STAFF = "5e000000-0000-4000-8000-0000000000a1";
 const RECENT = "5e000000-0000-4000-8000-0000000000b2";
@@ -58,7 +51,6 @@ vi.mock("@/lib/email-campaigns/sender", async (importOriginal) => ({
       _segmentIds: unknown,
       exclusions: { segmentId: string; name: string; ids: () => AsyncIterable<string[]> }[] = [],
     ) => {
-      // As the real planner: every left-out Segment is read before anyone is planned.
       for (const x of exclusions) {
         const ids: string[] = [];
         for await (const page of x.ids()) ids.push(...page);

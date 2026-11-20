@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * View-only Customers (CRM slice 10): a role with `customers` and without
- * `customers-edit` reads every Customers route and is refused by every write,
- * which leaves the data untouched. A role with both writes as before.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -20,8 +14,6 @@ vi.mock("@/lib/supabase/server", async () => {
   const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");
   return { supabaseAdmin: () => fakeSupabaseAdmin(h.db) };
 });
-// The list and detail reads page and search through PostgREST calls the fake
-// does not model; the guard in front of them is what is under test.
 vi.mock("@/lib/ecommerce/admin/customers", () => ({
   listAdminCustomers: () => Promise.resolve({ ok: true, rows: h.db.customers ?? [], total: 1, page: 1, limit: 20 }),
   getAdminCustomer: (id: string) =>
@@ -58,7 +50,6 @@ const ctx = { params: Promise.resolve({ id: "c1" }) };
 
 const ADDRESS = { recipient: "Ana Tan", line1: "1 Road", city: "Singapore", postal_code: "123456", country: "SG" };
 
-/** Every write path on the Customers page, as one call each. */
 const WRITES: [string, () => Promise<Response>][] = [
   ["POST /api/shop/customers", () => list.POST(req("POST", { email: "new@x.test" }))],
   ["PATCH /api/shop/customers/[id]", () => one.PATCH(req("PATCH", { first_name: "Changed" }), ctx)],

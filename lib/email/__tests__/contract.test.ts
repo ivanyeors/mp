@@ -1,11 +1,3 @@
-/**
- * Shared contract every registered email must satisfy. This is what stops the
- * design system from rotting one template at a time: a new template that skips
- * the shell, forgets a plain-text body, or emits a relative link fails here.
- */
-
-// Deterministic origin for the absolute-URL assertions (getSiteOrigin() would
-// otherwise resolve to localhost). Must be set before the registry imports base.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -13,7 +5,6 @@ import { EMAIL_REGISTRY } from "../registry";
 
 const ORIGIN = "https://custom.mpillow.com";
 
-/** Every href/src value in the document. */
 function urlsIn(html: string): string[] {
   return [...html.matchAll(/(?:href|src)="([^"]*)"/g)].map((m) => m[1]);
 }
@@ -37,7 +28,6 @@ describe("email contract", () => {
 
     it("has a plain-text alternative", () => {
       expect(rendered.text.trim().length).toBeGreaterThan(20);
-      // A stray tag in the text body means someone pasted HTML into it.
       expect(rendered.text).not.toMatch(/<(p|div|table|a|br)\b/i);
     });
 
@@ -48,7 +38,6 @@ describe("email contract", () => {
       expect(rendered.html).toContain('name="viewport"');
       expect(rendered.html).toContain('name="color-scheme"');
       expect(rendered.html).toContain("</html>");
-      // Exactly one document — catches a template being wrapped in the shell twice.
       expect(rendered.html.match(/<html\b/g)).toHaveLength(1);
       expect(rendered.html.match(/<body\b/g)).toHaveLength(1);
     });
@@ -68,13 +57,11 @@ describe("email contract", () => {
     it("executes nothing", () => {
       expect(rendered.html).not.toMatch(/<script/i);
       expect(rendered.html).not.toMatch(/javascript:/i);
-      // Inline event handlers — ` onerror=`, ` onclick=`, …
       expect(rendered.html).not.toMatch(/\son[a-z]+\s*=/i);
     });
 
     it("uses only absolute URLs", () => {
       for (const url of urlsIn(rendered.html)) {
-        // The MSO ghost table and VML namespaces are not links.
         if (url.startsWith("urn:schemas-microsoft-com")) continue;
         expect(url, `relative URL in ${entry.id}: ${url}`).toMatch(
           /^(https?:|mailto:|tel:|#)/,
@@ -83,9 +70,6 @@ describe("email contract", () => {
     });
 
     it("never prints a raw URL as visible copy", () => {
-      // A tokenised status URL is ~95 characters. Printed as prose it wraps to
-      // three lines of muted 12px and reads as noise; printed as its own link
-      // text it is no better. Both shipped, so both are locked out here.
       const visible = rendered.html
         .replace(/<[^>]+>/g, " ")
         .replace(/&[a-z]+;|&#\d+;/gi, " ");
@@ -94,8 +78,6 @@ describe("email contract", () => {
     });
 
     it("keeps the plain-text body in step with the HTML links", () => {
-      // Every non-chrome link in the HTML should also be reachable from the
-      // text body — a text alternative that drops the CTA is a silent bug.
       const chrome = new Set(
         [
           ...[

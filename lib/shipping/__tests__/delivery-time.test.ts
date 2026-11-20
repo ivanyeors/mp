@@ -16,7 +16,6 @@ describe("A shipping method's delivery time", () => {
     expect(methodDeliveryTime({ "en-US": standard["en-US"], "zh-CN": { name: "标准配送" } }, "zh-CN")).toBe(
       "About 2 weeks",
     );
-    // Rows written before content was keyed by full locale.
     expect(methodDeliveryTime({ en: { name: "Standard", estimated_days: "5-7 days" } }, "en-US")).toBe("5-7 days");
   });
 

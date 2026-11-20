@@ -2,11 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 
-/**
- * One block of a Paired build's review (step 4): what was chosen, what it
- * costs, and the way back to change it. The summary is the last thing the
- * shopper sees before paying, so every part of the order has one.
- */
 export function ReviewCard({
   title,
   detail,
@@ -51,11 +46,6 @@ export function ReviewCard({
   );
 }
 
-/**
- * What comes with the part of the order above it: a warranty, a re-adjustment,
- * the points it earns. Sits between the review's cards, quieter than they are,
- * since it is nothing to check or change.
- */
 export function ReviewNote({
   icon,
   title,

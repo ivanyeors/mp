@@ -14,7 +14,6 @@ const notFound = () => NextResponse.json({ error: "Segment not found" }, { statu
 
 type Change = { name: string } | { filters: unknown } | { archived: true };
 
-/** One change at a time: rename, new filters (*Update {name}*), or archive. */
 function parseChange(raw: unknown): { ok: true; change: Change } | { ok: false; error: string } {
   const invalid = { ok: false as const, error: "Invalid change" };
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return invalid;
@@ -30,19 +29,6 @@ function parseChange(raw: unknown): { ok: true; change: Change } | { ok: false; 
   return invalid;
 }
 
-/**
- * PATCH /api/settings/customers/segments/[segmentId] — on a live Segment,
- * one of:
- *
- * - `{ name }`: *Rename*. A live name in use is 409.
- * - `{ filters }`: *Update {name}* with the list's current parameters. They
- *   are checked as on saving; anything the schema would drop is refused.
- *   Saving them clears *Needs review*.
- * - `{ archived: true }`: *Archive*. The name is free again.
- *
- * Needs `customers-edit`. Each change is audited with the name and filters
- * before and after, never Customer data.
- */
 export async function PATCH(req: Request, { params }: Params) {
   const denied = await requireAdmin("customers-edit");
   if (denied) return denied;

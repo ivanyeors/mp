@@ -21,18 +21,6 @@ import type {
 
 export type SaveScope = { size?: string; length?: string };
 
-/**
- * Publishes the staff-edited session mix back to the Filling Template catalog.
- *
- * Two paths, both visible at once so neither hides behind a mode toggle:
- * overwrite the template the mix was loaded from, or fork it under a new name.
- * Overwriting is confirm-gated — it rewrites a curated catalog entry that every
- * future session loads from, which the configurator's own undo cannot reach.
- *
- * On success the caller re-links the session to the saved template, so the
- * toolbox status flips from "Edited" back to "Matches template" and the hold
- * snapshot claims the right id.
- */
 export function SaveFillingTemplate({
   scope,
   placements,
@@ -41,9 +29,7 @@ export function SaveFillingTemplate({
 }: {
   scope: SaveScope;
   placements: PillowPlacementRow[] | BolsterPlacementRow[];
-  /** The loaded template, when there is one to replace in place. */
   overwrite: { id: number; name: string } | null;
-  /** Fired with the saved template's id so the session can re-link to it. */
   onSaved: (templateId: number) => void;
 }) {
   const [open, setOpen] = React.useState(false);

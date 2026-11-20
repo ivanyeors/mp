@@ -17,12 +17,6 @@ const WINDOWS = [
 const n = (v: number) => v.toLocaleString("en-SG");
 const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0);
 
-/**
- * *Why people unsubscribe* (PRD-crm-retention-loop slice 11): every unsubscribe
- * in the window, how it happened, and what people told us when asked after.
- * Beside *Why people leave*. One hue for magnitude; every number is written
- * out too. Typed answers are for Staff only, as this page is.
- */
 export function UnsubscribeReasonsCard({ initial }: { initial?: UnsubscribeSummary }) {
   const [days, setDays] = useState<number>(initial?.days ?? 30);
   const [data, setData] = useState<UnsubscribeSummary | null>(initial ?? null);

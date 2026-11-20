@@ -25,7 +25,6 @@ function resolveLocale(lang: string): Locale {
   return isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 }
 
-/** The questionnaire as stored: the known fields only, trimmed. */
 function storedQuestionnaire(fields: ApplicationFields): ApplicationFields {
   const text = (v: unknown) => String(v ?? "").trim();
   return {
@@ -42,15 +41,6 @@ function storedQuestionnaire(fields: ApplicationFields): ApplicationFields {
   };
 }
 
-/**
- * Records a partner application for the signed-in user: the questionnaire
- * fields (jsonb) including the public listing (write-up + optional logo), the
- * accepted agreement version + timestamp, status `pending`.
- * INSERT-only: a user who already has a partner_users row (any status) is
- * bounced to the hub without mutation — re-submitting must never reset an
- * approved/rejected row back to `pending` (Staff owns approval, #76). On success
- * redirects to the hub ("under review"). Returns field errors on invalid input.
- */
 export async function submitApplication(
   lang: string,
   fields: ApplicationFields,
@@ -61,8 +51,6 @@ export async function submitApplication(
   if (!agreed) return { fieldErrors: {}, formError: "You must accept the Partner Agreement to apply." };
 
   const fieldErrors = validateApplication(fields);
-  // The logo must be one this user uploaded with the application (it becomes
-  // the public listing's image on approval), never an arbitrary URL.
   if (fields.logoUrl && !isStoredLogoUrl(fields.logoUrl, applicantLogoFolder(user.id))) {
     fieldErrors.logoUrl = "Upload your logo again.";
   }
@@ -70,7 +58,6 @@ export async function submitApplication(
 
   const admin = supabaseAdmin();
 
-  // Insert-only guard: existing application → hub, don't touch its status.
   const { data: existing } = await admin
     .from("partner_users")
     .select("id")
@@ -95,14 +82,6 @@ export async function submitApplication(
 
 export type WithdrawResult = { error: string };
 
-/**
- * Withdraws the signed-in user's own application while it is still under
- * review: deletes the `partner_users` row (and their uploaded logo), so the
- * Staff queue no longer shows it and they can apply again from scratch. Only a
- * `pending`, unlinked row the user's own login holds can go; the delete is
- * guarded on that too, so a Staff approval landing at the same moment wins.
- * Redirects to the application form on success.
- */
 export async function withdrawApplication(lang: string): Promise<WithdrawResult> {
   const locale = resolveLocale(lang);
   const user = await getAuthUser();
@@ -131,12 +110,6 @@ export async function withdrawApplication(lang: string): Promise<WithdrawResult>
   redirect(`${withLocale("/partner/apply", locale)}?withdrawn=1`);
 }
 
-/**
- * Re-records acceptance of the current agreement version for an already-approved
- * partner (after AGREEMENT_VERSION bumps). Requires the "I agree" flag and is
- * status-guarded to `approved` rows only, so it can never advance a pending or
- * rejected application. Scoped to the signed-in user's row; redirects to the hub.
- */
 export async function reacceptAgreement(lang: string, agreed: boolean): Promise<void> {
   const user = await getAuthUser();
   if (!user?.email) redirect(withLocale("/account/login?next=/partner", resolveLocale(lang)));
@@ -147,10 +120,8 @@ export async function reacceptAgreement(lang: string, agreed: boolean): Promise<
     .from("partner_users")
     .update({ agreed_version: AGREEMENT_VERSION, agreed_at: new Date().toISOString() })
     .eq("auth_user_id", user.id)
-    .eq("application_status", "approved"); // never advances pending/rejected
+    .eq("application_status", "approved");
 
-  // Re-accept confirmation email (#84), best-effort, once per (partner, version).
-  // Runs before the redirect() (which throws NEXT_REDIRECT) so it isn't skipped.
   try {
     const { data: row } = await admin
       .from("partner_users")

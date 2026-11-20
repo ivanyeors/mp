@@ -1,7 +1,3 @@
-/**
- * Section dive graph (Houdini-style focused view).
- * Run: npx tsx lib/analytics/journey/dive.check.ts
- */
 import assert from "node:assert/strict";
 import {
   DIVE_ENTRY,

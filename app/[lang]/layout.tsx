@@ -16,8 +16,6 @@ export default async function LangLayout({
 }) {
   const { lang } = await params;
   if (!isSupportedLocale(lang)) notFound();
-  // Only the non-default dictionary travels as RSC data; en-US is bundled
-  // with the client as the static fallback.
   const messages = lang === DEFAULT_LOCALE ? null : getMessages(lang);
   return (
     <I18nMessagesProvider locale={lang} messages={messages}>

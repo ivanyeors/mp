@@ -1,6 +1,5 @@
 import type { FaqDefaultCategory } from "./types";
 
-/** Single source of truth for FAQ seed data (en-US + zh-CN). */
 export const FAQ_DEFAULTS: FaqDefaultCategory[] = [
   {
     key: "about-mpillow",

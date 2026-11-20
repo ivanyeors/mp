@@ -1,17 +1,3 @@
-/**
- * The three platforms whose customer messages reach the measurements Telegram
- * group, and the one rule they differ on most: how long after the customer's
- * last message a business may still reply through the API.
- *
- * - Facebook Messenger and Instagram (Meta): 24 hours. With Meta's Human Agent
- *   permission (App Review), a person may reply for 7 days with the
- *   HUMAN_AGENT tag — set META_HUMAN_AGENT_ENABLED once it is approved. Past
- *   the window Meta refuses the message, so we refuse first and say why; the
- *   platform's own app still lets a person answer.
- * - TikTok: no cut-off. It counts messages instead (see `sendTikTokText`) and
- *   its refusal reaches the agent in words.
- */
-
 export const SOCIAL_PLATFORMS = ["facebook", "instagram", "tiktok"] as const;
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 
@@ -19,14 +5,12 @@ export function isSocialPlatform(value: unknown): value is SocialPlatform {
   return typeof value === "string" && (SOCIAL_PLATFORMS as readonly string[]).includes(value);
 }
 
-/** How staff name the platform in a sentence: "answer on Instagram". */
 export const PLATFORM_NAMES: Record<SocialPlatform, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
   tiktok: "TikTok",
 };
 
-/** Where a person can still reply once the API window has closed. */
 export const PLATFORM_APPS: Record<SocialPlatform, string> = {
   facebook: "Meta Business Suite (or the Facebook Page inbox)",
   instagram: "the Instagram app (or Meta Business Suite)",
@@ -35,14 +19,12 @@ export const PLATFORM_APPS: Record<SocialPlatform, string> = {
 
 const HOUR_MS = 3_600_000;
 
-/** null: no time limit of the platform's own for us to check. */
 export const REPLY_WINDOW_HOURS: Record<SocialPlatform, number | null> = {
   facebook: 24,
   instagram: 24,
   tiktok: null,
 };
 
-/** Meta's Human Agent tag: a person may reply for 7 days instead of 24 hours. */
 export const HUMAN_AGENT_WINDOW_HOURS = 7 * 24;
 
 export function humanAgentEnabled(): boolean {
@@ -53,10 +35,6 @@ export type ReplyWindow =
   | { ok: true; tag: "HUMAN_AGENT" | null }
   | { ok: false; message: string };
 
-/**
- * May we reply now, and does Meta need the HUMAN_AGENT tag to accept it?
- * Pure: the caller passes the clock and whether Human Agent is approved.
- */
 export function replyWindow(
   platform: SocialPlatform,
   lastInboundAt: string | null,
@@ -83,10 +61,6 @@ export function replyWindow(
   };
 }
 
-/**
- * Text limits the platform enforces on one message. Instagram counts UTF-8
- * bytes, not characters. TikTok's (6,000) is above Telegram's own 4,096.
- */
 export function checkOutgoingText(platform: SocialPlatform, text: string): { ok: true } | { ok: false; message: string } {
   if (platform === "facebook" && text.length > 2000) {
     return { ok: false, message: `Messenger takes up to 2,000 characters — this is ${text.length}. Split it into two replies.` };

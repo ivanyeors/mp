@@ -52,10 +52,8 @@ import {
     undoFittingImport,
 } from "./actions";
 
-/** The skipped-rows table stops here; the download has every row. */
 const SKIPPED_SHOWN = 200;
 
-/** The picked file, held in this tab's memory only, so the import sends the rows the preview read. */
 type PickedFile = { name: string; sha256: string; text: string; pickedAt: number };
 
 type State =
@@ -99,8 +97,6 @@ export function FittingImportClient({ history = [] }: { history?: FittingBatchVi
         setState({ phase: "result", file, run });
     };
 
-    // The file is read here and lives only in this tab's memory. Nothing
-    // uploads or stores it: the server actions receive rows, a chunk at a time.
     const onPick = async (input: HTMLInputElement) => {
         const file = input.files?.[0];
         input.value = "";
@@ -118,7 +114,6 @@ export function FittingImportClient({ history = [] }: { history?: FittingBatchVi
                 text: new TextDecoder("utf-8").decode(buffer),
                 pickedAt: Date.now(),
             };
-            // A file that already has an import is read the way that import read it.
             const existing = history ? batchForFile(history, picked.sha256) : null;
             await preview(picked, existing?.dateOrder);
         } catch {
@@ -260,7 +255,6 @@ function countsSum(c: BatchCounts) {
         .join(" + ");
 }
 
-/** A batch that does not reconcile: shown in red, and never marked applied. */
 function MismatchProblem({ counts }: { counts: BatchCounts }) {
     const r = reconcile(counts);
     return (
@@ -311,7 +305,6 @@ function RunResult({
 }: {
     file: PickedFile;
     run: PreviewRun;
-    /** The file already has an import, so its date order is that import's. */
     locked: boolean;
     onOrder: (order: DateOrder) => void;
 }) {
@@ -390,7 +383,6 @@ function RunResult({
     );
 }
 
-/** How the file's dates are read. Fixed when the file proves it; Staff choose when every date fits both. */
 function DateOrderCard({
     order,
     proven,
@@ -445,7 +437,6 @@ type ApplyPhase =
     | { kind: "error"; error: string }
     | { kind: "done"; run: ImportRun };
 
-/** Start a batch (or continue the one this file already has), send its rows, then show the server's own counts. */
 function ImportPanel({
     file,
     order,
@@ -614,7 +605,6 @@ function ImportPanel({
     );
 }
 
-/** What the server says the import did, with the rows it skipped, named from this tab's copy. */
 function ImportOutcome({ run, file }: { run: ImportRun; file: PickedFile }) {
     const skipped = skippedRows(parseFittingFormCsv(file.text).rows, run.outcomes);
     if (run.kind === "stopped") {
@@ -773,7 +763,6 @@ type UndoPhase =
     | { kind: "done"; counts: UndoCounts }
     | { kind: "error"; error: string; counts?: UndoCounts };
 
-/** A preview of the undo first, then a typed confirmation. */
 function UndoButton({ batch, disabled, onChanged }: { batch: FittingBatchView; disabled: boolean; onChanged: () => void }) {
     const [open, setOpen] = useState(false);
     const [phase, setPhase] = useState<UndoPhase>({ kind: "loading" });

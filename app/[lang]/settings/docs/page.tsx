@@ -9,11 +9,6 @@ import { withLocale } from "@/lib/i18n/routing";
 
 export const runtime = "nodejs";
 
-/**
- * Admin Panel → Documentation: every guide to how the platform works, in plain
- * words. Guarded by `docs`, which Owner and Admin hold; tick it for another
- * role on Users & permissions → Roles.
- */
 export default async function DocumentationPage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

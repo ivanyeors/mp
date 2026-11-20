@@ -17,11 +17,6 @@ vi.mock("@/lib/media/slide-media", () => ({
   SLIDE_PUBLIC_PATHS: [] as Array<{ publicPath: string; consumer: string }>,
 }));
 
-/**
- * Reference copy of the pre-inversion `indexUsages`: one full `resolveUsages`
- * scan per asset, O(assets × rows). The inverted implementation must agree with
- * it exactly — same usages, same order, same labels and kinds.
- */
 function indexUsagesReference(
   assets: AssetRef[],
   rows: UsageConsumerRows,
@@ -48,7 +43,6 @@ describe("indexUsages (inverted) equals the per-asset scan", () => {
     const expected = indexUsagesReference(assets, rows);
 
     expect(actual).toEqual(expected);
-    // The fixture must actually produce usages, or the equality is vacuous.
     expect(Object.keys(expected.byAssetId).length).toBeGreaterThan(5);
   });
 
@@ -121,7 +115,6 @@ describe("indexUsages (inverted) equals the per-asset scan", () => {
     };
     const actual = indexUsages([short, long], rows);
     expect(actual).toEqual(indexUsagesReference([short, long], rows));
-    // short's URL is a substring of long's, so it matches the JSON walk too.
     expect(actual.byAssetId[short.id]?.map((u) => u.type)).toEqual([
       "landing_slot",
       "landing_section",
@@ -141,10 +134,6 @@ describe("buildUsageMap over the trimmed selects", () => {
 
     const usageMap = await buildUsageMap(assets);
 
-    // Reference rows keep `product_variants.product_id` (which the trimmed
-    // select drops, and no matcher reads) but not `media_asset_id`, which this
-    // table never selected. Equality then proves the trim dropped nothing the
-    // matchers use.
     const asFetched: UsageConsumerRows = {
       ...rows,
       variants: (rows.variants ?? []).map((v) => ({
@@ -182,7 +171,6 @@ describe("buildUsageMap over the trimmed selects", () => {
     expect(variants?.select).toBe("id, image_url");
     const settings = fake.log.find((q) => q.table === "site_settings");
     expect(settings?.filters).toEqual(["key.like.landing_%"]);
-    // Every campaign with blocks, archived ones included.
     const campaigns = fake.log.find((q) => q.table === "email_campaigns");
     expect(campaigns?.select).toBe("id, name, content");
     expect(campaigns?.filters).toEqual(["not.content.is.null"]);

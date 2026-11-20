@@ -18,9 +18,6 @@ import { Switch } from "@/components/ui/switch";
 import { SCHEDULE_COMMISSION_POOL } from "@/lib/partner-terms";
 import { approveApplication, rejectApplication } from "./actions";
 
-/** Approve / reject buttons for one pending application. Approving first asks for
- *  the partner's terms (ADR 0034). revalidatePath in the action re-renders the
- *  queue, so the row drops off on success. */
 export function ReviewActions({ id, companyName }: { id: string; companyName: string }) {
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);

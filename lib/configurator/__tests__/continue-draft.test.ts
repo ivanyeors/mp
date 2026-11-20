@@ -8,12 +8,6 @@ import {
   type DraftAnswers,
 } from "@/lib/configurator/continue-draft";
 
-/**
- * The continue link (ADR 0050): the Draft's stored answers are read back only
- * in the shape the form holds them, and the reopened configurator lands on the
- * first question left unanswered, or the preview.
- */
-
 const ALL: DraftAnswers = {
   name: "Wei Ling",
   gender: "female",
@@ -31,7 +25,6 @@ const ALL: DraftAnswers = {
   usesBolster: "no",
 };
 
-/** The answers without some keys. */
 function without(...keys: Array<keyof DraftAnswers>): Partial<DraftAnswers> {
   const out: Partial<DraftAnswers> = { ...ALL };
   for (const k of keys) delete out[k];

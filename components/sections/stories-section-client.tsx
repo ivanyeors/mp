@@ -35,8 +35,6 @@ export function StoriesSectionClient({
 }) {
   const ordered = useMemo(() => sortByRatingThenRelevance(testimonials), [testimonials]);
   const initialVisibleCount = useMemo(() => {
-    // Prefer showing as many as we have (up to batchSize) so the section doesn't look sparse.
-    // The Places API typically returns a small subset anyway (commonly ~5).
     return Math.min(batchSize, ordered.length);
   }, [batchSize, ordered.length]);
 
@@ -53,7 +51,6 @@ export function StoriesSectionClient({
           {subtitle ? <p className="text-muted-foreground">{subtitle}</p> : null}
         </div>
 
-        {/* Phones scroll the whole set sideways, so paging only applies to the grid. */}
         <Button
           variant="outline"
           className="hidden shrink-0 md:inline-flex"

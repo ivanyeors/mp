@@ -80,8 +80,6 @@ import { EasyshipFulfilment } from "./easyship-fulfilment";
 import { RefundDialog, type RefundIssued } from "./refund-dialog";
 import { PaymentLinkCard, type PaymentLinkCardData } from "./payment-link-card";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const ORDER_STATUSES: OrderStatus[] = [
     "pending",
     "confirmed",
@@ -93,10 +91,7 @@ const ORDER_STATUSES: OrderStatus[] = [
     "refunded",
 ];
 
-/** How many timeline events a phone shows before *Show all*; newest first. */
 const PHONE_TIMELINE_LIMIT = 5;
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatSGD(amount: number): string {
     return formatCurrency(amount);
@@ -157,19 +152,12 @@ function formatMarginPct(pct: number | null | undefined): string {
 }
 
 
-/**
- * Server-rendered first paint. Exactly the JSON `/api/shop/orders/[id]`,
- * `/api/shop/orders/[id]/timeline` and `/api/shop/orders/[id]/mp-config-link`
- * return, pre-fetched by the RSC page wrapper. A null member means that server
- * load failed, and the client fetches it on mount as before.
- */
 export type OrderDetailInitialData = {
     order: {
         ok: true;
         row: Record<string, unknown>;
         margin: OrderMargin | null;
     } | null;
-    /** What the order earns (PRD-loyalty-points slice 03); null when nothing or unread. */
     pointsEarn?: OrderEarn | null;
     timeline: { ok: true; rows: OrderTimelineEvent[]; events: OrderTimelineEvent[] } | null;
     mpConfigLinks: {
@@ -183,11 +171,9 @@ export type OrderDetailInitialData = {
             created_at: string;
         }>;
     } | null;
-    /** A Staff order's Payment link (ADR 0048); absent or null for any other Order. */
     paymentLink?: PaymentLinkCardData | null;
 };
 
-/** Same normalisation `fetchOrder` applies, shared with the server seed. */
 function normalizeOrderRow(row: Record<string, unknown>): Order {
     return {
         ...row,
@@ -218,37 +204,30 @@ export default function OrderDetailPage({
     const [loading, setLoading] = useState(!initialData?.order);
     const [timelineLoading, setTimelineLoading] = useState(!initialData?.timeline);
 
-    // The server already delivered these three; skip the duplicate mount
-    // fetches. Every re-fetch after a mutation is untouched.
     const skipOrderFetch = useRef(Boolean(initialData?.order));
     const skipTimelineFetch = useRef(Boolean(initialData?.timeline));
     const skipMpConfigFetch = useRef(Boolean(initialData?.mpConfigLinks));
 
     useSettingsBreadcrumbDetail(order ? `#${order.order_number}` : null);
 
-    // Status update
     const [newStatus, setNewStatus] = useState<OrderStatus | "">(
         (initialOrder?.status as OrderStatus | undefined) ?? "",
     );
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
-    // Notes
     const [internalNotes, setInternalNotes] = useState(initialOrder?.internal_notes ?? "");
     const [savingNotes, setSavingNotes] = useState(false);
 
-    // Timeline note
     const [timelineNote, setTimelineNote] = useState("");
     const [showAllTimeline, setShowAllTimeline] = useState(false);
     const [showPlacements, setShowPlacements] = useState(false);
     const [addingNote, setAddingNote] = useState(false);
 
-    // Fulfill dialog
     const [fulfillOpen, setFulfillOpen] = useState(false);
     const [trackingNumber, setTrackingNumber] = useState("");
     const [trackingUrl, setTrackingUrl] = useState("");
     const [fulfilling, setFulfilling] = useState(false);
 
-    // Mp-config link
     type MpConfigLinked = { id: string; data: Record<string, unknown> | null; is_final: boolean; source: string; created_at: string };
     const [mpConfigResponses, setMpConfigResponses] = useState<MpConfigLinked[]>(
         initialData?.mpConfigLinks?.responses ?? [],
@@ -261,14 +240,10 @@ export default function OrderDetailPage({
     const [linking, setLinking] = useState(false);
     const [creating, setCreating] = useState(false);
 
-    // Inventory deduction status
-
-    // Refund / cancel / restock
     const [cancelOpen, setCancelOpen] = useState(false);
     const [cancelling, setCancelling] = useState(false);
     const [restockOpen, setRestockOpen] = useState(false);
     const [restockQty, setRestockQty] = useState<Record<string, string>>({});
-    // The refund a restock follows, so its stock movement names it.
     const [restockRefundId, setRestockRefundId] = useState<string | null>(null);
     const [restocking, setRestocking] = useState(false);
     const [deductingStock, setDeductingStock] = useState(false);
@@ -414,7 +389,6 @@ export default function OrderDetailPage({
             const res = await fetch(`/api/mp-config/responses?limit=50&offset=0`);
             const json = await res.json();
             const all = (json.rows ?? []) as MpConfigLinked[];
-            // Filter to unlinked results matching the search
             const q = query.trim().toLowerCase();
             const candidates = all.filter((r) => {
                 if ((r as Record<string, unknown>).order_id) return false;
@@ -471,9 +445,7 @@ export default function OrderDetailPage({
                 body: JSON.stringify({ response_id: responseId }),
             });
             await fetchMpConfigLinks();
-        } catch {
-            // ignore
-        }
+        } catch {}
     }, [orderId, fetchMpConfigLinks]);
 
     const refundableRemaining = order ? refundableAmount(order) : 0;
@@ -483,8 +455,6 @@ export default function OrderDetailPage({
         : false;
     const pendingRefundRequest = order?.refund_request_status === "requested";
 
-    // Any paid order. On a Result order a refund for a return still needs the
-    // product back in person; the dialog asks.
     const canRefund =
         !!order?.payment_reference &&
         order.status !== "refunded" &&
@@ -498,8 +468,6 @@ export default function OrderDetailPage({
         order.status !== "refunded" &&
         !isResultOrder;
 
-    // Open right after a refund for a return, before Stripe's webhook has
-    // marked the order refunded.
     const canRestock =
         !!order &&
         (restockOpen ||
@@ -511,8 +479,6 @@ export default function OrderDetailPage({
         setActionError(null);
         const updated = await fetchOrder();
         await fetchTimeline();
-        // Only goods that came back go back on the shelf: a charge correction
-        // keeps everything with the customer.
         if (issued.reason !== "returned" || !updated || !orderHasRestockableLines(updated)) return;
         const prefill: Record<string, string> = {};
         for (const item of updated.items ?? []) {
@@ -652,8 +618,6 @@ export default function OrderDetailPage({
 
     const customClass = orderStatusBadgeClass(order.status);
     const badgeVariant = orderStatusBadgeVariant(order.status);
-    // Points used are their own line, apart from the coupon; their dollars are
-    // inside discount_amount (PRD-loyalty-points slice 04).
     const { discount: couponDiscount, pointsUsed } = splitOrderDiscount(order.discount_amount, order.points_spent);
     const hasUnitCost = (order.items ?? []).some(
         (item) => item.unit_cost != null && item.unit_cost > 0
@@ -661,7 +625,6 @@ export default function OrderDetailPage({
 
     return (
         <div className="space-y-4 md:space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="sm" asChild className="max-md:hidden">
                     <Link href={to("/settings/orders")}>
@@ -679,13 +642,8 @@ export default function OrderDetailPage({
                 </div>
             </div>
 
-            {/* Two-column layout. On a phone both columns dissolve into one stack
-                (max-md:contents) so Status and Fulfillment can be ordered first,
-                above the long items / snapshot / timeline column. */}
             <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
-                {/* ── Left: Items + Timeline ── */}
                 <div className="lg:col-span-2 space-y-6 max-md:contents max-md:space-y-0">
-                    {/* Order Items */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base">Order items</CardTitle>
@@ -771,7 +729,6 @@ export default function OrderDetailPage({
                                     ))}
                                 </TableBody>
                             </Table>
-                            {/* Totals */}
                             <div className="border-t px-4 py-3 space-y-1.5 text-sm">
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>Subtotal</span>
@@ -888,7 +845,6 @@ export default function OrderDetailPage({
                         </CardContent>
                     </Card>
 
-                    {/* Build snapshot / customization (Result path + legacy cart path) */}
                     {(order.items ?? []).some(
                         (item: OrderItem) =>
                             item.customization_id ||
@@ -934,7 +890,6 @@ export default function OrderDetailPage({
                                             const nameByItem = new Map(
                                                 resultSnap.build_lines.map((l) => [l.item_id, l.name]),
                                             );
-                                            // Pillow rows carry cell addresses; bolster rows are slot-only (own schema).
                                             const isBolsterSnap = resultSnap.product_type === "bolster";
                                             const placements = (resultSnap.filling_placements ?? []).filter(
                                                 (p): p is PillowPlacementRow => !isBolsterSnap && "section" in p,
@@ -1128,7 +1083,6 @@ export default function OrderDetailPage({
                         </Card>
                     )}
 
-                    {/* Order Timeline */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2">
@@ -1182,7 +1136,6 @@ export default function OrderDetailPage({
                                 </Button>
                             )}
 
-                            {/* Add note */}
                             <div className="flex gap-2 pt-2 border-t">
                                 <Input
                                     placeholder="Add a note to this order…"
@@ -1212,9 +1165,7 @@ export default function OrderDetailPage({
                     </Card>
                 </div>
 
-                {/* ── Right: Meta cards ── */}
                 <div className="space-y-4 max-md:contents max-md:space-y-0">
-                    {/* Status */}
                     <Card className="max-md:-order-2">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base">Status</CardTitle>
@@ -1261,7 +1212,6 @@ export default function OrderDetailPage({
                         </CardContent>
                     </Card>
 
-                    {/* Payment link: a Staff order only (ADR 0048) */}
                     {initialData?.paymentLink ? (
                         <PaymentLinkCard
                             orderId={order.id}
@@ -1270,7 +1220,6 @@ export default function OrderDetailPage({
                         />
                     ) : null}
 
-                    {/* Customer */}
                     <Card>
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
@@ -1307,7 +1256,6 @@ export default function OrderDetailPage({
                         </CardContent>
                     </Card>
 
-                    {/* Mp-config Result */}
                     <Card>
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
@@ -1454,7 +1402,6 @@ export default function OrderDetailPage({
                         </CardContent>
                     </Card>
 
-                    {/* Shipping */}
                     <Card>
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
@@ -1508,7 +1455,6 @@ export default function OrderDetailPage({
                         </CardContent>
                     </Card>
 
-                    {/* Fulfillment */}
                     <Card className="max-md:-order-1">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
@@ -1583,7 +1529,6 @@ export default function OrderDetailPage({
                         </CardContent>
                     </Card>
 
-                    {/* Payment */}
                     <Card>
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
@@ -1759,7 +1704,6 @@ export default function OrderDetailPage({
                         </CardContent>
                     </Card>
 
-                    {/* Realized margin */}
                     {margin && (
                         <Card>
                             <CardHeader className="pb-3">
@@ -1819,7 +1763,6 @@ export default function OrderDetailPage({
                         </Card>
                     )}
 
-                    {/* Notes */}
                     <Card>
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base">Internal notes</CardTitle>

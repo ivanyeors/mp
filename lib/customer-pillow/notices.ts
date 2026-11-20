@@ -1,13 +1,8 @@
-/**
- * What a pillow read from a Fitting record gave up to be drawn (ADR 0042 j),
- * in the words the Customer page shows. Pure.
- */
 import { formatTemplateKeys } from "@/lib/filling-templates/keys";
 import type { FittingTemplateMatch } from "./match";
 
 const baseName = (name: string) => name.replace(/\s*\(\s*short\s*neck\s*\)\s*$/i, "");
 
-/** Every way the match is not exactly what the fitting recorded; empty when it is. */
 export function matchNotices(match: FittingTemplateMatch | null): string[] {
   if (!match) return [];
   const out: string[] = [];

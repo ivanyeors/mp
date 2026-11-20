@@ -1,46 +1,20 @@
-/**
- * Whether an email's links answer (PRD-campaign-email-editor slice 11): a
- * dead link in a sent email cannot be fixed, so before a wave the server asks
- * each one. Server only.
- *
- * Each address gets a HEAD, then a GET when the HEAD is not answered with a
- * 2xx or 3xx (some sites refuse HEAD); a 2xx or 3xx is an answer, and a
- * redirect is never followed. Five seconds an address, at most
- * {@link LINK_CHECK_MAX} addresses a check, all at once. Every request goes
- * through `publicRequest` (lib/net/public-request.ts): https only, public
- * hosts only, so a link Staff type cannot reach this server's own network.
- * The site's own pages are not asked at all: the checks hold them to the
- * site's route list (`isSitePage`).
- *
- * Answers are kept for ten minutes, so *Ready to send?*, *Check who it goes
- * to* and a save in between ask once. The wave's own check asks again
- * (`fresh`), so a link that died since is caught.
- */
 import { NotPublicAddressError, publicRequest } from "@/lib/net/public-request";
 import type { LinkAnswer } from "./content-checks";
 
-/** The most addresses one check asks; the checks say the rest were not checked. */
 export const LINK_CHECK_MAX = 20;
-/** How long one address may take, HEAD and GET together. */
 export const LINK_CHECK_TIMEOUT_MS = 5000;
-/** How long an answer is kept. */
 export const LINK_ANSWER_KEPT_MS = 10 * 60_000;
 
-/** One request for an address's status; it throws when there is no answer. `publicRequest`, or a test's fake. */
 export type LinkRequest = (url: string, init: { method: "HEAD" | "GET"; timeoutMs: number }) => Promise<{ status: number }>;
 
-/** The production request: `publicRequest`. */
 export const publicLinkRequest: LinkRequest = (url, init) => publicRequest(url, init);
 
-/** Answers kept, by address, with when they were asked. */
 export type LinkAnswers = Map<string, { answer: LinkAnswer; at: number }>;
 
-/** This server's answers, for ten minutes. */
 const KEPT: LinkAnswers = new Map();
 
 const answers = (status: number) => status >= 200 && status < 400;
 
-/** One address, HEAD then GET, within the time left. */
 async function ask(url: string, request: LinkRequest): Promise<LinkAnswer> {
   const until = Date.now() + LINK_CHECK_TIMEOUT_MS;
   let last: { status: number } | null = null;
@@ -61,11 +35,6 @@ async function ask(url: string, request: LinkRequest): Promise<LinkAnswer> {
   return { ok: false, reason: timedOut ? `didn't answer within ${LINK_CHECK_TIMEOUT_MS / 1000} seconds` : "couldn't be reached" };
 }
 
-/**
- * What each of the first {@link LINK_CHECK_MAX} addresses answers, by
- * address; one past them is left out, and the checks say it was not checked.
- * An answer from the last ten minutes is reused unless `fresh`. Never throws.
- */
 export async function checkLinks(
   urls: readonly string[],
   {
@@ -89,7 +58,6 @@ export async function checkLinks(
       out[url] = answer;
     }),
   );
-  // An answer past its ten minutes is never read again: keep the map small.
   for (const [url, { at }] of kept) if (now() - at >= LINK_ANSWER_KEPT_MS) kept.delete(url);
   return out;
 }

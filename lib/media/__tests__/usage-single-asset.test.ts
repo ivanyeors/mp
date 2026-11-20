@@ -23,7 +23,6 @@ const ASSET: AssetRef = {
   hosted_url: "https://cdn.example/media/hero.webp",
 };
 
-/** The rows a full scan actually returns (see CONSUMER_SELECT). */
 function asFetched(rows: UsageConsumerRows): UsageConsumerRows {
   return {
     ...rows,
@@ -55,8 +54,6 @@ describe("usagePredicateTerms", () => {
   });
 
   it("uses a text search on the JSON blob tables", () => {
-    // landing_sections also searches draft_content: an image referenced only by a
-    // pending Section draft must still report as Used (CONTEXT.md — drafts count).
     expect(usagePredicateTerms("landing_sections", ASSET)).toEqual([
       { column: "content::text", op: "ilike", value: `%${ASSET.id}%` },
       { column: "draft_content::text", op: "ilike", value: `%${ASSET.id}%` },
@@ -79,12 +76,10 @@ describe("usagePredicateTerms", () => {
     const idOnly: AssetRef = { id: ASSET.id, hosted_url: null };
     const urlOnly: AssetRef = { id: "", hosted_url: ASSET.hosted_url };
 
-    // Variants never select media_asset_id, so an id-only asset cannot match.
     expect(usagePredicateTerms("product_variants", idOnly)).toBeNull();
     expect(usagePredicateTerms("product_variants", ASSET)).toEqual([
       { column: "image_url", op: "eq", value: ASSET.hosted_url },
     ]);
-    // An empty id matches every string, so those tables cannot be narrowed.
     expect(usagePredicateTerms("blog_posts", urlOnly)).toEqual([]);
     expect(usagePredicateTerms("site_settings", urlOnly)).toEqual([]);
     expect(usagePredicateTerms("landing_sections", urlOnly)).toEqual([]);
@@ -158,8 +153,6 @@ describe("single-asset usage equals the full scan", () => {
         expect(await listAssetUsages(asset)).toEqual(resolveUsages(asset, reference));
       }
       expect(warn).toHaveBeenCalled();
-      // The JSON tables were retried without the predicate, on the same select
-      // (id + the JSON column), which is what the fallback promises.
       const sections = fake.log.filter((q) => q.table === "landing_sections");
       expect(sections.length).toBeGreaterThan(assets.length);
       expect(sections.some((q) => q.filters.some((f) => f.includes("content::text")))).toBe(true);

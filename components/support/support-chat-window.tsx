@@ -39,20 +39,6 @@ import {
 import type { SupportChatState } from "./support-chat-engine";
 import { ChatRequestError, type ActiveChat, type Me } from "./use-support-chat";
 
-/**
- * The chat window that floats over the landing pages (support-chat-engine.tsx): a
- * side panel on desktop, the whole screen on a phone, or a bubble in the
- * corner when minimised. Escape minimises it.
- *
- * Its first message comes from /support's launcher, or from the launcher
- * here after "Start a new chat". Before a visitor without an account sends
- * it, the chat checks their email with a 6-digit code; the message waits,
- * unsent, in the chat meanwhile. That checked address then gets the chat by
- * email when they're done, with no second code. In the same step they can
- * choose an account instead (Supabase's own sign-in code), which keeps this
- * chat and every later one. Without an account the chat lasts as long as the tab.
- */
-
 const PHONE_QUERY = "(max-width: 767.98px)";
 
 function subscribePhone(onChange: () => void) {
@@ -61,7 +47,6 @@ function subscribePhone(onChange: () => void) {
   return () => mql.removeEventListener("change", onChange);
 }
 
-/** Right on the first render: this window only ever renders in the browser. */
 function usePhone(): boolean {
   return useSyncExternalStore(subscribePhone, () => window.matchMedia(PHONE_QUERY).matches, () => false);
 }
@@ -75,12 +60,9 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
   const [showHistory, setShowHistory] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
   const pinBubble = useScreenBottomPin();
-  // Minimising moves focus to the bubble, so the keyboard isn't left on a button that's gone.
   const focusBubble = useRef(false);
   const open = view === "open";
 
-  // On a phone the window is the whole screen: hold the page still behind it,
-  // and fit it to what's visible, so the keyboard never covers the composer.
   useEffect(() => {
     const el = panelRef.current;
     const vv = window.visualViewport;
@@ -90,9 +72,6 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
     root.style.overflow = "hidden";
     const fit = () => {
       if (!vv) return;
-      // With nothing focused that takes typing there is no keyboard to fit above.
-      // iOS 26+ can leave the visual viewport keyboard-short after the keyboard has
-      // gone (see hooks/use-screen-bottom-pin), which would float the composer.
       const height = opensKeyboard(document.activeElement) ? vv.height : window.innerHeight;
       el.style.height = `${height}px`;
       el.style.top = `${vv.offsetTop}px`;
@@ -119,9 +98,6 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
     setView("minimised");
   };
 
-  // Closing hides the window. An open chat carries on (a reply brings the
-  // bubble back); one waiting on the email code goes back to the launcher's
-  // box, unsent; an ended one is done with.
   const close = () => {
     setShowHistory(false);
     const active = chat.active;
@@ -151,14 +127,12 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
           key="window"
           ref={panelRef}
           aria-label="Your chat with the mpillow team"
-          // An app surface: the marketing pages' forced paragraph size would unbalance the bubbles.
           data-typography-scope="app"
           initial={reduceMotion ? false : offscreen}
           animate={{ opacity: 1, x: 0, y: 0 }}
           exit={reduceMotion ? undefined : offscreen}
           transition={{ duration: 0.4, ease: EASE }}
           onKeyDown={(e) => {
-            // Not from the options menu, which handles its own Escape in a portal.
             if (e.key !== "Escape" || !e.currentTarget.contains(e.target as Node)) return;
             if (showHistory) setShowHistory(false);
             else minimise();
@@ -245,9 +219,6 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
           transition={{ duration: 0.3, ease: EASE }}
           ref={pinBubble}
           className="fixed right-4 z-50 md:right-6"
-          // Above the phone dock, a step's or the cart's action bar, and the
-          // analytics notice, which share this corner; on the screen's bottom edge
-          // on iOS after a keyboard (useScreenBottomPin).
           style={{
             bottom:
               "calc(max(var(--safe-bottom), var(--app-dock-clearance), var(--mobile-bottom-bar-height, 0px)) + var(--analytics-notice-clearance, 0px) + 1rem - var(--screen-pin-offset, 0px))",
@@ -270,7 +241,6 @@ export default function SupportChatWindow({ state }: { state: SupportChatState }
   );
 }
 
-/** A round glass button in the window's header. Spreads its props, so it can be a menu trigger. */
 function HeaderButton({ label, className, ...props }: ComponentProps<"button"> & { label: string }) {
   return (
     <button
@@ -285,7 +255,6 @@ function HeaderButton({ label, className, ...props }: ComponentProps<"button"> &
   );
 }
 
-/** The minimised window: the team's mark, where the chat stands, and new replies. */
 function ChatBubble({
   active,
   unread,
@@ -324,7 +293,6 @@ function ChatBubble({
 
 type Controller = SupportChatState["chat"];
 
-/** Where the chat goes once it's over, said once under the first message. */
 function afterNote(active: ActiveChat): string {
   const { email, hasAccount } = active.chat;
   if (active.signedInHere) return "You're signed in, so this chat is saved to your account, and we'll email you a copy when you're done.";
@@ -354,7 +322,6 @@ function Session({
   const threadRef = useRef<HTMLDivElement | null>(null);
   const [ending, setEnding] = useState(false);
   const { chat } = active;
-  // Whether this chat's transcript went when the customer ended it.
   const [ended, setEnded] = useState<{ chatId: string; emailed: boolean } | null>(null);
   const endedEmailed = ended?.chatId === chat.id ? ended.emailed : null;
   const signedIn = me.status === "signed-in";
@@ -362,7 +329,6 @@ function Session({
   const open = chat.status === "open";
   const firstCustomer = active.messages.findIndex((m) => m.sender === "customer");
 
-  // Keep the newest message (or card) in view.
   const tail = `${active.messages.length}:${active.awaitingCode}:${chat.id}:${chat.status}`;
   useEffect(() => {
     const el = threadRef.current;
@@ -392,7 +358,6 @@ function Session({
           </p>
         </div>
         {open ? (
-          // WhatsApp has no call link: this opens the chat there, where its call button is.
           <a
             href={SUPPORT_WHATSAPP_URL}
             target="_blank"
@@ -431,7 +396,6 @@ function Session({
         {actions}
       </header>
 
-      {/* Edge to edge at the bottom: the window's own corners clip it, with no frame around it. */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[22px] bg-[#f3f7ff] text-slate-900 dark:bg-[#030d22] dark:text-white">
         <div
           aria-hidden="true"
@@ -494,7 +458,6 @@ function Session({
           ) : null}
         </div>
 
-        {/* No backdrop blur here: a blurred layer escapes the rounded clip and squares the window's corners. */}
         <div className="relative border-t border-slate-200/70 bg-[#f3f7ff] p-2.5 max-md:pb-[calc(var(--safe-bottom)+0.625rem)] sm:p-3 dark:border-white/10 dark:bg-[#030d22]">
           {open ? (
             <>
@@ -539,12 +502,6 @@ function EndedFooter({ chat, emailed, onNew }: { chat: ChatRecord; emailed: bool
 
 const RESEND_AFTER_S = 30;
 
-/**
- * The step before the first message goes out: an email and a 6-digit code.
- * Without an account it's our own code (./code), which checks the address and
- * nothing more. With "Save my chats" on it's Supabase's sign-in, the same as
- * the login page, which makes the account the first time.
- */
 function EmailCheck({ controller, onEdit }: { controller: Controller; onEdit: () => void }) {
   const [step, setStep] = useState<"email" | "code">("email");
   const [name, setName] = useState("");

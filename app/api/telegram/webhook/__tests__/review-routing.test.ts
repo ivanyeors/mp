@@ -1,13 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Review cards share the inventory bot's webhook. Review updates are routed
- * before TELEGRAM_ALLOWED_CHATS (they carry their own gate: the measurements
- * group plus Telegram RBAC) and are handled after the 200, so a slow Google
- * post never makes Telegram retry. Everything else reaches the inventory
- * bot exactly as before.
- */
-
 const h = vi.hoisted(() => ({ after: vi.fn(), handle: vi.fn(), handleInbox: vi.fn(), handleChat: vi.fn(), from: vi.fn() }));
 
 vi.mock("next/server", async (orig) => ({
@@ -44,7 +36,6 @@ function post(update: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", SECRET);
-  // An allowlist that does not include the measurements group.
   vi.stubEnv("TELEGRAM_ALLOWED_CHATS", "12345");
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -102,7 +93,6 @@ describe("Telegram webhook review routing", () => {
     expect(h.after).toHaveBeenCalledOnce();
     await h.after.mock.calls[0][0]();
     expect(h.handleInbox).toHaveBeenCalledWith(update);
-    // The website chat takes any other reply in the group; never this one.
     expect(h.handleChat).not.toHaveBeenCalled();
   });
 

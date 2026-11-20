@@ -1,22 +1,3 @@
-/**
- * In-memory fakes for the Paired build end-to-end suite (ADR 0026).
- *
- * Supabase: one shared table store behind a PostgREST-shaped query builder.
- * Semantics follow Postgres/PostgREST where routes depend on them:
- *   - `neq`/`in`/`eq` never match NULL (SQL three-valued logic); `is` does.
- *   - `maybeSingle()` errors (PGRST116) on more than one row; `single()` on 0 or >1.
- *   - a mutation returns rows only when `.select()` was chained, else `data: null`.
- *   - unique keys raise 23505 and the whole statement writes nothing.
- *   - `mp_config_responses.paired_build_id` is ON DELETE SET NULL; deleting an
- *     order cascades its items, payments and timeline.
- *   - every statement yields a macrotask first, so `Promise.all` interleaves.
- *   - selected columns are projected, so a route reading a column it never
- *     selected sees `undefined` exactly as it would against PostgREST.
- *
- * Stripe: Checkout sessions with idempotency keys, manual-capture PaymentIntents
- * that capture once, release the uncaptured remainder, and refuse cancel after
- * capture.
- */
 import { randomUUID } from "crypto";
 
 export type Row = Record<string, unknown>;
@@ -25,9 +6,7 @@ type PgError = { message: string; code: string; details?: string };
 
 export const db = {
   tables: {} as Record<string, Row[]>,
-  /** Every statement, for assertions on what a route wrote. */
   log: [] as Array<{ table: string; op: string; filters: string[]; patch?: unknown }>,
-  /** Fault injection: the next matching statement fails with this error. */
   faults: [] as Array<{ table: string; op: string; error: PgError; when?: (patch: unknown) => boolean }>,
   seq: 0,
 };
@@ -44,19 +23,15 @@ export const rows = (table: string): Row[] => (db.tables[table] ??= []);
 export const row = (table: string, id: unknown): Row | undefined =>
   rows(table).find((r) => r.id === id);
 
-/** A unique index, optionally partial: `where` is its predicate. */
 type UniqueKey = string[] | { cols: string[]; where: (r: Row) => boolean };
 
 const UNIQUE: Record<string, UniqueKey[]> = {
   mp_config_responses: [
     ["id"],
-    // A companion carries its anchor's Result access token, so the index leaves
-    // companions out (20261023140000_access_token_companion.sql).
     { cols: ["access_token"], where: (r) => r.paired_build_id == null || r.paired_build_id === r.id },
   ],
   orders: [["id"]],
   order_items: [["id"]],
-  // Partial unique index: WHERE stripe_object_id IS NOT NULL.
   order_payments: [["stripe_object_id"]],
   stripe_webhook_failures: [["event_id"]],
   site_settings: [["key"]],
@@ -102,7 +77,6 @@ function defaultsFor(table: string): Row {
   return base;
 }
 
-/** Split a select list on top-level commas. */
 function splitCols(sel: string): string[] {
   const out: string[] = [];
   let depth = 0;
@@ -130,7 +104,6 @@ function project(table: string, r: Row, sel: string | null): Row {
     const embed = tok.match(/^([a-z_]+)(?:!inner)?\(([\s\S]*)\)$/);
     if (embed) {
       const child = embed[1];
-      // To-one: this row holds the child's id (`items(...)` on a row with `item_id`).
       const ownFk = `${child.replace(/s$/, "")}_id`;
       if (ownFk in r) {
         const parent = rows(child).find((c) => c.id === r[ownFk]);
@@ -154,7 +127,6 @@ function sqlEq(a: unknown, b: unknown) {
   return String(a) === String(b) || a === b;
 }
 
-/** A column, or a `col->>key` jsonb path as PostgREST filters read it. */
 function field(r: Row, c: string): unknown {
   const [col, key] = c.split("->>");
   if (key === undefined) return r[col];
@@ -363,7 +335,6 @@ class Query {
       return { data: this.returning ? out(hit) : null, error: null };
     }
 
-    // delete
     if (this.filters.length === 0) {
       return { data: null, error: { code: "21000", message: "DELETE requires a WHERE clause" } };
     }
@@ -371,7 +342,6 @@ class Query {
     db.tables[this.table] = t.filter((r) => !hit.includes(r));
     const ids = new Set(hit.map((r) => r.id));
     if (this.table === "mp_config_responses") {
-      // paired_build_id ... references mp_config_responses(id) on delete set null
       for (const r of rows("mp_config_responses")) {
         if (r.paired_build_id != null && ids.has(r.paired_build_id)) r.paired_build_id = null;
       }
@@ -440,10 +410,6 @@ export const fakeAdmin = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// Stripe
-// ---------------------------------------------------------------------------
-
 export class FakeStripeError extends Error {
   type = "StripeInvalidRequestError";
   constructor(
@@ -484,7 +450,6 @@ export type FakeIntent = {
   capture_method: "manual" | "automatic";
   status: "requires_capture" | "succeeded" | "canceled";
   metadata: Record<string, string>;
-  /** Released back to the card when captured short (Stripe frees the rest). */
   released: number;
 };
 
@@ -618,7 +583,6 @@ export const fakeStripeClient = {
   },
 };
 
-/** The shopper completes a Checkout: Stripe creates the intent behind it. */
 export function completeCheckout(sessionId: string): FakeSession {
   const s = stripe.sessions.get(sessionId);
   if (!s) throw new Error(`unknown session ${sessionId}`);
@@ -644,7 +608,6 @@ export function completeCheckout(sessionId: string): FakeSession {
   return clone(s);
 }
 
-/** Stripe lets an uncaptured authorization lapse on its own at ~7 days. */
 export function lapseIntent(id: string) {
   const pi = stripe.intents.get(id);
   if (pi && pi.status === "requires_capture") {

@@ -1,21 +1,3 @@
-// ============================================================
-// All-templates review sheet
-// ============================================================
-//
-// Renders every outbound email into ONE page so the whole set can be reviewed
-// at a glance — the 24 templates our code sends, plus the 4 Supabase auth
-// templates, which are generated into supabase/templates/ but sent by Supabase
-// itself and are otherwise easy to forget.
-//
-// Shared by `scripts/build-email-contact-sheet.ts` (writes the committed copy at
-// docs/email-templates-preview.html) and the /dev/email-preview/all route, so
-// the file on disk and the live page can never disagree.
-//
-// Each email goes in its own <iframe srcdoc>. That is the only faithful option:
-// every template is a complete document with its own <style> block and <body>
-// background, which would otherwise collide with the host page and with the
-// other 27. Rendering needs no JavaScript; script only auto-sizes the frames.
-
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { escapeHtml } from "./html";
@@ -42,7 +24,6 @@ const GROUP_ORDER: EmailGroup[] = [
   "ops",
 ];
 
-/** Dashboard template each generated auth file is pasted into. */
 export const AUTH_TEMPLATE_LABELS: Record<string, string> = {
   "magic-link.html": "Magic Link",
   "confirm-signup.html": "Confirm signup",
@@ -61,20 +42,13 @@ interface Panel {
   text?: string;
 }
 
-/**
- * The Supabase auth templates, read off disk. They are not in EMAIL_REGISTRY
- * because our code never renders them — Supabase does, substituting the Go
- * placeholders they carry.
- */
 function authPanels(root: string): Panel[] {
   const dir = join(root, "supabase", "templates");
   let files: string[];
   try {
-    // Only the generated auth templates. The folder can hold other HTML
-    // (e.g. a preview sheet), which must not be embedded as a template.
     files = readdirSync(dir).filter((f) => f in AUTH_TEMPLATE_LABELS);
   } catch {
-    return []; // Not generated yet — the sheet still renders the other 24.
+    return [];
   }
   return files
     .sort()
@@ -116,13 +90,6 @@ function panelHtml(panel: Panel, index: number): string {
 </article>`;
 }
 
-/**
- * Build the review sheet.
- *
- * `root` is the repo root, used to locate supabase/templates. `fixture` picks
- * the sample data — "hostile" fills every free-text field with an injection
- * probe, which is a quick way to eyeball that escaping holds.
- */
 export function renderContactSheet(opts: {
   root: string;
   fixture?: EmailFixture;

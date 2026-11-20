@@ -17,8 +17,6 @@ export default async function PartnerSettingsPage({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  // Guard: approved, linked, AND on the current agreement (re-accept bounces to
-  // /partner). Not-signed-in / non-partner / stale-session handled upstream.
   const ctx = await requireActivePartnerPage(locale);
 
   const admin = supabaseAdmin();
@@ -30,7 +28,6 @@ export default async function PartnerSettingsPage({
       )
       .eq("id", ctx.partnerId)
       .maybeSingle(),
-    // The partner's other clinics (ADR 0037), scoped to their own main row.
     admin
       .from("partners")
       .select("id, branch_name, address, postal_code")
@@ -48,8 +45,6 @@ export default async function PartnerSettingsPage({
       .maybeSingle(),
   ]);
 
-  // Sign the partner's OWN private QR for preview (short-lived). Query is scoped to
-  // ctx.partnerId, so a partner only ever gets a link to their own image.
   const qrUrl = await signedImageUrl(pay?.paynow_qr_path ?? null);
 
   return (

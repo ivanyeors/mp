@@ -9,11 +9,7 @@ import { POINTS_DEFAULTS, PointsSettingsSchema, pointsSettingsFromRows, pointsSe
 import { POINTS_PER_DOLLAR, formatDollars, formatEarnRate, formatPoints, formatPointsCount, pointsToDollars } from "../value";
 
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021120000_points_ledger.sql"), "utf8");
-// Points never expire (ADR 0030, 2026-10-31): this one redefines the settings
-// function and the candidates view, so its windows must match too.
 const NEVER_EXPIRE = readFileSync(join(process.cwd(), "supabase/migrations/20261031032017_points_never_expire.sql"), "utf8");
-// The earn rate is 1 (ADR 0030 decision 3, amended 2026-11-08): this one moves
-// the saved 3 to 1 and redefines the settings function's default.
 const EARN_ONE = readFileSync(join(process.cwd(), "supabase/migrations/20261108100200_points_earn_one.sql"), "utf8");
 
 describe("value (ADR 0030 a, b)", () => {
@@ -121,7 +117,6 @@ describe("settings", () => {
     expect(withLaunch.upsert.map((r) => r.key)).toContain("points_launch_at");
     expect(withLaunch.remove).toEqual([]);
     expect(pointsSettingsToRows(POINTS_DEFAULTS).remove).toEqual(["points_launch_at"]);
-    // The ladder is one row, blank for none (never deleted, which would read as none too).
     expect(withLaunch.upsert).toContainEqual({ key: "points_milestones", value: "" });
     expect(pointsSettingsToRows({ ...POINTS_DEFAULTS, milestones: [...SEEDED_MILESTONES] }).upsert).toContainEqual({
       key: "points_milestones",

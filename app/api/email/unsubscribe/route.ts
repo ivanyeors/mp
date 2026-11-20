@@ -14,31 +14,6 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * One-click unsubscribe (PRD-shopify-customer-migration slice 07; RFC 8058).
- *
- * POST takes two callers, both carrying the signed link `?u=<customer>&t=<token>`
- * (in the query, or as form fields):
- *  - a mail client's one-click POST, body `List-Unsubscribe=One-Click`:
- *    answered `200 { ok: true }`;
- *  - the confirm page's button (form field `via=page`): answered `303` back to
- *    that page, which now says they are unsubscribed.
- * Either sets `unsubscribed` with source `unsubscribe_link` and writes one
- * event, and a second POST changes nothing. A campaign email's link also
- * carries its send, `s`, signed with the Customer: the event then names that
- * send (PRD-campaign-audiences slice 08), so the campaign's page counts who
- * left because of it. A link that does not verify is
- * `400 { error: "invalid_link" }` and changes nothing; that answer to an empty
- * POST is also how a campaign sender checks the route is live
- * (`probeUnsubscribeRoute`).
- *
- * GET never changes anything, because link scanners prefetch: a person who
- * opens the `List-Unsubscribe` URL in a browser lands on the confirm page.
- *
- * Unsubscribing stops marketing email only. Order, Result and aftercare email
- * is transactional and continues (ADR 0029 i).
- */
-
 async function readForm(req: Request): Promise<FormData | null> {
   const type = req.headers.get("content-type") ?? "";
   if (!/application\/x-www-form-urlencoded|multipart\/form-data/i.test(type)) return null;
@@ -88,14 +63,11 @@ export async function POST(req: Request) {
     source: "unsubscribe_link",
     campaignSendId: link.sendId,
   });
-  // A Customer since deleted is on no list: done, as far as the sender knows.
   if (!result.ok && !result.notFound) {
     console.error("[unsubscribe] set_marketing_email failed:", result.error);
     return NextResponse.json({ ok: false, error: "failed" }, { status: 500 });
   }
 
-  // The confirm page's button says so; any other POST is a mail client's
-  // one-click, which RFC 8058 answers with a 2xx and no redirect.
   if (field(form, "via") === "page") {
     return NextResponse.redirect(pageUrl(req, field(form, "lang"), u, t, s), 303);
   }

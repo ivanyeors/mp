@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { resubscribeMe } from "@/lib/auth/sign-in-actions";
 import { SIGN_UP_NOTICE_COOKIE, SIGN_UP_NOTICES, type SignUpNotice } from "@/lib/auth/sign-in-intent";
 
-/** Read and clear the notice a sign-in left for this page. */
 function takeNotice(): SignUpNotice | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${SIGN_UP_NOTICE_COOKIE}=([^;]*)`));
   if (!match) return null;
@@ -15,12 +14,6 @@ function takeNotice(): SignUpNotice | null {
   return (SIGN_UP_NOTICES as readonly string[]).includes(value) ? (value as SignUpNotice) : null;
 }
 
-/**
- * What a sign-up says on the page it lands on (PRD-campaign-audiences slice
- * 03), so a person always sees what their sign-in did to their emails:
- * subscribed, already on the list, or, after a footer sign-up by someone who
- * unsubscribed, an offer to come back that only their click accepts.
- */
 export function SignUpNoticeToast() {
   const pathname = usePathname();
 

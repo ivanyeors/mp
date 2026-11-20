@@ -1,12 +1,3 @@
-/**
- * A small in-memory stand-in for the Supabase query builder, enough for the
- * review, Telegram-access and social-inbox modules: select / insert / upsert
- * (single or composite onConflict) / update / delete with eq, in, is, not-is,
- * lt, order and limit. Filters really filter
- * and guarded updates really miss, so "two taps, one post" is observed on the
- * rows rather than inferred from which methods were called.
- */
-
 export type Row = Record<string, unknown>;
 
 type Op = "select" | "insert" | "upsert" | "update" | "delete";
@@ -31,7 +22,6 @@ export function createFakeSupabase(
 
     const rows = () => (tables[table] ??= []);
     const matches = (r: Row) => state.filters.every((f) => f(r));
-    // Like PostgREST: a flat column list returns only those columns.
     const project = (r: Row): Row =>
       state.columns ? Object.fromEntries(state.columns.map((c) => [c, r[c] ?? null])) : { ...r };
     const fresh = (r: Row): Row => {
@@ -68,7 +58,6 @@ export function createFakeSupabase(
         return inserted;
       }
       if (state.op === "upsert") {
-        // Composite keys ("a,b") as in Postgres: a NULL in the key never conflicts.
         const keys = (state.upsert?.onConflict ?? "id").split(",").map((k) => k.trim());
         const conflicts = (r: Row, row: Row) =>
           keys.every((k) => row[k] != null && r[k] === row[k]);

@@ -57,7 +57,6 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
 
     return (
         <div className="flex flex-col gap-6 mb-12">
-            {/* Search Bar */}
             <div className="relative max-w-md mx-auto w-full">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Search className="h-5 w-5 text-muted-foreground" />
@@ -71,7 +70,6 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
                 />
             </div>
 
-            {/* Labels Filter */}
             {availableLabels.length > 0 && (
                 <div className="flex flex-wrap items-center justify-center gap-2">
                     {availableLabels.map((label) => {

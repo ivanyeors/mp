@@ -8,7 +8,7 @@ import { isAdminJourneyPath, normalizeJourneyPath } from "@/lib/analytics/journe
 const VISITOR_COOKIE = "mp_vid";
 const VISIT_KEY = "mp_visit_id";
 const LAST_ACTIVITY_KEY = "mp_visit_last_activity";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1y
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -28,7 +28,6 @@ function readVisitorId(): string {
   return id;
 }
 
-/** Same-origin referrer is not an Entry source — treat as Direct when no UTM. */
 function externalReferrer(): string {
   const ref = document.referrer;
   if (!ref) return "";
@@ -55,9 +54,7 @@ function pushDataLayer(path: string) {
     const w = window as unknown as { dataLayer?: Record<string, unknown>[] };
     w.dataLayer = w.dataLayer || [];
     w.dataLayer.push({ event: "mp_page_view", page_path: path });
-  } catch {
-    // best-effort dual-write
-  }
+  } catch {}
 }
 
 function postIngest(payload: Record<string, unknown>) {
@@ -91,11 +88,6 @@ function resolveVisitId(nowIso: string): {
   return { visitId, isNewVisit: true, closeVisitId };
 }
 
-/**
- * The current Visit and Visitor ids, without starting either: the drop-off
- * question (PRD-crm-retention-loop slice 10) ties its answer to the Visit the
- * tracker already opened, and to nothing when there is none.
- */
 export function readJourneyIds(): { visitId: string | null; visitorId: string | null } {
   try {
     const visitId = sessionStorage.getItem(VISIT_KEY);
@@ -158,9 +150,7 @@ function sendSectionView(path: string, sectionId: string) {
     const w = window as unknown as { dataLayer?: Record<string, unknown>[] };
     w.dataLayer = w.dataLayer || [];
     w.dataLayer.push({ event: "mp_section_view", page_path: path, section_id: sectionId });
-  } catch {
-    // best-effort dual-write
-  }
+  } catch {}
 }
 
 function sendPagehideClose() {
@@ -176,7 +166,6 @@ function sendPagehideClose() {
   });
 }
 
-/** Storefront page_view + section_view tracer. No-ops on Admin Panel (`/settings/*`). */
 export function JourneyTracker() {
   const pathname = usePathname();
   const lastSent = useRef<string | null>(null);
@@ -198,7 +187,6 @@ export function JourneyTracker() {
     const path = normalizeJourneyPath(pathname);
     if (!path) return;
 
-    // Once per section per path navigation; 25% visible threshold.
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -224,7 +212,6 @@ export function JourneyTracker() {
         .forEach((el) => io.observe(el));
     };
     observeAll();
-    // Late-mounted landing blocks (client sections).
     const mo = new MutationObserver(observeAll);
     mo.observe(document.body, { childList: true, subtree: true });
 

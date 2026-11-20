@@ -54,7 +54,7 @@ describe("addEntry — idempotency", () => {
   it("a duplicate stripe_object_id is a no-op (no double count)", () => {
     let entries: LedgerEntry[] = [charge(100)];
     entries = addEntry(entries, refund(30, "re_1"));
-    entries = addEntry(entries, refund(30, "re_1")); // re-delivered event
+    entries = addEntry(entries, refund(30, "re_1"));
     expect(entries).toHaveLength(2);
     expect(summarize(entries).amountRefunded).toBe(30);
   });
@@ -74,7 +74,7 @@ describe("ledgerReconciles", () => {
   });
 
   it("flags a captured amount that does not match the order total", () => {
-    const entries = [charge(110), refund(45, "re_1")]; // charged 110 for a 120 order
+    const entries = [charge(110), refund(45, "re_1")];
     expect(ledgerReconciles(120, entries)).toBe(false);
   });
 

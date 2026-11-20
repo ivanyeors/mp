@@ -57,12 +57,10 @@ export function FirmnessScale({ min = 0, max = 100, className, ...props }: Firmn
         <div className="relative h-[18px] w-full overflow-hidden rounded-full bg-muted">
           {props.mode === "point" ? (
             <>
-              {/* Fill from 0 -> point */}
               <div
                 className="absolute inset-y-0 left-0"
                 style={{ width: `${clamp(pct(values[0], min, max), 0, 100)}%` }}
               >
-                {/* Dock-like background (matches `components/home-header.tsx`) */}
                 <div
                   className="absolute inset-0 dark:hidden"
                   style={{
@@ -92,7 +90,6 @@ export function FirmnessScale({ min = 0, max = 100, className, ...props }: Firmn
                   }}
                 />
               </div>
-              {/* Tick at point */}
               <div
                 className="absolute top-1/2 h-[26px] w-0.5 -translate-x-1/2 -translate-y-1/2 bg-primary"
                 style={{ left: `${clamp(pct(values[0], min, max), 0, 100)}%` }}
@@ -100,7 +97,6 @@ export function FirmnessScale({ min = 0, max = 100, className, ...props }: Firmn
             </>
           ) : (
             <>
-              {/* Highlight range */}
               <div
                 className="absolute inset-y-0"
                 style={{
@@ -112,7 +108,6 @@ export function FirmnessScale({ min = 0, max = 100, className, ...props }: Firmn
                   )}%`,
                 }}
               >
-                {/* Dock-like background (matches `components/home-header.tsx`) */}
                 <div
                   className="absolute inset-0 dark:hidden"
                   style={{
@@ -142,7 +137,6 @@ export function FirmnessScale({ min = 0, max = 100, className, ...props }: Firmn
                   }}
                 />
               </div>
-              {/* Range boundary ticks */}
               <div
                 className="absolute top-1/2 h-[26px] w-0.5 -translate-x-1/2 -translate-y-1/2 bg-primary"
                 style={{ left: `${clamp(pct((values as [number, number])[0], min, max), 0, 100)}%` }}

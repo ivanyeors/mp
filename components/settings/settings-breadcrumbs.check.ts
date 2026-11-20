@@ -1,7 +1,3 @@
-/**
- * Runnable self-check for buildSettingsBreadcrumbs.
- * Run: npx tsx components/settings/settings-breadcrumbs.check.ts
- */
 import {
   buildSettingsBreadcrumbs,
   type BreadcrumbNavGroup,
@@ -99,7 +95,6 @@ assertEqual(
   "non-opaque segment title-cases",
 );
 
-// Two-level detail routes (e.g. Product Builder / Rules Engine / {flow}).
 assertEqual(
   labels("/settings/inventory/configure/rules-engine/premium-mpillow"),
   ["Admin Panel", "Inventory", "Configure", "Rules Engine", "Premium Mpillow"],
@@ -116,7 +111,6 @@ assertEqual(
   "detailLabel overrides only the last nested segment",
 );
 
-// Product Builder → Rules Engine → {flow} (slice 02 mount path).
 const PB_NAV: BreadcrumbNavGroup[] = [
   {
     label: "Landing Site",

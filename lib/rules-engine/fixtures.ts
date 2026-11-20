@@ -1,10 +1,5 @@
 import type { EngineInputs, RuleGraphJson } from "./types";
 
-/**
- * Minimal hand-written Premium graph for slice 01 round-trip:
- * shoulder → size → size-scoped template; Fallback catch-all (no inbound).
- * Bands mirror in-store XS–XL (cm).
- */
 export function premiumHandGraph(templateIds: {
   XS: string;
   S: string;
@@ -56,7 +51,6 @@ export function premiumHandGraph(templateIds: {
   };
 }
 
-/** Full Premium catalog sample inputs (deterministic). */
 export function premiumSampleInputs(overrides: Partial<EngineInputs> = {}): EngineInputs {
   return {
     shoulder_length_cm: 42,
@@ -84,10 +78,6 @@ export const DEFAULT_TEMPLATE_IDS = {
   XL: "tpl-xl-default",
 } as const;
 
-/**
- * Basic graph with acid_reflux → Premium Flow route (+ same-flow Fallback sibling).
- * For slice 06 tests / Staff demo publish — not the day-one seed.
- */
 export function basicWithPremiumUpsellGraph(templateIds: {
   XS: string;
   S: string;

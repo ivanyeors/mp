@@ -1,14 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/**
- * Admin coupon (discount code) reads shared by `GET /api/shop/coupons`,
- * `GET /api/shop/coupons/[id]` and the RSC settings pages that render the same
- * data on the server instead of fetching it after hydration.
- *
- * Callers are responsible for authorisation (`requireAdmin("discounts")` in a
- * route handler, `requireAdminPage("discounts", locale)` in a page).
- */
-
 export interface AdminCouponsListPayload {
   ok: true;
   rows: unknown[];

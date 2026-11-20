@@ -13,12 +13,6 @@ import {
 } from "@/lib/email-campaigns/ai-drafted";
 import { aiDraftedBlocks, CampaignContentSchema, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 
-/**
- * ✨ Generate's shapes (PRD-campaign-email-editor slice 09): the flat schema
- * Claude fills, each block it writes re-parsed with the schema a save uses,
- * and the *Drafted with AI* marks.
- */
-
 const COVER = "0b6c1f2e-6a1d-4c55-9a77-2f0b9d3c1a10";
 const NECK = "1c7d2a3f-7b2e-4d66-8b88-3a1c0e4d2b21";
 
@@ -28,7 +22,6 @@ describe("draftBlocker", () => {
     expect(draftBlocker("Sleep cooler this December", "")).toBeNull();
     expect(draftBlocker("", "December cooling launch")).toBeNull();
     expect(draftBlocker("  ", "Launch")).toBe(DRAFT_NEEDS_TITLE);
-    // A Variable counts as a word; punctuation alone doesn't.
     expect(draftBlocker("{first_name}, sleep cooler", "")).toBeNull();
     expect(draftBlocker("Sleep — cooler", "")).toBe(DRAFT_NEEDS_TITLE);
     expect(draftTitle("", "  December   launch ")).toBe("December launch");
@@ -42,7 +35,6 @@ describe("DraftRequestSchema", () => {
     expect(DraftRequestSchema.safeParse({ ...base, about: "x".repeat(501) }).success).toBe(false);
     expect(DraftRequestSchema.safeParse({ ...base, products: [COVER, NECK, COVER] }).success).toBe(false);
     expect(DraftRequestSchema.safeParse({ ...base, goal: "promotion", products: [COVER, NECK] }).success).toBe(true);
-    // Anything else in the request (a customer, an audience) is refused, not passed on.
     expect(DraftRequestSchema.safeParse({ ...base, audience: "everyone" }).success).toBe(false);
   });
 });
@@ -55,7 +47,6 @@ describe("draftOutputSchema", () => {
     expect(text).not.toMatch(/href|"url"|image|hero|split/);
     expect(text).toContain("first_name");
     expect(text).not.toContain("last_name");
-    // No products picked: no products block and no product button.
     expect(text).not.toMatch(/"products"|\\"product\\"/);
   });
 

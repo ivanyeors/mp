@@ -46,8 +46,6 @@ import { stripePriceIdOf, type StripeMode } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
 import { InventoryPushSheet } from "@/components/settings/inventory-push-sheet";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type ProductVariant = {
     id: string;
     price: number | null;
@@ -93,7 +91,6 @@ export type Category = {
     content: Record<string, { name: string }>;
 };
 
-/** Exactly the JSON `GET /api/shop/products?...` returns. */
 export type ProductsListResponse = {
     ok: true;
     rows: ProductRow[];
@@ -102,7 +99,6 @@ export type ProductsListResponse = {
     limit: number;
 };
 
-/** Exactly the JSON `GET /api/shop/categories` returns. */
 export type CategoriesListResponse = {
     ok: true;
     rows: Category[];
@@ -114,8 +110,6 @@ export type ProductsInitialData = {
 };
 
 const LIMIT = 20;
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getProductTitle(row: ProductRow): string {
     const loc =
@@ -145,7 +139,6 @@ function getPriceRange(variants: ProductVariant[]): string {
     return min === max ? fmt(min) : `${fmt(min)} to ${fmt(max)}`;
 }
 
-/** "Cost $10.00 to $12.00", from the Variants' Costings mirror; null when none is known. */
 function getCostRange(variants: ProductVariant[]): string | null {
     const costs = (variants ?? [])
         .map((v) => (v.cost_price == null || v.cost_price === "" ? null : Number(v.cost_price)))
@@ -158,7 +151,6 @@ function getCostRange(variants: ProductVariant[]): string | null {
 
 function getTotalStock(variants: ProductVariant[]): { value: number; hasStockAvailable: boolean } {
     if (!variants || variants.length === 0) return { value: 0, hasStockAvailable: false };
-    // Prefer stock_available (from variant_stock view) when present
     const hasStockAvailable = variants.some((v) => v.stock_available != null);
     if (hasStockAvailable) {
         const total = variants.reduce((sum, v) => sum + (v.stock_available ?? v.stock_quantity ?? 0), 0);
@@ -172,9 +164,6 @@ function hasPriceWarning(variants: ProductVariant[]): boolean {
 }
 
 function hasMissingStripe(variants: ProductVariant[], mode: StripeMode): boolean {
-    // Per mode: a product linked in the sandbox is NOT linked in live, and an admin
-    // looking at localhost must not be told live is ready (or the reverse). The mode
-    // comes from the server page — the browser cannot see the secret key.
     return variants.some((v) => !stripePriceIdOf(v, mode));
 }
 
@@ -192,8 +181,6 @@ function statusBadgeVariant(status: string): StatusVariant {
     return "outline";
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function ProductsClient({
     initialData,
     initialTab = "products",
@@ -201,7 +188,6 @@ export function ProductsClient({
 }: {
     initialData?: ProductsInitialData;
     initialTab?: string;
-    /** Which Stripe account this deploy uses, read on the server from its key. */
     stripeMode: StripeMode;
 }) {
     const pathname = usePathname() ?? "/";
@@ -210,24 +196,20 @@ export function ProductsClient({
     const router = useRouter();
 
     const [tab, setTab] = useState(initialTab);
-    // A link to `?tab=shop` from this page (the push toast) re-renders with a new prop, not a new mount.
     const [tabFromUrl, setTabFromUrl] = useState(initialTab);
     if (initialTab !== tabFromUrl) {
         setTabFromUrl(initialTab);
         setTab(initialTab);
     }
 
-    // Type filter (replaces old tab system)
     const [typeFilter, setTypeFilter] = useState<string>("all");
 
-    // Filter state
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
     const [page, setPage] = useState(1);
 
-    // Data state
     const [products, setProducts] = useState<ProductRow[]>(initialData?.products.rows ?? []);
     const [total, setTotal] = useState(initialData?.products.total ?? 0);
     const [loading, setLoading] = useState(!initialData);
@@ -235,27 +217,19 @@ export function ProductsClient({
         initialData?.categories.rows ?? [],
     );
 
-    // The RSC page already fetched the first page and the category list — skip
-    // the mount fetches once, then behave exactly as before.
     const hydratedFromServer = useRef(Boolean(initialData));
 
-    // Selection state
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [deleting, setDeleting] = useState(false);
 
-    // Derived: activeTab kept for backward compat in rendering logic
     const activeTab = typeFilter === "accessory" ? "accessories" : "pillows";
 
-    // Inventory items not yet in Products, pushed through a price check.
     const [pushSheetOpen, setPushSheetOpen] = useState(false);
-    /** Bumped by a push, so the In the shop list shows the new draft. */
     const [shopListVersion, setShopListVersion] = useState(0);
 
-    // Sync state
     const [syncing, setSyncing] = useState(false);
     const [resyncingPrices, setResyncingPrices] = useState(false);
 
-    // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -268,14 +242,12 @@ export function ProductsClient({
         };
     }, [search]);
 
-    // Reset page and selection when filters or tab change
     useEffect(() => { setPage(1); }, [statusFilter, categoryFilter]);
     useEffect(() => {
         setPage(1);
         setSelected(new Set());
     }, [typeFilter]);
 
-    // Fetch categories once
     useEffect(() => {
         if (initialData) return;
         fetch("/api/shop/categories")
@@ -284,7 +256,6 @@ export function ProductsClient({
             .catch(() => {});
     }, [initialData]);
 
-    // Fetch products
     const fetchProducts = useCallback(async () => {
         setLoading(true);
         const params = new URLSearchParams();
@@ -293,10 +264,8 @@ export function ProductsClient({
         if (categoryFilter !== "all") params.set("category_id", categoryFilter);
         params.set("page", String(page));
         params.set("limit", String(LIMIT));
-        // Admin list includes composed main products; public shop excludes them.
         params.set("include_custom", "true");
 
-        // Add product_type filter
         if (typeFilter === "pillow") params.set("product_type", "pillow");
         else if (typeFilter === "bolster") params.set("product_type", "bolster");
         else if (typeFilter === "accessory") params.set("product_type", "accessory");
@@ -323,10 +292,8 @@ export function ProductsClient({
         fetchProducts();
     }, [fetchProducts]);
 
-    // Clear selection when products change
     useEffect(() => { setSelected(new Set()); }, [products]);
 
-    // ── Sync from Inventory ──
     const syncFromInventory = async () => {
         setSyncing(true);
         try {
@@ -365,7 +332,6 @@ export function ProductsClient({
         }
     };
 
-    // Phones: the header cluster moves into the bottom dock, within thumb reach.
     useMobileDockActions([
         {
             id: "add-from-inventory",
@@ -387,7 +353,6 @@ export function ProductsClient({
         },
     ]);
 
-    // ── Selection helpers ──
     const allSelected =
         products.length > 0 && products.every((p) => selected.has(p.id));
     const someSelected = selected.size > 0 && !allSelected;
@@ -409,7 +374,6 @@ export function ProductsClient({
         });
     };
 
-    // ── Bulk delete ──
     const bulkDelete = async () => {
         if (
             !confirm(
@@ -428,7 +392,6 @@ export function ProductsClient({
         fetchProducts();
     };
 
-    // ── Pagination ──
     const totalPages = Math.ceil(total / LIMIT);
 
     const buildPageNumbers = (): (number | "ellipsis")[] => {
@@ -443,14 +406,11 @@ export function ProductsClient({
         return pages;
     };
 
-    // ── Category map ──
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-    // Whether the current tab allows selection/deletion
     const isAccessoriesTab = typeFilter === "accessory";
     const stockColumnLabel = "Stock";
 
-    // ── Shared product table renderer ──
     const renderProductTable = () => {
         if (loading) {
             return (
@@ -551,7 +511,6 @@ export function ProductsClient({
                                         </TableCell>
                                     )}
 
-                                    {/* Thumbnail */}
                                     <TableCell className="w-12 px-2 py-2">
                                         {thumbnailUrl ? (
                                             <div className="relative h-10 w-10 overflow-hidden rounded-md border bg-muted shrink-0">
@@ -570,7 +529,6 @@ export function ProductsClient({
                                         )}
                                     </TableCell>
 
-                                    {/* Name */}
                                     <TableCell className="px-4 py-3">
                                         <span className="font-medium line-clamp-1">{title}</span>
                                         <span className="block text-xs text-muted-foreground mt-0.5">
@@ -583,14 +541,12 @@ export function ProductsClient({
                                         )}
                                     </TableCell>
 
-                                    {/* Status */}
                                     <TableCell className="px-4 hidden sm:table-cell">
                                         <Badge variant={statusBadgeVariant(product.status)} className="capitalize">
                                             {product.status}
                                         </Badge>
                                     </TableCell>
 
-                                    {/* Price range */}
                                     <TableCell className="px-4 hidden md:table-cell text-sm text-muted-foreground">
                                         <span>{priceRange}</span>
                                         {costRange && (
@@ -608,7 +564,6 @@ export function ProductsClient({
                                         )}
                                     </TableCell>
 
-                                    {/* Stock */}
                                     <TableCell className="px-4 hidden lg:table-cell text-sm">
                                         <span
                                             className={
@@ -623,7 +578,6 @@ export function ProductsClient({
                                         </span>
                                     </TableCell>
 
-                                    {/* Category */}
                                     <TableCell className="px-4 hidden xl:table-cell text-sm text-muted-foreground">
                                         {category ? getCategoryName(category) : "\u2014"}
                                     </TableCell>
@@ -636,7 +590,6 @@ export function ProductsClient({
         );
     };
 
-    // ── Shared pagination renderer ──
     const renderPagination = () => {
         if (totalPages <= 1) return null;
         return (
@@ -699,7 +652,6 @@ export function ProductsClient({
         );
     };
 
-    // ── Shared toolbar renderer ──
     const renderToolbar = () => (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1 max-w-sm">
@@ -712,8 +664,6 @@ export function ProductsClient({
                 />
             </div>
 
-            {/* Phones: type and status share a row and category, whose names run long, gets the next;
-                from `sm` the wrapper drops out of the layout. */}
             <div className="grid grid-cols-2 gap-2 sm:contents">
             <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
@@ -759,7 +709,6 @@ export function ProductsClient({
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-1.5">
                 <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
                 <InfoTip label="About Products">
@@ -776,7 +725,6 @@ export function ProductsClient({
                 </TabsList>
 
                 <TabsContent value="products" className="mt-6 space-y-6">
-                    {/* Actions bar */}
                     <PageActions docked>
                         <Button
                             size="sm"
@@ -818,7 +766,6 @@ export function ProductsClient({
 
                     {renderToolbar()}
 
-                    {/* Bulk actions bar */}
                     {selected.size > 0 && (
                         <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5">
                             <span className="text-sm font-medium text-destructive">

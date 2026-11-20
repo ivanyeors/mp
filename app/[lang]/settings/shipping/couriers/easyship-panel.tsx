@@ -21,8 +21,6 @@ import type { CourierRate, PackageType, ShippingSettings } from "@/lib/shipping/
 import { InfoTip } from "@/components/ui/info-tip";
 import { COUNTRIES, findCountry, usesPostalCode } from "@/lib/shipping/countries";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type EasyshipStatus = {
     tokenConfigured: boolean;
     environment: "sandbox" | "production" | null;
@@ -60,10 +58,6 @@ type TestResult =
       }
     | { ok: false; error: string };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function toForm(s: ShippingSettings): FormState {
     return {
         incoterms: s.incoterms,
@@ -89,7 +83,6 @@ function toPayload(f: FormState) {
     };
 }
 
-/** A zod `flatten()` body, or a plain string, as one line for a person. */
 export function apiErrorMessage(error: unknown, fallback: string): string {
     if (typeof error === "string") return error;
     const e = error as { formErrors?: string[]; fieldErrors?: Record<string, string[] | undefined> } | null;
@@ -113,8 +106,6 @@ function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail?:
         </div>
     );
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void }) {
     const [status, setStatus] = useState<EasyshipStatus | null>(null);
@@ -228,7 +219,6 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
 
     return (
         <div className="space-y-6">
-            {/* Connection */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex flex-wrap items-center gap-2 text-base">
@@ -298,7 +288,6 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                 </CardContent>
             </Card>
 
-            {/* Customs & quotes */}
             <Card>
                 <CardHeader>
                     <div className="flex items-center gap-1.5">
@@ -404,7 +393,6 @@ export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void
                 </Button>
             </div>
 
-            {/* Test a quote */}
             <Card>
                 <CardHeader>
                     <div className="flex items-center gap-1.5">

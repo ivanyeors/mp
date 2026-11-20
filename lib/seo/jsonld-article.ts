@@ -9,12 +9,10 @@ export type ArticleJsonLdInput = {
   description: string;
   imageUrl?: string | null;
   publishedAt?: string | null;
-  /** Editorial update time; falls back to publishedAt. Never the row's updated_at. */
   contentUpdatedAt?: string | null;
   author: string;
 };
 
-/** Brand bylines ("Mpillow", "TheMpillow SG") are the organisation, not a person. */
 export function isBrandAuthor(author: string | null | undefined): boolean {
   return !author?.trim() || /mpillow/i.test(author);
 }

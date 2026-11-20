@@ -1,12 +1,6 @@
 import { canonicalAt } from "@/lib/crm/timeline/merge";
 import type { TimelineCursor } from "@/lib/crm/timeline/types";
 
-/**
- * The timeline's `before=` value: the cursor, opaque to the browser. A value the
- * route did not write decodes to null, so a hand-edited link is a 400, never a
- * query built from typed text.
- */
-
 export function encodeCursor(cursor: TimelineCursor): string {
   return Buffer.from(JSON.stringify([cursor.at, cursor.kind, cursor.refId, cursor.id]), "utf8").toString("base64url");
 }

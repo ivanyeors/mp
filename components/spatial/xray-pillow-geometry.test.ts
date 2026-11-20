@@ -11,14 +11,6 @@ import { conformPouchPath, makeRegion, type ConformRegion } from "@/lib/spatial-
 import { cellFrame, GAP, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
 import type { PillowPlacement } from "@/lib/spatial-fillings/core";
 
-/**
- * The renderer used to `pieces.filter(...)` inside `cellsInUse.map(...)` and call
- * `conformPouchPath` per piece per render. It now groups once and memoises the
- * conformed outlines. These tests pin the two properties that makes safe: the
- * grouping reproduces the filter exactly, and the conform is invariant to the
- * region array being shared across a cell instead of rebuilt per piece.
- */
-
 const SIL_REGION = makeRegion(SILHOUETTE_POLYGON, SHELL_SEAM);
 const CELL_REGIONS = Object.fromEntries(
   (Object.entries(CELL_POLYGONS) as Array<[CellKey, typeof SILHOUETTE_POLYGON]>).map(
@@ -73,14 +65,12 @@ describe("conformPouchPath memoisation is byte-identical", () => {
   it("produces the same path whether regions are shared or rebuilt per piece", () => {
     const byCell = groupByCell();
 
-    // Old shape: a fresh region array for every piece, recomputed every render.
     const perPiece = new Map<string, string>();
     for (const p of pieces) {
       const key = `${p.section}/${p.subSection}` as CellKey;
       perPiece.set(p.key, conformPouchPath(p, [SIL_REGION, CELL_REGIONS[key]]));
     }
 
-    // New shape: one region array per cell, one conform per piece per change.
     const memoised = new Map<string, string>();
     for (const [key, cellPieceList] of byCell) {
       const regions = [SIL_REGION, CELL_REGIONS[key]];
@@ -143,7 +133,6 @@ describe("a settled piece conforms against silhouette ∩ Section (slice 11)", (
     const alone: PillowPlacement[] = [{ section: "center", subSection: "middle", slot: 1, itemId: 1 }];
     const fit = fitPillow(alone, { size: "M", dims });
     const [p] = layoutPlacements(alone, { dims, fit });
-    // True size (9-11-2026): the authored rect is the settled one, the generic pouch's 140 mm in a 110 mm cell.
     expect(p.settled).toEqual({ x: p.x, y: p.y, w: p.w, h: p.h });
     expect(p.h).toBeGreaterThan(cellFrame("center", "middle").h);
     const SECTION_REGION = makeRegion(SECTION_POLYGONS.center, GAP);

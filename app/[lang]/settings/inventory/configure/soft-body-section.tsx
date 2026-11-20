@@ -1,14 +1,5 @@
 "use client";
 
-/**
- * Soft cut (ADR 0025): the Soft body tab of Configure. The cross-section draws
- * each filling as a soft pouch that settles inside the cloth case; the few
- * knobs here tune it for every cut, saved as one site setting. The preview
- * always draws the unsaved draft, on the sample recipes the testing preview
- * was approved on, so a value is seen before it is saved — side-on (the cut)
- * and from above (the x-ray), so the Ear Comfort Pad's well reads both ways.
- */
-
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -46,12 +37,10 @@ import { cn, getApiErrorMessage } from "@/lib/utils";
 
 const ROUTE = "/settings/product-builder/soft-body";
 const DIMENSIONS_ROUTE = "/settings/product-builder/dimensions";
-/** The preview's pickers, per browser: a convenience, never a setting. */
 const PREVIEW_KEY = "mp.settings.soft-body.preview";
 
 type Payload = { settings: SoftBodySettings; stored: boolean; updatedAt: string | null; defaults: SoftBodySettings };
 
-/** The route's answer, re-validated: a value out of range draws as its default, as it would on every cut. */
 function toPayload(data: Record<string, unknown>): Payload {
   return {
     settings: softBodySettings(data.settings),
@@ -101,16 +90,13 @@ function readPreview(): PreviewState {
 function writePreview(state: PreviewState) {
   try {
     window.localStorage.setItem(PREVIEW_KEY, JSON.stringify(state));
-  } catch {
-    // Private mode or blocked storage: the pickers just start from the defaults next time.
-  }
+  } catch {}
 }
 
 const SECTION_LABEL: Record<Section, string> = { left: "Left", center: "Center", right: "Right" };
 
 const rigidityWord = (v: number) => (v < 34 ? "soft" : v < 67 ? "firm" : "stiff");
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-/** Settle length in seconds at 60 fps: 24 → "0.4", 8 → "0.13". */
 const seconds = (steps: number) => String(Number((steps / 60).toFixed(2)));
 
 export function SoftBodySection({ settingsPath }: { settingsPath: (path: string) => string }) {
@@ -119,7 +105,6 @@ export function SoftBodySection({ settingsPath }: { settingsPath: (path: string)
   const [draft, setDraft] = useState<SoftBodySettings>(SOFT_BODY_DEFAULTS);
   const [busy, setBusy] = useState<"save" | "reset" | null>(null);
 
-  // Bumped by "Try again".
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -263,8 +248,6 @@ function SaveState({ saved, dirty }: { saved: Payload; dirty: boolean }) {
     </Badge>
   );
 }
-
-// --- Controls -------------------------------------------------------------------
 
 function SoftBodyControls({
   draft,
@@ -497,11 +480,8 @@ function SliderRow({
   );
 }
 
-// --- Preview --------------------------------------------------------------------
-
 function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; settingsPath: (path: string) => string }) {
   const isMobile = useIsMobile();
-  // The slider stays responsive while the solver catches up with the last value.
   const settings = useDeferredValue(draft);
   const slabSettings = useMemo(() => ({ ...settings, enabled: false }), [settings]);
   const [preview, setPreview] = useState<PreviewState>(() => (typeof window === "undefined" ? PREVIEW_DEFAULT : readPreview()));
@@ -511,7 +491,6 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
 
   useEffect(() => writePreview(preview), [preview]);
 
-  // Settings › Dimensions rows, so a measured pouch draws at its measured size; the code defaults until (or unless) they load.
   useEffect(() => {
     let live = true;
     void (async () => {

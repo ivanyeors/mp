@@ -1,8 +1,3 @@
-/**
- * Slice 07 self-check: x-ray renderer honors ADR 0009 guardrails + wiring.
- * Run: npx tsx components/spatial/xray-pillow.check.ts
- */
-
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
@@ -19,7 +14,6 @@ import { fillingVisual, subtypeSlug } from "@/lib/spatial-fillings/visuals";
 import { PILLOW_SIZES, resolveDims } from "@/lib/spatial-fillings/dimensions";
 import { stageGeometry } from "@/lib/spatial-fillings/xray-stage";
 
-// --- Asset pipeline contract (drop-in point for the designer SVG export) -----
 assert.equal(Object.keys(CELL_CLIP_PATHS).length, 9, "nine cell boundary paths");
 assert.equal(Object.keys(SECTION_HIT_PATHS).length, 3, "three Section regions");
 // ponytail: one rounded-square pouch for every filling type until the designer
@@ -42,7 +36,6 @@ for (const [key, d] of Object.entries(CELL_CLIP_PATHS)) {
   assert.match(d, /^M[\d.\- ]+(L[\d.\- ]+)+Z$/, `${key} is a closed polygon path`);
 }
 
-// --- Config map: subtype → shape + color via CSS variables --------------------
 assert.equal(fillingVisual("6D+ (Folded)").shape, "pouch");
 assert.equal(fillingVisual(null).cssVar, "--xray-fill-default");
 assert.equal(subtypeSlug("6D+ (Folded)"), "6d-plus-folded");
@@ -52,12 +45,9 @@ assert.notEqual(
   fillingVisual("6D (S)").defaultColor,
   "6D+ matches before 6D",
 );
-// Registry footprint → pouch size (slice 02, ADR 0019): the Size sets the scale,
-// the registry the millimetres; the relative SIZE_SCALES are gone.
 assert.ok(stageGeometry("XS").k > stageGeometry("XL").k, "XS draws more view units per mm than XL");
 assert.ok(resolveDims({ name: "filling", subtype: "6D (L)" }).dims.widthMm > 0, "every filling resolves to a footprint");
 
-// --- Renderer guardrails ------------------------------------------------------
 const renderer = readFileSync(join(process.cwd(), "components", "spatial", "xray-pillow.tsx"), "utf8");
 assert.doesNotMatch(renderer, /<rect/, "no box crops anywhere (ADR 0009 guardrail 1)");
 assert.doesNotMatch(renderer, /d="M/, "no hard-coded paths — assets only (guardrail 5)");
@@ -95,10 +85,7 @@ assert.match(renderer, /view=\{authored \? "authored" : "settled"\}/, "two views
 assert.match(renderer, /const morph = prepareMorph\(fromD, d\);/, "the settle transition goes through prepareMorph (prepared once per transition, guardrail 4)");
 assert.match(renderer, /setSettleGhost\(fromD\)/, "a degenerate settle pair crossfades");
 assert.match(renderer, /rect=\{labelRects\.get\(p\.key\) \?\? \(p\.section === dived \? p : p\.settled\)\}/, "labels sit on the drawn body — the conformed outline's centroid — settled outside the dive, authored inside it");
-// #402 (a438c3dd): an ear pad's label then moves beside its well, still inside this rect.
 assert.match(renderer, /const d = \(p\.section === dived \? authoredPaths : settledPaths\)\.get\(p\.key\);\s*if \(!d\) continue;\s*const rect = labelRectOf\(d\);/, "the label rect comes from the same conformed path the piece is drawn with");
-// #417 (e5ce74e7, PRD-xray-pillow-ux issue 14 "one writer"): the top view's drag settles its candidate recipe once to
-// plan a move that the lib's placeAlongAt writes; nothing drawn recomputes the settle.
 assert.equal((renderer.match(/settlePillow\(/g) ?? []).length, 1, "the renderer never recomputes settle — it reads the fit (moves go through the lib, slice 06)");
 assert.match(renderer, /const here = alongExtent\(settlePillow\(base, fitCtx\), ref\);[\s\S]{0,600}placeAlongAt\(base, ref,/, "its one settle only plans a top-view move, written by the lib's placeAlongAt");
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
@@ -109,8 +96,6 @@ assert.match(renderer, /const stage = useMemo\(\(\) => stageGeometry\(pillowSize
 assert.match(renderer, /const fit = useMemo\(\s*\(\) => fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the fit is computed once per geometry change (slice 03)");
 assert.match(renderer, /layoutPlacements\(placements, \{ stage, dims: itemDims, fit \}\)/, "the layout reads the fit — squeezed widths and thicknesses draw as such");
 assert.doesNotMatch(renderer, /sizeScale|itemScaleMap|SIZE_SCALES/, "the relative size scale is retired");
-// Slice 04, as reviewed 26-9-2026: no status rings on the pillow — the only lines
-// on it are the protector's two divider seams (straight, silhouette-clipped).
 assert.doesNotMatch(renderer, /RING_COMPRESSED|`ring-\$\{c\.section\}/, "the amber / red cell rings are gone");
 assert.match(
   renderer,
@@ -119,7 +104,6 @@ assert.match(
 );
 assert.match(renderer, /strokeDasharray: status === "ok" \? undefined : "6 3"/, "a squeezed piece draws with a dashed stroke");
 assert.doesNotMatch(renderer, /#ef4444|bg-red-|text-red-|RING_OVER/, "fit never turns red (Ivan, 1-11-2026): a piece in a cell that cannot close keeps the dashed outline, the gauge says it in amber");
-// The one red on the x-ray means "this pouch comes out" (owner, 15-11-2026), and only the remove states draw it.
 assert.equal(
   renderer.match(/REMOVE_RED/g)?.length,
   4,
@@ -127,12 +111,10 @@ assert.equal(
 );
 assert.doesNotMatch(renderer, /squeezeLines|↕ \$\{|↔ \$\{/, "no ↕ / ↔ squeeze percentage beside the type label (Ivan, 1-11-2026)");
 assert.match(renderer, /fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
-// Slice 05, as reviewed 26-9-2026: the x-ray draws no cut line (the cross-section's own controls say where it is taken).
 assert.doesNotMatch(renderer, /cutAt|data-xray-cut=/, "no dashed cut line on the x-ray");
 assert.match(renderer, /onDiveChange\?\.\(dived\)/, "the dive is reported so an along cut can follow it");
 assert.match(renderer, /onMouseEnter=\{\(\) => setHovered\(section\)\}/, "Section hover highlight");
 
-// --- Wiring: one gated mount over the silhouette (RE slice 07: guests read-only) ---
 const client = readFileSync(join(process.cwd(), "app", "[lang]", "mp-config", "mp-config-client.tsx"), "utf8");
 assert.match(client, /\{xrayVisible && \(\s*<XrayPillow/, "x-ray mounts behind one visibility gate");
 assert.match(

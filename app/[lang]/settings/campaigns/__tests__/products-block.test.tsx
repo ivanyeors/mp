@@ -8,15 +8,6 @@ import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { CampaignProductCard } from "@/lib/email-campaigns/products";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * The products block in the campaign editor (PRD-campaign-email-editor slice
- * 07), as the owner's demo goes: add *Products*, pick the FibreCool cover and
- * the Cervical Neck Support from the shop's Listed products, see each with
- * its photo, name and price as the shop shows them, lay them out one per
- * row, and Save it by id. A product since un-listed says so by name. A
- * button can go to one product's page.
- */
-
 const COVER = "3b7e1f2a-9c4d-4a6b-8e1f-5d2c3b4a6e7f";
 const NECK = "7c2a4e6b-1d3f-4b8a-9e2c-6f4d5a3b2c1e";
 const SHOP: CampaignProductCard[] = [
@@ -101,7 +92,6 @@ const save = async () => {
 };
 const radio = (el: HTMLElement, group: string, label: string) =>
   [...el.querySelectorAll<HTMLElement>(`[role="radiogroup"][aria-label="${group}"] [role="radio"]`)].find((r) => r.textContent === label)!;
-/** Opens the shop's picker from `label`, once it has loaded, and picks `title`. */
 async function pick(label: string, title: string) {
   await click(await until(() => (button(label)?.disabled === false ? button(label) : null)));
   const dialog = await until(() => document.querySelector<HTMLElement>('[role="dialog"]'));
@@ -144,7 +134,6 @@ describe("a products block", () => {
     await pick("Add a product", "Cervical Neck Support");
     expect(products.textContent).toContain("SGD 45.00 (was SGD 59.00)");
 
-    // The selected block's options: side by side, or one per row.
     expect(radio(products, "Layout", "Side by side").getAttribute("aria-checked")).toBe("true");
     await click(radio(products, "Layout", "One per row"));
     await save();
@@ -176,7 +165,6 @@ describe("a products block", () => {
   });
 
   it("says so, by name, when a product it shows is no longer in the shop", async () => {
-    // A product this page has not read yet: each is read once while the page is open.
     const CASE = "9e4b6d8a-2f1c-4e3a-8b7d-1c2e3f4a5b6d";
     actions.describeCampaignProducts.mockResolvedValue({
       ok: true,

@@ -15,9 +15,6 @@ export async function POST(req: NextRequest) {
     const denied = await requireSyncTokenOrAdmin(req)
     if (denied) return denied
 
-    // Canonical products:
-    // - Pillows: XS,S,M,L,XL
-    // - Bolsters: S,M,L (length variants)
     const pillow = await shopifyUpsertCanonicalProduct({
       handle: 'mp-pillow',
       title: 'Mpillow (Size)',
@@ -37,7 +34,6 @@ export async function POST(req: NextRequest) {
     const pillowVariants = (pillow.variants ?? []).map(v => ({ id: v.id, option1: v.option1 ?? null, sku: v.sku ?? null }))
     const bolsterVariants = (bolster.variants ?? []).map(v => ({ id: v.id, option1: v.option1 ?? null, sku: v.sku ?? null }))
 
-    // Provide ready-to-run SQL for mappings
     const pillowSqlValues = ['XS', 'S', 'M', 'L', 'XL']
       .map((sz) => {
         const vid = (pillow.variants ?? []).find(v => String(v.option1 ?? '').trim() === sz)?.id

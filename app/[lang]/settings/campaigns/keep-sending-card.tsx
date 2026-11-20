@@ -21,16 +21,6 @@ import { HOLDOUT_PERCENT, holdoutBlocker } from "@/lib/email-campaigns/results";
 import { changeKeepSending, type KeepSendingChange } from "./actions";
 import { Field } from "./field";
 
-/**
- * A started campaign's *Keep sending* (PRD-campaign-audiences slice 10): off
- * by default; on, the daily job sends it once a day, up to a cap, to people
- * who join its Audience. Pause stops it until resumed; a resume, like turning
- * it on, approves the Audience's Segments as they are now. The email and the
- * Audience stay as the first wave fixed them.
- *
- * While it keeps sending, a person may hold 10% out to measure it (slice 11),
- * once it has been sent to 500 people.
- */
 export function KeepSendingCard({
     campaignId,
     initial,
@@ -42,13 +32,9 @@ export function KeepSendingCard({
 }: {
     campaignId: string;
     initial: KeepSending | undefined;
-    /** Why it cannot keep sending yet (no first wave); null when it can. */
     blocker: string | null;
-    /** Who it goes to, in words. */
     audience: string;
-    /** Emails the daily job's Wave sent today. */
     today: number;
-    /** People sent it so far: the holdout waits for 500. */
     handed: number;
     className?: string;
 }) {
@@ -182,7 +168,6 @@ export function KeepSendingCard({
     );
 }
 
-/** The holdout (slice 11): off, offered once 500 have been sent it; on, until a person stops it. */
 function HoldoutRow({
     state,
     handed,

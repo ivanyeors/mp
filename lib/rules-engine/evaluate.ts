@@ -53,10 +53,6 @@ function nodeMap(graph: RuleGraphJson): Map<string, RuleNode> {
   return new Map(graph.nodes.map((n) => [n.id, n]));
 }
 
-/**
- * Pure, deterministic evaluation. No I/O.
- * Refuses missing required inputs rather than inventing defaults.
- */
 export function evaluate(
   flow: RuleFlow,
   graph: RuleGraphJson,
@@ -81,7 +77,6 @@ export function evaluate(
   let flowRoute: EvaluateResult["flowRoute"] = null;
   let usedFallback = false;
 
-  /** Nodes whose prerequisites are satisfied (Combine needs all inbound). */
   const active = new Set<string>();
   const inboundCount = new Map<string, number>();
   const inboundSatisfied = new Map<string, number>();
@@ -90,10 +85,7 @@ export function evaluate(
     inboundCount.set(e.target, (inboundCount.get(e.target) ?? 0) + 1);
   }
 
-  // One pass over the nodes seeds the inputs, the Range band lookups and the
-  // Fallback node — each of which used to be an O(n) scan at its use site.
   const queue: string[] = [];
-  /** Range node id → band id → band (first wins, matching `bands.find`). */
   const bandsById = new Map<string, Map<string, RangeBand>>();
   let fallbackNode: FallbackNode | null = null;
   for (const n of graph.nodes) {
@@ -170,10 +162,8 @@ export function evaluate(
   }
 
   const visitedEdges = new Set<string>();
-  /** Size-keyed Template outputs reached; resolved once the size is known. */
   const bySizeReached: TemplateBySizeNode[] = [];
 
-  // Head index instead of `queue.shift()`: shift is O(n) per pop on large graphs.
   let head = 0;
   while (head < queue.length) {
     const id = queue[head++]!;
@@ -188,7 +178,6 @@ export function evaluate(
       n.type === "fallback"
     ) {
       fireTerminal(n);
-      // Terminals may still have outgoing edges (e.g. size → template).
     }
     if (n.type === "template-by-size") bySizeReached.push(n);
 
@@ -209,7 +198,6 @@ export function evaluate(
       if (n.type === "match") {
         const raw = inputs[(n as MatchNode).inputKey];
         const want = out.handle ?? "";
-        // string[] Match: handle is a single chip; fire if array includes it
         if (Array.isArray(raw)) {
           if (!raw.map(String).includes(want)) continue;
         } else if (matchValue(raw) !== want) {
@@ -232,14 +220,11 @@ export function evaluate(
         continue;
       }
 
-      // Pass-through from terminals / other active nodes
       visitedEdges.add(out.edgeId);
       tryActivateTarget(out.target);
     }
   }
 
-  // A size-keyed Template output fires only with a slot for the resolved size —
-  // otherwise it must not count, or it would keep the Fallback from answering.
   for (const n of bySizeReached) {
     const id = size ? n.templates[size] : undefined;
     if (!id) continue;
@@ -247,13 +232,11 @@ export function evaluate(
     templateId = id;
   }
 
-  // If nothing terminal fired, walk Fallback if present and no path activated it.
   if (firedTerminals.length === 0 && fallbackNode) {
     activate(fallbackNode.id, "unreachable-path-fallback");
     fireTerminal(fallbackNode);
   }
 
-  // Suppress unused locals for type-only imports kept for clarity
   void (null as unknown as CombineNode | FlowRouteNode | TemplateOutputNode | TierSuggestionNode);
 
   return {
@@ -267,7 +250,6 @@ export function evaluate(
   };
 }
 
-/** Determinism helper for tests. */
 export function evaluateOrThrow(
   flow: RuleFlow,
   graph: RuleGraphJson,

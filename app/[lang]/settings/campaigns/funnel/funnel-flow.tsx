@@ -71,29 +71,10 @@ import {
 } from "./funnel-format";
 import { outcomeText, StateBadge } from "./funnel-panels";
 
-/**
- * The Email flow (PRD-email-funnel slices 03 and 07; owner, 2026-11-19): one
- * column read top to bottom, the same on a phone. Who enters; the Automatic
- * emails, fixed; then sequences, each email under the one it follows,
- * numbered, with the condition and the wait between them; then where to start
- * a new one, the drafts not in the funnel yet, and what moves people on.
- *
- * A draft is moved by its grip (pointer, touch or keyboard) onto a drop zone
- * that says what the drop will do, or by its menu: every move works without
- * dragging. A move is drawn at once, sent to `moveFunnelEmail`, rolled back
- * with the refusal's words if refused, and the page reads the flow again.
- * Nothing here sends: a move only re-points a draft's Segment.
- *
- * Each card shows its email (the real render) under it, or hides it behind
- * its chevron; *Hide previews* sets them all, remembered per browser.
- */
-
 const n = (v: number) => v.toLocaleString("en-SG");
 
-/** A render asked for: undefined while it loads, null when it failed, else the email. */
 export type Renders = Record<string, FunnelRender | null>;
 
-/** What the opened preview shows. */
 export interface PreviewTarget {
     key: string;
     title: string;
@@ -102,27 +83,21 @@ export interface PreviewTarget {
     rules: { label: string; text: string }[];
     numbers: ReactNode;
     actions: { label: string; href: string; primary?: boolean }[];
-    /** A campaign or a Starter: Dark asks for the render again, dark (as the editor's preview does). */
     redrawsDark: boolean;
 }
 
-/** Everything a card needs from the page. */
 export interface FlowCtx {
     stage: FunnelStageView;
     view: FunnelView;
     renders: Renders;
     to: (href: string) => string;
-    /** The page's one link rule (`canOpenWith`): paths without the locale. */
     canOpen: (href: string) => boolean;
     open: (t: PreviewTarget) => void;
-    /** May arrange the flow: `campaigns`, and `customers-edit`, since a move may make a Segment. */
     canArrange: boolean;
-    /** Whether the card `key`'s preview shows, and its chevron. */
     shown: (key: string) => boolean;
     toggle: (key: string) => void;
 }
 
-/** What moves someone on from each stage: the exits drawn last in its Email flow. */
 const STAGE_EXITS: Record<LifecycleStage, string[]> = {
     lead: ["Their first purchase moves them to New."],
     new: [
@@ -137,8 +112,6 @@ const STAGE_EXITS: Record<LifecycleStage, string[]> = {
 const NO_MOVES: ReadonlyMap<string, { id: string; did: MoveDid } | null> = new Map();
 
 const IF_WORDS: Record<MoveDid, string> = { sent: "If they got it", clicked: "If they clicked it", "not-clicked": "If they didn't click" };
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const rulesOf = (step: FlowStep) =>
     [
@@ -155,7 +128,6 @@ function campaignNumbers(stage: FunnelStageView, id: string) {
 function automaticRow(stage: FunnelStageView, stepId: string) {
     return stage.results.rows.find((r): r is Extract<FunnelResultRow, { kind: "automatic" }> => r.kind === "automatic" && r.stepId === stepId) ?? null;
 }
-/** The Segment a campaign sends to, by name, from the stage's Segments. */
 function segmentName(stage: FunnelStageView, campaignId: string): string | null {
     return stage.segments.find((s) => s.sendsTo.some((c) => c.id === campaignId))?.name ?? null;
 }
@@ -166,23 +138,17 @@ function automaticNumbers(stage: FunnelStageView, step: FlowStep): string | null
     return `${row.sentLabel}: ${countText(row.sent)} · ${row.outcomeLabel}: ${countText(row.outcome)}`;
 }
 
-/** The email's picture: a skeleton while it renders, a plain card when it failed. */
 function Thumb({ render, className }: { render: FunnelRender | null | undefined; className?: string }) {
     if (render === undefined) return <div className={cn("aspect-[4/3] w-full animate-pulse rounded-sm border bg-muted", className)} />;
     return <ThumbnailFrame id="" shape="landscape" html={render?.html ?? null} className={className} />;
 }
 
-/** The id a card's preview region has, for its chevron's `aria-controls`. */
 const regionId = (key: string) => `flow-preview-${key.replace(/[^a-z0-9_-]/gi, "-")}`;
-
-// ─── The flow ────────────────────────────────────────────────────────────────
 
 export function EmailFlow({ ctx, allShown, onShowAll }: { ctx: FlowCtx; allShown: boolean; onShowAll: (shown: boolean) => void }) {
     const { stage, view } = ctx;
     const router = useRouter();
 
-    // An optimistic move: campaign id → the email it now follows (null: it starts a sequence). Cleared when the page reads again.
-    // Kept with the view and stage it was made on: a new read of the page, or another stage, draws without it.
     type Moved = ReadonlyMap<string, { id: string; did: MoveDid } | null>;
     const [made, setMade] = useState<{ view: FunnelView; stage: LifecycleStage; map: Moved } | null>(null);
     const moved: Moved = made && made.view === view && made.stage === stage.stage ? made.map : NO_MOVES;
@@ -192,7 +158,6 @@ export function EmailFlow({ ctx, allShown, onShowAll }: { ctx: FlowCtx; allShown
     const [dragging, setDragging] = useState<string | null>(null);
 
     const nameOf = (id: string) => layout.nodes.find((x) => x.id === id)?.name ?? "this email";
-    /** Whether `m` would change anything (`planArrangement`, the server's own plan on the page's ids). */
     const can = (m: PageMove | null) => {
         if (!m) return false;
         const p = planArrangement(layout.nodes, m);
@@ -233,7 +198,6 @@ export function EmailFlow({ ctx, allShown, onShowAll }: { ctx: FlowCtx; allShown
     };
 
     const hasCampaign = layout.items.some((i) => i.kind === "sequence");
-    // *Move to…*: the draft whose places are listed; focus goes back to it once it moved.
     const [moveTo, setMoveTo] = useState<string | null>(null);
     const focusCard = (id: string) =>
         window.setTimeout(() => {
@@ -393,16 +357,13 @@ export function EmailFlow({ ctx, allShown, onShowAll }: { ctx: FlowCtx; allShown
     );
 }
 
-/** What the arranging parts share. */
 interface Arrange {
     ctx: FlowCtx;
     layout: FlowLayout;
-    /** The draft being dragged, by id. */
     dragging: string | null;
     can: (m: PageMove | null) => boolean;
     move: (m: PageMove) => void;
     nameOf: (id: string) => string;
-    /** *Move to…*: every place a drop would take this draft, without dragging. */
     openMoveTo: (id: string) => void;
 }
 
@@ -440,7 +401,6 @@ function StepNumber({ n: number, className }: { n: number; className?: string })
     );
 }
 
-/** Why a card stays where it is: a lock in place of the grip, its reason on hover and focus. */
 function LockMark({ reason }: { reason: string }) {
     return (
         <Tooltip>
@@ -476,11 +436,6 @@ function Chevron({ cardKey, title, ctx }: { cardKey: string; title: string; ctx:
     );
 }
 
-/**
- * One email as a row: grip or lock, step number, name and subject, state,
- * Segment and numbers, the chevron and the ⋯ menu; its preview under it when
- * shown. The name opens the full-size preview, as does the preview itself.
- */
 function Row({
     cardKey,
     title,
@@ -512,7 +467,6 @@ function Row({
     children?: ReactNode;
     rowRef?: (el: Element | null) => void;
     placeholder?: boolean;
-    /** A preview of several emails (the order emails): a row of small ones under the details, at every width. */
     wide?: boolean;
 }) {
     const shown = ctx.shown(cardKey);
@@ -528,7 +482,6 @@ function Row({
                 placeholder && "border-dashed opacity-40 shadow-none",
             )}
         >
-            {/* Desktop: the details on the left, the email's top on the right; a phone: the email under the details. */}
             <div className={cn("flex flex-col", !wide && "md:flex-row")}>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-1.5 p-1.5 sm:gap-2 sm:p-2">
@@ -565,18 +518,14 @@ function Row({
     );
 }
 
-/** The shown preview: the real render, large enough to read its top; a click opens it full size. */
 function PreviewPane({ render, onOpen }: { render: FunnelRender | null | undefined; onOpen: () => void }) {
     if (render === null) return <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">Preview not available</p>;
-    // The email's top in a landscape crop: about 155px tall beside the details, at most 180px under them on a phone.
     return (
         <button type="button" tabIndex={-1} aria-hidden onClick={onOpen} className="block max-h-[180px] w-full cursor-zoom-in overflow-hidden rounded-md">
             <Thumb render={render} className="w-full" />
         </button>
     );
 }
-
-// ─── Automatic emails ────────────────────────────────────────────────────────
 
 function AutomaticRows({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
     const { stage } = ctx;
@@ -627,7 +576,6 @@ function automaticTarget(step: FlowStep, key: string, title: string, numbers: Re
         kind: automaticKind(step),
         state: step.state,
         rules: rulesOf(step),
-        // One email of a sequence shows the row's own numbers; the sequence's outcome is its Results row's.
         numbers: ofSequence ? (numbers ? <p>{numbers}</p> : null) : row ? <p>{outcomeText(row)}</p> : numbers,
         actions,
         redrawsDark: false,
@@ -685,7 +633,6 @@ function AutomaticRow({
     );
 }
 
-/** Order, return and quote emails: one row, their pictures when shown. */
 function GroupRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
     const shownTemplates = step.templates.slice(0, GROUP_THUMBNAILS);
     const first = templateKey(step.templates[0]);
@@ -742,11 +689,7 @@ function GroupRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
     );
 }
 
-// ─── Sequences ───────────────────────────────────────────────────────────────
-
-/** An email and everything after it: one follow-up continues the column; several branch, each labelled. */
 function Chain({ node, a }: { node: FlowNode; a: Arrange }) {
-    // Exactly the connectors `flowZones` lists, so *Move to…* offers what a drag can drop on.
     const tos = nodeConnectors(node);
     const branches = node.children.length > 1;
     return (
@@ -777,11 +720,6 @@ function Chain({ node, a }: { node: FlowNode; a: Arrange }) {
     );
 }
 
-/**
- * Between two emails: the wait and who it goes to; for a draft the condition is
- * a control that re-points it. A **+** adds an email here. While a draft is
- * dragged, it is a drop zone that says what a drop will do.
- */
 function Connector({ from, to, a, end = false }: { from: FlowNode; to: FlowNode | null; a: Arrange; end?: boolean }) {
     const { ctx, dragging } = a;
     const zone = (id: string) => zoneMove(id, from, to);
@@ -838,7 +776,6 @@ function Connector({ from, to, a, end = false }: { from: FlowNode; to: FlowNode 
     );
 }
 
-/** A draft's condition: *got it*, *clicked it* or *didn't click* the email before; changing it re-points its Segment. */
 function ConditionControl({ node, from, a }: { node: FlowNode; from: FlowNode; a: Arrange }) {
     const did = node.parent!.did as MoveDid;
     return (
@@ -998,10 +935,8 @@ function CampaignRow({ node, a }: { node: FlowNode; a: Arrange }) {
     );
 }
 
-/** A Playbook not started: a dashed *Suggested* row with *Add as a draft*, or, while its words wait for the owner, a muted one with no action. */
 export function SuggestedRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
     const router = useRouter();
-    // Disabled while the action runs and, once it saved, until the page's next read arrives (the row is then the draft).
     const [adding, setAdding] = useState(false);
     const [addedOn, setAddedOn] = useState<FunnelView | null>(null);
     const busy = adding || addedOn === ctx.view;
@@ -1086,11 +1021,6 @@ export function SuggestedRow({ step, ctx }: { step: FlowStep; ctx: FlowCtx }) {
     );
 }
 
-/**
- * *Move to…*: every place a drop would take the draft (`movePlaces`, built
- * from the drop zones themselves), in the zones' words. Choosing one does what
- * that drop does; drag and drop is never the only way.
- */
 function MoveToDialog({ id, a, onClose }: { id: string | null; a: Arrange; onClose: (chosen: PageMove | null) => void }) {
     const places = id ? movePlaces(a.layout, id, a.can, a.nameOf) : [];
     return (
@@ -1129,7 +1059,6 @@ function MoveToDialog({ id, a, onClose }: { id: string | null; a: Arrange; onClo
     );
 }
 
-/** *Start a new sequence*: while a draft is dragged, the zone that makes it follow nothing. */
 function StartZone({ a }: { a: Arrange }) {
     const { dragging } = a;
     const zone = (id: string): PageMove => ({ campaignId: id, after: null, before: null });
@@ -1154,7 +1083,6 @@ function StartZone({ a }: { a: Arrange }) {
     );
 }
 
-/** Drafts in no stage yet: each can be dragged into a zone, or placed at the start with *Add to this stage*. */
 function Unplaced({ a }: { a: Arrange }) {
     return (
         <section aria-labelledby="flow-unplaced" className="space-y-2 rounded-xl border bg-muted/20 p-3">
@@ -1194,7 +1122,6 @@ function UnplacedChip({ c, a }: { c: FlowCampaign; a: Arrange }) {
     );
 }
 
-/** *Add an email* to the stage: *Start a new sequence*'s companion, and the main call to action when the stage has no campaign. */
 export function AddEmailCard({
     stage,
     to,

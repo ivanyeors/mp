@@ -12,16 +12,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/**
- * The emailed link's landing (PRD-campaign-audiences slice 03). Opening it
- * spends nothing: mail filters that open every link to check it would
- * otherwise use up the one-time token before the person clicks. The token is
- * verified only when they press the button (`confirmEmailLink`). It works on
- * any device: no verifier from the browser that asked is needed.
- *
- * The auth email templates link here (`{{ .SiteURL }}/auth/confirm?token_hash=
- * {{ .TokenHash }}&type=email&next={{ .RedirectTo }}`); see supabase/templates.
- */
 export default async function ConfirmSignInPage({
   searchParams,
 }: {

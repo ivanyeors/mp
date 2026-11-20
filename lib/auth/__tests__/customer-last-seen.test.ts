@@ -1,22 +1,14 @@
 import type { User } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The last signed-in visit (migration slice 12): `account_last_seen_at` is
- * written at most once an hour per Customer, by one conditional update, and a
- * failing write never breaks an account page.
- */
-
 type Update = { values: Record<string, unknown>; filters: [string, string, unknown][] };
 
 const h = vi.hoisted(() => ({
   customer: null as Record<string, unknown> | null,
   updates: [] as Update[],
-  /** What a `customers` update answers: matched rows, an error, or a throw. */
   updateResult: "matched" as "matched" | "none" | "error" | "throw",
 }));
 
-/** A `customers` / `orders` stand-in that records every update and its filters. */
 function fakeAdmin() {
   return {
     from(table: string) {
@@ -47,7 +39,6 @@ function fakeAdmin() {
           return builder;
         },
         maybeSingle() {
-          // Lookups: by auth id finds the linked Customer; by email too.
           return Promise.resolve({ data: h.customer, error: null });
         },
         then(resolve: (r: unknown) => unknown, reject: (e: unknown) => unknown) {
@@ -126,8 +117,6 @@ describe("touchCustomerLastSeen", () => {
   });
 
   it("rewrites a stale visit only while the stored one is still over an hour old", async () => {
-    // The update re-checks the value it read: of two concurrent page loads,
-    // the second matches no row and writes nothing.
     expect(await touchCustomerLastSeen({ id: "c1", account_last_seen_at: minutesAgo(90) }, admin(), NOW)).toBe(true);
     expect(h.updates[0].filters).toEqual([
       ["eq", "id", "c1"],

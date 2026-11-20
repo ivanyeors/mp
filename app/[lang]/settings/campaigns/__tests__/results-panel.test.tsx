@@ -4,12 +4,6 @@ import { resultsFromRows } from "@/lib/email-campaigns/results";
 import { NO_STATS, type CampaignStats } from "@/lib/email-campaigns/store";
 import { CampaignResultsPanel } from "../results-panel";
 
-/**
- * A started campaign's Results tab as it renders (PRD-campaign-audiences
- * slice 11): the demo's numbers, rates over people sent, a dash where nobody
- * was, the stages, and the holdout beside the people sent.
- */
-
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&apos;/g, "'").replace(/\s+/g, " ");
 
 const stats = (over: Partial<CampaignStats>): CampaignStats => ({ ...NO_STATS, ...over });
@@ -71,7 +65,6 @@ describe("CampaignResultsPanel", () => {
     const html = text(renderToStaticMarkup(<CampaignResultsPanel stats={stats({ handed: 5 })} results={null} />));
     expect(html).toContain("could not be read");
     expect(html).toContain("Clicked 0 0%");
-    // Everyone so far held out: nobody sent, so every rate is a dash.
     const held = text(renderToStaticMarkup(<CampaignResultsPanel stats={stats({ heldOut: 3 })} results={resultsFromRows([])} />));
     expect(held).toContain("Sent 0 3 held out");
     expect(held).toContain("Clicked 0 —");

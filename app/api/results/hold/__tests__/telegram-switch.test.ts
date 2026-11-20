@@ -2,18 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
-/**
- * The online Result notice's switch (CRM slice 14). Off: the hold succeeds and
- * nothing is posted. On, missing, or unreadable: exactly today's text, Paired
- * build lines included. Same in-memory harness as paired.test.ts, with a
- * `site_settings` row the test controls.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
-  /** The stored `crm_telegram_updates` value, or null for no row. */
   telegramUpdates: null as string | null,
-  /** Make every `site_settings` read fail. */
   settingsFail: false,
   requireAnyAdmin: vi.fn(),
   getAuthUser: vi.fn(),
@@ -191,13 +182,11 @@ const post = (extra: Record<string, unknown> = {}) =>
     }),
   );
 
-/** The texts posted to Telegram. */
 const telegrams = () =>
   h.fetch.mock.calls
     .filter(([url]) => String(url).startsWith("https://api.telegram.org/"))
     .map(([, init]) => JSON.parse(String((init as RequestInit).body)).text as string);
 
-/** Today's notice for this harness's hold, exactly as the route wrote it before the switch. */
 const todaysText = (origin: string, paired: boolean) =>
   [
     "💤 Held Result (online purchase) — review needed",
@@ -243,7 +232,6 @@ describe("POST /api/results/hold — the online Result switch", () => {
     const body = await res.json();
     expect(body).toMatchObject({ ok: true, telegramStatus: "skipped", authorizedAmount: 400 });
     expect(telegrams()).toEqual([]);
-    // Everything else the hold does still happens.
     expect(h.createHoldCheckout).toHaveBeenCalledTimes(1);
     expect(h.sendEmail).toHaveBeenCalledTimes(1);
     expect(h.rows.get(ID)).toMatchObject({ status: "held", authorized_amount: 200 });

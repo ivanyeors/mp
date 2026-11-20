@@ -7,12 +7,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { LOGO_GUIDELINES, checkLogoFile } from "@/lib/partner-upload/limits";
 
-/**
- * A partner logo picker: preview, Upload/Replace, optional Remove, and the
- * logo guidelines. Uploads straight away to `uploadUrl` (the application's or
- * Partner Hub's logo endpoint) and reports the stored url; the caller saves it
- * with the rest of its form.
- */
 export function PartnerLogoField({
   id,
   value,
@@ -25,7 +19,6 @@ export function PartnerLogoField({
   value: string | null;
   onChange: (url: string | null) => void;
   uploadUrl: string;
-  /** Toast after a successful upload, e.g. what still has to be saved. */
   uploadedMessage: string;
   error?: string;
 }) {

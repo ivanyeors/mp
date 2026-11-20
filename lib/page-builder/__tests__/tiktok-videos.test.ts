@@ -98,7 +98,6 @@ describe("tiktok_videos per language", () => {
     expect(videos).toHaveLength(2);
     expect(videos[0]).toMatchObject({ tiktokUrl: POST, image: COVER, buttonUrl: "/shop", hook: "侧睡？" });
     expect(videos[0].buttonLabel).toBeUndefined();
-    // No Chinese hook: the video still shows, without one.
     expect(videos[1]).toMatchObject({ tiktokUrl: POST, buttonUrl: "/shop" });
     expect(videos[1].hook).toBeUndefined();
   });

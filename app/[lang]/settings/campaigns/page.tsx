@@ -23,14 +23,12 @@ import { SendingStatusCard } from "./sending-status-card";
 
 export const runtime = "nodejs";
 
-/** Draft until the first wave; then the number handed to the provider. */
 function statusOf({ campaign, stats }: CampaignListItem): { label: string; variant: "secondary" | "default" | "outline" } {
     if (!campaign.lockedAt) return { label: "Draft", variant: "outline" };
     if (stats.handed === 0) return { label: "Started", variant: "secondary" };
     return { label: `Sent to ${stats.handed.toLocaleString("en-SG")}`, variant: "default" };
 }
 
-/** Kept sending (PRD-campaign-audiences slice 10): a badge beside the status, or nothing. */
 function KeepSendingBadge({ item }: { item: CampaignListItem }) {
     const kept = keepSendingStatus(item.campaign.keepSending);
     if (!kept) return null;
@@ -41,11 +39,6 @@ function KeepSendingBadge({ item }: { item: CampaignListItem }) {
     );
 }
 
-/**
- * Admin Panel → Email campaigns (PRD-email-marketing): the Sending card
- * (PRD-campaign-send-flow slice 02), then every campaign, newest first, with
- * its numbers. Guarded by `campaigns`, which Owner and Admin hold.
- */
 export default async function EmailCampaignsPage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
@@ -183,7 +176,6 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                                 <TableCell className="hidden text-right tabular-nums sm:table-cell">
                                                     {item.stats.clicked}
                                                 </TableCell>
-                                                {/* PRD-campaign-audiences slice 11: people sent it who bought within 30 days. */}
                                                 <TableCell className="hidden text-right tabular-nums sm:table-cell">
                                                     {item.stats.bought}
                                                     {item.stats.bought ? (

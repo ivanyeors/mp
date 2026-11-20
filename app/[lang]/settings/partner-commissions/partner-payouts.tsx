@@ -29,19 +29,9 @@ type PayoutRow = {
 const money = (n: number) => `$${n.toFixed(2)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
-/**
- * Admin payout workflow (#81) — a self-contained async server component mounted on
- * the Partner Commissions page. Per partner: RELEASED balance, payment details
- * (PayNow QR inline via a short-lived signed URL + bank fields), a record-payout
- * form (proof upload → server action), and immutable payout history. Staff-only:
- * the parent page already gates with requireAdminPage("partner-commissions"), and the
- * server action re-asserts assertAdmin("partner-commissions").
- */
 export async function PartnerPayouts() {
   const admin = supabaseAdmin();
 
-  // Settle once here, then read persisted `released` rows — cheaper than settling
-  // per partner (settleDueCommissions scans all held rows).
   await settleDueCommissions(admin);
 
   const [{ data: partnerData }, { data: releasedData }, { data: detailsData }, { data: payoutData }] =
@@ -81,7 +71,6 @@ export async function PartnerPayouts() {
     payoutsByPartner.set(p.partner_id, list);
   }
 
-  // Only show partners that have a balance, saved payment details, or history.
   const rows = partners
     .filter(
       (p) =>
@@ -91,8 +80,6 @@ export async function PartnerPayouts() {
     )
     .sort((a, b) => (balanceCents.get(b.id) ?? 0) - (balanceCents.get(a.id) ?? 0));
 
-  // Sign every private image up front (QR + proofs) — scoped strictly to the rows
-  // we loaded, so no cross-partner exposure.
   const qrUrls = new Map<string, string | null>(
     await Promise.all(
       rows.map(async (p): Promise<[string, string | null]> => [
@@ -147,14 +134,12 @@ export async function PartnerPayouts() {
                 </div>
               </div>
 
-              {/* Payment details */}
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div className="text-sm">
                   <div className="text-xs font-medium uppercase text-muted-foreground">
                     PayNow QR
                   </div>
                   {qr ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={qr}
                       alt="PayNow QR"
@@ -180,7 +165,6 @@ export async function PartnerPayouts() {
                 </div>
               </div>
 
-              {/* Record a payout — native form → server action; proof is a real file input. */}
               <RecordPayoutToggle partnerName={p.name ?? "this partner"}>
                 <form
                   action={recordPayoutAction}
@@ -254,10 +238,8 @@ export async function PartnerPayouts() {
                 </form>
               </RecordPayoutToggle>
 
-              {/* History */}
               {history.length > 0 && (
                 <>
-                  {/* Phones: one row per payout instead of a five-column table. */}
                   <ul className="mt-4 divide-y border-t text-sm md:hidden" aria-label="Payout history">
                     {history.map((h) => {
                       const proof = proofUrls.get(h.id);

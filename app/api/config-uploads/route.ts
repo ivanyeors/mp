@@ -17,7 +17,6 @@ function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
-/** Reference photos for a session. Admin-only (the gate behind `staffAssist`). */
 export async function GET(req: Request) {
   if (!(await getAdminContext())) return unauthorized();
   const parsed = uuid.safeParse(new URL(req.url).searchParams.get("sessionId") ?? "");
@@ -26,7 +25,6 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, images });
 }
 
-/** Upload one image (multipart: `sessionId` + `file`). */
 export async function POST(req: Request) {
   if (!(await getAdminContext())) return unauthorized();
 
@@ -50,7 +48,6 @@ export async function POST(req: Request) {
   }
 }
 
-/** Delete one image by id (removes storage object + row). */
 export async function DELETE(req: Request) {
   if (!(await getAdminContext())) return unauthorized();
   const parsed = uuid.safeParse(new URL(req.url).searchParams.get("id") ?? "");

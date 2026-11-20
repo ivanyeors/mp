@@ -69,7 +69,6 @@ describe("buildChapters", () => {
     );
     expect(chapters).toHaveLength(1);
     expect(chapters[0]!.title).toBe("First order");
-    // Newest first; the two entries of one moment keep a fixed order.
     expect(chapters[0]!.entries.map((e) => e.kind)).toEqual(["order.delivered", "order.shipped", "order.placed", "order.paid"]);
     expect(chapters[0]!.from.startsWith("2026-03-01")).toBe(true);
     expect(chapters[0]!.to.startsWith("2026-03-20")).toBe(true);
@@ -107,7 +106,6 @@ describe("buildChapters", () => {
   });
 
   it("does not let reminders stretch a chapter", () => {
-    // The order's own email on day 8 joins; it does not carry the chapter to day 17.
     expect(
       titles([
         entry("order.paid", "2026-03-01", { record: "o1" }),

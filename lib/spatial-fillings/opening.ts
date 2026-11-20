@@ -1,18 +1,7 @@
-/**
- * Morphological opening of a polygon by a disc: erode by r, dilate by r. The
- * result is the shape a stuffed pouch takes in its compartment — every convex
- * corner rounded at radius r, and no part thinner than 2r (fill cannot wedge
- * into a sliver under a notch or beside a seam), while concave walls are
- * followed as they are. Done on a small grid with two exact Euclidean
- * distance transforms, then the boundary is traced back to a ring. Pure and
- * deterministic: same ring and radius, same output.
- */
-
 import type { Pt } from "./conform";
 
 const INF = 1e20;
 
-/** One-dimensional squared distance transform (Felzenszwalb–Huttenlocher), in place on `out`. */
 function dt1d(f: Float64Array, n: number, out: Float64Array, v: Int32Array, z: Float64Array): void {
   let k = 0;
   v[0] = 0;
@@ -36,7 +25,6 @@ function dt1d(f: Float64Array, n: number, out: Float64Array, v: Int32Array, z: F
   }
 }
 
-/** Squared distance from every cell to the nearest cell where `mask` is 0. */
 function edt2(mask: Uint8Array, w: number, h: number): Float64Array {
   const d = new Float64Array(w * h);
   for (let i = 0; i < w * h; i++) d[i] = mask[i] ? INF : 0;
@@ -58,7 +46,6 @@ function edt2(mask: Uint8Array, w: number, h: number): Float64Array {
   return d;
 }
 
-/** Scanline fill of a ring into a grid whose cell (i, j) is centred at (x0 + (i + 0.5) / s, y0 + (j + 0.5) / s). */
 function rasterize(ring: Pt[], x0: number, y0: number, w: number, h: number, s: number): Uint8Array {
   const mask = new Uint8Array(w * h);
   const xs: number[] = [];
@@ -81,7 +68,6 @@ function rasterize(ring: Pt[], x0: number, y0: number, w: number, h: number, s: 
   return mask;
 }
 
-// Moore neighbourhood, clockwise from east (y down).
 const NB: ReadonlyArray<readonly [number, number]> = [
   [1, 0],
   [1, 1],
@@ -93,16 +79,14 @@ const NB: ReadonlyArray<readonly [number, number]> = [
   [1, -1],
 ];
 
-/** Outer boundary of the component containing cell (sx, sy), as cell indices (Moore tracing, Jacob's stop). */
 function traceBoundary(mask: Uint8Array, w: number, h: number, sx: number, sy: number): Array<[number, number]> {
   const at = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && mask[y * w + x] === 1;
-  // Walk west to the component's leftmost cell on this row: a boundary cell whose west neighbour is background.
   let x = sx;
   while (at(x - 1, sy)) x--;
   const start: [number, number] = [x, sy];
   const out: Array<[number, number]> = [start];
   let cur = start;
-  let dir = 6; // came from the west, so look north-west first: backtrack index is 4 (west) + 2
+  let dir = 6;
   const limit = 4 * (w + h) * 4;
   for (let step = 0; step < limit; step++) {
     let found = -1;
@@ -116,24 +100,16 @@ function traceBoundary(mask: Uint8Array, w: number, h: number, sx: number, sy: n
         break;
       }
     }
-    if (found < 0) break; // an isolated cell
+    if (found < 0) break;
     if (cur[0] === start[0] && cur[1] === start[1] && out.length > 1) break;
     out.push(cur);
-    // Next search starts from the neighbour before the one we came from.
     dir = (found + 6) % 8;
   }
   return out;
 }
 
-/**
- * The ring opened by a disc of radius `r` (view units). Returns [] when the
- * ring is empty; a ring thinner than 2r everywhere is opened at the largest
- * radius that leaves something, so a small pouch never vanishes.
- */
 export function openRing(ring: Pt[], r: number): Pt[] {
   if (ring.length < 3 || r <= 0) return ring;
-  // Cells per view unit: enough that the disc spans ~24 cells, so a small
-  // pouch's arcs are still arcs and a big one does not cost a large grid.
   const s = Math.min(4, Math.max(1, Math.ceil(24 / r)));
   let minX = Infinity;
   let minY = Infinity;
@@ -161,12 +137,10 @@ export function openRing(ring: Pt[], r: number): Pt[] {
     }
   }
   if (thickest < 0) return [];
-  // Erode by r cells — capped so the thickest point survives.
   const rc = Math.min(r * s, Math.sqrt(maxD2) - 0.5);
   const rc2 = rc * rc;
   const eroded = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) eroded[i] = inside[i] > rc2 ? 1 : 0;
-  // Dilate by the same radius: cells within rc of the eroded set.
   const inv = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) inv[i] = eroded[i] ? 0 : 1;
   const toEroded = edt2(inv, w, h);

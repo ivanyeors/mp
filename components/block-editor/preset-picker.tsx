@@ -3,12 +3,6 @@
 import { useRef, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 
-/**
- * A block's presets (PRD-campaign-email-editor decision 2): a few named
- * choices side by side, one of them chosen, never a colour, font or size
- * picker. A radio group: arrow keys move the choice, as a screen reader
- * expects.
- */
 export function PresetPicker<V extends string>({
   label,
   value,

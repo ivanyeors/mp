@@ -27,7 +27,6 @@ const PrepQuerySchema = z.union([
 ]);
 
 export async function GET(req: Request) {
-  // Staff-only: exposes the filling catalog and costed build for a product card.
   const denied = await requireAdmin("results");
   if (denied) return denied;
 

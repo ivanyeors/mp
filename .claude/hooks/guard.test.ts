@@ -78,6 +78,74 @@ describe("git", () => {
     expect(bash("git checkout -b next", dirty)).toBeNull();
   });
 
+  // The parser fixes that closed the eslint holes close the same ones here.
+  it("finds a force push inside a loop, an if, or bash -lc", () => {
+    expect(bash("for b in a b; do git push --force origin $b; done")).toMatch(/force push/);
+    expect(bash("if ! git push -f origin x; then echo no; fi")).toMatch(/force push/);
+    expect(bash("bash -lc 'git push --force origin x'")).toMatch(/force push/);
+    expect(bash("for b in a b; do git push origin $b; done")).toBeNull();
+  });
+
+  it("joins a backslash-newline and reads past xargs options, for the other guards too", () => {
+    expect(bash("git push origin x \\\n--force")).toMatch(/force push/);
+    expect(bash("echo x | xargs -n 1 -I {} git push --force origin {}")).toMatch(/force push/);
+    expect(bash("echo x | xargs -n 1 git push origin")).toBeNull();
+  });
+
+  // Each xargs option whose value is the next word (GNU xargs 4.9, checked by
+  // running it), pinned by a guard that reads the program at word 0: without
+  // the table the value is taken for the program.
+  it.each([
+    "-n 1", "-I {}", "-P 4", "-L 1", "-d ,", "-s 100", "-E end", "-a list.txt",
+    "--max-args 1", "--max-procs 2", "--delimiter ,", "--max-chars 99", "--arg-file list.txt", "--process-slot-var N",
+    "-0n 1", "-rL 1", "-0 -n 1", "-n1", "--max-args=1", "--",
+  ])("reads the program after xargs %s", (opt) => {
+    expect(bash(`echo x | xargs ${opt} git push --force origin x`)).toMatch(/force push/);
+  });
+
+  // These take only an attached value: the next word is the program.
+  it.each(["--eof", "--max-lines", "--replace", "-e", "-i", "-l", "--eof=end", "-l1"])("reads the word after xargs %s as the program", (opt) => {
+    expect(bash(`: | xargs ${opt} git push --force origin x`)).toMatch(/force push/);
+  });
+
+  it("finds the eslint and gh blocks behind xargs options that take no separate value", () => {
+    expect(bash(": | xargs --eof pnpm lint --suppress-all")).toMatch(/owner's call/);
+    expect(bash(": | xargs --max-lines gh variable set AUTO_MERGE_CODE --body on")).toMatch(/AUTO_MERGE_CODE/);
+  });
+
+  // An even run of backslashes before the newline is escaped backslashes: the
+  // newline ends the command. An odd run ends in a continuation.
+  it("joins a continuation only when the backslash before the newline is unescaped", () => {
+    expect(bash("echo done\\\\\ngit push --force origin x")).toMatch(/force push/);
+    expect(bash("git push \\\\\\\n --force origin x")).toMatch(/force push/);
+    // A continuation inside a word: `--force` only once joined.
+    expect(bash("git push --fo\\\nrce origin x")).toMatch(/force push/);
+    expect(bash("git push --fo\\\\\\\nrce origin x")).toBeNull();
+  });
+
+  it("does not join a backslash-CR: the LF after it ends the command", () => {
+    expect(bash("echo ok \\\r\ngh variable set AUTO_MERGE_CODE --body on")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("echo ok \\\r\ngit push --force origin x")).toMatch(/force push/);
+  });
+
+  it("strips a here-document before joining lines, so a continuation inside its body ends nothing", () => {
+    for (const after of ["pnpm exec eslint --suppress-all", "gh variable set AUTO_MERGE_CODE --body on", "git push --force origin x"]) {
+      expect(bash(`cat <<'EOF'\nx \\\nEOF\n${after}\nEOF`), after).not.toBeNull();
+    }
+  });
+
+  it("does not read a here-string as a here-document", () => {
+    expect(bash("cat <<<EOF\ngit push --force origin x\nEOF")).toMatch(/force push/);
+    expect(bash("cat <<< 'git push --force origin x'")).toBeNull();
+  });
+
+  it("ends a comment at the end of its line, where a trailing backslash continues nothing", () => {
+    expect(bash("echo ok # note \\\ngh variable set AUTO_MERGE_CODE --body on")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("echo ok # git push --force origin x")).toBeNull();
+    expect(bash("echo foo#bar git push --force")).toBeNull();
+    expect(bash('echo $# ${#x} && git push --force origin x')).toMatch(/force push/);
+  });
+
   it("allows taking main's graphify-out/ during a merge (the documented fix)", () => {
     const dirty = sys({ dirty: () => true });
     expect(bash("git checkout origin/main -- graphify-out/", dirty)).toBeNull();
@@ -123,6 +191,121 @@ describe("database", () => {
     expect(bash(`psql "$DB" -c "drop table x"`)).toMatch(/psql/);
     expect(bash(`psql "$DB" <<SQL\ntruncate orders;\nSQL`)).toMatch(/psql/);
     expect(bash(`psql "$DB" -c "select 1"`)).toBeNull();
+  });
+});
+
+describe("the lint baseline is the owner's", () => {
+  it("blocks adding to it, however eslint is run", () => {
+    for (const cmd of [
+      "eslint --suppress-all",
+      "eslint --suppress-rule mp/no-comment app/page.tsx",
+      "eslint --suppress-rule=mp/no-comment .",
+      "pnpm lint --suppress-all",
+      "pnpm lint -- --suppress-all",
+      "pnpm run lint --suppress-rule mp/no-effect",
+      "npm run lint -- --suppress-all",
+      "pnpm exec eslint --suppress-all lib",
+      "pnpm eslint --suppress-all",
+      "npx eslint --suppress-all",
+      "yarn eslint --suppress-rule react-hooks/refs",
+      "bunx eslint --suppress-all",
+      "node_modules/.bin/eslint --suppress-all",
+      "./node_modules/.bin/eslint --suppress-rule mp/no-comment",
+      "node node_modules/eslint/bin/eslint.js --suppress-all",
+      "FOO=1 pnpm exec eslint --suppress-all",
+      "cd /repo && npx eslint --suppress-all",
+      "cd some/dir && pnpm exec eslint --suppress-all",
+      "cd some/dir; pnpm exec eslint --suppress-all",
+      "echo $(pnpm exec eslint --suppress-all)",
+      'echo "$(pnpm exec eslint --suppress-all)"',
+      "x=$(cd some/dir && pnpm exec eslint --suppress-all)",
+      "echo `pnpm exec eslint --suppress-all`",
+      "corepack pnpm lint --suppress-all",
+      "corepack pnpm exec eslint --suppress-rule mp/no-comment",
+      "pnpx eslint --suppress-all",
+      'for f in *.ts; do pnpm exec eslint --suppress-all "$f"; done',
+      "if ! pnpm lint --suppress-all; then echo no; fi",
+      "while true; do npx eslint --suppress-all; break; done",
+      "bash -lc 'pnpm exec eslint --suppress-all'",
+      "sh -ec 'npx eslint --suppress-all'",
+      "pnpm exec eslint lib \\\n--suppress-all",
+      "pnpm exec eslint lib \\\n  --suppress-rule mp/no-comment",
+      "git ls-files '*.ts' | xargs -n 50 pnpm exec eslint --suppress-all",
+      "xargs -I {} -P 4 npx eslint --suppress-all {}",
+      "xargs -L 1 -d x -s 100 -E end -a list.txt npx eslint --suppress-all",
+      "xargs --max-args 5 --max-procs 2 npx eslint --suppress-all",
+      "find . -name '*.ts' -exec npx eslint --suppress-all {} +",
+      "function f { eslint --suppress-all; }",
+      "pnpm exec eslint --suppress-all>/dev/null",
+      "npx -c 'eslint --suppress-all'",
+      "npm exec -c 'eslint --suppress-rule mp/no-comment'",
+      "npx eslint@9 --suppress-all",
+      "pnpm dlx eslint@9.39.2 --suppress-all",
+      "npx pnpm lint --suppress-all",
+      "node --run lint -- --suppress-all",
+      "npx pnpm@9 lint --suppress-all",
+      "corepack pnpm@9.15.0 lint --suppress-all",
+      "node --run=lint -- --suppress-all",
+      "bash -c 'pnpm exec eslint --suppress-all'",
+      "timeout 600 node_modules/.bin/eslint --suppress-all",
+    ]) {
+      expect(bash(cmd), cmd).toMatch(/owner's call/);
+    }
+  });
+
+  it("allows pruning, a plain lint, and the words in a string", () => {
+    expect(bash("pnpm lint")).toBeNull();
+    expect(bash("pnpm exec eslint --prune-suppressions lib/a.ts")).toBeNull();
+    expect(bash("node_modules/.bin/eslint --prune-suppressions --max-warnings 0 lib/a.ts")).toBeNull();
+    expect(bash('echo "eslint --suppress-all"')).toBeNull();
+    expect(bash("grep -rn -- --suppress-all docs")).toBeNull();
+    expect(bash(`git commit -m "block eslint --suppress-all"`)).toBeNull();
+    expect(bash(`git commit -m "blocked eslint --suppress-all"`)).toBeNull();
+    expect(bash('grep -rn -- "--suppress-all" .claude')).toBeNull();
+    expect(bash("pnpm exec eslint --prune-suppressions")).toBeNull();
+    expect(bash("git ls-files '*.ts' | xargs -n 50 pnpm exec eslint")).toBeNull();
+    expect(bash("grep -rn -- --suppress-all node_modules/eslint")).toBeNull();
+    expect(bash("pnpm exec eslint lib \\\n--prune-suppressions")).toBeNull();
+  });
+});
+
+describe("the auto-merge switch and its gates are the owner's", () => {
+  it("blocks setting or deleting repository variables", () => {
+    expect(bash("gh variable set AUTO_MERGE_CODE --body true")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("gh variable set AUTO_MERGE_CODE -b true -R ivanyeors/mp")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("gh variable delete AUTO_MERGE_CODE")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("GH_TOKEN=x gh variable set X")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("gh variable -R ivanyeors/mp set AUTO_MERGE_CODE --body true")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("gh variable --repo ivanyeors/mp delete AUTO_MERGE_CODE")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("for r in a b; do gh variable set X --body 1; done")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("gh variable -R ivanyeors/mp list")).toBeNull();
+  });
+
+  it("blocks gh api writes to Actions variables, in each spelling of the method", () => {
+    const vars = "repos/ivanyeors/mp/actions/variables";
+    expect(bash(`gh api ${vars} -f name=AUTO_MERGE_CODE -f value=true`)).toMatch(/owner's/);
+    expect(bash(`gh api -X PATCH ${vars}/AUTO_MERGE_CODE -f value=true`)).toMatch(/owner's/);
+    expect(bash(`gh api --method DELETE ${vars}/AUTO_MERGE_CODE`)).toMatch(/owner's/);
+    expect(bash(`gh api --method=PATCH /${vars}/AUTO_MERGE_CODE --input body.json`)).toMatch(/owner's/);
+    expect(bash(`gh api -XPOST ${vars} -F value=true`)).toMatch(/owner's/);
+    expect(bash(`gh api ${vars} --raw-field=name=AUTO_MERGE_CODE`)).toMatch(/owner's/);
+  });
+
+  it("blocks posting a commit status", () => {
+    expect(bash("gh api repos/ivanyeors/mp/statuses/abc123 -f state=success -f context=ci")).toMatch(/owner's/);
+    expect(bash("gh api -X POST /repos/ivanyeors/mp/statuses/abc123 -f state=success")).toMatch(/owner's/);
+    expect(bash("gh api repos/{owner}/{repo}/statuses/$(git rev-parse HEAD) -f state=success")).toMatch(/owner's/);
+  });
+
+  it("allows reading them", () => {
+    expect(bash("gh variable list")).toBeNull();
+    expect(bash("gh variable get AUTO_MERGE_CODE")).toBeNull();
+    expect(bash("gh api repos/ivanyeors/mp/actions/variables")).toBeNull();
+    expect(bash("gh api repos/ivanyeors/mp/actions/variables/AUTO_MERGE_CODE --jq .value")).toBeNull();
+    expect(bash("gh api repos/ivanyeors/mp/commits/abc123/status")).toBeNull();
+    expect(bash("gh api repos/ivanyeors/mp/commits/abc123/statuses")).toBeNull();
+    expect(bash("gh api -X GET repos/ivanyeors/mp/statuses/abc123")).toBeNull();
+    expect(bash("gh pr create --title x --body 'gh variable set AUTO_MERGE_CODE'")).toBeNull();
   });
 });
 

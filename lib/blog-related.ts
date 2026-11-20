@@ -1,6 +1,5 @@
 import type { BlogPost } from "@/lib/blogs";
 
-// Words nearly every slug shares, so they say nothing about the topic.
 const GENERIC = new Set(
   "the and for with your you how why what which that this from into can help helps better best sleep sleeping pillow pillows guide ultimate good night nights right singapore mpillow more than just one need really does are amp".split(
     " ",
@@ -17,11 +16,6 @@ function overlap<T>(a: Iterable<T>, b: Set<T>): number {
   return n;
 }
 
-/**
- * Up to `limit` other published posts to link from a post: shared labels count
- * most, then shared topic words in the slug; ties and any shortfall go to the
- * newest. None of the 91 imported posts links to another post.
- */
 export function pickRelatedPosts(current: BlogPost, candidates: BlogPost[], limit = 3): BlogPost[] {
   const labels = new Set(current.labels);
   const words = topicWords(current.slug);

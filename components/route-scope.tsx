@@ -8,17 +8,12 @@ type RouteScopeProps = {
   children: React.ReactNode;
 };
 
-/**
- * Applies scoped styling hooks to public/marketing routes only.
- * We intentionally exclude `/settings/*` so admin UI typography isn't affected.
- */
 export function RouteScope({ children }: RouteScopeProps) {
   const pathname = usePathname() ?? "";
   const basePathname = stripLocale(pathname);
   const isSettingsRoute = basePathname === "/settings" || basePathname.startsWith("/settings/");
 
   React.useEffect(() => {
-    // Ensure portaled UI (Radix Sheet/Dialog) is covered by the scope too.
     const rootEl = document.documentElement;
 
     if (isSettingsRoute) {
@@ -29,12 +24,10 @@ export function RouteScope({ children }: RouteScopeProps) {
     rootEl.setAttribute("data-typography-scope", "marketing");
 
     return () => {
-      // Cleanup prevents stale scope on fast route transitions.
       rootEl.removeAttribute("data-typography-scope");
     };
   }, [isSettingsRoute]);
 
-  // Keep a wrapper for non-portaled content (and SSR), while <html> scoping covers portals.
   if (isSettingsRoute) return <>{children}</>;
 
   return (

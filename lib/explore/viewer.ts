@@ -1,34 +1,21 @@
-/**
- * What the Explore page knows about a signed-in visitor: their balance, what
- * they were given, and whether a Welcome bonus is still theirs to claim.
- * Server only (the ledger is service-role only); each call takes the client,
- * so tests pass a fake.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { marketingEmailState, type MarketingEmailState } from "@/lib/marketing-consent/state";
 import { isPartnerCustomer, readPointsBalance } from "@/lib/points/server";
 
-/** The ledger kinds the page names when it says where the points came from. */
 export const EXPLORE_GIFT_KINDS = ["welcome_bonus", "claim_bonus", "past_purchases", "explore_flower"] as const;
 export type ExploreGiftKind = (typeof EXPLORE_GIFT_KINDS)[number];
 
 export interface ExploreViewer {
-  /** Points they can use now. */
   points: number;
-  /** What they were given, by kind, in points; kinds with nothing are left out. */
   gifts: { kind: ExploreGiftKind; points: number }[];
-  /** A Welcome bonus would be granted if they claimed now. */
   canClaim: boolean;
   partner: boolean;
   marketing: MarketingEmailState;
 }
 
 export interface ExploreFlowers {
-  /** How many flowers grow today; 0 for none. */
   count: number;
-  /** The ones this visitor picked that have not grown back yet (24 to 36 hours after each pick). */
   picked: number[];
-  /** A pick would give this visitor points: signed in, points live, not a partner, and under the S$5 cap. */
   givesPoints: boolean;
 }
 
@@ -36,7 +23,6 @@ export const NO_FLOWERS: ExploreFlowers = { count: 0, picked: [], givesPoints: f
 
 const int = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : 0);
 
-/** Pure — the gifts list from a Customer's ledger rows of those kinds, in the order the page names them. */
 export function giftsFromEntries(rows: readonly { kind: string; points: number }[]): ExploreViewer["gifts"] {
   return EXPLORE_GIFT_KINDS.map((kind) => ({
     kind,
@@ -44,10 +30,6 @@ export function giftsFromEntries(rows: readonly { kind: string; points: number }
   })).filter((g) => g.points > 0);
 }
 
-/**
- * One visitor's standing. `offerOpen` is whether the ladder has an open step
- * (lib/points/welcome.ts). Throws on a failed read.
- */
 export async function readExploreViewer(admin: SupabaseClient, customerId: string, offerOpen: boolean): Promise<ExploreViewer> {
   const [balance, entries, migrated, partner, customer] = await Promise.all([
     readPointsBalance(admin, customerId),
@@ -68,7 +50,6 @@ export async function readExploreViewer(admin: SupabaseClient, customerId: strin
   };
 }
 
-/** Today's flowers for this visitor (or for anyone, signed out). Throws on a failed read. */
 export async function readExploreFlowers(admin: SupabaseClient, customerId: string | null): Promise<ExploreFlowers> {
   const { data, error } = await admin.rpc("explore_flowers", { p_customer_id: customerId });
   if (error) throw new Error(`Could not read today's flowers: ${error.message}`);
@@ -82,11 +63,6 @@ export async function readExploreFlowers(admin: SupabaseClient, customerId: stri
 
 export type FlowerPickReason = "picked" | "off" | "partner" | "none" | "already" | "spent";
 
-/**
- * Picks a flower (`pick_explore_flower`): 1 to 3 points, and the flower grows
- * back for them at a random time 24 to 36 hours later ("already" until then),
- * until their flowers have given 500 points (S$5); then "spent", for good.
- */
 export async function pickFlower(
   admin: SupabaseClient,
   customerId: string,

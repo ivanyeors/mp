@@ -1,10 +1,4 @@
-// ============================================================
-// Pillow Customization Type Definitions
-// ============================================================
-
 import type { ItemOverlay } from "@/lib/product-builder/overlays";
-
-// --- Filling & Config Lines ---
 
 export interface FillingLine {
   item_id: number;
@@ -24,16 +18,12 @@ export interface ConfigLine {
   price_delta: number;
 }
 
-// --- Customer Preferences (input to LLM — simple form) ---
-
 export interface CustomerPreferences {
   sleep_position: "side" | "back" | "stomach" | "mixed";
   body_type: "petite" | "average" | "large";
   firmness: "soft" | "medium-soft" | "medium" | "medium-firm" | "firm";
   notes?: string;
 }
-
-// --- Measurement-Based Preferences (input from mp-config wizard) ---
 
 export interface MeasurementBasedPreferences {
   measurements: {
@@ -57,14 +47,10 @@ export interface MeasurementBasedPreferences {
   };
 }
 
-// --- Bolster Preferences (input from mbolster-config wizard) ---
-
 export interface BolsterPreferences {
   height_cm: number;
   sleep_position: string;
 }
-
-// --- LLM Output ---
 
 export interface CustomizationResult {
   recommended_size: string;
@@ -72,11 +58,8 @@ export interface CustomizationResult {
   filling_lines: FillingLine[];
   summary: string;
   explanation: string;
-  /** Published Rule graph version id when Rules Engine authored the result. */
   graph_version_id?: string | null;
 }
-
-// --- Available Component Options (returned to frontend) ---
 
 export interface ComponentOption {
   item_id: number;
@@ -87,11 +70,8 @@ export interface ComponentOption {
   stock_available: number;
   unit_price: number;
   base_quantity: number;
-  /** Product Builder silhouette overlay (slice 10); absent → plain silhouette. */
   overlay?: ItemOverlay | null;
 }
-
-// --- Upsell ---
 
 export interface UpsellItem {
   item_id: number;
@@ -101,8 +81,6 @@ export interface UpsellItem {
   price: number;
   quantity: number;
 }
-
-// --- Full Customization Order (sent from frontend) ---
 
 export type CustomizationProductType = "pillow" | "bolster";
 export type BolsterVariant = "short" | "medium" | "long";
@@ -122,8 +100,6 @@ export interface CustomizationOrder {
   llm_metadata?: Record<string, unknown>;
 }
 
-// --- Stored Config (from DB) ---
-
 export interface CustomizationConfig {
   id: string;
   product_type: CustomizationProductType;
@@ -140,8 +116,6 @@ export interface CustomizationConfig {
   total_addon_price: number;
   created_at: string;
 }
-
-// --- API Config (from DB) ---
 
 export interface ApiConfig {
   id: string;

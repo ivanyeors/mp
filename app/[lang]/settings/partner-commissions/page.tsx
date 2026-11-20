@@ -18,7 +18,6 @@ export default async function PartnerCommissionsPage({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  // The Partner Commissions page's own permission (ADR 0023).
   await requireAdminPage("partner-commissions", locale);
 
   return (
@@ -47,12 +46,10 @@ export default async function PartnerCommissionsPage({
       </p>
       <PartnerTermsEditor />
 
-      {/* Wave-3 admin surfaces (self-contained; each guards with assertAdmin). */}
       <div className="mt-10 space-y-10">
         <MilestoneRungsEditor />
         <PartnerSelfPurchaseEditor />
         <PartnerPayouts />
-        {/* Same referral rows as the hub, unmasked (#80, AC5). */}
         <AdminReferralRows />
       </div>
     </div>

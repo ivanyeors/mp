@@ -9,22 +9,12 @@ import { Label } from "@/components/ui/label";
 import { QrSvg } from "@/components/ui/qr-svg";
 import { getClientPublicOrigin } from "@/lib/site-url";
 
-/**
- * The Staff member's own Assist link — copy it once, reuse it with every
- * customer. Modelled on components/partner/referral-share-card.tsx.
- *
- * The code is minted on demand rather than on page load: most Staff never send
- * a link, and a live credential printed on the Results page for anyone glancing
- * at the screen is a liability. One click is the whole lazy-generation story.
- */
 export function AssistLinkCard() {
   const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // getClientPublicOrigin, never window.location: a link copied from a preview
-  // deployment must not send a customer to a preview deployment.
   const link = code ? `${getClientPublicOrigin()}/mp-config?assist=${code}` : "";
 
   const reveal = async () => {
@@ -49,15 +39,12 @@ export function AssistLinkCard() {
       await navigator.clipboard.writeText(link);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard blocked — the link stays selectable in the input */
-    }
+    } catch {}
   };
 
   if (!code) {
     const about =
       "One link, reusable with every customer. What they submit lands here badged Assisted, and they never enter card details.";
-    // Phones: one row (title, ⓘ, button), so the Results queue starts near the top.
     return (
       <div className="flex items-center justify-between gap-2 rounded-lg border p-3 md:p-4">
         <div className="min-w-0">

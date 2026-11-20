@@ -6,11 +6,6 @@ import {
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { sanitizeSearchTerm } from "@/lib/supabase/like-pattern";
 
-/**
- * Raw (unparsed) query values for the admin orders list, exactly as they arrive
- * on `/api/shop/orders`. Parsing lives in {@link listAdminOrders} so the route
- * handler and the RSC page share one implementation.
- */
 export interface AdminOrdersListParams {
   status?: string | null;
   email?: string | null;
@@ -41,11 +36,6 @@ export type AdminOrdersListResult =
   | { status: 200; body: AdminOrdersListPayload }
   | { status: 400 | 500; body: { error: string } };
 
-/**
- * Assembles the `/api/shop/orders` GET payload. Returns the JSON body plus the
- * status the route should answer with, so the RSC page can consume the same
- * data without an HTTP round trip.
- */
 export async function listAdminOrders(
   params: AdminOrdersListParams = {},
 ): Promise<AdminOrdersListResult> {
@@ -76,7 +66,6 @@ export async function listAdminOrders(
   if (email) query = query.ilike("email", `%${email}%`);
   if (customer_id) query = query.eq("customer_id", customer_id);
   if (search) {
-    // `.or()` is a raw PostgREST filter string — sanitize, don't interpolate.
     const term = sanitizeSearchTerm(search);
     if (term) {
       query = query.or(`order_number.ilike.%${term}%,email.ilike.%${term}%`);

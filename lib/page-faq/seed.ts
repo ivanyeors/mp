@@ -4,7 +4,6 @@ import { isValidSurfaceKey, productSurfaceKey } from "./surface-key";
 import type { PageFaqDefaultSet } from "./types";
 
 export type SeedPageFaqOptions = {
-  /** Delete Page FAQ rows for surfaces we seed, then re-insert. */
   force?: boolean;
 };
 
@@ -36,11 +35,6 @@ async function resolveSurfaceKey(
   return { surfaceKey: productSurfaceKey(data.id) };
 }
 
-/**
- * Insert Page FAQ sets + items from defaults.
- * Seeds each default surface if missing (or all after wipe when force).
- * Product surfaces resolve via stable shop slug → product:{uuid}.
- */
 export async function seedPageFaqDatabase(opts: SeedPageFaqOptions = {}): Promise<{
   ok: boolean;
   seeded: boolean;

@@ -5,7 +5,6 @@ type GoogleAnalyticsProps = {
   gaMeasurementId?: string;
 };
 
-/** Loads GTM and/or gtag when env vars are set. Production-only via layout guard. */
 export function GoogleAnalytics({ gtmId, gaMeasurementId }: GoogleAnalyticsProps) {
   return (
     <>

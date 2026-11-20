@@ -2,13 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import type { ShownTimelineEntry } from "@/lib/crm/timeline/types";
 
-/**
- * The Journey's cards and map (PRD-customer-page-journey slice 04), as markup:
- * a chapter with its height, entries, links and buttons; Now with nothing
- * open; and the map's stops as buttons that read out. What builds the
- * chapters is tested in lib/crm/journey/__tests__/chapters.test.ts.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers/c1",
 }));

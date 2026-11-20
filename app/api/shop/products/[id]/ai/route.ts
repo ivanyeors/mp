@@ -9,23 +9,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// A product's words come back in under a minute; this is the ceiling, with one retry, not the plan.
 export const maxDuration = 300;
 
-/**
- * ✨ Write and ✨ Generate SEO for one language tab of the product editor
- * (lib/ecommerce/ai-product-writing.ts). A route, as the campaign editor's
- * are, so the editor can stop an ask it no longer wants (the request's signal
- * ends Claude's call too).
- *
- * In order: the `products` permission; the request; the AI writing settings,
- * read now; the credentials; the per-Staff limits, which this ask counts
- * against; the product's own details; then the call. It writes one thing,
- * the audit entry (`product.ai_description` or `product.ai_seo`, with the
- * model that served it and its tokens, never the words): no product, no
- * `content`, no Stripe sync. What it returns is offered in the editor, and
- * only Staff choose it and save.
- */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let ctx;
   try {

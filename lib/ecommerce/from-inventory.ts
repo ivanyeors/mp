@@ -32,7 +32,6 @@ export type PublishFamilyResult =
   | { ok: true; productId: string; slug: string; variantIds: string[] }
   | { ok: false; error: string; status: number };
 
-/** One Variant per Item: priced later from Costings through `price_key`. */
 function variantRowsFor(
   productId: string,
   items: AccessoryFamilyItem[],
@@ -58,7 +57,6 @@ function variantRowsFor(
   });
 }
 
-/** Copy each Item's primary image onto the product it now sells as. */
 async function syncFamilyImages(itemIds: number[]): Promise<void> {
   const admin = supabaseAdmin();
   const { data: imaged } = await admin
@@ -71,16 +69,6 @@ async function syncFamilyImages(itemIds: number[]): Promise<void> {
   }
 }
 
-/**
- * One storefront product for a same-name accessory family (e.g. Cervical XS/S/M/L → one PDP).
- *
- * `status` defaults to active, so the seed script's listing is immediately
- * shoppable. A push from Inventory passes `draft`: the product appears in
- * Products, and Staff put it in the shop under Products → In the shop.
- *
- * `title` overrides the shopper-facing name. Inventory names a cover "Camel";
- * the shop needs "Camel Bolster Case". The slug still follows the title.
- */
 export async function publishAccessoryFamily(
   items: AccessoryFamilyItem[],
   title?: string,
@@ -192,11 +180,6 @@ export async function publishAccessoryFamily(
   };
 }
 
-/**
- * Add sizes that joined a family in Inventory after it was pushed, as new
- * Variants of the product it already sells as, rather than a second product.
- * The product keeps its status: if it is in the shop, the new sizes are too.
- */
 export async function addSizesToProduct(
   productId: string,
   items: AccessoryFamilyItem[],
@@ -226,8 +209,6 @@ export async function addSizesToProduct(
     (o: { name: string }) => o.name.toLowerCase() === "size",
   ) as { id: string; values: string[] | null } | undefined;
   const sized = Boolean(sizeOption);
-  // A one-size product cannot take a sized Variant without becoming a product with
-  // sizes, and the reverse. That is a rename in Inventory, not something to guess.
   if (items.some((i) => Boolean(i.size) !== sized)) {
     return {
       ok: false,
@@ -277,7 +258,6 @@ export type PublishAllAccessoriesResult = {
   skipped: Array<{ name: string; error: string }>;
 };
 
-/** Group unpublished sellable accessories by raw item name and publish each family. */
 export async function publishAllUnpublishedAccessories(): Promise<PublishAllAccessoriesResult> {
   const admin = supabaseAdmin();
 

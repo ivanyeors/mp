@@ -16,13 +16,6 @@ import {
 import { MARKETING_EMAIL_STATES, type MarketingEmailState } from "@/lib/marketing-consent/state";
 import { EMAIL_REGISTRY } from "@/lib/email/registry";
 
-/**
- * Who may receive which campaign email (migration slice 08). The rule is
- * written twice, here (`campaignBlocker`) and in SQL (`campaign_send_blocker`,
- * which decides at each send). campaign-cases.json is the one table both run:
- * here, and in supabase/tests/customer-migration/assert-08-campaign-sends.sql.
- */
-
 const ROOT = process.cwd();
 const CASES = JSON.parse(readFileSync(join(ROOT, "supabase/tests/customer-migration/campaign-cases.json"), "utf8")) as {
   now: string;
@@ -73,7 +66,6 @@ describe("campaignBlocker: campaign-cases.json", () => {
   });
 });
 
-/** Every combination of consent and one prior send of any template, in any status. */
 function everyWorld(): CampaignFacts[] {
   const sendsOptions: Array<Partial<Record<string, CampaignSendFact>>> = [{}];
   for (const template of CAMPAIGN_TEMPLATES) {

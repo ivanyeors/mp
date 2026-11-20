@@ -88,14 +88,12 @@ describe("syncEasyship", () => {
 
     expect(find("PATCH", "/addresses/a1")[0].body?.default_for).toEqual({ pickup: true, billing: true, sender: true, return: true });
     expect(find("POST", "/addresses")).toHaveLength(1);
-    // Easyship rejects `false` flags on create: an address that is default for nothing sends none.
     expect("default_for" in find("POST", "/addresses")[0].body!).toBe(false);
 
     expect(find("POST", "/boxes").map((c) => c.body?.name)).toEqual(["New"]);
     expect(find("DELETE", "/boxes/b-old")).toHaveLength(1);
     expect(find("DELETE", "/boxes/b-flat")).toHaveLength(0);
     expect(find("PATCH", "/boxes/b-keep")).toHaveLength(0);
-    // The type → box mapping is ours alone; the courier account never sees it.
     expect(calls.some((c) => JSON.stringify(c.body ?? {}).includes("box_for_type") || JSON.stringify(c.body ?? {}).includes("weight_grams"))).toBe(false);
 
     expect(find("DELETE", "/shipping_rules/r-same")).toHaveLength(0);
@@ -140,7 +138,6 @@ describe("syncEasyship", () => {
   });
 
   it("creates a moved address with only its true default flags", async () => {
-    // The studio moved: a new line 1 and postal code match no live address, so it is created.
     const moved = {
       ...desired,
       addresses: [{

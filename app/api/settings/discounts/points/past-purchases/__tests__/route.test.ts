@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Discounts → Points → Past purchases (ADR 0030, amendment of 2026-11-08):
- * `discounts` to see and to run; the run sends the preview's numbers, is
- * refused when they moved, and is audited.
- */
-
 const PREVIEW = {
   customers: 1613,
   points: 2379749,

@@ -4,7 +4,6 @@ import {
 } from "@/lib/ecommerce/orders-paid-at-range";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-/** One row of aggregate output; numeric aggregates may arrive as strings. */
 type AggregateRow = Record<string, number | string | null>;
 
 function aggNumber(row: AggregateRow | undefined, key: string): number {
@@ -34,10 +33,6 @@ export type OrdersDashboardResult =
   | { status: 200; body: { ok: true; stats: OrdersDashboardStats } }
   | { status: 400 | 500; body: { error: string } };
 
-/**
- * Assembles the `/api/shop/orders/dashboard` GET payload so the route handler
- * and the RSC orders page share one implementation.
- */
 export async function loadOrdersDashboard(
   params: OrdersDashboardParams = {},
 ): Promise<OrdersDashboardResult> {
@@ -56,9 +51,6 @@ export async function loadOrdersDashboard(
       admin.from("orders").select("*", { count: "exact", head: true }),
       paidAtRange.range,
     ),
-    // Revenue + order count computed in Postgres. PostgREST aggregate functions
-    // are disabled on this project, so this goes through a SQL function that
-    // applies the same open-ended paid_at range and status exclusions.
     admin.rpc("admin_orders_revenue_summary", {
       p_from: paidAtRange.range.from ?? null,
       p_to: paidAtRange.range.toExclusive ?? null,
@@ -67,9 +59,6 @@ export async function loadOrdersDashboard(
       admin.from("orders").select("*", { count: "exact", head: true }).eq("status", "pending"),
       paidAtRange.range,
     ),
-    // Margins cannot be aggregated in PostgREST: a row qualifies when the order
-    // has a paid_at OR has a payment-ledger entry, which needs the ledger set.
-    // Minimal columns only; `orders.status` is filtered without being selected.
     applyOrdersPaidAtRange(
       admin
         .from("order_margins")
@@ -113,8 +102,6 @@ export async function loadOrdersDashboard(
     return paidAt ?? null;
   };
 
-  // Only unpaid-at margin rows need the payment ledger, so scope the lookup to
-  // those order ids instead of scanning the whole order_payments table.
   const unpaidOrderIds = Array.from(
     new Set(
       marginRows
@@ -123,8 +110,6 @@ export async function loadOrdersDashboard(
     ),
   );
 
-  // `.in()` is serialised into the request URL, so look the ledger up in
-  // bounded chunks rather than one list that grows with the order book.
   const LEDGER_CHUNK = 200;
   const ledgerOrderIds = new Set<string>();
   if (unpaidOrderIds.length > 0) {

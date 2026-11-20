@@ -19,11 +19,6 @@ function StateBadge({ row }: { row: WaveRow }) {
     );
 }
 
-/**
- * One campaign's waves (PRD-campaign-send-flow slice 04): sent, bounced and
- * spam as counts and percentages against the pause lines, failed, and when
- * each went. A table on a wide screen, one card per wave on a phone.
- */
 export function WaveTable({ waves, className }: { waves: CampaignWaveStats[]; className?: string }) {
     const rows = waveRows(waves);
     if (rows.length === 0) return null;

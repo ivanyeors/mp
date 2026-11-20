@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { COUNTRIES, REGIONS, findCountry, regionCodes, type Region } from "@/lib/shipping/countries";
 import { cn } from "@/lib/utils";
 
-/** Catalog order first, then any code outside the catalog, so the saved list reads the same every time. */
 function ordered(codes: Set<string>): string[] {
     return [
         ...COUNTRIES.filter((c) => codes.has(c.code)).map((c) => c.code),
@@ -34,15 +33,9 @@ function Chip({ code, label, selected, onClick }: { code: string; label: string;
     );
 }
 
-/**
- * The countries a shipping method delivers to, by region. "Worldwide" picks every
- * country in the catalog; checkout then offers exactly the countries active
- * methods list.
- */
 export function CountryPicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
     const selected = new Set(value);
     const [query, setQuery] = useState("");
-    // Regions with a country picked start open, so an edit shows what the method already covers.
     const [open, setOpen] = useState<Set<Region>>(
         () => new Set(REGIONS.filter((r) => regionCodes(r.key).some((c) => selected.has(c))).map((r) => r.key)),
     );

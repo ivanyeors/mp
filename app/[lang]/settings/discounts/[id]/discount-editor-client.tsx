@@ -42,8 +42,6 @@ import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/curre
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
 
 type AppliesTo = { product_ids?: string[]; category_ids?: string[] } | null;
@@ -97,13 +95,11 @@ export type Coupon = {
     is_active: boolean;
 };
 
-/** Exactly the JSON `GET /api/shop/coupons/[id]` returns. */
 export type CouponDetailResponse = {
     ok: true;
     row: Coupon;
 };
 
-/** Exactly the JSON `GET /api/shop/products?limit=100` returns. */
 export type CatalogProductsResponse = {
     ok: true;
     rows: CatalogProduct[];
@@ -112,20 +108,16 @@ export type CatalogProductsResponse = {
     limit: number;
 };
 
-/** Exactly the JSON `GET /api/shop/categories` returns. */
 export type CatalogCategoriesResponse = {
     ok: true;
     rows: CatalogCategory[];
 };
 
 export type DiscountEditorInitialData = {
-    /** null on the "new" route, where the client loads no coupon. */
     coupon: CouponDetailResponse | null;
     products: CatalogProductsResponse;
     categories: CatalogCategoriesResponse;
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateCode(): string {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -136,7 +128,6 @@ function generateCode(): string {
 
 function toLocalDatetimeInput(iso: string | null): string {
     if (!iso) return "";
-    // Convert ISO to local datetime-local input format
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -147,10 +138,6 @@ function toISOWithOffset(local: string): string | null {
     return new Date(local).toISOString();
 }
 
-/**
- * A scope list (products or categories). Phones drop its box inside the card, keeping
- * only rules above and below the bounded scroll, and each row is a 44px label row.
- */
 const scopeListClassName =
     "max-h-48 overflow-y-auto rounded-md border p-3 max-md:max-h-72 max-md:rounded-none max-md:border-x-0 max-md:px-0 max-md:py-0";
 const scopeRowClassName =
@@ -267,8 +254,6 @@ function couponToForm(c: Coupon): CouponForm {
     };
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function DiscountEditorClient({
     initialData,
 }: {
@@ -283,13 +268,8 @@ export function DiscountEditorClient({
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
-    // Server-rendered coupon, when the RSC page loaded it.
     const initialCoupon = initialData?.coupon?.row ?? null;
 
-    // `toLocalDatetimeInput` formats in the viewer's timezone, which the server
-    // does not know, so the two datetime fields stay empty through the server
-    // render and are filled in on mount (below) — server and client markup stay
-    // identical, and the inputs still show local time as they always have.
     const [form, setForm] = useState<CouponForm>(() =>
         initialCoupon
             ? { ...couponToForm(initialCoupon), starts_at: "", expires_at: "" }
@@ -306,8 +286,6 @@ export function DiscountEditorClient({
     const [original, setOriginal] = useState<Coupon | null>(initialCoupon);
     const [loading, setLoading] = useState(!isNew && !initialData);
 
-    // The RSC page already read the coupon and the catalog — skip those mount
-    // fetches once, then behave exactly as before.
     const hydratedFromServer = useRef(Boolean(initialData));
 
     useEffect(() => {
@@ -333,7 +311,6 @@ export function DiscountEditorClient({
     const [productSearch, setProductSearch] = useState("");
     const [categorySearch, setCategorySearch] = useState("");
 
-    // Load existing coupon
     const fetchCoupon = useCallback(async () => {
         if (isNew) return;
         setLoading(true);
@@ -386,7 +363,6 @@ export function DiscountEditorClient({
         };
     }, [initialData]);
 
-    // ── Field helpers ──
     const set = (field: keyof CouponForm, value: string | boolean) =>
         setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -428,7 +404,6 @@ export function DiscountEditorClient({
         );
     });
 
-    // ── Save ──
     const handleSave = async () => {
         setError(null);
         setSaving(true);
@@ -441,7 +416,6 @@ export function DiscountEditorClient({
             min_order_amount: form.min_order_amount !== "" ? parseFloat(form.min_order_amount) : null,
             max_discount: form.max_discount !== "" ? parseFloat(form.max_discount) : null,
             usage_limit: form.usage_limit !== "" ? parseInt(form.usage_limit) : null,
-            // Blank (or 0) = no per-customer limit.
             per_customer_limit: parseInt(form.per_customer_limit) > 0 ? parseInt(form.per_customer_limit) : null,
             starts_at: toISOWithOffset(form.starts_at),
             expires_at: toISOWithOffset(form.expires_at),
@@ -497,7 +471,6 @@ export function DiscountEditorClient({
 
     return (
         <div className={`space-y-6 ${mobileStickyActionBarSpacerClassName}`}>
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                     <h1 className="text-2xl font-semibold tracking-tight">
@@ -518,10 +491,8 @@ export function DiscountEditorClient({
             )}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                {/* ── Left column ── */}
                 <div className="space-y-6 lg:col-span-2">
 
-                    {/* Code section */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
@@ -530,7 +501,6 @@ export function DiscountEditorClient({
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Code input + generate + copy */}
                             <div className="space-y-1.5">
                                 <Label htmlFor="code">Code</Label>
                                 <div className="flex gap-2">
@@ -572,7 +542,6 @@ export function DiscountEditorClient({
                                 </div>
                             </div>
 
-                            {/* Discount type */}
                             <div className="space-y-1.5">
                                 <Label htmlFor="discount_type">Discount type</Label>
                                 <Select
@@ -604,7 +573,6 @@ export function DiscountEditorClient({
                                 </Select>
                             </div>
 
-                            {/* Discount value */}
                             {form.discount_type !== "free_shipping" && (
                                 <div className="space-y-1.5">
                                     <Label htmlFor="discount_value">{valueLabel}</Label>
@@ -625,7 +593,6 @@ export function DiscountEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Conditions section */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base">Conditions</CardTitle>
@@ -687,7 +654,6 @@ export function DiscountEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Applies to section */}
                     <Card>
                         <CardHeader>
                             <div className="flex items-center gap-1.5">
@@ -795,7 +761,6 @@ export function DiscountEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Usage limits section */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base">Usage limits</CardTitle>
@@ -837,7 +802,6 @@ export function DiscountEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Schedule section */}
                     <Card>
                         <CardHeader>
                             <div className="flex items-center gap-1.5">
@@ -873,10 +837,8 @@ export function DiscountEditorClient({
                     </Card>
                 </div>
 
-                {/* ── Right column ── */}
                 <div className="space-y-4 lg:col-span-1">
 
-                    {/* Status card */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base">Status</CardTitle>
@@ -912,7 +874,6 @@ export function DiscountEditorClient({
                                 </div>
                             )}
 
-                            {/* Phones save from the bar at the bottom, under the summary. */}
                             <Button
                                 className="w-full max-md:hidden"
                                 onClick={handleSave}
@@ -928,7 +889,6 @@ export function DiscountEditorClient({
                         </CardContent>
                     </Card>
 
-                    {/* Summary card: on phones the save bar carries the summary. */}
                     <Card className="max-md:hidden">
                         <CardHeader>
                             <CardTitle className="text-base">Summary</CardTitle>
@@ -954,7 +914,6 @@ export function DiscountEditorClient({
 
             <MobileStickyActionBar>
                 <div className="space-y-2">
-                    {/* The error banner is at the top of the page, out of view from here. */}
                     {error ? <p className="line-clamp-2 text-xs text-destructive">{error}</p> : null}
                     <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
                         {form.code ? <span className="font-medium tracking-widest text-foreground">{form.code}: </span> : null}

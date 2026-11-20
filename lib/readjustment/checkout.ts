@@ -1,12 +1,3 @@
-/**
- * Paid re-adjustment (ADR 0024): a pending Order with one Service fee line,
- * settled by the same `checkout.session.completed` branch every shop order uses.
- * The only new webhook work is what happens after the money is in — book the slot.
- *
- * The slot is held in `readjustment_bookings` (not on the calendar) while
- * Checkout is open, so no Google invite goes out for an abandoned checkout.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { bookCalendarSlot, isSlotFree } from "@/lib/appointments/book-slot";
@@ -26,9 +17,7 @@ import { getLocation } from "@/lib/locations";
 import { getStripe } from "@/lib/stripe/client";
 import { sendTelegram } from "@/lib/telegram/notify";
 
-/** Stripe's minimum Checkout lifetime. */
 export const CHECKOUT_LIFETIME_MS = 30 * 60 * 1000;
-/** The hold outlives the Session a little, so a payment made in its last second still has its slot. */
 export const HOLD_LIFETIME_MS = CHECKOUT_LIFETIME_MS + 2 * 60 * 1000;
 
 export const READJUSTMENT_PURPOSE = "readjustment";
@@ -41,13 +30,10 @@ export async function createReadjustmentCheckoutSession(input: {
   orderId: string;
   orderNumber: string;
   bookingId: string;
-  /** What is being re-adjusted, for the line description. */
   label: string;
-  /** Carried to the webhook, which writes it on the calendar event for Staff. */
   languagePreference: LanguagePreference;
   successUrl: string;
   cancelUrl: string;
-  /** Session expiry; at least 30 minutes out. */
   expiresAt: Date;
 }): Promise<{ sessionId: string; url: string }> {
   const currency = input.currency.toLowerCase();
@@ -85,7 +71,6 @@ export async function createReadjustmentCheckoutSession(input: {
           : []),
       ],
       metadata,
-      // Mirrored so payment_intent.* events can find the Order too.
       payment_intent_data: { metadata },
       expires_at: Math.ceil(input.expiresAt.getTime() / 1000),
       success_url: input.successUrl,
@@ -131,7 +116,6 @@ const when = (iso: string) =>
     minute: "2-digit",
   }).format(new Date(iso));
 
-/** Description lines for a paid booking, from the booking row alone. */
 function paidNotes(b: BookingRow, feeOrderNumber: string | null): string[] {
   const purchase =
     b.purchase_source === "platform"
@@ -156,16 +140,9 @@ function paidNotes(b: BookingRow, feeOrderNumber: string | null): string[] {
 
 export type FinalizeOutcome = "booked" | "needs_reschedule" | "already_done" | "not_found";
 
-/**
- * The money is in: put the paid booking on the calendar. Idempotent — a replayed
- * webhook finds the event already written and does nothing. If someone wrote
- * straight into the calendar while the customer paid, the booking becomes
- * `needs_reschedule`, Staff are alerted, and the money stays on a real Order.
- */
 export async function finalizeReadjustmentBooking(
   admin: SupabaseClient,
   bookingId: string,
-  /** The Checkout Session's `language_preference` metadata. */
   languagePreference?: string,
 ): Promise<FinalizeOutcome> {
   const { data, error } = await admin
@@ -185,8 +162,6 @@ export async function finalizeReadjustmentBooking(
   const languageNotes = languagePreferenceNotes(parseLanguagePreference(languagePreference));
 
   if (booking.calendar_event_id) {
-    // An earlier attempt put the visit on the calendar (the invite went out) and
-    // failed after. Finish that booking — never treat its own event as a clash.
     await upsertPendingReminder({
       calendarEventId: booking.calendar_event_id,
       phone: booking.phone,
@@ -210,7 +185,6 @@ export async function finalizeReadjustmentBooking(
       .eq("status", "awaiting_payment")
       .select("id");
     if (moveErr) throw new Error(moveErr.message);
-    // A concurrent delivery already moved it and told everyone; say nothing twice.
     if (!moved?.length) return "already_done";
     await sendTelegram(
       [
@@ -223,7 +197,6 @@ export async function finalizeReadjustmentBooking(
       ].join("\n"),
     );
     try {
-      // The words Staff saved on Email templates, or the defaults (never throws).
       const copy = await loadEmailCopy(READJUSTMENT_RESCHEDULE_EMAIL_COPY);
       await getEmailTransport().send({
         to: booking.email,
@@ -258,8 +231,6 @@ export async function finalizeReadjustmentBooking(
     settings: await getAppointmentSettings(),
     notes: [...paidNotes(booking, feeOrderNumber), ...languageNotes],
     readjustmentBookingId: booking.id,
-    // Recorded before anything else can fail, so a webhook retry finishes this
-    // booking rather than finding its own event in the way.
     onEventCreated: async (eventId) => {
       const { error: idErr } = await admin
         .from("readjustment_bookings")
@@ -271,7 +242,6 @@ export async function finalizeReadjustmentBooking(
   return markBooked(admin, booking.id);
 }
 
-/** awaiting_payment → booked, guarded; an error must reach the webhook so Stripe retries. */
 async function markBooked(admin: SupabaseClient, bookingId: string): Promise<FinalizeOutcome> {
   const { data, error } = await admin
     .from("readjustment_bookings")
@@ -283,7 +253,6 @@ async function markBooked(admin: SupabaseClient, bookingId: string): Promise<Fin
   return data?.length ? "booked" : "already_done";
 }
 
-/** Checkout expired unpaid: release the slot. The existing branch cancels the Order. */
 export async function expireReadjustmentBooking(admin: SupabaseClient, bookingId: string): Promise<void> {
   await admin
     .from("readjustment_bookings")

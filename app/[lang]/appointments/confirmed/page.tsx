@@ -15,11 +15,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const metadata: Metadata = { title: "Re-adjustment booking", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-/**
- * Where Stripe returns a paid re-adjustment (ADR 0024). The booking is read
- * fresh on every render and only what the webhook has written is shown: while
- * it is still `awaiting_payment` the page says so and refreshes itself.
- */
 export default async function ReadjustmentConfirmedPage({
   params,
   searchParams,
@@ -47,7 +42,6 @@ export default async function ReadjustmentConfirmedPage({
           .from("readjustment_bookings")
           .select("id, status, start_at, end_at, location_name, product_label, fee_amount, email, calendar_event_id")
           .eq("id", bookingId)
-          // Only the customer's own booking — anyone else's reads as not found.
           .eq("customer_id", customer.id)
           .maybeSingle()
       : { data: null };

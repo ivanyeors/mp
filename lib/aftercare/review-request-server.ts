@@ -1,29 +1,3 @@
-/**
- * The Review request job (PRD customer-crm slice 07, ADR 0028 f, g, k): the
- * IO around the pure rules in ./review-request. It runs daily, chained onto
- * `results-sla` through ./job, and the Aftercare card runs its planning half
- * as a dry run to show today's numbers.
- *
- * Once per Customer, ever. The `customer_review_requests` primary key is the
- * guard: the row is claimed with INSERT … ON CONFLICT DO NOTHING before
- * anything is sent, so concurrent runs cannot both ask the same person. Each
- * channel then has its own ledger, keyed by the Customer:
- *  - email in `customer_emails`. A failed send is retried by a later run while
- *    it has attempts left (claim_customer_email), and while its Order is still
- *    inside the timing window;
- *  - WhatsApp in `customer_whatsapp`, through slice 13's channel. Never retried.
- *
- * The link token exists only in memory, during the run that sends it; the row
- * keeps its sha256. A retried email therefore mints a fresh token and replaces
- * the hash, once its claim is won. A WhatsApp button sent with the first token
- * still reaches Google, but its click is no longer recorded: a click is only a
- * hint (slice 12).
- *
- * Nothing that signals how a customer feels is read (README, sixth hazard):
- * the order query names its columns (REVIEW_ORDER_SELECT), and none of them is
- * a refund request, a return, a rating or a note.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPhoneAllowed } from "@/lib/appointments/phone";
 import { readWhatsAppGate } from "@/lib/aftercare/preferences";
@@ -67,9 +41,7 @@ import {
   type ReviewWhatsAppDecision,
 } from "./review-request";
 
-/** At most this many Customers asked per run; the rest stay due for the next. */
 export const REVIEW_REQUEST_BATCH = 100;
-/** At most this many failed emails retried per run. */
 const RETRY_BATCH = 50;
 
 type CustomerRow = {
@@ -109,7 +81,6 @@ export async function loadReviewRequestSettings(admin: SupabaseClient): Promise<
   return parseReviewRequestSettings(stored);
 }
 
-/** Counted Orders with goods, delivered inside today's window. */
 async function loadDueOrders(
   admin: SupabaseClient,
   now: Date,
@@ -128,10 +99,6 @@ async function loadDueOrders(
   return (data ?? []) as unknown as ReviewOrderRow[];
 }
 
-/**
- * Orders paid long enough ago to be due, with goods and a Customer, that were
- * never marked delivered: an operations signal, counted and never messaged.
- */
 async function countNotMarkedDelivered(
   admin: SupabaseClient,
   now: Date,
@@ -170,17 +137,12 @@ async function loadPillows(admin: SupabaseClient, orders: readonly ReviewOrderRo
   return byId;
 }
 
-/**
- * WhatsApp's decision for one Customer, as notifyAftercareWhatsApp will make
- * it. Shared with the check-up (slice 08), which passes its own template.
- */
 export async function decideAftercareWhatsAppFor(
   admin: SupabaseClient,
   customer: Pick<CustomerRow, "id" | "phone" | "aftercare_whatsapp">,
   template: AftercareWaTemplate = REVIEW_REQUEST_TEMPLATE,
 ): Promise<ReviewWhatsAppDecision> {
   if (!aftercareWhatsAppTransportConfigured()) return { send: false, skip: "transport_unconfigured" };
-  // Only an opted-in Customer can have an open STOP; skip that read otherwise.
   const gate =
     customer.aftercare_whatsapp === true
       ? await readWhatsAppGate(admin, customer.id)
@@ -194,10 +156,6 @@ export async function decideAftercareWhatsAppFor(
   });
 }
 
-/**
- * Who is due today, and how each would be reached. Reads only; the job and the
- * Aftercare card both start here.
- */
 export async function planReviewRequests(
   admin: SupabaseClient,
   opts: { now: Date; settings?: ReviewRequestSettings },
@@ -254,7 +212,6 @@ export async function planReviewRequests(
   return { settings, planned, alreadyAsked, notMarkedDelivered, pillowById };
 }
 
-/** Sign in, then the Profile, where the customer turns aftercare email off. */
 export function aftercareAccountUrl(origin: string): string {
   const account = withLocale("/account", DEFAULT_LOCALE);
   return `${origin.replace(/\/$/, "")}${withLocale("/account/login", DEFAULT_LOCALE)}?next=${encodeURIComponent(account)}`;
@@ -264,7 +221,6 @@ async function renderFor(
   origin: string,
   input: { firstName: string | null; order: ReviewOrderRow; product: string; token: string },
 ) {
-  // The words Staff saved on Email templates, or the defaults (never throws).
   const copy = await loadEmailCopy(REVIEW_REQUEST_EMAIL_COPY);
   return renderReviewRequestEmail(
     {
@@ -281,7 +237,6 @@ async function renderFor(
   );
 }
 
-/** Ask one Customer: claim the row, then send on each planned channel. */
 async function askOne(
   admin: SupabaseClient,
   item: PlannedReviewRequest,
@@ -301,7 +256,6 @@ async function askOne(
     return;
   }
   if (!claim || claim.length === 0) {
-    // Another run claimed this Customer first, and asks them.
     report.skipped.already_asked += 1;
     return;
   }
@@ -352,11 +306,6 @@ async function askOne(
 
 type FailedEmailRow = { customer_id: string; attempts: number };
 
-/**
- * Re-send review request emails that failed, while they have attempts left and
- * their Order is still inside the timing window. The claim decides who sends;
- * the winner mints a fresh link token, because the first one was never stored.
- */
 async function retryFailedEmails(
   admin: SupabaseClient,
   ctx: { origin: string; now: Date; settings: ReviewRequestSettings; report: ReviewRequestReport },
@@ -444,12 +393,6 @@ async function retryFailedEmails(
   }
 }
 
-/**
- * The daily run. Plans, and — unless the settings stop it or `dryRun` is set —
- * asks each reachable candidate once, then retries failed emails. While
- * `review_requests_enabled` is false or `google_review_url` is unusable it
- * reports the candidates and sends nothing.
- */
 export async function runReviewRequests(
   admin: SupabaseClient,
   opts: { origin: string; now: Date; dryRun?: boolean; limit?: number },
@@ -470,8 +413,6 @@ export async function runReviewRequests(
 
   if (opts.dryRun || reviewRequestBlock(plan.settings)) return report;
 
-  // Earlier runs' failures first, so an email that fails in this run waits for
-  // the next run rather than being retried straight away.
   await retryFailedEmails(admin, { origin: opts.origin, now: opts.now, settings: plan.settings, report });
 
   const limit = opts.limit ?? REVIEW_REQUEST_BATCH;

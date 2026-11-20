@@ -16,7 +16,6 @@ const STUDIO = {
   postal_code: "573969",
 };
 
-/** `partners` by id: the one read the resolver makes. */
 function fakeAdmin(rows: Array<Record<string, unknown>>) {
   return {
     from: (table: string) => {
@@ -60,8 +59,6 @@ describe("Self-collect", () => {
         collect_location: { id: STUDIO.id, name: STUDIO.name },
       },
     });
-    // Non-null: an Assisted Result reads as finished, and accept does not treat
-    // the Order as handed over at the counter.
     expect(res.ok && isSelfCollectAddress(res.address)).toBe(true);
     expect(res.ok && collectLocationOf(res.address)).toEqual({ id: STUDIO.id, name: STUDIO.name });
   });

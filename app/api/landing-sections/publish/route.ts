@@ -8,10 +8,6 @@ import { localePageUrls, pingIndexNow } from "@/lib/seo/indexnow";
 
 export const runtime = "nodejs";
 
-/**
- * GET /api/landing-sections/publish
- * What a publish would ship — the header count and the confirm dialog's summary.
- */
 export async function GET() {
   let denied;
   try {
@@ -31,12 +27,6 @@ export async function GET() {
   }
 }
 
-/**
- * POST /api/landing-sections/publish
- * Applies every pending Section draft to the live landing page, atomically, and writes
- * one Publish snapshot. The database function is the unit of atomicity — supabase-js has
- * no transactions, and a half-applied publish would leave the live page inconsistent.
- */
 export async function POST() {
   let ctx;
   try {
@@ -63,7 +53,6 @@ export async function POST() {
       after: pending,
     });
 
-    // The landing page is the home page in every locale.
     after(() => pingIndexNow(localePageUrls("")));
 
     return NextResponse.json({ ok: true, snapshotId: data, published: pending });
@@ -75,10 +64,6 @@ export async function POST() {
   }
 }
 
-/**
- * DELETE /api/landing-sections/publish
- * Discards every pending Section draft. Published content is untouched.
- */
 export async function DELETE() {
   let ctx;
   try {

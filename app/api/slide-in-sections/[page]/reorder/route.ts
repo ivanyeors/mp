@@ -13,14 +13,6 @@ export const runtime = "nodejs";
 
 const ReorderSchema = z.object({ order: z.array(z.string().min(1).max(64)).min(1) });
 
-/**
- * PUT /api/slide-in-sections/[page]/reorder
- * `{ order: slug[] }` — every section of the sub page (not the header), in the new order.
- *
- * The new order is a draft. One upsert writes every row, creating rows for sections that
- * had none (published at their code position, so the live sheet does not move), so the
- * order never passes through a half-applied state.
- */
 export async function PUT(req: Request, { params }: { params: Promise<{ page: string }> }) {
   let ctx;
   try {

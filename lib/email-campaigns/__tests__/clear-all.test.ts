@@ -10,13 +10,6 @@ import {
 } from "../clear-all";
 import { EMPTY_CAMPAIGN_DRAFT, FIRST_CAMPAIGN_DRAFT } from "../rules";
 
-/**
- * Clear all (PRD-campaign-email-editor slice 01, decision 7): what the email
- * says goes back to its placeholders, who it goes to stays, and Undo puts the
- * words back exactly.
- */
-
-/** A campaign written before blocks: its message and button. */
 const TYPED = campaignWordsOf({
   name: "December cooling launch",
   subject: "Sleep cooler this December",
@@ -26,7 +19,6 @@ const TYPED = campaignWordsOf({
   content: null,
 });
 
-/** A campaign written in blocks (slice 03). */
 const BLOCKS = campaignWordsOf({
   name: "December cooling launch",
   subject: "Sleep cooler this December",
@@ -94,7 +86,6 @@ describe("clearCampaignWords", () => {
     expect(words.content).toEqual({ v: 1, blocks: [], fallbacks: {} });
     expect(campaignWordsEmpty(words)).toBe(true);
     expect(snapshot).toEqual(BLOCKS);
-    // The snapshot is its own copy: a later edit to the blocks cannot reach it.
     (BLOCKS.content!.blocks[0] as { text: string }).text = "changed";
     expect((snapshot.content!.blocks[0] as { text: string }).text).toBe("Sleep cooler");
   });

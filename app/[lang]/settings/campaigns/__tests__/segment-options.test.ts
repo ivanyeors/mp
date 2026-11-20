@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Permission } from "@/lib/auth/permissions";
 import { segmentOptions } from "../segment-options";
 
-/** PRD-crm-retention-loop slice 02: a campaign's Segment links to its Customers list, for `customers` only. */
-
 const SEGMENTS = [
   { id: "s1", name: "Premium, lapsed", params: { bought: "premium", last_order: "over:12" } },
   { id: "s2", name: "Everyone", params: {} },
@@ -22,8 +20,6 @@ describe("segmentOptions", () => {
     expect(segmentOptions(SEGMENTS, as("campaigns"), "en-US").map((o) => o.customersHref)).toEqual([null, null]);
   });
 
-  // PRD-email-funnel review: a Segment's filters can name a Customer, and `campaigns` does not need `customers`.
-  // A wanted Segment is matched on the server (`FoundSegments`); the options carry no filters, for any role.
   it.each([[["campaigns"]], [["campaigns", "customers"]]] as Permission[][][])("carries no Segment's filters beyond the Customers link (%j)", (keys) => {
     const segments = [{ id: "s3", name: "One VIP", params: { search: "tan@example.com", stage: "at-risk" } }];
     for (const o of segmentOptions(segments, as(...keys), "en-US")) {

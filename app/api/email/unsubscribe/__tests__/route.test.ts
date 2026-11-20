@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AftercareFakeDb } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * One-click unsubscribe (migration slice 07): a GET changes nothing; a POST
- * with a valid token unsubscribes, writes one event and is idempotent, from
- * the confirm page's button and from a mail client's RFC 8058 one-click; a
- * POST with a bad token is a 400 with no change. The route's answer to an
- * empty POST is what a campaign sender probes before it sends.
- */
-
 const h = vi.hoisted(() => ({ db: {} as AftercareFakeDb, rpcCalls: 0 }));
 
 vi.mock("@/lib/supabase/server", async () => {
@@ -150,9 +142,6 @@ describe("probeUnsubscribeRoute against this route", () => {
   });
 });
 
-// Migration slice 08: the sender also checks the site verifies links signed
-// with the sender's own secret, by one-click POSTing a link for a Customer
-// who does not exist.
 describe("probeUnsubscribeSecret against this route", () => {
   const viaRoute = (async (url: string, init: RequestInit) =>
     route.POST(new Request(url, init))) as unknown as typeof fetch;
@@ -172,7 +161,6 @@ describe("probeUnsubscribeSecret against this route", () => {
   });
 });
 
-// PRD-campaign-audiences slice 08: the unsubscribe names the campaign send behind it.
 describe("POST /api/email/unsubscribe — from a campaign email", () => {
   const SEND = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
   const sendLink = (send = SEND) =>

@@ -39,8 +39,6 @@ describe("familyTitle", () => {
   });
 
   it("does not stutter when the name already reads as a product", () => {
-    // Prod's "Duo Face Cover" sits under bolster_case; appending would give
-    // "Duo Face Cover Bolster Case".
     expect(familyTitle("bolster_case", "Duo Face Cover")).toBe("Duo Face Cover");
     expect(familyTitle("cover", "Satin White Cover")).toBe("Satin White Cover");
   });
@@ -59,7 +57,6 @@ describe("familyKey", () => {
   });
 
   it("keeps a casing typo visible rather than silently merging it", () => {
-    // Prod really has both `cotton` (S) and `Cotton` (L, M) under bolster_protector.
     expect(familyKey("bolster_protector", "cotton")).not.toBe(
       familyKey("bolster_protector", "Cotton"),
     );

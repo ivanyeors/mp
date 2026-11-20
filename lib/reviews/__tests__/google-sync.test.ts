@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, GOOGLE_REVIEW_DEFAULTS, type Row } from "./fake-supabase";
 import type { BusinessProfileClient, GbpReview } from "@/lib/google/business-profile";
 
-/**
- * The sync turns Google's newest reviews into rows and cards. Driven against
- * an in-memory table so the outcomes — which rows exist, in which status,
- * which cards went out — are observed rather than inferred from calls.
- */
-
 const h = vi.hoisted(() => ({ db: null as unknown as ReturnType<typeof createFakeSupabase>, tables: {} as Record<string, Row[]> }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.db }));
 
@@ -80,11 +74,9 @@ describe("syncGoogleReviews", () => {
     expect(matchLink).toHaveBeenCalledWith(byName("r1")!.id);
     const text = String((send.mock.calls[0] as unknown[])[0]);
     expect(text).toContain(`👤 Possible customer match: confirm in the Admin Panel: ${url}`);
-    // No customer is named, and the sync wrote no link: only a Staff action does.
     expect(text).not.toMatch(/@|customer [A-Z]/);
     expect(Object.keys(h.tables)).toEqual(["google_reviews"]);
 
-    // Without a suggestion, no line.
     h.tables.google_reviews = [];
     await run([review("r2")], { matchLink: async () => null });
     expect(String((send.mock.calls[1] as unknown[])[0])).not.toContain("Possible customer match");
@@ -131,7 +123,6 @@ describe("syncGoogleReviews", () => {
     await run([review("r1")]);
     expect(byName("r1")).toMatchObject({ status: "pending", telegram_message_id: null });
 
-    // Ten minutes later the orphan is picked up again.
     const later = new Date(NOW.getTime() + 11 * 60_000);
     byName("r1")!.updated_at = NOW.toISOString();
     const summary = await run([review("r1")], { now: later });
@@ -255,7 +246,6 @@ describe("initialState", () => {
 describe("reopening a review whose rating changed reply type", () => {
   const OUR_REPLY = "Thank you, Jane!";
 
-  /** First run cards r1 (message 101); then a review manager posts the draft. */
   async function postedFiveStar() {
     await run([review("r1")]);
     Object.assign(byName("r1")!, {
@@ -297,7 +287,6 @@ describe("reopening a review whose rating changed reply type", () => {
     expect(card[0]).toContain("🔄 REOPENED — the rating changed from 5★ to 2★ after it was answered.");
     expect(card[0]).toContain(`💬 Our reply on Google now (posting replaces it):\n${OUR_REPLY}`);
     expect(card[1].inline_keyboard.flat()[0].text).toBe("✅ Post reply");
-    // The old card stays as history and points at the new one.
     expect(edit).toHaveBeenCalledWith(
       101,
       expect.stringContaining("🔄 Reopened in a new card below — the rating changed from 5★ to 2★."),

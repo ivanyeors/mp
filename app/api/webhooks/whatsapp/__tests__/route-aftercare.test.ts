@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { guestText } from "@/lib/appointments/messages";
 
-/**
- * The WhatsApp webhook after aftercare (CRM slice 13). A STOP gets the stop
- * reply every time and changes nothing else. A bare "cancel" right after an
- * aftercare message asks first; with no aftercare since the reminder it
- * cancels, as before. A late 131050 lands on the aftercare ledger.
- */
-
 const m = vi.hoisted(() => ({
   sendText: vi.fn(),
   cancelAppointment: vi.fn(),

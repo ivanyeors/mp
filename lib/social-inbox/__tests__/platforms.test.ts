@@ -10,11 +10,6 @@ import {
 } from "@/lib/social-inbox/meta";
 import { parseTikTokWebhook, tiktokAuthorizeUrl, verifyTikTokSignature } from "@/lib/social-inbox/tiktok";
 
-/**
- * The platform edges, pure: who may be replied to when, what a webhook says
- * once normalised, and that only a correctly signed webhook gets in.
- */
-
 const NOW = new Date("2026-10-03T12:00:00Z");
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000).toISOString();
 
@@ -52,7 +47,6 @@ describe("checkOutgoingText", () => {
     expect(checkOutgoingText("facebook", "a".repeat(2000)).ok).toBe(true);
     expect(checkOutgoingText("facebook", "a".repeat(2001)).ok).toBe(false);
     expect(checkOutgoingText("instagram", "a".repeat(1000)).ok).toBe(true);
-    // 300 emoji are 1,200 bytes.
     expect(checkOutgoingText("instagram", "😴".repeat(300)).ok).toBe(false);
     expect(checkOutgoingText("tiktok", "a".repeat(5000)).ok).toBe(true);
   });
@@ -156,7 +150,6 @@ describe("Meta webhooks", () => {
 describe("Meta setup", () => {
   const URL_OK = "https://custom.mpillow.com/api/webhooks/meta-messages";
 
-  /** A Graph API stand-in: answers by method and path, records every call. */
   function graph(overrides: Record<string, unknown> = {}) {
     const calls: { method: string; path: string; query: URLSearchParams; form: URLSearchParams | null }[] = [];
     const answers: Record<string, unknown> = {
@@ -212,7 +205,6 @@ describe("Meta setup", () => {
       instagram: { id: "IG1", username: "thempillow" },
       problems: [],
     });
-    // Page calls carry appsecret_proof; the app's own webhooks are read with its app token.
     expect(calls.find((c) => c.path === "/me")?.query.get("appsecret_proof")).toBeTruthy();
     expect(calls.find((c) => c.path === "/APP1/subscriptions")?.query.get("access_token")).toBe("APP1|app-secret");
   });

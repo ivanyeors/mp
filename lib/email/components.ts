@@ -1,20 +1,3 @@
-// ============================================================
-// Email component library
-// ============================================================
-//
-// ESCAPING CONTRACT — the rule that keeps injection bugs out:
-//
-//   * A parameter typed `string` holds PLAIN TEXT. The component escapes it.
-//   * A parameter whose name ends in `Html` holds RAW HTML. The caller owns it.
-//
-// Templates therefore never call escapeHtml themselves for ordinary copy, and a
-// reviewer can spot an unescaped seam by looking for `...Html` in the call.
-//
-// Every component returns table-based, inline-styled HTML. Class names (`mp-*`)
-// exist only as hooks for the dark-mode <style> block in base.ts — they are
-// progressive enhancement, never load-bearing, because Gmail strips <style> for
-// some account types.
-
 import { escapeHtml, safeUrl } from "./html";
 import {
   BRAND,
@@ -32,31 +15,16 @@ import {
   type PillTone,
 } from "./theme";
 
-/** Wrap content in a full-width layout table row; `cellAttrs` go on its cell. */
 function block(innerHtml: string, style?: string, cellAttrs?: string): string {
   return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
   <tr><td${cellAttrs ? ` ${cellAttrs}` : ""}${style ? ` style="${style}"` : ""}>${innerHtml}</td></tr>
 </table>`;
 }
 
-/**
- * Add the vertical gutter below a block.
- *
- * Word (Outlook desktop) ignores `margin` on a <table>, so spacing a block with
- * `margin:0 0 16px` collapses the entire vertical rhythm there while looking
- * fine everywhere else. Padding on a <td> is honoured, so every block gets its
- * gutter from a wrapper cell instead.
- */
 function withGutter(innerHtml: string, bottom: number = LAYOUT.gutter): string {
   return block(innerHtml, css({ "padding-bottom": bottom }));
 }
 
-/**
- * Hidden inbox-preview text. Must be the first thing inside <body>.
- *
- * The trailing zero-width-non-joiner / nbsp run stops Gmail from pulling the
- * first line of real body copy in after the preheader.
- */
 export function preheader(text: string): string {
   const pad = "&zwnj;&nbsp;".repeat(40);
   return `<div style="${css({
@@ -72,20 +40,11 @@ export function preheader(text: string): string {
 }
 
 export interface HeadingOptions {
-  /** Space above, in px. Default 0. */
   top?: number;
-  /** Space below, in px. Default `LAYOUT.gutter`. */
   bottom?: number;
-  /** Default left. */
   align?: "left" | "center";
 }
 
-/**
- * Heading. `top` / `bottom` exist because a sub-heading that labels the block
- * beneath it needs asymmetric spacing: with the flat `0 0 16px` default it sits
- * equidistant between its own list and the previous one, so it reads as
- * belonging to neither.
- */
 export function heading(
   text: string,
   level: 1 | 2 | 3 = 2,
@@ -114,12 +73,10 @@ function paragraphStyle(opts: ParagraphOptions = {}): string {
   });
 }
 
-/** Plain-text paragraph — escaped. */
 export function paragraph(text: string, opts: ParagraphOptions = {}): string {
   return `<p class="${opts.muted ? "mp-muted" : "mp-fg"}" style="${paragraphStyle(opts)}">${escapeHtml(text)}</p>`;
 }
 
-/** Paragraph whose content is already HTML (links, <strong>, …). */
 export function paragraphHtml(bodyHtml: string, opts: ParagraphOptions = {}): string {
   return `<p class="${opts.muted ? "mp-muted" : "mp-fg"}" style="${paragraphStyle(opts)}">${bodyHtml}</p>`;
 }
@@ -128,10 +85,6 @@ export function mutedText(text: string): string {
   return paragraph(text, { muted: true });
 }
 
-/**
- * Multi-line text with newlines preserved as <br> (e.g. a pasted support
- * message). Escaped first, then line-broken — never the other way round.
- */
 export function preformatted(text: string): string {
   const body = escapeHtml(text).replace(/\r?\n/g, "<br />");
   return `<p class="mp-fg" style="${typeStyle("body", {
@@ -140,12 +93,10 @@ export function preformatted(text: string): string {
   })}">${body}</p>`;
 }
 
-/** Inline text link — achromatic and underlined, matching the site's link treatment. */
 export function link(opts: { href: string; label: string }): string {
   return linkHtml({ href: opts.href, labelHtml: escapeHtml(opts.label) });
 }
 
-/** Inline link whose words are already HTML (bold or italic inside it). A rejected URL leaves the words. */
 export function linkHtml(opts: { href: string; labelHtml: string }): string {
   const href = safeUrl(opts.href);
   if (!href) return opts.labelHtml;
@@ -161,34 +112,21 @@ export interface ButtonOptions {
   label: string;
   variant?: "primary" | "secondary";
   align?: "left" | "center";
-  /** The widest Outlook's VML button may draw, in px: a column's width. Default 360. */
   maxWidth?: number;
 }
 
-/**
- * Bulletproof CTA. VML roundrect for Outlook (Word ignores border-radius and
- * padding on anchors), padding-based anchor everywhere else.
- *
- * VML expresses the corner radius as a percentage of the shorter side, so
- * `arcsize` is RADIUS.button / HEIGHT — 16/44 ≈ 36%.
- */
 export function button(opts: ButtonOptions): string {
   const href = safeUrl(opts.href);
   const label = escapeHtml(opts.label);
   const secondary = opts.variant === "secondary";
   const align = opts.align ?? "center";
 
-  // A dead button is worse than none — degrade to plain text if the URL was rejected.
   if (!href) return paragraph(opts.label, { align });
 
   const height = 44;
   const bg = secondary ? LIGHT.card : LIGHT.primary;
   const fg = secondary ? LIGHT.fg : LIGHT.primaryFg;
   const arcsize = `${Math.round((RADIUS.button / height) * 100)}%`;
-  // VML needs an explicit width. Approximate the rendered label (~7.6px per
-  // character at 14px) plus the 24px side padding, then clamp — a fixed width
-  // would make "Sign in" a 260px slab in Outlook and snug everywhere else.
-  // Measure the RAW label — `label` is escaped, so "&" would count as 5 chars.
   const vmlWidth = Math.min(
     opts.maxWidth ?? 360,
     Math.max(160, Math.round(opts.label.length * 7.6) + 48),
@@ -203,17 +141,6 @@ export function button(opts: ButtonOptions): string {
 </v:roundrect>
 <![endif]-->`;
 
-  // The fill lives on the CELL, carrying a `bgcolor` ATTRIBUTE as well as the
-  // inline background — this is the one element in the system whose failure
-  // mode is invisible text rather than merely flat colour.
-  //
-  // A sanitizer that drops CSS `background` but keeps `color` leaves light ink
-  // on the white card (and, in dark mode, near-black ink on the near-black
-  // card). Gmail's compose sanitizer does exactly that. `bgcolor` is an HTML
-  // presentational attribute, so it survives; and because presentational
-  // attributes lose to any CSS rule, the dark-mode block still overrides it —
-  // it is the floor, not a ceiling. `background-color` is emitted alongside the
-  // shorthand for sanitizers that keep one and not the other.
   const anchor = `<!--[if !mso]><!-- --><table ${TABLE_RESET} align="${align}" class="mp-btn-table" style="${TABLE_RESET_STYLE}">
   <tr><td class="mp-btn-cell${
     secondary ? " mp-btn-cell-secondary" : ""
@@ -241,54 +168,16 @@ export function button(opts: ButtonOptions): string {
   }));
 }
 
-/**
- * The narrowest row, in px, that keeps columns side by side: on anything
- * narrower (a phone) they stack. Two buttons, an image beside its words and
- * the products grid all break here, so every row of an email stacks at once.
- */
 export const STACK_BELOW = 480;
 
 export interface ColumnsOptions {
-  /**
-   * The narrowest row, in px, that holds the columns side by side: each is
-   * `stackBelow / n` wide there, and on anything narrower they stack.
-   */
   stackBelow: number;
-  /**
-   * Side by side, the columns read right to left; stacked, still in order,
-   * the first on top. The row is `dir="rtl"`, each column `dir="ltr"` again.
-   */
   reverse?: boolean;
-  /** Where columns of different heights line up. Default top. */
   valign?: "top" | "middle";
-  /** Room between columns side by side, in px: half each side of every column, so stacked ones still line up. */
   gap?: number;
-  /** How each column's words align. Default the row's: centred. */
   textAlign?: "left" | "center";
 }
 
-/**
- * Columns side by side that stack on a phone (PRD-campaign-email-editor
- * slice 06), built the hybrid way: each is an inline-block `div` that is
- * `stackBelow / n` wide while the row is `stackBelow` or wider and the whole
- * row below it, so the row falls to one column by width alone, with no media
- * query (Gmail's apps ignore them for many accounts), inside an MSO ghost
- * table that keeps the columns side by side in classic Outlook, which ignores
- * `max-width`. Stacked, they read in order: whatever has to come first on a
- * phone goes first, and `reverse` moves it to the right.
- *
- * Two columns need only `max-width: stackBelow / 2`: once both don't fit,
- * neither shares a line. Three at `stackBelow / 3` would go two, then one, on
- * a row between two and three of them wide (most phones), so from three on
- * each column also takes the row's width below `stackBelow` through calc(),
- * the "Fab Four": `min-width` holds it at its share above, `max-width:100%`
- * at the whole row below. Where calc() is dropped (Gmail's apps for a
- * non-Google account, all phones) `width:100%` stands, and they stack.
- *
- * The wrapper's `font-size:0` removes the gap the markup's whitespace would
- * leave between the columns; every component sets its own size. A column
- * carries no class: it paints nothing, so it needs no dark rule (slice 15).
- */
 export function columns(cellsHtml: readonly string[], opts: ColumnsOptions): string {
   const valign = opts.valign ?? "top";
   const ltr = opts.reverse ? ' dir="ltr"' : "";
@@ -313,10 +202,6 @@ export function columns(cellsHtml: readonly string[], opts: ColumnsOptions): str
   );
 }
 
-/**
- * Two buttons side by side that stack on a phone (slice 03), in two columns:
- * each button at most a column wide, in Outlook's VML too.
- */
 export function buttonPair(buttons: [ButtonOptions, ButtonOptions]): string {
   const width = STACK_BELOW / 2;
   return columns(
@@ -326,36 +211,17 @@ export function buttonPair(buttons: [ButtonOptions, ButtonOptions]): string {
 }
 
 export interface EmailImageOptions {
-  /** The image's absolute URL: an email rendition, JPEG or PNG, never a WebP master. */
   src: string;
-  /** The width it is shown at, in px, and the height that keeps its shape. */
   width: number;
   height: number;
-  /** Plain text: what a screen reader says, and what shows with images off. */
   alt: string;
-  /** Says nothing a reader would miss: empty alt and role="presentation". */
   decorative?: boolean;
-  /** Where a tap goes: the image is the link, its alt the link's words. */
   href?: string | null;
-  /**
-   * It has transparency (a logo, a product cut-out): it sits on the light
-   * plate, a padded panel in the card's light colour that keeps that colour in
-   * dark mode, so dark ink never lands on a dark card.
-   */
   plate?: boolean;
 }
 
-/** The light plate's padding, in px. */
 const PLATE_PADDING = LAYOUT.gutter;
 
-/**
- * An image, centred in its row (PRD-campaign-email-editor slice 05). The
- * `width` and `height` attributes size it in classic Outlook, which reads
- * them and ignores CSS; everywhere else `max-width:100%;height:auto` lets it
- * shrink to a phone. The row's `align` attribute centres it for Outlook, its
- * `text-align` for the rest. A rejected URL draws nothing: a broken image is
- * worse than none.
- */
 export function emailImage(opts: EmailImageOptions): string {
   const src = safeUrl(opts.src);
   if (!src) return "";
@@ -383,7 +249,6 @@ export function emailImage(opts: EmailImageOptions): string {
 </table>`;
 }
 
-/** The landing "surface": rounded, 1px border, subtle fill. */
 export function card(opts: {
   bodyHtml: string;
   tone?: "default" | "muted" | "outline";
@@ -391,8 +256,6 @@ export function card(opts: {
 }): string {
   const tone = opts.tone ?? "muted";
   const bg = tone === "outline" ? LIGHT.card : LIGHT.mutedBg;
-  // Inner radius is one rung below the shell's surface radius — concentric
-  // corners with identical radii read as slightly wrong.
   return withGutter(`<table ${TABLE_RESET} width="100%" class="mp-panel" bgcolor="${bg}" style="${TABLE_RESET_STYLE};${css(
     {
       width: "100%",
@@ -406,7 +269,6 @@ export function card(opts: {
 </table>`);
 }
 
-/** Hairline rule. Spacing comes from the wrapper cell — margin on a td is ignored. */
 export function divider(opts: { spacing?: number } = {}): string {
   const s = opts.spacing ?? SPACE["3xl"];
   return block(
@@ -431,7 +293,6 @@ export function spacer(height: number): string {
   })}">&nbsp;</div>`;
 }
 
-/** One label / value line. Both escaped. */
 export function infoRow(label: string, value: string, opts: { strong?: boolean } = {}): string {
   return `<tr>
   <td class="mp-muted" style="${typeStyle("small", {
@@ -467,12 +328,6 @@ export interface DataTableColumn {
   width?: string;
 }
 
-/**
- * Line-item table with an optional totals foot. Values are escaped.
- *
- * This is genuine tabular data, so it keeps its default table semantics
- * (no role="presentation") — but it still needs the Outlook cell resets.
- */
 export function dataTable(opts: {
   columns: DataTableColumn[];
   rows: Array<Record<string, string>>;
@@ -508,10 +363,6 @@ export function dataTable(opts: {
     )
     .join("\n");
 
-  // A foot row is a label cell spanning all but the last column, plus a value
-  // cell. With a single column there is no room for both — emitting two cells
-  // under a one-column head would push the table wider than its own header — so
-  // the label and value share one cell there.
   const labelSpan = opts.columns.length - 1;
   const footCell = (
     content: string,
@@ -555,7 +406,6 @@ ${foot ? `<tfoot>\n${foot}\n</tfoot>` : ""}
 </table>`);
 }
 
-/** Prominent money callout — commission earned, payout sent, total charged. */
 export function amountPanel(opts: {
   label: string;
   amount: string;
@@ -580,18 +430,9 @@ export function amountPanel(opts: {
 
 export interface CodeBlockOptions {
   caption?: string;
-  /**
-   * `"otp"` (default) is the display treatment for a short verification code —
-   * 28px, wide tracking, one glance to read.
-   *
-   * `"identifier"` is for a long opaque string: a Result UUID is 36 characters,
-   * and at OTP size with 0.2em tracking it is ~700px wide, so it overflowed the
-   * 600px container. This variant drops to body size and breaks anywhere.
-   */
   variant?: "otp" | "identifier";
 }
 
-/** A code or identifier, centred in a muted panel. */
 export function codeBlock(code: string, opts: CodeBlockOptions = {}): string {
   const identifier = opts.variant === "identifier";
   return card({
@@ -600,7 +441,6 @@ export function codeBlock(code: string, opts: CodeBlockOptions = {}): string {
       color: LIGHT.fg,
       margin: 0,
       "text-align": "center",
-      // `body` already carries tracking "0", which typeStyle drops.
       ...(identifier ? { "font-weight": 600, "word-break": "break-all" } : {}),
     })}">${escapeHtml(code)}</p>${
       opts.caption
@@ -614,12 +454,6 @@ export function codeBlock(code: string, opts: CodeBlockOptions = {}): string {
   });
 }
 
-/**
- * Status pill — mirrors components/ui/badge.tsx (rounded-full, xs, medium).
- *
- * The per-tone class hook matters: a single `.mp-pill` dark override would
- * repaint every pill the same colour and destroy the success/danger coding.
- */
 export function statusPill(text: string, tone: PillTone = "neutral"): string {
   const { bg, fg } = PILL[tone];
   return `<span class="mp-pill mp-pill-${tone}" style="${typeStyle("small", {
@@ -648,7 +482,6 @@ export function bulletList(items: string[]): string {
   return bulletListHtml(items.map(escapeHtml));
 }
 
-/** Bullets whose items are already HTML (links, <strong>, …). */
 export function bulletListHtml(itemsHtml: string[]): string {
   if (itemsHtml.length === 0) return "";
   const rows = itemsHtml
@@ -665,15 +498,6 @@ ${rows}
 </table>`);
 }
 
-/**
- * An empty field's placeholder, for an editor's preview only
- * (PRD-campaign-email-editor decision 7): muted, in a dashed outline, at the
- * place and type size its words would take, so an empty email's layout reads.
- * Never in a sent email: only the preview passes placeholders to a renderer.
- *
- * The outline is the muted ink, not `LIGHT.border`, so it reads on the light
- * card and the dark one alike; the text takes the `mp-muted` dark rule.
- */
 export function placeholderHint(text: string, as: "h1" | "h2" | "body" | "button" = "body"): string {
   const outline = { border: `1px dashed ${LIGHT.mutedFg}`, "border-radius": `${as === "button" ? RADIUS.button : RADIUS.md}px` };
   if (as === "button") {
@@ -701,23 +525,12 @@ export interface FooterLink {
   href: string;
 }
 
-/**
- * Footer chrome. `links` hrefs may be site-relative — they are resolved against
- * `origin` here, because email has no page origin to resolve them against.
- *
- * Every link is underlined, as in the body: in the muted footer its colour is
- * the separators', and a client that inverts colours by itself (Gmail on iOS,
- * which no dark rule reaches) leaves the underline as the one sign of a link
- * (PRD-campaign-email-editor slice 15).
- */
 export function footer(opts: {
   origin: string;
   note?: string;
   links?: ReadonlyArray<FooterLink> | false;
   socials?: ReadonlyArray<FooterLink> | false;
-  /** Campaign mail only: the Customer's unsubscribe page (migration slice 07). */
   unsubscribeUrl?: string;
-  /** The email's language: `zh-CN` writes the footer's own words in Chinese (a campaign's 中文 version, PRD-campaign-email-editor slice 17). */
   lang?: string;
 }): string {
   const year = new Date().getFullYear();
@@ -738,8 +551,6 @@ export function footer(opts: {
   if (opts.links && opts.links.length > 0) {
     const rendered = opts.links
       .map((l) => {
-        // Full scheme test, not `startsWith("http")` — "httpfoo" would other-
-        // wise be treated as absolute and then silently dropped by safeUrl.
         const href = safeUrl(
           /^https?:\/\//.test(l.href) ? l.href : `${opts.origin}${l.href}`,
         );
@@ -782,9 +593,6 @@ export function footer(opts: {
     );
   }
 
-  // The unsubscribe facility the Spam Control Act asks of marketing email,
-  // beside the List-Unsubscribe header. Underlined, so it reads as a link in
-  // muted footer text. A rejected URL drops the line rather than show a dead one.
   const unsubscribe = opts.unsubscribeUrl ? safeUrl(opts.unsubscribeUrl) : "";
   if (unsubscribe) {
     parts.push(

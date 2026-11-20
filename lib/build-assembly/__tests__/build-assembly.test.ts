@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest";
 import { assembleBuild, findStockShortages } from "@/lib/build-assembly";
 
 const costs = new Map<number, number>([
-  [1, 2], // packaging
-  [2, 5], // protector
-  [3, 1], // filling (composed — must be ignored)
-  [4, 3], // filling template
-  [5, 4], // cover pref
-  [6, 6], // case pref
-  [7, 10], // addon
-  [8, 7], // protector as pref (reject)
+  [1, 2],
+  [2, 5],
+  [3, 1],
+  [4, 3],
+  [5, 4],
+  [6, 6],
+  [7, 10],
+  [8, 7],
 ]);
 
 describe("assembleBuild", () => {
@@ -32,7 +32,6 @@ describe("assembleBuild", () => {
       { item_id: 2, quantity: 1, role: "composed", category: "protector" },
       { item_id: 4, quantity: 3, role: "filling", category: "filling" },
     ]);
-    // packaging 2 + protector 5 + filling 3*3 = 16; composed filling cost excluded
     expect(result.cogs).toBe(2 + 5 + 9);
   });
 
@@ -106,8 +105,6 @@ describe("assembleBuild", () => {
   });
 
   it("ships a neck support placed in the pillow beside the fillings", () => {
-    // `placementKind` tags it `neck_support`; an Accessories line by category
-    // alone used to refuse every premium Result that had one placed.
     const result = assembleBuild({
       composedBomLines: [],
       fillingTemplateLines: [

@@ -36,7 +36,6 @@ export type SyncView = {
 
 export type EasyshipInitial = {
   settings: EasyshipSettings | null;
-  /** Set when a saved doc fails validation; the form then starts empty. */
   settingsError?: string | null;
   sync: SyncView;
   webhook_endpoint: string | null;
@@ -71,7 +70,6 @@ const titleCase = (s: string) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.to
 
 const TABS = ["connection", "addresses", "boxes", "rules", "tracking", "webhook"];
 
-/** A one-line status needs no card on a phone: it reads as a plain line of text. */
 const statusLineOnPhone = "max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:py-0 max-md:shadow-none";
 
 export default function EasyshipSettingsPage({ initial, initialTab }: { initial?: EasyshipInitial; initialTab?: string }) {
@@ -127,7 +125,6 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
       setSettings((s) => ({
         ...imported,
         ...keepMappedBoxes(s, imported.boxes),
-        // The courier's list is [] once we send status emails, so ours is kept.
         tracking_email: s.tracking_email.allowed_statuses.length
           ? { ...imported.tracking_email, allowed_statuses: s.tracking_email.allowed_statuses }
           : imported.tracking_email,
@@ -151,7 +148,6 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
             <p className="text-sm text-muted-foreground">Account {sync.easyship_company_id}.</p>
           )}
         </div>
-        {/* Phones: the two secondary actions share a row and Save & sync gets the next one to itself. */}
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <Button variant="outline" onClick={importLive} disabled={!!busy}>
             {spin("import") ?? <Download className="h-4 w-4" />} <span>Import<span className="max-sm:sr-only"> from courier account</span></span>
@@ -195,7 +191,6 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
         </TabsList>
 
-        {/* Kept mounted so unsaved Connection edits survive a tab switch. */}
         <TabsContent value="connection" forceMount className="mt-4 data-[state=inactive]:hidden">
           <EasyshipPanel onShowAddresses={() => setTab("addresses")} />
         </TabsContent>
@@ -226,8 +221,6 @@ export default function EasyshipSettingsPage({ initial, initialTab }: { initial?
 function Count({ n }: { n: number }) {
   return <Badge variant="secondary" className="ml-1.5 px-1.5">{n}</Badge>;
 }
-
-/* ── Sync report ──────────────────────────────────────────────────────── */
 
 const ACTION_VARIANT: Record<SyncAction, "default" | "secondary" | "destructive" | "outline"> = {
   created: "default",
@@ -276,8 +269,6 @@ function SyncReportCard({ sync }: { sync: SyncView }) {
     </Card>
   );
 }
-
-/* ── Tracking ──────────────────────────────────────────────────────────── */
 
 const STATUS_HINTS: Record<(typeof TRACKING_STATUSES)[number], string> = {
   in_transit: "Same as “Order shipped”, which always goes out at label",
@@ -357,8 +348,6 @@ function TrackingSection({ settings, update }: { settings: EasyshipSettings; upd
     </div>
   );
 }
-
-/* ── Addresses ─────────────────────────────────────────────────────────── */
 
 const BLANK_ADDRESS: EasyshipAddress = {
   line_1: "", line_2: null, city: "Singapore", state: null, postal_code: null, country_alpha2: "SG",
@@ -440,8 +429,6 @@ function AddressesSection({ addresses, update }: { addresses: EasyshipAddress[];
   );
 }
 
-/* ── Boxes ─────────────────────────────────────────────────────────────── */
-
 const BOX_DIMS = [
   { key: "outer_length", label: "Length (cm)" },
   { key: "outer_width", label: "Width (cm)" },
@@ -461,7 +448,6 @@ function BoxesSection({
   update: Update;
 }) {
   const renaming = useRef("");
-  // Renaming (on blur, so mid-typing names never collide) or removing a box carries its "Used for" mapping with it.
   const remap = (d: EasyshipSettings, from: string, to: string | null) => {
     for (const t of BOX_TYPES) {
       const m = d.box_for_type[t];
@@ -542,7 +528,6 @@ function BoxesSection({
                     </Button>
                     {on && (
                       <>
-                        {/* Input wraps number fields in a w-full box, so the width lives on this div. */}
                         <div className="w-20 shrink-0">
                           <Input
                             aria-label={`${titleCase(t)} content weight (g)`}
@@ -574,8 +559,6 @@ function BoxesSection({
     </div>
   );
 }
-
-/* ── Webhook ───────────────────────────────────────────────────────────── */
 
 function WebhookSection({
   webhook,

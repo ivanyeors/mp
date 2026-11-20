@@ -48,7 +48,6 @@ function toPlace(row: PartnerRow): PartnerPlace | null {
   };
 }
 
-/** A partner with its clinics: the main row's place first, then its branches'. */
 function toResolvedPartner(row: PartnerRow, branches: PartnerRow[]): ResolvedPartner {
   return {
     id: row.id,
@@ -94,14 +93,11 @@ export async function getPartnersPageRow(): Promise<PartnersPageRow | null> {
   return (data as PartnersPageRow) ?? null;
 }
 
-/** Owner-editable Partner Agreement markdown; falls back to the placeholder (#87). */
 export async function getAgreementMarkdown(): Promise<string> {
   const row = await getPartnersPageRow();
   return row?.agreement_md?.trim() ? row.agreement_md : DEFAULT_AGREEMENT_MD;
 }
 
-// Partner projection over the unified locations store (`partners` table): own
-// studios are filtered out here so /our-partners only ever shows partner clinics.
 export async function getPartners(opts?: {
   includeHidden?: boolean;
 }): Promise<ResolvedPartner[]> {
@@ -127,11 +123,6 @@ export type {
   ResolvedPartnersPage,
 };
 
-/**
- * Every location row (own + partner, branches included) ordered by position,
- * for the admin Locations table, which nests each partner's branches. Throws on a Supabase error so callers can map it to a
- * status code.
- */
 export async function listAdminLocationRows(): Promise<PartnerRow[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin

@@ -1,12 +1,6 @@
 import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-/**
- * Supabase records each migration by the number before its first `_`, so two
- * files sharing one never both apply: `supabase db push` refuses the second.
- * Parallel slices pick their timestamps by hand, which is how a clash happens.
- */
-
 const dir = new URL("../../../supabase/migrations/", import.meta.url);
 const files = readdirSync(dir).filter((f) => f.endsWith(".sql"));
 

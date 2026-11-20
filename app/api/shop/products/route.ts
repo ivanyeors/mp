@@ -20,8 +20,6 @@ export async function POST() {
   const denied = await requireAdmin("products");
   if (denied) return denied;
 
-  // Free-form product creation is retired. Sellable products come from inventory:
-  // pillows/bolsters via sync, single items via POST /api/shop/products/from-inventory.
   return NextResponse.json(
     {
       ok: false,

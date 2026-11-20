@@ -3,16 +3,13 @@ import { checkMetaSetup, metaAccountIds, metaConfigured, type MetaSetup } from "
 import { humanAgentEnabled } from "@/lib/social-inbox/platforms";
 import { getTikTokTokenRow, tiktokAccess, tiktokAppConfig } from "@/lib/social-inbox/tiktok";
 
-/** What Users & permissions → Telegram shows about each platform. Never includes a token. */
 export type SocialInboxStatus = {
   meta: {
     connected: boolean;
     pageId: string | null;
     instagramId: string | null;
     humanAgent: boolean;
-    /** The live check against Meta (checkMetaSetup); null without a Page token. */
     setup: MetaSetup | null;
-    /** What the connect button points Meta at; null off production, where the button is hidden. */
     webhookUrl: string | null;
   };
   tiktok: {
@@ -53,11 +50,6 @@ export async function getSocialInboxStatus(metaWebhookUrl: string | null): Promi
   };
 }
 
-/**
- * Daily, from the results-sla cron: card anything a webhook left uncarded, and
- * refresh TikTok's token, so a broken TikTok connection shows on the Telegram
- * access tab before an agent's reply fails on it.
- */
 export async function runSocialInboxMaintenance(): Promise<{
   sweep: Awaited<ReturnType<typeof sweepUncarded>> | { error: string };
   tiktok: "refreshed" | "not_connected" | { error: string };

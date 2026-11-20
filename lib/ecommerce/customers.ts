@@ -3,7 +3,6 @@ import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import { sanitizeSearchTerm } from "@/lib/supabase/like-pattern";
 import type { Customer } from "@/lib/types/ecommerce";
 
-/** Exact, case-insensitive email match: `_` and `%` in the address are literal. */
 export async function findCustomerByEmail(email: string): Promise<Customer | null> {
   const { data } = await supabaseAdmin()
     .from("customers")
@@ -20,7 +19,6 @@ export async function findOrCreateCustomer(email: string, extra?: { first_name?:
   const existing = await findCustomerByEmail(normalized);
   if (existing) return existing;
 
-  // Create new
   const { data: created, error } = await admin
     .from("customers")
     .insert({ email: normalized, ...extra })
@@ -53,7 +51,6 @@ export async function getCustomers(opts: { search?: string; page?: number; limit
   let query = admin.from("customers").select("*", { count: "exact" });
 
   if (opts.search) {
-    // `.or()` is a raw PostgREST filter string — sanitize, don't interpolate.
     const term = sanitizeSearchTerm(opts.search);
     if (term) {
       query = query.or(`email.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%`);

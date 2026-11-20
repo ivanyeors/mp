@@ -19,14 +19,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/readjustments/book — a re-adjustment booked without payment
- * (ADR 0024): a Complimentary re-adjustment, or any visit while the fee is $0.
- *
- * Signed-in only. The purchase is re-derived from the customer's own Orders and
- * re-quoted here; a visit the server says is charged is refused with the quote so
- * the page can re-price, and goes through /api/readjustments/checkout instead.
- */
 export async function POST(req: Request) {
   const customer = await resolveSignedInCustomer().catch(() => null);
   if (!customer) {
@@ -59,8 +51,6 @@ export async function POST(req: Request) {
     );
   }
   const seq = quote.complimentary ? quote.seq : null;
-  // The marketing email box (ADR 0039), once the visit stands: for the
-  // signed-in Customer. Never stops the booking.
   const recordConsent = () => recordBoxConsent(admin, customer.id, body.marketing_email === true, "appointment");
 
   try {
@@ -69,10 +59,6 @@ export async function POST(req: Request) {
     }
     const settings = await getAppointmentSettings();
 
-    // The booking claims the free visit BEFORE the calendar is touched: the
-    // partial unique index on (order_item_id, complimentary_seq) is the race
-    // guard, so a second tab claiming the last free visit fails here with
-    // nothing booked.
     const { data: booking, error: insErr } = await admin
       .from("readjustment_bookings")
       .insert({
@@ -102,9 +88,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: insErr?.message ?? "Booking failed" }, { status: 500 });
     }
 
-    // Recorded the moment the event exists: once Google has sent the invite, the
-    // visit is real, and a later failure (reminder, confirmation) must not give
-    // the free visit back while the customer holds an invite for it.
     let eventId = null as string | null;
     try {
       await bookCalendarSlot({
@@ -132,7 +115,6 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       if (eventId) {
-        // On the calendar and invited: the booking stands. Log what didn't happen.
         console.error(
           `[readjustments/book] ${booking.id} booked as ${eventId}, but a follow-up step failed:`,
           e instanceof Error ? e.message : e,
@@ -140,7 +122,6 @@ export async function POST(req: Request) {
         await recordConsent();
         return NextResponse.json({ ok: true, bookingId: booking.id, eventId });
       }
-      // Nothing is on the calendar: give the free visit back.
       await admin
         .from("readjustment_bookings")
         .update({ status: "cancelled", updated_at: new Date().toISOString() })

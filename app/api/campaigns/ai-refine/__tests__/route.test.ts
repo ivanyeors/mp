@@ -6,14 +6,6 @@ import { fakeClaude, userMessage, type FakeAnswer } from "@/lib/ai/__tests__/fak
 import { draftAnswer, REQUEST } from "@/lib/email-campaigns/__tests__/ai-draft-fixtures";
 import { FITTING_URL, FIVE_SUBJECTS, PREVIEW_LINES, REWRITE, SHORTER_TEXT, SUBJECTS, previewAnswer, subjectsAnswer } from "@/lib/email-campaigns/__tests__/ai-refine-fixtures";
 
-/**
- * ✨ Refine's route (PRD-campaign-email-editor slice 10): `campaigns` first,
- * the AI writing settings read at the call, the per-Staff limits it shares
- * with ✨ Generate, then Claude at the quick actions effort. It returns
- * ideas or a rewritten block and writes nothing but its audit entry: never a
- * campaign, never `content`, never a send.
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -36,7 +28,6 @@ vi.mock("@/lib/auth/admin", () => ({
 }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 
-/** The service-role client: reads from `h.tables`, counts `rate_limit_hit`, and records every write. */
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from(table: string) {
@@ -80,7 +71,6 @@ vi.mock("@/lib/ai/claude", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ai/claude")>()),
   claudeClient: () => h.claude,
 }));
-// Nothing here may save, lock or send: each is a spy that must stay uncalled.
 vi.mock("@/lib/email-campaigns/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email-campaigns/store")>()),
   getCampaign: vi.fn(async () => h.campaign),
@@ -152,7 +142,6 @@ describe("POST /api/campaigns/ai-refine", () => {
       entityId: CAMPAIGN_ID,
       after: { kind: "subjects", model: DEFAULT_AI_MODEL_ID, input_tokens: 3000, output_tokens: 2000, ended: "suggested", attempts: 1, ideas: 5, more: false },
     });
-    // Never the email's words, nor Claude's.
     expect(JSON.stringify(entry.after)).not.toMatch(/FibreCool|Sleep cooler/);
   });
 
@@ -213,7 +202,6 @@ describe("POST /api/campaigns/ai-refine", () => {
     const fake = useClaude([{ text: subjectsAnswer(FIVE_SUBJECTS) }]);
     const res = await post(SUBJECTS);
     expect(res.status).toBe(429);
-    // From 15:50 to 16:00 UTC the ten minutes end at midnight in Singapore: "12:00 am tomorrow".
     expect((await res.json()).error).toMatch(/^You've asked Claude for a lot today\. Try again after \d{1,2}:\d{2} (am|pm)( tomorrow)?\.$/);
     expect(fake.calls).toHaveLength(0);
   });

@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * After the money is in (ADR 0024): finalizeReadjustmentBooking puts a paid
- * re-adjustment on the calendar exactly once, and if the slot went while the
- * customer paid, it says so instead of double-booking — the money stays on a
- * confirmed Order.
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -17,7 +10,6 @@ const h = vi.hoisted(() => ({
   telegram: vi.fn(),
   email: vi.fn(),
   upsertReminder: vi.fn(),
-  /** Rows a guarded update reports as moved; [] simulates a concurrent delivery. */
   moved: [{ id: "bk-1" }] as Array<{ id: string }>,
 }));
 
@@ -40,7 +32,6 @@ vi.mock("@/lib/stripe/client", () => ({ getStripe: vi.fn() }));
 
 const { finalizeReadjustmentBooking, expireReadjustmentBooking } = await import("@/lib/readjustment/checkout");
 
-/** A minimal admin client: one booking row, one fee Order, updates recorded. */
 const admin = {
   from: (table: string) => {
     let op = "select";
@@ -109,7 +100,6 @@ describe("finalizeReadjustmentBooking", () => {
     const call = h.bookCalendarSlot.mock.calls[0][0];
     expect(call.readjustmentBookingId).toBe("bk-1");
     expect(call.notes.at(-1)).toBe("Paid SGD 30.00 · Order #1077");
-    // Its own hold must not count against it.
     expect(h.isSlotFree).toHaveBeenCalledWith(
       "2026-11-14T06:30:00.000Z",
       "2026-11-14T07:30:00.000Z",

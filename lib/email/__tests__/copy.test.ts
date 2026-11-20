@@ -98,10 +98,6 @@ describe("loadEmailCopy", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Every editable email in the registry keeps the rules
-// ---------------------------------------------------------------------------
-
 const specs = new Map<string, EmailCopySpec>();
 for (const c of EMAIL_REGISTRY) if (c.copy) specs.set(c.copy.id, c.copy);
 const casesOf = (id: string) => EMAIL_REGISTRY.filter((c) => c.copy?.id === id);

@@ -35,7 +35,7 @@ describe("resolvePostAuthRedirect", () => {
 
   it("falls back to account home for unsafe next", () => {
     expect(resolve("https://evil.example", false)).toBe(accountHome);
-    expect(resolve("//evil.example", true)).toBe(adminHome); // staff + fallback account → admin
+    expect(resolve("//evil.example", true)).toBe(adminHome);
     expect(resolve(undefined, false)).toBe(accountHome);
   });
 

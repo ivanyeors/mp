@@ -4,13 +4,6 @@ import { REVIEWS_GROUP } from "@/lib/crm/timeline/groups";
 import { readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 
-/**
- * Shop reviews on the Customer timeline (`customers`). A review stores when it
- * was submitted, not when it was approved or rejected (`updated_at` moves on
- * every edit), so the moderation outcome is its status pill. Its text stays on
- * the product page: the entry carries the rating and the product only.
- */
-
 type Product = { slug: string | null; content: Record<string, { title?: string } | undefined> | null };
 
 type ReviewRow = {

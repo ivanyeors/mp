@@ -3,13 +3,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-/**
- * GET /api/shop/stock?ids=<uuid>,<uuid>,...
- *
- * Public batch availability lookup from the variant_stock view. Used by the cart
- * to cap quantities and surface shortages before checkout. Checkout server
- * validation remains the final authority.
- */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const idsParam = url.searchParams.get("ids")?.trim();
@@ -17,8 +10,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, stock: {} });
   }
 
-  // Only accept well-formed UUIDs; ignore anything else so a malformed id never
-  // breaks the whole lookup.
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const ids = [...new Set(idsParam.split(","))]
     .map((s) => s.trim())

@@ -1,13 +1,7 @@
-/** Category is low when it can support ≤30% of what other BOM parts allow. */
 export const PART_CATEGORY_LOW_STOCK_RATIO = 0.3
 
 export type BomLine = { item_id: number; quantity: number }
 
-/**
- * fromC / withoutC ≤ 0.3 → low.
- * No other-parts baseline (withoutC ≤ 0) → low only when fromC ≤ 0.
- * Category unused in this BOM → not low.
- */
 export function isCategoryBottleneckLow(
   fromC: number,
   withoutC: number,

@@ -10,17 +10,6 @@ import type { ChatView, SupportChatState } from "./support-chat-engine";
 import { enableSupportChat, useSupportChatState } from "./support-chat-root";
 import type { ActiveChat } from "./use-support-chat";
 
-/**
- * The "Get in touch" chat on /support. It starts as a composer on the brand
- * gradient; the first message opens the chat window (support-chat-window.tsx),
- * a side panel on desktop and the whole screen on a phone, which stays with
- * the visitor across the landing pages. The team's replies come from the
- * staff Telegram group (lib/support/chat.ts).
- *
- * While a chat is going, this card shows where it stands and opens the window
- * again. The chat itself runs above the pages (support-chat-root.tsx), which
- * this card starts.
- */
 export function SupportChat() {
   const state = useSupportChatState();
   const reduceMotion = useReducedMotion();
@@ -34,7 +23,6 @@ export function SupportChat() {
       layout={!reduceMotion}
       transition={{ layout: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
       aria-label="Chat with the mpillow team"
-      // An app surface: the marketing pages' forced paragraph size would unbalance the bubbles.
       data-typography-scope="app"
       className="relative isolate overflow-hidden rounded-[28px] text-white shadow-[0_40px_90px_-40px_rgba(18,152,255,0.65)]"
       style={{ backgroundImage: NAVY_GRADIENT }}
@@ -123,7 +111,6 @@ const WHERE_IT_IS: Record<ChatView, string> = {
   closed: "Closed for now. A reply from us brings it back.",
 };
 
-/** The chat that's going: where it stands, its last message, and the way back into it. */
 function Ongoing({
   active,
   unread,

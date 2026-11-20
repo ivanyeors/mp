@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -22,15 +21,6 @@ import { CONTENT_PLACEHOLDERS, emptyBlock, type CampaignContent, type EmailBlock
 import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
 import { blockButtonHref } from "@/lib/email-campaigns/sender";
 
-/**
- * The products block (PRD-campaign-email-editor slice 07): each product as
- * the shop sells it when the email is rendered, its photo, name and price,
- * then a button to its shop page with the campaign's UTMs. One per row, or
- * side by side through slice 06's column primitive, which stacks below 480px
- * by width alone, in Gmail's apps too. The price is never the campaign's:
- * the renderer takes it from `products`, which the sender reads from the shop.
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 const UNSUB = `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=abc`;
 const UTM = "utm_source=email_campaign&utm_medium=email&utm_campaign=december-cooling-launch";
@@ -43,7 +33,6 @@ const send = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> =
     content,
     greeting: false,
     values: { first_name: "Ann", last_name: "Tan", points_balance: "1,250", your_pillow: "Premium Mpillow, size M" },
-    // What the sender passes: each button resolved for the recipient, a product to its shop page.
     buttonHref: (b) => blockButtonHref(b, "December cooling launch", { origin: ORIGIN, locale: "en-US", claimUrl: null, products }),
     unsubscribeUrl: UNSUB,
     images: EMAIL_BLOCK_SAMPLE_IMAGES,
@@ -56,14 +45,11 @@ const row = (html: string, id: string) => parse(html).querySelector<HTMLElement>
 const columnsOf = (rowEl: Element) => [...rowEl.querySelectorAll<HTMLElement>(":scope > table > tbody > tr > td > div")];
 const maxWidth = (el: HTMLElement) => Number(/max-width:(\d+)px/.exec(el.getAttribute("style") ?? "")![1]);
 
-/** The document as classic Outlook reads it: its `[if mso]` copy shown, everything marked `[if !mso]` gone. */
 const outlook = (html: string) =>
   parse(html.replace(/<!--\[if !mso\]><!-- -->[\s\S]*?<!--<!\[endif\]-->/g, "").replace(/<!--\[if mso\]>|<!\[endif\]-->/g, ""));
 
 const href = (slug: string) => `${ORIGIN}/en-US/shop/${slug}?${UTM}`;
-/** As the HTML writes it. */
 const hrefAttr = (slug: string) => href(slug).replace(/&/g, "&amp;");
-/** Money as every email writes it (lib/email/format.ts): `SGD 39.00`, with a no-break space. */
 const sgd = (n: number) => money(n, "SGD");
 
 describe("a products block, side by side", () => {
@@ -79,11 +65,9 @@ describe("a products block, side by side", () => {
       expect(c.querySelector<HTMLAnchorElement>("a.mp-btn")!.getAttribute("href")).toBe(href(slugs[i]));
       expect(c.querySelector("a.mp-btn")!.textContent).toBe("Shop now");
     });
-    // The photo is a link to the same page, its alt what the link says.
     const photo = cols[0].querySelector("img")!;
     expect(photo.closest("a")!.getAttribute("href")).toBe(href("fibrecool-cover"));
     expect(photo.getAttribute("alt")).toBe("FibreCool Cover");
-    // A product with no photo is its words alone.
     expect(cols[2].querySelector("img")).toBeNull();
   });
 
@@ -105,11 +89,9 @@ describe("a products block, side by side", () => {
     const two = columnsOf(row(send(one({ id: "two", type: "products", products: [SAMPLE_COVER_PRODUCT, SAMPLE_NECK_PRODUCT], layout: "side_by_side", buttonLabel: "Shop now" })).html, "two"));
     expect(two.map(maxWidth)).toEqual([240, 240]);
     for (const cols of [three, two]) {
-      // No class on a column, so no media query decides it, and no dark rule can miss it.
       for (const c of cols) expect(c.hasAttribute("class")).toBe(false);
       expect(sideBySide(cols, 1280)).toBe(true);
       expect(sideBySide(cols, 600)).toBe(true);
-      // A phone, with media queries and without (Gmail's apps for a non-Google account): one per row, never two then one.
       for (const mediaQueries of [true, false]) {
         for (const screen of [320, 375, 390, 412, 430, 479]) expect(stacked(cols, screen, mediaQueries), `${cols.length} at ${screen}px`).toBe(true);
       }
@@ -146,7 +128,6 @@ describe("a products block, one per row", () => {
     for (const p of products) {
       const cols = [...p.querySelectorAll<HTMLElement>(":scope > tbody > tr > td > div")];
       expect(cols.map(maxWidth)).toEqual([240, 240]);
-      // The photo at the column's width: the cut-out's light plate is that wide, its picture inside the padding.
       expect((cols[0].querySelector(".mp-plate") ?? cols[0].querySelector("img"))!.getAttribute("width")).toBe("224");
       expect(cols[1].querySelector("h3")).not.toBeNull();
       expect(cols[1].querySelector("a.mp-btn")!.textContent).toBe("See it in the shop");
@@ -214,7 +195,6 @@ describe("a product the shop does not sell now", () => {
     expect(preview.html).toContain(CONTENT_PLACEHOLDERS.productUnavailable);
     expect(preview.html).toContain(hrefAttr("fibrecool-cover"));
     expect(send(one(emptyBlock("products", "p")), { placeholders }).html).toContain(CONTENT_PLACEHOLDERS.products);
-    // A send of an empty block draws nothing at all.
     expect(row(send(one(emptyBlock("products", "p"))).html, "p")).toBeNull();
   });
 
@@ -232,7 +212,6 @@ describe("light and dark", () => {
     const classes = new Set([...row(html, "grid").querySelectorAll("[class]")].flatMap((el) => [...el.classList]));
     for (const c of ["mp-fg", "mp-muted", "mp-plate", "mp-btn-cell", "mp-btn"]) expect(classes).toContain(c);
     for (const c of classes) if (c !== "mp-btn-table") expect(ruled, c).toContain(c);
-    // Forced dark is the same email with the shell's own rules on.
     expect(forceDarkMode(html)).toContain(".mp-muted");
   });
 });
