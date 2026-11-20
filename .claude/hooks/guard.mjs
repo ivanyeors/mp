@@ -40,7 +40,8 @@ import { pathToFileURL } from "node:url";
  * raw text.)
  */
 export function stripHeredocs(cmd) {
-  const re = /<<(-?)\s*(['"]?)([A-Za-z_][\w-]*)\2/;
+  // `<<` but not a here-string `<<<`, whose word is not a delimiter.
+  const re = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][\w-]*)\2/;
   let out = "";
   let rest = cmd;
   for (let guard = 0; guard < 50; guard++) {
@@ -82,7 +83,10 @@ function closeOf(cmd, start, backtick) {
  * Split a shell command into simple commands, each a list of words with quotes
  * removed. Rough by design: it errs towards finding a command, never towards
  * hiding one. `$(...)` and backticks, quoted or not, become commands of their
- * own; so do subshells.
+ * own; so do subshells. As the shell does: a backslash-LF outside single
+ * quotes joins the lines (an escaped backslash before it does not, nor does a
+ * backslash-CR), and a `#` that starts a word outside quotes begins a comment
+ * to the end of the line, where a trailing backslash continues nothing.
  */
 export function parseShell(cmd) {
   const commands = [];
@@ -118,6 +122,7 @@ export function parseShell(cmd) {
     }
     if (quote === '"') {
       if (c === '"') quote = null;
+      else if (c === "\\" && cmd[i + 1] === "\n") i++;
       else if (c === "\\" && i + 1 < cmd.length) word += cmd[++i];
       else word += c;
       continue;
@@ -125,9 +130,13 @@ export function parseShell(cmd) {
     if (c === "'" || c === '"') {
       quote = c;
       inWord = true;
+    } else if (c === "\\" && cmd[i + 1] === "\n") {
+      i++;
     } else if (c === "\\" && i + 1 < cmd.length) {
       word += cmd[++i];
       inWord = true;
+    } else if (c === "#" && !inWord) {
+      while (i + 1 < cmd.length && cmd[i + 1] !== "\n") i++;
     } else if (/\s/.test(c) && c !== "\n") {
       endWord();
     } else if (";&|\n()".includes(c)) {
@@ -146,13 +155,24 @@ const WRAPPERS = new Set(["sudo", "command", "nohup", "exec", "time", "builtin",
 // `for f in x; do git push -f; done` gives `do git push -f`, and
 // `if ! pnpm lint; then` gives `if ! pnpm lint`.
 const KEYWORDS = new Set(["do", "then", "else", "elif", "if", "while", "until", "!", "{"]);
-// xargs options whose value is the next word (`-n 50`, `-I {}`), so the
-// program after them is the one read. Attached forms (`-n50`, `--max-args=50`)
-// are one word already.
-const XARGS_VALUE_OPTS = new Set([
-  "-n", "-I", "-P", "-L", "-d", "-s", "-E", "-a",
-  "--max-args", "--max-procs", "--max-lines", "--delimiter", "--max-chars", "--eof", "--arg-file", "--process-slot-var",
-]);
+// GNU xargs 4.9 (checked by running it): the short options that take the
+// next word as their value when nothing is attached, also as the last letter
+// of a cluster (`-0n 1`), and the long options that do when written without
+// `=`. -e, -i, -l, --eof, --replace and --max-lines take only an attached
+// value: the word after them is the program.
+const XARGS_SHORT_VALUE = new Set(["a", "d", "E", "I", "L", "n", "P", "s"]);
+const XARGS_LONG_VALUE = new Set(["--arg-file", "--delimiter", "--max-args", "--max-procs", "--max-chars", "--process-slot-var"]);
+
+/** How many words xargs's option `word` uses: 2 when its value is the next word. */
+function xargsOptionWords(word) {
+  if (word.startsWith("--")) return XARGS_LONG_VALUE.has(word) ? 2 : 1;
+  for (let i = 1; i < word.length; i++) {
+    if (XARGS_SHORT_VALUE.has(word[i])) return i === word.length - 1 ? 2 : 1;
+    // An optional value is attached or absent; the rest of the cluster is it.
+    if ("eil".includes(word[i])) return 1;
+  }
+  return 1;
+}
 
 /** Drop leading VAR=value words, shell keywords and wrappers like `timeout 5` or `env -i`. */
 export function stripPrefix(words) {
@@ -170,7 +190,8 @@ export function stripPrefix(words) {
       if (/^\d/.test(w[0])) w = w.slice(1);
     } else if (w[0] === "xargs") {
       w = w.slice(1);
-      while (w.length && w[0].startsWith("-")) w = w.slice(XARGS_VALUE_OPTS.has(w[0]) ? 2 : 1);
+      while (w.length && w[0].startsWith("-") && w[0] !== "--") w = w.slice(xargsOptionWords(w[0]));
+      if (w[0] === "--") w = w.slice(1);
     } else break;
   }
   return w;
@@ -178,14 +199,13 @@ export function stripPrefix(words) {
 
 /**
  * Every simple command in `cmd`, following `sh -c`, `npx -c` and `eval` one
- * level down at a time. A backslash-newline is joined first, as the shell
- * does, so a flag on the next line stays in its command; only when the
- * backslash is itself unescaped (an even run of backslashes before it), since
- * `echo done\\` then a newline is two commands to the shell.
+ * level down at a time. Here-documents are stripped before anything else
+ * (a continuation inside a body continues nothing); parseShell joins
+ * continuation lines.
  */
 export function commandsIn(cmd, depth = 0) {
   const out = [];
-  for (const raw of parseShell(stripHeredocs(cmd.replace(/(?<!\\)((?:\\\\)*)\\\r?\n/g, "$1")))) {
+  for (const raw of parseShell(stripHeredocs(cmd))) {
     const w = stripPrefix(raw);
     if (!w.length) continue;
     out.push(w);
@@ -364,6 +384,9 @@ const BASELINE_REASON =
   "raising the lint baseline (eslint-suppressions.json) is the owner's call. Fix the violation, or tell the user which rule and why it cannot be fixed. --prune-suppressions is allowed.";
 const SCRIPT_RUNNERS = new Set(["pnpm", "npm", "yarn", "bun"]);
 
+/** pnpm, npm, yarn or bun, by path or with a version (`pnpm@9`). */
+const isScriptRunner = (word) => SCRIPT_RUNNERS.has(path.basename(word).split("@")[0]);
+
 const isEslint = (word) => {
   const b = path.basename(word);
   return b === "eslint" || b === "eslint.js" || b.startsWith("eslint@");
@@ -372,8 +395,9 @@ const isEslint = (word) => {
 /**
  * A simple command that runs ESLint and adds to the baseline, wherever in it
  * the program sits: some word is an ESLint run (a path ending in eslint or
- * eslint.js, `eslint@<version>`, or `lint` after a script runner, pnpm, npm,
- * yarn, bun or `node --run`, at any position), and a later word starts with
+ * eslint.js, `eslint@<version>`, `--run=lint`, or `lint` after a script
+ * runner, pnpm, npm, yarn or bun with or without `@<version>`, or `node
+ * --run`, at any position), and a later word starts with
  * --suppress-all or --suppress-rule (`--suppress-all>/dev/null` included). So
  * `find . -exec npx eslint --suppress-all {} +`, `npx pnpm lint
  * --suppress-all` and `function f { eslint --suppress-all; }` are caught; a
@@ -384,7 +408,8 @@ function eslintVerdict(w) {
   let at = -1;
   for (let i = 0; i < w.length && at < 0; i++) {
     if (isEslint(w[i])) at = i;
-    else if (w[i] === "lint" && w.slice(0, i).some((a) => SCRIPT_RUNNERS.has(path.basename(a)) || a === "--run")) at = i;
+    else if (w[i] === "--run=lint") at = i;
+    else if (w[i] === "lint" && w.slice(0, i).some((a) => isScriptRunner(a) || a === "--run")) at = i;
   }
   if (at < 0) return null;
   return w.slice(at + 1).some((a) => a.startsWith("--suppress-all") || a.startsWith("--suppress-rule")) ? BASELINE_REASON : null;

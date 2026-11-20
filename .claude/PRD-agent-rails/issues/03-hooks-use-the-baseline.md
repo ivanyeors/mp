@@ -1,7 +1,7 @@
 # 03 — Hooks and guard use the baseline
 
 **Type:** AFK
-**Status:** **built** (2026-11-20), reviewed by the `reviewer` subagent three times; the fixes for the third review were checked by the orchestrating session, not reviewed again. Requirement 2's move rule was replaced, see "As built, after review"
+**Status:** **built** (2026-11-20), reviewed four times (three by the `reviewer` subagent, one independent review); the round-5 fixes for the fourth review were checked by the orchestrating session, not reviewed again. Requirement 2's move rule was replaced, see "As built, after review"
 **Blocked by:** 01, 02
 
 ## Goal
@@ -109,8 +109,11 @@ What `verify.mjs` does instead:
   (`git diff -M -B HEAD` on a scratch copy of the index; the real index is
   never touched). A file that is new since HEAD gets nothing. An entry that
   is there is never touched, except that it leaves the old path with its
-  file. The same run's prune then lowers a restored entry to what the file
-  has.
+  file; whenever an entry changes path, the file gets HEAD's amount for the
+  path it came from. A path vacated that way is looked at again, pass after
+  pass, until none is left. The same run's prune then lowers a restored
+  entry to what the file has, and `task` and `stop` also lint every file in
+  HEAD's baseline that has no entry, so they reject what `edit` rejects.
 - **So the ratchet is per commit.** A count that was lowered and committed
   with the baseline does not come back. Before the commit, removing a
   violation and adding another is within the count, which ESLint could never
@@ -120,10 +123,11 @@ What `verify.mjs` does instead:
   directory). While the claim stands, that HEAD path's allowance goes to no
   other file, the file re-created at the old path included. A claim ends
   with its file, with its entry, or when the move is committed with the
-  baseline.
+  baseline. The claims are written with the baseline, before ESLint runs,
+  claims first.
 - **A file that does not parse** keeps the entry it had before the run. If
-  ESLint does not finish, the whole baseline is put back as it was before
-  the run.
+  ESLint does not finish, the whole baseline and the claims are put back as
+  they were before the run.
 - **`task` and `stop`** lint first and fail at once on a lint failure, record
   a pass or a counted failure only when the tree at the end is the tree that
   was checked, and never exit without saying why.
@@ -146,13 +150,17 @@ Known limits, also in the header of `verify.mjs`:
   baseline is then HEAD's, is not healed. CI is red on that commit.
 - If the claims file is deleted by hand, a small or much-edited file
   re-created at a moved file's old path can get the allowance twice. The
-  totals check in `scripts/pr-risk.mjs` is what sees it.
+  totals check in `scripts/pr-risk.mjs` is what sees it. A hook killed during
+  ESLint no longer causes this: the claims are written with the baseline.
 - When a move and a new file at the old path both happen before the first
   hook run and the files are under 400 bytes, git cannot tell them apart:
   the old path keeps its entry and the moved file gets none, which fails
   closed. The same holds for a small file moved over another (`git mv -f`).
 - A claimed file's move that is stashed, followed by a hook run and a
   `stash pop`, loses its claim.
+- `git mv -f q p` where `p` keeps its own smaller working entry (`p` 3,
+  `q` 5): `p` fails "allows 3, now has 5" and `q`'s 5 is pruned away. This
+  fails closed.
 - `task` and `stop` judge the project directory. A worker's shell-made
   changes in its own worktree are linted when its branch is merged, not by
   the worker's own `task` run.

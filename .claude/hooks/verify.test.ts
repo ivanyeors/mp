@@ -874,6 +874,71 @@ describe("verify.mjs claims and moves, review round 4", () => {
   }, 60_000);
 });
 
+describe("verify.mjs claims and moves, review round 5", () => {
+  const commitAll = (msg: string) => {
+    gitIn("add", "-A");
+    gitIn("commit", "-q", "-m", msg);
+  };
+  function withBig(files: Record<string, string>) {
+    realLintRepo();
+    for (const [f, text] of Object.entries(files)) writeFileSync(path.join(repo, f), text);
+    const made = spawnSync(path.join(repo, "node_modules/.bin/eslint"), ["--suppress-all", ...Object.keys(files)], { cwd: repo, encoding: "utf8" });
+    expect(made.status, made.stdout + made.stderr).toBe(0);
+    commitAll("big files");
+  }
+  const claimsFile = () => path.resolve(repo, gitIn("rev-parse", "--git-path", "mp-claude-verify/claims.json").trim());
+
+  it("V1. an entry that changes path gets HEAD's amount, not one pruned against another file at the old path", () => {
+    const n = realLintRepo()["lib/x.ts"][RULE].count;
+    gitIn("mv", "lib/x.ts", "lib/y.ts");
+    writeFileSync(path.join(repo, "lib/x.ts"), "// one\nexport const other = 1;\n");
+    expect(editFile("lib/x.ts").code).toBe(0);
+    expect(allowed("lib/x.ts")).toBe(1);
+    rmSync(path.join(repo, "lib/x.ts"));
+    stopPasses();
+    expect(allowed("lib/y.ts")).toBe(n);
+  }, 60_000);
+
+  it("V2. three moves in a chain keep every allowance in one run", () => {
+    withBig({ "lib/bp.ts": big("p", 5), "lib/bq.ts": big("q", 3), "lib/br.ts": big("r", 2) });
+    gitIn("mv", "lib/bp.ts", "lib/bf.ts");
+    gitIn("mv", "lib/bq.ts", "lib/bp.ts");
+    gitIn("mv", "lib/br.ts", "lib/bq.ts");
+    stopPasses();
+    expect(allowed("lib/bf.ts")).toBe(5);
+    expect(allowed("lib/bp.ts")).toBe(3);
+    expect(allowed("lib/bq.ts")).toBe(2);
+    expect(readBaseline()["lib/br.ts"]).toBeUndefined();
+  }, 60_000);
+
+  it("V3. a hook killed during eslint leaves the claim with the moved entry, so the old path stays refused", () => {
+    realLintRepo();
+    gitIn("mv", "lib/x.ts", "lib/y.ts");
+    const wrapper = path.join(repo, "node_modules/.bin/eslint");
+    const real = readFileSync(wrapper, "utf8");
+    writeFileSync(wrapper, "#!/bin/sh\nkill -9 $PPID\nsleep 5\n");
+    const killed = verify("stop");
+    expect(killed.code).toBeNull();
+    writeFileSync(wrapper, real);
+    expect(readBaseline()["lib/y.ts"]).toBeDefined();
+    expect(Object.keys(JSON.parse(readFileSync(claimsFile(), "utf8")))).toEqual(["lib/y.ts"]);
+    writeFileSync(path.join(repo, "lib/x.ts"), NEW_X);
+    expect(editFile("lib/x.ts").code).toBe(2);
+    expect(readBaseline()["lib/x.ts"]).toBeUndefined();
+  }, 60_000);
+
+  it("V4. stop lints a file in HEAD's baseline that gets nothing because its allowance is claimed", () => {
+    realLintRepo();
+    renameSync(path.join(repo, "lib/x.ts"), path.join(repo, "lib/y.ts"));
+    stopPasses();
+    writeFileSync(path.join(repo, "lib/x.ts"), gitIn("show", "HEAD:lib/x.ts"));
+    const r = verify("stop");
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("lib/x.ts");
+    expect(editFile("lib/x.ts").code).toBe(2);
+  }, 60_000);
+});
+
 // An eslint stub with a given body; vitest passes.
 function eslintStub(body: string) {
   const bin = path.join(repo, "node_modules/.bin");

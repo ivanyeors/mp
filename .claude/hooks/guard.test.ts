@@ -92,18 +92,58 @@ describe("git", () => {
     expect(bash("echo x | xargs -n 1 git push origin")).toBeNull();
   });
 
-  // Each xargs value option, pinned by a guard that reads the program at
-  // word 0: without the option table the value is taken for the program.
-  it.each(["-n 1", "-I {}", "-P 4", "-L 1", "-d ,", "-s 100", "-E end", "-a list.txt", "--max-args 1", "--max-procs 2", "--max-lines 1", "--delimiter ,", "--max-chars 99", "--eof end", "--arg-file list.txt", "--process-slot-var N"])(
-    "reads the program after xargs %s",
-    (opt) => {
-      expect(bash(`echo x | xargs ${opt} git push --force origin x`)).toMatch(/force push/);
-    },
-  );
+  // Each xargs option whose value is the next word (GNU xargs 4.9, checked by
+  // running it), pinned by a guard that reads the program at word 0: without
+  // the table the value is taken for the program.
+  it.each([
+    "-n 1", "-I {}", "-P 4", "-L 1", "-d ,", "-s 100", "-E end", "-a list.txt",
+    "--max-args 1", "--max-procs 2", "--delimiter ,", "--max-chars 99", "--arg-file list.txt", "--process-slot-var N",
+    "-0n 1", "-rL 1", "-0 -n 1", "-n1", "--max-args=1", "--",
+  ])("reads the program after xargs %s", (opt) => {
+    expect(bash(`echo x | xargs ${opt} git push --force origin x`)).toMatch(/force push/);
+  });
 
-  it("does not join a backslash-newline whose backslash is escaped", () => {
+  // These take only an attached value: the next word is the program.
+  it.each(["--eof", "--max-lines", "--replace", "-e", "-i", "-l", "--eof=end", "-l1"])("reads the word after xargs %s as the program", (opt) => {
+    expect(bash(`: | xargs ${opt} git push --force origin x`)).toMatch(/force push/);
+  });
+
+  it("finds the eslint and gh blocks behind xargs options that take no separate value", () => {
+    expect(bash(": | xargs --eof pnpm lint --suppress-all")).toMatch(/owner's call/);
+    expect(bash(": | xargs --max-lines gh variable set AUTO_MERGE_CODE --body on")).toMatch(/AUTO_MERGE_CODE/);
+  });
+
+  // An even run of backslashes before the newline is escaped backslashes: the
+  // newline ends the command. An odd run ends in a continuation.
+  it("joins a continuation only when the backslash before the newline is unescaped", () => {
     expect(bash("echo done\\\\\ngit push --force origin x")).toMatch(/force push/);
-    expect(bash("echo a\\\\\\\n--force")).toBeNull();
+    expect(bash("git push \\\\\\\n --force origin x")).toMatch(/force push/);
+    // A continuation inside a word: `--force` only once joined.
+    expect(bash("git push --fo\\\nrce origin x")).toMatch(/force push/);
+    expect(bash("git push --fo\\\\\\\nrce origin x")).toBeNull();
+  });
+
+  it("does not join a backslash-CR: the LF after it ends the command", () => {
+    expect(bash("echo ok \\\r\ngh variable set AUTO_MERGE_CODE --body on")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("echo ok \\\r\ngit push --force origin x")).toMatch(/force push/);
+  });
+
+  it("strips a here-document before joining lines, so a continuation inside its body ends nothing", () => {
+    for (const after of ["pnpm exec eslint --suppress-all", "gh variable set AUTO_MERGE_CODE --body on", "git push --force origin x"]) {
+      expect(bash(`cat <<'EOF'\nx \\\nEOF\n${after}\nEOF`), after).not.toBeNull();
+    }
+  });
+
+  it("does not read a here-string as a here-document", () => {
+    expect(bash("cat <<<EOF\ngit push --force origin x\nEOF")).toMatch(/force push/);
+    expect(bash("cat <<< 'git push --force origin x'")).toBeNull();
+  });
+
+  it("ends a comment at the end of its line, where a trailing backslash continues nothing", () => {
+    expect(bash("echo ok # note \\\ngh variable set AUTO_MERGE_CODE --body on")).toMatch(/AUTO_MERGE_CODE/);
+    expect(bash("echo ok # git push --force origin x")).toBeNull();
+    expect(bash("echo foo#bar git push --force")).toBeNull();
+    expect(bash('echo $# ${#x} && git push --force origin x')).toMatch(/force push/);
   });
 
   it("allows taking main's graphify-out/ during a merge (the documented fix)", () => {
@@ -203,6 +243,9 @@ describe("the lint baseline is the owner's", () => {
       "pnpm dlx eslint@9.39.2 --suppress-all",
       "npx pnpm lint --suppress-all",
       "node --run lint -- --suppress-all",
+      "npx pnpm@9 lint --suppress-all",
+      "corepack pnpm@9.15.0 lint --suppress-all",
+      "node --run=lint -- --suppress-all",
       "bash -c 'pnpm exec eslint --suppress-all'",
       "timeout 600 node_modules/.bin/eslint --suppress-all",
     ]) {
