@@ -36,11 +36,19 @@
 // path, or the path it was renamed from since HEAD); a file that is new since
 // HEAD gets nothing; and one HEAD path's allowance goes to one file. "What git
 // says" is `git diff -M -B HEAD` on a scratch copy of the index with every
-// loose code file staged (the real index is never touched). When the working
-// baseline still holds the old path's entry, that one moves (its counts may
-// already be lower). The same run's prune lowers a restored entry to what the
-// file has. This is the one write to the file that is not ESLint's own, and
-// existing working entries are never touched by it.
+// loose code file staged (the real index is never touched). While the old
+// path is off disk and the working baseline still holds its entry, that entry
+// moves (its counts may already be lower); once a file is back at the old
+// path, that path's working entry has been pruned against the new file, so
+// the moved file gets HEAD's amount and the old path's entry is dropped. A
+// path whose entry left in this way is looked at again in the same run, as a
+// file with no entry (`git mv p F && git mv q p`). A file at HEAD under its
+// own name with nothing in HEAD's baseline gets nothing, unless some path
+// with an entry in HEAD's baseline is gone from disk (it may have been moved
+// over this one, `git mv -f q p`): then git's view decides. The same run's
+// prune lowers a restored entry to what the file has. This is the one write
+// to the file that is not ESLint's own, and existing working entries are
+// never touched by it.
 //
 // One allowance, one file: content cannot say which file "is" the old one
 // (git does not break files under 400 bytes for -B, and a moved file edited a
@@ -49,17 +57,23 @@
 // (with F's content, so a later move of F is found again by git's rename
 // detection between two small trees); while that claim stands, P's allowance
 // goes to no other file, the file re-created at P included. A claim ends with
-// its file, with its entry, or when the move is committed with the baseline.
-// The claims live in this checkout's git directory. If the move and the new
-// file at the old path both happen before the first hook run, -B tells them
-// apart for large files; for small ones the old path keeps its entry and the
-// moved file gets none, which fails closed.
+// its file, with its entry, or when the move is committed with the baseline,
+// which is when HEAD's baseline no longer holds P. Claims are saved only once
+// eslint has finished: when it has not, the baseline goes back to its
+// snapshot and the claims stay as they were. They live in this checkout's git
+// directory. If the move and the new file at the old path both happen before
+// the first hook run, -B tells them apart for large files; for small ones the
+// old path keeps its entry and the moved file gets none, which fails closed.
+// The same holds for `git mv -f q p` with small files: git sees no rename, p
+// gets nothing and fails for all of q's violations (closed).
 //
 // Known limits: a move committed without the baseline's change, in a clone
 // whose working baseline is then HEAD's, is not healed (CI is red on that
-// commit anyway); and if the claims file is lost (deleted by hand), a small
-// or drifted file re-created at a moved file's old path can get the
-// allowance twice, which the totals check in scripts/pr-risk.mjs sees.
+// commit anyway); if the claims file is lost (deleted by hand), a small or
+// drifted file re-created at a moved file's old path can get the allowance
+// twice, which the totals check in scripts/pr-risk.mjs sees; and a claimed
+// file's move that is stashed, followed by a hook run and a `stash pop`,
+// loses its claim (the run drops it with the file and nothing re-creates it).
 //
 // A baseline with merge conflict markers cannot be read: every run says to
 // resolve it with `node scripts/lint-baseline.mjs --resolve`.
@@ -409,14 +423,17 @@ function claimedMoves(gone, claims, candidates) {
 /**
  * Give each of `files` that is on disk and has no working entry what HEAD's
  * baseline holds for the file git says it was at HEAD (see the header), at
- * most once per HEAD path. Returns the files it wrote an entry for: they must
- * be linted in the same run, so the prune lowers them. Existing working
- * entries are never touched, except that an entry moving with its file leaves
- * the old path.
+ * most once per HEAD path. Returns the files it wrote an entry for (they must
+ * be linted in the same run, so the prune lowers them) and `saveClaims`, to
+ * call only once eslint has finished: if it does not, the baseline goes back
+ * to its snapshot and the claims must stay as they were too. Existing working
+ * entries are never touched, except that an entry moving with its file
+ * leaves the old path.
  */
 function restoreAllowances(files) {
+  const none = { written: [], saveClaims: () => {} };
   const working = readBaseline();
-  if (!working) return [];
+  if (!working) return none;
   const onDisk = (f) => existsSync(path.join(ROOT, f));
   const atHead = baselineAt("HEAD");
   const claims = readClaims();
@@ -441,15 +458,19 @@ function restoreAllowances(files) {
     delete claims[k];
     written.push(to);
   }
-  // A claim ends with its file, with its entry, or once the move is committed.
-  for (const k of Object.keys(claims)) if (!onDisk(k) || !working[k] || atHead[k] || !claims[k]?.from) delete claims[k];
+  // A claim ends with its file, with its entry, or once the move is committed
+  // with the baseline (HEAD's baseline no longer holds the source).
+  for (const k of Object.keys(claims)) if (!onDisk(k) || !working[k] || !claims[k]?.from || !atHead[claims[k].from]) delete claims[k];
   const claimed = (p, f) => Object.entries(claims).some(([k, c]) => k !== f && c.from === p);
 
   let todo = files.filter((f) => !working[f] && onDisk(f));
-  const inHead = new Set(todo.length ? gitAt(ROOT, ["ls-tree", "-z", "--name-only", "HEAD", "--", ...todo], LITERAL).out.split("\0").filter(Boolean) : []);
+  const inHeadOf = (list) =>
+    new Set(list.length ? gitAt(ROOT, ["ls-tree", "-z", "--name-only", "HEAD", "--", ...list], LITERAL).out.split("\0").filter(Boolean) : []);
+  const inHead = inHeadOf(todo);
   // A file at HEAD under its own name with nothing in HEAD's baseline has
-  // nothing to get, whatever the view says.
-  todo = todo.filter((f) => !(inHead.has(f) && !atHead[f]));
+  // nothing to get, unless a file with an entry at HEAD is gone from disk:
+  // it may have been moved over this one (`git mv -f q p`).
+  if (!Object.keys(atHead).some((f) => !onDisk(f))) todo = todo.filter((f) => !(inHead.has(f) && !atHead[f]));
 
   if (todo.length) {
     // R P F and C P F: F came from P. The source of a C is a file written
@@ -467,27 +488,40 @@ function restoreAllowances(files) {
     }
     const ancestor = (f) => (from.has(f) ? from.get(f) : rewritten.has(f) || !inHead.has(f) ? null : f);
 
-    for (const file of todo) {
-      const p = ancestor(file);
-      if (!p || claimed(p, file)) continue;
-      const amount = p !== file && working[p] ? working[p] : atHead[p];
-      if (!amount) continue;
-      working[file] = amount;
-      if (p !== file) {
-        delete working[p];
-        claims[file] = { from: p };
+    // Two passes: a path whose entry left with its file in the first (`git mv
+    // p F && git mv q p`) is looked at again, as a file with no entry.
+    let pass = todo;
+    for (let round = 0; round < 2 && pass.length; round++) {
+      const vacated = [];
+      for (const file of pass) {
+        const p = ancestor(file);
+        if (!p || claimed(p, file)) continue;
+        // working[p] is the moved file's entry only while p is off disk; a
+        // file at p now has had its own entry pruned against it.
+        const amount = p !== file && working[p] && !onDisk(p) ? working[p] : atHead[p];
+        if (p !== file && working[p]) {
+          delete working[p];
+          if (onDisk(p)) vacated.push(p);
+        }
+        if (!amount) continue;
+        working[file] = amount;
+        if (p !== file) claims[file] = { from: p };
+        written.push(file);
       }
-      written.push(file);
+      for (const v of vacated) if (!inHead.has(v) && inHeadOf([v]).has(v)) inHead.add(v);
+      pass = vacated.filter((v) => !working[v]);
     }
   }
 
-  // Each live claim remembers its file's current content, to be found again.
-  const live = Object.keys(claims);
-  const blobs = blobsOf(live);
-  if (blobs.length === live.length) live.forEach((k, i) => (claims[k].blob = blobs[i]));
-  if (JSON.stringify(claims) !== claimsBefore) writeClaims(claims);
   if (written.length) writeBaseline(working);
-  return written;
+  const saveClaims = () => {
+    // Each live claim remembers its file's current content, to be found again.
+    const live = Object.keys(claims);
+    const blobs = blobsOf(live);
+    if (blobs.length === live.length) live.forEach((k, i) => (claims[k].blob = blobs[i]));
+    if (JSON.stringify(claims) !== claimsBefore) writeClaims(claims);
+  };
+  return { written, saveClaims };
 }
 
 /** The baseline holds merge conflict markers, so neither ESLint nor this hook can read it. */
@@ -512,7 +546,7 @@ const relOf = (abs) => path.relative(ROOT, abs).split(path.sep).join("/");
  */
 function lint(files, timeout, snapshot) {
   // With no files eslint lints the whole repository.
-  if (files.length === 0) return { ok: true };
+  if (files.length === 0) return { ok: true, finished: true };
   const before = readBaseline();
   const r = spawnSync(
     bin("eslint"),
@@ -536,7 +570,7 @@ function lint(files, timeout, snapshot) {
   if (r.error || r.signal || !Array.isArray(results)) {
     if (snapshot) writeBaseline(snapshot);
     const why = r.error?.code === "ETIMEDOUT" || r.signal ? "did not finish in time" : r.error ? `could not be started (${r.error.message})` : "failed";
-    return { ok: false, report: `eslint ${why}, so these files were not linted. The baseline is as it was.\n${tail(raw)}` };
+    return { ok: false, finished: false, report: `eslint ${why}, so these files were not linted. The baseline is as it was.\n${tail(raw)}` };
   }
 
   const fatal = results.filter((x) => x.fatalErrorCount > 0).map((x) => relOf(x.filePath));
@@ -551,7 +585,7 @@ function lint(files, timeout, snapshot) {
       writeBaseline(now);
     }
   }
-  if (r.status === 0) return { ok: true };
+  if (r.status === 0) return { ok: true, finished: true };
 
   const lines = [];
   const over = [];
@@ -575,7 +609,7 @@ function lint(files, timeout, snapshot) {
   }
   for (const f of fatal) over.push(`${f} does not parse. Its baseline entry is kept as it was until it does.`);
   if (lines.length === 0) lines.push(tail(raw));
-  return { ok: false, report: [...lines.slice(0, 80), ...(lines.length > 80 ? [`  … ${lines.length - 80} more lines`] : []), ...over].join("\n") };
+  return { ok: false, finished: true, report: [...lines.slice(0, 80), ...(lines.length > 80 ? [`  … ${lines.length - 80} more lines`] : []), ...over].join("\n") };
 }
 
 // ----------------------------------------------------------------- edit ----
@@ -605,8 +639,9 @@ if (mode === "edit") {
   if (conflict) fail(conflict);
   const snapshot = readBaseline();
   // A claimed file found again at a new path is linted too, so its moved entry is pruned now.
-  const restored = restoreAllowances([rel]);
+  const { written: restored, saveClaims } = restoreAllowances([rel]);
   const r = lint([...new Set([rel, ...restored])], Math.max(5_000, 55_000 - (Date.now() - started)), snapshot);
+  if (r.finished) saveClaims();
   release?.();
   if (!r.ok) fail(`eslint found errors in ${rel}. Fix them before moving on:\n${r.report}`);
   process.exit(0);
@@ -647,8 +682,8 @@ const fingerprintNow = (withBaseline = true) =>
     .update(git("rev-parse", "HEAD"))
     .update(withBaseline ? git("diff", "HEAD") : git("diff", "HEAD", "--", ".", `:(exclude)${BASELINE_NAME}`))
     .update(
-      git("ls-files", "--others", "--exclude-standard")
-        .split("\n")
+      git("ls-files", "-z", "--others", "--exclude-standard")
+        .split("\0")
         .filter(Boolean)
         .map((f) => `${f}:${statSync(path.join(ROOT, f), { throwIfNoEntry: false })?.mtimeMs ?? 0}`)
         .join("\n"),
@@ -672,17 +707,18 @@ const save = () => {
 if (state.passed === fingerprint) process.exit(0);
 
 const base = mergeBase();
+// -z throughout: without it git quotes a non-ASCII path, which then matches no file.
 const changed = [
   ...new Set([
-    ...git("diff", "--name-only", base).split("\n"),
-    ...git("ls-files", "--others", "--exclude-standard").split("\n"),
+    ...git("diff", "-z", "--name-only", base).split("\0"),
+    ...git("ls-files", "-z", "--others", "--exclude-standard").split("\0"),
   ]),
 ].filter((f) => f && CODE.test(f) && !f.startsWith("graphify-out/") && existsSync(path.join(ROOT, f)));
 const baselineNow = readBaseline() ?? {};
 // Code files deleted on this branch that still have a baseline entry: linting
 // them prunes the entry, so `pnpm lint` passes without anyone editing the JSON.
-const gone = git("diff", "--name-only", "--diff-filter=D", base)
-  .split("\n")
+const gone = git("diff", "-z", "--name-only", "--diff-filter=D", base)
+  .split("\0")
   .filter((f) => f && baselineNow[f] && !existsSync(path.join(ROOT, f)));
 // Files with an entry in HEAD's baseline, on disk, and none in the working one
 // (a move and a move back, a prune between a move and a hook run): they get
@@ -742,8 +778,9 @@ if (releaseBaseline === false) failAttempt(`${before}: eslint did not run: anoth
 const conflict = baselineConflict();
 if (conflict) failAttempt(`${before}: ${conflict}`);
 const snapshot = readBaseline();
-const restored = restoreAllowances([...new Set([...changed, ...missing])]);
+const { written: restored, saveClaims } = restoreAllowances([...new Set([...changed, ...missing])]);
 const lintRun = lint([...new Set([...changed, ...gone, ...restored])], remaining(), snapshot);
+if (lintRun.finished) saveClaims();
 releaseBaseline?.();
 if (!lintRun.ok) failAttempt(`${before}: eslint fails on the files you changed. Fix it before anything else; the tests have not run yet.\n\n${lintRun.report}`);
 

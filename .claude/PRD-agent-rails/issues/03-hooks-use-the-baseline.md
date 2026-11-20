@@ -1,7 +1,7 @@
 # 03 — Hooks and guard use the baseline
 
 **Type:** AFK
-**Status:** **built** (2026-11-20), reviewed by the `reviewer` subagent twice, with a third review of the last round still running at this commit; requirement 2's move rule was replaced, see "As built, after review"
+**Status:** **built** (2026-11-20), reviewed by the `reviewer` subagent three times; the fixes for the third review were checked by the orchestrating session, not reviewed again. Requirement 2's move rule was replaced, see "As built, after review"
 **Blocked by:** 01, 02
 
 ## Goal
@@ -131,8 +131,10 @@ What `verify.mjs` does instead:
   linted by that worktree's config and baseline.
 - **A merge conflict in the baseline.** Claude can neither edit the file nor
   take one side, so `node scripts/lint-baseline.mjs --resolve` merges the
-  three index stages (the lower count where both sides have one; gone where
-  either side removed it) and the hook names that command.
+  three index stages as a three-way merge per path and rule (a side that did
+  not change an entry yields to the other; both changed, the lower count;
+  removed by a side that changed it, removed) and the hook names that
+  command.
 - **The guard** blocks `--suppress-all` and `--suppress-rule` on any simple
   command that runs ESLint, wherever the program sits (`xargs -n 50 …`,
   `find -exec`, `bash -lc`, a continuation line, `corepack pnpm lint`), and
@@ -148,7 +150,9 @@ Known limits, also in the header of `verify.mjs`:
 - When a move and a new file at the old path both happen before the first
   hook run and the files are under 400 bytes, git cannot tell them apart:
   the old path keeps its entry and the moved file gets none, which fails
-  closed.
+  closed. The same holds for a small file moved over another (`git mv -f`).
+- A claimed file's move that is stashed, followed by a hook run and a
+  `stash pop`, loses its claim.
 - `task` and `stop` judge the project directory. A worker's shell-made
   changes in its own worktree are linted when its branch is merged, not by
   the worker's own `task` run.

@@ -760,6 +760,120 @@ describe("verify.mjs allowances follow HEAD, with the real rules", () => {
   }, 60_000);
 });
 
+// Files of 400 bytes or more, which git's -B can break: `tag` keeps each
+// file's lines its own, and each comment is one mp/no-comment violation.
+function big(tag: string, comments: number) {
+  let s = "";
+  for (let i = 0; i < 12; i++) s += `export const ${tag}Value${i} = "${tag} value number ${i}, padded to make it long";\n`;
+  for (let i = 0; i < comments; i++) s += `// ${tag} note ${i}\nexport const ${tag}Extra${i} = ${i};\n`;
+  return s;
+}
+
+describe("verify.mjs claims and moves, review round 4", () => {
+  const commitAll = (msg: string) => {
+    gitIn("add", "-A");
+    gitIn("commit", "-q", "-m", msg);
+  };
+  /** The real-rules fixture plus `files`, each committed with the entry ESLint makes for it. */
+  function withBig(files: Record<string, string>) {
+    realLintRepo();
+    for (const [f, text] of Object.entries(files)) writeFileSync(path.join(repo, f), text);
+    const made = spawnSync(path.join(repo, "node_modules/.bin/eslint"), ["--suppress-all", ...Object.keys(files)], { cwd: repo, encoding: "utf8" });
+    expect(made.status, made.stdout + made.stderr).toBe(0);
+    commitAll("big files");
+    return readBaseline();
+  }
+  const claimsFile = () => path.resolve(repo, gitIn("rev-parse", "--git-path", "mp-claude-verify/claims.json").trim());
+
+  it("1. a claim survives when the new path had its own entry at HEAD", () => {
+    const at = withBig({ "lib/bx.ts": big("x", 5), "lib/by.ts": big("y", 3) });
+    expect(at["lib/bx.ts"][RULE].count).toBe(5);
+    expect(at["lib/by.ts"][RULE].count).toBe(3);
+    writeFileSync(path.join(repo, "lib/by.ts"), big("y", 0));
+    expect(editFile("lib/by.ts").code).toBe(0);
+    renameSync(path.join(repo, "lib/bx.ts"), path.join(repo, "lib/by.ts"));
+    stopPasses();
+    expect(allowed("lib/by.ts")).toBe(5);
+    stopPasses();
+    writeFileSync(path.join(repo, "lib/bx.ts"), big("x", 5));
+    const r = editFile("lib/bx.ts");
+    expect(r.code).toBe(2);
+    expect(readBaseline()["lib/bx.ts"]).toBeUndefined();
+    expect(allowed("lib/by.ts")).toBe(5);
+  }, 60_000);
+
+  it("2. an eslint that does not finish leaves the baseline and the claims as they were; the next run moves both", () => {
+    const original = realLintRepo();
+    gitIn("mv", "lib/x.ts", "lib/y.ts");
+    stopPasses();
+    renameSync(path.join(repo, "lib/y.ts"), path.join(repo, "lib/z.ts"));
+    const baselineBefore = readFileSync(baselineFile(), "utf8");
+    const claimsBefore = readFileSync(claimsFile(), "utf8");
+    const wrapper = path.join(repo, "node_modules/.bin/eslint");
+    const real = readFileSync(wrapper, "utf8");
+    writeFileSync(wrapper, "#!/bin/sh\nexit 3\n");
+    const r = verify("stop");
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("eslint failed");
+    expect(readFileSync(baselineFile(), "utf8")).toBe(baselineBefore);
+    expect(readFileSync(claimsFile(), "utf8")).toBe(claimsBefore);
+    writeFileSync(wrapper, real);
+    stopPasses();
+    expect(readBaseline()["lib/z.ts"]).toEqual(original["lib/x.ts"]);
+    expect(Object.keys(JSON.parse(readFileSync(claimsFile(), "utf8")))).toEqual(["lib/z.ts"]);
+  }, 60_000);
+
+  it("3. a moved file gets HEAD's amount when a new file at the old path already pruned that path's entry", () => {
+    withBig({ "lib/bx.ts": big("x", 5) });
+    gitIn("mv", "lib/bx.ts", "lib/by.ts");
+    writeFileSync(path.join(repo, "lib/bx.ts"), big("n", 1));
+    expect(editFile("lib/bx.ts").code).toBe(0);
+    expect(allowed("lib/bx.ts")).toBe(1);
+    const r = verify("stop");
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("lib/bx.ts");
+    expect(r.err).not.toContain("lib/by.ts");
+    expect(allowed("lib/by.ts")).toBe(5);
+    expect(readBaseline()["lib/bx.ts"]).toBeUndefined();
+  }, 60_000);
+
+  it("3. one shot, large files: mv x y and a new dissimilar x before any hook run", () => {
+    withBig({ "lib/bx.ts": big("x", 5) });
+    renameSync(path.join(repo, "lib/bx.ts"), path.join(repo, "lib/by.ts"));
+    writeFileSync(path.join(repo, "lib/bx.ts"), big("n", 0));
+    stopPasses();
+    expect(allowed("lib/by.ts")).toBe(5);
+    expect(readBaseline()["lib/bx.ts"]).toBeUndefined();
+  }, 60_000);
+
+  it("4. git mv p F && git mv q p: both F and p keep their allowances", () => {
+    withBig({ "lib/bp.ts": big("p", 5), "lib/bq.ts": big("q", 3) });
+    gitIn("mv", "lib/bp.ts", "lib/bf.ts");
+    gitIn("mv", "lib/bq.ts", "lib/bp.ts");
+    stopPasses();
+    expect(allowed("lib/bf.ts")).toBe(5);
+    expect(allowed("lib/bp.ts")).toBe(3);
+    expect(readBaseline()["lib/bq.ts"]).toBeUndefined();
+  }, 60_000);
+
+  it("5. git mv -f q p over a clean p: p gets q's allowance", () => {
+    withBig({ "lib/bp.ts": big("p", 0), "lib/bq.ts": big("q", 5) });
+    expect(readBaseline()["lib/bp.ts"]).toBeUndefined();
+    gitIn("mv", "-f", "lib/bq.ts", "lib/bp.ts");
+    stopPasses();
+    expect(allowed("lib/bp.ts")).toBe(5);
+    expect(readBaseline()["lib/bq.ts"]).toBeUndefined();
+  }, 60_000);
+
+  it("6. a file with a non-ASCII name is linted by stop", () => {
+    realLintRepo();
+    writeFileSync(path.join(repo, "lib/café.ts"), "// new comment\nexport const cafe = 1;\n");
+    const r = verify("stop");
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("lib/café.ts");
+  }, 60_000);
+});
+
 // An eslint stub with a given body; vitest passes.
 function eslintStub(body: string) {
   const bin = path.join(repo, "node_modules/.bin");
@@ -832,9 +946,18 @@ describe("verify.mjs records nothing when the tree changed during the run", () =
     expect(ranTimes("vitest")).toBe(3);
   });
 
-  it("a failure is not counted, so it is never given up on while the tree keeps changing", () => {
-    changingVitest(1);
-    for (let i = 0; i < 5; i++) expect(verify("stop").code).toBe(2);
+  it("a failure during which the tree changed is not counted: the attempts start again after it", () => {
+    stubs();
+    // Changes the tree on the first run only, then fails like any failure.
+    writeFileSync(
+      path.join(repo, "node_modules/.bin/vitest"),
+      `#!/bin/sh\n[ -f "${repo}/.git/changed-once" ] || { touch "${repo}/.git/changed-once"; echo "export const late = 1;" > "${repo}/late.ts"; }\nexit 1\n`,
+    );
+    writeFileSync(path.join(repo, "a.ts"), "export const a = 1;\n");
+    // Run 1 changed the tree: not counted. Runs 2 to 4 are attempts 1 to 3,
+    // all still blocking; only run 5 gives up.
+    for (let i = 0; i < 4; i++) expect(verify("stop").code, `run ${i + 1}`).toBe(2);
+    expect(verify("stop").code).toBe(0);
   });
 });
 

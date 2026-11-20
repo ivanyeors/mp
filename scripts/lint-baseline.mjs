@@ -94,25 +94,28 @@ function readWorkingTree() {
 }
 
 /**
- * The merge of two baselines that share `base`, per path and rule: on both
- * sides, the lower count; in the base and gone from either side, gone (that
- * side fixed it, or moved or deleted the file); not in the base and on one
- * side only, kept (that side's new file or its owner-approved raise); not in
- * the base and on both, the lower. No count ends above both sides'.
+ * The three-way merge of two baselines that share `base`, per path and rule.
+ * A side equal to the base yields to the other side, a removal included (so
+ * the owner's raise on one side survives a branch that did not touch it).
+ * Both changed: the lower count, and removed if either removed it (that side
+ * fixed it, or moved or deleted the file). Not in the base: one side's new
+ * entry is kept, both sides' the lower. No count ends above the higher side.
  */
 export function mergeBaselines(base, ours, theirs) {
   const merged = {};
-  for (const file of new Set([...Object.keys(ours ?? {}), ...Object.keys(theirs ?? {})])) {
-    const rules = new Set([...Object.keys(ours?.[file] ?? {}), ...Object.keys(theirs?.[file] ?? {})]);
+  const files = new Set([...Object.keys(base ?? {}), ...Object.keys(ours ?? {}), ...Object.keys(theirs ?? {})]);
+  for (const file of files) {
+    const rules = new Set([...Object.keys(base?.[file] ?? {}), ...Object.keys(ours?.[file] ?? {}), ...Object.keys(theirs?.[file] ?? {})]);
     for (const rule of rules) {
+      const b = base?.[file]?.[rule]?.count;
       const o = ours?.[file]?.[rule]?.count;
       const t = theirs?.[file]?.[rule]?.count;
-      const inBase = base?.[file]?.[rule] !== undefined;
       let count;
-      if (o !== undefined && t !== undefined) count = Math.min(o, t);
-      else if (inBase) continue;
-      else count = o ?? t;
-      (merged[file] ??= {})[rule] = { count };
+      if (o === b) count = t;
+      else if (t === b) count = o;
+      else if (o === undefined || t === undefined) count = undefined;
+      else count = Math.min(o, t);
+      if (count !== undefined) (merged[file] ??= {})[rule] = { count };
     }
   }
   return merged;

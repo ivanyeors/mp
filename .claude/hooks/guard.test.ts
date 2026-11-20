@@ -92,6 +92,20 @@ describe("git", () => {
     expect(bash("echo x | xargs -n 1 git push origin")).toBeNull();
   });
 
+  // Each xargs value option, pinned by a guard that reads the program at
+  // word 0: without the option table the value is taken for the program.
+  it.each(["-n 1", "-I {}", "-P 4", "-L 1", "-d ,", "-s 100", "-E end", "-a list.txt", "--max-args 1", "--max-procs 2", "--max-lines 1", "--delimiter ,", "--max-chars 99", "--eof end", "--arg-file list.txt", "--process-slot-var N"])(
+    "reads the program after xargs %s",
+    (opt) => {
+      expect(bash(`echo x | xargs ${opt} git push --force origin x`)).toMatch(/force push/);
+    },
+  );
+
+  it("does not join a backslash-newline whose backslash is escaped", () => {
+    expect(bash("echo done\\\\\ngit push --force origin x")).toMatch(/force push/);
+    expect(bash("echo a\\\\\\\n--force")).toBeNull();
+  });
+
   it("allows taking main's graphify-out/ during a merge (the documented fix)", () => {
     const dirty = sys({ dirty: () => true });
     expect(bash("git checkout origin/main -- graphify-out/", dirty)).toBeNull();
@@ -185,6 +199,10 @@ describe("the lint baseline is the owner's", () => {
       "pnpm exec eslint --suppress-all>/dev/null",
       "npx -c 'eslint --suppress-all'",
       "npm exec -c 'eslint --suppress-rule mp/no-comment'",
+      "npx eslint@9 --suppress-all",
+      "pnpm dlx eslint@9.39.2 --suppress-all",
+      "npx pnpm lint --suppress-all",
+      "node --run lint -- --suppress-all",
       "bash -c 'pnpm exec eslint --suppress-all'",
       "timeout 600 node_modules/.bin/eslint --suppress-all",
     ]) {
@@ -203,6 +221,7 @@ describe("the lint baseline is the owner's", () => {
     expect(bash('grep -rn -- "--suppress-all" .claude')).toBeNull();
     expect(bash("pnpm exec eslint --prune-suppressions")).toBeNull();
     expect(bash("git ls-files '*.ts' | xargs -n 50 pnpm exec eslint")).toBeNull();
+    expect(bash("grep -rn -- --suppress-all node_modules/eslint")).toBeNull();
     expect(bash("pnpm exec eslint lib \\\n--prune-suppressions")).toBeNull();
   });
 });

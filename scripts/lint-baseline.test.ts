@@ -43,36 +43,49 @@ describe("mergeBaselines", () => {
     "lib/both.ts": { r: c(5) },
     "lib/ours-fixed.ts": { r: c(3) },
     "lib/theirs-moved.ts": { r: c(4) },
+    "lib/theirs-raised.ts": { r: c(5) },
+    "lib/ours-lowered.ts": { r: c(5) },
+    "lib/raised-and-removed.ts": { r: c(5) },
   };
   const ours = {
     "lib/both.ts": { r: c(4) },
     "lib/theirs-moved.ts": { r: c(4) },
+    "lib/theirs-raised.ts": { r: c(5) },
+    "lib/ours-lowered.ts": { r: c(3) },
     "lib/ours-new.ts": { r: c(2) },
     "lib/new-both.ts": { r: c(6) },
   };
   const theirs = {
     "lib/both.ts": { r: c(2) },
     "lib/ours-fixed.ts": { r: c(3) },
+    "lib/theirs-raised.ts": { r: c(7) },
+    "lib/ours-lowered.ts": { r: c(5) },
+    "lib/raised-and-removed.ts": { r: c(8) },
     "lib/moved-here.ts": { r: c(4) },
     "lib/new-both.ts": { r: c(1) },
   };
 
-  it("keeps the lower count on both sides, drops what either side removed, keeps one side's new entries", () => {
+  it("is a three-way merge: an unchanged side yields, both changed take the lower, a removal on a changed side wins", () => {
     expect(mergeBaselines(base, ours, theirs)).toEqual({
       "lib/both.ts": { r: c(2) },
+      "lib/theirs-raised.ts": { r: c(7) },
+      "lib/ours-lowered.ts": { r: c(3) },
       "lib/ours-new.ts": { r: c(2) },
       "lib/moved-here.ts": { r: c(4) },
       "lib/new-both.ts": { r: c(1) },
     });
   });
 
-  it("never yields a count above what either side holds", () => {
+  it("keeps the owner's raise on one side when the other side left the entry alone", () => {
+    expect(mergeBaselines({ x: { r: c(5) } }, { x: { r: c(5) } }, { x: { r: c(7) } })).toEqual({ x: { r: c(7) } });
+  });
+
+  it("never yields a count above the higher side", () => {
     const merged = mergeBaselines(base, ours, theirs);
     for (const [file, rules] of Object.entries(merged))
       for (const [rule, { count }] of Object.entries(rules)) {
         const sides = [ours, theirs].map((s) => (s as Record<string, Record<string, { count: number }>>)[file]?.[rule]?.count).filter((n) => n !== undefined);
         expect(count).toBeLessThanOrEqual(Math.max(...(sides as number[])));
-        expect(count).toBe(Math.min(...(sides as number[])));
       }
   });
 

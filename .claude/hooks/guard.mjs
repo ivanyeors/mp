@@ -179,11 +179,13 @@ export function stripPrefix(words) {
 /**
  * Every simple command in `cmd`, following `sh -c`, `npx -c` and `eval` one
  * level down at a time. A backslash-newline is joined first, as the shell
- * does, so a flag on the next line stays in its command.
+ * does, so a flag on the next line stays in its command; only when the
+ * backslash is itself unescaped (an even run of backslashes before it), since
+ * `echo done\\` then a newline is two commands to the shell.
  */
 export function commandsIn(cmd, depth = 0) {
   const out = [];
-  for (const raw of parseShell(stripHeredocs(cmd.replace(/\\\r?\n/g, "")))) {
+  for (const raw of parseShell(stripHeredocs(cmd.replace(/(?<!\\)((?:\\\\)*)\\\r?\n/g, "$1")))) {
     const w = stripPrefix(raw);
     if (!w.length) continue;
     out.push(w);
@@ -362,19 +364,30 @@ const BASELINE_REASON =
   "raising the lint baseline (eslint-suppressions.json) is the owner's call. Fix the violation, or tell the user which rule and why it cannot be fixed. --prune-suppressions is allowed.";
 const SCRIPT_RUNNERS = new Set(["pnpm", "npm", "yarn", "bun"]);
 
+const isEslint = (word) => {
+  const b = path.basename(word);
+  return b === "eslint" || b === "eslint.js" || b.startsWith("eslint@");
+};
+
 /**
  * A simple command that runs ESLint and adds to the baseline, wherever in it
  * the program sits: some word is an ESLint run (a path ending in eslint or
- * eslint.js, or `lint` as the script of pnpm/npm/yarn/bun), and some word
- * starts with --suppress-all or --suppress-rule (`--suppress-all>/dev/null`
- * included). So `find . -exec npx eslint --suppress-all {} +` and
- * `function f { eslint --suppress-all; }` are caught; a quoted string that
- * mentions both is one word and is not.
+ * eslint.js, `eslint@<version>`, or `lint` after a script runner, pnpm, npm,
+ * yarn, bun or `node --run`, at any position), and a later word starts with
+ * --suppress-all or --suppress-rule (`--suppress-all>/dev/null` included). So
+ * `find . -exec npx eslint --suppress-all {} +`, `npx pnpm lint
+ * --suppress-all` and `function f { eslint --suppress-all; }` are caught; a
+ * quoted string that mentions both is one word and is not, and neither is
+ * `grep -- --suppress-all node_modules/eslint` (the flag comes first).
  */
 function eslintVerdict(w) {
-  const runsEslint =
-    w.some((a) => ["eslint", "eslint.js"].includes(path.basename(a))) || (SCRIPT_RUNNERS.has(path.basename(w[0])) && w.includes("lint"));
-  return runsEslint && w.some((a) => a.startsWith("--suppress-all") || a.startsWith("--suppress-rule")) ? BASELINE_REASON : null;
+  let at = -1;
+  for (let i = 0; i < w.length && at < 0; i++) {
+    if (isEslint(w[i])) at = i;
+    else if (w[i] === "lint" && w.slice(0, i).some((a) => SCRIPT_RUNNERS.has(path.basename(a)) || a === "--run")) at = i;
+  }
+  if (at < 0) return null;
+  return w.slice(at + 1).some((a) => a.startsWith("--suppress-all") || a.startsWith("--suppress-rule")) ? BASELINE_REASON : null;
 }
 
 const SWITCH_REASON =
