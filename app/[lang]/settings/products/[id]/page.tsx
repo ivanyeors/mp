@@ -22,7 +22,8 @@ export const runtime = "nodejs";
  *
  * `id === "new"` is the retired free-form creation route: the client toasts and
  * redirects, so nothing is loaded for it. A row that cannot be read is left to
- * the client's own fetch, which keeps the existing "Product not found" toast.
+ * the client's own fetch, which keeps the existing "Product not found" toast;
+ * the categories are handed over either way, so the client never fetches them.
  */
 export default async function ProductEditorPage({
     params,
@@ -45,11 +46,17 @@ export default async function ProductEditorPage({
         product?.ok
             ? {
                   product: { ok: true, row: product.row as LoadedProduct },
-                  categories: { ok: true, rows: categoryTree },
               }
             : undefined;
 
     // The browser cannot see STRIPE_SECRET_KEY, so it is told which account's ids
     // to read rather than left to guess.
-    return <ProductEditorClient initialData={initialData} ai={ai} stripeMode={stripeMode()} />;
+    return (
+        <ProductEditorClient
+            initialData={initialData}
+            categories={categoryTree}
+            ai={ai}
+            stripeMode={stripeMode()}
+        />
+    );
 }

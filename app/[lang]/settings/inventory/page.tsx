@@ -2682,14 +2682,13 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
     });
   }, [sortedVariants, balances]);
 
-  useEffect(() => {
-    if (renamingId === null) return;
-    if (!sortedVariants.some((variant) => variant.id === renamingId)) {
-      setRenamingId(null);
-      setRenameValue("");
-      setRenameError(null);
-    }
-  }, [sortedVariants, renamingId]);
+  // The variant being renamed left the drawer (another group, or deleted):
+  // drop the rename during render so it does not come back if the variant does.
+  if (renamingId !== null && !sortedVariants.some((variant) => variant.id === renamingId)) {
+    setRenamingId(null);
+    setRenameValue("");
+    setRenameError(null);
+  }
 
   const saveRename = async (itemId: number) => {
     const variant = sortedVariants.find((entry) => entry.id === itemId);

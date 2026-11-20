@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -79,8 +79,6 @@ export default function FormsSettingsPage({
     initialData?.catalog?.options ?? [],
   );
   const [loading, setLoading] = useState(!initialData);
-  // The server already loaded the catalog; saves and rollbacks still refetch.
-  const skipFirstFetch = useRef(initialData != null);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -101,13 +99,14 @@ export default function FormsSettingsPage({
     }
   }, []);
 
+  // The server already loaded the catalog; fetch only when it could not.
+  // Saves and rollbacks still call load().
   useEffect(() => {
-    if (skipFirstFetch.current) {
-      skipFirstFetch.current = false;
-      return;
-    }
+    if (initialData) return;
+    // load() sets `loading`, which already starts true without initialData.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-  }, [load]);
+  }, [initialData, load]);
 
   const save = async (next: DiscoverySourceOption[]) => {
     setSaving(true);

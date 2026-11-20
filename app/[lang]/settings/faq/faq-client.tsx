@@ -94,11 +94,14 @@ function SortableCategoryRow({
   const { ref, isDragging, handleRef } = useSortable({ id: category.id, index });
   const [labels, setLabels] = useState(category.labels);
   const [key, setKey] = useState(category.key);
-
-  useEffect(() => {
+  // Re-seed the draft only when the saved words change (a save, a reload), not
+  // when a visibility toggle hands over a copy of the same row.
+  const [seen, setSeen] = useState(category);
+  if (seen.labels !== category.labels || seen.key !== category.key) {
+    setSeen(category);
     setLabels(category.labels);
     setKey(category.key);
-  }, [category]);
+  }
 
   return (
     <div
@@ -205,11 +208,13 @@ function ItemEditor({
   const [open, setOpen] = useState(false);
   const [slug, setSlug] = useState(item.slug);
   const [content, setContent] = useState(item.content);
-
-  useEffect(() => {
+  // As in SortableCategoryRow: a visibility toggle keeps the open draft.
+  const [seen, setSeen] = useState(item);
+  if (seen.slug !== item.slug || seen.content !== item.content) {
+    setSeen(item);
     setSlug(item.slug);
     setContent(item.content);
-  }, [item]);
+  }
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>

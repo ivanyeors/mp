@@ -230,12 +230,11 @@ function flattenNavItems(items: NavItem[]): NavItem[] {
   return items.flatMap(({ items: subs, ...item }) => [item, ...(subs ?? [])]);
 }
 
-type AdminStatus = "checking" | "authed" | "unauth";
+type AdminStatus = "authed" | "unauth";
 
 /**
- * Staff session resolved by the server layout. When present the shell renders
- * the page immediately; the client-side `/api/admin/context` fetch is only a
- * fallback for callers that mount the nav without it.
+ * Staff session resolved by the server layout, so the shell renders the page
+ * immediately instead of waiting on an `/api/admin/context` round trip.
  */
 export type SettingsInitialAuth = {
   signedIn: boolean;
@@ -249,7 +248,7 @@ export function SettingsSidebarNav({
   initialAuth,
 }: {
   children: React.ReactNode;
-  initialAuth?: SettingsInitialAuth;
+  initialAuth: SettingsInitialAuth;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
@@ -260,13 +259,8 @@ export function SettingsSidebarNav({
 
   const isLoginRoute = basePathname === "/settings/login";
 
-  const [status, setStatus] = useState<AdminStatus>(() => {
-    if (!initialAuth) return "checking";
-    return initialAuth.signedIn ? "authed" : "unauth";
-  });
-  const [permissions, setPermissions] = useState<Permission[]>(
-    () => initialAuth?.permissions ?? [],
-  );
+  const [status, setStatus] = useState<AdminStatus>(initialAuth.signedIn ? "authed" : "unauth");
+  const [permissions, setPermissions] = useState<Permission[]>(initialAuth.permissions);
   const [menuOpen, setMenuOpen] = useState(false);
   // Work waiting in the Results queue, so staff see it without opening the page.
   const [resultsQueue, setResultsQueue] = useState(0);
@@ -276,10 +270,9 @@ export function SettingsSidebarNav({
 
   // Keep in sync if the server re-renders the layout with a new session
   // (e.g. after sign-in redirects back into the Admin Panel).
-  const initialSignedIn = initialAuth?.signedIn;
-  const initialPermissionKey = initialAuth?.permissions.join(",");
+  const initialSignedIn = initialAuth.signedIn;
+  const initialPermissionKey = initialAuth.permissions.join(",");
   useEffect(() => {
-    if (!initialAuth) return;
     setStatus(initialAuth.signedIn ? "authed" : "unauth");
     setPermissions(initialAuth.permissions);
     // Compare by value: the layout passes a fresh object on every render.
@@ -293,8 +286,12 @@ export function SettingsSidebarNav({
 
   // Refetched per navigation (pathname dep) so the badge settles after an assign
   // without needing a poll. Best-effort: a failure just leaves the badge hidden.
+  // A boolean, not the array: a navigation's permission refetch hands over a
+  // new array, which would otherwise read each badge a second time.
+  const canResults = permissions.includes("results");
+  const canCustomers = permissions.includes("customers");
   useEffect(() => {
-    if (status !== "authed" || !permissions.includes("results")) return;
+    if (status !== "authed" || !canResults) return;
     let cancelled = false;
     fetch("/api/results/queue-counts")
       .then((res) => (res.ok ? res.json() : null))
@@ -307,12 +304,12 @@ export function SettingsSidebarNav({
     return () => {
       cancelled = true;
     };
-  }, [status, permissions, basePathname]);
+  }, [status, canResults, basePathname]);
 
   // Same for the Customers badge. Whose it is follows "Working as", so a switch
   // re-reads it too; with no profile chosen on a shared login it shows nothing.
   useEffect(() => {
-    if (status !== "authed" || !permissions.includes("customers")) return;
+    if (status !== "authed" || !canCustomers) return;
     let cancelled = false;
     const read = () =>
       fetch("/api/settings/customers/followup-counts")
@@ -329,30 +326,8 @@ export function SettingsSidebarNav({
       cancelled = true;
       for (const e of events) window.removeEventListener(e, read);
     };
-  }, [status, permissions, basePathname]);
+  }, [status, canCustomers, basePathname]);
   const customersBadge = followUpBadge(followUpCounts);
-
-  useEffect(() => {
-    if (isLoginRoute || initialAuth) return;
-    let cancelled = false;
-    fetch("/api/admin/context")
-      .then((res) => res.json())
-      .then((data: { signedIn?: boolean; permissions?: Permission[] }) => {
-        if (cancelled) return;
-        if (data?.signedIn) {
-          setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
-          setStatus("authed");
-        } else {
-          setStatus("unauth");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setStatus("unauth");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoginRoute, initialAuth]);
 
   // Re-read the Member's pages on each navigation after the first, so a role
   // changed mid-session drops its pages from the sidebar on the next click
@@ -454,7 +429,7 @@ export function SettingsSidebarNav({
       <div className="min-w-0 flex-1">
         <SettingsBreadcrumbTrail basePathname={basePathname} to={to} permissions={permissions} />
       </div>
-      {initialAuth?.workingAs ? <WorkingAsPicker initial={initialAuth.workingAs} /> : null}
+      {initialAuth.workingAs ? <WorkingAsPicker initial={initialAuth.workingAs} /> : null}
     </header>
   );
 

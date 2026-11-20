@@ -48,7 +48,6 @@ export function CustomiseTierPicker({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [expandedId, setExpandedId] = useState<TierId | null>(null);
 
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -85,10 +84,6 @@ export function CustomiseTierPicker({
   const handleClose = useCallback(() => {
     setOpen(false);
     setExpandedId(null);
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -190,8 +185,10 @@ export function CustomiseTierPicker({
     setExpandedId(tier.id);
   };
 
+  // showOverlay only turns true from a click, so the portal never renders on
+  // the server or during hydration.
   const overlay =
-    showOverlay && mounted
+    showOverlay
       ? createPortal(
           <div
             ref={overlayRef}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { User, Search, Loader2, Mail, SlidersHorizontal, Smartphone } from "lucide-react";
@@ -95,6 +95,14 @@ function formatSGD(amount: number): string {
 
 function formatDate(dateStr: string | null): string {
     return formatAdminDateMY(dateStr);
+}
+
+/** The list request's query: the filters, then the page. */
+function listQueryFor(filtersQuery: string, page: number): string {
+    const params = new URLSearchParams(filtersQuery);
+    params.set("page", String(page));
+    params.set("limit", String(LIMIT));
+    return params.toString();
 }
 
 function getCustomerName(customer: CustomerOverviewRow): string {
@@ -240,10 +248,11 @@ export function CustomersClient({
     const [customers, setCustomers] = useState<CustomerOverviewRow[]>(initialData?.customers.rows ?? []);
     const [total, setTotal] = useState(initialData?.customers.total ?? 0);
     const [shipsToUnknown, setShipsToUnknown] = useState<number | null>(initialData?.customers.shipsToUnknown ?? null);
-    const [loading, setLoading] = useState(!initialData);
-
-    // The RSC page already fetched page 1 — skip the mount fetch once.
-    const hydratedFromServer = useRef(Boolean(initialData));
+    // The request the rows on screen answer. The RSC page already fetched page 1
+    // of the URL's filters, so a mount with it fetches nothing (Strict Mode too).
+    const [shownQuery, setShownQuery] = useState<string | null>(() =>
+        initialData ? listQueryFor(customerFilterParams(filters).toString(), 1) : null,
+    );
 
     /** Every change to the filters starts again at page 1. */
     const applyFilters = (next: (f: CustomerListFilters) => CustomerListFilters) => {
@@ -313,35 +322,32 @@ export function CustomersClient({
     const stageHref = (stage: LifecycleStage) =>
         `${to("/settings/customers")}?${customerFilterParams({ stage: [stage] }).toString()}`;
 
-    // Fetch customers
-    const fetchCustomers = useCallback(async () => {
-        setLoading(true);
-        const params = new URLSearchParams(filtersQuery);
-        params.set("page", String(page));
-        params.set("limit", String(LIMIT));
-
-        try {
-            const res = await fetch(`/api/shop/customers?${params.toString()}`);
-            const json = await res.json();
+    // Fetch customers. Only the latest filters and page may write: a slower,
+    // older response is dropped (`live`), and going back to what is already
+    // shown fetches nothing.
+    const listQuery = listQueryFor(filtersQuery, page);
+    const loading = shownQuery !== listQuery;
+    useEffect(() => {
+        if (shownQuery === listQuery) return;
+        let live = true;
+        void (async () => {
+            let json: Partial<CustomersListResponse> = {};
+            try {
+                const res = await fetch(`/api/shop/customers?${listQuery}`);
+                json = (await res.json()) ?? {};
+            } catch {
+                // An empty list, as before.
+            }
+            if (!live) return;
             setCustomers(json.rows ?? []);
             setTotal(json.total ?? 0);
             setShipsToUnknown(typeof json.shipsToUnknown === "number" ? json.shipsToUnknown : null);
-        } catch {
-            setCustomers([]);
-            setTotal(0);
-            setShipsToUnknown(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [filtersQuery, page]);
-
-    useEffect(() => {
-        if (hydratedFromServer.current) {
-            hydratedFromServer.current = false;
-            return;
-        }
-        fetchCustomers();
-    }, [fetchCustomers]);
+            setShownQuery(listQuery);
+        })();
+        return () => {
+            live = false;
+        };
+    }, [listQuery, shownQuery]);
 
     // Pagination helpers
     const totalPages = Math.ceil(total / LIMIT);
