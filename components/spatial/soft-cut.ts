@@ -23,7 +23,7 @@
  * a recipe shows it settled at once.
  */
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import { SUB_SECTIONS, type Section, type SubSection } from "@/lib/spatial-fillings/core";
 import type { PillowFit } from "@/lib/spatial-fillings/fit";
 import {
@@ -613,21 +613,14 @@ const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 export function useSoftCut(input: SoftCutInput | null, animate: boolean, replay = 0, easeMs?: number): SoftCutShapes | null {
   const key = input ? softCutKey(input) : null;
   const [state, setState] = useState<{ key: string; shapes: SoftCutShapes } | null>(null);
-  const latest = useRef(input);
+  // The input and easing length of this commit, read when a new settle starts (not deps: the key says when it is new).
   // A held pouch's preview changes every pointer step: each eases quickly from where the last one was shown.
-  const ease = useRef(easeMs);
-  useLayoutEffect(() => {
-    ease.current = easeMs;
-  });
+  const readLatest = useEffectEvent(() => ({ input, easeMs }));
   const replayed = useRef(replay);
   const shown = useRef<SoftCutShapes | null>(null);
 
   useLayoutEffect(() => {
-    latest.current = input;
-  });
-
-  useLayoutEffect(() => {
-    const cur = latest.current;
+    const { input: cur, easeMs: ease } = readLatest();
     if (!key || !cur) return;
     const fresh = replayed.current !== replay;
     replayed.current = replay;
@@ -641,7 +634,7 @@ export function useSoftCut(input: SoftCutInput | null, animate: boolean, replay 
       return;
     }
     const plan = morph(fresh || !shown.current ? seedShapes(cur) : shown.current, target, () => seedShapes(cur));
-    const duration = !fresh && ease.current !== undefined ? ease.current : Math.max(200, (cur.settings.steps * 1000) / 60);
+    const duration = !fresh && ease !== undefined ? ease : Math.max(200, (cur.settings.steps * 1000) / 60);
     const t0 = performance.now();
     let raf = 0;
     const tick = (now: number) => {

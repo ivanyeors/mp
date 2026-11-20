@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -188,10 +188,7 @@ export function ExploreExperience({
       setStage("error");
     }
   };
-  const claimRef = useRef(claim);
-  useEffect(() => {
-    claimRef.current = claim;
-  });
+  const finishClaimNow = useEffectEvent(() => void claim(false));
 
   // Back from signing in: finish what the press began, once, and tidy the address.
   const finished = useRef(false);
@@ -201,7 +198,7 @@ export function ExploreExperience({
     const url = new URL(window.location.href);
     url.searchParams.delete("claim");
     window.history.replaceState(window.history.state, "", url);
-    void claimRef.current(false);
+    finishClaimNow();
   }, [finishClaim]);
 
   const openPopup = () => {
@@ -260,11 +257,8 @@ export function ExploreExperience({
       float(at, "That did not go through. Try again later");
     }
   };
-  // The scene is made once; it calls whatever this is now.
-  const onFlowerRef = useRef(onFlower);
-  useEffect(() => {
-    onFlowerRef.current = onFlower;
-  });
+  // The scene is made once and the finish timer set once; each calls whatever onFlower is now.
+  const pickFlower = useEffectEvent((index: number, at: { x: number; y: number }) => void onFlower(index, at));
 
   // ------------------------------------------------------------ the scene
   const skyRef = useRef(sky);
@@ -287,7 +281,7 @@ export function ExploreExperience({
         if (cancelled || !hostRef.current) return;
         scene = createExploreScene(hostRef.current, {
           reducedMotion,
-          onFlower: (index, at) => void onFlowerRef.current(index, at),
+          onFlower: (index, at) => pickFlower(index, at),
         });
         scene.setSky(skyRef.current);
         scene.setFlowers(flowersRef.current.count, flowersRef.current.picked);
@@ -317,7 +311,7 @@ export function ExploreExperience({
       window.history.replaceState(window.history.state, "", url);
       // Not a flower today (an old link): nothing. Picked already: the database says so.
       if (finishFlower >= flowersRef.current.count) return;
-      void onFlowerRef.current(finishFlower, { x: window.innerWidth * 0.72, y: window.innerHeight * 0.55 });
+      pickFlower(finishFlower, { x: window.innerWidth * 0.72, y: window.innerHeight * 0.55 });
     };
     const timer = window.setTimeout(go, sceneOn ? 1100 : 2500);
     return () => window.clearTimeout(timer);
