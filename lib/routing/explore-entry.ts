@@ -4,12 +4,16 @@
  * shown /explore instead, so the countdown and the welcome points are the
  * first thing they see.
  *
- * - **Once per browser session** (owner, 2026-11-18). Opening Explore sets a
- *   session cookie, `EXPLORE_SEEN_COOKIE`; while the browser keeps it, an
- *   arrival goes to the home page. It has no expiry, so it goes when the
- *   browser session ends, and it names the parent domain, so seeing Explore on
- *   www also counts for mpillow.com. A cookie, not the account: a signed-out
- *   visitor is the one Explore is for, and the proxy reads it with no query.
+ * - **Signed out: every arrival** (owner, 2026-11-20). A visitor with no
+ *   sign-in cookie is sent to Explore each time they arrive. Explore is for
+ *   them, and a browser "session" rarely ends: Chrome's "continue where you
+ *   left off" and phone browsers keep a session cookie for weeks, so "once per
+ *   session" had become "once ever".
+ * - **Signed in: once per browser session** (owner, 2026-11-18). Opening
+ *   Explore sets a session cookie, `EXPLORE_SEEN_COOKIE`; while the browser
+ *   keeps it, a signed-in arrival goes to the home page. It has no expiry, and
+ *   it names the parent domain, so seeing Explore on www also counts for
+ *   mpillow.com. Both are cookies the proxy reads with no query.
  * - **Arrivals only.** A typed address, a bookmark or a link from another site
  *   goes to Explore. A click on this same site does not (`Sec-Fetch-Site:
  *   same-origin`, or a Referer from this host), so the Explore logo and "Explore
@@ -28,8 +32,21 @@ import { EXPLORE_PATH } from "@/lib/routing/explore-route";
 
 export const EXPLORE_ENTRY_HOSTS: ReadonlySet<string> = new Set(["mpillow.com", "www.mpillow.com"]);
 
-/** Set when Explore is shown; while the browser session keeps it, arrivals go home. */
+/** Set when Explore is shown; while the browser session keeps it, a signed-in arrival goes home. */
 export const EXPLORE_SEEN_COOKIE = "mp_explore_seen";
+
+/**
+ * Pure — whether the request carries a Supabase sign-in cookie
+ * (`sb-<project>-auth-token`, or its `.0`, `.1` chunks). Not the PKCE
+ * `-code-verifier` cookie, which a sign-in in progress leaves.
+ *
+ * ponytail: the cookie's presence, not a verified session, so the proxy makes
+ * no query on the home page. A stale cookie only means once per session
+ * instead of every time; verify with `auth.getUser()` if that ever matters.
+ */
+export function hasSignInCookie(cookieNames: readonly string[]): boolean {
+  return cookieNames.some((name) => /^sb-.+-auth-token(\.\d+)?$/.test(name));
+}
 
 const LAUNCH_MS = Date.parse(EXPLORE_LAUNCH_AT);
 
@@ -69,8 +86,10 @@ export function exploreEntryPath(input: {
   nowMs: number;
   /** This browser session has already been shown Explore. */
   seen: boolean;
+  /** The visitor is signed in; only then does `seen` keep them on the home page. */
+  signedIn: boolean;
 }): string | null {
-  if (input.seen) return null;
+  if (input.seen && input.signedIn) return null;
   if (!EXPLORE_ENTRY_HOSTS.has(input.host)) return null;
   if (input.method !== "GET" && input.method !== "HEAD") return null;
   if (!(input.nowMs < LAUNCH_MS)) return null;
