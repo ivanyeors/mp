@@ -35,7 +35,8 @@ that exist only as prose:
 4. **Comments are banned in product code.** A reason goes where something
    checks it: a name, a type, a test, a `*.check.ts`. What stays: one
    `ponytail:` comment on a deliberate shortcut (`CLAUDE.md`), and directives a
-   tool acts on. Existing comments are in the baseline.
+   tool acts on. The comments that existed were counted in the baseline by
+   slice 02 and removed by slice 09 (owner, 2026-11-20).
 5. **Shopify imports are banned** outside Shopify's own folders.
 6. **Client code cannot reach the service-role client**, checked on the import
    graph.
@@ -77,3 +78,4 @@ that exist only as prose:
 | 06 | `preview map` | — |
 | 07 | Bombadil monthly, auto-merge switch | — |
 | 08 | Instructions, reviewer prompts, pull request template | 01–07 |
+| 09 | Remove the comments the ban counted | 02, 03 |
