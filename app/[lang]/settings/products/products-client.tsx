@@ -268,12 +268,20 @@ export function ProductsClient({
         };
     }, [search]);
 
-    // Reset page and selection when filters or tab change
-    useEffect(() => { setPage(1); }, [statusFilter, categoryFilter]);
-    useEffect(() => {
+    // A filter change starts again on page 1, in the same update, so one request goes out.
+    const changeStatus = (value: string) => {
+        setStatusFilter(value);
+        setPage(1);
+    };
+    const changeCategory = (value: string) => {
+        setCategoryFilter(value);
+        setPage(1);
+    };
+    const changeType = (value: string) => {
+        setTypeFilter(value);
         setPage(1);
         setSelected(new Set());
-    }, [typeFilter]);
+    };
 
     // Fetch categories once
     useEffect(() => {
@@ -284,8 +292,11 @@ export function ProductsClient({
             .catch(() => {});
     }, [initialData]);
 
-    // Fetch products
+    // Fetch products. Only the newest request's answer is shown: an older one
+    // that lands later (a fast page click, a refresh after a filter) is dropped.
+    const latestRequest = useRef(0);
     const fetchProducts = useCallback(async () => {
+        const request = ++latestRequest.current;
         setLoading(true);
         const params = new URLSearchParams();
         if (debouncedSearch) params.set("search", debouncedSearch);
@@ -302,17 +313,22 @@ export function ProductsClient({
         else if (typeFilter === "accessory") params.set("product_type", "accessory");
         else if (typeFilter === "bundle") params.set("product_type", "bundle");
 
+        let rows: ProductRow[] = [];
+        let count = 0;
         try {
             const res = await fetch(`/api/shop/products?${params.toString()}`);
             const json = await res.json();
-            setProducts(json.rows ?? []);
-            setTotal(json.total ?? 0);
+            rows = json.rows ?? [];
+            count = json.total ?? 0;
         } catch {
-            setProducts([]);
-            setTotal(0);
-        } finally {
-            setLoading(false);
+            // Shown as an empty list, as before.
         }
+        if (request !== latestRequest.current) return;
+        setProducts(rows);
+        setTotal(count);
+        // New rows, so nothing on screen is still selected.
+        setSelected(new Set());
+        setLoading(false);
     }, [debouncedSearch, statusFilter, categoryFilter, page, typeFilter]);
 
     useEffect(() => {
@@ -322,9 +338,6 @@ export function ProductsClient({
         }
         fetchProducts();
     }, [fetchProducts]);
-
-    // Clear selection when products change
-    useEffect(() => { setSelected(new Set()); }, [products]);
 
     // ── Sync from Inventory ──
     const syncFromInventory = async () => {
@@ -715,7 +728,7 @@ export function ProductsClient({
             {/* Phones: type and status share a row and category, whose names run long, gets the next;
                 from `sm` the wrapper drops out of the layout. */}
             <div className="grid grid-cols-2 gap-2 sm:contents">
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter} onValueChange={changeType}>
                 <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
                     <SelectValue placeholder="Type" />
                 </SelectTrigger>
@@ -728,7 +741,7 @@ export function ProductsClient({
                 </SelectContent>
             </Select>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={changeStatus}>
                 <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
                     <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -740,7 +753,7 @@ export function ProductsClient({
                 </SelectContent>
             </Select>
 
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={changeCategory}>
                 <SelectTrigger className="w-full max-sm:col-span-2 max-sm:min-w-0 sm:w-44">
                     <SelectValue placeholder="Category" />
                 </SelectTrigger>

@@ -82,10 +82,12 @@ export function LoginForm({
   // Whether we own a history entry for the code step (see the pushState effect).
   const pushedHistoryRef = useRef(false);
 
-  // Prefill can arrive after async Result load.
-  useEffect(() => {
+  // Prefill can arrive after async Result load: a new one replaces the field.
+  const [seenInitialEmail, setSeenInitialEmail] = useState(initialEmail);
+  if (initialEmail !== seenInitialEmail) {
+    setSeenInitialEmail(initialEmail);
     if (initialEmail) setEmail(initialEmail);
-  }, [initialEmail]);
+  }
 
   const leaveCodeStep = useCallback(() => {
     setCode("");
