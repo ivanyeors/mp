@@ -6,6 +6,7 @@ import { recordCampaignClick, stripClickToken } from "@/lib/email-campaigns/clic
 import { FONT_STACK } from "@/lib/font-stack";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { INDEXNOW_KEY_PATH, indexNowKeyFilePath } from "@/lib/seo/indexnow";
 import {
   EXPLORE_SEEN_COOKIE,
   exploreEntryPath,
@@ -115,6 +116,13 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const crawler = classifyCrawler(request.headers.get("user-agent"));
   if (crawler && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     event.waitUntil(recordCrawlerHit(supabaseAdmin(), crawler, pathname));
+  }
+
+  // The IndexNow key at the protocol's default address, /<key>.txt, on every
+  // host: Ahrefs Site Audit verifies a key only there. Our own pings name
+  // /indexnow-key.txt as keyLocation, which the engines accept.
+  if (pathname === indexNowKeyFilePath()) {
+    return NextResponse.rewrite(new URL(INDEXNOW_KEY_PATH, request.url));
   }
 
   // Host and old-store addresses, before the static-file skip (a Shopify feed or

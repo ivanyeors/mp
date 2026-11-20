@@ -20,6 +20,12 @@ export function getIndexNowKey(): string | null {
   return key && /^[A-Za-z0-9-]{8,128}$/.test(key) ? key : null;
 }
 
+/** `/<key>.txt`, the protocol's default key address (served by the proxy), or null with no valid key. */
+export function indexNowKeyFilePath(): string | null {
+  const key = getIndexNowKey();
+  return key ? `/${key}.txt` : null;
+}
+
 /** A page's URL in every locale (`""` is the home page). */
 export function localePageUrls(path: string): string[] {
   return SUPPORTED_LOCALES.map((lang) => localeUrl(lang, path));
