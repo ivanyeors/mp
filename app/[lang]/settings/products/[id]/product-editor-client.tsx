@@ -74,15 +74,8 @@ export type ProductDetailResponse = {
     row: LoadedProduct;
 };
 
-/** Exactly the JSON `GET /api/shop/categories` returns. */
-export type CategoriesListResponse = {
-    ok: true;
-    rows: ProductCategory[];
-};
-
 export type ProductEditorInitialData = {
     product: ProductDetailResponse;
-    categories: CategoriesListResponse;
 };
 
 interface VariantFormState {
@@ -150,10 +143,13 @@ function formatPrice(val: number, currency = "SGD"): string {
 
 export function ProductEditorClient({
     initialData,
+    categories,
     ai = AI_OFF,
     stripeMode,
 }: {
     initialData?: ProductEditorInitialData;
+    /** The category tree, read by the page whether or not the product row could be (`getCategoryTree`). */
+    categories: ProductCategory[];
     /** Whether ✨ Write and ✨ Generate SEO are on offer, read by the page. */
     ai?: AiWritingAvailability;
     /**
@@ -232,23 +228,9 @@ export function ProductEditorClient({
     const [syncingStripe, setSyncingStripe] = useState(false);
     const [generatingLink, setGeneratingLink] = useState(false);
 
-    // ── Reference data ──
-    const [categories, setCategories] = useState<ProductCategory[]>(
-        initialData?.categories.rows ?? [],
-    );
-
-    // The RSC page already loaded the product and the categories — skip the
-    // mount fetches once, then behave exactly as before.
+    // The RSC page already loaded the product — skip the mount fetch once,
+    // then behave exactly as before.
     const hydratedFromServer = useRef(Boolean(initialData));
-
-    // ── Fetch categories ──
-    useEffect(() => {
-        if (initialData) return;
-        fetch("/api/shop/categories")
-            .then((r) => r.json())
-            .then((data) => setCategories(data.rows ?? []))
-            .catch(() => {});
-    }, [initialData]);
 
     // Free-form creation is retired — products come from inventory.
     useEffect(() => {
