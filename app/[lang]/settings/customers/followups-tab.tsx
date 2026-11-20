@@ -48,30 +48,38 @@ export function FollowUpsTab({
     const [data, setData] = useState<FollowUpListData | null>(initialData ?? null);
     const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
-    const hydrated = useRef(Boolean(initialData));
+    // Only the latest request may write: a slower, older scope must not land last.
+    const latest = useRef(0);
 
-    const load = useCallback(async (which: FollowUpScope) => {
-        setLoading(true);
-        setError(null);
+    const fetchScope = useCallback(async (which: FollowUpScope) => {
+        const id = ++latest.current;
         try {
             const res = await fetch(`/api/settings/customers/followups?scope=${which}`);
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Could not load follow-ups.");
-            setData(json as FollowUpListData);
+            if (id === latest.current) setData(json as FollowUpListData);
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Could not load follow-ups.");
+            if (id === latest.current) setError(e instanceof Error ? e.message : "Could not load follow-ups.");
         } finally {
-            setLoading(false);
+            if (id === latest.current) setLoading(false);
         }
     }, []);
+    const load = useCallback(
+        (which: FollowUpScope) => {
+            setLoading(true);
+            setError(null);
+            return fetchScope(which);
+        },
+        [fetchScope],
+    );
 
+    // Mount: the caller's list, or fetch it (`loading` starts true without
+    // one). A scope change loads from choose().
     useEffect(() => {
-        if (hydrated.current) {
-            hydrated.current = false;
-            return;
-        }
-        void load(scope);
-    }, [load, scope]);
+        if (initialData) return;
+        // fetchScope sets state only after its await; the wrapper lets the linter see that.
+        void (async () => fetchScope(initialScope))();
+    }, [initialData, initialScope, fetchScope]);
 
     // Switching who you work as changes whose list *Mine* is.
     useEffect(() => {
@@ -81,7 +89,9 @@ export function FollowUpsTab({
     }, [load, scope]);
 
     const choose = (next: FollowUpScope) => {
+        if (next === scope) return;
         setScope(next);
+        void load(next);
         const url = new URL(window.location.href);
         if (next === "mine") url.searchParams.delete("scope");
         else url.searchParams.set("scope", next);
