@@ -52,6 +52,15 @@ export function selectBookableLocations(rows: ResolvedLocation[]): ResolvedLocat
 }
 
 /**
+ * The booking picker's Locations: bookable, with an address, trimmed to what
+ * the picker shows. `GET /api/locations` answers with this, and the
+ * appointments page reads it on the server.
+ */
+export async function readBookingLocations(): Promise<{ id: string; name: string; type: string; address: string }[]> {
+  return selectBookableLocations(await getLocations()).map(({ id, name, type, address }) => ({ id, name, type, address: address ?? "" }));
+}
+
+/**
  * Pure partner projection: own studios never leak to /our-partners, and hidden
  * partners are excluded unless explicitly requested. A branch is another clinic
  * of a partner, not a partner, so it is never a row here (ADR 0037). This is

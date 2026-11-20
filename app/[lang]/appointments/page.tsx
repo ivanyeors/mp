@@ -12,6 +12,7 @@ import { getMessages } from "@/lib/i18n/messages";
 import { withLocale } from "@/lib/i18n/routing";
 import { loadServicePrices } from "@/lib/pricing/service-prices";
 import { loadReadjustmentContext } from "@/lib/readjustment/purchases";
+import { readBookingLocations } from "@/lib/locations";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { PAGE_META } from "@/lib/seo/page-meta";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -102,6 +103,13 @@ export default async function AppointmentsPage({
     }
   }
 
+  // The location picker's Locations, as `GET /api/locations` answers them. Only
+  // the booking form shows them. A read that throws leaves the picker empty, as
+  // the client's own fetch did; ponytail: `getLocationRows` already turns a
+  // database error into no rows, so an empty picker cannot say "could not load"
+  // until that read reports its errors.
+  const locations = appt && !signInHref ? await readBookingLocations().catch(() => []) : [];
+
   return (
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-xl flex-col px-4 py-10">
       <h1 className="mb-6 text-2xl font-semibold tracking-tight md:text-3xl">{t.title}</h1>
@@ -121,7 +129,7 @@ export default async function AppointmentsPage({
           </Button>
         </div>
       ) : appt ? (
-        <BookingFlow type={appt} readjustment={readjustment ?? undefined} />
+        <BookingFlow type={appt} readjustment={readjustment ?? undefined} locations={locations} />
       ) : (
         <div className="flex flex-1 flex-col gap-6">
           <p className="text-muted-foreground">{t.flow.typeLabel}</p>
