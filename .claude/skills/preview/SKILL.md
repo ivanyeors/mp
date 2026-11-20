@@ -22,7 +22,12 @@ per screenshot, `ok` or `PROBLEM` with what went wrong.
 
 1. **Pick the pages your change shows up on.** The page you edited, plus any
    other page using a component you changed. A path is enough: `/settings/orders`
-   becomes `/en-US/settings/orders`. Keep query strings in quotes.
+   becomes `/en-US/settings/orders`. Keep query strings in quotes. When someone
+   names a page the way they see it ("the orders page", "Service fees in the
+   sidebar"), `preview map <words>` finds it: one line per page with its name
+   (from the sidebars, dock and footer, else its title), route and shoot
+   command, a working path for a dynamic route where the sample data has one,
+   and the `--click` for each tab. `preview map` alone lists every page.
 2. **Shoot them.** Both widths unless the change is clearly one of them.
 3. **Read every PNG with the Read tool.** Check what you changed actually looks
    right: text cut off, overlapping labels, horizontal scroll on the phone,

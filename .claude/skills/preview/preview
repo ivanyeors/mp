@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run the real app on sample data and screenshot it. See SKILL.md.
 #
+#   preview map [words]                 every page: its name, route and shoot command
 #   preview shoot [options] <page>...   start if needed, then screenshot each page
 #   preview start [--scenario NAME]     fake Supabase + next dev, in the background
 #   preview reset [--scenario NAME]     reload the fixtures and drop sample writes
@@ -189,10 +190,13 @@ case "$cmd" in
     mark_seen
     echo "Noted: no screenshots needed ($*)."
     ;;
+  map)
+    node "$here/lib/map.mjs" "$@"
+    ;;
   selftest)
     node "$here/selftest.mjs"
     ;;
   *)
-    sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
     ;;
 esac
