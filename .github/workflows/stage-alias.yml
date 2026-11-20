@@ -1,0 +1,64 @@
+name: stage alias
+
+# Points stage.mpillow.com at the newest staged build of main (CLAUDE.md,
+# "Merging to main does not go live"). Vercel builds every merge to main as a
+# production deployment that mpillow.com does not serve until it is promoted,
+# and reports each build to GitHub as a deployment. When a production one is
+# ready, this asks Vercel for the newest ready production build and moves the
+# stage address to it. The event is only the trigger: asking Vercel rather than
+# trusting the event's URL keeps stage on the newest build even when two builds
+# finish out of order.
+#
+# stage.mpillow.com is an alias on the build, not a domain of the project, so
+# Vercel's sign-in protects it like any build URL while mpillow.com stays open.
+# Adding it under the project's Domains would make it a production custom
+# domain: public, and moved by every promote.
+#
+# Needs the VERCEL_TOKEN repository secret: a Vercel access token for the
+# ivanyeors-projects team. Until that exists the job says so and passes.
+# Runs from the copy of this file on main, so it starts working after it merges.
+
+on:
+  deployment_status:
+
+concurrency:
+  group: stage-alias
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  alias:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      startsWith(github.event.deployment.environment, 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HAS_TOKEN: ${{ secrets.VERCEL_TOKEN != '' }}
+      TEAM_ID: team_V0MteqAIUTkegqJJbZD6Jetb
+      PROJECT_ID: prj_74SAGUQsw4QgeSqWVIwDAopbt0p9
+
+    steps:
+      - name: Say why it skipped
+        if: env.HAS_TOKEN != 'true'
+        run: echo "::notice title=Stage alias skipped::Add the VERCEL_TOKEN repository secret to turn it on."
+
+      - name: Point stage.mpillow.com at the newest staged build
+        if: env.HAS_TOKEN == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="https://api.vercel.com"
+          newest=$(curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "$api/v6/deployments?teamId=$TEAM_ID&projectId=$PROJECT_ID&target=production&state=READY&limit=1")
+          id=$(jq -r '.deployments[0].uid // .deployments[0].id // empty' <<<"$newest")
+          url=$(jq -r '.deployments[0].url // empty' <<<"$newest")
+          if [ -z "$id" ]; then
+            echo "::error::Vercel returned no ready production build."
+            exit 1
+          fi
+          curl -fsS -X POST -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" \
+            -d '{"alias":"stage.mpillow.com"}' "$api/v2/deployments/$id/aliases?teamId=$TEAM_ID" >/dev/null
+          echo "::notice title=Stage updated::stage.mpillow.com now shows $url ($id)."
