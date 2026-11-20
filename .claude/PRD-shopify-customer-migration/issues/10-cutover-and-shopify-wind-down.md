@@ -54,10 +54,16 @@ The code is ready, so the day is DNS, one setting and a redeploy:
 
 None of this changes what visitors see.
 
-1. **Search Console baseline (owner or agency).** From the www.mpillow.com property, or the
-   `sc-domain:mpillow.com` domain property, export Performance by page and by query for the last
-   16 months, and the Pages (indexing) report. The app's own Search Console data cannot stand in:
-   every page row in `seo_daily_metrics` is on custom.mpillow.com, and only for 10–19 Jul 2026.
+1. **Search Console baseline: linked, no export (20 Nov 2026).** The daily import reads the
+   `sc-domain:mpillow.com` domain property, which covers www (the Shopify site), the bare domain
+   and custom., so the old site's clicks, impressions and positions by page, query, country and
+   device land in `seo_daily_metrics`. It loads the property's 16 months by itself, about four
+   months per daily run (`lib/seo-metrics/ingest-gsc.ts`); Admin Panel → Analytics, range 16
+   months, shows them, and the same import carries on through the switch. Before 20 Nov it read
+   the custom.mpillow.com property, which had no impressions after July. Owner: add the service
+   account to the domain property (`GOOGLE-ACCESS-SETUP.md` in PRD-search-visibility). The one
+   report with no API is Pages (indexing): if the agency wants its totals, a screenshot the day
+   before is enough.
 2. **Snapshot of the old site: done 18 Nov 2026.** `docs/cutover/shopify-snapshot-2026-11-18.json`
    (`scripts/snapshot-shopify-site.py`) has each of the 215 old addresses' status, title,
    description, canonical and headings: 212 answered 200, the sign-in link 302 to Shopify's
@@ -103,8 +109,8 @@ None of this changes what visitors see.
    `NODE_USE_ENV_PROXY=1 node scripts/check-shopify-redirects.mjs https://www.mpillow.com`, then
    the same with `https://mpillow.com`.
 7. **Search Console:** submit `https://www.mpillow.com/sitemap.xml` and remove Shopify's
-   sitemaps. Point `GOOGLE_SEARCH_CONSOLE_SITE_URL` at `sc-domain:mpillow.com`, with the service
-   account added to that property, so Analytics reads the new address.
+   sitemaps. The import already reads `sc-domain:mpillow.com`, so Analytics follows www with no
+   change.
 
 **Rollback:** Vercel Instant Rollback to the last deployment built with custom., then add the
 two Shopify records back. Redirects carry `Cache-Control: max-age=3600`, so no browser keeps one

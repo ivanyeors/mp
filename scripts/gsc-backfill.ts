@@ -1,11 +1,11 @@
-// Load all of Search Console's available history (16 months) into seo_daily_metrics.
+// Load all of Search Console's available history (16 months) into seo_daily_metrics now.
 //
-//   npm run seo:gsc-backfill                 # full 16 months
-//   npm run seo:gsc-backfill -- --days 90    # just the last 90 days
+//   npm run seo:gsc-backfill
 //
-// Safe to re-run: every row upserts on (date, source, dimension, key). Runs one
-// month at a time so a failure part-way keeps what was already written; re-run to
-// finish. After this, the daily cron (results-sla chain) keeps it current.
+// Optional: the daily cron (results-sla chain) loads the same history by itself, a
+// few months per run (lib/seo-metrics/ingest-gsc.ts). This does it in one go, with
+// no time limit. Safe to re-run: every row upserts on (date, source, dimension,
+// key), and a re-run fetches only the days still missing.
 //
 // Env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
 //      GOOGLE_SEARCH_CONSOLE_SITE_URL, GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -14,20 +14,9 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { createGscClient, getGscConfig } from "@/lib/google/search-console";
-import {
-  addDays,
-  createSupabaseSeoMetricsStore,
-  MAX_HISTORY_DAYS,
-  runGscIngest,
-} from "@/lib/seo-metrics/ingest-gsc";
-
-const CHUNK_DAYS = 30;
+import { createSupabaseSeoMetricsStore, runGscIngest } from "@/lib/seo-metrics/ingest-gsc";
 
 async function main() {
-  const daysArg = process.argv.indexOf("--days");
-  const days = daysArg > -1 ? Number(process.argv[daysArg + 1]) : MAX_HISTORY_DAYS;
-  if (!Number.isFinite(days) || days < 1) throw new Error("--days must be a positive number");
-
   const config = getGscConfig();
   if (!config) {
     throw new Error(
@@ -39,16 +28,14 @@ async function main() {
   if (!url || !key) throw new Error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
 
   const store = createSupabaseSeoMetricsStore(createClient(url, key, { auth: { persistSession: false } }));
-  const client = createGscClient(config);
-  const today = new Date().toISOString().slice(0, 10);
-
-  for (let start = addDays(today, -Math.min(days, MAX_HISTORY_DAYS)); start <= today; ) {
-    const end = addDays(start, CHUNK_DAYS - 1) < today ? addDays(start, CHUNK_DAYS - 1) : today;
-    const summary = await runGscIngest(store, client, { today, startDate: start, endDate: end });
-    console.log(`${start} → ${end}`, summary.rows);
-    start = addDays(end, 1);
-  }
-  console.log("Backfill complete.");
+  const summary = await runGscIngest(store, createGscClient(config), {
+    today: new Date().toISOString().slice(0, 10),
+    property: config.siteUrl,
+    maxBackfillWindows: Infinity,
+    deadline: Infinity,
+  });
+  for (const w of summary.backfilled) console.log(`${w.startDate} → ${w.endDate}`);
+  console.log(`${config.siteUrl}: backfill complete, ${summary.missingDays} days still missing.`);
 }
 
 main().catch((e) => {
