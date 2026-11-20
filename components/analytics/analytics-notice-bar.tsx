@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,26 +11,26 @@ import { useScreenBottomPin } from "@/hooks/use-screen-bottom-pin";
 
 const STORAGE_KEY = "mp_analytics_notice_ok";
 
+function readStoredFlag(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    // ponytail: private mode / blocked storage — show until Got it, once per mount
+    return null;
+  }
+}
+
+// ponytail: no `storage` listener: Got it in another tab hides the bar here on the next navigation (a re-render reads the flag again), as before.
+const subscribeNever = () => () => {};
+
 /** Disclosure-only bottom bar (Got it dismiss). Collection stays always-on via JourneyTracker. */
 export function AnalyticsNoticeBar() {
   const pathname = usePathname() ?? "/";
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (isAdminJourneyPath(pathname)) {
-      setVisible(false);
-      return;
-    }
-    try {
-      if (localStorage.getItem(STORAGE_KEY) === "1") {
-        setVisible(false);
-        return;
-      }
-    } catch {
-      // ponytail: private mode / blocked storage — show once per mount
-    }
-    setVisible(true);
-  }, [pathname]);
+  // Got it, this mount. Covers blocked storage, where the flag can't be saved.
+  const [dismissed, setDismissed] = useState(false);
+  // "1" on the server and while hydrating, so the first paint has no bar.
+  const stored = useSyncExternalStore(subscribeNever, readStoredFlag, () => "1");
+  const visible = !dismissed && stored !== "1" && !isAdminJourneyPath(pathname);
 
   // Publish how much of the bottom corner the bar takes, so the chat bubble
   // (components/support/support-chat-window.tsx) sits above it, not over "Got it".
@@ -62,7 +62,7 @@ export function AnalyticsNoticeBar() {
     } catch {
       // still hide this Visit
     }
-    setVisible(false);
+    setDismissed(true);
   };
 
   return (
