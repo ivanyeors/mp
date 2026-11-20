@@ -51,8 +51,10 @@ export function FollowUpsTab({
     // Only the latest request may write: a slower, older scope must not land last.
     const latest = useRef(0);
 
-    const fetchScope = useCallback(async (which: FollowUpScope) => {
+    const load = useCallback(async (which: FollowUpScope) => {
         const id = ++latest.current;
+        setLoading(true);
+        setError(null);
         try {
             const res = await fetch(`/api/settings/customers/followups?scope=${which}`);
             const json = await res.json().catch(() => null);
@@ -64,22 +66,14 @@ export function FollowUpsTab({
             if (id === latest.current) setLoading(false);
         }
     }, []);
-    const load = useCallback(
-        (which: FollowUpScope) => {
-            setLoading(true);
-            setError(null);
-            return fetchScope(which);
-        },
-        [fetchScope],
-    );
 
-    // Mount: the caller's list, or fetch it (`loading` starts true without
-    // one). A scope change loads from choose().
+    // Mount: the caller's list, or fetch it. A scope change loads from choose().
     useEffect(() => {
         if (initialData) return;
-        // fetchScope sets state only after its await; the wrapper lets the linter see that.
-        void (async () => fetchScope(initialScope))();
-    }, [initialData, initialScope, fetchScope]);
+        // load() sets `loading` and `error`, which already start true and null without initialData.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void load(initialScope);
+    }, [initialData, initialScope, load]);
 
     // Switching who you work as changes whose list *Mine* is.
     useEffect(() => {
