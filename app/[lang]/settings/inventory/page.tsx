@@ -502,32 +502,44 @@ export default function InventoryPage() {
     };
   }, [scheduleSilentReload]);
 
-  useEffect(() => {
-    const loadCustomPillowLines = async () => {
-      if (!customPillowDrawerOpen) return;
-      const product = products.find(p => p.size === customPillowSize && p.kind === 'basic');
-      if (!product) { setCustomPillowLines([]); return; }
-      type BomRow = { item_id: number; quantity: number | string };
-      const { data } = await supabaseClient.from('bom_lines').select('item_id,quantity').eq('product_id', product.id);
-      const rows = (data ?? []).map((r: BomRow) => ({ item_id: r.item_id, quantity: Number(r.quantity) }));
-      setCustomPillowLines(rows);
-    };
-    loadCustomPillowLines();
-  }, [customPillowDrawerOpen, customPillowSize, products]);
+  const customPillowLinesRequest = useRef(0);
+  const loadCustomPillowLines = async (size: string) => {
+    const request = ++customPillowLinesRequest.current;
+    const product = products.find(p => p.size === size && p.kind === 'basic');
+    if (!product) { setCustomPillowLines([]); return; }
+    type BomRow = { item_id: number; quantity: number | string };
+    const { data } = await supabaseClient.from('bom_lines').select('item_id,quantity').eq('product_id', product.id);
+    if (request !== customPillowLinesRequest.current) return;
+    setCustomPillowLines((data ?? []).map((r: BomRow) => ({ item_id: r.item_id, quantity: Number(r.quantity) })));
+  };
+  const openCustomPillowDrawer = () => {
+    setCustomPillowDrawerOpen(true);
+    void loadCustomPillowLines(customPillowSize);
+  };
+  const changeCustomPillowSize = (size: string) => {
+    setCustomPillowSize(size);
+    void loadCustomPillowLines(size);
+  };
 
-  useEffect(() => {
-    const loadCustomBolsterLines = async () => {
-      if (!customBolsterDrawerOpen) return;
-      type LineRow = { item_id: number; quantity: number | string };
-      const { data } = await supabaseClient
-        .from('bolster_bom_lines')
-        .select('item_id,quantity')
-        .eq('variant', customBolsterVariant);
-      const rows = (data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
-      setCustomBolsterLines(rows);
-    };
-    loadCustomBolsterLines();
-  }, [customBolsterDrawerOpen, customBolsterVariant]);
+  const customBolsterLinesRequest = useRef(0);
+  const loadCustomBolsterLines = async (variant: 'short' | 'medium' | 'long') => {
+    const request = ++customBolsterLinesRequest.current;
+    type LineRow = { item_id: number; quantity: number | string };
+    const { data } = await supabaseClient
+      .from('bolster_bom_lines')
+      .select('item_id,quantity')
+      .eq('variant', variant);
+    if (request !== customBolsterLinesRequest.current) return;
+    setCustomBolsterLines((data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
+  };
+  const openCustomBolsterDrawer = () => {
+    setCustomBolsterDrawerOpen(true);
+    void loadCustomBolsterLines(customBolsterVariant);
+  };
+  const changeCustomBolsterVariant = (variant: 'short' | 'medium' | 'long') => {
+    setCustomBolsterVariant(variant);
+    void loadCustomBolsterLines(variant);
+  };
 
   const partGroups = useMemo(() => {
     const grouped = new Map<Item['category'], Item[]>();
@@ -850,7 +862,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             label="Custom"
             phoneLabel="Custom pillow"
             className="col-span-5"
-            onOpen={() => setCustomPillowDrawerOpen(true)}
+            onOpen={openCustomPillowDrawer}
           />
         </div>
       </section>
@@ -899,7 +911,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             label="Custom bolster"
             phoneLabel="Custom bolster"
             className="col-span-3"
-            onOpen={() => setCustomBolsterDrawerOpen(true)}
+            onOpen={openCustomBolsterDrawer}
           />
         </div>
       </section>
@@ -1215,7 +1227,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         open={customPillowDrawerOpen}
         onOpenChange={setCustomPillowDrawerOpen}
         size={customPillowSize}
-        setSize={setCustomPillowSize}
+        setSize={changeCustomPillowSize}
         items={items}
         lines={customPillowLines}
         setLines={setCustomPillowLines}
@@ -1230,7 +1242,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         open={customBolsterDrawerOpen}
         onOpenChange={setCustomBolsterDrawerOpen}
         variant={customBolsterVariant}
-        setVariant={setCustomBolsterVariant}
+        setVariant={changeCustomBolsterVariant}
         items={items}
         lines={customBolsterLines}
         setLines={setCustomBolsterLines}
