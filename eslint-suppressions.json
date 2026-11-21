@@ -1048,16 +1048,6 @@
       "count": 2
     }
   },
-  "components/slide-in-pages/ambassadors-slide-in.tsx": {
-    "mp/no-effect": {
-      "count": 1
-    }
-  },
-  "components/slide-in-pages/basic-mpillow-learn-more-slide-in.tsx": {
-    "mp/no-effect": {
-      "count": 1
-    }
-  },
   "components/slide-in-pages/book-appointment-overlay.tsx": {
     "mp/no-effect": {
       "count": 1
@@ -1073,7 +1063,7 @@
   },
   "components/slide-in-pages/cervical-neck-support.tsx": {
     "mp/no-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "components/slide-in-pages/confirming-refresh.tsx": {
