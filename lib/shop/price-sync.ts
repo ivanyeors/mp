@@ -175,7 +175,7 @@ export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdm
 const RESYNC: NextStep = { kind: "resync-prices" };
 
 export function stripeSyncProblems(stripe: StripeSyncOutcome): PriceProblem[] {
-  const notices: PriceProblem[] = stripe.notices.map((message) => ({ message }));
+  const notices: PriceProblem[] = stripe.notices.map((message) => ({ message, notice: true }));
   if (stripe.synced) return notices;
   if (stripe.pricesInPlace) {
     return [...notices, { message: stripe.error ?? "The new prices are in place, but Stripe needs attention." }];

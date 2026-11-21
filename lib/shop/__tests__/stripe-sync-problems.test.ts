@@ -16,11 +16,11 @@ describe("stripeSyncProblems: the one place a Stripe sync result becomes problem
     expect(stripeSyncProblems({ ...outcome, synced: true, pricesInPlace: true })).toEqual([]);
   });
 
-  it("a sync that worked passes its notices on with no next step", () => {
+  it("a sync that worked passes its notices on as notices, with no next step", () => {
     const notice = "Retired payment link plink_1: it sold a price no variant has any more.";
     expect(
       stripeSyncProblems({ ...outcome, synced: true, pricesInPlace: true, notices: [notice], paymentLinkCleared: true }),
-    ).toEqual([{ message: notice }]);
+    ).toEqual([{ message: notice, notice: true }]);
   });
 
   it("a sync that failed says customers may pay the old price and points at Sync to Stripe", () => {
@@ -42,7 +42,7 @@ describe("stripeSyncProblems: the one place a Stripe sync result becomes problem
       notices: ["Retired payment link plink_1."],
       paymentLinkCleared: true,
     });
-    expect(problems).toEqual([{ message: "Retired payment link plink_1." }, { message: error }]);
+    expect(problems).toEqual([{ message: "Retired payment link plink_1.", notice: true }, { message: error }]);
     expect(problems.some((p) => p.next)).toBe(false);
     expect(problems.some((p) => p.message.includes("old price:"))).toBe(false);
   });
