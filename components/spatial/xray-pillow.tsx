@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { AlertTriangle, FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
@@ -600,7 +600,6 @@ export function XrayPillow({
   const [openLayer, setOpenLayer] = useState<number | null>(null);
   const [hoverSub, setHoverSub] = useState<SubSection | null>(null);
   const [selected, setSelected] = useState<PieceRef | null>(null);
-  const selectedRef = useRef(selected);
   const [drag, setDrag] = useState<PouchDrag | null>(null);
   const dragRef = useRef<PouchDrag | null>(null);
   const heldGhost = useHeldGhost();
@@ -614,9 +613,6 @@ export function XrayPillow({
   useEffect(() => {
     placementsRef.current = placements;
   }, [placements]);
-  useEffect(() => {
-    selectedRef.current = selected;
-  }, [selected]);
 
   const divedRef = useRef<Section | null>(null);
   const changeDive = useCallback(
@@ -648,17 +644,18 @@ export function XrayPillow({
     setOpenSub(subSection);
   }, []);
 
+  const onDiveKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "Escape" && !draggingRef.current) {
+      if (selected) {
+        setSelected(null);
+        return;
+      }
+      endDive();
+    }
+  });
   useEffect(() => {
     if (!dived) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !draggingRef.current) {
-        if (selectedRef.current) {
-          setSelected(null);
-          return;
-        }
-        endDive();
-      }
-    };
+    const onKey = (e: KeyboardEvent) => onDiveKey(e);
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!rootRef.current || rootRef.current.contains(target) || controlsSlot?.contains(target)) return;

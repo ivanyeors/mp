@@ -1111,7 +1111,7 @@
   },
   "components/spatial/xray-pillow.tsx": {
     "mp/no-effect": {
-      "count": 15
+      "count": 14
     },
     "react-hooks/refs": {
       "count": 1
