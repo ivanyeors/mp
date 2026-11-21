@@ -6,6 +6,7 @@ import { recordCampaignClick, stripClickToken } from "@/lib/email-campaigns/clic
 import { FONT_STACK } from "@/lib/font-stack";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { INDEXNOW_KEY_PATH, indexNowKeyFilePath } from "@/lib/seo/indexnow";
 import {
   EXPLORE_SEEN_COOKIE,
   exploreEntryPath,
@@ -88,6 +89,11 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const crawler = classifyCrawler(request.headers.get("user-agent"));
   if (crawler && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     event.waitUntil(recordCrawlerHit(supabaseAdmin(), crawler, pathname));
+  }
+
+  // ponytail: a key starting with "auth" skips the proxy (the matcher excludes /auth*); keys are generated hex
+  if (pathname === indexNowKeyFilePath()) {
+    return NextResponse.rewrite(new URL(INDEXNOW_KEY_PATH, request.url));
   }
 
   const host = (request.headers.get("host") ?? request.nextUrl.host).split(":")[0].toLowerCase();
